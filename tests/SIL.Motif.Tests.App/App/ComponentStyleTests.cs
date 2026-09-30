@@ -401,6 +401,11 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the compact word strip height", CompactWordStrip,
+            Border.MinHeightProperty, "Component.Density.CompactWordHeight");
+        yield return new("Density", "the compact word strip type", host =>
+                Assert.IsType<StackPanel>(CompactWordStrip(host).Child).Children.OfType<TextBlock>().Single(),
+            TextBlock.FontSizeProperty, "Component.Density.CompactWordType");
         yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
             Control.HeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
@@ -473,6 +478,17 @@ public sealed class ComponentStyleTests
         root.Children.Add(mark);
         host.Children.Add(root);
         return mark;
+    }
+
+    private static Border CompactWordStrip(Panel host)
+    {
+        var root = new Border { Classes = { "wordVerdict", "analysisDensity" } };
+        var content = new StackPanel();
+        content.Children.Add(new TextBlock { Text = "word" });
+        content.Children.Add(Box("opinionMark"));
+        root.Child = content;
+        host.Children.Add(root);
+        return root;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control

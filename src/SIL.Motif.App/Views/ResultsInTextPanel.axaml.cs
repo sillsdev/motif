@@ -11,6 +11,8 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Analyze texts view, bound to its own view model.</summary>
 public sealed partial class ResultsInTextPanel : UserControl
 {
+    private readonly List<Control> _visibilityAncestors = [];
+
     public ResultsInTextPanel(ResultsInTextViewModel inText)
     {
         ArgumentNullException.ThrowIfNull(inText);
@@ -21,15 +23,38 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     public ResultsInTextViewModel InText { get; }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        foreach (var ancestor in this.GetVisualAncestors().OfType<Control>())
+        {
+            _visibilityAncestors.Add(ancestor);
+            ancestor.PropertyChanged += OnAncestorPropertyChanged;
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        InText.CloseTokenCard();
+        foreach (var ancestor in _visibilityAncestors)
+            ancestor.PropertyChanged -= OnAncestorPropertyChanged;
+        _visibilityAncestors.Clear();
+        base.OnDetachedFromVisualTree(e);
+    }
+
     private void OnGoToTextsClick(object? sender, RoutedEventArgs e) => InText.OpenTexts?.Invoke();
 
-    // A press on a link in the block is the link's own; a press elsewhere on it opens the word's comparison.
+    private void OnAncestorPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs change)
+    {
+        if (change.Property == IsVisibleProperty && !IsEffectivelyVisible) InText.CloseTokenCard();
+    }
+
     private async void OnTokenPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Source is Visual source && source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null) return;
-        if (sender is Control { Tag: ResultsTokenViewModel token } block)
+        if (sender is Control { Tag: ResultsTokenViewModel token } form &&
+            form.FindAncestorOfType<Border>() is { } strip)
         {
-            block.Focus();
+            strip.Focus();
             await InText.OpenTokenCardAsync(token);
         }
     }
@@ -38,6 +63,19 @@ public sealed partial class ResultsInTextPanel : UserControl
     {
         if (sender is not Control { Tag: ResultsTokenViewModel token }) return;
         if (await OpenTokenCardOnKeyboardAsync(e.Key, token, InText.OpenTokenCardAsync)) e.Handled = true;
+    }
+
+    private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            InText.CloseTokenCard();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key is not (Key.Left or Key.Right)) return;
+        await InText.MoveTokenCardAsync(e.Key == Key.Left ? -1 : 1).ConfigureAwait(true);
+        e.Handled = true;
     }
 
     /// <summary>Opens a word card for Enter or Space and leaves other keys available to the control.</summary>

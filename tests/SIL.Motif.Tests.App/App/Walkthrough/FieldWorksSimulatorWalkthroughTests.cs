@@ -22,11 +22,13 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void AnUncertainAnalyzeTextsDecisionCanBeReconfirmedAndAppliedThroughTheWindow()
+    public void AnalyzeTextsActionUpdatesTheWordStripBeforeReviewAndApply()
     {
         using var project = new WalkthroughProject(pristine);
         PrepareUnparsedSentence(project);
-        var parserPath = FakeParser.Copy(project.ManagedRoot);
+        var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
+        var parserStartedPath = Path.Combine(project.ManagedRoot, "analysis-parser-started");
+        var releaseParserPath = Path.Combine(project.ManagedRoot, "analysis-parser-release");
         var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
@@ -34,10 +36,24 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            ConfigureFakeReading(project, parserPath);
             walkthrough.Check(SeededProject.TextTitle);
+            ConfigureFakeReading(project, parserPath, parserStartedPath, releaseParserPath);
             Assert.Contains(project.Text.TextId, walkthrough.Workspace.Selection.ChosenTextIds);
-            WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
+            WalkthroughSteps.StartAssessmentOverPastedWords(walkthrough, deadline);
+            try
+            {
+                walkthrough.WaitUntil(() => File.Exists(parserStartedPath), TimeSpan.FromSeconds(5),
+                    "the Assessment did not reach the held parser");
+                Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);
+                Assert.False(File.Exists(releaseParserPath));
+            }
+            finally
+            {
+                File.WriteAllText(releaseParserPath, string.Empty);
+            }
+            walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the Assessment did not finish after releasing the parser");
 
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
@@ -50,46 +66,44 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var expectedAnchor = new OccurrenceAnchor(project.Text.TextId, project.Text.FirstParagraphId,
                 project.Text.FirstSegmentId, 0);
             Assert.Equal(expectedAnchor, token.Occurrence);
-            inText.SelectToken(token);
             Assert.True(token.Readings.Count > 0,
                 string.Join("; ", walkthrough.Workspace.Assess.Result?.Words.Select(word =>
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
-            token.SelectedReading = token.Readings[0];
-            walkthrough.Click("Approve the selected parser reading");
-            walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "the Analyze texts approval did not become pending");
+            var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
+                .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, token));
+            var fixMenu = strip.GetLogicalDescendants().OfType<Expander>().Single();
+            HeadlessClick.Click(walkthrough.Window, fixMenu, "Fix actions from the word strip");
+            Assert.True(fixMenu.IsExpanded);
+            var approveChoice = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
+                Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Add as Approved"));
+            Assert.Null(inText.SelectedToken);
+            Assert.Same(token.StageMarkingChoiceForTokenCommand, approveChoice.Command);
+            Assert.True(approveChoice.Command?.CanExecute(approveChoice.CommandParameter),
+                $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
+                $"choices: {string.Join(", ", token.Marking.FixChoices.Select(choice => choice.Label))}");
+            Assert.False(token.IsCardOpen, "Opening Fix actions also opened the word comparison card.");
+            walkthrough.Click("Add as Approved");
+            walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1 && token.IsPending &&
+                    token.Marking.StagedTransitions.Any(transition =>
+                        transition.Text == "Not in FieldWorks → Approved"),
+                WalkthroughSteps.Remaining(deadline), "the Analyze texts action did not become pending");
+            Assert.False(token.IsCardOpen);
+            Assert.NotEmpty(FakeParser.Invocations(parserPath));
+            Assert.True(token.IsPending);
+            Assert.Contains(token.StagedChanges,
+                change => change.Transition == "Not in FieldWorks → Approved");
             Assert.Equal(SeededProject.FirstForm,
                 walkthrough.Workspace.Context.Changes.Items.Single().Word);
             Assert.Equal(expectedAnchor, ReadOccurrenceAnchor(project.FwDataPath));
 
-            EditOtherWord(project, "changedword");
-            walkthrough.Click("Refresh the project");
-            walkthrough.WaitUntil(() => !walkthrough.Workspace.RefreshCommand.IsRunning,
-                WalkthroughSteps.Remaining(deadline), "Refresh did not finish");
-            var change = Assert.Single(walkthrough.Workspace.Context.Changes.Items);
-            var refreshedWords = string.Join(" ", inText.Texts.SelectMany(text => text.Lines)
-                .SelectMany(line => line.Tokens).Select(item => item.Text));
-            Assert.True(change.IsUncertain,
-                $"Expected an uncertain fit; status='{change.Fit?.Status}', " +
-                $"reasons='{string.Join("; ", change.Fit?.Reasons ?? [])}', " +
-                $"anchor='{ReadOccurrenceAnchor(project.FwDataPath)}', " +
-                $"Analyze texts words='{refreshedWords}', " +
-                $"fit summary='{string.Join("; ", walkthrough.Workspace.Context.Changes.Snapshot.FitSummary.Select(fit => fit.Status))}'.");
+            fixMenu.IsExpanded = false;
+            Dispatcher.UIThread.RunJobs();
+            walkthrough.Window.UpdateLayout();
+            Assert.False(fixMenu.IsExpanded);
+
             walkthrough.ShowPage(WorkspacePage.Review);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
-            Assert.False(review.ApplyCommand.CanExecute(null));
-            Assert.Contains("sentence changed", review.ApplyBlockReason, StringComparison.Ordinal);
-            Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(),
-                text => text.Text == "Uncertain — check again");
-            Assert.NotNull(walkthrough.Find<HyperlinkButton>($"Check again: {SeededProject.FirstForm}"));
-            Assert.NotNull(walkthrough.Find<HyperlinkButton>($"Undo: {SeededProject.FirstForm}"));
-            Assert.Contains(review.UncertainChanges.Single().AfterWords,
-                word => word.Form == "changedword" && word.IsChanged);
-
-            walkthrough.Click($"Check again: {SeededProject.FirstForm}");
-            walkthrough.WaitUntil(() => !review.HasUncertainChanges &&
-                    review.Changes.Items.Single().Fit?.Status == "fits",
-                WalkthroughSteps.Remaining(deadline), "Check again did not clear uncertainty");
+            Assert.Single(review.Changes.Items);
             var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
             Assert.True(checkNumbers.IsEffectivelyVisible);
             Assert.True(checkNumbers.IsEffectivelyEnabled);
@@ -103,7 +117,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         }, WalkthroughSteps.Remaining(deadline));
     }
 
-    private static void ConfigureFakeReading(WalkthroughProject project, string parserPath)
+    private static void ConfigureFakeReading(WalkthroughProject project, string parserPath,
+        string parserStartedPath, string releaseParserPath)
     {
         var reading = new
         {
@@ -120,16 +135,24 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         };
         FakeParser.BehaveBesideExecutable(parserPath, new
         {
-            words = new object[]
+            subcommands = new Dictionary<string, object>
             {
-                new
+                ["batch"] = new
                 {
-                    word = SeededProject.FirstForm,
-                    outcome = "complete",
-                    signature = "authored-reading",
-                    analyses = new[] { reading },
+                    startedPath = parserStartedPath,
+                    holdUntilPath = releaseParserPath,
+                    words = new object[]
+                    {
+                        new
+                        {
+                            word = SeededProject.FirstForm,
+                            outcome = "complete",
+                            signature = "authored-reading",
+                            analyses = new[] { reading },
+                        },
+                        new { word = SeededProject.SecondForm, outcome = "no-analysis", signature = "-" },
+                    },
                 },
-                new { word = SeededProject.SecondForm, outcome = "no-analysis", signature = "-" },
             },
         });
     }
@@ -164,24 +187,6 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 segment.AnalysesRS.Add(punctuation);
                 paragraph.Contents = TsStringUtils.MakeString(
                     $"{SeededProject.FirstForm} {SeededProject.SecondForm}.", cache.DefaultVernWs);
-                paragraph.ParseIsCurrent = true;
-            });
-        });
-
-    private static void EditOtherWord(WalkthroughProject project, string replacementForm) =>
-        new FieldWorksSimulator(project.FwDataPath).SaveEdit(cache =>
-        {
-            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>()
-                .GetObject(project.Text.FirstParagraphId);
-            var segment = cache.ServiceLocator.GetInstance<ISegmentRepository>()
-                .GetObject(project.Text.FirstSegmentId);
-            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-            {
-                segment.AnalysesRS.RemoveAt(1);
-                segment.AnalysesRS.Insert(1, cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                    .Create(TsStringUtils.MakeString(replacementForm, cache.DefaultVernWs)));
-                paragraph.Contents = TsStringUtils.MakeString(
-                    $"{SeededProject.FirstForm} {replacementForm}.", cache.DefaultVernWs);
                 paragraph.ParseIsCurrent = true;
             });
         });

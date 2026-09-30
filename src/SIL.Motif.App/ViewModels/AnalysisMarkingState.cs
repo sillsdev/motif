@@ -49,6 +49,12 @@ public enum AnalysisMarkingActionKind
 
     /// <summary>Return an analysis to Unknown.</summary>
     MakeUnknown,
+
+    /// <summary>Remove one stored analysis.</summary>
+    RemoveAnalysis,
+
+    /// <summary>Add every missing analysis from the completed Assessment.</summary>
+    AcceptNewSet,
 }
 
 /// <summary>A stored analysis and the human opinion that FieldWorks records for it.</summary>
@@ -137,7 +143,13 @@ public sealed record AnalysisMarkingState(
     bool IsUnread)
 {
     /// <summary>Whether an available action or Fix choice remains unstaged.</summary>
-    public bool NeedsALook => StagedTransitions.Count == 0 && (PrimaryAction is not null || FixChoices.Count > 0);
+    public bool NeedsALook => StagedTransitions.Count == 0 &&
+        (CountsTowardNeedsALook(PrimaryAction?.Kind) || PanGlossClass != AnalysisMarkingClass.Same &&
+            FixChoices.Any(choice => CountsTowardNeedsALook(choice.Kind)));
+
+    private static bool CountsTowardNeedsALook(AnalysisMarkingActionKind? kind) =>
+        kind is not null and not AnalysisMarkingActionKind.KeepFieldWorks and
+            not AnalysisMarkingActionKind.RemoveAnalysis;
 
     private static readonly IReadOnlyDictionary<(AnalysisMarkingClass Class, string Opinion), PrimaryActionRule?>
         PrimaryActionTable = new Dictionary<(AnalysisMarkingClass, string), PrimaryActionRule?>
@@ -283,8 +295,8 @@ public sealed record AnalysisMarkingState(
         AnalysisMarkingClass markingClass, IReadOnlyList<FieldWorksAnalysisMarking> stored,
         IReadOnlyList<PanGlossReadingMarking> readings)
     {
-        if (markingClass is AnalysisMarkingClass.NotAssessed or AnalysisMarkingClass.Capped or AnalysisMarkingClass.Same)
-            return [];
+        if (markingClass is AnalysisMarkingClass.NotAssessed or AnalysisMarkingClass.Capped)
+            return RemovalChoices(stored);
 
         var choices = new List<AnalysisMarkingChoice>();
         if (markingClass == AnalysisMarkingClass.None && stored.Any(analysis =>
@@ -292,6 +304,7 @@ public sealed record AnalysisMarkingState(
         {
             choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
                 null, null, null, string.Empty, string.Empty, null));
+            AddRemovalChoices(choices, stored);
             return choices;
         }
 
@@ -309,8 +322,10 @@ public sealed record AnalysisMarkingState(
                     "Not in FieldWorks → Unknown", null, reading.Analysis, index,
                     "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate));
             }
+            AddAcceptNewSetChoice(choices);
             choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
                 null, null, null, string.Empty, string.Empty, null));
+            AddRemovalChoices(choices, stored);
             return choices;
         }
 
@@ -358,12 +373,38 @@ public sealed record AnalysisMarkingState(
                     "Not in FieldWorks", "Disapproved", ChangeKinds.Reject));
         }
 
+        if (markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0)
+            AddAcceptNewSetChoice(choices);
+
         if (stored.Count > 0 && markingClass is AnalysisMarkingClass.Conflict or AnalysisMarkingClass.Different or
             AnalysisMarkingClass.Extra)
             choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
                 null, null, null, string.Empty, string.Empty, null));
+        AddRemovalChoices(choices, stored);
         return choices;
     }
+
+    private static IReadOnlyList<AnalysisMarkingChoice> RemovalChoices(
+        IReadOnlyList<FieldWorksAnalysisMarking> stored)
+    {
+        var choices = new List<AnalysisMarkingChoice>();
+        AddRemovalChoices(choices, stored);
+        return choices;
+    }
+
+    private static void AddRemovalChoices(List<AnalysisMarkingChoice> choices,
+        IReadOnlyList<FieldWorksAnalysisMarking> stored)
+    {
+        foreach (var analysis in stored)
+            choices.Add(Choice(AnalysisMarkingActionKind.RemoveAnalysis, "Remove analysis",
+                $"{analysis.Opinion} → Removed", analysis.StoredAnalysisId, null, null,
+                analysis.Opinion, "Removed", ChangeKinds.RemoveAnalysis));
+    }
+
+    private static void AddAcceptNewSetChoice(List<AnalysisMarkingChoice> choices) =>
+        choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Accept the new set as present",
+            "Parser-only readings → Unknown", null, null, null,
+            "FieldWorks set", "Parser set with missing readings Unknown", null));
 
     private static AnalysisMarkingChoice Choice(AnalysisMarkingActionKind kind, string label, string subtitle,
         string? storedAnalysisId, ParseAnalysis? reading, int? readingIndex, string now, string afterApply,
