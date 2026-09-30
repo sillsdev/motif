@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -26,7 +27,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
-            using var output = await BuildAsync(root);
+            using var output = await BuildCachedTurkicAsync(root);
             var fwDataPath = output.RootElement.GetProperty("projectPath").GetString()!;
             var backupPath = output.RootElement.GetProperty("backupPath").GetString()!;
             var project = XDocument.Load(fwDataPath);
@@ -56,7 +57,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
-            using var output = await BuildAsync(root);
+            using var output = await BuildCachedTurkicAsync(root);
             var fwDataPath = output.RootElement.GetProperty("projectPath").GetString()!;
             Assert.True(File.Exists(fwDataPath));
             var writingSystemFiles = Directory.EnumerateFiles(
@@ -64,6 +65,30 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 .Select(Path.GetFileName);
             Assert.Contains(writingSystemFiles,
                 name => string.Equals(name, "tr.ldml", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public async Task CachedTurkicBuildsUseIsolatedProjectPaths()
+    {
+        var root = NewRoot();
+        var firstRoot = Path.Combine(root, "first");
+        var secondRoot = Path.Combine(root, "second");
+        Directory.CreateDirectory(firstRoot);
+        Directory.CreateDirectory(secondRoot);
+
+        try
+        {
+            using var first = await BuildCachedTurkicAsync(firstRoot);
+            using var second = await BuildCachedTurkicAsync(secondRoot);
+
+            Assert.NotEqual(
+                first.RootElement.GetProperty("projectPath").GetString(),
+                second.RootElement.GetProperty("projectPath").GetString());
         }
         finally
         {
@@ -167,15 +192,14 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task SyntheticSampleWordsParseThroughMotifAssess()
+    internal async Task SyntheticSampleWordsParseThroughMotifAssess()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
 
         try
         {
-            using var buildOutput = await BuildAsync(root);
+            using var buildOutput = await BuildCachedTurkicAsync(root);
             var samplePath = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json");
             using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
             var wordOccurrences = WordOccurrencesByText(sample.RootElement);
@@ -190,8 +214,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork()
+    internal async Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -216,7 +239,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 .Select(word => word.GetString()!)
                 .ToHashSet(StringComparer.Ordinal);
 
-            using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
+            using var fixedBuild = await BuildCachedTurkicAsync(root);
             var fixedGrammar = SampleGrammarHealth.AssertFixedProjectHasNoErrors(
                 fixedBuild.RootElement.GetProperty("projectPath").GetString()!, Path.Combine(root, "grammar-health", "fixed"));
             AssertFixedWarningsDocumented(spec.RootElement, fixedGrammar);
@@ -316,8 +339,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task DuplicateOptionalPluralSlotsMultiplyParserWork()
+    internal async Task DuplicateOptionalPluralSlotsMultiplyParserWork()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -399,6 +421,94 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         .Select(record => record.Attribute("guid")?.Value ?? string.Empty)
         .Order(StringComparer.Ordinal)
         .ToArray();
+
+    private static async Task<JsonDocument> BuildCachedTurkicAsync(string destinationRoot)
+    {
+        var sampleFolder = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic");
+        var specPath = Path.Combine(sampleFolder, "sample.json");
+        var bugsPath = Path.Combine(sampleFolder, "bugs.json");
+        var schemaPath = Path.Combine(RepositoryRoot(), "samples", "sample.schema.json");
+        var builderPath = Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.SampleProjects.dll");
+        var fingerprintFiles = new[] { specPath, bugsPath, schemaPath, builderPath };
+        var fingerprintText = string.Join("\n", fingerprintFiles.Select(path =>
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)))));
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            BuildOutput.ProductDirectory + "\nproject-copy-v1\n" + fingerprintText)));
+        var cacheParent = Path.Combine(BuildOutput.ProductDirectory, "SampleSpikes", "shared-turkic");
+        Directory.CreateDirectory(cacheParent);
+        var cacheRoot = Path.Combine(cacheParent, fingerprint);
+        await using var cacheLock = await AcquireCacheLockAsync(cacheRoot + ".lock");
+        var resultPath = Path.Combine(cacheRoot, "build.json");
+        if (File.Exists(resultPath))
+        {
+            var cachedJson = await File.ReadAllTextAsync(resultPath);
+            try
+            {
+                using var cached = JsonDocument.Parse(cachedJson);
+                var projectPath = cached.RootElement.GetProperty("projectPath").GetString();
+                var backupPath = cached.RootElement.GetProperty("backupPath").GetString();
+                if (projectPath is not null && File.Exists(projectPath) &&
+                    backupPath is not null && File.Exists(backupPath))
+                    return CopyCachedTurkicBuild(cachedJson, cacheRoot, destinationRoot);
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        if (Directory.Exists(cacheRoot)) Directory.Delete(cacheRoot, recursive: true);
+        Directory.CreateDirectory(cacheRoot);
+        using var built = await BuildVariantAsync(cacheRoot, specPath, bugsPath, [], "fixed");
+        var json = built.RootElement.GetRawText();
+        await File.WriteAllTextAsync(resultPath, json);
+        return CopyCachedTurkicBuild(json, cacheRoot, destinationRoot);
+    }
+
+    private static JsonDocument CopyCachedTurkicBuild(string json, string cacheRoot, string destinationRoot)
+    {
+        var output = JsonNode.Parse(json)!.AsObject();
+        var cachedVariantRoot = Path.Combine(cacheRoot, "fixed");
+        var copiedVariantRoot = Path.Combine(destinationRoot, "cached-fixed");
+        CopyDirectory(cachedVariantRoot, copiedVariantRoot);
+        output["projectPath"] = Path.Combine(copiedVariantRoot,
+            Path.GetRelativePath(cachedVariantRoot, output["projectPath"]!.GetValue<string>()));
+        output["backupPath"] = Path.Combine(copiedVariantRoot,
+            Path.GetRelativePath(cachedVariantRoot, output["backupPath"]!.GetValue<string>()));
+        return JsonDocument.Parse(output.ToJsonString());
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(source, directory);
+            Directory.CreateDirectory(Path.Combine(destination, relativePath));
+        }
+
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(file).Contains(".motif.db", StringComparison.OrdinalIgnoreCase)) continue;
+            var copyPath = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(copyPath)!);
+            File.Copy(file, copyPath);
+        }
+    }
+
+    private static async Task<FileStream> AcquireCacheLockAsync(string path)
+    {
+        while (true)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25));
+            }
+        }
+    }
 
     private static async Task<JsonDocument> BuildAsync(string root)
     {
@@ -662,4 +772,28 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true,
     };
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class SyntheticSampleWordsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task SyntheticSampleWordsParseThroughMotifAssess() =>
+        new SampleProjectSpikeTests(output).SyntheticSampleWordsParseThroughMotifAssess();
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class SyntheticTurkicBugVariantsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork() =>
+        new SampleProjectSpikeTests(output).SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork();
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class DuplicateOptionalPluralSlotsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task DuplicateOptionalPluralSlotsMultiplyParserWork() =>
+        new SampleProjectSpikeTests(output).DuplicateOptionalPluralSlotsMultiplyParserWork();
 }
