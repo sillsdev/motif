@@ -11,7 +11,7 @@
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
       <DockPanel LastChildFill="True">
         <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
-                  IsVisible="{Binding InText.HasAssessment}" VerticalAlignment="Center"
+                  IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
                   Width="{DynamicResource Component.TextsPage.TextPickerWidth}"
                   Margin="{DynamicResource Intent.Gap.AfterRelated}"
                   AutomationProperties.Name="Text to read">
@@ -159,7 +159,7 @@
         <Button Content="Choose texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
-      <ScrollViewer Grid.Row="2" IsVisible="{Binding InText.HasResults}">
+      <ScrollViewer Grid.Row="2" IsVisible="{Binding InText.HasLines}">
         <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
@@ -190,7 +190,7 @@
                                                        PointerPressed="OnTokenPressed"
                                                        AutomationProperties.AutomationId="{Binding WordAutomationId}"
                                                        FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
-                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding Marking.IsUnread}"
+                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding ShowUnread}"
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"

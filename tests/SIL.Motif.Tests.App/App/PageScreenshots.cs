@@ -199,13 +199,25 @@ public sealed class PageScreenshots
                 "silfw://localhost/link?tool=lexiconEdit"))]);
     }
 
-    private static ProjectAnalysis Stored(string word, int variant = 0) =>
-        new(ProjectAnalysisKey.For(Reading(word, variant)), Resolved(word).Morphs);
+    private static ProjectAnalysis Stored(string word, int variant = 0)
+    {
+        var reading = Reading(word, variant);
+        var entries = Vocabulary.Single(item => item.Word == word).Forms;
+        return new(ProjectAnalysisKey.For(reading), Resolved(word).Morphs)
+        {
+            StoredAnalysisId = Id(word, 90 + variant),
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+            Identity = new ApprovedMorphology([.. reading.Morphs.Select((morph, index) =>
+                new ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [entries[index]]))]),
+        };
+    }
 
     private static TextToken Token(string word, bool stored = true, int variant = 0) =>
         new(word, word, null, stored ? "approved" : "unanalysed")
         {
             Analysis = stored ? Stored(word, variant) : null,
+            StoredAnalyses = stored ? [Stored(word, variant)] : [],
+            StoredAnalysisId = stored ? Stored(word, variant).StoredAnalysisId : null,
             WordLink = "silfw://localhost/link?tool=Analyses",
         };
 

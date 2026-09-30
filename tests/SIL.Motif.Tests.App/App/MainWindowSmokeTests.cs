@@ -155,12 +155,9 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse the words in the selected texts");
-                var readButtons = panel.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => AutomationProperties.GetName(button) is
-                        "Mark selected occurrences as read" or "Mark selected occurrences as unread" or
-                        "Mark the selected Text as read" or "Mark the selected Text as unread").ToArray();
-                Assert.Equal(4, readButtons.Length);
-                Assert.All(readButtons, button => Assert.False(button.IsEffectivelyVisible));
+                var readMenu = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Mark read or unread");
+                Assert.False(readMenu.IsEffectivelyVisible);
             }
             finally
             {
@@ -840,12 +837,15 @@ public sealed class MainWindowSmokeTests
 
                 Assert.True(selected.IsCardOpen);
                 var resultsPanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
-                var selectionBoxes = resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
+                CheckBox[] SelectionBoxes() => resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
                     .Where(checkBox => checkBox.IsEffectivelyVisible &&
                         (AutomationProperties.GetName(checkBox) ?? string.Empty)
                         .StartsWith("Select ", StringComparison.Ordinal))
                     .ToArray();
-                Assert.Single(selectionBoxes);
+                Assert.Empty(SelectionBoxes());
+                workspace.PageModel<TextsPageModel>().ResultsInText.ChooseWordsCommand.Execute(null);
+                window.UpdateLayout();
+                Assert.Single(SelectionBoxes());
                 var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
                     .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
                 Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);

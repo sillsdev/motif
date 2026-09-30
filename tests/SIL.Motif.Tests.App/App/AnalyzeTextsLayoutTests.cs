@@ -196,6 +196,44 @@ public sealed class AnalyzeTextsLayoutTests
         }, Deadline);
     }
 
+    [Fact]
+    public void BeforeTheFirstParseTheTextShowsUnderTheParsePrompt()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(parse: false);
+            try
+            {
+                Assert.True(workspace.Context.NeedsAssessment);
+                var page = Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>());
+                var prompt = Assert.Single(page.GetVisualDescendants().OfType<ParsePrompt>(),
+                    candidate => candidate.IsEffectivelyVisible);
+                var action = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());
+                Assert.Equal(workspace.Context.ParsePromptActionText, action.Content);
+
+                var panel = Panel(window);
+                var strips = Strips(panel).ToArray();
+                Assert.Equal(["Sungura", "alikula", "chakula"],
+                    strips.Take(3).Select(strip => ((ResultsTokenViewModel)strip.Tag!).Form));
+                Assert.True(BoundsIn(prompt, page).Bottom <= BoundsIn(strips[0], page).Top,
+                    "The prompt sits above the text.");
+                var sungura = strips[0];
+                Assert.Contains(sungura.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "hare" && text.IsEffectivelyVisible);
+                Assert.Contains(sungura.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Not parsed yet" && text.IsEffectivelyVisible);
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && Avalonia.Automation.AutomationProperties.GetName(button) is
+                        "Mark read or unread" or "Select words for actions");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
     internal static T Named<T>(Visual root, string name) where T : Control =>
         Assert.Single(root.GetVisualDescendants().OfType<T>(), control =>
             Avalonia.Automation.AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);

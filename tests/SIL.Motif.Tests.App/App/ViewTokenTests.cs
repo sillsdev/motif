@@ -177,7 +177,7 @@ public sealed class ViewTokenTests
         var token = new ResultsTokenViewModel("Text", 1,
             new TextToken("word", "word", null, null), null);
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
-        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not assessed", token.HoverSummary);
+        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not parsed yet", token.HoverSummary);
         Assert.Null(token.Actions);
         Assert.Contains("ToolTip.Tip=\"{Binding HoverSummary}\"", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<ToolTip", markup, StringComparison.Ordinal);

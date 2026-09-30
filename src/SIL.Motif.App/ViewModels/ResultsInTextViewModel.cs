@@ -236,8 +236,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string ChosenTextsRemovalPreview => RemovalUsesPreview(_allWords);
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message => _assess.Result is null ? null
-        : Texts.Count == 0 ? "Check a text in Texts to read the results in place."
+    public string? Message => Texts.Count == 0
+            ? _assess.Result is null ? null : "Check a text in Texts to read the results in place."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
             ? "This text has no lines split into words yet. Open it once in FieldWorks' Interlinear Texts, then refresh the Baseline."
@@ -254,6 +254,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Whether the selected Text has results to display.</summary>
     public bool HasResults => HasAssessment && !HasMessage;
+
+    /// <summary>Whether the reader has lines to show, which it does before the first parse too.</summary>
+    public bool HasLines => !HasMessage && VisibleLines.Count > 0;
 
     /// <summary>The Assessment action for the empty Analyze texts state.</summary>
     public IAsyncRelayCommand ParseWordsCommand => _assess.RunCommand;
@@ -505,19 +508,16 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private void RefreshLines()
     {
         var matchingLines = new List<ResultsLineViewModel>();
-        if (HasAssessment)
+        foreach (var line in SelectedText?.Lines ?? [])
         {
-            foreach (var line in SelectedText?.Lines ?? [])
+            var any = false;
+            foreach (var token in line.Tokens.Where(token => token.IsWord))
             {
-                var any = false;
-                foreach (var token in line.Tokens.Where(token => token.IsWord))
-                {
-                    var matches = MatchesFilter(token);
-                    token.IsDimmed = !matches;
-                    any |= matches;
-                }
-                if (any) matchingLines.Add(line);
+                var matches = !HasAssessment || MatchesFilter(token);
+                token.IsDimmed = !matches;
+                any |= matches;
             }
+            if (any) matchingLines.Add(line);
         }
         for (var index = 0; index < matchingLines.Count; index++)
         {
@@ -533,6 +533,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(HasTexts));
         OnPropertyChanged(nameof(HasAssessment));
         OnPropertyChanged(nameof(HasResults));
+        OnPropertyChanged(nameof(HasLines));
         OnPropertyChanged(nameof(NeedsTexts));
     }
 
@@ -677,7 +678,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private async Task RefreshReadStateAsync(long generation)
     {
-        if (string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
+        if (string.IsNullOrWhiteSpace(_assess.ProjectPath) || _assess.Result is null) return;
         var textIds = _allWords.Where(token => token.Occurrence is not null)
             .Select(token => token.Occurrence!.TextId).Distinct().ToArray();
         foreach (var textId in textIds)

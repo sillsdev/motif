@@ -148,8 +148,12 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         AnalysisMarkingClass.Extra => "Has additional readings",
         AnalysisMarkingClass.None => "No parse",
         AnalysisMarkingClass.Capped => "Search stopped at a limit",
-        _ => "Not assessed",
+        _ when _assessment is null => "Not parsed yet",
+        _ => "Skipped: a character the grammar does not define",
     };
+
+    /// <summary>Whether the strip marks the word Unread; a word nobody has parsed has nothing to read yet.</summary>
+    public bool ShowUnread => Marking.IsUnread && _assessment is not null;
 
     /// <summary>Whether the word has a primary action available in its strip.</summary>
     public bool HasPrimaryAction => Marking.PrimaryAction is not null;
@@ -229,6 +233,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         _isUnread = !isRead;
         Marking = Marking with { IsUnread = _isUnread };
         OnPropertyChanged(nameof(Marking));
+        OnPropertyChanged(nameof(ShowUnread));
     }
 
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
