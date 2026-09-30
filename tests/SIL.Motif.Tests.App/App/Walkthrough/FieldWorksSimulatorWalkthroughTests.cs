@@ -81,6 +81,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.True(approveChoice.Command?.CanExecute(approveChoice.CommandParameter),
                 $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
                 $"choices: {string.Join(", ", token.Marking.FixChoices.Select(choice => choice.Label))}");
+            Assert.False(token.IsCardOpen, "Opening Fix actions also opened the word comparison card.");
             walkthrough.Click("Add as Approved");
             walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1 && token.IsPending &&
                     token.Marking.StagedTransitions.Any(transition =>

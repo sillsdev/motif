@@ -49,13 +49,12 @@ public sealed partial class ResultsInTextPanel : UserControl
         if (change.Property == IsVisibleProperty && !IsEffectivelyVisible) InText.CloseTokenCard();
     }
 
-    // A press on a link in the block is the link's own; a press elsewhere on it opens the word's comparison.
     private async void OnTokenPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Source is Visual source && source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null) return;
-        if (sender is Control { Tag: ResultsTokenViewModel token } block)
+        if (sender is Control { Tag: ResultsTokenViewModel token } form &&
+            form.FindAncestorOfType<Border>() is { } strip)
         {
-            block.Focus();
+            strip.Focus();
             await InText.OpenTokenCardAsync(token);
         }
     }

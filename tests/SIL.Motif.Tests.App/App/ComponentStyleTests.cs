@@ -402,7 +402,7 @@ public sealed class ComponentStyleTests
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
         yield return new("Density", "the compact word strip height", CompactWordStrip,
-            Border.HeightProperty, "Component.Density.CompactWordHeight");
+            Border.MinHeightProperty, "Component.Density.CompactWordHeight");
         yield return new("Density", "the compact word strip type", host =>
                 Assert.IsType<StackPanel>(CompactWordStrip(host).Child).Children.OfType<TextBlock>().Single(),
             TextBlock.FontSizeProperty, "Component.Density.CompactWordType");

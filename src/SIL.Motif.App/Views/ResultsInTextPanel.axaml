@@ -160,7 +160,7 @@
                         <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="{DynamicResource Intent.Type.Brand}" />
                         <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordVerdict analysisDensity hoverReveal" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
                                 views:VerdictClasses.Verdict="{Binding Meaning}" Classes.dimmed="{Binding IsDimmed}"
-                                PointerPressed="OnTokenPressed" KeyDown="OnTokenKeyDown"
+                                KeyDown="OnTokenKeyDown"
                                 ToolTip.Tip="{Binding HoverSummary}">
                           <StackPanel Classes="analysisDensity" Spacing="{DynamicResource Intent.Space.Minimal}">
                             <DockPanel LastChildFill="False">
@@ -168,7 +168,8 @@
                                         AutomationProperties.Name="{Binding SelectionAutomationName}" />
                               <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding PrimaryOpinionMarkKind}"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Text}"
+                              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Text}" Tag="{Binding}"
+                                                       PointerPressed="OnTokenPressed"
                                                        FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
                               <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding Marking.IsUnread}" />
                               <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
