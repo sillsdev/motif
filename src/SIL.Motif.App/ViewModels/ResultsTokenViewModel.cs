@@ -99,7 +99,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     public string WordAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "word");
 
+    public string StripAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "strip");
+
     public string OpinionMarkAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "opinion");
+
+    public string DisapprovedAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "disapproved");
 
     public string FieldWorksAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "fieldworks");
 

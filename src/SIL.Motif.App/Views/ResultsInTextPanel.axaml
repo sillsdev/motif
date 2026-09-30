@@ -160,6 +160,7 @@
                         <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="{DynamicResource Intent.Type.Brand}" />
                         <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordVerdict analysisDensity hoverReveal" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
                                 views:VerdictClasses.Verdict="{Binding Meaning}" Classes.dimmed="{Binding IsDimmed}"
+                                AutomationProperties.AutomationId="{Binding StripAutomationId}"
                                 KeyDown="OnTokenKeyDown"
                                 ToolTip.Tip="{Binding HoverSummary}">
                           <StackPanel Classes="analysisDensity" Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -177,7 +178,8 @@
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
-                                      IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}">
+                                      IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
+                                      AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}">
                                 <views:CopyableTextBlock Text="!" />
                               </Border>
                               <HyperlinkButton DockPanel.Dock="Left" Classes="revealControl revealLink" Content="FW ↗"
@@ -210,22 +212,23 @@
                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
                                        IsVisible="{Binding IsPending}" ToolTip.Tip="{Binding PendingChangeStatus}" />
                             </DockPanel>
-                            <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}"
-                                          AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
-                                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                    <controls:OpinionMark Kind="{Binding OpinionMarkKind}"
-                                                          ToolTip.Tip="{Binding Opinion}" />
-                                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                                  </StackPanel>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                                        IsVisible="{Binding HasNothingStored}">
-                              <controls:OpinionMark Kind="None" />
-                              <views:CopyableTextBlock Classes="muted" Text="Nothing in FieldWorks" FontStyle="Italic" />
+                            <StackPanel AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
+                              <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}"
+                                                            ToolTip.Tip="{Binding Opinion}" />
+                                      <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                                    </StackPanel>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                                          IsVisible="{Binding HasNothingStored}">
+                                <controls:OpinionMark Kind="None" />
+                                <views:CopyableTextBlock Classes="muted" Text="Nothing in FieldWorks" FontStyle="Italic" />
+                              </StackPanel>
                             </StackPanel>
                             <Border Classes="panGlossLine" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
                                     Classes.same="{Binding IsPanGlossSame}"
