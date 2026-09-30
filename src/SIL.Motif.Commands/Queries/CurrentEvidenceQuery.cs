@@ -156,16 +156,22 @@ public static class CurrentEvidenceQuery
         if (assessment is not null && saved is { TextIds.Count: > 0 })
         {
             var projected = TextWordsQuery.Query(new TextWordsRequest(project.FullFwDataPath, saved.TextIds));
-            if (projected.Succeeded)
-                foreach (var word in projected.Value!.Words)
-                    storedAnalyses[word.Form] = word.Analyses.Select(analysis =>
-                        new ParserReading(analysis.Morphs)
+            if (!projected.Succeeded)
+                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(projected.Refusal!);
+            if (!projected.Value!.HasBaseline)
+                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
+                    "current-evidence.text-words-unavailable", FailureReason.Refused,
+                    "The stored Text analyses are unavailable for this Assessment."));
+            foreach (var word in projected.Value.Words)
+                storedAnalyses[word.Form] = word.Analyses.Select(analysis =>
+                    new ParserReading(analysis.Morphs)
                         {
-                            StoredAnalysisId = analysis.StoredAnalysisId,
-                            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
-                            Identity = analysis.Identity,
-                        }).ToArray();
-        }        return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
+                        StoredAnalysisId = analysis.StoredAnalysisId,
+                        StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+                        Identity = analysis.Identity,
+                    }).ToArray();
+        }
+        return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {

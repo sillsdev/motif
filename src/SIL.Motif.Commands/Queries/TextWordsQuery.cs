@@ -20,7 +20,8 @@ namespace SIL.Motif.Commands.Queries;
 /// <remarks>
 /// <para>
 /// The projection is written with the Baseline by both capture and the runner's refresh, so it is exactly as
-/// current as the Baseline itself. It is display data for the Texts page, never fit evidence.
+/// current as the Baseline itself. Reopened Assessments use its stored identities for comparison;
+/// pending-change fit still uses the project model rather than this projection.
 /// </para>
 /// <para>
 /// <b><see cref="TextWord.Form"/> is read exactly the way <see cref="SIL.Motif.Commands.Assess.SelectionComposer"/>
