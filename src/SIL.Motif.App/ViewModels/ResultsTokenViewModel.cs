@@ -97,6 +97,22 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The word's form as the Assessment names it, for finding it in the Words view.</summary>
     public string Form { get; }
 
+    public string WordAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "word");
+
+    public string OpinionMarkAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "opinion");
+
+    public string FieldWorksAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "fieldworks");
+
+    public string PanGlossAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "pangloss");
+
+    public string PrimaryActionAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "action");
+
+    public string FixAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "fix");
+
+    public string StagedAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "staged");
+
+    public string UnreadAutomationId => AutomationIds.ForWordPart(Form, OccurrenceIndex, "unread");
+
     public bool IsWord { get; }
 
     public AnalysisMarkingState Marking { get; private set; }

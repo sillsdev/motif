@@ -167,11 +167,14 @@
                               <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsSelectedForActions}"
                                         AutomationProperties.Name="{Binding SelectionAutomationName}" />
                               <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding PrimaryOpinionMarkKind}"
+                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                               <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Text}" Tag="{Binding}"
                                                        PointerPressed="OnTokenPressed"
+                                                       AutomationProperties.AutomationId="{Binding WordAutomationId}"
                                                        FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
-                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding Marking.IsUnread}" />
+                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding Marking.IsUnread}"
+                                                   AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
                                       IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}">
@@ -183,8 +186,10 @@
                               <Button DockPanel.Dock="Right" Classes="actionChip" Content="{Binding Marking.PrimaryAction.Label}"
                                       Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
                                       CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
+                                      AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions from the word strip">
+                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
+                                        AutomationProperties.AutomationId="{Binding FixAutomationId}">
                                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                                   <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
                                           CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
@@ -205,7 +210,8 @@
                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
                                        IsVisible="{Binding IsPending}" ToolTip.Tip="{Binding PendingChangeStatus}" />
                             </DockPanel>
-                            <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                            <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}"
+                                          AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
                                   <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -221,7 +227,8 @@
                               <controls:OpinionMark Kind="None" />
                               <views:CopyableTextBlock Classes="muted" Text="Nothing in FieldWorks" FontStyle="Italic" />
                             </StackPanel>
-                            <Border Classes="panGlossLine" Classes.same="{Binding IsPanGlossSame}"
+                            <Border Classes="panGlossLine" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
+                                    Classes.same="{Binding IsPanGlossSame}"
                                     Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
                                     Classes.capped="{Binding IsPanGlossCapped}">
                               <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -243,7 +250,8 @@
                                 </ItemsControl>
                               </StackPanel>
                             </Border>
-                            <ItemsControl ItemsSource="{Binding StagedChanges}" IsVisible="{Binding StagedChanges.Count}">
+                            <ItemsControl ItemsSource="{Binding StagedChanges}" IsVisible="{Binding StagedChanges.Count}"
+                                          AutomationProperties.AutomationId="{Binding StagedAutomationId}">
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
                                   <Border Classes="stagedStrip" ToolTip.Tip="{Binding FitStatus}">

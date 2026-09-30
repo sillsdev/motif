@@ -17,6 +17,20 @@ public sealed class AutomationIdsTests
     }
 
     [Fact]
+    public void WordStripPartIdsAreStableSafeAndDistinct()
+    {
+        var parts = new[] { "word", "opinion", "fieldworks", "pangloss", "action", "fix", "staged", "unread" };
+        var ids = parts.Select(part => AutomationIds.ForWordPart("günler", 2, part)).ToArray();
+
+        Assert.All(ids, id => Assert.Matches("^motif-word-2-[a-f0-9]+-[a-z]+$", id));
+        Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal("motif-word-2-67c3bc6e6c6572-word", ids[0]);
+        Assert.Equal(ids, parts.Select(part => AutomationIds.ForWordPart("gu\u0308nler", 2, part)));
+        Assert.NotEqual(ids[0], AutomationIds.ForWordPart("günler", 3, "word"));
+        Assert.NotEqual(ids[0], AutomationIds.ForWordPart("geldi", 2, "word"));
+    }
+
+    [Fact]
     public void AutomationIdConstantsHaveUniqueValuesAndEveryViewIdUsesTheClass()
     {
         var root = FindRepositoryRoot();
@@ -56,7 +70,7 @@ public sealed class AutomationIdsTests
             foreach (Match assignment in assignments)
             {
                 var value = assignment.Groups["value"].Value;
-                if (value == "{Binding AutomationId}") continue;
+                if (Regex.IsMatch(value, @"^\{Binding (?:AutomationId|\w+AutomationId)\}$")) continue;
                 Assert.Matches(@"^\{x:Static\s+[\w.:]+AutomationIds\.\w+\}$", value);
             }
             Assert.DoesNotMatch(@"AutomationProperties\.SetAutomationId\s*\([^,]+,\s*""[^""]+""\s*\)", source);
