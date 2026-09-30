@@ -884,7 +884,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void MatrixOffersOpinionsForAnAddedWordWithOneChosenAnalysis()
+    public void MatrixOffersNoOpinionForAWordAndLinksItToItsText()
     {
         _avalonia.Invoke(() =>
         {
@@ -918,20 +918,14 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
                 var word = Assert.Single(workspace.Assess.Compare.Words);
                 word.IsChecked = true;
-                var chooser = Assert.Single(panel.GetLogicalDescendants().OfType<ComboBox>(), candidate =>
-                    AutomationProperties.GetName(candidate) == "Analysis for pasted-word");
-                Assert.Null(word.SelectedReading);
-                chooser.SelectedIndex = 0;
                 window.UpdateLayout();
-                Assert.Same(chooser.SelectedItem, word.SelectedReading);
-
-                foreach (var kind in new[] { ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate })
-                {
-                    var button = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
-                        Equals(candidate.CommandParameter, kind));
-                    Assert.Equal(kind, button.CommandParameter);
-                    Assert.True(button.Command?.CanExecute(button.CommandParameter));
-                }
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<ComboBox>(), candidate =>
+                    AutomationProperties.GetName(candidate) == "Analysis for pasted-word");
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
+                    candidate.CommandParameter is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
+                var open = Assert.Single(panel.GetLogicalDescendants().OfType<HyperlinkButton>(), candidate =>
+                    AutomationProperties.GetName(candidate) == "Analyze pasted-word in its texts");
+                Assert.Equal("Open in text", open.Content);
             }
             finally
             {
@@ -1144,8 +1138,8 @@ public sealed class MainWindowSmokeTests
                 var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "AI Handoff for ticked words in the selected list");
 
-                Assert.Equal("AI Handoff", listHandoff.Content);
-                Assert.Equal("AI Handoff", checkedHandoff.Content);
+                Assert.Equal("Hand off the whole list", listHandoff.Content);
+                Assert.Equal("Hand off selected words", checkedHandoff.Content);
                 Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
                 Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
 
@@ -1320,7 +1314,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void CollectionNoticeAppearsInAnalyzeTextsAndLists()
+    public void CollectionNoticeAppearsInAnalyzeTexts()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -1344,12 +1338,6 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
                 var analyzePanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
                 Assert.Contains(analyzePanel.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
-                    block.Text == notice && block.IsEffectivelyVisible);
-
-                workspace.Context.OpenTexts(TextsTab.Lists);
-                window.UpdateLayout();
-                var listsPanel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
-                Assert.Contains(listsPanel.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
                     block.Text == notice && block.IsEffectivelyVisible);
             }
             finally

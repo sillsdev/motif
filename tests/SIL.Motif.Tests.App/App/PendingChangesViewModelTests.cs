@@ -71,10 +71,6 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal([0, 1], fake.PendingPutRequests.Select(request => request.Change.ReadingIndex));
         Assert.All(fake.PendingPutRequests, request => Assert.Equal("assessment/one", request.Change.AssessmentId));
         Assert.Equal(2, changes.Items.Count);
-
-        word.SelectedReading = word.ReadingChoices[1];
-        await changes.AddAsync(ChangeKinds.Approve, word);
-        Assert.Equal(1, fake.PendingPutRequests.Last().Change.ReadingIndex);
         Assert.Equal("second", fake.PendingPutRequests.Last().Change.Reading!.Morphs.Single().GuessedString);
     }
 
@@ -166,13 +162,10 @@ public sealed class PendingChangesViewModelTests
             Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false, [analysis], []),
         };
         var word = new CompareWordViewModel(new AssessWordRowViewModel(assessmentWord),
-            (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch))
-        {
-            SelectedReading = new CompareReadingChoice(0, analysis, "reading"),
-        };
+            (WordProjectStatus.NotPresent, CompareColumnKind.NoMatch));
 
-        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
-        await changes.AddAsync(ChangeKinds.Approve, word, WorkspacePage.Texts);
+        await changes.AddAsync(ChangeKinds.AddCandidate, word, WorkspacePage.Texts);
+        await changes.AddAsync(ChangeKinds.IncorrectSpelling, word, WorkspacePage.Texts);
 
         Assert.Equal(2, fake.PendingPutRequests.Count);
         Assert.All(fake.PendingPutRequests, request => Assert.Null(request.Change.Occurrence));

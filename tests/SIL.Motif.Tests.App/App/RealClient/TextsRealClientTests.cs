@@ -221,11 +221,11 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             {
                 ["Approved, not parsed"] = [SeededProject.AnalysedWordForm],
                 ["Approved, parsed differently"] = [],
-                ["Candidate the parser confirms"] = [],
-                ["Parsed, not in the project"] = [SeededProject.FirstForm],
+                ["Unknown, PanGloss confirms"] = [],
+                ["Parsed, not in FieldWorks"] = [SeededProject.FirstForm],
                 ["Nobody can analyze"] = [SeededProject.SecondForm],
-                ["Rejected but rebuilt"] = [],
-                ["Timed out"] = ["motifextra"],
+                ["Disapproved but built"] = [],
+                ["Stopped at a limit"] = ["motifextra"],
             };
             var lists = page.TextsLists;
             Assert.Equal(7, lists.Lists.Count);
@@ -245,6 +245,92 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(AnalysisMarkingClass.None, approvedNoParse.Marking.PanGlossClass);
             Assert.Equal([OpinionMarkKind.Approved], approvedNoParse.OpinionMarks.Select(mark => mark.Kind));
 
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task ListsOpenOnAListWithWordsWhenTheFirstListIsEmpty()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        project.Behave(new { words = new object[]
+        {
+            ParsedFirstForm,
+            new { word = SeededProject.SecondForm, outcome = "no-analysis" },
+        } });
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath);
+            var workspace = walkthrough.Workspace;
+            var page = workspace.PageModel<TextsPageModel>();
+            workspace.Selection.PastedWords = string.Join(Environment.NewLine,
+                SeededProject.FirstForm, SeededProject.SecondForm);
+            workspace.Assess.ProjectPath = project.FwDataPath;
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+
+            page.Tab = TextsTab.Lists;
+
+            var lists = page.TextsLists;
+            Assert.False(lists.Lists[0].HasWords);
+            Assert.Equal("Parsed, not in FieldWorks", lists.SelectedList?.Name);
+            Assert.Equal([SeededProject.FirstForm], page.Assess.Compare.Words.Select(word => word.Word));
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task MatrixBulkActionsReachReviewChanges()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        project.Behave(new { words = new[] { new { word = SeededProject.AnalysedWordForm, outcome = "no-analysis" } } });
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath);
+            var workspace = walkthrough.Workspace;
+            await workspace.Context.OpenProjectAsync(project.FwDataPath);
+            workspace.Selection.PastedWords = SeededProject.AnalysedWordForm;
+            workspace.Assess.ProjectPath = project.FwDataPath;
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            // The parser builds only the first of the stored analysis's two morphs: a reading FieldWorks lacks.
+            var stored = Assert.Single(Assert.Single(workspace.Assess.Result!.Words).Correctness!.Expectations).Morphs;
+            project.Behave(new { words = new[]
+            {
+                new
+                {
+                    word = SeededProject.AnalysedWordForm,
+                    outcome = "complete",
+                    analyses = new[]
+                    {
+                        new
+                        {
+                            morphs = stored.Take(1).Select(morph => new
+                            {
+                                form = morph.Form, msa = morph.Msa, inflType = morph.InflType,
+                                guessedString = (string?)null,
+                            }).ToArray(),
+                        },
+                    },
+                },
+            } });
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+            var compare = workspace.PageModel<TextsPageModel>().Assess.Compare;
+            compare.ClearSelectionCommand.Execute(null);
+            var word = Assert.Single(compare.Words);
+
+            word.IsChecked = true;
+            Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+            await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+            Assert.Null(compare.Changes.LastRefusal);
+            word.IsChecked = true;
+            await compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+
+            Assert.Null(compare.Changes.LastRefusal);
+            var reviewed = workspace.PageModel<ReviewPageModel>().ReviewGroups.SelectMany(group => group.Items).ToArray();
+            Assert.All(reviewed, change => Assert.Equal(SeededProject.AnalysedWordForm, change.Word));
+            Assert.Contains(reviewed, change => change.Kind == ChangeKinds.AddCandidate);
+            Assert.Contains(reviewed, change => change.Kind == ChangeKinds.IncorrectSpelling);
         }, TimeSpan.FromMinutes(1));
     }
 

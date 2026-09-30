@@ -132,7 +132,7 @@ public sealed class CompareViewModelTests
         Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Approved, CompareColumnKind.NoParse).Family);
         Assert.Equal(CompareFamilyKind.Violation, CompareViewModel.MeaningOf(WordProjectStatus.Rejected, CompareColumnKind.Match).Family);
         Assert.Equal(CompareFamilyKind.New, CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch).Family);
-        Assert.Equal("Nobody can analyze it",
+        Assert.Equal("Nobody can analyze",
             CompareViewModel.MeaningOf(WordProjectStatus.NotPresent, CompareColumnKind.NoParse).Label);
         foreach (var row in Enum.GetValues<WordProjectStatus>())
             Assert.Equal(CompareFamilyKind.Unknown, CompareViewModel.MeaningOf(row, CompareColumnKind.Timeout).Family);
@@ -143,14 +143,13 @@ public sealed class CompareViewModelTests
     {
         var compare = new CompareViewModel();
 
-        Assert.Equal("Nobody can analyze", compare.Presets.Single(preset =>
-            preset.Family == CompareFamilyKind.Nobody).Label);
+        Assert.Contains(compare.Presets, preset => preset.Label == "Nobody can analyze");
     }
 
     [Fact]
-    public void AWordMissingFromTheProjectUsesTheNotPresentLabel()
+    public void AWordMissingFromTheProjectUsesTheNotInFieldWorksLabel()
     {
-        Assert.Equal("Not present", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
+        Assert.Equal("Not in FieldWorks", CompareViewModel.RowLabelOf(WordProjectStatus.NotPresent));
     }
 
     [Fact]
@@ -159,7 +158,7 @@ public sealed class CompareViewModelTests
         var cell = new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match);
         cell.SetDisplayedCount(12, "word");
 
-        Assert.Equal("12 words: Approved in FieldWorks, PanGloss agrees", cell.AccessibleName);
+        Assert.Equal("12 words: Approved in FieldWorks, PanGloss finds the same", cell.AccessibleName);
     }
 
     [Theory]
@@ -172,11 +171,11 @@ public sealed class CompareViewModelTests
         Assert.Equal(expected, CompareViewModel.OpinionMarkFor(row));
 
     [Theory]
-    [InlineData(CompareColumnKind.Match, "Agrees")]
-    [InlineData(CompareColumnKind.NoMatch, "Differs")]
+    [InlineData(CompareColumnKind.Match, "Same")]
+    [InlineData(CompareColumnKind.NoMatch, "Different")]
     [InlineData(CompareColumnKind.NoParse, "No parse")]
-    [InlineData(CompareColumnKind.Timeout, "Capped")]
-    [InlineData(CompareColumnKind.Skipped, "Not assessed")]
+    [InlineData(CompareColumnKind.Timeout, "Stopped")]
+    [InlineData(CompareColumnKind.Skipped, "Not parsed")]
     public void MatrixColumnsUsePanGlossAgreementLanguage(CompareColumnKind column, string expected) =>
         Assert.Equal(expected, CompareViewModel.ColumnLabelOf(column));
 
@@ -187,10 +186,8 @@ public sealed class CompareViewModelTests
 
         Assert.Equal(["Approved", "Unknown", "Disapproved", "Not in FieldWorks"],
             compare.OpinionLegend.Select(item => item.Label));
-        Assert.Equal(["Same", "Conflict", "Different", "Extra", "No parse", "Capped", "Not assessed"],
+        Assert.Equal(["Same", "Different", "No parse", "Stopped", "Not parsed"],
             compare.PanGlossLegend.Select(item => item.Label));
-        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsConflict);
-        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsDifferent);
         Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsConflict);
         Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsDifferent);
     }
@@ -206,12 +203,12 @@ public sealed class CompareViewModelTests
 
     [Theory]
     [InlineData(AnalysisMarkingClass.Same, "Same")]
-    [InlineData(AnalysisMarkingClass.Conflict, "Conflict")]
+    [InlineData(AnalysisMarkingClass.Conflict, "Different")]
     [InlineData(AnalysisMarkingClass.Different, "Different")]
-    [InlineData(AnalysisMarkingClass.Extra, "Extra readings")]
+    [InlineData(AnalysisMarkingClass.Extra, "Different, and more")]
     [InlineData(AnalysisMarkingClass.None, "No parse")]
-    [InlineData(AnalysisMarkingClass.Capped, "Capped")]
-    [InlineData(AnalysisMarkingClass.NotAssessed, "Not assessed")]
+    [InlineData(AnalysisMarkingClass.Capped, "Stopped")]
+    [InlineData(AnalysisMarkingClass.NotAssessed, "Not parsed")]
     public void CompactWordUsesEachPanGlossClassLabel(AnalysisMarkingClass markingClass, string expected) =>
         Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
 
@@ -381,15 +378,15 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
-    public void TheViolationsPresetListsExactlyTheBrokenDecisions()
+    public void TheLostPresetListsExactlyTheApprovedWordsWithNoParse()
     {
         var (_, compare) = Loaded();
 
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
 
-        Assert.Equal(["hawajafika", "kitanda", "walikula"], compare.Words.Select(word => word.Word).Order());
-        Assert.True(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation).IsActive);
-        Assert.Equal("3 of 9 words", compare.ListSummary);
+        Assert.Equal(["hawajafika"], compare.Words.Select(word => word.Word));
+        Assert.True(compare.Presets.Single(preset => preset.Label == "Lost").IsActive);
+        Assert.Equal("1 of 9 words", compare.ListSummary);
     }
 
     [Fact]

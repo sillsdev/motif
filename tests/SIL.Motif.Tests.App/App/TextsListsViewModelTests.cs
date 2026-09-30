@@ -74,8 +74,8 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded();
 
         Assert.Equal(
-            ["Approved, not parsed", "Approved, parsed differently", "Candidate the parser confirms",
-                "Parsed, not in the project", "Nobody can analyze", "Rejected but rebuilt", "Timed out"],
+            ["Approved, not parsed", "Approved, parsed differently", "Unknown, PanGloss confirms",
+                "Parsed, not in FieldWorks", "Nobody can analyze", "Disapproved but built", "Stopped at a limit"],
             lists.Lists.Select(list => list.Name));
 
         foreach (var list in lists.Lists)
@@ -87,7 +87,7 @@ public sealed class TextsListsViewModelTests
     }
 
     [Fact]
-    public void ListsOpensWithTheFirstQuestionAndItsMatchingWords()
+    public void ListsOpensWithTheFirstListWithWordsAndItsMatchingWords()
     {
         var (compare, lists) = Loaded();
 
@@ -128,10 +128,10 @@ public sealed class TextsListsViewModelTests
     [Theory]
     [InlineData("Approved, not parsed", "approved-empty")]
     [InlineData("Approved, parsed differently", "approved-other")]
-    [InlineData("Candidate the parser confirms", "candidate-kept")]
-    [InlineData("Parsed, not in the project", "new-parse")]
+    [InlineData("Unknown, PanGloss confirms", "candidate-kept")]
+    [InlineData("Parsed, not in FieldWorks", "new-parse")]
     [InlineData("Nobody can analyze", "nobody")]
-    [InlineData("Rejected but rebuilt", "rejected-rebuilt")]
+    [InlineData("Disapproved but built", "rejected-rebuilt")]
     public void SelectingOneQuestionMakesItsWordsTheMatrixWordList(string name, string word)
     {
         var (compare, lists) = Loaded();
@@ -145,7 +145,7 @@ public sealed class TextsListsViewModelTests
     public void TimedOutListUnionsTimeoutCellsAndDoesNotIncludeSkippedWords()
     {
         var (compare, lists) = Loaded();
-        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Timed out"));
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped at a limit"));
 
         Assert.Equal(["timeout-one", "timeout-two"], compare.Words.Select(item => item.Word).Order());
     }
