@@ -5,7 +5,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Worker;
 
 /// <summary>
-/// Covers <see cref="Program.TryAcquireOwnershipWithRetryAsync"/>: the reason a runner the CLI kicks does
+/// Covers <see cref="WorkerRuntime.TryAcquireOwnershipWithRetryAsync"/>: the reason a runner the CLI kicks does
 /// not need a protocol to defer to one already alive, and the reason it does not give up the instant a
 /// live owner is mid-shutdown rather than gone.
 /// </summary>
@@ -33,7 +33,7 @@ public sealed class JobRunnerHostOwnershipTests
         Assert.True(alive.TryAcquireOwnership());
 
         using var kicked = JobRunnerHost.ForNamespace(ns);
-        var acquired = await SIL.Motif.Worker.Program.TryAcquireOwnershipWithRetryAsync(kicked);
+        var acquired = await SIL.Motif.Worker.WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked);
 
         Assert.False(acquired);
         Assert.False(kicked.IsOwner);
@@ -49,7 +49,7 @@ public sealed class JobRunnerHostOwnershipTests
 
         using var kicked = JobRunnerHost.ForNamespace(ns);
         var clock = new RetryTimeProvider(DateTimeOffset.UtcNow);
-        var retrying = SIL.Motif.Worker.Program.TryAcquireOwnershipWithRetryAsync(kicked, clock);
+        var retrying = SIL.Motif.Worker.WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked, clock);
 
         await clock.WaitForTimerAsync();
         Assert.True(exiting.IsOwner);

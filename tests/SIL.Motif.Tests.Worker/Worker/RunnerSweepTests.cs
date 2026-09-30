@@ -13,7 +13,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Worker;
 
 /// <summary>
-/// Covers <see cref="SIL.Motif.Worker.Program.SweepOnceAsync"/>: the runner reading every Known project
+/// Covers <see cref="SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync"/>: the runner reading every Known project
 /// each tick and claiming the globally first job across all of them, rather than draining one project
 /// before looking at the next.
 /// </summary>
@@ -64,7 +64,7 @@ public sealed class RunnerSweepTests : IDisposable
         var runtime = SeedProject(known, "long-job");
         SeedJob(runtime, "slow-job", queueOrder: 1.0);
 
-        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
         // An earlier sweep found nothing: the idle runner the initial busy state no longer covers.
         activity.Set(false);
         using var shutdown = new CancellationTokenSource();
@@ -76,7 +76,7 @@ public sealed class RunnerSweepTests : IDisposable
 
         var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var sweeping = SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, CancellationToken.None, activity, async (_, _) =>
             {
                 started.TrySetResult(true);
@@ -110,12 +110,12 @@ public sealed class RunnerSweepTests : IDisposable
         var known = new KnownProjectRegistry(machine);
         var runtime = SeedProject(known, "retired");
         SeedJob(runtime, "late-job", queueOrder: 1.0);
-        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
         activity.Set(false);
         Assert.True(activity.TryRetire());
         var ran = false;
 
-        var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, CancellationToken.None, activity,
             (_, _) => { ran = true; return Task.CompletedTask; });
 
@@ -132,13 +132,13 @@ public sealed class RunnerSweepTests : IDisposable
         var known = new KnownProjectRegistry(machine);
         var runtime = SeedProject(known, "slow-scan");
         SeedJob(runtime, "late-job", queueOrder: 1.0);
-        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
         activity.Set(false);
         var scanned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var ran = false;
 
-        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var sweeping = SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, CancellationToken.None, activity,
             (_, _) => { ran = true; return Task.CompletedTask; },
             async () => { scanned.TrySetResult(); await release.Task; });
@@ -166,20 +166,20 @@ public sealed class RunnerSweepTests : IDisposable
         using var machine = MachineDatabase.Open(_options.Root);
         var known = new KnownProjectRegistry(machine);
         SeedProject(known, "idle-scan");
-        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
         activity.Set(false);
         var scanned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var shutdown = new CancellationTokenSource();
 
-        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var sweeping = SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, CancellationToken.None, activity,
             scannedAsync: async () => { scanned.TrySetResult(); await release.Task; });
         Task retiring;
         try
         {
             await scanned.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            retiring = SIL.Motif.Worker.Program.RunUntilRetiredAsync(new WorkerLifetime(),
+            retiring = SIL.Motif.Worker.WorkerRuntime.RunUntilRetiredAsync(new WorkerLifetime(),
                 TimeSpan.FromMilliseconds(50), activity, shutdown.Token);
 
             // Many idle timeouts pass while the scan is held; none of them may retire the runner.
@@ -205,7 +205,7 @@ public sealed class RunnerSweepTests : IDisposable
         foreach (var suffix in new[] { "", "-wal", "-shm" })
             File.Delete(machine.FullPath + suffix);
 
-        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known,
             _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
 
         Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
@@ -223,7 +223,7 @@ public sealed class RunnerSweepTests : IDisposable
             command.ExecuteNonQuery();
         }
 
-        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.Program.SweepOnceAsync(known,
+        var failure = await Assert.ThrowsAsync<IOException>(() => SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known,
             _runtimes, _lanes, _options, new FakeInvoker(), OwnerId, CancellationToken.None));
 
         Assert.Contains("machine database", failure.Message, StringComparison.OrdinalIgnoreCase);
@@ -239,7 +239,7 @@ public sealed class RunnerSweepTests : IDisposable
         using var shutdown = new CancellationTokenSource();
         shutdown.Cancel();
 
-        var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, shutdown.Token, runClaimedAsync: (_, _) => Task.CompletedTask);
 
         Assert.Null(outcome.JobId);
@@ -253,12 +253,12 @@ public sealed class RunnerSweepTests : IDisposable
         var known = new KnownProjectRegistry(machine);
         var runtime = SeedProject(known, "claiming");
         SeedJob(runtime, "claimed-job", queueOrder: 1.0);
-        var activity = new SIL.Motif.Worker.Program.SweepActivity();
+        var activity = new SIL.Motif.Worker.WorkerRuntime.SweepActivity();
         activity.Set(false);
         var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var sweeping = SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+        var sweeping = SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
             new FakeInvoker(), OwnerId, CancellationToken.None, activity, async (_, _) =>
             {
                 started.TrySetResult(true);
@@ -379,7 +379,7 @@ public sealed class RunnerSweepTests : IDisposable
         var guard = 0;
         while (true)
         {
-            var outcome = await SIL.Motif.Worker.Program.SweepOnceAsync(known, _runtimes, _lanes, _options,
+            var outcome = await SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, _runtimes, _lanes, _options,
                 invoker, OwnerId, CancellationToken.None);
             if (outcome.JobId is not { } next) break;
             claimed.Add(next);

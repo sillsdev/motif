@@ -18,7 +18,7 @@ public sealed class CommandsProjectReferenceTests
             new[]
             {
                 "SIL.Motif.Contract", "SIL.Motif.Host", "SIL.Motif.LiveHost", "SIL.Motif.Model",
-                "SIL.Motif.Projection", "SIL.Motif.Runner", "SIL.Motif.Worker",
+                "SIL.Motif.Projection", "SIL.Motif.Runner", "SIL.Motif.Worker.Runtime",
             },
             ReferencedProjectNames("SIL.Motif.Commands").Order(StringComparer.Ordinal));
     }
@@ -35,6 +35,8 @@ public sealed class CommandsProjectReferenceTests
         var references = ReferencedProjectNames("SIL.Motif.Cli");
         Assert.Contains("SIL.Motif.Commands", references);
         Assert.Contains("SIL.Motif.Contract", references);
+        Assert.Contains("SIL.Motif.Worker.Runtime", references);
+        Assert.DoesNotContain("SIL.Motif.Worker", references);
     }
 
     private static IEnumerable<string> ReferencedProjectNames(string projectName)

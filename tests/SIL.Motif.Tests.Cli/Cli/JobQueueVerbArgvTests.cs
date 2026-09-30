@@ -352,7 +352,7 @@ public sealed class JobQueueVerbArgvTests : IDisposable
         var guard = 0;
         while (true)
         {
-            var outcome = SIL.Motif.Worker.Program.SweepOnceAsync(known, runtimes, lanes, options, invoker,
+            var outcome = SIL.Motif.Worker.WorkerRuntime.SweepOnceAsync(known, runtimes, lanes, options, invoker,
                 "test-runner", CancellationToken.None).GetAwaiter().GetResult();
             if (outcome.JobId is not { } next) break;
             claimed.Add(next);
