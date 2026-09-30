@@ -353,6 +353,18 @@ public sealed class ComponentStyleTests
             Shape.StrokeProperty, "Intent.Opinion.None.Outline");
         yield return new("OpinionMark", "an unknown mark's shape", host => Add(host, Box("opinionMark", "unknown")),
             Border.CornerRadiusProperty, "Component.OpinionMark.UnknownRadius");
+        yield return new("UnreadMark", "an unread mark", host => Add(host, Box("unreadMark")),
+            Border.BackgroundProperty, "Intent.Unread.Fill");
+        yield return new("UnreadMark", "an unread mark's edge", host => Add(host, Box("unreadMark")),
+            Border.BorderBrushProperty, "Intent.Unread.Text");
+        yield return new("UnreadMark", "the unread label", host => Inside(host, Box("unreadMark")),
+            TextBlock.ForegroundProperty, "Intent.Unread.Text");
+        yield return new("UnreadMark", "the unread dot", UnreadDot, Shape.FillProperty, "Intent.Unread.Text");
+        yield return new("UnreadMark", "the unread dot size", UnreadDot, Control.WidthProperty, "Intent.Space.Snug");
+        yield return new("UnreadMark", "the unread dot height", UnreadDot, Control.HeightProperty, "Intent.Space.Snug");
+        yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
+            "Intent.Space.Snug");
+
         yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
             Border.BackgroundProperty, "Intent.Surface");
         yield return new("PanGlossLine", "a different reading edge", host => Add(host, Box("panGlossLine", "different")),
@@ -432,6 +444,17 @@ public sealed class ComponentStyleTests
         });
         return dash;
     }
+
+    private static StackPanel UnreadContent(Panel host)
+    {
+        var content = new StackPanel { Classes = { "unreadMarkContent" } };
+        content.Children.Add(new Ellipse { Classes = { "unreadMarkDot" } });
+        content.Children.Add(new TextBlock { Text = "Unread" });
+        Add(host, new Border { Classes = { "unreadMark" }, Child = content });
+        return content;
+    }
+
+    private static Ellipse UnreadDot(Panel host) => (Ellipse)UnreadContent(host).Children[0];
 
     private static TextBlock DensityText(Panel host, bool normal)
     {

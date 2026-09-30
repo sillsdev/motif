@@ -42,6 +42,8 @@
     Intent.Warning.Text           small text saying something is out of date
     Intent.Danger                 differs, and errors (Semi's Danger)
     Intent.Danger.Fill            behind differing text (Semi's DangerLight)
+    Intent.Unread.Text            readable label for an Unread occurrence
+    Intent.Unread.Fill            background behind the Unread label
     Intent.Approved.Fill          behind an approved analysis (Motif's cyan palette)
     Intent.Approved.Text          an approved analysis's text
     Intent.Approved.Accent        an approved analysis's bar, underline or edge
@@ -210,6 +212,8 @@
       <StaticResource x:Key="Intent.Warning" ResourceKey="SemiColorWarning" />
       <StaticResource x:Key="Intent.Warning.Fill" ResourceKey="SemiColorWarningLight" />
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber800}" />
+      <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet800}" />
+      <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet25}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan50}" />
@@ -276,6 +280,8 @@
       <StaticResource x:Key="Intent.Warning" ResourceKey="SemiColorWarning" />
       <StaticResource x:Key="Intent.Warning.Fill" ResourceKey="SemiColorWarningLight" />
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber300}" />
+      <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet200}" />
+      <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet975}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan900}" />

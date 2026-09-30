@@ -92,6 +92,22 @@ internal static class OccurrenceFitEvidenceResolver
         return null;
     }
 
+    public static bool TryReanchor(OccurrenceFitEvidence expected, TextWordsProjection projection,
+        out OccurrenceAnchor anchor)
+    {
+        anchor = expected.Anchor;
+        if (Compare(expected, projection) is not null) return false;
+
+        var line = projection.Texts.Single(text => text.TextId == expected.Anchor.TextId).Lines.Single(candidate =>
+            candidate.ParagraphId == expected.Anchor.ParagraphId &&
+            candidate.SegmentId == expected.Anchor.SegmentId);
+        var wordTokens = WordTokens(line);
+        var currentToken = wordTokens[expected.WordPosition!.Value];
+        anchor = new OccurrenceAnchor(expected.Anchor.TextId, expected.Anchor.ParagraphId,
+            expected.Anchor.SegmentId, currentToken.Index);
+        return true;
+    }
+
     private static OccurrenceWordToken[] WordTokens(TextWordsProjectedLine line) => line.Tokens
         .Where(token => token.WordformId is not null)
         .OrderBy(token => token.OccurrenceIndex)

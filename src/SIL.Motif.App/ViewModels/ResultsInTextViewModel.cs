@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -36,6 +37,7 @@ public enum OccurrenceVerdict
 public enum ResultsInTextFilter
 {
     All,
+    Unread,
     Differs,
     New,
     NoParse,
@@ -56,11 +58,22 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private readonly Action<string> _showWord;
     private readonly Action<string> _tryWord;
     private readonly ChangesViewModel _changes;
+    private readonly ICommandClient _commands;
     private IReadOnlyList<ResultsTokenViewModel> _allWords = [];
+    private long _readStateGeneration;
+    private long _readStateWriteVersion;
+    private Task _readStateRefresh = Task.CompletedTask;
+
+    [ObservableProperty]
+    private WindowRefusal? _readStateRefusal;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReadStateNotice))]
+    private string? _readStateNotice;
 
     public ResultsInTextViewModel(
         TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord, Action<string> tryWord,
-        ChangesViewModel changes)
+        ChangesViewModel changes, ICommandClient commands)
     {
         ArgumentNullException.ThrowIfNull(texts);
         ArgumentNullException.ThrowIfNull(assess);
@@ -71,6 +84,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         _showWord = showWord;
         _tryWord = tryWord;
         _changes = changes ?? throw new ArgumentNullException(nameof(changes));
+        _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
@@ -79,6 +93,14 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             CanStagePrimaryMarkingAction);
         StageMarkingChoiceCommand = new AsyncRelayCommand<AnalysisMarkingChoice>(StageMarkingChoiceAsync,
             CanStageMarkingChoice);
+        MarkTokenReadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
+            token => token is null ? Task.CompletedTask : MarkReadAsync(token), CanMarkTokenReadState);
+        MarkTokenUnreadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
+            token => token is null ? Task.CompletedTask : MarkUnreadAsync(token), CanMarkTokenReadState);
+        MarkTextReadCommand = new AsyncRelayCommand(MarkTextReadAsync, () => SelectedText is not null);
+        MarkTextUnreadCommand = new AsyncRelayCommand(MarkTextUnreadAsync, () => SelectedText is not null);
+        MarkSelectionReadCommand = new AsyncRelayCommand(MarkSelectionReadAsync, CanMarkSelectionReadState);
+        MarkSelectionUnreadCommand = new AsyncRelayCommand(MarkSelectionUnreadAsync, CanMarkSelectionReadState);
         _texts.PropertyChanged += OnSourceChanged;
         _assess.PropertyChanged += OnSourceChanged;
         _changes.Items.CollectionChanged += OnChangesChanged;
@@ -104,7 +126,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public IAsyncRelayCommand<AnalysisMarkingChoice> StageMarkingChoiceCommand { get; }
 
+    public IAsyncRelayCommand<ResultsTokenViewModel> MarkTokenReadCommand { get; }
+
+    public IAsyncRelayCommand<ResultsTokenViewModel> MarkTokenUnreadCommand { get; }
+
+    public IAsyncRelayCommand MarkTextReadCommand { get; }
+
+    public IAsyncRelayCommand MarkTextUnreadCommand { get; }
+
+    public IAsyncRelayCommand MarkSelectionReadCommand { get; }
+
+    public IAsyncRelayCommand MarkSelectionUnreadCommand { get; }
+
     public ChangesViewModel Changes => _changes;
+
+    internal Task ReadStateRefresh => _readStateRefresh;
 
     [ObservableProperty]
     private ResultsTextViewModel? _selectedText;
@@ -119,6 +155,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public bool HasSelectedToken => SelectedToken is not null;
 
     public int AllCount => _allWords.Count;
+    public int UnreadCount => _allWords.Count(token => token.Marking.IsUnread);
+    public int SelectedReadStateCount => _allWords.Count(token => token.IsSelectedForReadState);
+    public bool HasSelectedReadStateOccurrences => SelectedReadStateCount > 0;
+    public bool HasReadStateNotice => !string.IsNullOrWhiteSpace(ReadStateNotice);
     public int DiffersCount => Count(OccurrenceVerdict.Differs);
     public int NewCount => Count(OccurrenceVerdict.New);
     public int NoParseCount => Count(OccurrenceVerdict.NoParse);
@@ -128,9 +168,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public bool HasNotAssessed => NotAssessedCount > 0;
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message =>
-        _assess.Result is null && _texts.Response is null
-            ? "Run an Assessment to compare its answers with the words in your texts."
+    public string? Message => _assess.Result is null ? null
         : Texts.Count == 0 ? "Check a text in Texts to read the results in place."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
@@ -182,6 +220,68 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         }
     }
 
+    /// <summary>Selects a word card and records that the reader opened it.</summary>
+    /// <param name="token">The word occurrence whose comparison card was opened.</param>
+    /// <returns>A task that completes after its Read state is saved.</returns>
+    public async Task OpenTokenCardAsync(ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        SelectToken(token);
+        await MarkReadAsync(token).ConfigureAwait(true);
+    }
+
+    /// <summary>Marks one word occurrence Read.</summary>
+    /// <param name="token">The occurrence to mark Read.</param>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkReadAsync(ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return SetReadStateAsync([token], true);
+    }
+
+    /// <summary>Marks one word occurrence Unread.</summary>
+    /// <param name="token">The occurrence to mark Unread.</param>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkUnreadAsync(ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        return SetReadStateAsync([token], false);
+    }
+
+    /// <summary>Marks the supplied word occurrences Read.</summary>
+    /// <param name="selection">The occurrences to mark Read.</param>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkReadAsync(IReadOnlyList<ResultsTokenViewModel> selection)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        return SetReadStateAsync(selection, true);
+    }
+
+    /// <summary>Marks the supplied word occurrences Unread.</summary>
+    /// <param name="selection">The occurrences to mark Unread.</param>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkUnreadAsync(IReadOnlyList<ResultsTokenViewModel> selection)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        return SetReadStateAsync(selection, false);
+    }
+
+    /// <summary>Marks every word occurrence in the selected Text Read.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkTextReadAsync() => SetSelectedTextReadStateAsync(true);
+
+    /// <summary>Marks every word occurrence in the selected Text Unread.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkTextUnreadAsync() => SetSelectedTextReadStateAsync(false);
+
+    /// <summary>Marks the selected word occurrences Read.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkSelectionReadAsync() => MarkReadAsync(SelectedReadStateOccurrences());
+
+    /// <summary>Marks the selected word occurrences Unread.</summary>
+    /// <returns>A task that completes after the store command returns.</returns>
+    public Task MarkSelectionUnreadAsync() => MarkUnreadAsync(SelectedReadStateOccurrences());
+
     /// <summary>Selects a word from any page, building its detail even when it has no chosen-text occurrence.</summary>
     public void SelectWord(string word)
     {
@@ -206,12 +306,18 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             projectWord, "Not in a chosen text"));
     }
 
-    partial void OnSelectedTextChanged(ResultsTextViewModel? value) => RefreshLines();
+    partial void OnSelectedTextChanged(ResultsTextViewModel? value)
+    {
+        RefreshLines();
+        MarkTextReadCommand.NotifyCanExecuteChanged();
+        MarkTextUnreadCommand.NotifyCanExecuteChanged();
+    }
 
     partial void OnFilterChanged(ResultsInTextFilter value) => RefreshLines();
 
     internal void ClearProject()
     {
+        _readStateGeneration++;
         SelectedText = null;
         SelectedToken = null;
     }
@@ -239,6 +345,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void Rebuild()
     {
+        foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
+        var readStateGeneration = _readStateGeneration;
         var previousTitle = SelectedText?.Title;
         var results = (_assess.Result?.Words ?? [])
             .GroupBy(word => word.Word, StringComparer.Ordinal)
@@ -251,10 +359,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
         }
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
+        foreach (var token in _allWords) token.PropertyChanged += OnTokenPropertyChanged;
+        _readStateRefresh = RefreshReadStateAsync(readStateGeneration);
         SelectedToken = null;
         AddChangeCommand.NotifyCanExecuteChanged();
         RefreshPendingMarkers();
         OnPropertyChanged(nameof(AllCount));
+        OnPropertyChanged(nameof(UnreadCount));
+        OnPropertyChanged(nameof(SelectedReadStateCount));
+        OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
         OnPropertyChanged(nameof(DiffersCount));
         OnPropertyChanged(nameof(NewCount));
         OnPropertyChanged(nameof(NoParseCount));
@@ -276,7 +389,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             var any = false;
             foreach (var token in line.Tokens.Where(token => token.IsWord))
             {
-                var matches = MatchesFilter(token.Verdict);
+                var matches = MatchesFilter(token);
                 token.IsDimmed = !matches;
                 any |= matches;
             }
@@ -288,16 +401,118 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(NeedsTexts));
     }
 
-    private bool MatchesFilter(OccurrenceVerdict verdict) => Filter switch
+    private bool MatchesFilter(ResultsTokenViewModel token) => Filter switch
     {
-        ResultsInTextFilter.Differs => verdict == OccurrenceVerdict.Differs,
-        ResultsInTextFilter.New => verdict == OccurrenceVerdict.New,
-        ResultsInTextFilter.NoParse => verdict == OccurrenceVerdict.NoParse,
-        ResultsInTextFilter.Limit => verdict == OccurrenceVerdict.Limit,
-        ResultsInTextFilter.NotAssessed => verdict == OccurrenceVerdict.NotAssessed,
-        ResultsInTextFilter.Matches => verdict == OccurrenceVerdict.Matches,
+        ResultsInTextFilter.Unread => token.Marking.IsUnread,
+        ResultsInTextFilter.Differs => token.Verdict == OccurrenceVerdict.Differs,
+        ResultsInTextFilter.New => token.Verdict == OccurrenceVerdict.New,
+        ResultsInTextFilter.NoParse => token.Verdict == OccurrenceVerdict.NoParse,
+        ResultsInTextFilter.Limit => token.Verdict == OccurrenceVerdict.Limit,
+        ResultsInTextFilter.NotAssessed => token.Verdict == OccurrenceVerdict.NotAssessed,
+        ResultsInTextFilter.Matches => token.Verdict == OccurrenceVerdict.Matches,
         _ => true,
     };
+
+    private bool CanMarkTokenReadState(ResultsTokenViewModel? token) =>
+        token is { IsWord: true, Occurrence: not null };
+
+    private bool CanMarkSelectionReadState() => SelectedReadStateCount > 0;
+
+    private ResultsTokenViewModel[] SelectedReadStateOccurrences() =>
+        _allWords.Where(token => token.IsSelectedForReadState).ToArray();
+
+    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ResultsTokenViewModel.IsSelectedForReadState)) return;
+        OnPropertyChanged(nameof(SelectedReadStateCount));
+        OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
+        MarkSelectionReadCommand.NotifyCanExecuteChanged();
+        MarkSelectionUnreadCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task SetReadStateAsync(IReadOnlyList<ResultsTokenViewModel> selection, bool isRead)
+    {
+        if (string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
+        var groups = selection.Where(token => token.IsWord && token.Occurrence is not null)
+            .Distinct().GroupBy(token => token.Occurrence!.TextId).ToArray();
+        var generation = _readStateGeneration;
+        var version = ++_readStateWriteVersion;
+        ReadStateRefusal = null;
+        ReadStateNotice = null;
+        var skipped = new List<OccurrenceAnchor>();
+        foreach (var group in groups)
+        {
+            var occurrences = group.Select(token => token.Occurrence!).Distinct().ToArray();
+            var outcome = await _commands.ReadWordStateAsync(new WordReadStateRequest(_assess.ProjectPath,
+                group.Key, occurrences, isRead) { AssessmentIds = AssessmentIdsShownInWindow },
+                CancellationToken.None).ConfigureAwait(true);
+            if (generation != _readStateGeneration || version != _readStateWriteVersion) return;
+            if (!outcome.Succeeded)
+            {
+                ReadStateRefusal = outcome.Refusal is { } refusal ? WindowRefusal.From(refusal) : null;
+                return;
+            }
+            ApplyReadState(group.Key, outcome.Value!.ReadOccurrences);
+            skipped.AddRange(outcome.Value.SkippedOccurrences);
+        }
+        ReadStateNotice = ReadStateSkipNotice(skipped.Count);
+    }
+
+    private async Task SetSelectedTextReadStateAsync(bool isRead)
+    {
+        if (SelectedText is not { } text || string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
+        var generation = _readStateGeneration;
+        var version = ++_readStateWriteVersion;
+        ReadStateRefusal = null;
+        ReadStateNotice = null;
+        var outcome = await _commands.ReadWordStateAsync(new WordReadStateRequest(_assess.ProjectPath,
+            text.TextId, IsRead: isRead) { AssessmentIds = AssessmentIdsShownInWindow },
+            CancellationToken.None).ConfigureAwait(true);
+        if (generation != _readStateGeneration || version != _readStateWriteVersion) return;
+        if (!outcome.Succeeded)
+        {
+            ReadStateRefusal = outcome.Refusal is { } refusal ? WindowRefusal.From(refusal) : null;
+            return;
+        }
+        ApplyReadState(text.TextId, outcome.Value!.ReadOccurrences);
+        ReadStateNotice = ReadStateSkipNotice(outcome.Value.SkippedOccurrences.Count);
+    }
+
+    private static string? ReadStateSkipNotice(int count) => count switch
+    {
+        0 => null,
+        1 => "1 word occurrence was not marked Read because its paragraph has not been parsed.",
+        _ => $"{count} word occurrences were not marked Read because their paragraphs have not been parsed.",
+    };
+
+    private async Task RefreshReadStateAsync(long generation)
+    {
+        if (string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
+        var textIds = _allWords.Where(token => token.Occurrence is not null)
+            .Select(token => token.Occurrence!.TextId).Distinct().ToArray();
+        foreach (var textId in textIds)
+        {
+            var outcome = await _commands.ReadWordStateAsync(new WordReadStateRequest(_assess.ProjectPath,
+                textId) { AssessmentIds = AssessmentIdsShownInWindow }, CancellationToken.None).ConfigureAwait(true);
+            if (generation != _readStateGeneration) return;
+            if (outcome.Succeeded) ApplyReadState(textId, outcome.Value!.ReadOccurrences);
+        }
+    }
+
+    private IReadOnlyList<string> AssessmentIdsShownInWindow => _assess.Result is { } result
+        ? result.Measurements.Where(measurement => measurement.Kind == AssessmentKinds.ParseTime)
+            .Select(measurement => measurement.AssessmentId).Concat(result.TimingOverrideAssessmentIds)
+            .Distinct(StringComparer.Ordinal).ToArray()
+        : [];
+
+    private void ApplyReadState(Guid textId, IReadOnlyList<OccurrenceAnchor> readOccurrences)
+    {
+        var read = readOccurrences.ToHashSet();
+        foreach (var token in _allWords.Where(token => token.Occurrence?.TextId == textId))
+            token.SetReadState(token.Occurrence is { } occurrence && read.Contains(occurrence));
+        OnPropertyChanged(nameof(UnreadCount));
+        RefreshLines();
+    }
 
     private bool CanAddSelectedChange(string? kind) => kind switch
     {
@@ -358,20 +573,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         if (action.Kind == AnalysisMarkingActionKind.KeepFieldWorks)
         {
-            await MarkRead(token).ConfigureAwait(true);
+            await MarkReadAsync(token).ConfigureAwait(true);
             return;
         }
-        await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
+        var staged = await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);
+        if (!staged) return;
+        await MarkReadAsync(token).ConfigureAwait(true);
         RefreshPendingMarkers();
-    }
-
-    /// <summary>Marks an occurrence as read without staging a project change.</summary>
-    /// <param name="token">The occurrence the reader chose to keep.</param>
-    /// <returns>A completed task because read state is not persisted.</returns>
-    public Task MarkRead(ResultsTokenViewModel token)
-    {
-        ArgumentNullException.ThrowIfNull(token);
-        return Task.CompletedTask;
     }
 
     private void RefreshPendingMarkers()
@@ -428,12 +636,14 @@ public sealed class ResultsTextViewModel
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
+        TextId = text.TextId;
         Title = text.Title;
         Lines = text.Lines.Select(line => new ResultsLineViewModel(
             text.Title, line, results, projectWords, text.TextId)).ToArray();
     }
 
     public string Title { get; }
+    public Guid TextId { get; }
     public IReadOnlyList<ResultsLineViewModel> Lines { get; }
 }
 
@@ -473,6 +683,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 {
     private readonly TextToken _source;
     private readonly AssessmentWordResult? _assessment;
+    private bool _isUnread = true;
+
+    [ObservableProperty]
+    private bool _isSelectedForReadState;
 
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
         TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null)
@@ -537,7 +751,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ when result?.Outcome == "skipped" => "The parser skipped this word: it has a character the grammar's character table does not define",
             _ => "This word was not part of the Assessment",
         };
-        Marking = AnalysisMarkingState.Create(token, result);
+        Marking = AnalysisMarkingState.Create(token, result, _isUnread);
     }
 
     public string Text { get; }
@@ -606,9 +820,16 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsNew => Verdict == OccurrenceVerdict.New;
     public bool IsNoParse => Verdict is OccurrenceVerdict.NoParse or OccurrenceVerdict.Limit;
 
+    internal void SetReadState(bool isRead)
+    {
+        _isUnread = !isRead;
+        Marking = Marking with { IsUnread = _isUnread };
+        OnPropertyChanged(nameof(Marking));
+    }
+
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
     {
-        Marking = AnalysisMarkingState.Create(_source, _assessment);
+        Marking = AnalysisMarkingState.Create(_source, _assessment, _isUnread);
         Marking = Marking.WithStagedTransitions(changes.Select(change => change.StagedTransition with
         {
             StoredAnalysisId = change.StoredAnalysisId,

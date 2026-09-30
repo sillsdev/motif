@@ -82,6 +82,33 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ReadBaselineAssessmentWordsLoadsOnlyNamedAssessmentFormsWithoutTimings()
+    {
+        var repository = NewRepository("selected-assessment-words.fwdata", out var database);
+        using var ownedDatabase = database;
+        var selected = NewAssessment("selected", null, null, "ParseTime",
+            [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])]);
+        var unrelated = NewAssessment("unrelated", null, null, "ParseTime",
+            [new AssessedWord("bo", "analysed", []), new AssessedWord("za", "no-analysis", [])]);
+        repository.RecordBatch([selected, unrelated]);
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE AssessedWords SET OrdinalIndex = OrdinalIndex + 5 " +
+                "WHERE AssessmentId = 'unrelated';";
+            command.ExecuteNonQuery();
+        }
+
+        var result = repository.ReadBaselineAssessmentWords("ParseTime", selected.BaselineToken,
+            ["selected"], ["za"]);
+
+        var assessment = Assert.Single(result);
+        Assert.Equal("selected", assessment.AssessmentId);
+        Assert.Equal(["za"], assessment.Words!.Select(word => word.Word));
+        Assert.Empty(assessment.ObjectTimings);
+    }
+
+    [Fact]
     public void RecordsAnAssessmentWithWordsAndAnalysesAndReadsItBackById()
     {
         var repository = NewRepository("record.fwdata", out _);

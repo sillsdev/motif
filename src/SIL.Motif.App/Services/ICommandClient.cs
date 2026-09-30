@@ -27,6 +27,10 @@ public partial interface ICommandClient
     Task<CommandOutcome<TextInventoryResponse>> ListTextsAsync(
         TextInventoryRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Reads or changes Read state saved in the project's Motif store.</summary>
+    Task<CommandOutcome<WordReadStateResponse>> ReadWordStateAsync(
+        WordReadStateRequest request, CancellationToken cancellationToken);
+
     Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken);
 

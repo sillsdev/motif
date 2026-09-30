@@ -18,7 +18,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
-/// <see cref="JobCommands"/>, and <see cref="PendingChangesWorkflow"/>.
+/// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, and <see cref="ReadStateCommands"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
@@ -117,6 +117,7 @@ public static class CommandCatalog
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released),
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer),
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released),
+        new CommandDescriptor("word read-state", typeof(WordReadStateRequest), typeof(WordReadStateResponse), CommandSurface.Developer),
 
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),

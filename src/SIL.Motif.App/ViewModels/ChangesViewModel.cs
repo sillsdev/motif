@@ -130,19 +130,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public async Task PutAsync(ChangeIntent change, CancellationToken cancellationToken = default)
     {
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
-        await PutAsync(change, path, _projectGeneration, cancellationToken).ConfigureAwait(true);
+        _ = await PutAsync(change, path, _projectGeneration, cancellationToken).ConfigureAwait(true);
     }
 
-    private async Task PutAsync(
+    private async Task<bool> PutAsync(
         ChangeIntent change, string path, int generation, CancellationToken cancellationToken)
     {
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision, change),
             cancellationToken).ConfigureAwait(true);
-        if (!IsCurrentProject(path, generation)) return;
+        if (!IsCurrentProject(path, generation)) return false;
         Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken);
+        return outcome.Succeeded;
     }
 
     public async Task RecheckAsync(CancellationToken cancellationToken = default)
@@ -267,7 +268,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             Occurrence: occurrence)).ConfigureAwait(true);
     }
 
-    public async Task AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
+    public async Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
     {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(token);
@@ -276,11 +277,12 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             ? action.ChangeKind
             : throw new InvalidOperationException("This marking action does not stage a project change.");
         var hasParserReading = action.Reading is not null;
-        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
+        if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
             hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,
             ReadingIndex: action.ReadingIndex, OriginPage: WorkspacePage.Texts.ToString(),
             Occurrence: kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
-                ? token.Occurrence : null)).ConfigureAwait(true);
+                ? token.Occurrence : null), path, _projectGeneration, CancellationToken.None).ConfigureAwait(true);
     }
 
     /// <summary>Adds an Approve change for one stored analysis without a parser reading.</summary>

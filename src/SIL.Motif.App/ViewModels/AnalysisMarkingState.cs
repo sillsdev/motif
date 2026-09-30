@@ -123,7 +123,7 @@ public sealed record StagedMarkingTransition(string Now, string AfterApply,
 /// <param name="StagedTransitions">The pending changes displayed on this occurrence.</param>
 /// <param name="IsUncertain">Whether the pending change's fit with the current project is uncertain.</param>
 /// <param name="NoLongerFits">Whether the pending change no longer fits the current project.</param>
-/// <param name="IsUnread">Whether an available action or Fix choice remains unstaged.</param>
+/// <param name="IsUnread">Whether the occurrence has no persisted Read marker.</param>
 /// <remarks>Reading opinions and staged changes follow the Approved, Disapproved, and Unknown model in ADR 0049.</remarks>
 public sealed record AnalysisMarkingState(
     IReadOnlyList<FieldWorksAnalysisMarking> FieldWorksAnalyses,
@@ -136,6 +136,9 @@ public sealed record AnalysisMarkingState(
     bool NoLongerFits,
     bool IsUnread)
 {
+    /// <summary>Whether an available action or Fix choice remains unstaged.</summary>
+    public bool NeedsALook => StagedTransitions.Count == 0 && (PrimaryAction is not null || FixChoices.Count > 0);
+
     private static readonly IReadOnlyDictionary<(AnalysisMarkingClass Class, string Opinion), PrimaryActionRule?>
         PrimaryActionTable = new Dictionary<(AnalysisMarkingClass, string), PrimaryActionRule?>
         {
@@ -163,7 +166,7 @@ public sealed record AnalysisMarkingState(
     /// <param name="token">The occurrence and its stored FieldWorks analyses.</param>
     /// <param name="result">The word's Assessment result, or <see langword="null"/> when it was not assessed.</param>
     /// <returns>The comparison and the actions supported by the available evidence.</returns>
-    public static AnalysisMarkingState Create(TextToken token, AssessmentWordResult? result)
+    public static AnalysisMarkingState Create(TextToken token, AssessmentWordResult? result, bool isUnread = true)
     {
         ArgumentNullException.ThrowIfNull(token);
         var stored = token.StoredAnalyses.Select(analysis => new FieldWorksAnalysisMarking(
@@ -190,7 +193,7 @@ public sealed record AnalysisMarkingState(
         var primary = BuildPrimaryAction(markingClass, stored, readings);
         var fixes = BuildFixChoices(markingClass, stored, readings);
         return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
-            false, false, primary is not null || fixes.Count > 0);
+            false, false, isUnread);
     }
 
     /// <summary>Builds the shared marking state from the resolved evidence for one Assessment word.</summary>
@@ -227,7 +230,6 @@ public sealed record AnalysisMarkingState(
             StagedTransitions = transitions,
             IsUncertain = transitions.Any(transition => transition.FitStatus == ChangeFitStatus.Uncertain),
             NoLongerFits = transitions.Any(transition => transition.FitStatus == ChangeFitStatus.NoLongerFits),
-            IsUnread = transitions.Count == 0 && IsUnread,
         };
     }
 

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Ellipse = Avalonia.Controls.Shapes.Ellipse;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -111,6 +112,11 @@ public sealed class MarkingsGalleryTests
                     AssertReadable("Intent.Agreement.Suggestion", "Intent.Surface", variant);
                     AssertReadable("Intent.Opinion.Approved.Text", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Marking.Link", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Unread.Text", "Intent.Unread.Fill", variant);
+                    Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#54278f" : "#d9c2ff"),
+                        ColorResource("Intent.Unread.Text", variant));
+                    Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#f6f0ff" : "#2b1c3b"),
+                        ColorResource("Intent.Unread.Fill", variant));
                     Assert.Equal(Color.Parse(variant == ThemeVariant.Light ? "#d5dce4" : "#4d5865"),
                         ColorResource("Intent.Opinion.None.Outline", variant));
                 }
@@ -122,6 +128,20 @@ public sealed class MarkingsGalleryTests
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void UnreadMarkHasVisibleTextAndAnAccessibleName()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var mark = new UnreadMark();
+
+            var contents = Assert.IsType<StackPanel>(mark.Child);
+            Assert.IsType<Ellipse>(contents.Children[0]);
+            Assert.Equal("Unread", Assert.IsType<TextBlock>(contents.Children[1]).Text);
+            Assert.Equal("Unread", AutomationProperties.GetName(mark));
         });
     }
 

@@ -59,6 +59,10 @@ public interface IAssessmentRepository
     AssessmentRecord? FindLatestBaselineAssessment(
         string kind, string baselineToken, string selectionSha256, IReadOnlyList<string> selectionWords);
 
+    /// <summary>Reads one current Baseline Assessment, or the named Assessments, for selected word forms only.</summary>
+    IReadOnlyList<AssessmentRecord> ReadBaselineAssessmentWords(
+        string kind, string baselineToken, IReadOnlyList<string>? assessmentIds, IReadOnlyCollection<string> wordForms);
+
     /// <summary>
     /// Promotes one Assessment to be the project's current Assessment (ADR 0042 decision 2): a pointer
     /// the project holds, not a state the Assessment carries.
@@ -347,6 +351,39 @@ public sealed class AssessmentRepository : IAssessmentRepository
             Words = ReadWords(connection, header.AssessmentId),
             ObjectTimings = ReadObjectTimings(connection, header.AssessmentId)
         };
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AssessmentRecord> ReadBaselineAssessmentWords(
+        string kind, string baselineToken, IReadOnlyList<string>? assessmentIds, IReadOnlyCollection<string> wordForms)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        ArgumentException.ThrowIfNullOrWhiteSpace(baselineToken);
+        ArgumentNullException.ThrowIfNull(wordForms);
+        if (wordForms.Count == 0 || assessmentIds is { Count: 0 }) return [];
+
+        using var connection = _database.OpenConnection();
+        var headers = new List<AssessmentRecord>();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = assessmentIds is null
+                ? HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline " +
+                  "ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;"
+                : HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline " +
+                  "AND AssessmentId IN (SELECT value FROM json_each($ids)) ORDER BY SavedUtc, AssessmentId;";
+            command.Parameters.AddWithValue("$kind", kind);
+            command.Parameters.AddWithValue("$baseline", baselineToken);
+            if (assessmentIds is not null)
+                command.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(assessmentIds));
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) headers.Add(ReadHeader(reader));
+        }
+
+        var selectedForms = wordForms.ToHashSet(StringComparer.Ordinal);
+        return headers.Select(header => header with
+        {
+            Words = ReadWords(connection, header.AssessmentId, selectedForms),
+        }).ToArray();
     }
 
     /// <inheritdoc />
@@ -710,7 +747,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
     }
 
     // One streaming pass over a word/analysis join, grouped by word — no N+1 querying.
-    private static List<AssessedWord> ReadWords(SqliteConnection connection, string assessmentId)
+    private static List<AssessedWord> ReadWords(SqliteConnection connection, string assessmentId,
+        IReadOnlySet<string>? wordForms = null)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -721,9 +759,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
+              AND ($forms IS NULL OR aw.Word IN (SELECT value FROM json_each($forms)))
             ORDER BY aw.OrdinalIndex, pa.OrdinalIndex;
             """;
         command.Parameters.AddWithValue("$id", assessmentId);
+        command.Parameters.AddWithValue("$forms", wordForms is null ? DBNull.Value :
+            JsonSerializer.Serialize(wordForms));
 
         var words = new List<AssessedWord>();
         long? currentWordId = null;
@@ -753,7 +794,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
-                if (reader.GetInt32(11) != words.Count)
+                if (wordForms is null && reader.GetInt32(11) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
                 currentWord = reader.GetString(1);

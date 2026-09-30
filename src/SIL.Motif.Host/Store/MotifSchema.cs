@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 27;
+    public const int CurrentSchema = 28;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -32,7 +32,8 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl;
+                BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
+                ReadOccurrenceDdl;
             command.ExecuteNonQuery();
         }
 
@@ -60,7 +61,8 @@ public static class MotifSchema
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits"
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits",
+            "ReadOccurrences"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -181,6 +183,7 @@ public static class MotifSchema
             "MotifMetadata" or "DefaultSelection" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
+            "ReadOccurrences" => "CHECK (WordIndex >= 0)",
             _ => null
         };
         using var command = connection.CreateCommand();
@@ -331,6 +334,10 @@ public static class MotifSchema
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
             C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
+        "ReadOccurrences" =>
+        [C("TextId", "TEXT", true, 1), C("ParagraphId", "TEXT", true, 2),
+            C("SegmentId", "TEXT", true, 3), C("WordIndex", "INTEGER", true, 4),
+            C("FingerprintJson", "TEXT", true)],
         "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
@@ -769,6 +776,17 @@ public static class MotifSchema
             BaselineIdentity TEXT NOT NULL,
             FitSummaryJson TEXT NOT NULL,
             PRIMARY KEY (DraftRevision, ProjectLastWriteUtcTicks, BaselineIdentity)
+        );
+        """;
+
+    private const string ReadOccurrenceDdl = """
+        CREATE TABLE ReadOccurrences (
+            TextId TEXT NOT NULL,
+            ParagraphId TEXT NOT NULL,
+            SegmentId TEXT NOT NULL,
+            WordIndex INTEGER NOT NULL CHECK (WordIndex >= 0),
+            FingerprintJson TEXT NOT NULL,
+            PRIMARY KEY (TextId, ParagraphId, SegmentId, WordIndex)
         );
         """;
 }

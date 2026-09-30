@@ -137,7 +137,8 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         var assess = new AssessViewModel(fake, selection) { ProjectPath = project.Project.FwDataPath };
         var changes = new ChangesViewModel(project.Client);
         await changes.OpenProjectAsync(project.Project.FwDataPath);
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes);
+        fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake);
         fake.ListTextWordsCompletesWith(project.Words);
         await texts.SetProjectAsync(project.Project.FwDataPath);
         fake.AssessCompletesWith(assessment);
