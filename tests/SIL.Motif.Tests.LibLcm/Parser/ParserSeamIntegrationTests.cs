@@ -1,99 +1,94 @@
-using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.Parser;
-using SIL.Motif.Tests.TestFixtures;
 using SIL.LCModel;
-using SIL.LCModel.Infrastructure;
+using SIL.Motif.Host.Assess;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Assess;
+using SIL.Motif.Worker.Store;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Parser;
 
-/// <summary>
-/// The seam that everything about grammar review rests on: <b>a project goes in, and analyses come out
-/// whose identities name real objects in that same project.</b>
-/// </summary>
-/// <remarks>
-/// <para>
-/// This is the test the route was chosen for. Motif can read a coverage percentage from any parser; what it
-/// cannot do without GUID-keyed analyses is say <i>which entry</i> or <i>which rule</i> an analysis used, and
-/// therefore whether a Proposal that edited that entry changed parsing the way it intended. The HermitCrab-XML
-/// route answers in synthetic keys (<c>mrule128</c>, <c>entry1083</c>) that name nothing Motif can look up;
-/// only the GUID one is usable.
-/// </para>
-/// <para>
-/// So the assertion is not "the parser ran" but <b>"every morpheme the parser named is an object this project
-/// actually contains"</b> — checked by resolving each GUID through the live cache's own object repository. If
-/// that ever fails, the whole grammar-feedback design fails with it, and it fails silently otherwise: coverage
-/// numbers would keep working while correlation quietly returned nothing.
-/// </para>
-/// <para>
-/// Runs against <see cref="PristineProjectFixture"/>'s two seeded stems rather than a large real project: the
-/// claim under test is that a GUID names an object, which the seam either honours or does not regardless of
-/// how many entries the project holds.
-/// </para>
-/// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
-public sealed class ParserSeamIntegrationTests : IDisposable
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class ParserSeamIntegrationTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
-    private readonly LcmCache _cache;
-    private readonly string _projectPath;
-
-    public ParserSeamIntegrationTests(PristineProjectFixture pristine)
+    [Fact]
+    public async Task MissingExportedDirectoryIsRefusedBeforeInvokingPanGloss()
     {
-        _cache = pristine.NewScratch();
-        RealParserProject.PrepareForParsing(_cache, "m", "o", "t", "i", "f", "a", "b");
-        _projectPath = _cache.ProjectId.Path;
-    }
-
-    public void Dispose()
-    {
-        if (!_cache.IsDisposed) _cache.Dispose();
-    }
-
-    [RealParserFact(Skip = "The shipped pangloss has no assess subcommand (grill K46).")]
-    public async Task EveryMorphemeTheParserNames_IsAnObjectTheProjectContains()
-    {
-        var report = await new PanGlossAssessmentProcess().RunAsync(
-            Path.GetDirectoryName(_projectPath)!, CancellationToken.None);
-
-        // Provenance arrives for free and is what a coverage figure must cite (ADR 0032 §4).
-        Assert.StartsWith("sha256:", report.GrammarSourceSha256);
-        Assert.Equal("foma-confirm", report.Pipeline);
-
-        var analysed = report.Words.Where(w => w.Analyses.Count > 0).ToList();
-        Assert.NotEmpty(analysed);
-
-        var objects = _cache.ServiceLocator.GetInstance<ICmObjectRepository>();
-
-        var unresolved = new List<string>();
-        var resolvedCount = 0;
-
-        foreach (var word in analysed)
-        foreach (var analysis in word.Analyses)
-        foreach (var morphemeGuid in analysis.MorphemeGuids)
+        var root = Path.Combine(Path.GetTempPath(), "motif-parser-missing-source-" + Guid.NewGuid().ToString("N"));
+        try
         {
-            if (!Guid.TryParse(morphemeGuid, out var guid))
-            {
-                unresolved.Add($"{word.Word}: '{morphemeGuid}' is not a GUID — this is the synthetic-key " +
-                               "shape the HermitCrab-XML route produces, which means the wrong route ran.");
-                continue;
-            }
+            var paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(root));
+            var invoker = new FakeInvoker();
+            var assessor = new PanGlossAssessor(paths, invoker);
 
-            if (objects.IsValidObjectId(guid)) resolvedCount++;
-            else unresolved.Add($"{word.Word}: {guid} names no object in this project.");
+            await Assert.ThrowsAsync<DirectoryNotFoundException>(() => assessor.ProduceAsync(
+                new([SeededProject.FirstForm], [AssessmentKind.Correctness], TimeSpan.FromSeconds(5)),
+                Path.Combine(root, "not-exported"), CancellationToken.None));
+
+            Assert.Empty(invoker.Requests);
         }
-
-        Assert.True(
-            unresolved.Count == 0,
-            $"{unresolved.Count} morpheme identity/identities could not be resolved against the project the " +
-            $"parser read. Correlation between parse results and Proposal effects depends on every one of " +
-            $"them resolving:{Environment.NewLine}  " +
-            string.Join(Environment.NewLine + "  ", unresolved.Take(10)));
-
-        Assert.True(resolvedCount > 0, "No morphemes were checked, so this test proved nothing.");
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 
-    [Fact(Skip = "PanGloss exposes one engine; a fallback comparison has nothing to compare.")]
-    public void TheFallbackEngineIsReachable_AndAgreesOnWhichWordsParse()
+    [RealParserFact]
+    public async Task EveryMorphologyIdentityNamesAnObjectInTheParsedProject()
     {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+        var root = Path.Combine(Path.GetTempPath(), "motif-parser-identities-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = new StatsCacheStore(WorkspaceOwnership.Bootstrap(root));
+            using var invoker = new PanGlossInvoker();
+            var assessor = new PanGlossAssessor(paths, invoker);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var produced = await assessor.ProduceAsync(
+                new([SeededProject.FirstForm, SeededProject.SecondForm], [AssessmentKind.Correctness],
+                    TimeSpan.FromSeconds(5)),
+                Path.GetDirectoryName(cache.ProjectId.Path)!, timeout.Token);
+            var assessment = Assert.Single(produced);
+            var batch = Assert.IsType<AssessmentRaw.Batch>(assessment.Raw).Analysis;
+            Assert.StartsWith("sha256:", assessment.Invocation!.SourceBytesSha256);
+            Assert.Equal(2, batch.Words.Count);
+            var objects = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
+            var checkedIdentities = 0;
+            Assert.All(batch.Words, word =>
+            {
+                Assert.NotNull(word.Morphology);
+                Assert.NotEmpty(word.Morphology!.Analyses);
+                Assert.All(word.Morphology.Analyses, analysis =>
+                {
+                    Assert.NotEmpty(analysis.Morphs);
+                    Assert.All(analysis.Morphs, morph =>
+                    {
+                        Assert.Null(morph.GuessedString);
+                        Assert.NotNull(morph.Form);
+                        foreach (var identity in new[] { morph.Form, morph.Msa, morph.InflType }
+                                     .Where(identity => identity is not null))
+                        {
+                            Assert.True(Guid.TryParse(identity, out var guid),
+                                $"The parser emitted a non-GUID identity for '{word.Word}': {identity}");
+                            Assert.True(objects.IsValidObjectId(guid),
+                                $"The parser emitted an identity absent from its project for '{word.Word}': {identity}");
+                            checkedIdentities++;
+                        }
+                    });
+                });
+            });
+            Assert.True(checkedIdentities > 0);
+            var artifactDirectory = Assert.Single(Directory.GetDirectories(Path.Combine(root, "assessment-runs")));
+            output.WriteLine("Motif two-stem integration output: TSV {0} bytes, morphology JSONL {1} bytes, stderr {2} bytes.",
+                new FileInfo(Path.Combine(artifactDirectory, "out.tsv")).Length,
+                new FileInfo(Path.Combine(artifactDirectory, "analyses.jsonl")).Length,
+                new FileInfo(Path.Combine(artifactDirectory, "stderr.txt")).Length);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
     }
 }

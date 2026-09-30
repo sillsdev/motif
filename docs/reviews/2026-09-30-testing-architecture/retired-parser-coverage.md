@@ -16,7 +16,7 @@ The useful assertions belong to current parser adapters and retained evidence. R
 | Cancellation stops the child and closes artifacts | `CancellationStopsTheParser_AndReportsCancelled`, `CancellingBatchWaitsForArtifactHandlesToCloseBeforeCleanup`, current window disposal/cancellation tests |
 | Coverage denominator, completeness, range and provenance | `GrammarCoverageFigureTests`, `GrammarCoverageProvenanceTests`, and current Assessor retained-invocation tests |
 | Retired report pipeline and diagnostic-count fields | No Batch wire counterpart; retained report-parser/coverage unit tests exercise their existing data consumers without claiming real-parser integration |
-| Missing exported input directory | Current Assessor/exporter input validation; the obsolete process's standalone validation test is removed with that process |
+| Missing exported input directory | Ported to `MissingExportedDirectoryIsRefusedBeforeInvokingPanGloss`; it also verifies no invoker request is made |
 | No engine/cache-key control in the seam | `PanGlossCandidateExportSeamSurfaceTests` now inspects the current `PanGlossAssessor` alongside the exporter types |
 
 ## Removal scope
@@ -27,4 +27,4 @@ Removed `PanGlossAssessmentProcess`, its otherwise unused `IPanGlossAssessor`, e
 
 ## Validation
 
-The identity port compiled through the repository build gate. Combined real-release verification follows integration of the independently owned fixture replacements, so the borrowed PanGloss grammar benchmark is not executed as part of that check.
+Combined ./test.ps1 verification against hash-verified PanGloss v0.5.1 passed 3,680 tests, failed none and skipped 22. The identity integration executed and resolved all emitted identities; the missing-directory refusal executed without invoking the parser. The borrowed PanGloss benchmark was removed before this run. Remaining skips are five opt-in artifact harnesses, eight other-platform checks, eight Windows symbolic-link privilege checks and one recorded unsupported parser capability.

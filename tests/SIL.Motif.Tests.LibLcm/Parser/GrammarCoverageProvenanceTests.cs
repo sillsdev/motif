@@ -7,12 +7,7 @@ namespace SIL.Motif.Tests.Parser;
 /// <summary>
 /// Covers that a coverage figure cites the run it came from, using a report no parser had to produce.
 /// </summary>
-/// <remarks>
-/// The sibling of this in <c>GrammarCoverageFigureIntegrationTests</c> keeps <c>RealParserFact</c> and
-/// keeps skipping without a parser build, because it asserts a real grammar's reach. This one asserts
-/// only that Motif carries the identities it was handed — plumbing, not linguistics — so a report built
-/// here serves it honestly. That distinction is the whole reason both exist.
-/// </remarks>
+
 public sealed class GrammarCoverageProvenanceTests
 {
     [Fact]

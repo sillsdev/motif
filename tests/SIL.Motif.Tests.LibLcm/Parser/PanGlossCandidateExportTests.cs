@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
 using SIL.LCModel;
@@ -211,35 +211,8 @@ public sealed class PanGlossCandidateExportTests : IDisposable
 }
 
 /// <summary>
-/// Proves <see cref="PanGlossAssessmentProcess"/> needs nothing beyond an exported directory: it is
-/// exercised here against a fake executable and a directory holding a bare <c>.fwdata</c> placeholder,
-/// with no <see cref="LcmCache"/>, scratch, or Baseline in the picture at any point.
-/// </summary>
-public sealed class PanGlossAssessmentProcessTests : IDisposable
-{
-    private readonly string _root =
-        Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGlossAssessmentProcessTests", Guid.NewGuid().ToString("N"));
-
-    public PanGlossAssessmentProcessTests() => Directory.CreateDirectory(_root);
-
-    public void Dispose()
-    {
-        try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
-    }
-
-    [Fact]
-    public async Task RunAsyncRefusesADirectoryThatDoesNotExist()
-    {
-        var absent = Path.Combine(_root, "never-exported");
-
-        await Assert.ThrowsAsync<DirectoryNotFoundException>(() =>
-            new PanGlossAssessmentProcess(FakeParser.ExecutablePath).RunAsync(absent, CancellationToken.None));
-    }
-}
-
-/// <summary>
 /// Proves the export/execute seam carries no engine or cache-identity surface: reflection over the public
-/// API of the seam's three new types finds no member or parameter naming an engine or a cache key.
+/// API of the seam types finds no member or parameter naming an engine or a cache key.
 /// </summary>
 public sealed class PanGlossCandidateExportSeamSurfaceTests
 {
@@ -250,7 +223,7 @@ public sealed class PanGlossCandidateExportSeamSurfaceTests
         {
             typeof(IPanGlossCandidateExporter),
             typeof(PanGlossCandidateExporter),
-            typeof(PanGlossAssessmentProcess),
+            typeof(SIL.Motif.Host.Assess.PanGlossAssessor),
         };
         var forbidden = new[] { "engine", "cachekey", "cache_key" };
         var offenders = new List<string>();

@@ -9,7 +9,7 @@ namespace SIL.Motif.Host.Parser;
 /// <remarks>
 /// This is the seam between "a Proposal has been applied in memory" and "PanGloss has bytes to read":
 /// export happens once, while the candidate is still open, and the Assessment process that follows never
-/// needs the <see cref="LcmCache"/> again (see <see cref="PanGlossAssessmentProcess"/>).
+/// needs the <see cref="LcmCache"/> again (see <see cref="SIL.Motif.Host.Assess.PanGlossAssessor"/>).
 /// </remarks>
 public interface IPanGlossCandidateExporter
 {

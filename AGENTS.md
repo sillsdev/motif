@@ -19,12 +19,12 @@ Ubuntu 22.04, and macOS.
 **`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
 `SeededProject` (`tests/SIL.Motif.Tests.Support/TestFixtures/`) — no vendored sample project, no sibling
-FieldWorks checkout. The conformance fixture under `tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/**`
-is a synthetic FieldWorks project copied from Machine's conformance suite; the `SOURCE.md` beside it
-records its provenance. The `.gitignore` carves that fixture out of the project-data rules by the
-owner's ruling. The one external dependency that remains is the `pangloss` executable, a separate Rust
-build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
-it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
+FieldWorks checkout. Motif owns its seeded integration and lifecycle fixtures; PanGloss owns grammar
+conformance and parser-scale benchmarks. The external dependency is the released `pangloss`
+executable, pinned by version, runtime identifier and SHA-256 in `pangloss-release.json`.
+Tests needing it use `RealParserFactAttribute`, which skips when the parser is absent on an ordinary
+developer machine. Release integration validation requires the pinned executable and reports any
+parser-dependent skips as incomplete validation.
 
 **`./test.ps1` runs each test project as one or more processes, with concurrency capped at a sixth of the
 available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
