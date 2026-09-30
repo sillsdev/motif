@@ -13,7 +13,7 @@ public sealed class ReviewChangeActionsTests
     private const string ProjectPath = @"C:\projects\review-actions.fwdata";
 
     [Fact]
-    public async Task GoToTextStepsThroughTheGroupInItsStableOrder()
+    public async Task GoToTextOnARowOpensThatRowsWord()
     {
         var (context, page) = await OpenReviewAsync(
         [
@@ -21,13 +21,11 @@ public sealed class ReviewChangeActionsTests
             Change("first", "apple", ChangeKinds.Approve),
         ]);
         var capture = new PageRequestCapture(context);
-        var group = Assert.Single(page.ReviewGroups);
+        var rows = Assert.Single(page.ReviewGroups).Items;
 
-        group.GoToTextCommand.Execute(null);
-        group.GoToTextCommand.Execute(null);
-        group.GoToTextCommand.Execute(null);
+        page.GoToTextCommand.Execute(rows.Single(row => row.Word == "zebra"));
 
-        Assert.Equal(["apple", "zebra", "apple"], capture.Requests.Select(request => request.Word));
+        Assert.Equal(["zebra"], capture.Requests.Select(request => request.Word));
         Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
     }
 

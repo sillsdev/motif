@@ -9,8 +9,8 @@ namespace SIL.Motif.Tests.App;
 public sealed class OverviewTileNavigationTests
 {
     [Theory]
-    [InlineData("Open Timing", WorkspacePage.Timing)]
-    [InlineData("Open Warnings", WorkspacePage.Warnings)]
+    [InlineData("Open Speed in Timing", WorkspacePage.Timing)]
+    [InlineData("Open Grammar warnings in Warnings", WorkspacePage.Warnings)]
     [InlineData("Start an AI Handoff", WorkspacePage.AiHandoff)]
     public void OverviewDetailTilesOpenTheirPages(string tileName, WorkspacePage expectedPage)
     {
@@ -19,6 +19,7 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -72,13 +73,14 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
                 var compare = workspace.PageModel<TextsPageModel>().Assess.Compare;
                 compare.SelectCells([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.Match)]);
 
-                FakeComposedWindow.Click(window, "Open Text Coverage in Texts");
+                FakeComposedWindow.Click(window, "Open Text coverage in Texts");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
@@ -101,11 +103,12 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                FakeComposedWindow.Click(window, "Open accuracy in Texts");
+                FakeComposedWindow.Click(window, "Open Approved analyses kept in the Matrix");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);

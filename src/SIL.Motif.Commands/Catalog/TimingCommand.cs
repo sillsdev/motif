@@ -84,9 +84,9 @@ public static class TimingCommand
             {
                 IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
-                    attempts.GetValueOrDefault(word.Word), IsStepLimited(word) ? "Step limit" :
+                    attempts.GetValueOrDefault(word.Word), IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
-                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? "Skipped" : "Finished")).ToArray(),
+                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? TimingCompletion.Skipped : TimingCompletion.Finished)).ToArray(),
             });
         });
     }

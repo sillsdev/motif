@@ -203,7 +203,7 @@ public sealed class MainWindowSmokeTests
             var (_, window, _) = NewComposedWindow();
             try
             {
-                Assert.Contains("Tech demo: make sure you have a FieldWorks backup before applying.",
+                Assert.Contains("FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.",
                     window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
             }
             finally
@@ -266,8 +266,8 @@ public sealed class MainWindowSmokeTests
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
                 Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
-                Assert.Contains($"opened {overview.MotifStoreCreatedUtc.ToLocalTime():h:mm tt}", text);
-                Assert.Contains($"last FieldWorks save {overview.LastFieldWorksSaveUtc!.Value.ToLocalTime():h:mm tt}", text);
+                Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
+                Assert.DoesNotContain("last FieldWorks save", text, StringComparison.Ordinal);
                 Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
@@ -276,12 +276,12 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(Verdict.NoResult,
                     Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "no parse").Meaning);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(item => item.Text == "41 of 125 words in the default Selection").FontWeight);
+                    .Single(item => item.Text == overviewModel.TextCoverageWords).FontWeight);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(item => item.Text == "median parse time per word").FontWeight);
+                    .Single(item => item.Text == overviewModel.SpeedMedian).FontWeight);
                 var tiles = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(item => AutomationProperties.GetName(item) is "Open Text Coverage in Texts" or
-                        "Open accuracy in Texts" or "Open Timing" or "Open Warnings");
+                    .Where(item => AutomationProperties.GetName(item) is "Open Text coverage in Texts" or
+                        "Open Approved analyses kept in the Matrix" or "Open Speed in Timing" or "Open Grammar warnings in Warnings");
                 Assert.All(tiles, tile =>
                 {
                     Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);

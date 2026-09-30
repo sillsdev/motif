@@ -100,10 +100,11 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.Equal(appOverview.Value.TextCoverage, overviewPage.Overview.TextCoverage);
             Assert.Equal(appOverview.Value.Accuracy, overviewPage.Overview.Accuracy);
             Assert.Contains($"{appOverview.Value.SelectionWordCount:N0}", overviewPage.SelectionWordCountText);
-            Assert.Contains($"{appOverview.Value.TextCoverage.ParsedOccurrences:N0} of " +
-                $"{appOverview.Value.TextCoverage.TotalOccurrences:N0}", overviewPage.TextCoverageOccurrences);
-            Assert.Contains($"{appOverview.Value.Accuracy.Violations:N0} violations", overviewPage.AccuracyBreakdown);
-            Assert.Contains($"{appOverview.Value.Accuracy.RejectedAnalysesRebuilt:N0} rejected analyses rebuilt",
+            Assert.Contains($"of their {appOverview.Value.TextCoverage.TotalOccurrences:N0} occurrences",
+                overviewPage.TextCoverageWords);
+            Assert.StartsWith($"{appOverview.Value.Accuracy.ApprovedWordsNoMatch +
+                appOverview.Value.Accuracy.ApprovedWordsNoParse:N0} approved word", overviewPage.AccuracyBreakdown);
+            Assert.Contains($"{appOverview.Value.Accuracy.RejectedAnalysesRebuilt:N0} disapproved analys",
                 overviewPage.AccuracyBreakdown);
             Assert.Equal(overview.Value!.TextCoverage, appOverview.Value!.TextCoverage);
             Assert.Equal(overview.Value.Accuracy, appOverview.Value.Accuracy);

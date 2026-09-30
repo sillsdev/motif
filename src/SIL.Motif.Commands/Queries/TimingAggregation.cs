@@ -27,7 +27,7 @@ public static class TimingAggregation
         var slowest = timed.OrderByDescending(word => word.ElapsedMs).ThenBy(word => word.Word, StringComparer.Ordinal)
             .Take(top).Select(word => new SlowWordTiming(word.Word, word.ElapsedMs!.Value)).ToArray();
         var stepLimited = materialized.Count(word => word.Outcome == "capped" || word.Morphology?.Capped == true);
-        return new OverviewTiming(median, percentile95, slowest, stepLimited);
+        return new OverviewTiming(median, percentile95, slowest, stepLimited) { MeasuredWordCount = durations.Length };
     }
 
     /// <summary>Groups object timing rows by kind or object and finds the most costly words for one object.</summary>

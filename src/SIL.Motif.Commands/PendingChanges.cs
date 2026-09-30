@@ -917,14 +917,14 @@ public static class PendingChanges
                         ChangeIdOf(operation) == change.ChangeId) || !operationFits.TryGetValue(id, out var fit))
                 {
                     mappingMissing = true;
-                    reasons.Add("Change mapping or fingerprint is missing.");
+                    reasons.Add(ChangeFitReasons.MappingMissing);
                     continue;
                 }
                 operationResults.Add(fit);
                 if (!fit.StillFits) reasons.Add(fit.Reason);
             }
             if (!provenance.ContainsKey(change.ChangeId) || change.OperationIds.Count == 0)
-                reasons = ["Change mapping or fingerprint is missing."];
+                reasons = [ChangeFitReasons.MappingMissing];
             mappingMissing |= !provenance.ContainsKey(change.ChangeId) || change.OperationIds.Count == 0;
             var distinctReasons = reasons.Distinct(StringComparer.Ordinal).ToArray();
             var status = distinctReasons.Length == 0 ? ChangeFitStatus.Fits :

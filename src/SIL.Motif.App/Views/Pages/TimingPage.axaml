@@ -14,8 +14,22 @@
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
         <views:CopyableTextBlock Text="Pick words and see where their parse time went: first by kind of rule, then by rule, then by word."
                                  TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="muted" Text="Run an Assessment to see where the parse time went."
-                                 IsVisible="{Binding ShowNoEvidence}" />
+        <Border Classes="card" IsVisible="{Binding HasHeadline}" AutomationProperties.Name="Parse speed">
+          <StackPanel Classes="timingHeadline" Orientation="Horizontal">
+            <StackPanel>
+              <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineTotal}" />
+              <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{Binding HeadlineTotalCaption}" />
+            </StackPanel>
+            <StackPanel>
+              <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineMedian}" />
+              <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="median word" />
+            </StackPanel>
+            <StackPanel>
+              <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineStopped}" />
+              <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{Binding HeadlineStoppedCaption}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
 
         <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Snug}"
                    LineSpacing="{DynamicResource Intent.Space.Snug}">
@@ -91,6 +105,17 @@
         </StackPanel>
 
         <views:RefusalBlock DataContext="{Binding TimingRefusal}" />
+        <Border Classes="card" IsVisible="{Binding IsLoadingTiming}">
+          <views:CopyableTextBlock Classes="muted" Text="Reading the parse times…" />
+        </Border>
+        <Border Classes="card" IsVisible="{Binding ShowNoTimingRecorded}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="{x:Static vm:TimingPageModel.NoTimingRecordedText}" TextWrapping="Wrap" />
+            <Button Content="Parse again" Command="{Binding Context.Assess.RunCommand}"
+                    IsVisible="{Binding $self.IsEffectivelyEnabled}"
+                    HorizontalAlignment="Left" AutomationProperties.Name="Parse these words again to measure them" />
+          </StackPanel>
+        </Border>
         <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
           <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
                                    TextWrapping="Wrap" />

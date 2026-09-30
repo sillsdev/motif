@@ -19,6 +19,19 @@ public sealed record TimingResponse(
     public IReadOnlyList<TimingWordRow> Words { get; init; } = [];
 }
 
+/// <summary>The reasons a timed word's search ended, as <see cref="TimingWordRow.Completion"/> carries them.</summary>
+public static class TimingCompletion
+{
+    /// <summary>The search ran out of steps before it finished.</summary>
+    public const string StepLimit = "Step limit";
+
+    /// <summary>The word was left out of the run.</summary>
+    public const string Skipped = "Skipped";
+
+    /// <summary>The search finished.</summary>
+    public const string Finished = "Finished";
+}
+
 /// <summary>One selected word's stored time, attempts and reason its search stopped.</summary>
 public sealed record TimingWordRow(string Word, int? ElapsedMs, int Attempts, string Completion);
 
