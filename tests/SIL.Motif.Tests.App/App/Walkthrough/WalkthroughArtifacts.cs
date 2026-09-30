@@ -77,6 +77,8 @@ internal sealed record WalkthroughHelpContent(
 
 internal sealed record WalkthroughCaptureCallout(string AutomationId, string Caption, Rect Bounds);
 
+internal sealed record WalkthroughCaptionLabel(Rect Bounds, IReadOnlyList<string> Lines);
+
 internal sealed record WalkthroughCapture(
     string Id, int StartMs, int DurationMs, IReadOnlyList<WalkthroughCaptureCallout> Callouts, byte[] Png);
 
@@ -200,6 +202,7 @@ internal static class WalkthroughArtifacts
         using var number = new SKPaint { Color = SKColors.White, IsAntialias = true };
         using var font = new SKFont(typeface, 20);
         using var captionFont = new SKFont(typeface, 16);
+        var labels = ArrangeCaptionLabels(callouts, bitmap.Width, bitmap.Height, captionFont);
 
         for (var index = 0; index < callouts.Count; index++)
         {
@@ -212,20 +215,113 @@ internal static class WalkthroughArtifacts
             canvas.DrawCircle(markerX, markerY, 15, fill);
             canvas.DrawText((index + 1).ToString(CultureInfo.InvariantCulture), markerX, markerY + 7,
                 SKTextAlign.Center, font, number);
-            var caption = callouts[index].Caption;
-            var captionWidth = Math.Min(bitmap.Width - 36, captionFont.MeasureText(caption) + 20);
-            var captionX = Math.Clamp(box.Left, 18, bitmap.Width - captionWidth - 18);
-            var captionY = Math.Clamp(box.Top - 38, 18, bitmap.Height - 38);
-            var captionBox = new SKRect(captionX, captionY, captionX + captionWidth, captionY + 30);
+            var label = labels[index];
+            var captionBox = new SKRect((float)label.Bounds.Left, (float)label.Bounds.Top,
+                (float)label.Bounds.Right, (float)label.Bounds.Bottom);
             canvas.DrawRoundRect(captionBox, 5, 5, fill);
-            canvas.DrawText(caption, captionBox.Left + 10, captionBox.Top + 20,
-                SKTextAlign.Left, captionFont, number);
+            for (var line = 0; line < label.Lines.Count; line++)
+                canvas.DrawText(label.Lines[line], captionBox.Left + 10, captionBox.Top + 20 + line * 19,
+                    SKTextAlign.Left, captionFont, number);
         }
 
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
     }
+
+    internal static IReadOnlyList<WalkthroughCaptionLabel> ArrangeCaptionLabels(
+        IReadOnlyList<WalkthroughCaptureCallout> callouts, int canvasWidth, int canvasHeight, SKFont captionFont)
+    {
+        const int margin = 18;
+        const int gap = 8;
+        const int maximumLabelWidth = 360;
+        const int horizontalPadding = 20;
+        const int lineHeight = 19;
+        var maximumTextWidth = Math.Min(maximumLabelWidth, canvasWidth - margin * 2) - horizontalPadding;
+        var targets = callouts.Select(callout => callout.Bounds).ToArray();
+        var placed = new List<Rect>(callouts.Count);
+        var labels = new List<WalkthroughCaptionLabel>(callouts.Count);
+
+        foreach (var callout in callouts)
+        {
+            var lines = WrapCaption(callout.Caption, captionFont, maximumTextWidth);
+            var textWidth = lines.Max(line => captionFont.MeasureText(line));
+            var labelWidth = Math.Min(maximumLabelWidth, Math.Max(84, textWidth + horizontalPadding));
+            var labelHeight = lines.Count == 1 ? 30 : 14 + lines.Count * lineHeight;
+            var target = callout.Bounds;
+            var maximumX = canvasWidth - margin - labelWidth;
+            var maximumY = canvasHeight - margin - labelHeight;
+            var aboveY = target.Top - labelHeight - gap;
+            var belowY = target.Bottom + gap;
+            var positions = new List<Rect>
+            {
+                new(Math.Clamp(target.Left, margin, maximumX), Math.Clamp(aboveY, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Right - labelWidth, margin, maximumX), Math.Clamp(aboveY, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Left, margin, maximumX), Math.Clamp(belowY, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Right - labelWidth, margin, maximumX), Math.Clamp(belowY, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Left - labelWidth - gap, margin, maximumX), Math.Clamp(target.Top, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Right + gap, margin, maximumX), Math.Clamp(target.Top, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Left - labelWidth - gap, margin, maximumX), Math.Clamp(target.Bottom - labelHeight, margin, maximumY), labelWidth, labelHeight),
+                new(Math.Clamp(target.Right + gap, margin, maximumX), Math.Clamp(target.Bottom - labelHeight, margin, maximumY), labelWidth, labelHeight),
+            };
+            Rect? selected = positions.Where(IsAvailable).Select(position => (Rect?)position).FirstOrDefault();
+            if (selected is null)
+            {
+                Rect? grid = GridPositions(maximumX, maximumY, labelWidth, labelHeight, margin)
+                    .OrderBy(position => Distance(position, target))
+                    .Where(IsAvailable)
+                    .Select(position => (Rect?)position)
+                    .FirstOrDefault();
+                if (grid is null)
+                    throw new InvalidDataException("Walkthrough callout labels do not fit without overlapping.");
+                selected = grid;
+            }
+
+            placed.Add(selected.Value);
+            labels.Add(new WalkthroughCaptionLabel(selected.Value, lines));
+
+            bool IsAvailable(Rect position) => position.X >= margin && position.Y >= margin &&
+                position.Right <= canvasWidth - margin && position.Bottom <= canvasHeight - margin &&
+                targets.All(bounds => !position.Intersects(bounds)) &&
+                placed.All(bounds => !position.Intersects(bounds));
+        }
+
+        return labels;
+    }
+
+    private static IReadOnlyList<string> WrapCaption(string caption, SKFont font, int maximumWidth)
+    {
+        var lines = new List<string>();
+        var current = string.Empty;
+        foreach (var word in caption.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var candidate = current.Length == 0 ? word : current + " " + word;
+            if (current.Length > 0 && font.MeasureText(candidate) > maximumWidth)
+            {
+                lines.Add(current);
+                current = word;
+            }
+            else current = candidate;
+        }
+
+        if (current.Length > 0) lines.Add(current);
+        return lines;
+    }
+
+    private static IEnumerable<Rect> GridPositions(
+        double maximumX, double maximumY, double width, double height, int margin)
+    {
+        var xPositions = Enumerable.Range(0, (int)((maximumX - margin) / 8) + 1)
+            .Select(index => (double)margin + index * 8).Append(maximumX).Distinct();
+        var yPositions = Enumerable.Range(0, (int)((maximumY - margin) / 8) + 1)
+            .Select(index => (double)margin + index * 8).Append(maximumY).Distinct();
+        return from y in yPositions
+            from x in xPositions
+            select new Rect(x, y, width, height);
+    }
+
+    private static double Distance(Rect label, Rect target) =>
+        Math.Abs(label.Center.X - target.Center.X) + Math.Abs(label.Center.Y - target.Center.Y);
 
     internal static void CheckBaseline(
         string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null,

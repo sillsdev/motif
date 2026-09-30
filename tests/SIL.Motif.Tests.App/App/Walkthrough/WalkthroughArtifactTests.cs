@@ -106,6 +106,34 @@ public sealed class WalkthroughArtifactTests
     }
 
     [Fact]
+    public void CalloutCaptionLabelsStayInsideTheFrameAndAvoidTargetsAndEachOther()
+    {
+        var callouts = new[]
+        {
+            new WalkthroughCaptureCallout("first", "Stored FieldWorks opinion", new Rect(500, 300, 145, 45)),
+            new WalkthroughCaptureCallout("second", "PanGloss found another analysis", new Rect(540, 325, 155, 45)),
+            new WalkthroughCaptureCallout("third", "No analysis is stored for this word", new Rect(510, 350, 165, 45)),
+        };
+        using var font = new SKFont(SKTypeface.Default, 16);
+        var labels = WalkthroughArtifacts.ArrangeCaptionLabels(
+            callouts, WalkthroughArtifacts.Width, WalkthroughArtifacts.Height, font)
+            .Select(label => label.Bounds)
+            .ToArray();
+
+        Assert.Equal(callouts.Length, labels.Length);
+        Assert.All(labels, label =>
+        {
+            Assert.True(label.X >= 18 && label.Y >= 18);
+            Assert.True(label.Right <= WalkthroughArtifacts.Width - 18);
+            Assert.True(label.Bottom <= WalkthroughArtifacts.Height - 18);
+            Assert.DoesNotContain(callouts, callout => label.Intersects(callout.Bounds));
+        });
+        for (var index = 0; index < labels.Length; index++)
+        for (var other = index + 1; other < labels.Length; other++)
+            Assert.False(labels[index].Intersects(labels[other]));
+    }
+
+    [Fact]
     public void BaselineComparisonRejectsChangesBeyondTheDocumentedTolerance()
     {
         var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
