@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
@@ -34,11 +35,13 @@
         <ProgressBar IsVisible="{Binding Handoff.IsActive}"
                      IsIndeterminate="{Binding Handoff.IsIndeterminate}"
                      Minimum="0" Maximum="1" Value="{Binding Handoff.ProgressFraction}"
-                     AutomationProperties.Name="AI Handoff progress" />
+                     AutomationProperties.Name="AI Handoff progress"
+                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffProgress}" />
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Handoff.IsActive}">
           <views:CopyableTextBlock Text="{Binding Handoff.Progress.Message}" VerticalAlignment="Center" />
           <Button Content="Cancel" Command="{Binding Handoff.CancelCommand}"
-                  AutomationProperties.Name="Cancel the running AI Handoff" />
+                  AutomationProperties.Name="Cancel the running AI Handoff"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelHandoff}" />
         </StackPanel>
 
         <views:RefusalBlock DataContext="{Binding Handoff.ShownRefusal}" />
@@ -81,7 +84,8 @@
                     ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
                     AutomationProperties.Name="Drag all AI Handoff files" />
 
-            <ItemsControl ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files">
+            <ItemsControl ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"
+                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffFiles}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HandoffFileViewModel">
                   <Border Classes="handoffFile" PointerPressed="OnFileTilePointerPressed"

@@ -13,6 +13,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Services;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
@@ -67,6 +68,63 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public async Task ReplayTypesAWordAndShowsTheRecordedTraceResult()
+    {
+        var managedRoot = WalkthroughTestFiles.EngineRoot("try-word-replay");
+        WalkthroughTestFiles.DeleteDirectory(managedRoot);
+        using var project = new WalkthroughProject(pristine, managedRoot);
+        var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
+        var clock = new FixedClock(CaptureTime, TimeZoneInfo.Utc);
+        var projectContext = new WalkthroughProjectContext(
+            project.ManagedRoot, project.FwDataPath, project.TextId, null);
+        await WalkthroughFixtureSeeder.SeedAsync("try-word-ready", projectContext, clock, parserPath);
+        FakeParser.BehaveBesideExecutable(parserPath,
+            FakeParser.TraceBehavior("motifa", "motifa-trace", "SeededRule"));
+        var script = new WalkthroughScript("try-word-replay",
+        [
+            new WalkthroughStep("open-project-menu", WalkthroughStepKind.Click,
+                AutomationId: AutomationIds.ProjectMenu),
+            new WalkthroughStep("select-project", WalkthroughStepKind.Click,
+                AutomationId: AutomationIds.SelectNewProject),
+            new WalkthroughStep("wait-for-project", WalkthroughStepKind.WaitFor,
+                AutomationId: AutomationIds.OverviewSelectionWordCount, Condition: "text", ExpectedText: "2",
+                TimeoutMs: 30_000),
+            new WalkthroughStep("open-try-word", WalkthroughStepKind.Click,
+                AutomationId: AutomationIds.ForPage(WorkspacePage.TryAWord)),
+            new WalkthroughStep("type-word", WalkthroughStepKind.Type,
+                AutomationId: AutomationIds.TryWordInput, Text: "motifa"),
+            new WalkthroughStep("wait-for-run", WalkthroughStepKind.WaitFor,
+                AutomationId: AutomationIds.TryWordRun, Condition: "enabled", TimeoutMs: 30_000),
+            new WalkthroughStep("run-trace", WalkthroughStepKind.Click,
+                AutomationId: AutomationIds.TryWordRun),
+            new WalkthroughStep("show-result", WalkthroughStepKind.WaitFor,
+                AutomationId: AutomationIds.TryWordResult, Condition: "visible", TimeoutMs: 30_000),
+        ]);
+        var help = new WalkthroughHelpContent("en", "Try a word", "",
+            new Dictionary<string, string>(), new Dictionary<string, IReadOnlyDictionary<string, string>>());
+        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            WalkthroughFonts.Register();
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parserPath, timeProvider: clock);
+            walkthrough.Show();
+            WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline);
+
+            Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordInput));
+            Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordResult));
+            var trace = walkthrough.Workspace.PageModel<TryWordPageModel>().Trace;
+            var traceResponse = Assert.IsType<SIL.Motif.Commands.Queries.WordTraceResponse>(trace.Result);
+            Assert.Equal("Parsed", trace.AnswerText);
+            Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
+            Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
+            Assert.Contains("parse", FakeParser.Invocations(parserPath));
+            return Task.CompletedTask;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
     [Theory]
     [MemberData(nameof(Scripts))]
     public async Task EveryWalkthroughRunsAgainstTheComposedWindow(string scriptPath)
@@ -80,8 +138,9 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         var (projectLifetime, project) = await CreateProjectAsync(script.Fixture, managedRoot);
         using (projectLifetime)
         {
-            await WalkthroughFixtureSeeder.SeedAsync(script.Fixture, project, clock);
-
+            var parserPath = project.ParserPath ??
+                FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "walkthrough-parser"));
+            var preparation = await WalkthroughFixtureSeeder.SeedAsync(script.Fixture, project, clock, parserPath);
             var captures = new List<WalkthroughCapture>();
             var clipSegments = new List<WalkthroughClipSegment>();
             var deadline = Stopwatch.GetTimestamp() + (long)(WalkthroughReplay.DeadlineBudget(script).TotalSeconds * Stopwatch.Frequency);
@@ -99,7 +158,8 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
                         Application.Current.RequestedThemeVariant = ThemeVariant.Light;
                     WalkthroughFonts.Register();
                     using var walkthrough = new WalkthroughWindow(
-                        project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath, timeProvider: clock);
+                        project.ManagedRoot, project.FwDataPath, Path.Combine(project.ManagedRoot, "handoff-output"),
+                        parserPath: parserPath, timeProvider: clock);
                     walkthrough.Window.Width = WalkthroughArtifacts.Width;
                     walkthrough.Window.Height = script.Id == "explained-word-card"
                         ? 800
@@ -113,7 +173,9 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
                         Assert.NotNull(frame);
                         Assert.Equal((3200, 2000), (frame!.Width, frame.Height));
                     }
-                    WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments, deadline, root);
+                    WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments,
+                        deadline, root, preparation);
+                    WalkthroughReplay.AssertFixtureOutcome(walkthrough, script, parserPath, deadline);
                     if (script.Id == "explained-word-card") AssertExplainedWordCard(walkthrough);
                     return Task.CompletedTask;
                 }
@@ -126,7 +188,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             }, WalkthroughSteps.Remaining(deadline));
 
             if (script.Id == "explained-word-card")
-                Assert.Equal(["describe", "batch"], FakeParser.Invocations(project.ParserPath!));
+                Assert.Equal(["describe", "batch"], FakeParser.Invocations(parserPath));
             Assert.NotEmpty(captures);
             Assert.NotEmpty(clipSegments);
             Assert.Equal(0, clipSegments[0].StartMs);
@@ -255,7 +317,8 @@ internal static class WalkthroughReplay
     public static void Run(
         WalkthroughWindow window, WalkthroughScript script, WalkthroughHelpContent help, FixedClock clock,
         List<WalkthroughCapture> captures, List<WalkthroughClipSegment> clipSegments, long deadline,
-        string repositoryRoot)
+        string repositoryRoot,
+        WalkthroughFixturePreparation? preparation = null)
     {
         var highlighted = new HashSet<string>(StringComparer.Ordinal);
         var elapsedMs = 0;
@@ -268,6 +331,9 @@ internal static class WalkthroughReplay
                     var clickId = step.AutomationId!;
                     var clickBounds = window.BoundsByAutomationId(clickId);
                     window.ClickAutomationId(clickId);
+                    if (preparation?.ReadyMarkers.TryGetValue(clickId, out var readyMarker) == true)
+                        window.WaitUntil(() => File.Exists(readyMarker), WalkthroughSteps.Remaining(deadline),
+                            $"the prepared parser phase for '{step.Id}' did not start");
                     clipSegments.Add(new WalkthroughClipSegment(elapsedMs, ClickDurationMs,
                         WalkthroughArtifacts.CaptureFrame(window.Window), clickBounds,
                         WalkthroughClipSegmentKind.Click, clickId));
@@ -378,38 +444,196 @@ internal static class WalkthroughReplay
         if (control is null) return false;
         return step.Condition switch
         {
-            "visible" => control.IsEffectivelyVisible,
+            "visible" => control.IsEffectivelyVisible && control.Bounds.Width > 0 && control.Bounds.Height > 0,
             "hidden" => !control.IsEffectivelyVisible,
             "enabled" => control.IsEffectivelyEnabled,
             "text" => string.Equals(window.TextByAutomationId(step.AutomationId!), step.ExpectedText,
                 StringComparison.Ordinal),
+            "assessmentPublished" => AssessmentIsPublished(window, control),
             _ => false,
         };
     }
+
+    private static bool AssessmentIsPublished(WalkthroughWindow window, Control coverage)
+    {
+        var assessment = window.FindByAutomationId(AutomationIds.OverviewSpeed);
+        var overview = window.Workspace.PageModel<OverviewPageModel>().Overview;
+        return coverage.IsEffectivelyVisible && coverage.Bounds.Width > 0 && coverage.Bounds.Height > 0 &&
+            assessment.IsEffectivelyVisible && assessment.Bounds.Width > 0 && assessment.Bounds.Height > 0 &&
+            window.Workspace.Assess.State == RunState.Completed &&
+            window.Workspace.Context.EvidencePublication.IsCompleted &&
+            !window.Workspace.Context.NeedsAssessment &&
+            overview is { AssessmentId: not null, AssessedUtc: not null };
+    }
+
+    internal static void AssertFixtureOutcome(
+        WalkthroughWindow window, WalkthroughScript script, string parserPath, long deadline)
+    {
+        switch (script.Id)
+        {
+            case "first-run-setup-parse":
+                window.WaitUntil(() => window.Workspace.Assess.State == RunState.Completed &&
+                    window.Workspace.Context.EvidencePublication.IsCompleted,
+                    WalkthroughSteps.Remaining(deadline), "the explicit Parse all words run did not finish");
+                var firstRun = Assert.IsType<AssessCommandResponse>(window.Workspace.Assess.Result);
+                Assert.Equal("first-run-parse", Assert.Single(firstRun.Words,
+                    word => word.Word == SeededProject.FirstForm).RawSignature);
+                Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                break;
+            case "try-word-typing":
+                var trace = window.Workspace.PageModel<TryWordPageModel>().Trace;
+                var traceResponse = Assert.IsType<SIL.Motif.Commands.Queries.WordTraceResponse>(trace.Result);
+                Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordInput));
+                Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordResult));
+                Assert.True(traceResponse.Parsed && traceResponse.Complete);
+                Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
+                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
+                break;
+            case "review-apply-refresh-parse":
+                window.WaitUntil(() => window.Workspace.Assess.State == RunState.Completed &&
+                    window.Workspace.Context.EvidencePublication.IsCompleted,
+                    WalkthroughSteps.Remaining(deadline), "the explicit post-Refresh Parse did not finish");
+                var refreshed = Assert.IsType<AssessCommandResponse>(window.Workspace.Assess.Result);
+                Assert.Equal("after-refresh", Assert.Single(refreshed.Words,
+                    word => word.Word == SeededProject.AnalysedWordForm).RawSignature);
+                Assert.Equal(3, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                Assert.False(window.Workspace.Context.NeedsAssessment);
+                break;
+            case "handoff-cancel-retry":
+                var handoff = window.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+                window.WaitUntil(() => handoff.State == RunState.Completed && handoff.Files.Count > 0,
+                    WalkthroughSteps.Remaining(deadline), "the retried AI Handoff did not finish");
+                Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "import"));
+                break;
+        }
+    }
+}
+
+internal sealed record WalkthroughFixturePreparation(IReadOnlyDictionary<string, string> ReadyMarkers)
+{
+    internal static WalkthroughFixturePreparation Empty { get; } = new(
+        new Dictionary<string, string>(StringComparer.Ordinal));
 }
 
 internal static class WalkthroughFixtureSeeder
 {
-    private static readonly IReadOnlyDictionary<string, Func<WalkthroughProjectContext, FixedClock, Task>> Seeders =
-        new Dictionary<string, Func<WalkthroughProjectContext, FixedClock, Task>>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string,
+        Func<WalkthroughProjectContext, FixedClock, string, Task<WalkthroughFixturePreparation>>> Seeders =
+        new Dictionary<string, Func<WalkthroughProjectContext, FixedClock, string,
+            Task<WalkthroughFixturePreparation>>>(StringComparer.Ordinal)
         {
-            ["fresh-project"] = (_, _) => Task.CompletedTask,
+            ["fresh-project"] = (_, _, _) => Task.FromResult(WalkthroughFixturePreparation.Empty),
+            ["first-run-ready"] = SeedFirstRunReadyAsync,
             ["overview-ready"] = SeedOverviewReadyAsync,
             ["explained-word-card"] = SeedOverviewReadyAsync,
+            ["try-word-ready"] = SeedTryWordReadyAsync,
+            ["apply-refresh-ready"] = SeedApplyRefreshReadyAsync,
+            ["handoff-cancel-ready"] = SeedHandoffCancelReadyAsync,
         };
 
-    public static Task SeedAsync(string fixture, WalkthroughProjectContext project, FixedClock clock) =>
+    public static Task<WalkthroughFixturePreparation> SeedAsync(
+        string fixture, WalkthroughProjectContext project, FixedClock clock, string parserPath) =>
         Seeders.TryGetValue(fixture, out var seed)
-            ? seed(project, clock)
+            ? seed(project, clock, parserPath)
             : throw new InvalidDataException($"Unknown walkthrough fixture '{fixture}'.");
 
-    private static async Task SeedOverviewReadyAsync(WalkthroughProjectContext project, FixedClock clock)
+    private static Task<WalkthroughFixturePreparation> SeedFirstRunReadyAsync(
+        WalkthroughProjectContext project, FixedClock _, string parserPath)
+    {
+        var heldPath = Path.Combine(project.ManagedRoot, "first-run-held-heartbeat");
+        var parseStartedPath = Path.Combine(project.ManagedRoot, "first-run-parse-started");
+        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "batch",
+            new { heartbeatPath = heldPath },
+            new
+            {
+                startedPath = parseStartedPath,
+                delayMilliseconds = 400,
+                words = new[]
+                {
+                    new { word = SeededProject.FirstForm, outcome = "complete", signature = "first-run-parse" },
+                },
+            });
+        return Task.FromResult(new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [AutomationIds.SetupFinish] = heldPath,
+            [AutomationIds.ParseAllWords] = parseStartedPath,
+        }));
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedOverviewReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string _)
     {
         var client = RealCommandClient.Create(project.ManagedRoot, project.ParserPath, timeProvider: clock);
         var baseline = await client.CaptureBaselineAsync(
             new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         Assert.Equal(CaptureTime, DateTimeOffset.Parse(baseline.Value!.Token.CapturedUtc, CultureInfo.InvariantCulture));
+        await SeedSelectionAndSkipSetupAsync(project, client);
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedTryWordReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        await SeedOverviewReadyAsync(project, clock, parserPath);
+        FakeParser.BehaveBesideExecutable(parserPath,
+            FakeParser.TraceBehavior("motifa", "motifa-trace", "SeededRule"));
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedApplyRefreshReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        PendingChangeFixture.AddIncorrectSpelling(
+            project.FwDataPath, project.ManagedRoot, "walkthrough-apply-word");
+        var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
+        await SeedSelectionAndSkipSetupAsync(project, client);
+        var parseStartedPath = Path.Combine(project.ManagedRoot, "after-refresh-parse-started");
+        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "batch",
+            AssessmentWords("before-refresh"), AssessmentWords("before-refresh"),
+            new
+            {
+                startedPath = parseStartedPath,
+                delayMilliseconds = 400,
+                words = new[]
+                {
+                    new
+                    {
+                        word = SeededProject.AnalysedWordForm,
+                        outcome = "complete",
+                        signature = "after-refresh",
+                    },
+                },
+            });
+        await AssessAsync(project, client);
+        return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [AutomationIds.ParseAllWords] = parseStartedPath,
+        });
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedHandoffCancelReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
+        var baseline = await client.CaptureBaselineAsync(
+            new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+        await SeedSelectionAndSkipSetupAsync(project, client);
+        FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords("handoff-ready"));
+        await AssessAsync(project, client);
+        var heldPath = Path.Combine(project.ManagedRoot, "handoff-held-heartbeat");
+        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "import",
+            new { heartbeatPath = heldPath }, new { });
+        return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [AutomationIds.WriteHandoff] = heldPath,
+        });
+    }
+
+    private static async Task SeedSelectionAndSkipSetupAsync(
+        WalkthroughProjectContext project, CommandClient client)
+    {
         var selection = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
             project.FwDataPath, "Default", [project.TextId], []), CancellationToken.None);
         Assert.True(selection.Succeeded, selection.Refusal?.Message);
@@ -423,6 +647,21 @@ internal static class WalkthroughFixtureSeeder
             Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         }
     }
+
+    private static async Task AssessAsync(WalkthroughProjectContext project, CommandClient client)
+    {
+        var assessed = await client.AssessAsync(new AssessRequest(project.FwDataPath),
+            new Progress<SIL.Motif.Contract.Responses.AssessmentProgress>(), CancellationToken.None);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+    }
+
+    private static object AssessmentWords(string signature) => new
+    {
+        words = new[]
+        {
+            new { word = SeededProject.AnalysedWordForm, outcome = "complete", signature },
+        },
+    };
 
     private static DateTimeOffset CaptureTime => new(2026, 4, 2, 12, 0, 0, TimeSpan.Zero);
 }

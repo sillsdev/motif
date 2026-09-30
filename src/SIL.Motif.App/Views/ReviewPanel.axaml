@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -203,7 +204,8 @@
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
           <Button Content="Check these changes" Command="{Binding MeasureCommand}"
-                  AutomationProperties.Name="Check what applying does to the numbers" />
+                  AutomationProperties.Name="Check what applying does to the numbers"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.MeasureChanges}" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
                   IsVisible="{Binding IsMeasuring}" />
           <views:ParsePrompt DataContext="{Binding Context}"
@@ -234,7 +236,8 @@
                                    IsVisible="{Binding IsApplying}" />
           <views:RefusalBlock DataContext="{Binding ShownApplyRefusal}" />
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
-                  IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project" />
+                  IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" IsVisible="{Binding Changes.HasItems}" />
           <views:CopyableTextBlock Classes="reviewSmall"
                                    Text="FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo."
@@ -245,7 +248,8 @@
       <Border Classes="card" IsVisible="{Binding HasReceipt}">
         <StackPanel Classes="reviewCompact">
           <views:CopyableTextBlock Classes="section-title" Text="Applied to the FieldWorks project" />
-          <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
         </StackPanel>
       </Border>
     </StackPanel>

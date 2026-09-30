@@ -1,0 +1,16 @@
+{
+  "id": "try-word-typing",
+  "fixture": "try-word-ready",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-try-word", "kind": "click", "automationId": "motif-page-try-a-word" },
+    { "id": "type-word", "kind": "type", "automationId": "motif-try-word-input", "text": "motifa" },
+    { "id": "wait-for-run", "kind": "waitFor", "automationId": "motif-try-word-run", "condition": "enabled", "timeoutMs": 30000 },
+    { "id": "run-trace", "kind": "click", "automationId": "motif-try-word-run" },
+    { "id": "wait-for-result", "kind": "waitFor", "automationId": "motif-try-word-result", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "highlight-result", "kind": "highlight", "automationId": "motif-try-word-result" },
+    { "id": "trace", "kind": "capture", "durationMs": 1500, "callouts": [ { "automationId": "motif-try-word-result" } ] }
+  ]
+}

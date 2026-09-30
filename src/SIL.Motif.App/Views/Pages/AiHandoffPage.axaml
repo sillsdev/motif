@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.AiHandoffPage"
@@ -10,7 +11,8 @@
         <Button DockPanel.Dock="Right" Content="{Binding HandoffActionText}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
                 Command="{Binding Handoff.RunCommand}"
-                AutomationProperties.Name="Write the AI Handoff folder" />
+                AutomationProperties.Name="Write the AI Handoff folder"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.WriteHandoff}" />
         <views:CopyableTextBlock Classes="section-title" Text="AI Handoff" />
       </DockPanel>
     </Border>

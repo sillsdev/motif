@@ -56,6 +56,29 @@ internal static class FakeParser
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!,
             "_fake-pangloss-additional-stats-flags.json"),
             JsonSerializer.Serialize(flags.Select(flag => new { flag.Name, flag.TakesValue })));
+    internal static void BehaveInPhasesBesideExecutable(
+        string copiedExecutable, string subcommand, params object[] phases) =>
+        BehaveBesideExecutable(copiedExecutable,
+            new { phases = new Dictionary<string, object[]> { [subcommand] = phases } });
+
+    internal static object TraceBehavior(string word, string signature, string sourceRule) => new
+    {
+        traceSignature = signature,
+        traceJson = JsonSerializer.Serialize(new
+        {
+            type = "WordAnalysis",
+            inputShape = word,
+            children = new[]
+            {
+                new
+                {
+                    type = "MorphologicalRuleAnalysis",
+                    source = sourceRule,
+                    children = new[] { new { type = "Successful", children = Array.Empty<object>() } },
+                },
+            },
+        }),
+    };
 
     /// <summary>
     /// Copies the fake into <paramref name="directory"/> and has that copy log each command it runs, so a

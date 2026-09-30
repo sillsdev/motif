@@ -13,7 +13,8 @@
           <Button DockPanel.Dock="Right" Classes="pendingStrip" Margin="{DynamicResource Intent.Gap.AfterGroup}" VerticalAlignment="Center"
                 IsVisible="{Binding Changes.HasItems}"
                 Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
-                AutomationProperties.Name="Review the changes not applied yet">
+                AutomationProperties.Name="Review the changes not applied yet"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewChanges}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
               <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
                      Height="{DynamicResource Component.MatrixCell.MarkerSize}"

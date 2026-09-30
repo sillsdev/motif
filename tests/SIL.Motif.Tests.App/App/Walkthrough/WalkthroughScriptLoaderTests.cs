@@ -20,7 +20,7 @@ public sealed class WalkthroughScriptLoaderTests
             .GetProperty("kind").GetProperty("const").GetString()!).ToArray();
         Assert.Equal(["click", "type", "waitFor", "highlight", "hold", "capture"], kinds);
         Assert.All(stepVariants, variant => Assert.False(variant.GetProperty("additionalProperties").GetBoolean()));
-        Assert.Equal(["visible", "hidden", "enabled", "text"],
+        Assert.Equal(["visible", "hidden", "enabled", "text", "assessmentPublished"],
             stepVariants[2].GetProperty("properties").GetProperty("condition").GetProperty("enum")
                 .EnumerateArray().Select(condition => condition.GetString()));
     }

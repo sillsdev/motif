@@ -1,0 +1,17 @@
+{
+  "id": "first-run-setup-parse",
+  "title": "Set up and parse words",
+  "description": "Choose a Default Selection and run Parse all words from the window.",
+  "steps": {
+    "selection": "Add a word to the Default Selection before saving it.",
+    "parsed": "After setup, run Parse all words to record measurements for the Selection."
+  },
+  "callouts": {
+    "selection": {
+      "motif-setup-add-words": "Words included in the Default Selection"
+    },
+    "parsed": {
+      "motif-overview-selection-word-count": "Words in the Selection"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TryWordPanel"
@@ -35,10 +36,13 @@
         </Button>
         <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
-                AutomationProperties.Name="Try the word" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                AutomationProperties.Name="Try the word"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}"
+                Margin="{DynamicResource Intent.Gap.AfterRelated}" />
         <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..."
                  MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
-                 AutomationProperties.Name="Word to try" />
+                 AutomationProperties.Name="Word to try"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
       </DockPanel>
 
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Trace.HasResult}"
@@ -55,7 +59,8 @@
             IsVisible="{Binding Trace.HasResult}">
         <views:CopyableTextBlock Text="{Binding Trace.WordToTry}"
                                  FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
-                                 AutomationProperties.Name="Try a Word result" />
+                                 AutomationProperties.Name="Try a Word result"
+                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
         <views:VerdictChip Grid.Column="1" Verdict="{Binding Trace.AnswerVerdict}"
                            Text="{Binding Trace.AnswerText}" />
         <views:CopyableTextBlock Grid.Column="2" Text="{Binding Trace.PageSummaryText}"

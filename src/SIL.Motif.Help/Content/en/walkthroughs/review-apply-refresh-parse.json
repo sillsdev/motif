@@ -1,0 +1,26 @@
+{
+  "id": "review-apply-refresh-parse",
+  "title": "Review, apply and refresh",
+  "description": "Measure and apply a pending change, capture a new Baseline, then Parse all words and review the updated Text Coverage.",
+  "steps": {
+    "measured": "Review the measured change before applying it.",
+    "applied": "Apply records a Receipt and clears this pending change.",
+    "refreshed": "Refresh captures a new Baseline; Parse all words separately updates the numbers.",
+    "parsed": "The latest Assessment is published, with updated results in the Overview."
+  },
+  "callouts": {
+    "measured": {
+      "motif-apply-changes": "Apply is available after measuring the change"
+    },
+    "applied": {
+      "motif-apply-receipt": "Receipt for the applied change"
+    },
+    "refreshed": {
+      "motif-freshness-detail": "Refresh captured a Baseline; Parse all words is a separate action"
+    },
+    "parsed": {
+      "motif-overview-assessment-details": "The current Assessment",
+      "motif-overview-text-coverage": "Text Coverage after Parse all words"
+    }
+  }
+}

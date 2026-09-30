@@ -640,20 +640,33 @@ internal static class Program
             if (!File.Exists(path)) return new Behaviour();
             using var document = JsonDocument.Parse(File.ReadAllText(path));
             var root = document.RootElement;
+            var values = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in root.EnumerateObject())
+                if (property.Name is not ("subcommands" or "phases")) values[property.Name] = property.Value;
             if (subcommand is not null && root.TryGetProperty("subcommands", out var bySubcommand) &&
                 bySubcommand.ValueKind == JsonValueKind.Object &&
                 bySubcommand.EnumerateObject().FirstOrDefault(property =>
                     string.Equals(property.Name, subcommand, StringComparison.OrdinalIgnoreCase)) is { Value.ValueKind: JsonValueKind.Object } selected)
             {
-                var values = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
-                foreach (var property in root.EnumerateObject())
-                    if (!string.Equals(property.Name, "subcommands", StringComparison.OrdinalIgnoreCase))
-                        values[property.Name] = property.Value;
                 foreach (var property in selected.Value.EnumerateObject()) values[property.Name] = property.Value;
-                return JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
             }
-            return JsonSerializer.Deserialize<Behaviour>(root.GetRawText(),
+            if (subcommand is not null && root.TryGetProperty("phases", out var byPhase) &&
+                byPhase.ValueKind == JsonValueKind.Object &&
+                byPhase.EnumerateObject().FirstOrDefault(property =>
+                    string.Equals(property.Name, subcommand, StringComparison.OrdinalIgnoreCase)) is { Value.ValueKind: JsonValueKind.Array } sequence)
+            {
+                if (sequence.Value.GetArrayLength() == 0)
+                    throw new InvalidDataException($"Fake parser phase sequence for '{subcommand}' is empty.");
+                var countPath = Path.Combine(AppContext.BaseDirectory, $"_{subcommand}-phase-count");
+                var index = int.TryParse(File.Exists(countPath) ? File.ReadAllText(countPath) : null,
+                    NumberStyles.None, CultureInfo.InvariantCulture, out var count) ? count : 0;
+                File.WriteAllText(countPath, (index + 1).ToString(CultureInfo.InvariantCulture));
+                var phase = sequence.Value[Math.Min(index, sequence.Value.GetArrayLength() - 1)];
+                if (phase.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException($"Fake parser phase for '{subcommand}' must be an object.");
+                foreach (var property in phase.EnumerateObject()) values[property.Name] = property.Value;
+            }
+            return JsonSerializer.Deserialize<Behaviour>(JsonSerializer.Serialize(values),
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new Behaviour();
         }
     }

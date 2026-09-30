@@ -77,7 +77,8 @@
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
               <TextBlock Classes="overviewTileLink" Text="Timing →" DockPanel.Dock="Right" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap"
+                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedDetails}" TextWrapping="Wrap" />
           </StackPanel>
@@ -91,7 +92,8 @@
               <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
               <TextBlock Classes="overviewTileLink" Text="Texts →" DockPanel.Dock="Right" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap"
+                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewTextCoverage}" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowLegend="False"
                               AutomationProperties.Name="Text coverage outcomes" />

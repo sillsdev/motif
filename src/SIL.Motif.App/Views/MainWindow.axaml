@@ -85,16 +85,19 @@
               <ProgressBar Classes="topBarParseProgress" Minimum="0" Maximum="1"
                            Value="{Binding ParseAllWordsProgressFraction}"
                            IsIndeterminate="{Binding ParseAllWordsProgressIsIndeterminate}"
-                           AutomationProperties.Name="Parse all words progress" />
+                           AutomationProperties.Name="Parse all words progress"
+                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssessmentProgress}" />
             </StackPanel>
             <Button Content="Cancel" Command="{Binding Assess.CancelCommand}"
                     Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                    VerticalAlignment="Center" AutomationProperties.Name="Cancel parsing all words" />
+                    VerticalAlignment="Center" AutomationProperties.Name="Cancel parsing all words"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelAssessment}" />
           </StackPanel>
           <Button Content="Parse all words" Command="{Binding ParseAllWordsCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsParseAllWordsAction}"
                   AutomationProperties.Name="Parse all words"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWords}"
                   ToolTip.Tip="Parse the words you chose." />
           <Button x:Name="ChooseWhatToParseButton" Content="Choose what to parse" Command="{Binding ConfigureCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
@@ -115,9 +118,11 @@
           <views:CopyableTextBlock Classes="freshLabel" Text="{Binding FreshnessLabel}"
                                    Classes.current="{Binding FreshnessIsCurrent}"
                                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
-                                   Classes.refused="{Binding HasRefreshRefusal}" />
+                                   Classes.refused="{Binding HasRefreshRefusal}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessLabel}" />
           <views:CopyableTextBlock Classes="muted freshDetail" Text="{Binding FreshnessDetail}"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
         </StackPanel>
       </DockPanel>
     </Border>

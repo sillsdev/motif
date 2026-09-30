@@ -1,0 +1,13 @@
+{
+  "id": "try-word-typing",
+  "title": "Try a word",
+  "description": "Type a word to see the trace returned by PanGloss for the current Baseline.",
+  "steps": {
+    "trace": "Try a word to show the recorded result from the current grammar."
+  },
+  "callouts": {
+    "trace": {
+      "motif-try-word-result": "Word sent to PanGloss and its trace result"
+    }
+  }
+}

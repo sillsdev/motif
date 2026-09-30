@@ -77,7 +77,8 @@
               <TextBlock Text="Add words:" FontWeight="SemiBold" VerticalAlignment="Top" />
               <TextBox Grid.Column="1" Text="{Binding Selection.PastedWords}" AcceptsReturn="True"
                        TextWrapping="Wrap" MinHeight="{DynamicResource Component.Setup.AddedWordsHeight}"
-                       PlaceholderText="One word per line" AutomationProperties.Name="Words to add" />
+                       PlaceholderText="One word per line" AutomationProperties.Name="Words to add"
+                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupAddWords}" />
             </Grid>
             <Border Classes="setupSummary">
               <TextBlock Classes="setupSummaryText" Text="{Binding RunSummary}" TextWrapping="Wrap" />
@@ -93,7 +94,8 @@
               <NumericUpDown Grid.Column="1" Classes="setupNumber" Value="{Binding StepLimitSteps}"
                              Minimum="1" Increment="1000000" FormatString="N0"
                              IsEnabled="{Binding !IsStepLimitUnbounded}"
-                             AutomationProperties.Name="Parser step limit per word" />
+                             AutomationProperties.Name="Parser step limit per word"
+                             AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupStepLimit}" />
             </Grid>
             <CheckBox Content="No step limit" IsChecked="{Binding IsStepLimitUnbounded}" />
             <TextBlock Classes="setupError" Text="{Binding StepLimitValidationMessage}"
@@ -116,12 +118,15 @@
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.SkipSetup}" />
           <views:RefusalBlock Grid.Column="1" DataContext="{Binding ShownRefusal}" VerticalAlignment="Center" />
           <Button Grid.Column="2" Classes="setupSecondary" Content="Back" Command="{Binding BackCommand}"
-                  IsVisible="{Binding IsBackVisible}" />
+                  IsVisible="{Binding IsBackVisible}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupBack}" />
           <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
-                  IsVisible="{Binding IsNextVisible}" />
+                  IsVisible="{Binding IsNextVisible}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupNext}" />
           <Button Grid.Column="3" Classes="setupPrimary" Content="{Binding FinishButtonText}"
                   Command="{Binding FinishCommand}" IsVisible="{Binding IsFirstRunStep}"
-                  AutomationProperties.Name="{Binding FinishButtonText}" />
+                  AutomationProperties.Name="{Binding FinishButtonText}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupFinish}" />
         </Grid>
       </Grid>
     </Border>

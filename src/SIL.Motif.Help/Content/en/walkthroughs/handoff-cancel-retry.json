@@ -1,0 +1,13 @@
+{
+  "id": "handoff-cancel-retry",
+  "title": "Cancel and retry a Handoff",
+  "description": "Cancel a running AI Handoff, then retry and inspect the completed files.",
+  "steps": {
+    "completed-files": "The retry writes the completed AI Handoff files."
+  },
+  "callouts": {
+    "completed-files": {
+      "motif-handoff-files": "Files written by the completed Handoff"
+    }
+  }
+}
