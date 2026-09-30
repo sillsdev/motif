@@ -19,11 +19,12 @@ using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Commands;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
+public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [Fact]
     public async Task ApplyingAnalysisOpinionChangesSummarizesDisapprovedAndUnknownInFieldWorksTerms()
@@ -161,6 +162,7 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         Assert.Equal("apply.changes-changed", stale.Refusal?.Code);
         var withoutTrial = await ApplyStepAsync("the Apply without a Trial", new ApplyPendingRequest(path,
             second.DraftId!, second.Revision, "test-user"), runner);
+        ReportUnexpectedApplyRefusal("apply.not-ready", withoutTrial, path, runner);
         Assert.Equal("apply.not-ready", withoutTrial.Refusal?.Code);
         var reopened = LoadPending(path);
         Assert.Equal(second.DraftId, reopened.DraftId);
@@ -508,6 +510,28 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
         var reopened = LoadPending(path);
         Assert.Equal(pending.DraftId, reopened.DraftId);
         Assert.Single(reopened.Changes);
+    }
+
+    private void ReportUnexpectedApplyRefusal(string expectedCode, CommandOutcome<ApplyPendingResult> outcome,
+        string path, IJobRunnerLauncher runner)
+    {
+        if (outcome.Refusal?.Code == expectedCode) return;
+        try
+        {
+            var facts = outcome.Refusal?.Facts?.Where(pair =>
+                pair.Key is "jobId" or "status" or "jobCancelled" or "jobStatus")
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+            output.WriteLine("Unexpected Apply refusal: " + (outcome.Refusal?.Code ?? "(none)"));
+            output.WriteLine("Job facts: " + JsonSerializer.Serialize(facts));
+            output.WriteLine("Runner root: " + runner.Options.Root);
+            output.WriteLine("Runner namespace: " + (runner.Options.OwnerNamespace ?? "(environment)"));
+            output.WriteLine("Runner executable: " + (runner.Options.WorkerExecutable ?? "(sibling)"));
+            output.WriteLine("Last job: " + LastJob(path));
+        }
+        catch (Exception exception)
+        {
+            output.WriteLine("Apply diagnostic failed: " + exception.GetType().Name + ": " + exception.Message);
+        }
     }
 
     private static string ProductVersion => MotifProductVersion.CurrentText;
