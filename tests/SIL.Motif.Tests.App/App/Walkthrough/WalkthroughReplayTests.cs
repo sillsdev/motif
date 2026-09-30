@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Documents;
 using Avalonia.Styling;
@@ -118,6 +119,16 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             var trace = walkthrough.Workspace.PageModel<TryWordPageModel>().Trace;
             var traceResponse = Assert.IsType<SIL.Motif.Commands.Queries.WordTraceResponse>(trace.Result);
             Assert.Equal("Parsed", trace.AnswerText);
+            var displayedAnalysis = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
+                .SingleOrDefault(control => control.Text == "Analysis 1");
+            Assert.NotNull(displayedAnalysis);
+            Assert.True(displayedAnalysis.IsEffectivelyVisible);
+            var displayedGloss = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
+                .SingleOrDefault(control => control.Text == "seeded gloss");
+            Assert.NotNull(displayedGloss);
+            Assert.True(displayedGloss.IsEffectivelyVisible);
+            Assert.False(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
+                .Single(control => control.Text == "The parser found no analysis.").IsEffectivelyVisible);
             Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
             Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
             Assert.Contains("parse", FakeParser.Invocations(parserPath));
@@ -390,6 +401,8 @@ internal static class WalkthroughReplay
                             return settledPasses >= 2;
                         }, TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout bounds did not settle");
                     }
+                    if (script.Id == "review-apply-refresh-parse")
+                        Assert.Null(window.Workspace.Context.Changes.ShownRefusal);
                     var callouts = step.Callouts!.Select(callout =>
                     {
                         Assert.Contains(callout.AutomationId, highlighted);

@@ -357,7 +357,7 @@ internal static class Program
         var signature = behaviour.TraceSignature ?? word + "-sig";
         // Raw UTF-8 bytes, as serde_json writes them: Console.Out would encode through the console code page.
         var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped,
-            behaviour.TraceTimedOut);
+            behaviour.TraceTimedOut, behaviour.TraceAnalyses);
         using (var stdout = Console.OpenStandardOutput())
             stdout.Write(new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(envelope));
         return behaviour.ExitCode;
@@ -376,13 +376,15 @@ internal static class Program
     }
 
     // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
-    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut) =>
+    private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut,
+        IReadOnlyList<JsonElement>? analyses) =>
         "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
         ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
         ",\"capped\":" + (capped ? "true" : "false") +
         ",\"timedOut\":" + (timedOut ? "true" : "false") +
         ",\"invalidShape\":false,\"steps\":42,\"elapsedNs\":1500000}" +
-        ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":[]}" +
+        ",\"result\":{\"signature\":" + JsonSerializer.Serialize(signature) + ",\"guessed\":false,\"analyses\":" +
+        JsonSerializer.Serialize(analyses ?? Array.Empty<JsonElement>(), Unescaped) + "}" +
         ",\"categories\":{\"morphRule\":{\"attempts\":3,\"work\":12,\"outputs\":2,\"notApplied\":1,\"noRoot\":0," +
         "\"surfaceMismatch\":0,\"uses\":1,\"timingAvailable\":true,\"selfElapsedNs\":48700}," +
         "\"phonRule\":{\"attempts\":0,\"work\":0,\"outputs\":0,\"notApplied\":0,\"noRoot\":0," +
@@ -625,6 +627,7 @@ internal static class Program
         public IReadOnlyList<FakeWord> Words { get; init; } = [new FakeWord("motifa", "complete")];
         public string? TraceSignature { get; init; }
         public string? TraceJson { get; init; }
+        public IReadOnlyList<JsonElement>? TraceAnalyses { get; init; }
         public bool TraceCapped { get; init; }
         public bool TraceTimedOut { get; init; }
         public int HoldTimeoutMs { get; init; } = 60_000;

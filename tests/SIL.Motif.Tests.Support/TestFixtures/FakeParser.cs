@@ -78,6 +78,21 @@ internal static class FakeParser
                 },
             },
         }),
+        traceAnalyses = new[]
+        {
+            new
+            {
+                analysisId = "fixture-analysis",
+                index = 0,
+                surface = word,
+                morphemes = word,
+                morphs = new[]
+                {
+                    new { form = word, headword = word, gloss = "seeded gloss", category = "stem" },
+                },
+                projection = new { profile = "fieldworks-parse-analysis/v1", status = "recorded" },
+            },
+        },
     };
 
     /// <summary>

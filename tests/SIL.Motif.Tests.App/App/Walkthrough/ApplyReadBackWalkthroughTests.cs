@@ -121,6 +121,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                     walkthrough.Workspace.Freshness == ProjectFreshness.Refreshed &&
                     walkthrough.Workspace.Baseline.Token != beforeRefreshToken,
                 WalkthroughSteps.Remaining(deadline), "Refresh did not capture a new Baseline");
+            Assert.Null(walkthrough.Workspace.Context.Changes.ShownRefusal);
             Assert.Equal(batchInvocationsBeforeRefresh,
                 FakeParser.Invocations(parserPath).Count(command => command == "batch"));
             Assert.NotEqual(beforeRefreshToken, walkthrough.Workspace.Baseline.Token);
