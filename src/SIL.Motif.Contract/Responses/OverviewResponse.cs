@@ -91,7 +91,11 @@ public sealed record OverviewTiming(
     double? MedianMs,
     double? Percentile95Ms,
     IReadOnlyList<SlowWordTiming> SlowestWords,
-    int StepLimitedWordCount);
+    int StepLimitedWordCount)
+{
+    /// <summary>The number of words with a recorded parse time, which the percentiles are taken over.</summary>
+    public int MeasuredWordCount { get; init; }
+}
 
 /// <summary>A word among the slowest measured words.</summary>
 public sealed record SlowWordTiming(string Word, int ElapsedMs);
