@@ -113,7 +113,7 @@
   "SIL.Motif.Tests.App.Walkthrough.KnownProjectsRefreshWalkthroughTests": 2.9,
   "SIL.Motif.Tests.App.Walkthrough.PendingChangeReplacementWalkthroughTests": 1.9,
   "SIL.Motif.Tests.App.Walkthrough.ReopenWalkthroughTests": 1.9,
-  "SIL.Motif.Tests.App.Walkthrough.RestartAndSwitchWalkthroughTests": 3.4,
+  "SIL.Motif.Tests.App.Walkthrough.CloseAndReopenAndSwitchWalkthroughTests": 3.4,
   "SIL.Motif.Tests.App.Walkthrough.StoreRefusalWalkthroughTests": 2.4,
   "SIL.Motif.Tests.App.Walkthrough.SwitchProjectWalkthroughTests": 3.5,
   "SIL.Motif.Tests.App.Walkthrough.UploadSimulationWalkthroughTests": 2.3,
