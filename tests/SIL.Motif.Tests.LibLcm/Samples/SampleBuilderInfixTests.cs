@@ -67,7 +67,8 @@ public sealed class SampleBuilderInfixTests
             assess.ArgumentList.Add("--json");
             var result = await RunAsync(assess);
 
-            Assert.Equal(0, result.ExitCode);
+            Assert.True(result.ExitCode == 0,
+                $"Motif Assess exited {result.ExitCode}.\n{result.StandardOutput}\n{result.StandardError}");
             using var assessment = JsonDocument.Parse(result.StandardOutput);
             var word = Assert.Single(assessment.RootElement.GetProperty("words").EnumerateArray());
             Assert.Equal("sumulat", word.GetProperty("word").GetString());

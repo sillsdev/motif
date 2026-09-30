@@ -90,7 +90,7 @@ A window reopening and a process restart prove different lifetimes, while Refres
 Files: `RestartAndSwitchWalkthroughTests.cs`, `ApplyReadBackWalkthroughTests.cs`, `WalkthroughReplayTests.cs`, `WalkthroughWindow.cs`, `src/SIL.Motif.App/AutomationIds.cs`, `src/SIL.Motif.App/Views/TryWordPanel.axaml`, `walkthroughs/`, `help/en/walkthroughs/` or their reviewed near-code replacements.
 
 - [ ] Rename the same-process restart claim to close/reopen; retain persisted state and switch/cancel assertions. A true process-restart acceptance scenario belongs in App.Lifetime if selected for the release bar.
-- [ ] Preserve Apply’s real LibLCM spelling-status read-back. Assert Refresh changes Baseline identity/source evidence; then explicitly invoke Parse all words and assert a deliberately changed measurement. Do not make Refresh run PanGloss.
+- [ ] Preserve Apply’s real LibLCM spelling-status read-back. Assert Refresh changes Baseline identity/source evidence; then explicitly invoke Parse all words and assert a deliberately changed measurement. Refresh must not start a parsing Assessment; its existing automatic Grammar Health diagnostic remains separate.
 - [ ] Add stable AutomationIds for the Try Word input and its result. Add an authored script using an existing prepared fixture, navigation, type `motifa`, and a rendered input/result assertion. An example type step is:
 
 ```json

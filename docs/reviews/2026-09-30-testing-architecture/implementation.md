@@ -57,3 +57,15 @@ Parent ./test.ps1 against hash-verified v0.5.1 passed 3,680 tests, failed none a
 Shared Guide catalog/CLI/App consumption is integrated as `57df7a2c`; physical content movement and site adaptation remain underway. Ownership commit `a20701f4` preserves seeded lifecycle, real-parser cap and identity transfer proof. Its independent review found one failure-cleanup gap in the disposal test, assigned for correction.
 
 The completed capture and ownership worktrees are reused by fresh Luna xhigh workers: `fix-parser-admission` checks actual typed requests and private Unix capture creation; `fix-walkthrough-truth` separates close/reopen, Refresh and Parse proof. Runtime extraction, usage, Help/site movement and release documentation validation continue in the other four worktrees.
+## Shutdown and rendered Help follow-up
+
+Closing a window must also finish the database reads it started, and Help tests must wait for the requested page's actual content. These corrections make resource ownership and rendered assertions explicit.
+
+Independent Sol corrections are integrated as `952aec21` (finite held parser plus failure-safe private cleanup) and `8fa4ff8e` (F1 waits for the expected Timing content and checks catalog metadata agreement). Their worker's full ./test.ps1 passed 3,654 tests, failed none and skipped 58 in its parserless base.
+
+Parent regression `DisposalWaitsForTheProjectMenuReadEvenWhenItFails` failed in both held-read cases before the one-line workspace disposal await. Both cases and the corrected Help/disposal tests passed after `664fb662`. The complete parent run passed 3,681 tests, failed one and skipped 22: `InfixSampleWordParsesThroughMotifAssess` returned exit 3 without reporting its captured output. That separate integration failure remains under investigation; diagnostics have been added and a fresh full gate is running. This run is not recorded as a green combined gate.
+
+Refresh's existing automatic Grammar Health check remains distinct from starting a Batch parsing Assessment. The walkthrough correction preserves that behavior and requires explicit Parse before publishing new Assessment evidence.
+The subsequent fresh parent ./test.ps1 passed 3,682 tests, failed none and skipped 22 against the same pinned release (172.4 seconds). It includes both deterministic shutdown cases and the independent F1/disposal corrections. The sample child refusal did not reproduce; improved exit-code/stdout/stderr diagnostics are retained without claiming a diagnosed production fix. Its intermittency remains visible in this record.
+
+Visual review of the existing Overview annotated baseline found an obsolete instruction that Refresh starts measurement. Current source no longer contains that sentence. Fresh authored replay media must replace stale baselines where appropriate and receive visual review before documentation validation.
