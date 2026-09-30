@@ -176,37 +176,13 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         try
         {
             using var buildOutput = await BuildAsync(root);
-            var projectPath = buildOutput.RootElement.GetProperty("projectPath").GetString()!;
-            var parsedWords = 0;
-            foreach (var text in buildOutput.RootElement.GetProperty("texts").EnumerateArray())
-            {
-                var assess = new ProcessStartInfo(BuildOutput.Cli)
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-                assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "worker-root", text.GetProperty("id").GetString()!);
-                assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-                assess.ArgumentList.Add("assess");
-                assess.ArgumentList.Add(projectPath);
-                assess.ArgumentList.Add("--texts");
-                assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
-                assess.ArgumentList.Add("--json");
-                var assessment = await RunAsync(assess);
-
-                Assert.True(assessment.ExitCode == 0, assessment.StandardError);
-                using var response = JsonDocument.Parse(assessment.StandardOutput);
-                var words = response.RootElement.GetProperty("words").EnumerateArray().ToArray();
-                Assert.All(words, word => Assert.Equal("analysed", word.GetProperty("outcome").GetString()));
-                parsedWords += words.Length;
-            }
             var samplePath = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json");
             using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
-            var expectedWords = sample.RootElement.GetProperty("texts").EnumerateArray()
-                .Sum(text => text.GetProperty("sentences").EnumerateArray()
-                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                    .Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal(expectedWords, parsedWords);
+            var wordOccurrences = WordOccurrencesByText(sample.RootElement);
+            var assessment = await AssessTextsAsync(root, buildOutput.RootElement, wordOccurrences);
+            var expectedWords = wordOccurrences.Values.Sum();
+            Assert.Equal(expectedWords, assessment.Words);
+            Assert.Equal(expectedWords, assessment.Parsed);
         }
         finally
         {
