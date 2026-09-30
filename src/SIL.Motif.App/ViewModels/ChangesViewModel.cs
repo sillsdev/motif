@@ -247,6 +247,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         return outcome.Succeeded;
     }
 
+    internal IDisposable BeginMatrixStagingAction(
+        string kind, IReadOnlyList<CompareWordViewModel> chosenWords)
+    {
+        ArgumentNullException.ThrowIfNull(chosenWords);
+        var count = kind switch
+        {
+            ChangeKinds.IncorrectSpelling => chosenWords.Count,
+            ChangeKinds.AddCandidate => chosenWords.Sum(word => word.ReadingChoices.Count),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+        return _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"), UsageArgumentShape.List("changes", count));
+    }
+
     public async Task AddAsync(string kind, CompareWordViewModel word,
         WorkspacePage originPage = WorkspacePage.Texts)
     {

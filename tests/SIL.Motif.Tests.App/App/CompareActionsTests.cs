@@ -1,5 +1,7 @@
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Projection.Usage;
 using Xunit;
 using SIL.Motif.Commands.Queries;
 
@@ -29,21 +31,30 @@ public sealed class CompareActionsTests
         Word("x y", "skipped", ProjectStanding.NotPresent),
     ];
 
-    private static (AssessWordsViewModel Table, CompareViewModel Compare) Loaded()
+    private static (AssessWordsViewModel Table, CompareViewModel Compare) Loaded() =>
+        Loaded(Sample, "project.fwdata", out _);
+
+    private static (AssessWordsViewModel Table, CompareViewModel Compare) Loaded(out FakeCommandClient client) =>
+        Loaded(Sample, "project.fwdata", out client);
+
+    private static (AssessWordsViewModel Table, CompareViewModel Compare) Loaded(
+        IReadOnlyList<AssessmentWordResult> results, string projectPath, out FakeCommandClient client)
     {
         var table = new AssessWordsViewModel();
-        table.Load(Sample);
-        var compare = NewCompare();
+        table.Load(results);
+        var compare = NewCompare(projectPath, out client);
         compare.ChosenCellsChanged += (_, _) => table.ShowOnly(compare.ChosenWords);
         compare.Load(table.AllRows);
         return (table, compare);
     }
 
-    private static CompareViewModel NewCompare()
+    private static CompareViewModel NewCompare() => NewCompare("project.fwdata", out _);
+
+    private static CompareViewModel NewCompare(string projectPath, out FakeCommandClient fake)
     {
-        var fake = new FakeCommandClient();
+        fake = new FakeCommandClient();
         var changes = new ChangesViewModel(fake);
-        changes.OpenProjectAsync("project.fwdata").GetAwaiter().GetResult();
+        changes.OpenProjectAsync(projectPath).GetAwaiter().GetResult();
         return new CompareViewModel { Changes = changes };
     }
 
@@ -171,5 +182,197 @@ public sealed class CompareActionsTests
         compare.HandOffCommand.Execute(null);
 
         Assert.Equal(["alimpiga", "walipiga"], handed!.Order());
+    }
+
+    [Fact]
+    public async Task AddingCheckedCandidatesRecordsOneActionForAllReadings()
+    {
+        var (_, compare) = Loaded(
+            [Word("candidate-one", "analysed", ProjectStanding.NotPresent, readingCount: 2),
+             Word("candidate-two", "analysed", ProjectStanding.NotPresent)], "project.fwdata", out var fake);
+        foreach (var word in compare.Words) word.IsChecked = true;
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+
+        Assert.Equal(3, fake.PendingPutRequests.Count);
+        Assert.Equal(3, compare.Changes.Items.Count);
+        Assert.All(compare.Words, word => Assert.False(word.IsChecked));
+        AssertMatrixUsageEntry(fake, 3);
+    }
+
+    [Fact]
+    public async Task MarkingCheckedSpellingsRecordsOneActionForAllWords()
+    {
+        var (_, compare) = Loaded(out var fake);
+        var chosen = compare.Words.Where(word => word.Word is "mwalimu" or "alimpiga").ToArray();
+        foreach (var word in chosen) word.IsChecked = true;
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.Equal(2, compare.Changes.Items.Count);
+        Assert.All(chosen, word => Assert.False(word.IsChecked));
+        AssertMatrixUsageEntry(fake, 2);
+    }
+
+    [Fact]
+    public async Task CandidateRefusalKeepsRetainedReadingsAndOneActionShapeWithoutValues()
+    {
+        const string projectPath = @"C:\private\private-path-canary.fwdata";
+        const string privateWord = "private-word-canary";
+        const string privateAssessment = "private-assessment-canary";
+        const string privateForm = "private-form-canary";
+        const string privateMsa = "face0000-1234-5678-9abc-def012345678";
+        const string privateGuess = "private-guess-canary";
+        const string privateGloss = "private-gloss-canary";
+        var firstResult = Word("first-word-canary", "analysed", ProjectStanding.NotPresent) with
+        {
+            OccurrenceCount = 2,
+        };
+        var privateResult = PrivacyCanaryWord(privateWord, privateForm, privateMsa, privateGuess, privateGloss,
+            readingCount: 2) with { OccurrenceCount = 1 };
+        var (_, compare) = Loaded([firstResult, privateResult], projectPath, out var fake);
+        compare.Changes.AssessmentId = privateAssessment;
+        var firstWord = compare.Words[0];
+        var word = compare.Words[1];
+        firstWord.IsChecked = true;
+        word.IsChecked = true;
+        fake.PendingPutRefusal = new Refusal("change.cannot-compose", FailureReason.Refused,
+            "The reading is already stored.");
+        fake.PendingPutRefusalOnCall = 2;
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+
+        Assert.Equal(3, fake.PendingPutRequests.Count);
+        Assert.Equal(firstWord.Word, fake.PendingPutRequests[0].Change.Word);
+        Assert.All(fake.PendingPutRequests.Skip(1), request => Assert.Equal(word.Word, request.Change.Word));
+        Assert.Equal(2, compare.Changes.Items.Count);
+        Assert.Equal(firstWord.Word, compare.Changes.Items[0].Word);
+        Assert.Equal("Reading 1", compare.Changes.Items[0].Reading[..compare.Changes.Items[0].Reading.IndexOf(':')]);
+        Assert.Equal(word.Word, compare.Changes.Items[1].Word);
+        Assert.Equal("Reading 2", compare.Changes.Items[1].Reading[..compare.Changes.Items[1].Reading.IndexOf(':')]);
+        Assert.Equal("change.cannot-compose", compare.Changes.LastRefusal?.Code);
+        Assert.False(firstWord.IsChecked);
+        Assert.True(word.IsChecked);
+        Assert.Equal(projectPath, fake.PendingPutRequests[0].FwDataPath);
+        var requests = System.Text.Json.JsonSerializer.Serialize(fake.PendingPutRequests);
+        foreach (var canary in new[] { privateWord, privateAssessment, privateForm, privateMsa, privateGuess, privateGloss })
+            Assert.Contains(canary, requests);
+        var entry = AssertMatrixUsageEntry(fake, 3);
+        var recorded = string.Join(" ", entry.Command, string.Join(" ", entry.ArgumentShape));
+        foreach (var canary in new[] { projectPath, privateWord, privateAssessment, privateForm, privateMsa,
+                     privateGuess, privateGloss })
+            Assert.DoesNotContain(canary, recorded);
+    }
+
+    [Fact]
+    public async Task RefusingEveryCandidateStillRecordsOneAction()
+    {
+        var (_, compare) = Loaded(
+            [Word("candidate-one", "analysed", ProjectStanding.NotPresent),
+             Word("candidate-two", "analysed", ProjectStanding.NotPresent)], "project.fwdata", out var fake);
+        var refusal = new Refusal("change.cannot-compose", FailureReason.Refused, "No reading was accepted.");
+        fake.PendingPutRefusal = refusal;
+        foreach (var word in compare.Words) word.IsChecked = true;
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.Empty(compare.Changes.Items);
+        Assert.All(compare.Words, word => Assert.True(word.IsChecked));
+        Assert.Equal(refusal.Code, compare.Changes.LastRefusal?.Code);
+        AssertMatrixUsageEntry(fake, 2);
+    }
+
+    [Fact]
+    public async Task CancellingAHeldMatrixActionReleasesItsScopeForTheNextClick()
+    {
+        var (_, compare) = Loaded(
+            [Word("candidate", "analysed", ProjectStanding.NotPresent)], "project.fwdata", out var fake);
+        var word = Assert.Single(compare.Words);
+        word.IsChecked = true;
+        var entered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<CommandOutcome<PendingChangesSnapshot>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = new CancellationTokenSource();
+        var refusal = new Refusal("action.cancelled", FailureReason.Refused, "The held request was released.");
+        fake.PendingPutHandler = async (_, _) =>
+        {
+            entered.TrySetResult(true);
+            using var registration = cancellation.Token.Register(() => release.TrySetCanceled(cancellation.Token));
+            return await release.Task;
+        };
+
+        var firstClick = compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => firstClick.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        finally
+        {
+            cancellation.Cancel();
+            release.TrySetResult(CommandOutcome<PendingChangesSnapshot>.Refused(refusal));
+            try
+            {
+                await firstClick.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        Assert.Single(fake.PendingPutRequests);
+        AssertMatrixUsageEntry(fake, 1);
+        fake.PendingPutHandler = null;
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
+
+        Assert.Equal(2, fake.UsageEntries.Count);
+        Assert.All(fake.UsageEntries, entry =>
+            Assert.Equal(new[] { "fwDataPath:text", "kind:text", "changes:list(1)" }, entry.ArgumentShape));
+        Assert.False(word.IsChecked);
+        Assert.Single(compare.Changes.Items);
+    }
+
+    [Fact]
+    public async Task OpeningReloadingAndChangingCompareSelectionRecordNoUsage()
+    {
+        var (table, compare) = Loaded(out var fake);
+
+        await compare.Changes.OpenProjectAsync("project.fwdata");
+        await compare.Changes.ReloadAsync();
+        compare.Load(table.AllRows);
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
+        compare.ClearSelectionCommand.Execute(null);
+        compare.Changes.Reset();
+
+        Assert.Empty(fake.UsageEntries);
+    }
+
+    private static AssessmentWordResult PrivacyCanaryWord(
+        string word, string form, string msa, string guessedString, string gloss, int readingCount)
+    {
+        var analyses = Enumerable.Range(0, readingCount).Select(_ =>
+            new ParseAnalysis([new ParseMorph(form, msa, null, guessedString)])).ToArray();
+        var readings = Enumerable.Range(0, readingCount).Select(_ =>
+            new ParserReading([new ParserReadingMorph(form, gloss, "private-category-canary", null, false, null)])).ToArray();
+        return new AssessmentWordResult(word, "analysed", false, "Search completed", 10, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, word, 10, false, false, false, analyses, []),
+            Readings = readings,
+            ReadingGrades = Enumerable.Repeat("no-opinion", readingCount).ToArray(),
+            ProjectStanding = ProjectStanding.NotPresent,
+        };
+    }
+
+    private static UsageLogEntry AssertMatrixUsageEntry(FakeCommandClient fake, int count)
+    {
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("put-pending-change", entry.Command);
+        Assert.Equal(new[] { "fwDataPath:text", "kind:text", $"changes:list({count})" }, entry.ArgumentShape);
+        return entry;
     }
 }
