@@ -69,10 +69,8 @@ coverage.
 _Avoid_: backend, engine, provider, plugin
 
 **PanGloss invocation**:
-One contained run of the PanGloss executable: a single subcommand the shipped binary actually has, admitted
-through the machine's parser queue, held inside the machine's resource bound and a wall-clock cap, and
-answered with an outcome — what came back, or why nothing did. Every parser process Motif starts is one of
-these; there is no other way to start one. What an Assessor uses, not what it is.
+One cancellable execution of a supported PanGloss command, answered with an outcome describing what came
+back or why nothing did. What an Assessor uses, not what it is.
 _Avoid_: process, subprocess, launch, parser run, shell-out
 
 **Assessment scope**:

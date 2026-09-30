@@ -12,7 +12,7 @@ of its output streams, wait for it, kill it if it hangs, and decide what its exi
 keeps a runaway parser from taking the machine down was built and connected to none of the six. A parser
 failing mid-run threw an error that five of the six let escape, and the sixth caught it; one of those escapes
 killed the Motif window when a person clicked Run. **From now on there is one way to run the parser.** It
-takes its turn in the machine's queue, runs inside the machine's bound, is stopped after a fixed time, and
+takes its turn in the machine's queue, runs inside the machine's bound, observes its applicable time limit, and
 reports what happened as an answer rather than an error, so nothing above it has to remember to catch
 anything.
 
@@ -50,9 +50,10 @@ This ADR establishes six invariants:
    refused with its exit code and standard error; unavailable because the executable was absent or would not
    start; timed out; cancelled. Exceptions remain for programmer error only. `ParserUnavailableException`
    leaves the seam callers cross.
-4. Every invocation carries a wall-clock cap. The default is ten minutes, the parser's own ratified execution
-   limit, overridable per request. On expiry the process tree is killed, exactly as on cancellation. The
-   per-word limit stays a batch argument; it bounds a word, not a process.
+4. Every invocation remains cancellable. A Batch without a per-word time limit has no default overall
+   wall-clock deadline, so a legitimate long run may finish unless cancelled. Other invocations default to
+   ten minutes, overridable per request. On expiry the process tree is killed, exactly as on cancellation.
+   The per-word limit stays a batch argument; it bounds a word, not a process.
 5. The module models only subcommands the shipped binary has and Motif uses: `batch`, `stats`, `import`. It
    does not model `assess`. `PanGlossAssessmentProcess` stays outside the module, untouched, until K46 settles who
    produces the report. `FakePanGloss` models the same surface and no more.
@@ -82,11 +83,11 @@ seam as an exception meant every caller had to know to catch it, and one did. Wi
 `AssessCommand`, `StatsCommand` and `HandoffCommand` map it to their Refusal codes in the one place each
 already does so, and a new caller cannot forget.
 
-### 4. One wall-clock cap
+### 4. Applicable wall-clock limits and cancellation
 
-K52 records that the per-word timeout is load-bearing for the process's survival, and nothing stopped a
-process that ignored it. The cap is the parser's own limit rather than a number Motif invented, for the same
-reason the memory ceiling is.
+People must be able to stop a parser run, while a deliberately uncapped Batch may take as long as its
+work requires. An overall deadline applies by default to other invocations; it does not turn an uncapped
+Batch into a timed run. Explicit caller overrides remain available, and cancellation terminates containment.
 
 ### 5. Only the real surface
 
