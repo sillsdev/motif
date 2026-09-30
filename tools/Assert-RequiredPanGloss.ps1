@@ -73,7 +73,7 @@ foreach ($skip in $skips) {
     elseif ($skip.Detail -match '(?i)platform|Windows|Linux|macOS|link privilege|symbolic link') {
         $skipCategories.platform++
     }
-    elseif ($skip.Detail -match '(?i)opt.in|artifact|not configured') {
+    elseif ($skip.Detail -match '(?i)opt.in|artifact|not configured|Set MOTIF_(SCREENSHOTS|R6_OUTPUT)') {
         $skipCategories.artifact++
     }
     else {
