@@ -22,9 +22,9 @@ Preserve the positive interfaces: closed CommandOutcome/refusal, request and res
 
 A green run should prove that the intended tests ran, and bulk actions must leave an understandable result when something is refused. These fixes have a small scope and do not require a project reshuffle.
 
-- [ ] Remove inherited shard selection from the filtered update-gate child; race readiness against child lifetime and report bounded stdout/stderr. Preserve the actual cross-process gate assertion.
-- [ ] Stop iterative Analyze Texts staging at the first failure for add readings, Incorrect spelling and checked-word Accept New Set. Retain earlier staged changes and the typed refusal; atomic batch staging is a separate design, not implied by atomic Apply.
-- [ ] Add PanGloss to the website's current Guide outline and a real-content sync regression using actual CLI export in an isolated destination. Do not silently omit unlisted pages.
+- [x] Remove inherited shard selection from the filtered update-gate child; race readiness against child lifetime and report bounded stdout/stderr. Preserve the actual cross-process gate assertion.
+- [x] Stop iterative Analyze Texts staging at the first failure for add readings, Incorrect spelling and checked-word Accept New Set. Retain earlier staged changes and the typed refusal; atomic batch staging is a separate design, not implied by atomic Apply.
+- [x] Add PanGloss to the website's current Guide outline and a real-content sync regression using actual CLI export in an isolated destination. Do not silently omit unlisted pages.
 - [ ] Align visible/accessibility names, shared Apply summaries and Guide actions with ADR 0049's Approved, Disapproved and Unknown vocabulary.
 
 Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md), [documentation authority](2026-09-30-documentation-authority.md).
