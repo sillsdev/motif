@@ -55,6 +55,7 @@ The staged plan repairs behavior and shared documentation before extracting reus
 - [Architecture and contracts](../../superpowers/plans/2026-09-30-architecture-contract-remediation.md)
 - [Decision log](decisions.md)
 - [Implementation tracking](implementation.md)
+- [Verified first merge tranche](merge-first-tranche.md)
 - [First-fixes second opinion](sol-first-fixes.md)
 - [Capture second opinion](sol-capture-fixes.md)
 - [Retired parser coverage map](retired-parser-coverage.md)
