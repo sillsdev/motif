@@ -145,6 +145,9 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(ProjectPath, workspace.Assess.ProjectPath);
         Assert.Equal(ProjectPath, workspace.PageModel<TimingPageModel>().Statistics.ProjectPath);
         Assert.Equal(ProjectPath, workspace.PageModel<AiHandoffPageModel>().Handoff.ProjectPath);
+        var usage = Assert.Single(fake.UsageEntries);
+        Assert.Equal("project browse", usage.Command);
+        Assert.Equal(["fwDataPath:text"], usage.ArgumentShape);
     }
 
     [Fact]
@@ -236,6 +239,9 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.False(workspace.Context.Setup.IsOpen);
         Assert.Empty(fake.SetDefaultSelectionRequests);
+        Assert.Collection(fake.UsageEntries,
+            entry => Assert.Equal("project browse", entry.Command),
+            entry => Assert.Equal("setup skip", entry.Command));
     }
 
     [Fact]
@@ -264,6 +270,9 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Null(assess.Selection);
         Assert.Equal(40_000, assess.PerWordLimitMs);
         Assert.Equal(StepCap.Default, assess.PerWordStepLimit);
+        Assert.Collection(fake.UsageEntries,
+            entry => Assert.Equal("project browse", entry.Command),
+            entry => Assert.Equal("selection set-default", entry.Command));
         Assert.False(workspace.Context.Setup.IsOpen);
     }
 
@@ -311,6 +320,9 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.True(setup.IsOpen);
         Assert.Equal(refusal.Code, setup.ShownRefusal?.Code);
+        Assert.Collection(fake.UsageEntries,
+            entry => Assert.Equal("project browse", entry.Command),
+            entry => Assert.Equal("selection set-default", entry.Command));
     }
 
     [Fact]

@@ -44,6 +44,7 @@ public sealed partial class CommandClient : ICommandClient
     private readonly CommandClientOptions _options;
     private readonly string _managedRoot;
     private readonly IProjectGate _projectGate;
+    private readonly UsageRecorder _usageRecorder;
 
     public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
@@ -65,7 +66,11 @@ public sealed partial class CommandClient : ICommandClient
         _options = options;
         _managedRoot = options.ManagedRoot;
         _projectGate = projectGate;
+        _usageRecorder = options.UsageRecorder ?? UsageRecorder.ForMachineRoot(options.ManagedRoot);
     }
+
+    public IDisposable BeginUsageAction(string command, params string[] argumentShape) =>
+        _usageRecorder.BeginAction(command, argumentShape);
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>

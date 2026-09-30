@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -204,6 +205,9 @@ public sealed class ReviewPageModel : PageModel
     private async Task MeasureAsync()
     {
         if (Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draft) return;
+        using var usageAction = Context.Commands.BeginUsageAction("trial --pending",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("words",
+                Changes.Snapshot.Changes.Select(change => change.Word).Distinct(StringComparer.Ordinal).Count()));
         _measurementCancellation?.Dispose();
         _measurementCancellation = new CancellationTokenSource();
         IsMeasuring = true;
@@ -282,6 +286,8 @@ public sealed class ReviewPageModel : PageModel
     {
         if (!CanApply || Context.ProjectPath is not { } project || Changes.Snapshot.DraftId is not { } draft)
             return;
+        using var usageAction = Context.Commands.BeginUsageAction("apply --all-pending",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", Changes.Count));
         IsApplying = true;
         _applyCancellation?.Dispose();
         _applyCancellation = new CancellationTokenSource();
@@ -327,7 +333,10 @@ public sealed class ReviewPageModel : PageModel
 
     private async Task RemoveNonFittingAsync()
     {
-        foreach (var change in Changes.Items.Where(item => item.IsNoLongerFits).ToArray())
+        var changes = Changes.Items.Where(item => item.IsNoLongerFits).ToArray();
+        using var usageAction = Context.Commands.BeginUsageAction("remove-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", changes.Length));
+        foreach (var change in changes)
             await Changes.RemoveCommand.ExecuteAsync(change).ConfigureAwait(true);
     }
 

@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -92,6 +93,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         ArgumentNullException.ThrowIfNull(change);
         if (ProjectPath is not { } path) return;
+        using var usageAction = _client.BeginUsageAction("reconfirm-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("changeId"));
         var generation = _projectGeneration;
         var outcome = await _client.ReconfirmPendingChangeAsync(new ReconfirmPendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId), cancellationToken)
@@ -132,6 +135,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public async Task PutAsync(ChangeIntent change, CancellationToken cancellationToken = default)
     {
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("changes", 1));
         _ = await PutAsync(change, path, _projectGeneration, cancellationToken).ConfigureAwait(true);
     }
 
@@ -151,6 +156,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public async Task RecheckAsync(CancellationToken cancellationToken = default)
     {
         if (ProjectPath is not { } path) return;
+        using var usageAction = _client.BeginUsageAction("recheck-pending-changes", UsageArgumentShape.Text("fwDataPath"));
         var generation = _projectGeneration;
         var outcome = await _client.RecheckPendingChangesAsync(new RecheckPendingChangesRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision), cancellationToken)
@@ -170,6 +176,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         ArgumentException.ThrowIfNullOrWhiteSpace(analysisId);
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
+        using var usageAction = _client.BeginUsageAction("remove-analysis", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("analyses", 1));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             CanonicalId.Mint().Value, wordformId, word, analysisId);
@@ -185,6 +193,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (analysisIds.Count == 0) throw new ArgumentException("Choose at least one analysis.", nameof(analysisIds));
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
+        using var usageAction = _client.BeginUsageAction("remove-analysis", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("analyses", analysisIds.Count));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             AnalysisIds: analysisIds);
@@ -197,6 +207,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
+        using var usageAction = _client.BeginUsageAction("remove-analysis", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("textId"));
         var generation = _projectGeneration;
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             TextId: textId);
@@ -213,6 +225,10 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             throw new ArgumentException("Choose one word, one Selection, or one Text.");
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
+        var targetShape = selection ? UsageArgumentShape.Flag("selection") : textId is not null
+            ? UsageArgumentShape.Text("textId") : UsageArgumentShape.Text("wordformId");
+        using var usageAction = _client.BeginUsageAction("accept-new-set", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("assessmentId"), targetShape);
         var generation = _projectGeneration;
         var request = new AcceptNewSetRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             assessmentId, wordformId, textId, selection);
@@ -238,6 +254,9 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var generation = _projectGeneration;
         var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
             word.SelectedReading is { } selected ? [selected] : [];
+        var operationCount = kind == ChangeKinds.IncorrectSpelling ? 1 : readings.Count;
+        using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"), UsageArgumentShape.List("changes", operationCount));
         if (kind == ChangeKinds.IncorrectSpelling)
         {
             await AddOneAsync(kind, word, null, originPage, path, generation).ConfigureAwait(true);
@@ -266,6 +285,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
         var generation = _projectGeneration;
+        using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"));
         var occurrence = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
             ? token.Occurrence : null;
         var wordformId = token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
@@ -285,6 +306,14 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             : throw new InvalidOperationException("This marking action does not stage a project change.");
         var hasParserReading = action.Reading is not null;
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
+        var argumentShape = new List<string>
+        {
+            UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"),
+        };
+        if (hasParserReading)
+            argumentShape.Add(UsageArgumentShape.Text("reading"));
+        using var usageAction = _client.BeginUsageAction("put-pending-change", [.. argumentShape]);
         return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : "", token.Form,
             hasParserReading ? AssessmentId : null, action.Reading, action.StoredAnalysisId,
             ReadingIndex: action.ReadingIndex, OriginPage: WorkspacePage.Texts.ToString(),
@@ -303,6 +332,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         ArgumentException.ThrowIfNullOrWhiteSpace(word);
         ArgumentException.ThrowIfNullOrWhiteSpace(storedAnalysisId);
         ArgumentNullException.ThrowIfNull(displayReading);
+        using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("kind"), UsageArgumentShape.Text("storedAnalysisId"));
         await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, ChangeKinds.Approve, "", word,
             StoredAnalysisId: storedAnalysisId, DisplayReading: displayReading,
             OriginPage: originPage.ToString())).ConfigureAwait(true);
@@ -322,6 +353,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     {
         if (change is null) return;
         if (ProjectPath is not { } path) return;
+        using var usageAction = _client.BeginUsageAction("remove-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("changeId"));
         var generation = _projectGeneration;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision, change.GroupId ?? change.ChangeId),

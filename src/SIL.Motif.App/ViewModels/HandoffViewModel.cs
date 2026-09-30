@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -23,6 +24,10 @@ namespace SIL.Motif.App.ViewModels;
 /// </remarks>
 public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffCommandResponse>
 {
+    protected override IDisposable BeginUsageAction() => _commandClient.BeginUsageAction("handoff",
+        UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("assessmentId"),
+        UsageArgumentShape.Text("outputDirectory"));
+
     /// <summary>
     /// What leaves the machine, stated once beside the drag tiles rather than in a file a model reads (ADR
     /// 0045 decision 13): the decision belongs to the person dragging, not to whichever line of a Handoff

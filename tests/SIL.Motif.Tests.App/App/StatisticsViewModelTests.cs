@@ -64,6 +64,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(12.5, row.ElapsedMs);
         Assert.False(statistics.IsStale);
         Assert.Null(statistics.Refusal);
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("stats", entry.Command);
+        Assert.Equal(new[] { "fwDataPath:text", "group:text" }, entry.ArgumentShape);
     }
 
     [Fact]
@@ -98,6 +101,7 @@ public sealed class StatisticsViewModelTests
         statistics.SortBy("attempts");
 
         Assert.Single(fake.StatsRequests);
+        Assert.Single(fake.UsageEntries);
     }
 
     [Fact]

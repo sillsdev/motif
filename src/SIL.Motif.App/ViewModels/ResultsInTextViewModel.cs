@@ -9,6 +9,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -603,6 +604,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         var groups = selection.Where(token => token.IsWord && token.Occurrence is not null)
             .Distinct().GroupBy(token => token.Occurrence!.TextId).ToArray();
         var generation = _readStateGeneration;
+        using var usageAction = _commands.BeginUsageAction("word read-state",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Flag("isRead"),
+            UsageArgumentShape.List("occurrences", selection.Count), UsageArgumentShape.List("texts", groups.Length));
         var version = ++_readStateWriteVersion;
         ReadStateRefusal = null;
         ReadStateNotice = null;
@@ -629,6 +633,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         if (SelectedText is not { } text || string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
         var generation = _readStateGeneration;
+        using var usageAction = _commands.BeginUsageAction("word read-state",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("textId"),
+            UsageArgumentShape.Flag("isRead"));
         var version = ++_readStateWriteVersion;
         ReadStateRefusal = null;
         ReadStateNotice = null;
@@ -693,6 +700,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private async Task AddSelectedChangeAsync(string? kind)
     {
         if (SelectedToken is not { } token || kind is null) return;
+        using var usageAction = _commands.BeginUsageAction("put-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"));
         var readings = kind == ChangeKinds.AddCandidate ? token.Readings :
             token.SelectedReading is { } selected ? [selected] : [];
         if (kind == ChangeKinds.IncorrectSpelling)
@@ -761,6 +770,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private async Task StageMarkingActionAsync(ResultsTokenViewModel token, AnalysisMarkingAction action)
     {
+        var command = action.Kind switch
+        {
+            AnalysisMarkingActionKind.KeepFieldWorks => "word read-state",
+            AnalysisMarkingActionKind.RemoveAnalysis => "remove-analysis",
+            AnalysisMarkingActionKind.AcceptNewSet => "accept-new-set",
+            _ => "put-pending-change",
+        };
+        using var usageAction = _commands.BeginUsageAction(command,
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Object("action"));
         if (action.Kind == AnalysisMarkingActionKind.KeepFieldWorks)
         {
             await MarkReadAsync(token).ConfigureAwait(true);

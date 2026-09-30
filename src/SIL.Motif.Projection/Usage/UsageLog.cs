@@ -19,6 +19,8 @@ public sealed record UsageLogEntry(string TimestampUtc, string Command, IReadOnl
 public static class UsageArgumentShape
 {
     public static string Text(string name) => $"{name}:text";
+    public static string Number(string name) => $"{name}:number";
+    public static string Object(string name) => $"{name}:object";
     public static string List(string name, int count) => $"{name}:list({count})";
     public static string Flag(string name) => $"{name}:flag";
 }
@@ -49,7 +51,10 @@ public sealed class UsageLog
 
     /// <summary>Records one call. <paramref name="argumentShape"/> must never carry an argument's value.</summary>
     public void Record(string command, IReadOnlyList<string> argumentShape) =>
-        _entries.Add(new UsageLogEntry(DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"), command, argumentShape));
+        _entries.Add(CreateEntry(command, argumentShape));
+
+    public static UsageLogEntry CreateEntry(string command, IReadOnlyList<string> argumentShape) =>
+        new(DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ"), command, Array.AsReadOnly(argumentShape.ToArray()));
 
     public UsageSummary Summarize()
     {

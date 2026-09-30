@@ -22,7 +22,6 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Store;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.Composers;
@@ -39,8 +38,8 @@ namespace SIL.Motif.Commands;
 /// Testable command handlers for every Proposal and project-reading Motif CLI verb, driving the
 /// project's paired database (see <see cref="SIL.Motif.Worker.Store.ProposalRepository"/>) and the
 /// real Contract/Runner/Host APIs end to end. Each method here is a plain function of an explicit
-/// request record returning a <see cref="CommandOutcome{T}"/>; the CLI alone parses argv, renders
-/// text or JSON, and records invocation usage.
+/// request record returning a <see cref="CommandOutcome{T}"/>; the front ends parse input, render
+/// outcomes, and record explicit user actions.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -82,11 +81,8 @@ public static partial class ProposalCommands
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public static CommandOutcome<ProjectSummaryProjection> Open(OpenRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("open", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return BuildProjectSummary(request.FwDataPath);
-    }
+    public static CommandOutcome<ProjectSummaryProjection> Open(OpenRequest request) =>
+        BuildProjectSummary(request.FwDataPath);
 
     private static CommandOutcome<ProjectSummaryProjection> BuildProjectSummary(string fwDataPath)
     {
@@ -103,33 +99,14 @@ public static partial class ProposalCommands
         }
     }
 
-    public static CommandOutcome<AnalysisAggregateProjection> Analyses(
-        ManualAnalysesRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("analyses", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return BuildManualAnalysisProjection(request.FwDataPath);
-    }
+    public static CommandOutcome<AnalysisAggregateProjection> Analyses(ManualAnalysesRequest request) =>
+        BuildManualAnalysisProjection(request.FwDataPath);
 
-    public static CommandOutcome<AnalysisAggregateProjection> Analyses(
-        AssessmentAnalysesRequest request, UsageLog? usage = null)
-    {
-        RecordAssessmentAnalysisUsage(usage);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+    public static CommandOutcome<AnalysisAggregateProjection> Analyses(AssessmentAnalysesRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             BuildAssessmentAnalysisProjection(
                 database, project, request.AssessmentId, request.CurrentSelectionSha256,
                 request.CurrentGrammarSourceSha256));
-    }
-
-    private static void RecordAssessmentAnalysisUsage(UsageLog? usage) =>
-        usage?.Record(
-            "analyses",
-            new[]
-            {
-                UsageArgumentShape.Text("fwDataPath"),
-                UsageArgumentShape.Text("assessmentId"),
-                UsageArgumentShape.Text("currentSelectionSha256"),
-                UsageArgumentShape.Text("currentGrammarSourceSha256"),
-            });
 
     private static CommandOutcome<AnalysisAggregateProjection> BuildAssessmentAnalysisProjection(
         MotifDatabase database,
@@ -1339,12 +1316,9 @@ public static partial class ProposalCommands
         });
     }
 
-    public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("list", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+    public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
             BuildProposalList(database));
-    }
 
     private static CommandOutcome<ProposalListProjection> BuildProposalList(MotifDatabase database)
     {
@@ -1362,13 +1336,9 @@ public static partial class ProposalCommands
         }
     }
 
-    public static CommandOutcome<ProposalDetailProjection> Show(
-        ShowProposalRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("show", new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+    public static CommandOutcome<ProposalDetailProjection> Show(ShowProposalRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
             BuildProposalDetail(database, request.ProposalId));
-    }
 
     private static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
         MotifDatabase database, string proposalId)
@@ -1395,12 +1365,9 @@ public static partial class ProposalCommands
     /// the rule is unconditional (ADR 0016): a caller must discard this <see cref="LcmCache"/> and
     /// reload the project rather than reuse it after a failed apply.
     /// </remarks>
-    public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request, UsageLog? usage = null)
-    {
-        RecordApplyUsage(usage, "fwDataPath", "proposalId", "user");
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+    public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             BuildApplyProjection(database, project, request.ProposalId, request.User, request.Force));
-    }
 
     /// <summary>The latest <c>Correctness</c> Assessment recorded against this exact revision, if any.</summary>
     private static AssessmentRecord? FindCandidateAssessment(
@@ -1600,9 +1567,6 @@ public static partial class ProposalCommands
         }
     }
 
-    private static void RecordApplyUsage(UsageLog? usage, params string[] names) =>
-        usage?.Record("apply", names.Select(UsageArgumentShape.Text).ToList());
-
     private static bool ShouldFailReceiptWriteForTest(string fwDataPath)
     {
         var requestedPath = Environment.GetEnvironmentVariable("MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR");
@@ -1613,11 +1577,8 @@ public static partial class ProposalCommands
         return string.Equals(Path.GetFullPath(requestedPath), Path.GetFullPath(fwDataPath), comparison);
     }
 
-    public static CommandOutcome<AppliedLogProjection> Log(LogRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("log", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return BuildAppliedLog(request.FwDataPath);
-    }
+    public static CommandOutcome<AppliedLogProjection> Log(LogRequest request) =>
+        BuildAppliedLog(request.FwDataPath);
 
     private static CommandOutcome<AppliedLogProjection> BuildAppliedLog(string fwDataPath)
     {

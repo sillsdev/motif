@@ -111,6 +111,8 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     /// <summary>Performs any asynchronous preflight; false leaves the current state untouched.</summary>
     protected virtual Task<bool> PrepareRunAsync() => Task.FromResult(true);
 
+    protected virtual IDisposable? BeginUsageAction() => null;
+
     protected virtual void OnRunStarting() { }
 
     protected virtual void OnRunSucceeded(TResponse response) { }
@@ -154,6 +156,7 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
     {
         if (!CanRun()) return;
 
+        using var usageAction = BeginUsageAction();
         var generation = ++_runGeneration;
         _runInFlight = true;
         RunCommand.NotifyCanExecuteChanged();

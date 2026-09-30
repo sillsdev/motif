@@ -9,7 +9,7 @@ namespace SIL.Motif.Host.Store;
 /// invocations may run at once, and two processes appending to one file interleave where two connections
 /// into one SQLite database do not.
 /// </summary>
-public sealed class MachineUsageLog
+public sealed class MachineUsageLog : IUsageLogSink
 {
     private readonly MachineDatabase _database;
 

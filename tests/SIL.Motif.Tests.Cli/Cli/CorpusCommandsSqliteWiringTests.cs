@@ -9,7 +9,6 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Corpus;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -41,12 +40,12 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
             fwDataPath, productVersion, corpusId, description, uri, licence, capabilities, tokeniser,
             tokeniserVersion, tokeniserNotes));
 
-    private CommandOutcome<CorpusListProjection> ListCorpora(string fwDataPath, string productVersion, UsageLog? usage = null) =>
-        CorpusCommands.ListCorpora(new ListCorporaRequest(fwDataPath, productVersion), usage);
+    private CommandOutcome<CorpusListProjection> ListCorpora(string fwDataPath, string productVersion) =>
+        CorpusCommands.ListCorpora(new ListCorporaRequest(fwDataPath, productVersion));
 
     private CommandOutcome<CorpusDetailProjection> ShowCorpus(
-        string fwDataPath, string productVersion, string corpusId, UsageLog? usage = null) =>
-        CorpusCommands.ShowCorpus(new ShowCorpusRequest(fwDataPath, productVersion, corpusId), usage);
+        string fwDataPath, string productVersion, string corpusId) =>
+        CorpusCommands.ShowCorpus(new ShowCorpusRequest(fwDataPath, productVersion, corpusId));
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
@@ -74,10 +73,9 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         Assert.True(listResult.Succeeded);
         Assert.Contains(listResult.Value!.Corpora, corpus => corpus.CorpusId == "tst-corpus");
 
-        var usage = new UsageLog();
-        var listJson = ListCorpora(_fwDataPath, "1.0", usage);
-        var detailText = ShowCorpus(_fwDataPath, "1.0", "tst-corpus", usage);
-        var detailJson = ShowCorpus(_fwDataPath, "1.0", "tst-corpus", usage);
+        var listJson = ListCorpora(_fwDataPath, "1.0");
+        var detailText = ShowCorpus(_fwDataPath, "1.0", "tst-corpus");
+        var detailJson = ShowCorpus(_fwDataPath, "1.0", "tst-corpus");
 
         Assert.True(listJson.Succeeded);
         Assert.True(detailText.Succeeded);
@@ -87,9 +85,6 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         Assert.Equal("Testlang corpus", corpus.Description);
         Assert.Equal("tst-corpus", detailText.Value!.CorpusId);
         Assert.Equal("tst-corpus", detailJson.Value!.CorpusId);
-        Assert.Equal(new[] { "corpora", "show-corpus", "show-corpus" }, usage.Entries.Select(e => e.Command));
-        Assert.All(usage.Entries, entry => Assert.DoesNotContain("tst-corpus", entry.ArgumentShape));
-
         // The human text is unchanged (no "error: " prefix); the JSON failure now carries a stable code too.
         var missingText = ShowCorpus(_fwDataPath, "1.0", "missing");
         var missingJson = ShowCorpus(_fwDataPath, "1.0", "missing");

@@ -1,4 +1,5 @@
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
@@ -6,6 +7,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.Tests.App;
 
@@ -17,6 +19,16 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed partial class FakeCommandClient : ICommandClient
 {
+    private readonly List<UsageLogEntry> _usageEntries = [];
+    private readonly UsageRecorder _usageRecorder;
+
+    public FakeCommandClient() => _usageRecorder = new UsageRecorder(new TestUsageLogSink(_usageEntries));
+
+    public IReadOnlyList<UsageLogEntry> UsageEntries => _usageEntries;
+
+    public IDisposable BeginUsageAction(string command, params string[] argumentShape) =>
+        _usageRecorder.BeginAction(command, argumentShape);
+
     private Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>>
         _captureBaseline = (_, _) => throw NotConfigured(nameof(CaptureBaselineAsync));
 
@@ -283,6 +295,11 @@ public sealed partial class FakeCommandClient : ICommandClient
     private static void Report(IProgress<AssessmentProgress> progress, IReadOnlyList<AssessmentProgress> steps)
     {
         foreach (var step in steps) progress.Report(step);
+    }
+
+    private sealed class TestUsageLogSink(List<UsageLogEntry> entries) : IUsageLogSink
+    {
+        public void Append(UsageLogEntry entry) => entries.Add(entry);
     }
 
     private static Task<CommandOutcome<T>> ReportThenComplete<T>(

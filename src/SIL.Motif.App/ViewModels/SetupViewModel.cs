@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
@@ -302,6 +303,17 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private async Task FinishAsync()
     {
         if (!IsFirstRunStep || ProjectPath is not { } projectPath) return;
+        var shapes = new List<string>
+        {
+            UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("textIds", Selection.ChosenTextIds.Count),
+            UsageArgumentShape.List("addedWords", Selection.PastedWordEntries.Count),
+        };
+        if (IsStepLimitUnbounded || StepLimitSteps is not null)
+            shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+        if (Selection.PerWordTimeLimitSeconds is not null)
+            shapes.Add(UsageArgumentShape.Number("perWordTimeLimitSeconds"));
+        using var usageAction = _context.Commands.BeginUsageAction("selection set-default", [.. shapes]);
         var runFirstAssessment = !IsEditingExistingSelection;
         if (!IsStepLimitValid)
         {
@@ -374,6 +386,8 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     private async Task SkipAsync()
     {
         if (ProjectPath is not { } projectPath) return;
+        using var usageAction = _context.Commands.BeginUsageAction("setup skip",
+            UsageArgumentShape.Text("fwDataPath"));
         var result = await _context.Commands.SkipSetupAsync(
             new SkipSetupRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
         if (!result.Succeeded)

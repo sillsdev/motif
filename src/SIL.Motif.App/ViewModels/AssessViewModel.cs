@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -165,6 +166,33 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     protected override bool CanStartCore() => ProjectPath is not null &&
         (_rerunWords is not null || _runDefaultSelection || _selection.CanAssess);
+
+    protected override IDisposable BeginUsageAction()
+    {
+        var shapes = new List<string> { UsageArgumentShape.Text("fwDataPath") };
+        if (_rerunWords is { } words)
+        {
+            shapes.Add(UsageArgumentShape.List("words", words.Count));
+            shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
+            if (_rerunStepLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+        }
+        else if (_runDefaultSelection)
+        {
+            shapes.Add(UsageArgumentShape.Flag("defaultSelection"));
+            if (_defaultPerWordLimitMs is not null) shapes.Add(UsageArgumentShape.Number("perWordLimitMs"));
+            if (_defaultStepLimit is not null) shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+        }
+        else
+        {
+            shapes.Add(UsageArgumentShape.Object("selection"));
+            if (_selection.PerWordTimeLimitSeconds is not null)
+                shapes.Add(UsageArgumentShape.Number("perWordTimeLimitSeconds"));
+            if (_selection.PerWordStepLimit is not null)
+                shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+        }
+
+        return _commandClient.BeginUsageAction("assess", [.. shapes]);
+    }
 
     /// <summary>When the last Assessment finished, so an older Handoff can say it is out of date.</summary>
     [ObservableProperty]

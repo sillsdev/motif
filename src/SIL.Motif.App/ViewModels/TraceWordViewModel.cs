@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -538,6 +539,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
             return;
         }
 
+        using var usageAction = _commandClient.BeginUsageAction("word trace",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("word"));
         var outcome = await _commandClient.TraceWordAsync(new WordTraceRequest(path, word), running.Token)
             .ConfigureAwait(true);
         if (ReferenceEquals(_running, running)) _running = null;

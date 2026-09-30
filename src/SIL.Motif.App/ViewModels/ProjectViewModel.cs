@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -48,7 +49,10 @@ public sealed partial class ProjectViewModel : ObservableObject
 
     partial void OnSelectedKnownProjectChanged(KnownProjectSummary? value)
     {
-        if (value is not null && !_showingChosen) ProjectChosen?.Invoke(this, value.FullFwDataPath);
+        if (value is null || _showingChosen) return;
+        using var usageAction = _commandClient.BeginUsageAction("project open",
+            UsageArgumentShape.Text("fwDataPath"));
+        ProjectChosen?.Invoke(this, value.FullFwDataPath);
     }
 
     private bool _showingChosen;
@@ -73,6 +77,8 @@ public sealed partial class ProjectViewModel : ObservableObject
 
     private async Task BrowseAsync()
     {
+        using var usageAction = _commandClient.BeginUsageAction("project browse",
+            UsageArgumentShape.Text("fwDataPath"));
         var path = await _projectPicker.PickProjectFileAsync();
         if (path is not null) ProjectChosen?.Invoke(this, path);
     }

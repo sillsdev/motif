@@ -14,7 +14,6 @@ using SIL.Motif.Worker.Store;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Tests.Projection;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
@@ -23,8 +22,8 @@ using Xunit;
 namespace SIL.Motif.Tests.Cli;
 
 /// <summary>
-/// Drives the typed command surfaces end to end to verify project data and that a <see cref="UsageLog"/>
-/// never records any of it. A single explicit renderer assertion keeps the text and JSON projection aligned.
+/// Drives the typed command surfaces end to end to verify project data. A single explicit renderer assertion
+/// keeps the text and JSON projection aligned.
 /// </summary>
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
 public sealed class ReportProjectionIntegrationTests
@@ -51,9 +50,8 @@ public sealed class ReportProjectionIntegrationTests
     [Fact]
     public void OpenOutcomeReportsTheLexicalEntryCount()
     {
-        var usage = new UsageLog();
-        var text = ProposalCommands.Open(new OpenRequest(_fwDataPath), usage);
-        var json = ProposalCommands.Open(new OpenRequest(_fwDataPath), usage);
+        var text = ProposalCommands.Open(new OpenRequest(_fwDataPath));
+        var json = ProposalCommands.Open(new OpenRequest(_fwDataPath));
 
         Assert.True(text.Succeeded);
         Assert.True(json.Succeeded);
@@ -63,23 +61,14 @@ public sealed class ReportProjectionIntegrationTests
     [Fact]
     public void AnalysesReadsTheManualAggregateWithoutRecordingProjectData()
     {
-        var usage = new UsageLog();
-
-        var text = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath), usage);
-        var json = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath), usage);
+        var text = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath));
+        var json = ProposalCommands.Analyses(new ManualAnalysesRequest(_fwDataPath));
 
         Assert.True(text.Succeeded);
         Assert.True(json.Succeeded);
         Assert.Contains("No assessment is on record", text.Value!.AssessmentState, StringComparison.Ordinal);
         Assert.Equal(0, json.Value!.WordFormCount);
         Assert.Empty(json.Value.WordForms);
-        Assert.Equal(2, usage.Entries.Count);
-        Assert.All(usage.Entries, entry =>
-        {
-            Assert.Equal("analyses", entry.Command);
-            Assert.Equal(new[] { "fwDataPath:text" }, entry.ArgumentShape);
-            Assert.DoesNotContain(_fwDataPath, string.Join(" ", entry.ArgumentShape), StringComparison.Ordinal);
-        });
     }
 
     [Fact]
@@ -96,14 +85,12 @@ public sealed class ReportProjectionIntegrationTests
                 0),
             Selection.Create("corpus-one", Array.Empty<string>()));
         var assessmentId = SeededAssessment.Record(_fwDataPath, assessment, CanonicalId.Mint("assessment/").Value);
-        var usage = new UsageLog();
-
         var text = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
             _fwDataPath, ProductVersion, assessmentId, assessment.Selection.Sha256,
-            assessment.Report.GrammarSourceSha256), usage);
+            assessment.Report.GrammarSourceSha256));
         var json = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
             _fwDataPath, ProductVersion, assessmentId, Hash('b'),
-            assessment.Report.GrammarSourceSha256), usage);
+            assessment.Report.GrammarSourceSha256));
 
         Assert.True(text.Succeeded);
         Assert.True(json.Succeeded);
@@ -111,19 +98,6 @@ public sealed class ReportProjectionIntegrationTests
         Assert.Contains("selection has changed", json.Value!.AssessmentState, StringComparison.Ordinal);
         Assert.Equal(0, json.Value.UnanalysedReach!.UnanalysedCount);
         Assert.Equal(0, json.Value.UnanalysedReach.ParsedCount);
-        Assert.All(usage.Entries, entry => Assert.Equal(
-            new[]
-            {
-                "fwDataPath:text",
-                "assessmentId:text",
-                "currentSelectionSha256:text",
-                "currentGrammarSourceSha256:text",
-            },
-            entry.ArgumentShape));
-        var usageText = string.Join(" ", usage.Entries.SelectMany(entry => entry.ArgumentShape));
-        Assert.DoesNotContain(_fwDataPath, usageText, StringComparison.Ordinal);
-        Assert.DoesNotContain(assessmentId, usageText, StringComparison.Ordinal);
-        Assert.DoesNotContain(assessment.Selection.Sha256, usageText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -447,7 +421,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void FullLoopTypedOutcomesCarryProjectFacts_AndUsageLogStaysDataFree()
+    public void FullLoopTypedOutcomesCarryProjectFacts()
     {
         var senseGuid = _seed.FirstSenseId;
         var wsTag = NewLangProjFixture.AnalysisTag;
@@ -457,8 +431,6 @@ public sealed class ReportProjectionIntegrationTests
         const string draftName = "report-projection-demo";
         const string label = "report-projection-1";
         const string applier = "report-projection-tests";
-
-        var usage = new UsageLog();
 
         var created = ProposalCommands.New(new NewDraftRequest(_fwDataPath, ProductVersion, draftName, label));
         Assert.True(created.Succeeded);
@@ -472,15 +444,15 @@ public sealed class ReportProjectionIntegrationTests
         var proposalId = finalize.Value!.ProposalId;
 
         // list
-        var listText = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion), usage);
-        var listJson = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion), usage);
+        var listText = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion));
+        var listJson = ProposalCommands.List(new ListProposalsRequest(_fwDataPath, ProductVersion));
         Assert.True(listText.Succeeded);
         Assert.True(listJson.Succeeded);
         Assert.Equal(proposalId, Assert.Single(listJson.Value!.Proposals).ProposalId);
 
         // show
-        var showText = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId), usage);
-        var showJson = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId), usage);
+        var showText = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
+        var showJson = ProposalCommands.Show(new ShowProposalRequest(_fwDataPath, ProductVersion, proposalId));
         Assert.True(showText.Succeeded);
         Assert.True(showJson.Succeeded);
         Assert.Contains(showJson.Value!.Operations, operation => operation.Target == canonicalId.Value);
@@ -489,8 +461,8 @@ public sealed class ReportProjectionIntegrationTests
             ProposalCommandRenderer.Render(showJson, asJson: true).Output);
 
         // Dry Run is a job; the helper drains it and returns the typed result.
-        var dryRunText = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, usage);
-        var dryRunJson = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId, usage);
+        var dryRunText = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId);
+        var dryRunJson = DryRunJobRunner.Run(_fwDataPath, ProductVersion, proposalId);
         Assert.True(dryRunText.Succeeded);
         Assert.True(dryRunJson.Succeeded);
         var dryRunChange = Assert.Single(Assert.Single(dryRunJson.Value!.Effects).Changes);
@@ -499,7 +471,7 @@ public sealed class ReportProjectionIntegrationTests
 
         // Apply mutates once, so its effect and Receipt are checked against project state.
         var applyJson = ProposalCommands.Apply(
-            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true), usage);
+            new ApplyRequest(_fwDataPath, ProductVersion, proposalId, applier, Force: true));
         Assert.True(applyJson.Succeeded);
         var appliedChange = Assert.Single(Assert.Single(applyJson.Value!.Effects).Changes);
         Assert.Equal(originalGloss, appliedChange.Before);
@@ -508,33 +480,12 @@ public sealed class ReportProjectionIntegrationTests
         Assert.Equal(proposalId, applyJson.Value.ProposalId);
 
         // log
-        var logText = ProposalCommands.Log(new LogRequest(_fwDataPath), usage);
-        var logJson = ProposalCommands.Log(new LogRequest(_fwDataPath), usage);
+        var logText = ProposalCommands.Log(new LogRequest(_fwDataPath));
+        var logJson = ProposalCommands.Log(new LogRequest(_fwDataPath));
         Assert.True(logText.Succeeded);
         Assert.True(logJson.Succeeded);
         Assert.Equal(applier, Assert.Single(logJson.Value!.Entries).User);
 
-        // usage log: recorded every real call above, but never a scrap of the real project data.
-        Assert.Equal(9, usage.Entries.Count);
-        foreach (var entry in usage.Entries)
-        {
-            AssertNever(entry.Command, originalGloss, newGloss, canonicalId.Value, proposalId, applier, _fwDataPath);
-            foreach (var token in entry.ArgumentShape)
-                AssertNever(token, originalGloss, newGloss, canonicalId.Value, proposalId, applier, _fwDataPath);
-        }
-
-        var summary = usage.Summarize();
-        Assert.Equal(2, summary.CallCounts["list"]);
-        Assert.Equal(2, summary.CallCounts["show"]);
-        Assert.Equal(2, summary.CallCounts["dry-run"]);
-        Assert.Equal(1, summary.CallCounts["apply"]);
-        Assert.Equal(2, summary.CallCounts["log"]);
-    }
-
-    private static void AssertNever(string haystack, params string[] secrets)
-    {
-        foreach (var secret in secrets)
-            Assert.DoesNotContain(secret, haystack, StringComparison.Ordinal);
     }
 
 }

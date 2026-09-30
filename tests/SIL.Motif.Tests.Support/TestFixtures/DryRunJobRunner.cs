@@ -14,7 +14,6 @@ using SIL.Motif.Host.Baselines;
 using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Worker.Baselines;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Scheduling;
@@ -28,11 +27,10 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </summary>
 internal static class DryRunJobRunner
 {
-    public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId,
-        UsageLog? usage = null)
+    public static CommandOutcome<DryRunProjection> Run(string fwDataPath, string productVersion, string proposalId)
     {
         var enqueued = JobCommands.EnqueueDryRun(
-            new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId), usage);
+            new EnqueueDryRunRequest(fwDataPath, productVersion, proposalId));
         if (!enqueued.Succeeded)
             return CommandOutcome<DryRunProjection>.Refused(enqueued.Refusal!);
         var jobId = enqueued.Value!.JobId;

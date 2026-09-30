@@ -62,6 +62,9 @@ public sealed class AssessViewModelTests
 
         Assert.Equal(RunState.Completed, assess.State);
         Assert.Equal(clock.GetLocalNow(), assess.CompletedAt);
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("assess", entry.Command);
+        Assert.Equal(new[] { "fwDataPath:text", "selection:object" }, entry.ArgumentShape);
     }
 
     [Fact]
@@ -188,6 +191,9 @@ public sealed class AssessViewModelTests
         Assert.False(assess.IsActive);
         Assert.Equal("assessment.cancelled", assess.Refusal!.Code);
         Assert.True(assess.RunCommand.CanExecute(null));
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("assess", entry.Command);
+        Assert.DoesNotContain(ProjectPath, string.Join(" ", entry.ArgumentShape));
     }
 
     [Fact]
@@ -205,6 +211,7 @@ public sealed class AssessViewModelTests
         Assert.Same(refusal, assess.Refusal);
         Assert.Contains($"projectPath: {ProjectPath}", assess.ShownRefusal!.Details);
         Assert.True(assess.RunCommand.CanExecute(null));
+        Assert.Equal("assess", Assert.Single(fake.UsageEntries).Command);
     }
 
     [Fact]

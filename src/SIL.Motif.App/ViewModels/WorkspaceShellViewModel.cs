@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Projection.Usage;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 
@@ -71,7 +72,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
-                path is null ? Task.CompletedTask : OpenProjectSafelyAsync(path)),
+                path is null ? Task.CompletedTask : OpenProjectFromCommandAsync(path)),
             RefreshBaselineCommand = baseline.RefreshCommand,
         };
         PublishBaseline();
@@ -97,9 +98,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
         SelectNewProjectCommand = new AsyncRelayCommand(() => Project.BrowseCommand.ExecuteAsync(null));
         OpenRecentProjectCommand = new AsyncRelayCommand<RecentProjectViewModel>(recent =>
-            recent is null ? Task.CompletedTask : OpenProjectSafelyAsync(recent.FullFwDataPath));
+            recent is null ? Task.CompletedTask : OpenProjectFromCommandAsync(recent.FullFwDataPath));
         ConfigureCommand = new AsyncRelayCommand(async () =>
         {
+            using var usageAction = _commandClient.BeginUsageAction("config show",
+                UsageArgumentShape.Text("fwDataPath"));
             OpenConfiguration?.Invoke();
             if (Context.Setup?.ConfigurationLoadTask is { } load) await load.ConfigureAwait(true);
         }, () => CanConfigure);
@@ -460,6 +463,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private async Task DeleteRefusedStoreAndReopenAsync()
     {
         if (_storeDeletionProject is not { } projectPath) return;
+        using var usageAction = _commandClient.BeginUsageAction("store delete-refused",
+            UsageArgumentShape.Text("fwDataPath"));
         StopConfirmingStoreDeletion();
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
         var outcome = await _commandClient.DeleteRefusedStoreAsync(
@@ -477,6 +482,13 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OpenRefusal = refusal;
         OnPropertyChanged(nameof(OpenRefusal));
         OnPropertyChanged(nameof(HasOpenRefusal));
+    }
+
+    private async Task OpenProjectFromCommandAsync(string fwDataPath)
+    {
+        using var usageAction = _commandClient.BeginUsageAction("project open",
+            UsageArgumentShape.Text("fwDataPath"));
+        await OpenProjectSafelyAsync(fwDataPath).ConfigureAwait(true);
     }
 
     private async Task OpenProjectSafelyAsync(string fwDataPath)

@@ -16,6 +16,12 @@ namespace SIL.Motif.App.Services;
 /// </summary>
 public partial interface ICommandClient
 {
+    /// <summary>
+    /// Starts one explicit window action for usage recording. Automatic reads stay unrecorded, and nested
+    /// scopes in one workflow are suppressed by the shared recorder.
+    /// </summary>
+    IDisposable BeginUsageAction(string command, params string[] argumentShape);
+
     Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken);
 

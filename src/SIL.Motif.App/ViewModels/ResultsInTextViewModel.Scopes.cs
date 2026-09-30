@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Projection.Usage;
 using SIL.Motif.Contract.Requests;
 
 namespace SIL.Motif.App.ViewModels;
@@ -94,6 +95,9 @@ public sealed partial class ResultsInTextViewModel
     private async Task AcceptNewSetAsync(AnalysisOperationScope scope)
     {
         if (_changes.AssessmentId is not { } assessmentId) return;
+        using var usageAction = _commands.BeginUsageAction("accept-new-set",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("assessmentId"),
+            UsageArgumentShape.Text("scope"));
         switch (scope)
         {
             case AnalysisOperationScope.SelectedText when SelectedText is { } text:
@@ -115,8 +119,14 @@ public sealed partial class ResultsInTextViewModel
     private bool CanAddParserReadings(AnalysisOperationScope scope) =>
         scope != AnalysisOperationScope.AssessmentSelection && TokensFor(scope).Any(HasParserOnlyReading);
 
-    private Task AddParserReadingsAsync(AnalysisOperationScope scope) =>
-        AddParserReadingsAsUnknownAsync(TokensFor(scope));
+    private async Task AddParserReadingsAsync(AnalysisOperationScope scope)
+    {
+        var tokens = TokensFor(scope).ToArray();
+        using var usageAction = _commands.BeginUsageAction("put-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"),
+            UsageArgumentShape.List("words", DistinctWords(tokens).Count()));
+        await AddParserReadingsAsUnknownAsync(tokens).ConfigureAwait(true);
+    }
 
     private static bool HasParserOnlyReading(ResultsTokenViewModel token) =>
         token.Marking.PanGlossReadings.Any(reading => reading.IsParserOnly);
@@ -146,8 +156,14 @@ public sealed partial class ResultsInTextViewModel
         _ => false,
     };
 
-    private Task MarkSpellingsIncorrectAsync(AnalysisOperationScope scope) =>
-        MarkSpellingsIncorrectAsync(TokensFor(scope));
+    private async Task MarkSpellingsIncorrectAsync(AnalysisOperationScope scope)
+    {
+        var tokens = TokensFor(scope).ToArray();
+        using var usageAction = _commands.BeginUsageAction("put-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"),
+            UsageArgumentShape.List("words", DistinctWords(tokens).Count()));
+        await MarkSpellingsIncorrectAsync(tokens).ConfigureAwait(true);
+    }
 
     private async Task MarkSpellingsIncorrectAsync(IEnumerable<ResultsTokenViewModel> tokens)
     {
@@ -172,7 +188,10 @@ public sealed partial class ResultsInTextViewModel
         var ids = TokensFor(scope).SelectMany(token => token.Marking.FieldWorksAnalyses)
             .Select(analysis => analysis.StoredAnalysisId).Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal).ToArray();
-        return ids.Length == 0 ? Task.CompletedTask : _changes.RemoveAnalysesAsync(ids);
+        if (ids.Length == 0) return Task.CompletedTask;
+        using var usageAction = _commands.BeginUsageAction("remove-analysis",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("analyses", ids.Length));
+        return _changes.RemoveAnalysesAsync(ids);
     }
 
     private bool CanUndoChanges(AnalysisOperationScope scope) => scope != AnalysisOperationScope.AssessmentSelection &&
@@ -185,8 +204,19 @@ public sealed partial class ResultsInTextViewModel
         return _changes.Items.Any(change => forms.Contains(change.Word));
     }
 
-    private Task UndoChangesAsync(AnalysisOperationScope scope) =>
-        UndoChangesAsync(TokensFor(scope));
+    private async Task UndoChangesAsync(AnalysisOperationScope scope)
+    {
+        var tokens = TokensFor(scope).ToArray();
+        var forms = tokens.Where(token => token.IsWord).Select(token => token.Form)
+            .ToHashSet(StringComparer.Ordinal);
+        var occurrences = tokens.Select(token => token.Occurrence).OfType<OccurrenceAnchor>().ToHashSet();
+        var count = _changes.Items.Count(change => forms.Contains(change.Word) &&
+            (change.Occurrence is null || occurrences.Contains(change.Occurrence)));
+        if (count == 0) return;
+        using var usageAction = _commands.BeginUsageAction("remove-pending-change",
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", count));
+        await UndoChangesAsync(tokens).ConfigureAwait(true);
+    }
 
     private async Task UndoChangesAsync(IEnumerable<ResultsTokenViewModel> tokens)
     {

@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -25,7 +26,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
         _timeProvider = timeProvider ?? TimeProvider.System;
-        CheckCommand = new AsyncRelayCommand(CheckAsync, () => _projectPath is not null);
+        CheckCommand = new AsyncRelayCommand(CheckFromUserAsync, () => _projectPath is not null);
         Warnings.PropertyChanged += OnWarningsChanged;
     }
 
@@ -171,5 +172,13 @@ public sealed partial class GrammarViewModel : ObservableObject
 
         HasChecked = true;
         IsLoading = false;
+    }
+
+    private async Task CheckFromUserAsync()
+    {
+        if (_projectPath is not { } path) return;
+        using var usageAction = _commandClient.BeginUsageAction("grammar check",
+            UsageArgumentShape.Text("fwDataPath"));
+        await CheckAsync().ConfigureAwait(true);
     }
 }

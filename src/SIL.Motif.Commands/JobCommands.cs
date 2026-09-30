@@ -18,7 +18,6 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
-using SIL.Motif.Projection.Usage;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -69,12 +68,8 @@ public static class JobCommands
     /// path <c>show</c> and <c>apply</c> use, refusing before any row is queued when it is absent or
     /// inconsistent, then queues a Dry Run job and returns the job id that names it.
     /// </summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueDryRun(
-        EnqueueDryRunRequest request, UsageLog? usage = null)
-    {
-        usage?.Record(DryRunKind,
-            new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueDryRun(EnqueueDryRunRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
             ProposalRecord record;
@@ -95,22 +90,19 @@ public static class JobCommands
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, DryRunKind, workspaceKey));
         });
-    }
 
     /// <summary>
     /// Loads one Proposal — a committed revision or an uncommitted Draft, either resolves — through
     /// <see cref="ProposalRepository.Get"/>, refusing before any row is queued when it is absent, then
     /// queues a Trial job and returns the job id that names it.
     /// </summary>
-    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request, UsageLog? usage = null)
+    public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request)
     {
         if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
                 !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
             return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
                 "job.invalid-words", FailureReason.InvalidArgument,
                 "Trial words must be nonblank and have no surrounding whitespace."));
-        usage?.Record(TrialKind,
-            new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("proposalId") });
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);

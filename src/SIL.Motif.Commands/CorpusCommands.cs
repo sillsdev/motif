@@ -7,7 +7,6 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection;
-using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.Commands;
 
@@ -126,23 +125,16 @@ public static class CorpusCommands
     }
 
     /// <summary>Every stored Corpus, with its size and what may be done with it.</summary>
-    public static CommandOutcome<CorpusListProjection> ListCorpora(ListCorporaRequest request, UsageLog? usage = null)
-    {
-        usage?.Record("corpora", new[] { UsageArgumentShape.Text("fwDataPath") });
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+    public static CommandOutcome<CorpusListProjection> ListCorpora(ListCorporaRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
             CommandOutcome<CorpusListProjection>.Success(BuildCorpusList(database)));
-    }
 
     private static CorpusListProjection BuildCorpusList(MotifDatabase database)
         => CorpusProjectionQuery.List(StoreFor(database));
 
     /// <summary>One Corpus in full: provenance, every Document, and what each is licensed for.</summary>
-    public static CommandOutcome<CorpusDetailProjection> ShowCorpus(ShowCorpusRequest request, UsageLog? usage = null)
-    {
-        usage?.Record(
-            "show-corpus",
-            new[] { UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("corpusId") });
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+    public static CommandOutcome<CorpusDetailProjection> ShowCorpus(ShowCorpusRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var projection = CorpusProjectionQuery.Detail(StoreFor(database), request.CorpusId);
             return projection is not null
@@ -151,7 +143,6 @@ public static class CorpusCommands
                     "corpus.not-found", FailureReason.NotFound,
                     $"No corpus '{request.CorpusId}' in store.", Fact(("corpusId", request.CorpusId))));
         });
-    }
 
     /// <summary>
     /// Build capabilities from CLI flags, defaulting to "nothing established" rather than to permission.

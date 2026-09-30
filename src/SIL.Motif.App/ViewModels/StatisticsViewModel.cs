@@ -6,6 +6,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -223,6 +224,13 @@ public sealed partial class StatisticsViewModel : ObservableObject
     {
         if (ProjectPath is null) return;
 
+        var shapes = new List<string>
+        {
+            UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.Text("group"),
+        };
+        if (AssessmentId is not null) shapes.Add(UsageArgumentShape.Text("assessmentId"));
+        using var usageAction = _commandClient.BeginUsageAction("stats", [.. shapes]);
         var request = new StatsRequest(ProjectPath, AssessmentId, StatsOutputKind.JsonRows,
             ["--group", SelectedGroup]);
         var outcome = await _commandClient.StatsAsync(request, CancellationToken.None);

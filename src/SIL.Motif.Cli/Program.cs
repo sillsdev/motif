@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
@@ -66,6 +67,27 @@ internal static int Run(
     IReadOnlyDictionary<string, string?> environment,
     Action<string, Action<string>?> startRunner)
 {
+string ResolveRoot() => environment.TryGetValue(RunnerOptions.RootVariable, out var root)
+    && !string.IsNullOrWhiteSpace(root) ? root : RunnerOptions.DefaultRoot;
+
+var usageVerb = args.Length > 0 ? args[0] : "cli";
+var usageArguments = args.Length > 0
+    ? ParseArgs(args[1..])
+    : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
+        (IReadOnlyList<string>)Array.Empty<string>());
+var resolvedUsageCommand = args.Length > 0
+    ? ResolveCommandName(usageVerb, usageArguments.Item1, usageArguments.Item2)
+    : usageVerb;
+var usageCommand = resolvedUsageCommand == "help" ||
+    CommandCatalog.All.Any(command => command.Name == resolvedUsageCommand)
+        ? resolvedUsageCommand
+        : "unknown";
+var usageRecorder = UsageRecorder.ForMachineRoot(ResolveRoot());
+using var usageAction = usageRecorder.BeginAction(
+    usageCommand,
+    CliUsageArgumentShapes(usageCommand, usageVerb, usageArguments.Item1,
+        usageArguments.Item2, usageArguments.Item3));
+
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
     environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
 
@@ -77,9 +99,6 @@ if (args.Length == 0)
     PrintUsage(error, commandPolicy);
     return 1;
 }
-
-string ResolveRoot() => environment.TryGetValue(RunnerOptions.RootVariable, out var root)
-    && !string.IsNullOrWhiteSpace(root) ? root : RunnerOptions.DefaultRoot;
 
 var verb = args[0];
 var rest = args[1..];
@@ -98,8 +117,6 @@ try
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
     var asJson = flags.ContainsKey("json");
-    var usage = new UsageLog();
-
     CommandResult result;
     // RenderProposal below already fully renders text or JSON; the bottom printer must not wrap it again.
     var alreadyRendered = false;
@@ -121,7 +138,7 @@ try
         case "open":
             if (positionals.Count != 1)
                 return Usage("Usage: motif open <path-to-.fwdata> [--json]", asJson);
-            result = RenderProposal(ProposalCommands.Open(new OpenRequest(positionals[0]), usage));
+            result = RenderProposal(ProposalCommands.Open(new OpenRequest(positionals[0])));
             break;
 
         case "analyses":
@@ -147,9 +164,8 @@ try
                     ProposalCommands.Analyses(
                         new AssessmentAnalysesRequest(
                             analysesProject, CliProductVersion(), assessmentId!, currentSelectionSha256!,
-                            currentGrammarSha256!),
-                        usage))
-                : RenderProposal(ProposalCommands.Analyses(new ManualAnalysesRequest(analysesProject), usage));
+                            currentGrammarSha256!)))
+                : RenderProposal(ProposalCommands.Analyses(new ManualAnalysesRequest(analysesProject)));
             break;
 
         case "new":
@@ -375,14 +391,14 @@ try
             if (!flags.TryGetValue("project", out var listProject))
                 return Usage("Usage: motif list --project <fwdata> [--json]", asJson);
             result = RenderProposal(
-                ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion()), usage));
+                ProposalCommands.List(new ListProposalsRequest(listProject, CliProductVersion())));
             break;
 
         case "show":
             if (!flags.TryGetValue("project", out var showProject) || positionals.Count != 1)
                 return Usage("Usage: motif show --project <fwdata> <proposalId> [--json]", asJson);
             result = RenderProposal(
-                ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0]), usage));
+                ProposalCommands.Show(new ShowProposalRequest(showProject, CliProductVersion(), positionals[0])));
             break;
 
         case "pending-changes":
@@ -549,7 +565,7 @@ try
                 return dryRunUsage;
             result = RenderCommand(
                 JobCommands.EnqueueDryRun(
-                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
+                    new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0])),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(dryRunProject, error.WriteLine);
@@ -605,8 +621,7 @@ try
                 JobCommands.EnqueueTrial(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        AllWords: flags.ContainsKey("all-words")),
-                    usage),
+                        AllWords: flags.ContainsKey("all-words"))),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
             if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
@@ -643,14 +658,13 @@ try
             var applyForce = flags.ContainsKey("force");
             result = RenderProposal(
                 ProposalCommands.Apply(
-                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyUser, applyForce),
-                    usage));
+                    new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyUser, applyForce)));
             break;
 
         case "log":
             if (!flags.TryGetValue("project", out var logProject))
                 return Usage("Usage: motif log --project <fwdata> [--json]", asJson);
-            result = RenderProposal(ProposalCommands.Log(new LogRequest(logProject), usage));
+            result = RenderProposal(ProposalCommands.Log(new LogRequest(logProject)));
             break;
 
         case "add-corpus":
@@ -724,14 +738,14 @@ try
             if (!flags.TryGetValue("project", out var corporaProject))
                 return Usage("Usage: motif corpora --project <fwdata> [--json]", asJson);
             result = RenderCommand(
-                CorpusCommands.ListCorpora(new ListCorporaRequest(corporaProject, CliProductVersion()), usage));
+                CorpusCommands.ListCorpora(new ListCorporaRequest(corporaProject, CliProductVersion())));
             break;
 
         case "show-corpus":
             if (!flags.TryGetValue("project", out var showCorpusProject) || positionals.Count != 1)
                 return Usage("Usage: motif show-corpus --project <fwdata> <corpusId> [--json]", asJson);
             result = RenderCommand(CorpusCommands.ShowCorpus(
-                new ShowCorpusRequest(showCorpusProject, CliProductVersion(), positionals[0]), usage));
+                new ShowCorpusRequest(showCorpusProject, CliProductVersion(), positionals[0])));
             break;
 
         case "baseline-refresh":
@@ -1082,15 +1096,6 @@ try
             return Usage($"Unknown command '{verb}'.", asJson, withUsageBanner: true);
     }
 
-    // One process is one call; the machine store is what accumulates a session (ADR 0021 decision 4).
-    if (usage.Entries.Count > 0)
-    {
-        using var machine = MachineDatabase.Open(ResolveRoot());
-        var machineUsage = new MachineUsageLog(machine);
-        foreach (var entry in usage.Entries)
-            machineUsage.Append(entry);
-    }
-
     if (result.ExitCode == 0)
     {
         output.Write(result.Output);
@@ -1228,6 +1233,109 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
     if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
         return verb + " --wait";
     return verb;
+}
+
+static IReadOnlyList<string> CliUsageArgumentShapes(
+    string commandName,
+    string verb,
+    IReadOnlyDictionary<string, string> flags,
+    IReadOnlyList<string> positionals,
+    IReadOnlyList<string> forwardedArguments)
+{
+    var shapes = new List<string>();
+    var catalogEntry = CliVerbCatalog.All.FirstOrDefault(entry => entry.CommandName == commandName);
+    if (commandName is not "help" && catalogEntry is null)
+    {
+        if (flags.Count > 0) shapes.Add(UsageArgumentShape.List("flags", flags.Count));
+        if (positionals.Count > 0) shapes.Add(UsageArgumentShape.List("arguments", positionals.Count));
+        if (forwardedArguments.Count > 0)
+            shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
+        return shapes;
+    }
+
+    if (commandName == "help")
+    {
+        if (flags.Count > 0) shapes.Add(UsageArgumentShape.List("flags", flags.Count));
+        if (positionals.Count > 0) shapes.Add(UsageArgumentShape.List("arguments", positionals.Count));
+        if (forwardedArguments.Count > 0)
+            shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
+        return shapes;
+    }
+
+    var allowedFlags = Regex.Matches(
+            string.Join(" ", catalogEntry!.UsageLines), "--([a-z0-9][a-z0-9-]*)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+        .Select(match => match.Groups[1].Value)
+        .ToHashSet(StringComparer.Ordinal);
+    var unrecognizedFlagCount = 0;
+    foreach (var (flag, value) in flags)
+    {
+        if (flag == "json") continue;
+        if (!allowedFlags.Contains(flag))
+        {
+            unrecognizedFlagCount++;
+            continue;
+        }
+        var name = UsageParameterName(flag);
+        if (value == "true")
+            shapes.Add(UsageArgumentShape.Flag(name));
+        else if (flag is "depends-on" or "words" or "texts" or "text-ids" or "occurrences")
+            shapes.Add(UsageArgumentShape.List(name,
+                value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length));
+        else
+            shapes.Add(UsageArgumentShape.Text(name));
+    }
+    if (unrecognizedFlagCount > 0)
+        shapes.Add(UsageArgumentShape.List("unrecognizedFlags", unrecognizedFlagCount));
+
+    var positionalOffset = positionals.Count > 0 &&
+        commandName == $"{verb} {positionals[0]}" &&
+        CliVerbCatalog.All.Any(entry => entry.CommandName == commandName) ? 1 : 0;
+    var usageLine = CliVerbCatalog.All.FirstOrDefault(entry => entry.CommandName == commandName)
+        ?.UsageLines.FirstOrDefault();
+    var positionalNames = usageLine is null ? Array.Empty<string>() : PositionalParameterNames(usageLine);
+    var declaredPositionals = Math.Min(positionalNames.Count, Math.Max(0, positionals.Count - positionalOffset));
+    for (var index = positionalOffset; index < positionalOffset + declaredPositionals; index++)
+    {
+        shapes.Add(UsageArgumentShape.Text(positionalNames[index - positionalOffset]));
+    }
+    var extraPositionals = positionals.Count - positionalOffset - declaredPositionals;
+    if (extraPositionals > 0)
+        shapes.Add(UsageArgumentShape.List("extraArguments", extraPositionals));
+
+    if (forwardedArguments.Count > 0)
+        shapes.Add(UsageArgumentShape.List("forwardedArguments", forwardedArguments.Count));
+    return shapes;
+}
+
+static IReadOnlyList<string> PositionalParameterNames(string usageLine)
+{
+    var names = new List<string>();
+    foreach (Match match in Regex.Matches(usageLine, "<([^<>]+)>"))
+    {
+        var prefix = usageLine[..match.Index].TrimEnd();
+        var previousToken = prefix.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        if (previousToken?.StartsWith("--", StringComparison.Ordinal) == true) continue;
+        names.Add(UsageParameterName(match.Groups[1].Value));
+    }
+    return names;
+}
+
+static string UsageParameterName(string source)
+{
+    if (source == "project") return "fwDataPath";
+    if (source == "assessment") return "assessmentId";
+    if (source == "current-grammar-sha256") return "currentGrammarSourceSha256";
+    if (source.Contains("fwdata", StringComparison.OrdinalIgnoreCase) ||
+        source.Contains("path-to", StringComparison.OrdinalIgnoreCase))
+        return "fwDataPath";
+
+    var segments = Regex.Split(source, "[-_]+")
+        .Where(segment => segment.Length > 0)
+        .ToArray();
+    if (segments.Length == 0) return "argument";
+    return char.ToLowerInvariant(segments[0][0]) + segments[0][1..] + string.Concat(
+        segments.Skip(1).Select(segment => char.ToUpperInvariant(segment[0]) + segment[1..]));
 }
 
 static int RefuseUnavailableCommand(

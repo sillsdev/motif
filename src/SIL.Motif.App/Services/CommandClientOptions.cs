@@ -17,7 +17,8 @@ public sealed record CommandClientOptions(
     string? ParserPath,
     IJobRunnerLauncher RunnerLauncher,
     ICommandStartGate? StartGate = null,
-    TimeProvider? TimeProvider = null)
+    TimeProvider? TimeProvider = null,
+    UsageRecorder? UsageRecorder = null)
 {
     /// <summary>
     /// The installed window's settings, resolved once from the environment exactly as the command line

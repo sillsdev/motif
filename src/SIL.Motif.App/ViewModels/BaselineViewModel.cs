@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -134,6 +135,8 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     private async Task RefreshAsync()
     {
         if (_projectPath is not { } path) return;
+        using var usageAction = _commandClient.BeginUsageAction("baseline capture",
+            UsageArgumentShape.Text("fwDataPath"));
         var generation = _projectGeneration;
 
         var outcome = await _commandClient.CaptureBaselineAsync(

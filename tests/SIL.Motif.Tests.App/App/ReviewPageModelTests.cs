@@ -36,6 +36,7 @@ public sealed class ReviewPageModelTests
 
         Assert.Equal("kept", Assert.Single(context.Changes.Items).ChangeId);
         Assert.Equal("kept", Assert.Single(context.Changes.Snapshot.Changes).ChangeId);
+        Assert.Equal("remove-pending-change", Assert.Single(fake.UsageEntries).Command);
     }
 
     [Fact]
@@ -266,6 +267,7 @@ public sealed class ReviewPageModelTests
         Assert.True(page.CanApply);
         Assert.Equal(["first"], Assert.Single(fake.MeasurePendingRequests).Words);
         Assert.Contains("kept their approved analyses", page.NumbersText);
+        Assert.Equal("trial --pending", Assert.Single(fake.UsageEntries).Command);
     }
 
     [Theory]
@@ -330,6 +332,7 @@ public sealed class ReviewPageModelTests
         await page.MeasureCommand.ExecuteAsync(null);
 
         Assert.Equal("The check was cancelled.", page.MeasurementRefusal?.Sentence);
+        Assert.Equal("trial --pending", Assert.Single(fake.UsageEntries).Command);
     }
 
     [Fact]
@@ -443,6 +446,9 @@ public sealed class ReviewPageModelTests
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
         Assert.Equal("revision/one", Assert.Single(fake.ApplyPendingRequests).Revision);
         Assert.True(context.Evidence.AppliedSinceRefresh);
+        Assert.Collection(fake.UsageEntries,
+            entry => Assert.Equal("trial --pending", entry.Command),
+            entry => Assert.Equal("apply --all-pending", entry.Command));
     }
 
     [Fact]
