@@ -628,7 +628,7 @@ public sealed class MainWindowSmokeTests
             };
 
             var link = Assert.Single(block.Children.OfType<HyperlinkButton>());
-            Assert.Equal("entry", link.Content);
+            Assert.Equal("entry", Assert.IsType<TextBlock>(link.Content).Text);
             Assert.Equal(new Uri("silfw://localhost/link"), link.NavigateUri);
 
             var pieces = block.Children.OfType<CopyableTextBlock>().ToList();

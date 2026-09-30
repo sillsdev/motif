@@ -15,17 +15,22 @@ public sealed partial class GrammarPanel : UserControl
         AvaloniaXamlLoader.Load(this);
         Grammar.Warnings.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(GrammarWarningsViewModel.ShownCount)) ShowWhereOnlyWhenNamed();
+            if (e.PropertyName is nameof(GrammarWarningsViewModel.ShownCount) or
+                nameof(GrammarWarningsViewModel.Bucket) or nameof(GrammarWarningsViewModel.SelectedGroup))
+                ShowColumnsThatSaySomething();
         };
-        ShowWhereOnlyWhenNamed();
+        ShowColumnsThatSaySomething();
     }
 
     public GrammarViewModel Grammar { get; }
 
-    // A column of "Not named by the parser" on every row says nothing, so it steps aside for the problem text.
-    private void ShowWhereOnlyWhenNamed()
+    // A column holding the same word on every row says nothing, so it steps aside for the meaning.
+    private void ShowColumnsThatSaySomething()
     {
-        var where = this.FindControl<DataGrid>("FindingsGrid")!.Columns.FirstOrDefault(column => (string?)column.Header == "Where");
-        if (where is not null) where.IsVisible = Grammar.Warnings.AnyShownWhere;
+        var columns = this.FindControl<DataGrid>("FindingsGrid")!.Columns;
+        if (columns.FirstOrDefault(column => (string?)column.Header == "Where") is { } where)
+            where.IsVisible = Grammar.Warnings.AnyShownWhere;
+        if (columns.FirstOrDefault(column => (string?)column.Header == "Level") is { } level)
+            level.IsVisible = Grammar.Warnings.AnyShownLevelsDiffer;
     }
 }

@@ -408,6 +408,9 @@ public sealed class ParserReadingViewModel
 /// <summary>One morph of a reading: form over gloss over category, the form linking to its entry.</summary>
 public sealed class ParserReadingMorphViewModel
 {
+    private const string UnknownForm = "unknown morpheme";
+    private readonly string _glossPlaceholder = "?";
+
     public ParserReadingMorphViewModel(ParserReadingMorph morph)
     {
         ArgumentNullException.ThrowIfNull(morph);
@@ -420,11 +423,28 @@ public sealed class ParserReadingMorphViewModel
         Link = morph.FieldWorksLink is { } link ? new Uri(link) : null;
     }
 
+    private ParserReadingMorphViewModel(ParserReadingMorph morph, string form, string glossPlaceholder) : this(morph)
+    {
+        Form = form;
+        _glossPlaceholder = glossPlaceholder;
+    }
+
+    /// <summary>
+    /// A morpheme from a parser trace, which may not know a morpheme's form or gloss: an unnamed one reads
+    /// "unknown morpheme" and a missing gloss a dash, never a bare question mark.
+    /// </summary>
+    public static ParserReadingMorphViewModel ForTrace(ParserReadingMorph morph)
+    {
+        ArgumentNullException.ThrowIfNull(morph);
+        var form = string.IsNullOrWhiteSpace(morph.Form) || morph.Form.Trim() == "?" ? UnknownForm : morph.Form;
+        return new ParserReadingMorphViewModel(morph, form, "—");
+    }
+
     public string Form { get; }
     public string Gloss { get; }
 
     /// <summary>The gloss, or a placeholder a reader can still see and click when the project gives none.</summary>
-    public string GlossOrPlaceholder => Gloss.Length == 0 ? "?" : Gloss;
+    public string GlossOrPlaceholder => Gloss.Length == 0 ? _glossPlaceholder : Gloss;
 
     /// <summary>The accessible name of this morph's link into FieldWorks.</summary>
     public string LinkName => $"Open the entry for {Form} in FieldWorks";

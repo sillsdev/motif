@@ -134,7 +134,7 @@ public sealed class TraceWordViewModelTests
 
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
         Assert.Equal(3, trace.ClosestAttempts.Count);
-        Assert.Equal("Show the other 1 stopped by -a", trace.MoreAttemptsText);
+        Assert.Equal("Show the other attempt stopped by -a", trace.MoreAttemptsText);
         trace.ShowEveryAttemptCommand.Execute(null);
         Assert.Equal(4, trace.ClosestAttempts.Count);
 
@@ -177,7 +177,61 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("matin", candidate.Surface);
         Assert.Equal(2, candidate.Morphs.Count);
         Assert.Equal("Stopped by -lu ‘APPL’", candidate.StopHeadline);
-        Assert.Equal("No rule may apply after the final template. (NonPartialRuleProhibitedAfterFinalTemplate)", candidate.StopReason);
+        Assert.Equal("No rule may apply after the final template.", candidate.StopReason);
+        Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", candidate.ParserCode);
+        Assert.True(candidate.HasParserCode);
+    }
+
+    [Fact]
+    public void AMorphemeTheParserCouldNotNameReadsAsUnknownNeverAsAQuestionMark()
+    {
+        var candidate = new TraceCandidateViewModel(new TraceCandidate(
+            [new ParserReadingMorph("?", "", "", null, false, null), new ParserReadingMorph("tin", "", "", null, false, null)],
+            Succeeded: false, "NonPartialRuleProhibitedAfterFinalTemplate", "Further derivation is prohibited.", [])
+        {
+            OutcomeStatus = "failed",
+        });
+
+        Assert.Equal("unknown morpheme", candidate.Morphs[0].Form);
+        Assert.Equal("tin", candidate.Morphs[1].Form);
+        Assert.All(candidate.Morphs, morph => Assert.Equal("—", morph.GlossOrPlaceholder));
+        Assert.DoesNotContain("?", candidate.Gloss);
+    }
+
+    [Theory]
+    [InlineData("MorphologicalRuleSynthesis", "Affix rule")]
+    [InlineData("MorphologicalRuleAnalysis", "Affix rule")]
+    [InlineData("MorphologicalRule", "Affix rule")]
+    [InlineData("PhonologicalRuleSynthesis", "Phonological rule")]
+    [InlineData("TemplateAnalysisInput", "Affix template")]
+    [InlineData("LexicalLookup", "Lexical lookup")]
+    [InlineData("StratumSynthesisOutput", "Rule level")]
+    [InlineData("CompoundingRuleAnalysis", "Compound rule")]
+    [InlineData("SomeFutureStepKind", "Some future step kind")]
+    public void AStepsKindReadsInPlainWordsNeverAsTheParsersClassName(string type, string kind)
+    {
+        Assert.Equal(kind, TraceStepKinds.Describe(type));
+        var step = new TraceStepViewModel(new TraceStep(type, "lu", "matinlu", "matin", null, []), deepestRule: null);
+        Assert.Equal($"{kind}: lu", step.Label);
+    }
+
+    [Fact]
+    public void StepOutcomesReadAsAppliedStoppedOrTried()
+    {
+        Assert.Equal("applied", new TraceStepViewModel(
+            new TraceStep("MorphologicalRule", "lu", "a", "b", null, []) { OutcomeStatus = "succeeded" }, null).StatusText);
+        Assert.Equal("stopped", new TraceStepViewModel(
+            new TraceStep("MorphologicalRule", "lu", "a", null, "Pattern", []), null).StatusText);
+        Assert.Equal("tried", new TraceStepViewModel(
+            new TraceStep("MorphologicalRule", "lu", "a", "b", null, []) { OutcomeStatus = "attempted" }, null).StatusText);
+    }
+
+    [Fact]
+    public void AStopGroupWithoutASentenceStillReadsInWordsNotTheParsersCode()
+    {
+        var group = new TraceStopGroupViewModel("lu", "SomeNewReason", null, 2);
+
+        Assert.Equal("The parser stopped here: some new reason.", group.ReasonText);
     }
 
     [Fact]
@@ -446,7 +500,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("Search incomplete: The search reached its limit.", trace.SearchStatusText);
         Assert.Equal("4", trace.Effort[0].Uses);
         Assert.Equal("2", trace.Effort[0].Work);
-        Assert.Equal("failed", trace.Candidates[1].StatusText);
+        Assert.Equal("stopped", trace.Candidates[1].StatusText);
     }
     [Fact]
     public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
@@ -478,7 +532,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(1234, trace.Result!.HostCapture!.WallElapsedMs);
         Assert.Contains("ar", trace.WritingSystemSummary, StringComparison.Ordinal);
         Assert.Contains("project-a", trace.CaptureDetails, StringComparison.Ordinal);
-        Assert.Equal("failed", trace.Root!.StatusText);
+        Assert.Equal("stopped", trace.Root!.StatusText);
     }
 
     [Fact]

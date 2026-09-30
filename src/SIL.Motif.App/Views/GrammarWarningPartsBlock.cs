@@ -78,9 +78,10 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
     {
+        // A TextBlock, not a string, so the "_" an environment is written with is not read as an access key.
         var button = new HyperlinkButton
         {
-            Content = part.Text,
+            Content = new TextBlock { Text = part.Text },
             NavigateUri = new Uri(link),
         };
         button.Classes.Add("warningObjectLink");

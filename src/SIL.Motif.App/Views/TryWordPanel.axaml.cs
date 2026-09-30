@@ -30,6 +30,13 @@ public sealed partial class TryWordPanel : UserControl
     private async void OnOpenDiagnosticClick(object? sender, RoutedEventArgs e) =>
         await Model.OpenSavedDiagnosticAsync();
 
+    private async void OnCopyInstructionsClick(object? sender, RoutedEventArgs e) =>
+        await Model.Diagnostics.CopyInstructionsAsync();
+
+    private async void OnSaveClick(object? sender, RoutedEventArgs e) => await Model.Diagnostics.SaveAsync();
+
+    private async void OnCopyJsonClick(object? sender, RoutedEventArgs e) => await Model.Diagnostics.CopyJsonAsync();
+
     private void OnSavedDiagnosticOpened(OpenedDiagnostic opened)
     {
         if (TopLevel.GetTopLevel(this) is Window owner) new DiagnosticWindow(opened, Model.Diagnostics).Show(owner);

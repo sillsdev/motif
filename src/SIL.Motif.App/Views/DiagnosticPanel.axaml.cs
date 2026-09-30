@@ -28,6 +28,8 @@ public sealed partial class DiagnosticPanel : UserControl
         ShowResultSummary = showResultSummary;
         DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
+        // Inside Try a Word the page already holds the inset and the answer, so the trace starts flush.
+        if (!showResultSummary) Classes.Add("embedded");
         tools.DiagnosticOpened += opened => new DiagnosticWindow(opened, tools).Show();
     }
 

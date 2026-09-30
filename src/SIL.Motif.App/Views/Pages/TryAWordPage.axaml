@@ -42,15 +42,12 @@
             <Button Content="{Binding TimingLinkText}" Command="{Binding OpenTimingCommand}"
                     Theme="{DynamicResource OutlineButton}"
                     AutomationProperties.Name="{Binding TimingLinkText}" />
-            <Button Command="{Binding AddExpectedAnalysisToReviewCommand}"
+            <!-- Opinions change one analysis at a time, in the text (ADR 0049), so the offer is the text itself. -->
+            <Button Command="{Binding OpenInTextsCommand}"
                     Theme="{DynamicResource OutlineButton}"
-                    AutomationProperties.Name="Approve expected analysis in Review changes">
-              <TextBlock Text="Approve expected analysis in Review changes" TextWrapping="Wrap"
-                         TextAlignment="Center" />
+                    AutomationProperties.Name="Open in Analyze texts">
+              <TextBlock Text="{Binding OpenInTextsText}" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
-            <views:CopyableTextBlock Classes="muted" Text="{Binding ExpectedAnalysisReviewReason}"
-                                     TextWrapping="Wrap" IsVisible="{Binding HasExpectedAnalysisReviewReason}"
-                                     AutomationProperties.Name="Expected analysis review reason" />
             <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
                     Theme="{DynamicResource OutlineButton}"
                     AutomationProperties.Name="AI Handoff for this word" />

@@ -11,6 +11,7 @@
     <StaticResource x:Key="Component.Warnings.GroupPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
     <StaticResource x:Key="Component.Warnings.KindWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Warnings.ParserLineFont" ResourceKey="Primitive.Font.Mono" />
   </Styles.Resources>
   <Style Selector="Grid.warningPanel">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
@@ -67,9 +68,6 @@
   <Style Selector="StackPanel.warningCell">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.CellMargin}" />
   </Style>
-  <Style Selector=":is(TextBlock).warningRepeat">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
-  </Style>
   <Style Selector=":is(SelectableTextBlock).warningPart">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
   </Style>
@@ -83,6 +81,21 @@
   </Style>
   <Style Selector=":is(SelectableTextBlock).warningValue">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+  </Style>
+  <!-- The parser's own sentence under the plain meaning: small and fixed-width, for quoting in a bug report. -->
+  <Style Selector=":is(WrapPanel).parserLine :is(SelectableTextBlock)">
+    <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector=":is(WrapPanel).parserLine HyperlinkButton">
+    <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector=":is(TextBlock).warningSeen">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
   </Style>
   <Style Selector="HyperlinkButton.warningObjectLink">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />

@@ -61,8 +61,14 @@ public sealed class PageScreenshots
                         foreach (var (name, page, tab) in Views())
                         {
                             workspace.PageModel<TextsPageModel>().Tab = tab;
+                            // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
+                            if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
                             workspace.CurrentPage = page;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
+                            if (page != WorkspacePage.TryAWord) continue;
+                            window.Height = 1500;
+                            Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
+                            window.Height = 780;
                         }
                     }
                 }
@@ -88,6 +94,12 @@ public sealed class PageScreenshots
         ("6-review", WorkspacePage.Review, TextsTab.Matrix),
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
     ];
+
+    private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
+    {
+        workspace.Context.TryWord("matinlu");
+        await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+    }
 
     internal static void Save(MainWindow window, string path)
     {
@@ -127,6 +139,8 @@ public sealed class PageScreenshots
             InvocationId = "assessment/one",
         });
 
+        // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
+        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
         configure?.Invoke(fake, Assessment());
 
         var selection = new SelectionViewModel(fake);
@@ -149,53 +163,13 @@ public sealed class PageScreenshots
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
-        workspace.Assess.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value;
         workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
         return (workspace, window);
     }
 
-    // Load warnings copied from a real project's grammar load, and health findings in the parser's newer shape.
-    private static IReadOnlyList<GrammarWarning> GrammarFindings()
-    {
-        var lines = new[]
-        {
-            ("", "environment representation failed validation", 7),
-            ("invalid environment \"e2\" (/ _ [C])", "unknown natural class \"C\"; treated as absent", 5),
-            ("allomorph \"kat\"", "cannot segment \"kat\": no character definition matches at position 0; skipped", 3),
-            ("", "MSA has zero loadable allomorphs for this stratum bucket", 2),
-            ("phoneme \"ng'\"", "representation collides with an earlier phoneme/boundary; skipped", 1),
-            ("", "inferred segment \"ŋ\" carries no authored feature values, so it satisfies every feature-based natural class", 2),
-        };
-        var findings = new List<GrammarWarning>();
-        foreach (var (subject, problem, count) in lines)
-        {
-            for (var index = 0; index < count; index++)
-            {
-                var text = "warning: " + (subject.Length == 0 ? problem : $"{subject}: {problem}");
-                findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, string.Empty,
-                    subject.Length == 0 ? [] : [new GrammarWarningPart(subject, GrammarWarningPartRole.Text)],
-                    [new GrammarWarningPart(problem, GrammarWarningPartRole.Text)], text)
-                {
-                    Group = "Parser finding",
-                    Code = "test.parser-finding",
-                });
-            }
-        }
-        foreach (var entry in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
-        {
-            findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, "Partial morpheme",
-                [new GrammarWarningPart(entry, GrammarWarningPartRole.Object, null, "lex_entry", "silfw://localhost/link?tool=lexiconEdit")],
-                [new GrammarWarningPart($"Lexical entry '{entry}' is partially analyzed.", GrammarWarningPartRole.Text)],
-                $"warning: hc-partial-morpheme: Lexical entry '{entry}' is partially analyzed.")
-            {
-                Group = "Partial morpheme analysis",
-                Code = "hc-partial-morpheme",
-            });
-        }
-        return findings;
-    }
+    private static IReadOnlyList<GrammarWarning> GrammarFindings() => SeededGrammarFindings.All();
 
     private static readonly (string Word, string[] Forms, string[] Glosses)[] Vocabulary =
     [

@@ -6,8 +6,33 @@
              x:Class="SIL.Motif.App.Views.TryWordPanel"
              x:DataType="vm:TryWordPageModel">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+    <!-- The right gap keeps the scroll bar off the result line's links. -->
+    <StackPanel Spacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
       <DockPanel LastChildFill="True">
+        <!-- Tools for a trace wait behind one menu beside Try it, so the page itself holds only the answer. -->
+        <Button DockPanel.Dock="Right" Content="&#x22ef;" Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                AutomationProperties.Name="Try a Word tools">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
+                <Button Content="Open a saved trace..." Click="OnOpenDiagnosticClick" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Open a saved trace" />
+                <Button Content="Copy for a chat model" Click="OnCopyInstructionsClick" HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Copy AI diagnostic instructions" />
+                <Button Content="Save the trace..." Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
+                        HorizontalAlignment="Stretch" AutomationProperties.Name="Save full diagnostic JSON" />
+                <Button Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
+                        HorizontalAlignment="Stretch" AutomationProperties.Name="Copy full diagnostic JSON" />
+                <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap"
+                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}"
+                                         AutomationProperties.Name="Diagnostic capture details" />
+                <views:CopyableTextBlock Text="{Binding Trace.WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
+                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasResult}"
+                                         AutomationProperties.Name="Writing system direction and font" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
         <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}"
                 Classes="Primary" Theme="{DynamicResource SolidButton}"
                 AutomationProperties.Name="Try the word" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
@@ -91,7 +116,8 @@
                       <TextBlock Grid.Column="1" Text="{Binding Kind}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="2" Text="{Binding Outcome}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="3" Text="{Binding Explanation}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="4" Classes="share" Text="{Binding Share}" TextAlignment="Right" />
+                      <TextBlock Grid.Column="4" Classes.share="{Binding HasShare}" Classes.muted="{Binding !HasShare}"
+                                 Text="{Binding Share}" TextAlignment="Right" />
                     </Grid>
                   </Button>
                 </Border>
@@ -102,8 +128,6 @@
       </Border>
 
       <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
-      <Button Content="Open a saved diagnostic..." Click="OnOpenDiagnosticClick"
-              HorizontalAlignment="Left" AutomationProperties.Name="Open a saved diagnostic" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>
