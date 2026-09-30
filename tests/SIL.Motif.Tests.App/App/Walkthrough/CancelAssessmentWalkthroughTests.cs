@@ -7,12 +7,12 @@ using Xunit;
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class CancelAssessmentWalkthroughTests
+public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
     public void CancellingAssessmentAddsNoInvocationAndAllowsARerun()
     {
-        using var project = new ConformanceProject();
+        using var project = new WalkthroughProject(pristine);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var heartbeat = Path.Combine(project.ManagedRoot, "cancelled-assessment-heartbeat");
         var processIdPath = Path.Combine(project.ManagedRoot, "cancelled-assessment-process-id");
@@ -22,18 +22,26 @@ public sealed class CancelAssessmentWalkthroughTests
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
-            WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
-            walkthrough.TypePastedWords(string.Join(Environment.NewLine, ConformanceProject.SlowWords));
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            walkthrough.TypePastedWords(string.Join(Environment.NewLine,
+                SeededProject.FirstForm, SeededProject.SecondForm));
             var beforeCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
             var setupInvocation = Assert.Single(beforeCancellation);
-            Assert.Equal(["motifa"], setupInvocation.Selection.ResolvedWords);
+            Assert.Equal(new[] { SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm }
+                    .Order(StringComparer.Ordinal),
+                setupInvocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
 
             FakeParser.BehaveBesideExecutable(parserPath, new { heartbeatPath = heartbeat, processIdPath });
-            WalkthroughSteps.StartSlowAssessment(walkthrough, deadline);
+            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            walkthrough.Click("Run the Assessment");
             walkthrough.WaitUntil(
-                () => File.Exists(heartbeat) && File.Exists(processIdPath),
+                () => File.Exists(heartbeat) && File.Exists(processIdPath) &&
+                    walkthrough.Workspace.Assess.State == RunState.Running,
                 WalkthroughSteps.Remaining(deadline), "the fake PanGloss process did not reach its heartbeat");
             var processId = int.Parse(File.ReadAllText(processIdPath));
+            Assert.True(PanglossProcesses.AnyAlive(parserPath, [processId]));
+            Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled);
 
             walkthrough.Click("Cancel the running Assessment");
             walkthrough.WaitUntil(
@@ -71,7 +79,15 @@ public sealed class CancelAssessmentWalkthroughTests
             Assert.Equal(beforeCancellation.Count + 1, afterRerun.Count);
             var invocation = Assert.Single(afterRerun, record =>
                 beforeCancellation.All(existingRecord => existingRecord.InvocationId != record.InvocationId));
-            Assert.Equal(ConformanceProject.SlowWords.Order(StringComparer.Ordinal),
+            Assert.Equal(new[] { SeededProject.FirstForm, SeededProject.SecondForm }.Order(StringComparer.Ordinal),
+                invocation.Selection.PastedWords.Order(StringComparer.Ordinal));
+            Assert.Equal(new[]
+                {
+                    SeededProject.FirstForm,
+                    SeededProject.AnalysedWordForm,
+                    SeededProject.SecondForm,
+                    SeededProject.UnanalysedWordForm,
+                }.Order(StringComparer.Ordinal),
                 invocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
             Assert.Equal(baselineToken, invocation.BaselineToken);
             return Task.CompletedTask;

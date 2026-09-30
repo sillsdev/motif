@@ -718,19 +718,18 @@ public sealed class WfiAnalysisPayloadTests
 }
 
 [Collection(TestFixtures.LcmCacheTestCollection.Name)]
-public sealed class WfiAnalysisConformanceTests
+public sealed class WfiAnalysisSeededProjectTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ParserCandidate_AppliesAgainstSyntheticFieldWorksProject()
+    public void ParserCandidate_AppliesAgainstSeededFieldWorksProject()
     {
-        using var project = new ConformanceProject();
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
-        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
-            .First(entry => entry.LexemeFormOA is not null && entry.MorphoSyntaxAnalysesOC.Count > 0);
+        using var cache = pristine.NewScratch();
+        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+            .GetObject(pristine.Seed.FirstEntryId);
         IWfiWordform wordform = null!;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
             wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString("conformance-candidate", cache.DefaultVernWs)));
+                .Create(TsStringUtils.MakeString("seeded-candidate", cache.DefaultVernWs)));
         var reading = new ParseAnalysis([new ParseMorph(
             source.LexemeFormOA!.Guid.ToString("D"),
             source.MorphoSyntaxAnalysesOC.First().Guid.ToString("D"), null, null)]);
@@ -748,19 +747,18 @@ public sealed class WfiAnalysisConformanceTests
     }
 
     [Fact]
-    public void RemoveAnalysis_AppliesAgainstSyntheticFieldWorksProject()
+    public void RemoveAnalysis_AppliesAgainstSeededFieldWorksProject()
     {
-        using var project = new ConformanceProject();
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
-        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
-            .First(entry => entry.LexemeFormOA is not null && entry.MorphoSyntaxAnalysesOC.Count > 0);
+        using var cache = pristine.NewScratch();
+        var source = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+            .GetObject(pristine.Seed.FirstEntryId);
         IWfiWordform wordform = null!;
         IWfiAnalysis analysis = null!;
         ISegment segment = null!;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             wordform = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
-                .Create(TsStringUtils.MakeString("conformance-removal", cache.DefaultVernWs));
+                .Create(TsStringUtils.MakeString("seeded-removal", cache.DefaultVernWs));
             analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
             wordform.AnalysesOC.Add(analysis);
             var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
@@ -772,7 +770,7 @@ public sealed class WfiAnalysisConformanceTests
             text.ContentsOA = cache.ServiceLocator.GetInstance<IStTextFactory>().Create();
             var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
             text.ContentsOA.ParagraphsOS.Add(paragraph);
-            paragraph.Contents = TsStringUtils.MakeString("conformance-removal", cache.DefaultVernWs);
+            paragraph.Contents = TsStringUtils.MakeString("seeded-removal", cache.DefaultVernWs);
             segment = paragraph.SegmentsOS[0];
             segment.AnalysesRS.Add(analysis);
         });

@@ -68,41 +68,6 @@ internal static class WalkthroughSteps
         Assert.Equal(SeededProject.TextTitle, Assert.Single(walkthrough.Workspace.Selection.Texts).Title);
     }
 
-    internal static void ChooseConformanceProjectAndCaptureBaseline(
-        WalkthroughWindow walkthrough, long deadline)
-    {
-        walkthrough.Show();
-
-        Assert.Empty(walkthrough.Workspace.Project.KnownProjects);
-        walkthrough.OpenProjectMenu();
-        Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
-        Assert.False(walkthrough.FindProjectMenuEntry<Button>("Open a recent project").IsEffectivelyEnabled);
-        walkthrough.ChooseNewProject();
-        walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
-                walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
-            Remaining(deadline), "choosing the conformance project did not show its initial state");
-        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
-        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
-
-        walkthrough.Click("Refresh the project");
-        walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Baseline.HasBaseline &&
-                walkthrough.Workspace.Selection.TextsEmptyMessage == "This Baseline has no Texts." &&
-                walkthrough.Workspace.Context.Setup?.IsOpen == true,
-            Remaining(deadline), "refreshing the conformance project did not show setup");
-        walkthrough.WaitUntil(
-            () => !walkthrough.Workspace.RefreshCommand.IsRunning,
-            TimeSpan.FromMinutes(1), "the Baseline and Overview refresh did not finish before choosing words");
-        Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
-            "first-time setup did not open after the Baseline was captured");
-        walkthrough.SkipSetup();
-        Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
-        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
-        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
-        Assert.Empty(walkthrough.Workspace.Selection.Texts);
-    }
-
     internal static TimeSpan Remaining(long deadline)
     {
         var ticks = deadline - Stopwatch.GetTimestamp();
@@ -153,11 +118,6 @@ internal static class WalkthroughSteps
             () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                 walkthrough.Workspace.Context.EvidencePublication.IsCompleted && !setup.IsOpen,
             timeout, "the Default Selection did not finish parsing before opening Analyze texts");
-    }
-
-    internal static void StartSlowAssessment(WalkthroughWindow walkthrough, long deadline)
-    {
-        StartSlowAssessment(walkthrough, deadline, ConformanceProject.SlowWords);
     }
 
     internal static void StartSlowAssessment(

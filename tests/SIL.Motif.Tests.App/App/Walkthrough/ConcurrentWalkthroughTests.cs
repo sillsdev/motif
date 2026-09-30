@@ -1,26 +1,29 @@
 using System.Diagnostics;
-using SIL.Motif.App.Services;
+using SIL.LCModel;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.Commands;
-using SIL.Motif.Host.Parser;
-using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, ITestOutputHelper output)
+public sealed class ConcurrentWalkthroughTests
 {
-    [RealParserFact]
+    [Fact]
     public void TwoWindowsShareTheManagedRootWhileBothAssessmentsComplete()
     {
-        using var firstProject = new ConformanceProject();
-        using var secondProject = new WalkthroughProject(pristine);
         var managedRoot = Path.Combine(
-            Path.GetTempPath(), "SIL.Motif.Conformance.Concurrent.Managed", Guid.NewGuid().ToString("N"));
+            Path.GetTempPath(), "SIL.Motif.Walkthrough.Concurrent.Managed", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(managedRoot);
+        var firstProjectPath = CreateSeededProject(Path.Combine(managedRoot, "first-project"));
+        var secondProjectPath = CreateSeededProject(Path.Combine(managedRoot, "second-project"));
+        var firstParserPath = FakeParser.CopyRecordingInvocations(Path.Combine(managedRoot, "first-parser"));
+        var secondParserPath = FakeParser.CopyRecordingInvocations(Path.Combine(managedRoot, "second-parser"));
+        var firstStarted = Path.Combine(managedRoot, "first-assessment-started");
+        var secondStarted = Path.Combine(managedRoot, "second-assessment-started");
+        var firstRelease = Path.Combine(managedRoot, "first-assessment-release");
+        var secondRelease = Path.Combine(managedRoot, "second-assessment-release");
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
 
         try
@@ -28,47 +31,75 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
             AvaloniaHeadlessFixture.RunUntilComplete(() =>
             {
                 using var firstWalkthrough = new WalkthroughWindow(
-                    managedRoot, firstProject.FwDataPath);
-                var secondGate = new HoldingStartGate();
+                    managedRoot, firstProjectPath, parserPath: firstParserPath);
                 using var secondWalkthrough = new WalkthroughWindow(
-                    managedRoot, secondProject.FwDataPath, startGate: secondGate);
-                WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(firstWalkthrough, deadline);
+                    managedRoot, secondProjectPath, parserPath: secondParserPath);
+                WalkthroughSteps.ChooseProjectAndCaptureBaseline(firstWalkthrough, deadline);
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(secondWalkthrough, deadline);
-                secondWalkthrough.Check(SeededProject.TextTitle);
-                secondGate.HoldAssess();
 
-                Assert.NotNull(firstWalkthrough.Workspace.Baseline.Token);
-                Assert.NotNull(secondWalkthrough.Workspace.Baseline.Token);
-                var firstToken = firstWalkthrough.Workspace.Baseline.Token!;
-                var secondToken = secondWalkthrough.Workspace.Baseline.Token!;
-                var slowStarted = Stopwatch.GetTimestamp();
-                WalkthroughSteps.StartSlowAssessment(firstWalkthrough, deadline);
-                WalkthroughSteps.StartAssessmentOverPastedWords(secondWalkthrough, deadline, secondGate);
+                var firstToken = Assert.IsType<SIL.Motif.Contract.Baselines.BaselineToken>(
+                    firstWalkthrough.Workspace.Baseline.Token);
+                var secondToken = Assert.IsType<SIL.Motif.Contract.Baselines.BaselineToken>(
+                    secondWalkthrough.Workspace.Baseline.Token);
+                Assert.NotEqual(firstToken.ProjectIdentity, secondToken.ProjectIdentity);
+
+                firstWalkthrough.TypePastedWords(string.Join(Environment.NewLine,
+                    SeededProject.FirstForm, SeededProject.SecondForm));
+                secondWalkthrough.TypePastedWords(string.Join(Environment.NewLine,
+                    SeededProject.FirstForm, SeededProject.SecondForm));
+                FakeParser.BehaveBesideExecutable(firstParserPath, new
+                {
+                    startedPath = firstStarted,
+                    holdUntilPath = firstRelease,
+                });
+                FakeParser.BehaveBesideExecutable(secondParserPath, new
+                {
+                    startedPath = secondStarted,
+                    holdUntilPath = secondRelease,
+                });
+
+                firstWalkthrough.Click("Run the Assessment");
+                secondWalkthrough.Click("Run the Assessment");
                 var firstExecution = firstWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                 var secondExecution = secondWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                 Assert.NotNull(firstExecution);
                 Assert.NotNull(secondExecution);
-                firstWalkthrough.WaitUntil(
-                    () => firstExecution.IsCompleted && firstWalkthrough.Workspace.Assess.State == RunState.Completed,
-                    WalkthroughSteps.Remaining(deadline), "the conformance Assessment command did not finish beside the second");
-                secondWalkthrough.WaitUntil(
-                    () => secondExecution.IsCompleted && secondWalkthrough.Workspace.Assess.State == RunState.Completed,
-                    WalkthroughSteps.Remaining(deadline), "the seeded Assessment command did not finish beside the first");
-                output.WriteLine($"Slow word list Run-to-Completed wall time: {Stopwatch.GetElapsedTime(slowStarted).TotalSeconds:F3} seconds.");
 
-                Assert.Null(firstWalkthrough.Workspace.Assess.Refusal);
-                Assert.Null(secondWalkthrough.Workspace.Assess.Refusal);
-                var firstRuns = WalkthroughStoreAssertions.ListInvocations(firstProject.FwDataPath)
+                try
+                {
+                    firstWalkthrough.WaitUntil(
+                        () => File.Exists(firstStarted) && File.Exists(secondStarted) &&
+                            firstWalkthrough.Workspace.Assess.State == RunState.Running &&
+                            secondWalkthrough.Workspace.Assess.State == RunState.Running,
+                        WalkthroughSteps.Remaining(deadline), "both fake Assessments did not start");
+                    Assert.NotEmpty(PanglossProcesses.Snapshot(firstParserPath));
+                    Assert.NotEmpty(PanglossProcesses.Snapshot(secondParserPath));
+
+                    File.WriteAllText(firstRelease, string.Empty);
+                    File.WriteAllText(secondRelease, string.Empty);
+                    firstWalkthrough.WaitUntil(
+                        () => firstExecution.IsCompleted && firstWalkthrough.Workspace.Assess.State == RunState.Completed &&
+                            firstWalkthrough.Workspace.Context.EvidencePublication.IsCompleted &&
+                            secondExecution.IsCompleted && secondWalkthrough.Workspace.Assess.State == RunState.Completed &&
+                            secondWalkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                        WalkthroughSteps.Remaining(deadline), "both Assessments did not finish");
+                }
+                finally
+                {
+                    File.WriteAllText(firstRelease, string.Empty);
+                    File.WriteAllText(secondRelease, string.Empty);
+                }
+
+                var expectedWords = new[] { SeededProject.FirstForm, SeededProject.SecondForm }
+                    .Order(StringComparer.Ordinal).ToArray();
+                var firstRuns = WalkthroughStoreAssertions.ListInvocations(firstProjectPath)
                     .Where(invocation => invocation.BaselineToken == firstToken).ToArray();
-                Assert.Equal(2, firstRuns.Length);
-                Assert.Contains(firstRuns, invocation => invocation.Selection.ResolvedWords
-                    .Order(StringComparer.Ordinal).SequenceEqual(ConformanceProject.SlowWords.Order(StringComparer.Ordinal)));
-                var secondRuns = WalkthroughStoreAssertions.ListInvocations(secondProject.FwDataPath)
+                Assert.Contains(firstRuns, invocation => invocation.Selection.PastedWords
+                    .Order(StringComparer.Ordinal).SequenceEqual(expectedWords));
+                var secondRuns = WalkthroughStoreAssertions.ListInvocations(secondProjectPath)
                     .Where(invocation => invocation.BaselineToken == secondToken).ToArray();
-                Assert.Equal(2, secondRuns.Length);
-                var pastedWords = new HashSet<string>(["mofita", "motifa", "motifb"], StringComparer.Ordinal);
-                Assert.Contains(secondRuns, invocation => pastedWords.IsSubsetOf(
-                    invocation.Selection.ResolvedWords.ToHashSet(StringComparer.Ordinal)));
+                Assert.Contains(secondRuns, invocation => invocation.Selection.PastedWords
+                    .Order(StringComparer.Ordinal).SequenceEqual(expectedWords));
                 return Task.CompletedTask;
             }, WalkthroughSteps.Remaining(deadline));
         }
@@ -76,5 +107,14 @@ public sealed class ConcurrentWalkthroughTests(PristineProjectFixture pristine, 
         {
             WalkthroughTestFiles.DeleteDirectory(managedRoot);
         }
+    }
+
+    private static string CreateSeededProject(string projectRoot)
+    {
+        using var cache = NewLangProjFixture.CreateCache(projectRoot);
+        var seed = SeededProject.Seed(cache);
+        SeededProject.SeedText(cache, seed);
+        new FwDataProjectLoader().Save(cache);
+        return cache.ProjectId.Path;
     }
 }
