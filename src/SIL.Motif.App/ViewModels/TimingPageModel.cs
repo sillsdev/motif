@@ -18,10 +18,7 @@ public sealed record OpenTimingRequest(IReadOnlyList<string> Words, string? Rule
 public sealed partial class TimingPageModel : PageModel
 {
     /// <summary>What the page says, where the numbers would be, when no parse time was measured.</summary>
-    public const string NoTimingRecordedText =
-        "No parse times were recorded for these words. Parse all words to measure them.";
-
-    private const string StepLimitCompletion = "Step limit";
+    public const string NoTimingRecordedText = "No parse times were recorded for these words.";
 
     private int _loadGeneration;
     private bool _isLoadingTiming;
@@ -121,7 +118,7 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The slowest words with the reason each stopped.</summary>
     public IReadOnlyList<TimingSlowWord> SlowestWords => KindTiming?.SlowestWords.Select(slow =>
         new TimingSlowWord(slow.Word, slow.ElapsedMs,
-            KindTiming.Words.FirstOrDefault(word => word.Word == slow.Word)?.Completion ?? "Finished")).ToArray() ?? [];
+            KindTiming.Words.FirstOrDefault(word => word.Word == slow.Word)?.Completion ?? TimingCompletion.Finished)).ToArray() ?? [];
 
     public bool HasTiming => KindTiming is not null;
 
@@ -150,7 +147,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>How many of the chosen words stopped at the step limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
-        .Count(word => word.Completion == StepLimitCompletion).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
+        .Count(word => word.Completion == TimingCompletion.StepLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
         ?? string.Empty;
 
     /// <summary>The caption under the stopped-word count.</summary>

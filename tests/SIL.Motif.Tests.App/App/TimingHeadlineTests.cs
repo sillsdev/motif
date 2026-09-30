@@ -72,8 +72,7 @@ public sealed class TimingHeadlineTests
 
         Assert.False(timing.HasHeadline);
         Assert.True(timing.ShowNoTimingRecorded);
-        Assert.Equal("No parse times were recorded for these words. Parse all words to measure them.",
-            TimingPageModel.NoTimingRecordedText);
+        Assert.Equal("No parse times were recorded for these words.", TimingPageModel.NoTimingRecordedText);
         Assert.Empty(fake.TimingRequests);
     }
 
@@ -92,7 +91,10 @@ public sealed class TimingHeadlineTests
         Assert.True(timing.IsLoadingTiming);
         Assert.False(timing.ShowNoTimingRecorded);
         completion.SetResult(CommandOutcome<TimingResponse>.Success(Response(new TimingRequest(ProjectPath))));
-        await Task.Yield();
+        await context.EvidencePublication;
+
+        Assert.False(timing.IsLoadingTiming);
+        Assert.True(timing.HasHeadline);
     }
 
     [Fact]
@@ -131,8 +133,13 @@ public sealed class TimingHeadlineTests
                 var shown = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
                 Assert.Contains(TimingPageModel.NoTimingRecordedText, shown);
-                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    button.IsEffectivelyVisible && Equals(button.Content, "Parse all words"));
+                // The only action offered is one the page can run now; a disabled one would be a dead control.
+                var parseAgain = window.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => Equals(button.Content, "Parse again"));
+                Assert.Same(context.Assess.RunCommand, parseAgain.Command);
+                Assert.Equal(context.Assess.RunCommand.CanExecute(null), parseAgain.IsEffectivelyVisible);
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    Equals(button.Content, "Parse all words"));
             }
             finally
             {

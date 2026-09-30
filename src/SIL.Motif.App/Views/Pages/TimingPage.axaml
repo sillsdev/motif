@@ -111,9 +111,9 @@
         <Border Classes="card" IsVisible="{Binding ShowNoTimingRecorded}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Text="{x:Static vm:TimingPageModel.NoTimingRecordedText}" TextWrapping="Wrap" />
-            <Button Content="Parse all words" Command="{Binding Context.ParseAllWordsCommand}"
+            <Button Content="Parse again" Command="{Binding Context.Assess.RunCommand}"
                     IsVisible="{Binding $self.IsEffectivelyEnabled}"
-                    HorizontalAlignment="Left" AutomationProperties.Name="Parse all words to measure them" />
+                    HorizontalAlignment="Left" AutomationProperties.Name="Parse these words again to measure them" />
           </StackPanel>
         </Border>
         <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
