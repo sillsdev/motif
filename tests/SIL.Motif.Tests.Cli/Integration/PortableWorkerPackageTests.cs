@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Jobs;
@@ -24,6 +25,14 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         var package = Path.Combine(workspacePath, "package");
         var suffix = OperatingSystem.IsWindows() ? ".exe" : "";
         var workerHost = Path.Combine(package, "SIL.Motif.Worker" + suffix);
+        var workerAssets = new[]
+        {
+            "SIL.Motif.Worker" + suffix,
+            "SIL.Motif.Worker.dll",
+            "SIL.Motif.Worker.deps.json",
+            "SIL.Motif.Worker.runtimeconfig.json",
+        };
+        var sharedWorkerAssets = CaptureSharedWorkerAssets(workerAssets);
         var ownerNamespace = "portable-" + Guid.NewGuid().ToString("N");
         Exception? testFailure = null;
 
@@ -31,33 +40,32 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         {
             Directory.CreateDirectory(workspacePath);
             var workerPublish = Path.Combine(workspacePath, "worker-publish");
-            var intermediateRoot = Path.Combine(workspacePath, "intermediate");
+            var appIntermediateRoot = Path.Combine(workspacePath, "app-intermediate");
+            var cliIntermediateRoot = Path.Combine(workspacePath, "cli-intermediate");
+            var workerIntermediateRoot = Path.Combine(workspacePath, "worker-intermediate");
+            var appBuildRoot = Path.Combine(workspacePath, "app-build") + Path.DirectorySeparatorChar;
+            var cliBuildRoot = Path.Combine(workspacePath, "cli-build") + Path.DirectorySeparatorChar;
             var workerBuildRoot = Path.Combine(workspacePath, "worker-build") + Path.DirectorySeparatorChar;
             Directory.CreateDirectory(package);
 
             var repoRoot = FindRepoRoot();
             var rid = RuntimeIdentifier();
             await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.App", "SIL.Motif.App.csproj"),
-                package, rid, intermediateRoot, null);
+                package, rid, appIntermediateRoot, appBuildRoot);
+            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "App publish");
             Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
                 "The App publish did not include the reusable Worker runtime library.");
             await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.Cli", "SIL.Motif.Cli.csproj"),
-                package, rid, intermediateRoot, null);
+                package, rid, cliIntermediateRoot, cliBuildRoot);
+            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "CLI publish");
             Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
                 "The CLI publish did not include the reusable Worker runtime library.");
             var icuPayload = ReadIcuPayload(repoRoot, rid);
             if (!OperatingSystem.IsWindows()) StageIcuPayload(package, icuPayload);
             AssertIcuPayload(package, icuPayload);
             await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.Worker", "SIL.Motif.Worker.csproj"),
-                workerPublish, rid, intermediateRoot, workerBuildRoot);
-
-            var workerAssets = new[]
-            {
-                "SIL.Motif.Worker" + suffix,
-                "SIL.Motif.Worker.dll",
-                "SIL.Motif.Worker.deps.json",
-                "SIL.Motif.Worker.runtimeconfig.json",
-            };
+                workerPublish, rid, workerIntermediateRoot, workerBuildRoot);
+            AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "Worker publish");
 
             foreach (var frontEndExcludedAsset in new[]
             {
@@ -122,7 +130,7 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
     }
 
     private static async Task PublishAsync(string projectPath, string outputPath, string rid,
-        string intermediateRoot, string? workerBuildRoot)
+        string intermediateRoot, string motifBinRoot)
     {
         Directory.CreateDirectory(outputPath);
         var start = new ProcessStartInfo("dotnet")
@@ -139,7 +147,7 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
             "--self-contained", "true", "--output", outputPath,
             "-p:MotifPortablePackage=true", "--nologo",
         };
-        if (workerBuildRoot is not null) arguments.Add("-p:MotifBinRoot=" + workerBuildRoot);
+        arguments.Add("-p:MotifBinRoot=" + motifBinRoot);
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
         start.Environment["MOTIF_PACKAGE_INTERMEDIATE_ROOT"] = intermediateRoot;
@@ -385,6 +393,29 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
     private static string WorkerProcessName(string executable) => OperatingSystem.IsWindows()
         ? Path.GetFileNameWithoutExtension(executable)
         : Path.GetFileName(executable);
+
+    private static IReadOnlyDictionary<string, string> CaptureSharedWorkerAssets(string[] assets)
+    {
+        var fingerprints = new Dictionary<string, string>();
+        foreach (var asset in assets)
+        {
+            var path = Path.Combine(BuildOutput.ProductDirectory, asset);
+            Assert.True(File.Exists(path), "The shared build is missing Worker asset " + asset + " before publish.");
+            fingerprints[asset] = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+        }
+        return fingerprints;
+    }
+
+    private static void AssertSharedWorkerAssetsUnchanged(IReadOnlyDictionary<string, string> fingerprints,
+        string publishName)
+    {
+        foreach (var (asset, fingerprint) in fingerprints)
+        {
+            var path = Path.Combine(BuildOutput.ProductDirectory, asset);
+            Assert.True(File.Exists(path), "The " + publishName + " removed shared Worker asset " + asset + ".");
+            Assert.Equal(fingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
+        }
+    }
 
     private static IcuPayload ReadIcuPayload(string repoRoot, string rid)
     {
