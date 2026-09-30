@@ -54,7 +54,7 @@ public sealed class ClaimedJobTests : IDisposable
     }
 
     private static string Now() =>
-        DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 
     public void Dispose()
     {

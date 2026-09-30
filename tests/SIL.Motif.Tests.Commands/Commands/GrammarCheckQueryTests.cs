@@ -163,6 +163,65 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void ErrorFindingsInTheReportSurviveTheParserNonzeroExit()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var report = JsonSerializer.Serialize(new
+        {
+            schema_version = 3,
+            fieldworks_project = new { name = "Sena 3", source = "argument" },
+            summary = new[]
+            {
+                new { code = "grammar.msa.no-allomorphs", group_name = "No usable entry allomorphs", level = "error", count = 1 },
+            },
+            diagnostics = new[]
+            {
+                new
+                {
+                    level = "error", code = "grammar.msa.no-allomorphs",
+                    group_name = "No usable entry allomorphs", origin = "import",
+                    description = "Lexical entry 'kat' has no usable allomorphs.",
+                    guidance = "Add or correct an allomorph for the named lexical entry.",
+                    subjects = Array.Empty<object>(),
+                },
+            },
+        });
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Refused(1, "grammar has errors", report,
+                "pangloss grammar-health exited 1: grammar has errors"),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var finding = Assert.Single(outcome.Value!.Findings);
+        Assert.Equal("Error", finding.Severity.ToString());
+        Assert.Equal("error", finding.Severity.ToWireValue());
+        Assert.Equal("grammar.msa.no-allomorphs", finding.Code);
+        Assert.Equal(1, Assert.Single(outcome.Value.Summary).Count);
+    }
+
+    [Fact]
+    public void AParserNonzeroExitWithoutErrorFindingsRemainsARefusal()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Refused(1, "unexpected failure",
+                Report(_pristine.Seed.FirstEntryId.ToString("D"), "5c9e433d-cc9b-4d12-b8cb-b5840f46dbd2"),
+                "pangloss grammar-health exited 1: unexpected failure"),
+        };
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), invoker, CancellationToken.None);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.parser-refused", outcome.Refusal!.Code);
+    }
+
+    [Fact]
     public void AReportWithTheOldFindingsMemberIsRejected()
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -170,7 +229,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":2,\"summary\":[],\"findings\":[]}",
+                "{\"schema_version\":3,\"summary\":[],\"findings\":[]}",
                 string.Empty, TimeSpan.Zero),
         };
 
@@ -204,8 +263,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     [Theory]
     [InlineData("[]")]
-    [InlineData("{\"schema_version\":2,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
-    public void AReportWithoutTheV2ObjectAndDiagnosticsEnvelopeIsMalformed(string report)
+    [InlineData("{\"schema_version\":3,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
+    public void AReportWithoutTheReportObjectAndDiagnosticsEnvelopeIsMalformed(string report)
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
@@ -228,7 +287,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":2,\"fieldworks_project\":{\"name\":null,\"source\":null}," +
+                "{\"schema_version\":3,\"fieldworks_project\":{\"name\":null,\"source\":null}," +
                 "\"summary\":[],\"diagnostics\":[{\"level\":\"info\",\"code\":\"hc-undeclared-segment\"," +
                 "\"group_name\":\"Undeclared segment\",\"origin\":\"check\",\"description\":\"Segment x is undeclared.\"," +
                 "\"guidance\":null,\"subjects\":[]}]}",
@@ -264,7 +323,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     private static string Report(string entryGuid, string openGuid) => JsonSerializer.Serialize(new
     {
-        schema_version = 2,
+        schema_version = 3,
         fieldworks_project = new { name = "Sena 3", source = "argument" },
         summary = new[]
         {

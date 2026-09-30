@@ -33,4 +33,20 @@ public sealed class CommandClientCancellationTests(PristineProjectFixture pristi
         Assert.Equal("assessment.cancelled", outcome.Refusal.Code);
         Assert.Empty(WalkthroughStoreAssertions.ListInvocations(project.FwDataPath));
     }
+
+    [Fact]
+    public async Task ACancellationBeforeReadStateStartsIsStillATypedRefusal()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var client = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        var outcome = await client.ReadWordStateAsync(new WordReadStateRequest(
+            project.FwDataPath, project.Text.TextId), cancelled.Token);
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(FailureReason.Cancelled, outcome.Refusal!.Reason);
+        Assert.Equal("word.read-state-cancelled", outcome.Refusal.Code);
+    }
 }

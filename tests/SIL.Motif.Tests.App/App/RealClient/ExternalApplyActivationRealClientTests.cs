@@ -225,9 +225,9 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
         using var process = Process.Start(start)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await CliProcess.StartQueuedWorkerAsync(projectPath, runner, process);
+        using var worker = await CliProcess.TryStartQueuedWorkerAsync(projectPath, runner, process);
         await process.WaitForExitAsync();
-        await worker.WaitForExitAsync();
+        if (worker is not null) await worker.WaitForExitAsync();
         return (process.ExitCode, await outputTask, await errorTask);
     }
 

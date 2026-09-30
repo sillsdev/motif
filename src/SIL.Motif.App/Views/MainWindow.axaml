@@ -78,14 +78,33 @@
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
-          <Button Content="Cancel" Command="{Binding CancelRefreshCommand}"
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
+                      IsVisible="{Binding ShowsParseAllWordsProgress}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
+              <TextBlock Text="{Binding ParseAllWordsProgressText}" />
+              <ProgressBar Classes="topBarParseProgress" Minimum="0" Maximum="1"
+                           Value="{Binding ParseAllWordsProgressFraction}"
+                           IsIndeterminate="{Binding ParseAllWordsProgressIsIndeterminate}"
+                           AutomationProperties.Name="Parse all words progress" />
+            </StackPanel>
+            <Button Content="Cancel" Command="{Binding Assess.CancelCommand}"
+                    Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+                    VerticalAlignment="Center" AutomationProperties.Name="Cancel parsing all words" />
+          </StackPanel>
+          <Button Content="Parse all words" Command="{Binding ParseAllWordsCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                  IsVisible="{Binding FreshnessIsBusy}" AutomationProperties.Name="Cancel the refresh" />
+                  IsVisible="{Binding ShowsParseAllWordsAction}"
+                  AutomationProperties.Name="Parse all words"
+                  ToolTip.Tip="Parse the words you chose." />
+          <Button x:Name="ChooseWhatToParseButton" Content="Choose what to parse" Command="{Binding ConfigureCommand}"
+                  Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
+                  IsVisible="{Binding ShowsChooseWhatToParseAction}"
+                  AutomationProperties.Name="Choose what to parse" />
           <Button Content="Refresh" Command="{Binding RefreshCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                  IsVisible="{Binding !FreshnessIsBusy}" AutomationProperties.Name="Refresh the project"
+                  IsVisible="{Binding ShowsRefreshAction}" AutomationProperties.Name="Refresh the project"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.RefreshProject}"
-                  ToolTip.Tip="Capture a new Baseline from FieldWorks' last save, then assess the Selection against it." />
+                  ToolTip.Tip="Capture a new Baseline from FieldWorks' last save." />
         </StackPanel>
 
         <StackPanel x:Name="FreshnessLine" Classes="freshness" Orientation="Horizontal" VerticalAlignment="Center"
@@ -103,7 +122,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
       <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
@@ -117,23 +136,7 @@
                                    VerticalAlignment="Center" TextWrapping="Wrap" />
         </DockPanel>
       </Border>
-      <Border Grid.Row="1" IsVisible="{Binding RerunOffered}" Classes="card banner">
-        <DockPanel LastChildFill="True">
-          <Button Content="Run again"
-                  Command="{Binding AcceptRerunCommand}"
-                  AutomationProperties.Name="Run the Assessment again"
-                  DockPanel.Dock="Right" />
-          <Button Content="Dismiss"
-                  Command="{Binding DismissRerunCommand}"
-                  AutomationProperties.Name="Dismiss the rerun offer"
-                  DockPanel.Dock="Right"
-                  Classes="bannerAction" />
-          <views:CopyableTextBlock Text="A new Baseline was captured; the previous Assessment may be out of date."
-                     VerticalAlignment="Center"
-                     TextWrapping="Wrap" />
-        </DockPanel>
-      </Border>
-      <Border Grid.Row="2" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
+      <Border Grid.Row="1" IsVisible="{Binding HasRefreshRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding Baseline.ShownRefusal}"
                               StoreDeletionCommand="{Binding $parent[Border].((vm:WorkspaceShellViewModel)DataContext).DeleteRefusedStoreCommand}"
@@ -152,7 +155,7 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding Baseline.HeldStatusText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
-      <Border Grid.Row="3" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
+      <Border Grid.Row="2" IsVisible="{Binding HasOpenRefusal}" Classes="notice">
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>

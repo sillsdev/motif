@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440">
-  <g stroke="#141413" stroke-width="8" stroke-linecap="round" fill="none">
+  <g stroke="#003049" stroke-width="8" stroke-linecap="round" fill="none">
     <path d="M280 220 L120 90 M280 220 L460 70 M280 220 L500 260 M280 220 L360 400 M280 220 L90 320 M280 220 L60 190"/>
   </g>
-  <path d="M220 220 q-2-58 58-62 q62 2 62 60 q-2 62-60 64 q-60-2-60-62z" fill="#FAF9F5"/>
-  <circle cx="120" cy="90" r="34" fill="#FAF9F5"/><circle cx="460" cy="70" r="40" fill="#FAF9F5"/>
-  <circle cx="500" cy="260" r="30" fill="#FAF9F5"/><circle cx="360" cy="400" r="28" fill="#FAF9F5"/>
-  <circle cx="90" cy="320" r="36" fill="#FAF9F5"/><circle cx="60" cy="190" r="22" fill="#FAF9F5"/>
-  <circle cx="280" cy="220" r="18" fill="#141413"/>
-  <circle cx="120" cy="90" r="9" fill="#141413"/><circle cx="460" cy="70" r="9" fill="#141413"/>
-  <circle cx="500" cy="260" r="9" fill="#141413"/><circle cx="360" cy="400" r="9" fill="#141413"/>
-  <circle cx="90" cy="320" r="9" fill="#141413"/><circle cx="60" cy="190" r="9" fill="#141413"/>
+  <path d="M220 220 q-2-58 58-62 q62 2 62 60 q-2 62-60 64 q-60-2-60-62z" fill="#F9FAFB"/>
+  <circle cx="120" cy="90" r="34" fill="#F9FAFB"/><circle cx="460" cy="70" r="40" fill="#F9FAFB"/>
+  <circle cx="500" cy="260" r="30" fill="#F9FAFB"/><circle cx="360" cy="400" r="28" fill="#F9FAFB"/>
+  <circle cx="90" cy="320" r="36" fill="#F9FAFB"/><circle cx="60" cy="190" r="22" fill="#F9FAFB"/>
+  <circle cx="280" cy="220" r="18" fill="#003049"/>
+  <circle cx="120" cy="90" r="9" fill="#003049"/><circle cx="460" cy="70" r="9" fill="#003049"/>
+  <circle cx="500" cy="260" r="9" fill="#003049"/><circle cx="360" cy="400" r="9" fill="#003049"/>
+  <circle cx="90" cy="320" r="9" fill="#003049"/><circle cx="60" cy="190" r="9" fill="#003049"/>
 </svg>

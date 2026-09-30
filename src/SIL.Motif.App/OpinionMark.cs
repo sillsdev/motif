@@ -24,24 +24,24 @@ public enum OpinionMarkKind
 /// <summary>Shows an opinion as its letter and shape, with a spoken name for assistive technology.</summary>
 public sealed class OpinionMark : Border
 {
-    public static readonly StyledProperty<OpinionMarkKind> KindProperty =
-        AvaloniaProperty.Register<OpinionMark, OpinionMarkKind>(nameof(Kind));
+    public static readonly StyledProperty<OpinionMarkKind?> KindProperty =
+        AvaloniaProperty.Register<OpinionMark, OpinionMarkKind?>(nameof(Kind));
 
     public OpinionMark()
     {
         Classes.Add("opinionMark");
-        Refresh();
+        RefreshMark();
     }
 
     /// <summary>Creates the letter, shape and accessible name for one opinion mark.</summary>
     public OpinionMark(OpinionMarkKind kind) : this()
     {
         Kind = kind;
-        Refresh();
+        RefreshMark();
     }
 
-    /// <summary>The judgement represented by this mark.</summary>
-    public OpinionMarkKind Kind
+    /// <summary>The judgement represented by this mark, or <see langword="null"/> before it is assigned.</summary>
+    public OpinionMarkKind? Kind
     {
         get => GetValue(KindProperty);
         set => SetValue(KindProperty, value);
@@ -53,14 +53,24 @@ public sealed class OpinionMark : Border
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == KindProperty) Refresh();
+        if (change.Property == KindProperty) RefreshMark();
     }
 
-    private void Refresh()
+    private void RefreshMark()
     {
-        foreach (var styleClass in new[] { "approved", "disapproved", "unknown", "none" })
-            Classes.Remove(styleClass);
-        var (shape, letter, name) = Kind switch
+        Classes.Remove("approved");
+        Classes.Remove("disapproved");
+        Classes.Remove("unknown");
+        Classes.Remove("none");
+        Child = null;
+        Letter = null;
+        if (Kind is not { } kind)
+        {
+            AutomationProperties.SetName(this, string.Empty);
+            return;
+        }
+
+        var (shape, letter, name) = kind switch
         {
             OpinionMarkKind.Approved => ("approved", (char?)'A', "Approved"),
             OpinionMarkKind.Disapproved => ("disapproved", (char?)'D', "Disapproved"),

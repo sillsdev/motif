@@ -32,6 +32,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         File.WriteAllLines(words, ["motifa", "zzz"]);
         var outPath = Path.Combine(_root, "out.tsv");
         var cache = Path.Combine(_root, "cache.bin");
+        FakeParser.Behave(_root, new { words = new[] { new { word = "motifa", outcome = "complete" } } });
 
         var result = Run("batch", project, words, outPath, "--word-timeout-ms", "1000", "--threads", "1",
             "--stats", "--cache", cache);
@@ -58,7 +59,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
     }
 
     [Fact]
-    public void GrammarHealth_DefaultReportMatchesPanGlossV2Shape()
+    public void GrammarHealth_DefaultReportMatchesPanGlossV3Shape()
     {
         var grammar = Path.Combine(_root, "grammar.fwdata");
         var reportPath = Path.Combine(_root, "report.json");
@@ -69,7 +70,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
         var root = report.RootElement;
-        Assert.Equal(2, root.GetProperty("schema_version").GetInt32());
+        Assert.Equal(3, root.GetProperty("schema_version").GetInt32());
         var project = root.GetProperty("fieldworks_project");
         Assert.Equal("grammar", project.GetProperty("name").GetString());
         Assert.Equal("fwdata_path", project.GetProperty("source").GetString());

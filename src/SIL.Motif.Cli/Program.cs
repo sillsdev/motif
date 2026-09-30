@@ -870,6 +870,25 @@ try
             result = RenderCommand(TextInventoryQuery.Query(new TextInventoryRequest(textsProject)));
             break;
 
+        case "word":
+            if (positionals.Count != 1 || positionals[0] != "read-state" ||
+                !flags.TryGetValue("project", out var readStateProject) ||
+                !flags.TryGetValue("text", out var readStateText))
+                return Usage(UsageLineFor("word read-state"), asJson);
+            if (!Guid.TryParse(readStateText, out var readStateTextId) ||
+                flags.ContainsKey("read") && flags.ContainsKey("unread") ||
+                !TryParseReadOccurrences(flags.GetValueOrDefault("occurrences"), readStateTextId,
+                    out var readStateOccurrences))
+                return Usage(UsageLineFor("word read-state"), asJson);
+            var wantsRead = flags.ContainsKey("read");
+            var wantsUnread = flags.ContainsKey("unread");
+            if (readStateOccurrences is not null && !wantsRead && !wantsUnread)
+                return Usage(UsageLineFor("word read-state"), asJson);
+            bool? isRead = wantsRead ? true : wantsUnread ? false : null;
+            result = RenderCommand(ReadStateCommands.Execute(new WordReadStateRequest(
+                readStateProject, readStateTextId, readStateOccurrences, isRead)));
+            break;
+
         case "setup":
             if (positionals.Count != 1 || positionals[0] != "skip" ||
                 !flags.TryGetValue("project", out var setupProject))
@@ -1156,7 +1175,7 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
         return "apply --all-pending";
     if (verb == "trial" && flags.ContainsKey("pending"))
         return "trial --pending";
-    if (verb is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store")
+    if (verb is "config" or "baseline" or "grammar" or "jobs" or "selection" or "texts" or "setup" or "store" or "word")
     {
         var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
         if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
@@ -1246,6 +1265,29 @@ static bool HasAnyLicenceFlag(Dictionary<string, string> flags) =>
     || flags.ContainsKey("may-use-commercially")
     || flags.ContainsKey("requires-attribution")
     || flags.ContainsKey("licence-basis");
+
+static bool TryParseReadOccurrences(string? value, Guid textId,
+    out IReadOnlyList<OccurrenceAnchor>? occurrences)
+{
+    occurrences = null;
+    if (value is null) return true;
+
+    var parsed = new List<OccurrenceAnchor>();
+    foreach (var item in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        var parts = item.Split('/');
+        if (parts.Length != 3 || !Guid.TryParse(parts[0], out var paragraphId) ||
+            !Guid.TryParse(parts[1], out var segmentId) ||
+            !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var wordIndex) ||
+            wordIndex < 0)
+            return false;
+        parsed.Add(new OccurrenceAnchor(textId, paragraphId, segmentId, wordIndex));
+    }
+
+    if (parsed.Count == 0) return false;
+    occurrences = parsed;
+    return true;
+}
 
 static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyList<string> Forwarded) ParseArgs(
     string[] tokens)

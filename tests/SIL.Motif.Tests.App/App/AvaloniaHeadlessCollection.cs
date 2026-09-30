@@ -42,6 +42,8 @@ public sealed class AvaloniaHeadlessCollection : ICollectionFixture<AvaloniaHead
 /// </remarks>
 public sealed class AvaloniaHeadlessFixture : IDisposable
 {
+    public AvaloniaHeadlessFixture() => AvaloniaHeadlessPlatform.Initialize();
+
     /// <summary>Runs <paramref name="work"/> on the Avalonia thread and rethrows whatever it threw.</summary>
     public void Invoke(Action work)
         => AvaloniaHeadlessPlatform.Invoke(work);
@@ -63,6 +65,8 @@ internal static class AvaloniaHeadlessPlatform
 
     private static readonly Lazy<PlatformThread> Shared = new(
         static () => new PlatformThread(), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    public static void Initialize() => _ = Shared.Value;
 
     public static void Invoke(Action work) => Shared.Value.Invoke(work);
 

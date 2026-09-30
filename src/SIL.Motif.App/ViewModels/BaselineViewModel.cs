@@ -86,27 +86,12 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         ? "FieldWorks holds this project open right now."
         : "FieldWorks does not currently hold this project.";
 
-    /// <summary>Whether an Assessment is on record for the Baseline currently loaded here.</summary>
-    /// <remarks>
-    /// This view model has no channel of its own to an Assessment store; whoever runs an Assessment
-    /// against the current Baseline sets this so a later successful <see cref="RefreshCommand"/> knows
-    /// whether to raise <see cref="OfferRerun"/>.
-    /// </remarks>
-    public bool HasAssessment { get; set; }
-
     public bool HasBaseline => Token is not null;
 
     public IAsyncRelayCommand RefreshCommand { get; }
 
-    /// <summary>
-    /// Raised after every successful Refresh, before <see cref="OfferRerun"/>, so a composing view model can
-    /// reload whatever it reads from the current Baseline — the Text list first of all, which a project
-    /// chosen before its first capture has never had.
-    /// </summary>
+    /// <summary>Raised after a successful Refresh so the window can reload data from the new Baseline.</summary>
     public event EventHandler? Refreshed;
-
-    /// <summary>Raised after a successful Refresh that replaced a Baseline an Assessment already covered.</summary>
-    public event EventHandler? OfferRerun;
 
     /// <summary>Loads the current Baseline for a newly chosen project, discarding whatever was shown before.</summary>
     public async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
@@ -128,7 +113,6 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         ProjectLastWriteUtc = null;
         FieldWorksHeldProject = false;
         ShownRefusal = null;
-        HasAssessment = false;
         RefreshCommand.NotifyCanExecuteChanged();
     }
 
@@ -140,16 +124,11 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     {
         if (_projectPath is not { } path) return;
         var generation = _projectGeneration;
-        var hadAssessment = HasAssessment;
         var outcome = await _commandClient.GetCurrentBaselineAsync(new CurrentBaselineRequest(path), cancellationToken);
         if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
-        var assessmentAtResponse = HasAssessment;
-        var sameBaseline = outcome.Value?.Token is { } token && token == Token;
         ApplySuccessOnly(outcome.Succeeded, outcome.Refusal,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (outcome.Succeeded) ProjectLastWriteUtc = outcome.Value?.ProjectLastWriteUtc;
-        HasAssessment = sameBaseline ? hadAssessment || assessmentAtResponse
-            : !hadAssessment && assessmentAtResponse;
     }
 
     private async Task RefreshAsync()
@@ -157,7 +136,6 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         if (_projectPath is not { } path) return;
         var generation = _projectGeneration;
 
-        var hadAssessment = HasAssessment;
         var outcome = await _commandClient.CaptureBaselineAsync(
             new BaselineCaptureRequest(path), CancellationToken.None);
         if (generation != _projectGeneration || !ReferenceEquals(path, _projectPath)) return;
@@ -165,10 +143,8 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
         var applied = ApplySuccessOnly(outcome.Succeeded, outcome.Refusal,
             outcome.Value?.Token, outcome.Value?.SourceLastWriteUtc, outcome.Value?.FieldWorksHeldProject ?? false);
         if (!applied) return;
-        HasAssessment = false;
         ProjectLastWriteUtc = SourceLastWriteUtc;
         Refreshed?.Invoke(this, EventArgs.Empty);
-        if (hadAssessment) OfferRerun?.Invoke(this, EventArgs.Empty);
     }
 
     // Shared by the read-only load and the capturing Refresh: state changes only on success either way.

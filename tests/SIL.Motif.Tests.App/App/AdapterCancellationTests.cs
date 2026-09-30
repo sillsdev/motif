@@ -106,6 +106,8 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             ("ReadCurrentEvidence", client.ReadCurrentEvidenceAsync(path, CancellationToken.None)),
             ("ReadStoredGrammarCheck", client.ReadStoredGrammarCheckAsync(
                 new GrammarCheckRequest(path), CancellationToken.None)),
+            ("ReadWordState", client.ReadWordStateAsync(
+                new WordReadStateRequest(path, Guid.NewGuid()), CancellationToken.None)),
             ("GetCurrentBaseline", client.GetCurrentBaselineAsync(
                 new CurrentBaselineRequest(path), CancellationToken.None)),
             ("Overview", client.OverviewAsync(new OverviewRequest(path), CancellationToken.None)),
@@ -227,6 +229,8 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             client.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), token)));
         yield return new("ListTextWords", Observe(token =>
             client.ListTextWordsAsync(new TextWordsRequest(path, []), token)));
+        yield return new("ReadWordState", Observe(token =>
+            client.ReadWordStateAsync(new WordReadStateRequest(path, Guid.NewGuid()), token)));
     }
 
     private static void CaptureBaselineWithAWaitingParser(WalkthroughProject project, out string heartbeat)

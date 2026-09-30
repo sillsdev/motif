@@ -41,6 +41,7 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(ProjectTitle))]
     [NotifyPropertyChangedFor(nameof(ProjectDetails))]
     [NotifyPropertyChangedFor(nameof(AssessmentDetails))]
+    [NotifyPropertyChangedFor(nameof(ShowAssessmentDetails))]
     [NotifyPropertyChangedFor(nameof(BaselineDetails))]
     [NotifyPropertyChangedFor(nameof(FingerprintSummary))]
     [NotifyPropertyChangedFor(nameof(SelectionWordCountText))]
@@ -72,8 +73,10 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the response has an Assessment for its default Selection.</summary>
     public bool HasAssessment => Overview?.AssessmentId is not null;
 
+    public bool ShowAssessmentDetails => HasAssessment && !Context.NeedsAssessment;
+
     /// <summary>Whether the Overview should explain that this project has no Assessment.</summary>
-    public bool ShowNoAssessment => !HasAssessment;
+    public bool ShowNoAssessment => Context.NeedsAssessment;
 
     /// <summary>Whether the numbers behind this Overview describe an older state of the project.</summary>
     public bool OverviewIsStale => Context.Evidence.IsStale;
@@ -272,6 +275,11 @@ public sealed partial class OverviewPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
+        {
+            OnPropertyChanged(nameof(ShowNoAssessment));
+            OnPropertyChanged(nameof(ShowAssessmentDetails));
+        }
         if (e.PropertyName is nameof(WorkspaceContext.ProjectPath))
         {
             OnPropertyChanged(nameof(ProjectTitle));

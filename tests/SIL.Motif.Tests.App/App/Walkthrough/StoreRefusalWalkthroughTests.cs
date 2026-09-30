@@ -37,11 +37,12 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             var oldStoreBytes = File.ReadAllBytes(storePath);
             Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
 
-            walkthrough.Click("Refresh the project");
+            var refresh = walkthrough.Workspace.RefreshCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Baseline.ShownRefusal?.Code == RefusalCodes.StoreOtherVersion &&
-                    !walkthrough.Workspace.RefreshCommand.IsRunning,
+                    refresh.IsCompleted && !walkthrough.Workspace.RefreshCommand.IsRunning,
                 WalkthroughSteps.Remaining(deadline), "refreshing the older store did not show its refusal");
+            refresh.GetAwaiter().GetResult();
 
             var refusal = Assert.IsType<SIL.Motif.App.ViewModels.WindowRefusal>(
                 walkthrough.Workspace.Baseline.ShownRefusal);

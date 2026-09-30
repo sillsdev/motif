@@ -49,6 +49,10 @@ public sealed class WalkthroughWindow : IDisposable
         _dragSource = new RecordingDragSource();
 
         parserPath ??= PanGlossExecutable.TryLocate();
+        if (parserPath is not null && string.Equals(
+                Path.GetFullPath(parserPath), Path.GetFullPath(FakeParser.ExecutablePath),
+                StringComparison.OrdinalIgnoreCase))
+            parserPath = FakeParser.Copy(Path.Combine(managedRoot, "fake-pangloss-" + Guid.NewGuid().ToString("N")));
         _parserPath = parserPath;
         if (runnerLauncher is null)
             runnerLauncher = _ownedRunner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(managedRoot, parserPath));
@@ -96,7 +100,8 @@ public sealed class WalkthroughWindow : IDisposable
     {
         if (Workspace.Context.Setup is not { IsOpen: true } setup) return;
         Click("Skip setup for now");
-        WaitUntil(() => !setup.IsOpen, TimeSpan.FromSeconds(30), "skipping setup did not close the dialog");
+        WaitUntil(() => !setup.IsOpen && !SetupDialogIsShown, TimeSpan.FromSeconds(30),
+            "skipping setup did not close the dialog");
     }
 
     internal void SetFakeParserBehavior(object behavior)
@@ -323,6 +328,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void TypePastedWords(string text)
     {
+        WalkthroughSteps.EnsureAssessmentForAnalyze(this, TimeSpan.FromMinutes(3));
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
         // A Text's counts arrive with its words and push this header down, so a click aimed earlier misses it.
@@ -365,14 +371,14 @@ public sealed class WalkthroughWindow : IDisposable
 
     public void Check(string content)
     {
+        WalkthroughSteps.EnsureAssessmentForAnalyze(this, TimeSpan.FromMinutes(3));
         ShowPage(WorkspacePage.Texts);
         ShowTextsTab(TextsTab.AnalyzeTexts);
         var checkBox = Window.GetLogicalDescendants().OfType<CheckBox>().Single(control =>
             Equals(control.Content, content));
         ShowStageOwning(checkBox);
-        var before = checkBox.IsChecked;
-        ClickControl(checkBox, content);
-        Assert.NotEqual(before, checkBox.IsChecked);
+        if (checkBox.IsChecked != true) ClickControl(checkBox, content);
+        Assert.True(checkBox.IsChecked, $"'{content}' was not checked.");
     }
 
     public void Type(string accessibleName, string text)
@@ -452,8 +458,33 @@ public sealed class WalkthroughWindow : IDisposable
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-    private void ClickControl(Control control, string accessibleName) =>
+    private void ClickControl(Control control, string accessibleName)
+    {
+        Rect? previousBounds = null;
+        var stablePasses = 0;
+        WaitUntil(() =>
+        {
+            Window.UpdateLayout();
+            var topLeft = control.TranslatePoint(new Point(0, 0), Window);
+            if (!control.IsEffectivelyVisible || topLeft is null)
+            {
+                previousBounds = null;
+                stablePasses = 0;
+                return false;
+            }
+
+            var bounds = new Rect(topLeft.Value, control.Bounds.Size);
+            if (bounds == previousBounds) stablePasses++;
+            else
+            {
+                previousBounds = bounds;
+                stablePasses = 0;
+            }
+
+            return stablePasses >= 2;
+        }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking");
         HeadlessClick.Click(Window, control, accessibleName);
+    }
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker
     {

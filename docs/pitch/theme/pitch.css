@@ -1,8 +1,9 @@
 /* @theme pitch */
 /*
-  Marp theme for "A Working Grammar for Every Language". Landscape letter pages (11 x 8.5 in),
-  laid out after Anthropic's long-form guides. Pick a layout per page with `<!-- _class: ... -->`:
-    cover     title page on clay; first image is the illustration
+  Marp theme for "A Working Grammar for Every Language". Landscape letter pages (11 x 8.5 in) in an
+  SIL look: SIL blues on white, Charis SIL for reading text, Source Sans 3 for labels, and SIL's own
+  script fonts on the cover. Pick a layout per page with `<!-- _class: ... -->`:
+    cover     title page on navy; <div class="scripts"> holds one <span lang> card per script
     toc       contents list with page numbers right-aligned
     chapter   chapter opener; add c1..c6 for the colour; first image is the illustration
     cols      body text in two columns (headings and callouts stay whole)
@@ -11,23 +12,31 @@
     dense     smaller text for busy pages
   Blockquote (>) is a tinted callout. Nested blockquote (> >) is a dark statement box.
   `header:` is the chapter pill above the title.
+  Charis SIL ships only 400 and 700, so every serif shorthand asks for one of those two weights.
 */
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Charis+SIL:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500&family=Abyssinica+SIL&family=Scheherazade+New&family=Annapurna+SIL&family=Padauk&display=block');
 
 :root {
   --ground: #FFFFFF;
-  --paper: #F4F1EA;
-  --ink: #141413;
-  --muted: #5E5B55;
-  --rule: #D9D5CC;
-  --accent: #B8552E;
-  --accent-tint: #F7E4D8;
-  --accent-on-dark: #EDB58F;
-  --table-head: #E6DDD0;
-  --cover: #D97757;
-  --c1: #D97757; --c2: #7B8C5E; --c3: #C4677F; --c4: #6A8CAF; --c5: #C9A45C; --c6: #8C7AA8;
-  --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --sans: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --paper: #F2F6FA;
+  --ink: #003049;
+  --on-dark: #F9FAFB;
+  --muted: #5B6770;
+  --rule: #E4E4E4;
+  --grid: #9AA8B5;
+  --accent: #005CB9;
+  --accent-tint: #E1EEF9;
+  --accent-on-dark: #00A7E1;
+  --table-head: #DCE8F3;
+  --today: #EDF0F3;
+  --phase1: #D0DCF5;
+  --phase2: #C0EEF6;
+  --cover: #003049;
+  /* each chapter colour pairs with an AA text colour: white on the dark ones, navy on the light ones */
+  --c1: #005CB9; --c2: #00A7E1; --c3: #003049; --c4: #6CC4EA; --c5: #FF6B00; --c6: #2B5F8A;
+  --on-c1: #FFFFFF; --on-c2: #003049; --on-c3: #FFFFFF; --on-c4: #003049; --on-c5: #003049; --on-c6: #FFFFFF;
+  --serif: 'Charis SIL', Georgia, 'Times New Roman', serif;
+  --sans: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
   --mono: 'JetBrains Mono', Consolas, monospace;
 }
 
@@ -36,67 +45,79 @@ section {
   width: 1056px; height: 816px; box-sizing: border-box;
   padding: 108px 72px 64px;
   background: var(--ground); color: var(--ink);
-  font: 400 14.5px/1.55 var(--serif);
+  font: 400 14px/1.55 var(--serif);
 }
-section h1 { font: 400 46px/1.08 var(--serif); letter-spacing: -0.8px; margin: 0 0 30px; }
-section h2 { font: 500 19px/1.3 var(--sans); letter-spacing: -0.2px; margin: 18px 0 8px; }
-section h3 { font: 500 15.5px/1.3 var(--sans); margin: 14px 0 6px; }
+section h1 { font: 400 42px/1.1 var(--serif); letter-spacing: -0.6px; margin: 0 0 28px; }
+section h2 { font: 600 19px/1.3 var(--sans); letter-spacing: -0.1px; margin: 18px 0 8px; }
+section h3 { font: 600 15.5px/1.3 var(--sans); margin: 14px 0 6px; }
 section h2:first-child, section h3:first-child { margin-top: 0; }
 section p { margin: 0 0 10px; }
 section ul, section ol { margin: 0 0 10px; padding-left: 18px; }
 section li { margin-bottom: 5px; }
-section li::marker { color: var(--ink); }
-section strong { font-weight: 600; }
+section li::marker { color: var(--accent); }
+section strong { font-weight: 700; }
 section em { font-style: italic; }
-section a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+section a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 section code { font: 500 0.84em var(--mono); background: var(--paper); padding: 1px 5px; border-radius: 4px; }
 section pre { margin: 6px 0 12px; padding: 14px 18px; background: var(--paper); border-radius: 14px; break-inside: avoid; }
-section pre code { font: 500 12.5px/1.55 var(--mono); color: #3E5A1F; background: none; padding: 0; }
+section pre code { font: 500 12.5px/1.55 var(--mono); color: var(--accent); background: none; padding: 0; }
 
 /* callouts */
 section blockquote { margin: 12px 0; padding: 14px 18px; background: var(--accent-tint); border-radius: 14px; break-inside: avoid; }
 section blockquote p:last-child { margin-bottom: 0; }
 section blockquote:has(> blockquote) { padding: 0; background: none; }
-section blockquote blockquote { margin: 0; padding: 16px 20px; background: var(--ink); color: #FAF9F5; }
-section blockquote strong:first-child { font: 600 11px var(--sans); letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
+section blockquote blockquote { margin: 0; padding: 16px 20px; background: var(--ink); color: var(--on-dark); }
+section blockquote strong:first-child { font: 600 11.5px var(--sans); letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
 section blockquote blockquote strong:first-child { color: var(--accent-on-dark); }
 
 /* tables */
-section table { border-collapse: collapse; width: 100%; font: 400 12.5px/1.4 var(--sans); margin: 4px 0 12px; }
+section table { border-collapse: collapse; width: 100%; font: 400 13px/1.4 var(--sans); margin: 4px 0 12px; }
+section table strong { font-weight: 600; }
 section th { background: var(--table-head); text-align: left; font-weight: 600; }
-section th, section td { border: 1px solid #8F8A80; padding: 7px 10px; vertical-align: top; }
+section th, section td { border: 1px solid var(--grid); padding: 7px 10px; vertical-align: top; }
 section td { background: var(--ground); }
 
 /* header = chapter pill, footer = sources line, page number */
-header { position: absolute; top: 58px; left: 72px; font: 500 13px var(--sans); color: var(--ink); border: 1.2px solid var(--ink); border-radius: 999px; padding: 2px 12px; }
+header { position: absolute; top: 58px; left: 72px; font: 600 13px var(--sans); color: var(--accent); border: 1.2px solid var(--accent); border-radius: 999px; padding: 2px 12px; }
 header:empty { display: none; }
-footer { position: absolute; left: 72px; right: 140px; bottom: 26px; font: 400 10.5px/1.45 var(--sans); color: var(--muted); }
+footer { position: absolute; left: 72px; right: 140px; bottom: 26px; font: 400 11px/1.45 var(--sans); color: var(--muted); }
 /* page number: Marp offsets it from the content box, so these insets are negative */
-section::after { position: absolute; font: 500 10px var(--sans); color: var(--ink); right: -36px; bottom: -34px; }
+section::after { position: absolute; font: 600 11px var(--sans); color: var(--ink); right: -36px; bottom: -34px; }
 
 /* cover */
-section.cover { background: var(--cover); padding: 72px 72px; }
-section.cover h1 { font: 400 70px/1.04 var(--serif); letter-spacing: -2px; margin: 0 0 22px; max-width: 760px; }
-section.cover p { font: 400 20px/1.4 var(--serif); max-width: 560px; }
+section.cover { background: var(--cover); color: var(--on-dark); padding: 72px 72px; }
+section.cover h1 { font: 400 62px/1.08 var(--serif); letter-spacing: -1.4px; margin: 0 0 22px; max-width: 760px; }
+section.cover p { font: 400 19px/1.45 var(--serif); max-width: 580px; }
 section.cover p:has(img) { position: absolute; right: 56px; bottom: 60px; margin: 0; max-width: none; }
 section.cover img { width: 440px; }
 section.cover h6 { position: absolute; left: 72px; bottom: 64px; font: 500 15px var(--sans); margin: 0; }
+/* the scripts strip sits right of the byline and below the subtitle, so it collides with neither */
+section.cover .scripts { position: absolute; right: 64px; bottom: 112px; width: 620px;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 14px; }
+section.cover .scripts span { display: block; padding: 6px 22px 8px; border-radius: 16px;
+  background: rgba(249, 250, 251, 0.07); border: 1.2px solid rgba(0, 167, 225, 0.6);
+  color: var(--on-dark); font-size: 38px; line-height: 1.75; white-space: nowrap; }
+section.cover .scripts span:lang(am) { font-family: 'Abyssinica SIL', serif; }
+section.cover .scripts span:lang(ar) { font-family: 'Scheherazade New', serif; font-size: 44px; line-height: 1.5; }
+section.cover .scripts span:lang(hi) { font-family: 'Annapurna SIL', serif; }
+section.cover .scripts span:lang(my) { font-family: 'Padauk', serif; line-height: 1.8; }
+section.cover .scripts span:lang(en) { font-family: var(--serif); font-style: italic; color: var(--accent-on-dark); }
 
 /* contents */
 section.toc ol { list-style: none; padding: 0; width: 470px; margin-top: 10px; counter-reset: none; }
-section.toc li { display: flex; justify-content: space-between; font: 500 15px var(--sans); margin: 0 0 17px; }
-section.toc li em { font-style: normal; }
+section.toc li { display: flex; justify-content: space-between; font: 500 16px var(--sans); margin: 0 0 17px; }
+section.toc li em { font-style: normal; color: var(--accent); }
 
 /* chapter openers */
 section.chapter { padding: 72px 72px 56px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; }
 section.chapter header { display: none; }
-section.chapter h1 { font: 400 74px/1.05 var(--serif); letter-spacing: -1.8px; margin: 0; max-width: 820px; }
-section.chapter h6 { font: 500 13px var(--sans); border: 1.2px solid var(--ink); border-radius: 999px; padding: 2px 12px; margin: 0 0 26px; }
+section.chapter h1 { font: 400 64px/1.08 var(--serif); letter-spacing: -1.4px; margin: 0; max-width: 820px; }
+section.chapter h6 { font: 600 13px var(--sans); border: 1.2px solid currentColor; border-radius: 999px; padding: 2px 12px; margin: 0 0 26px; }
 section.chapter p:has(img) { position: absolute; right: 36px; top: 40px; margin: 0; }
 section.chapter img { width: 560px; }
-section.chapter.c1 { background: var(--c1); } section.chapter.c2 { background: var(--c2); }
-section.chapter.c3 { background: var(--c3); } section.chapter.c4 { background: var(--c4); }
-section.chapter.c5 { background: var(--c5); } section.chapter.c6 { background: var(--c6); }
+section.chapter.c1 { background: var(--c1); color: var(--on-c1); } section.chapter.c2 { background: var(--c2); color: var(--on-c2); }
+section.chapter.c3 { background: var(--c3); color: var(--on-c3); } section.chapter.c4 { background: var(--c4); color: var(--on-c4); }
+section.chapter.c5 { background: var(--c5); color: var(--on-c5); } section.chapter.c6 { background: var(--c6); color: var(--on-c6); }
 
 /* two columns */
 section.cols { columns: 2; column-gap: 40px; column-fill: auto; }
@@ -110,24 +131,24 @@ section .break + h2, section .break + h3, section .break + p { margin-top: 0; }
 section.cards ul, section.cards ol, section.cards2 ul, section.cards2 ol {
   list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 section.cards2 ul, section.cards2 ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-section.cards li, section.cards2 li { background: var(--paper); border-radius: 14px; padding: 15px 17px; margin: 0; font-size: 13.5px; line-height: 1.5; }
-section.cards li strong:first-child, section.cards2 li strong:first-child { display: block; font: 500 15px/1.3 var(--sans); margin-bottom: 5px; }
+section.cards li, section.cards2 li { background: var(--paper); border-radius: 14px; padding: 15px 17px; margin: 0; font-size: 13px; line-height: 1.5; }
+section.cards li strong:first-child, section.cards2 li strong:first-child { display: block; font: 600 15.5px/1.3 var(--sans); color: var(--accent); margin-bottom: 5px; }
 
 /* the five axes */
-section.axes table { font-size: 13px; }
+section.axes table { font-size: 13.5px; }
 section.axes td:first-child { font-weight: 600; width: 16%; }
-section.axes th:nth-child(2), section.axes td:nth-child(2) { background: #EFECE6; }
-section.axes th:nth-child(3) { background: var(--accent-tint); }
-section.axes th:nth-child(4) { background: #DCE6D0; }
+section.axes th:nth-child(2), section.axes td:nth-child(2) { background: var(--today); }
+section.axes th:nth-child(3) { background: var(--phase1); }
+section.axes th:nth-child(4) { background: var(--phase2); }
 
-section.dense { font-size: 13px; line-height: 1.5; }
+section.dense { font-size: 12.7px; line-height: 1.5; }
 section.dense h1 { margin-bottom: 22px; }
 
 /* inline figures written in HTML */
 section .word { display: flex; gap: 6px; margin: 8px 0 14px; font: 500 14px var(--sans); }
 section .word span { background: var(--paper); border-radius: 10px; padding: 8px 10px 6px; text-align: center; line-height: 1.2; }
-section .word span b { display: block; font: 600 17px var(--serif); margin-bottom: 3px; }
-section .word span i { font: 400 11px var(--sans); color: var(--muted); font-style: normal; }
+section .word span b { display: block; font: 700 17px var(--serif); margin-bottom: 3px; }
+section .word span i { font: 400 11.5px var(--sans); color: var(--muted); font-style: normal; }
 section .word span.root { background: var(--accent-tint); }
 section figure { margin: 0 0 12px; break-inside: avoid; }
 section figure img, section figure svg { display: block; width: 100%; height: auto; }
@@ -137,4 +158,4 @@ section figure.narrow { width: 78%; margin-left: auto; margin-right: auto; }
 /* three short cards in a row, written as paragraphs inside <div class="trio"> */
 section .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 section .trio p { margin: 0; background: var(--paper); border-radius: 14px; padding: 14px 16px; }
-section .trio p strong:first-child { display: block; font: 500 14.5px/1.3 var(--sans); margin-bottom: 4px; }
+section .trio p strong:first-child { display: block; font: 600 14.5px/1.3 var(--sans); margin-bottom: 4px; }

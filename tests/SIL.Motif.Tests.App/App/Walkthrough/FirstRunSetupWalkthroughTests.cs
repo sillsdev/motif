@@ -79,6 +79,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 $"the first run did not reach the held fake parser; behavior='{Path.GetDirectoryName(parser)}', " +
                 $"state='{walkthrough.Workspace.Assess.State}', refusal='{walkthrough.Workspace.Assess.ShownRefusal?.Sentence}', " +
                 $"invocations='{string.Join(" | ", parserInvocations)}'");
+            Assert.True(walkthrough.Workspace.ShowsParseAllWordsProgress);
             Assert.False(setup.IsOpen);
             Assert.Equal(AssessmentStage.Capturing, stageWhenSetupClosed);
             Assert.False(walkthrough.SetupDialogIsShown);
@@ -101,7 +102,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                     ["batch"] = new { words = new[] { new { word = "motifa", outcome = "complete" } } },
                 },
             });
-            walkthrough.Click("Run the Assessment");
+            SetupWalkthroughActions.ClickParseAllWordsFromTexts(walkthrough);
             walkthrough.WaitUntil(
                 () => !setup.IsOpen && walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
@@ -142,6 +143,39 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 () => !setup.IsOpen,
                 WalkthroughSteps.Remaining(deadline), "using the saved Selection did not close setup");
             return;
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    [Fact]
+    public void SkippingSetupWithoutASavedSelectionOffersConfigureInsteadOfParse()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var parser = FakeParser.Copy(project.ManagedRoot);
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parser);
+            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+
+            Assert.True(walkthrough.Workspace.Context.NeedsAssessment);
+            Assert.False(walkthrough.Workspace.Context.Setup!.CanRunDefaultSelection);
+            var configureButtons = walkthrough.Window.GetLogicalDescendants().OfType<Button>()
+                .Where(button => button.Content?.ToString() == "Choose what to parse" && button.IsEffectivelyVisible)
+                .ToArray();
+            Assert.NotEmpty(configureButtons);
+            Assert.All(configureButtons, button =>
+            {
+                Assert.True(button.IsEffectivelyEnabled);
+                Assert.Same(walkthrough.Workspace.ConfigureCommand, button.Command);
+            });
+            var topAction = walkthrough.Window.FindControl<Button>("ChooseWhatToParseButton");
+            Assert.NotNull(topAction);
+            Assert.True(topAction.IsEffectivelyVisible);
+            Assert.True(topAction.IsEffectivelyEnabled);
+            Assert.Same(walkthrough.Workspace.ConfigureCommand, topAction.Command);
+            return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
 

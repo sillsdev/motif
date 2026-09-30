@@ -968,7 +968,10 @@ public static class PendingChanges
     {
         var stored = StoredAnalyses(cache, projectName, CanonicalId.FromGuid(wordform.Guid).Value);
         if (change.AssessmentId is not { } assessmentId)
-            return stored.Select(item => item.Analysis).ToArray();
+            return stored.Select(item => item.Analysis with
+            {
+                Touched = item.StoredAnalysisId == change.StoredAnalysisId,
+            }).ToArray();
         try
         {
             var word = new AssessmentRepository(database).Get(assessmentId).Words?
@@ -992,13 +995,20 @@ public static class PendingChanges
                 var match = stored.FirstOrDefault(item => item.Key == key);
                 return new ReviewAnalysis(reading,
                     match.Analysis?.Opinion ?? word.ReadingGrades?.ElementAtOrDefault(index) ?? ReadingGrade.NoOpinion,
-                    selected == index, match.Analysis is not null);
+                    selected == index || match.StoredAnalysisId == change.StoredAnalysisId,
+                    match.Analysis is not null);
             }).Concat(stored.Where(item => !parserKeys.Contains(item.Key))
-                .Select(item => item.Analysis)).ToArray();
+                .Select(item => item.Analysis with
+                {
+                    Touched = item.StoredAnalysisId == change.StoredAnalysisId,
+                })).ToArray();
         }
         catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException)
         {
-            return stored.Select(item => item.Analysis).ToArray();
+            return stored.Select(item => item.Analysis with
+            {
+                Touched = item.StoredAnalysisId == change.StoredAnalysisId,
+            }).ToArray();
         }
     }
 
@@ -1090,7 +1100,7 @@ public static class PendingChanges
         ? ""
         : JsonSerializer.Serialize(baselineToken.SemanticIdentity, JsonOptions);
 
-    private static IReadOnlyList<(string Key, ReviewAnalysis Analysis)> StoredAnalyses(
+    private static IReadOnlyList<(string Key, string StoredAnalysisId, ReviewAnalysis Analysis)> StoredAnalyses(
         LcmCache cache, string projectName, string wordformId)
     {
         if (!CanonicalId.TryParse(wordformId, out var id) ||
@@ -1106,7 +1116,8 @@ public static class PendingChanges
             var opinion = wordform.HumanApprovedAnalyses.Contains(analysis) ? ReadingGrade.Approved :
                 wordform.HumanDisapprovedParses.Contains(analysis) ? ReadingGrade.Disapproved : ReadingGrade.Candidate;
             var reading = new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs));
-            return (key, new ReviewAnalysis(reading, opinion, false, true));
+            return (key, CanonicalId.FromGuid(analysis.Guid).Value,
+                new ReviewAnalysis(reading, opinion, false, true));
         }).ToArray();
     }
 

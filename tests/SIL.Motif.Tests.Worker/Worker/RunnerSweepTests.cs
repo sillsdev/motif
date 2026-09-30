@@ -328,7 +328,7 @@ public sealed class RunnerSweepTests : IDisposable
     private static void SeedJob(ProjectRuntime runtime, string jobId, double queueOrder)
     {
         runtime.Jobs.Create(jobId, runtime.WorkspaceKey, "probe", "{}",
-            DateTimeOffset.UtcNow.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
         using var connection = runtime.Database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "UPDATE Jobs SET QueueOrder = $order WHERE JobId = $id;";

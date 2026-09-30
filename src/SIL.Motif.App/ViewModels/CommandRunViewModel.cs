@@ -199,7 +199,7 @@ public abstract partial class CommandRunViewModel<TResponse> : ObservableObject,
 
     private void Cancel()
     {
-        if (_cts is null) return;
+        if (!CanCancel() || _cts is null) return;
         State = RunState.Cancelling;
         _cts.Cancel();
     }

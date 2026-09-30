@@ -309,7 +309,7 @@ public sealed class JobLeaseTests : IDisposable
     private static string Now() => Stamp(DateTimeOffset.UtcNow);
 
     private static string Stamp(DateTimeOffset moment) =>
-        moment.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        JobTimestamp.FormatUtc(moment);
 
     public void Dispose()
     {

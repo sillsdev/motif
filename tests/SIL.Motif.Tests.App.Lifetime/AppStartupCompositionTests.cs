@@ -12,8 +12,10 @@ using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host;
 using SIL.Motif.App.Composition;
@@ -231,6 +233,136 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             finally
             {
                 CultureInfo.CurrentCulture = culture;
+            }
+        }, () => "current stage: " + stage);
+    }
+
+    [Fact]
+    public void TheRealStartupRefreshesThenParsesWithTopRowProgress()
+    {
+        var host = MotifAppHost.Shared;
+        using var project = new WalkthroughProject(pristine);
+        const string word = "startup-word";
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(NewRoot(), "parser"));
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.FwDataPath, "Default", [], [word], 1000, StepCap.Default));
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        var skipped = ProjectSetupCommands.Skip(new SkipSetupRequest(project.FwDataPath));
+        Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
+        var initial = AssessCommand.Assess(new AssessRequest(project.FwDataPath), project.ManagedRoot, parser,
+            null, CancellationToken.None);
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+
+        var startedPath = Path.Combine(project.ManagedRoot, "refresh-parse-started");
+        var releasePath = Path.Combine(project.ManagedRoot, "refresh-parse-release");
+        var heldBehavior = new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                ["batch"] = new { startedPath, holdUntilPath = releasePath },
+            },
+        };
+        FakeParser.Behave(Path.GetDirectoryName(project.FwDataPath)!, heldBehavior);
+        FakeParser.BehaveBesideExecutable(parser, heldBehavior);
+
+        var picker = new RecordingProjectPicker(project.FwDataPath);
+        var options = new MotifAppOptions(
+            project.ManagedRoot,
+            parser,
+            new NoRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parser)),
+            new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero)),
+            picker,
+            new CancelFolderPicker(),
+            new NoOpDragSource());
+        var stage = "project open and stored Assessment";
+        host.Run("open, Refresh, and parse all words with visible progress", JourneyLimit, async () =>
+        {
+            var session = host.Start(options);
+            try
+            {
+                var workspace = session.Workspace;
+                await session.KnownProjectsLoaded;
+                await SelectNewProjectAsync(session, () => picker.Calls == 1);
+                await Until(() => workspace.Context.Evidence.HasAssessment,
+                    "the stored Assessment did not load at startup");
+                Assert.False(workspace.Context.NeedsAssessment);
+
+                stage = "no-op Refresh";
+                var refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
+                Click(session.Window, refresh);
+                await Until(() => !workspace.RefreshCommand.IsRunning,
+                    "the no-op Refresh did not finish");
+                Assert.False(workspace.Context.NeedsAssessment,
+                    "a Refresh that reused the Baseline should keep its stored Assessment");
+                Assert.True(workspace.Context.Evidence.HasAssessment);
+                Assert.True(workspace.ShowsRefreshAction);
+
+                new SIL.Motif.Tests.TestFixtures.FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+                stage = "Refresh after a FieldWorks save";
+                refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
+                Click(session.Window, refresh);
+                await Until(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
+                    "Refresh after a FieldWorks save did not leave the new Baseline unparsed");
+                Assert.True(workspace.ShowsParseAllWordsAction);
+
+                stage = "Overview prompt";
+                await ShowPageAsync(session, WorkspacePage.Overview);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
+                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
+
+                stage = "Review prompt";
+                await ShowPageAsync(session, WorkspacePage.Review);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
+                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
+                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
+
+                stage = "Texts prompt";
+                await ShowPageAsync(session, WorkspacePage.Texts);
+                var texts = workspace.PageModel<TextsPageModel>();
+                Assert.True(texts.ShowParsePrompt);
+                Assert.False(texts.ShowMatrixContent);
+                Assert.Contains("These words haven't been parsed since the last Refresh.",
+                    await UntilFound(session.Window, () => "the Texts prompt did not appear",
+                        text => text == "These words haven't been parsed since the last Refresh."));
+                var parseButton = session.Window.GetVisualDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Parse all words" && button.IsEffectivelyVisible &&
+                    button.GetVisualAncestors().Any(ancestor => ancestor.GetType().Name == "TextsPage"));
+                Assert.Same(workspace.ParseAllWordsCommand, parseButton.Command);
+
+                stage = "held Parse all words";
+                Click(session.Window, parseButton);
+                await Until(() => File.Exists(startedPath), "the parse did not reach the held fake parser");
+                Assert.True(texts.ShowParsePrompt);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Parsing… see the top row." && text.IsEffectivelyVisible);
+                await UntilFound(session.Window, () => "top-row parse progress did not appear",
+                    text => text.StartsWith("Parsing ", StringComparison.Ordinal) &&
+                        text.EndsWith(" words", StringComparison.Ordinal));
+                Assert.True(workspace.ShowsParseAllWordsProgress);
+                Assert.Contains(session.Window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Cancel parsing all words" && button.IsEffectivelyVisible);
+
+                stage = "released Parse all words";
+                File.WriteAllText(releasePath, string.Empty);
+                await Until(() => !workspace.ParseAllWordsCommand.IsRunning && !workspace.Context.NeedsAssessment,
+                    "the released parse did not complete");
+                Assert.False(workspace.ShowsParseAllWordsAction);
+                Assert.False(workspace.ShowsParseAllWordsProgress);
+                Assert.True(workspace.ShowsRefreshAction);
+                Assert.True(texts.ShowMatrixContent);
+                Assert.True(workspace.Context.HasEvidence);
+            }
+            finally
+            {
+                File.WriteAllText(releasePath, string.Empty);
+                await host.StopAsync();
             }
         }, () => "current stage: " + stage);
     }

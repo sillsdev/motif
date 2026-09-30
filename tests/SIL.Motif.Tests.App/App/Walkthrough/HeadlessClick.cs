@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -45,8 +46,18 @@ internal static class HeadlessClick
         var why = pressed ? "the press reached it, but it moved or changed before the release clicked it."
             : now == aimed ? "something covered it, such as an open popup, and took the press."
             : "something moved it after the click was aimed.";
+        var overlays = window.GetVisualDescendants().OfType<Control>()
+            .Where(candidate => candidate != control && candidate.IsEffectivelyVisible)
+            .Select(candidate => (Control: candidate, Origin: candidate.TranslatePoint(new Point(), window)))
+            .Where(item => item.Origin is { } origin &&
+                new Rect(origin, item.Control.Bounds.Size).Contains(aimed))
+            .Select(item => $"{item.Control.GetType().Name} name='{item.Control.Name}' " +
+                $"automation='{Avalonia.Automation.AutomationProperties.GetName(item.Control)}' " +
+                $"content='{(item.Control as Button)?.Content}'")
+            .TakeLast(12);
         Assert.Fail($"The click aimed at {aimed} missed '{accessibleName}', which is now at " +
-            $"{now?.ToString() ?? "nowhere in the window"}: {why} Wait for whatever is still loading before clicking.");
+            $"{now?.ToString() ?? "nowhere in the window"}: {why} " +
+            $"Controls over the point: {string.Join("; ", overlays)}. Wait for whatever is still loading before clicking.");
     }
 
     /// <summary>Presses and releases twice over <paramref name="control"/>, as a double-click does, and returns its clicks.</summary>

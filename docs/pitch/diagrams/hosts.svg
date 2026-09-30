@@ -1,35 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="56 56 948 316" role="img" aria-label="One grammar, many hosts: Motif, a Language Pack and PanGloss feed six applications">
-  <defs><marker id="hosts-head-141413" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#141413"/></marker></defs>
-  <path d="M 244 214 L 290 214" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 472 214 L 518 214" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 700 214 L 750 214" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M 750 84 L 750 344" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M 750 84 L 798 84" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 750 136 L 798 136" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 750 188 L 798 188" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 750 240 L 798 240" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 750 292 L 798 292" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <path d="M 750 344 L 798 344" stroke="#141413" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-141413)"/>
-  <rect x="64" y="174" width="180" height="80" rx="12" fill="#F4F1EA"/>
-  <text x="78" y="210.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="78" dy="0" font-size="15" font-weight="600">Motif</tspan><tspan x="78" dy="18" font-size="13" font-weight="400">build and measure</tspan></text>
-  <rect x="292" y="174" width="180" height="80" rx="12" fill="#F4F1EA"/>
-  <text x="306" y="210.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="306" dy="0" font-size="15" font-weight="600">Language Pack</tspan><tspan x="306" dy="18" font-size="13" font-weight="400">one data-only file</tspan></text>
-  <rect x="520" y="174" width="180" height="80" rx="12" fill="#141413"/>
-  <text x="534" y="210.0" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#FAF9F5" text-anchor="start"><tspan x="534" dy="0" font-size="15" font-weight="600">PanGloss</tspan><tspan x="534" dy="18" font-size="13" font-weight="400">native, C or WebAssembly</tspan></text>
-  <rect x="800" y="64" width="196" height="40" rx="10" fill="#F7E4D8"/>
-  <text x="814" y="89" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Paratext</tspan></text>
-  <rect x="800" y="116" width="196" height="40" rx="10" fill="#DCE6D0"/>
-  <text x="814" y="141" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Firefox</tspan></text>
-  <rect x="800" y="168" width="196" height="40" rx="10" fill="#DCE6D0"/>
-  <text x="814" y="193" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">LibreOffice</tspan></text>
-  <rect x="800" y="220" width="196" height="40" rx="10" fill="#DCE6D0"/>
-  <text x="814" y="245" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Keyman prediction</tspan></text>
-  <rect x="800" y="272" width="196" height="40" rx="10" fill="#DCE6D0"/>
-  <text x="814" y="297" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Wikipedia</tspan></text>
-  <rect x="800" y="324" width="196" height="40" rx="10" fill="#DCE6D0"/>
-  <text x="814" y="349" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Literacy and spelling app</tspan></text>
-  <circle cx="70" cy="314" r="6" fill="#F7E4D8" stroke="#B8552E" stroke-width="2"/>
-  <text x="82" y="318" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="82" dy="0" font-size="13" font-weight="500">Phase 1</tspan></text>
-  <circle cx="162" cy="314" r="6" fill="#DCE6D0" stroke="#5F7043" stroke-width="2"/>
-  <text x="174" y="318" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="174" dy="0" font-size="13" font-weight="500">Phase 2</tspan></text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="56 56 948 328" role="img" aria-label="One grammar, many hosts: Motif, a Language Pack and PanGloss feed seven applications, FieldWorks and Paratext first">
+  <defs><marker id="hosts-head-003049" orient="auto" markerWidth="5" markerHeight="5" refX="3.2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#003049"/></marker></defs>
+  <path d="M 244 220 L 290 220" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 472 220 L 518 220" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 700 220 L 750 220" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M 750 82 L 750 358" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M 750 82 L 798 82" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 128 L 798 128" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 174 L 798 174" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 220 L 798 220" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 266 L 798 266" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 312 L 798 312" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <path d="M 750 358 L 798 358" stroke="#003049" stroke-width="2" stroke-linecap="round" fill="none" marker-end="url(#hosts-head-003049)"/>
+  <rect x="64" y="180" width="180" height="80" rx="12" fill="#F2F6FA"/>
+  <text x="78" y="216" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="78" dy="0" font-size="15" font-weight="600">Motif</tspan><tspan x="78" dy="18" font-size="13" font-weight="400">build and measure</tspan></text>
+  <rect x="292" y="180" width="180" height="80" rx="12" fill="#F2F6FA"/>
+  <text x="306" y="216" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="306" dy="0" font-size="15" font-weight="600">Language Pack</tspan><tspan x="306" dy="18" font-size="13" font-weight="400">one data-only file</tspan></text>
+  <rect x="520" y="180" width="180" height="80" rx="12" fill="#003049"/>
+  <text x="534" y="216" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#F9FAFB" text-anchor="start"><tspan x="534" dy="0" font-size="15" font-weight="600">PanGloss</tspan><tspan x="534" dy="18" font-size="13" font-weight="400">native, C or WebAssembly</tspan></text>
+  <rect x="800" y="64" width="196" height="36" rx="10" fill="#D0DCF5"/>
+  <text x="814" y="87" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">FieldWorks</tspan></text>
+  <rect x="800" y="110" width="196" height="36" rx="10" fill="#D0DCF5"/>
+  <text x="814" y="133" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Paratext</tspan></text>
+  <rect x="800" y="156" width="196" height="36" rx="10" fill="#C0EEF6"/>
+  <text x="814" y="179" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Firefox</tspan></text>
+  <rect x="800" y="202" width="196" height="36" rx="10" fill="#C0EEF6"/>
+  <text x="814" y="225" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">LibreOffice</tspan></text>
+  <rect x="800" y="248" width="196" height="36" rx="10" fill="#C0EEF6"/>
+  <text x="814" y="271" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Keyman prediction</tspan></text>
+  <rect x="800" y="294" width="196" height="36" rx="10" fill="#C0EEF6"/>
+  <text x="814" y="317" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Wikipedia</tspan></text>
+  <rect x="800" y="340" width="196" height="36" rx="10" fill="#C0EEF6"/>
+  <text x="814" y="363" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="814" dy="0" font-size="14" font-weight="500">Literacy and spelling app</tspan></text>
+  <circle cx="70" cy="320" r="6" fill="#D0DCF5" stroke="#005CB9" stroke-width="2"/>
+  <text x="82" y="324" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="82" dy="0" font-size="13" font-weight="500">Phase 1</tspan></text>
+  <circle cx="162" cy="320" r="6" fill="#C0EEF6" stroke="#0087B8" stroke-width="2"/>
+  <text x="174" y="324" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="174" dy="0" font-size="13" font-weight="500">Phase 2</tspan></text>
 </svg>

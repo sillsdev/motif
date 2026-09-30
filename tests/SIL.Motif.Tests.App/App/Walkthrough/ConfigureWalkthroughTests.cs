@@ -84,8 +84,8 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
                 !walkthrough.Workspace.RefreshCommand.IsRunning &&
                 walkthrough.Workspace.Context.EvidencePublication.IsCompleted),
             WalkthroughSteps.Remaining(deadline), "the Refresh did not capture a new Baseline");
-        Assert.Null(baseline.ShownRefusal);
-        walkthrough.Workspace.DismissRerunCommand.Execute(null);
+        Assert.True(baseline.ShownRefusal is null,
+            $"the Refresh was refused: {baseline.ShownRefusal?.Code}: {baseline.ShownRefusal?.Details}");
     }
 
     private static void ClickConfigureAndExpectSetup(WalkthroughWindow walkthrough, string when)

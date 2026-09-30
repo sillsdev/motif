@@ -15,9 +15,11 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Requests;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -194,7 +196,7 @@ public sealed class WorkflowShellTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window) = NewComposedWindow();
+            var (workspace, window) = NewComposedWindow();
             try
             {
                 window.Show();
@@ -269,8 +271,8 @@ public sealed class WorkflowShellTests
             {
                 window.Show();
                 Assert.Equal((1240d, 780d, 820d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
-                var banner = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("banner"));
-                Assert.Equal(new Thickness(16, 12, 16, 0), banner.Margin);
+                var topBar = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("topBar"));
+                Assert.Equal(new Thickness(18, 0, 18, 0), topBar.Padding);
 
                 var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
                 var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
@@ -538,7 +540,7 @@ public sealed class WorkflowShellTests
     {
         _avalonia.Invoke(() =>
         {
-            var (_, window) = NewComposedWindow();
+            var (workspace, window) = NewComposedWindow();
             try
             {
                 window.Show();
@@ -547,7 +549,7 @@ public sealed class WorkflowShellTests
                 Assert.False(window.FindControl<StackPanel>("FreshnessLine")!.IsEffectivelyVisible);
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
-                Assert.False(ButtonNamed(window, "Cancel the refresh").IsEffectivelyVisible);
+                Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.False(ButtonNamed(window, "See what the refresh changed").IsEffectivelyVisible);
             }
             finally
@@ -558,7 +560,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void TheMatrixAndTheReviewPageShowTheSameChangesList()
+    public void TheReviewPageShowsOrderedGroupsAndKeyboardReachableActions()
     {
         _avalonia.Invoke(() =>
         {
@@ -571,26 +573,84 @@ public sealed class WorkflowShellTests
 
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
                 var list = review.GetLogicalDescendants().OfType<ItemsControl>()
-                    .Single(control => AutomationProperties.GetName(control) == "Changes to review");
+                    .Single(control => AutomationProperties.GetName(control) == "Changes grouped for review");
                 Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
                 var page = workspace.PageModel<ReviewPageModel>();
-                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
-                Assert.Equal(page.ReviewableChanges,
-                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
-
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "kitabu"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(
+                    ChangeKinds.AddCandidate, "kitabu", "reading", changeId: "add-kitabu"));
                 window.UpdateLayout();
 
-                Assert.Equal(workspace.Context.Changes.Items, page.ReviewableChanges);
-                Assert.Equal(page.ReviewableChanges,
-                    Assert.IsAssignableFrom<IEnumerable<ChangeViewModel>>(list.ItemsSource));
-                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "kitabu");
+                var group = Assert.Single(page.ReviewGroups);
+                Assert.Equal("Added", group.Title);
+                Assert.Equal(page.ReviewGroups.Select(item => item.Title),
+                    Assert.IsAssignableFrom<IEnumerable<ReviewChangeGroupViewModel>>(list.ItemsSource)
+                        .Select(item => item.Title));
+                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Added");
+                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
+                    mark => mark.Kind == OpinionMarkKind.None);
+                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
+                    mark => mark.Kind == OpinionMarkKind.Unknown);
+                var groupActions = review.GetVisualDescendants().OfType<Border>().Single(border =>
+                    border.Classes.Contains("hoverReveal") && border.GetVisualDescendants().OfType<Button>().Any(button =>
+                        AutomationProperties.GetName(button) == group.GoToTextAutomationName));
+                Assert.NotNull(groupActions.Background);
+
+                var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
+                var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
+                Assert.True(undo.IsTabStop);
+                Assert.True(undo.Focus());
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(undo.IsHitTestVisible);
+                Assert.Equal(1d, undo.Opacity);
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Undo all: Added");
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Go to text in Added");
+                Assert.Contains(buttons, button =>
+                    AutomationProperties.GetName(button) == "Go to text: kitabu");
             }
             finally
             {
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void MissingReviewContextUsesTheSharedParsePrompt()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
+            new BaselineToken("p", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z",
+                "sha256:" + new string('b', 64)), DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = NewComposedWindow(fake);
+            try
+            {
+                window.Show();
+                await workspace.SetProjectAsync(@"C:\projects\review-context.fwdata");
+                workspace.Context.Setup?.SkipCommand.Execute(null);
+                workspace.CurrentPage = WorkspacePage.Review;
+                var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", "change",
+                    occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
+                workspace.Context.Changes.Items.Add(change);
+                workspace.PageModel<ReviewPageModel>().ToggleContextCommand.Execute(change);
+                window.UpdateLayout();
+
+                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
+                Assert.True(change.HasUnavailableContext);
+                var prompts = review.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
+                Assert.Equal(2, prompts.Length);
+                Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]

@@ -149,7 +149,7 @@ internal static class CommentHygiene
     private static readonly Regex OtherTypeDeclaration = new(@"\b(class|record|struct|enum)\s+[A-Za-z_]", Blind);
     private static readonly Regex XmlComment = new(@"<!--([\s\S]*?)-->", Exact);
     private static readonly Regex XmlCommentLineBreak = new("\r?\n", Exact);
-    private static readonly Regex BinOrObj = new(@"\\(bin|obj)\\", Blind);
+    private static readonly Regex BinOrObj = new(@"[\\/](bin|obj)[\\/]", Blind);
     private static readonly Regex CommentMarker = new("///?", Exact);
     private static readonly Regex HttpUrl = new("https?://", Blind);
     private static readonly Regex ResearchLink = new(@"docs/research/[A-Za-z0-9._/-]+\.md", Blind);

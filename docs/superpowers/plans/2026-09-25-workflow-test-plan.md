@@ -411,7 +411,7 @@ project is never touched.*
 | Cancelling a Refresh keeps the new Baseline, starts no run, and says the numbers are older | U | `WorkspacePageTests.WhileRefreshingTheLineSaysSoAndCancelStopsTheRun`, `.ARefreshWhoseAssessmentIsCancelledStillSaysTheNumbersAreOlder` | No | fake | keep |
 | A cancellation before the command starts is still a typed refusal | U | `CommandClientCancellationTests.ACancellationBeforeTheCommandStartsIsStillATypedRefusal` | No | held client | keep |
 
-- **Existing tests:** `CancelAssessmentWalkthroughTests.CancellingAssessmentLeavesNoInvocationAndAllowsARerun`
+- **Existing tests:** `CancelAssessmentWalkthroughTests.CancellingAssessmentAddsNoInvocationAndAllowsARerun`
   (real parser, whole window).
 - **Gap:** a fast, fake-parser cancellation through the real client does not exist.
 - **Missing capability:** none. **Depends on:** F08.
@@ -1146,7 +1146,7 @@ happens only after the replacement is green. No row deletes a test that is the o
 | `ConformanceGrammarWalkthroughTests.RealWindowWalksConformanceGrammarFromBaselineToHandoff` | Move, then delete | 660 seconds of real parser through the window. The grammar facts move to `ConformanceGrammarAssessTests` and `RealParserLimitTests` (I, real parser) | Phase 3 |
 | `ConformanceGrammarWalkthroughTests.DisposingWithAnAssessmentInFlightCancelsItWithoutBlockingTheDispatcher` | Move | A close rule, proven with the fake: `CloseCoordinatorTests` (U) | Phase 4 |
 | `ConformanceGrammarWalkthroughTests.CopiedConformanceProjectLoadsWithThirteenLexicalEntries` | Keep | It guards the synthetic fixture | — |
-| `CancelAssessmentWalkthroughTests.CancellingAssessmentLeavesNoInvocationAndAllowsARerun` | Move, then delete | The button goes to `CancelRunSmokeTests`; process and store invariants to `RunRealClientTests` with a held fake | Phase 1 |
+| `CancelAssessmentWalkthroughTests.CancellingAssessmentAddsNoInvocationAndAllowsARerun` | Move, then delete | The button goes to `CancelRunSmokeTests`; process and store invariants to `RunRealClientTests` with a held fake | Phase 1 |
 | `CancelHandoffWalkthroughTests.CancellingHandoffDoesNotPublishPartialOutputAndRetrySucceeds` | Move, then delete | To `HandoffRealClientTests` with a held fake (I) | Phase 3 |
 | `HandoffWalkthroughTests.WritingHandoffPublishesFilesForCompletedAssessment` | Move, then delete | File rules belong to `HandoffWriterTests`; the real-parser version to `RealParserHandoffTests` | Phase 3 |
 | `UploadSimulationWalkthroughTests.ACompletedHandoffSurvivesFlatUploadAndStarterPromptPaste` | Move, then delete | To `HandoffRealClientTests` with the fake parser. `FakeChatReceiver` and its tests stay | Phase 3 |

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
@@ -34,19 +35,23 @@ public sealed class RetainedInvocationRepository
 
     /// <summary>
     /// Records the aggregate and all member Assessment rows in one transaction. The aggregate's member set
-    /// must name exactly one supplied Assessment per kind, and every supplied Assessment must agree with it.
+    /// must name exactly one supplied Assessment per kind, every supplied Assessment must agree with it, and
+    /// a requested cancellation prevents the transaction from committing.
     /// </summary>
-    public void Record(RetainedInvocationRecord retained, IReadOnlyList<NewAssessmentRecord> assessments)
+    public void Record(RetainedInvocationRecord retained, IReadOnlyList<NewAssessmentRecord> assessments,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(retained);
         ArgumentNullException.ThrowIfNull(assessments);
         ValidateAggregate(retained, assessments);
+        cancellationToken.ThrowIfCancellationRequested();
 
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         AssessmentRepository.InsertRecords(connection, transaction, assessments);
         InsertAggregate(connection, transaction, retained);
         InsertMembers(connection, transaction, retained);
+        cancellationToken.ThrowIfCancellationRequested();
         transaction.Commit();
     }
 

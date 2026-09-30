@@ -1,37 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="56 44 928 336" role="img" aria-label="Where each phase lands on the five axes">
   <defs></defs>
-  <circle cx="646" cy="63" r="6" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <text x="658" y="67" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="658" dy="0" font-size="13" font-weight="500">Today</tspan></text>
-  <circle cx="736" cy="63" r="6" fill="#D97757"/>
-  <text x="748" y="67" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="748" dy="0" font-size="13" font-weight="500">Phase 1</tspan></text>
-  <circle cx="832" cy="63" r="6" fill="#7B8C5E"/>
-  <text x="844" y="67" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="844" dy="0" font-size="13" font-weight="500">Phase 2</tspan></text>
-  <text x="300" y="116" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="start"><tspan x="300" dy="0" font-size="12" font-weight="500">LOW</tspan></text>
-  <text x="976" y="116" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#5E5B55" text-anchor="end"><tspan x="976" dy="0" font-size="12" font-weight="500">FLIPPED</tspan></text>
-  <path d="M 300 148 L 976 148" stroke="#D9D5CC" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <text x="64" y="153" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Speed</tspan></text>
-  <circle cx="320" cy="148" r="7" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <circle cx="600" cy="148" r="8" fill="#D97757"/>
-  <circle cx="940" cy="148" r="8" fill="#7B8C5E"/>
-  <path d="M 300 202 L 976 202" stroke="#D9D5CC" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <text x="64" y="207" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Easy to build</tspan></text>
-  <circle cx="320" cy="202" r="7" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <circle cx="640" cy="202" r="8" fill="#D97757"/>
-  <circle cx="900" cy="202" r="8" fill="#7B8C5E"/>
-  <path d="M 300 256 L 976 256" stroke="#D9D5CC" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <text x="64" y="261" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Deployment</tspan></text>
-  <circle cx="320" cy="256" r="7" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <circle cx="560" cy="256" r="8" fill="#D97757"/>
-  <circle cx="940" cy="256" r="8" fill="#7B8C5E"/>
-  <path d="M 300 310 L 976 310" stroke="#D9D5CC" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <text x="64" y="315" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Languages using it</tspan></text>
-  <circle cx="320" cy="310" r="7" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <circle cx="660" cy="310" r="8" fill="#D97757"/>
-  <circle cx="940" cy="310" r="8" fill="#7B8C5E"/>
-  <path d="M 300 364 L 976 364" stroke="#D9D5CC" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <text x="64" y="369" font-family="Inter, 'Segoe UI', Arial, sans-serif" fill="#141413" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Completeness</tspan></text>
-  <circle cx="320" cy="364" r="7" fill="#ffffff" stroke="#8F8A80" stroke-width="2"/>
-  <circle cx="320" cy="364" r="8" fill="#D97757"/>
-  <circle cx="900" cy="364" r="8" fill="#7B8C5E"/>
-  <text x="344" y="368" font-family="'Source Serif 4', Georgia, serif" fill="#5E5B55" text-anchor="start" font-style="italic"><tspan x="344" dy="0" font-size="13" font-weight="400">Phase 1 stays with Scripture</tspan></text>
+  <circle cx="646" cy="63" r="6" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <text x="658" y="67" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="658" dy="0" font-size="13" font-weight="500">Today</tspan></text>
+  <circle cx="736" cy="63" r="6" fill="#005CB9"/>
+  <text x="748" y="67" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="748" dy="0" font-size="13" font-weight="500">Phase 1</tspan></text>
+  <circle cx="832" cy="63" r="6" fill="#00A7E1"/>
+  <text x="844" y="67" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="844" dy="0" font-size="13" font-weight="500">Phase 2</tspan></text>
+  <text x="300" y="116" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="start"><tspan x="300" dy="0" font-size="12" font-weight="500">START</tspan></text>
+  <text x="976" y="116" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#5B6770" text-anchor="end"><tspan x="976" dy="0" font-size="12" font-weight="500">GOAL</tspan></text>
+  <path d="M 300 148 L 976 148" stroke="#E4E4E4" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text x="64" y="153" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Speed</tspan></text>
+  <circle cx="320" cy="148" r="7" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <circle cx="600" cy="148" r="8" fill="#005CB9"/>
+  <circle cx="940" cy="148" r="8" fill="#00A7E1"/>
+  <path d="M 300 202 L 976 202" stroke="#E4E4E4" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text x="64" y="207" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Easy to build</tspan></text>
+  <circle cx="320" cy="202" r="7" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <circle cx="640" cy="202" r="8" fill="#005CB9"/>
+  <circle cx="900" cy="202" r="8" fill="#00A7E1"/>
+  <path d="M 300 256 L 976 256" stroke="#E4E4E4" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text x="64" y="261" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Deployment</tspan></text>
+  <circle cx="320" cy="256" r="7" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <circle cx="560" cy="256" r="8" fill="#005CB9"/>
+  <circle cx="940" cy="256" r="8" fill="#00A7E1"/>
+  <path d="M 300 310 L 976 310" stroke="#E4E4E4" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text x="64" y="315" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Languages using it</tspan></text>
+  <circle cx="320" cy="310" r="7" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <circle cx="660" cy="310" r="8" fill="#005CB9"/>
+  <circle cx="940" cy="310" r="8" fill="#00A7E1"/>
+  <path d="M 300 364 L 976 364" stroke="#E4E4E4" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text x="64" y="369" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="64" dy="0" font-size="15" font-weight="500">Completeness</tspan></text>
+  <circle cx="320" cy="364" r="7" fill="#FFFFFF" stroke="#8A99A8" stroke-width="2"/>
+  <circle cx="320" cy="364" r="8" fill="#005CB9"/>
+  <circle cx="900" cy="364" r="8" fill="#00A7E1"/>
+  <text x="344" y="368" font-family="'Charis SIL', Georgia, serif" fill="#5B6770" text-anchor="start" font-style="italic"><tspan x="344" dy="0" font-size="13" font-weight="400">Phase 1 stays with Scripture</tspan></text>
 </svg>

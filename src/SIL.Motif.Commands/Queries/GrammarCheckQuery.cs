@@ -70,14 +70,22 @@ public static class GrammarCheckQuery
                 .GetAwaiter().GetResult();
             if (outcome is PanGlossOutcome.Cancelled)
                 return CommandOutcome<GrammarCheckResponse>.Refused(Cancelled(request.ProjectPath));
-            if (outcome is not PanGlossOutcome.Completed completed)
+            var parserExitedNonzero = outcome is PanGlossOutcome.Refused;
+            var output = outcome switch
+            {
+                PanGlossOutcome.Completed completed => completed.Output,
+                PanGlossOutcome.Refused refused when !string.IsNullOrWhiteSpace(refused.StandardOutput) =>
+                    refused.StandardOutput,
+                _ => null,
+            };
+            if (output is null)
                 return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
             GrammarWarning[] findings;
             GrammarWarningSummary[] summary;
             try
             {
-                var report = ReadReport(completed.Output);
+                var report = ReadReport(output);
                 findings = (report.Diagnostics ?? throw new JsonException(
                         "The grammar-health report is incomplete."))
                     .Select(diagnostic => ToGrammarWarning(diagnostic ?? throw new JsonException(
@@ -111,6 +119,9 @@ public static class GrammarCheckQuery
                     $"pangloss grammar-health wrote a report Motif could not read: {exception.Message}",
                     Fact(("projectPath", request.ProjectPath))));
             }
+
+            if (parserExitedNonzero && !findings.Any(finding => finding.Severity == GrammarDiagnosticLevel.Error))
+                return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
             var response = new GrammarCheckResponse(findings, HasBaseline: true)
             {

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Assess;
@@ -46,6 +47,7 @@ public sealed partial class TimingPageModel : PageModel
         {
             if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(ShowStaleTiming));
         };
+        context.PropertyChanged += OnContextPropertyChanged;
         context.Assess.Compare.CheckedWordsChanged += OnCheckedWordsChanged;
     }
 
@@ -69,13 +71,12 @@ public sealed partial class TimingPageModel : PageModel
 
     public bool HasFocus => Focus is not null;
 
-    public bool ShowNoEvidence => Context.HasNoEvidence && Context.Evidence.StoredAssessmentId is null &&
-        Focus is null;
+    public bool ShowNoEvidence => Context.NeedsAssessment && Focus is null;
 
-    public bool ShowStatistics => Context.HasEvidence && Focus is null;
+    public bool ShowStatistics => !Context.NeedsAssessment && Context.HasEvidence && Focus is null;
 
     /// <summary>Whether to show the stored timing while no in-memory Assessment or focused request is active.</summary>
-    public bool ShowStoredTiming => Context.Evidence.StoredAssessmentId is not null &&
+    public bool ShowStoredTiming => !Context.NeedsAssessment && Context.Evidence.StoredAssessmentId is not null &&
         !Context.HasEvidence && Focus is null;
 
     public string FocusSummary => Focus is not { } focus ? string.Empty :
@@ -539,6 +540,14 @@ public sealed partial class TimingPageModel : PageModel
         RerunWordsCommand.NotifyCanExecuteChanged();
         HandOffWordsCommand.NotifyCanExecuteChanged();
         HandOffRuleCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WorkspaceContext.NeedsAssessment)) return;
+        OnPropertyChanged(nameof(ShowNoEvidence));
+        OnPropertyChanged(nameof(ShowStatistics));
+        OnPropertyChanged(nameof(ShowStoredTiming));
     }
 
     private void RaiseFocusState()

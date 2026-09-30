@@ -35,10 +35,23 @@ public sealed partial class TextsPageModel : PageModel
         Assess.TextWords = Words;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
         ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
-        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes)
+        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes,
+            context.Commands)
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
         };
+        context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
+        context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
+        context.RegisterOccurrenceNavigator(anchor =>
+        {
+            var line = ResultsInText.FindOccurrenceLine(anchor);
+            var token = line?.Tokens.FirstOrDefault(item => item.Occurrence == anchor);
+            if (line is null || token is null) return false;
+            ResultsInText.SelectedText = ResultsInText.Texts.FirstOrDefault(text => text.Lines.Contains(line));
+            ResultsInText.Filter = ResultsInTextFilter.All;
+            ResultsInText.SelectToken(token);
+            return true;
+        });
         Assess.Compare.Changes = context.Changes;
         TextsLists = new TextsListsViewModel(Assess.Compare);
         TextsLists.HandOff = context.HandOff;
@@ -82,7 +95,13 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowMatrix => Tab == TextsTab.Matrix;
 
+    public bool ShowMatrixContent => ShowMatrix && !Context.NeedsAssessment;
+
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
+
+    public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts && !Context.NeedsAssessment;
+
+    public bool ShowParsePrompt => Context.NeedsAssessment && (ShowMatrix || ShowAnalyzeTexts);
 
     public bool ShowLists => Tab == TextsTab.Lists;
 
@@ -145,6 +164,7 @@ public sealed partial class TextsPageModel : PageModel
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
+        OnPropertyChanged(nameof(ShowParsePrompt));
         OnPropertyChanged(nameof(ShowAssessStatus));
         OnPropertyChanged(nameof(ShowAssessRefusal));
         if (e.PropertyName == nameof(AssessViewModel.IsActive) && Assess.IsActive) Tab = TextsTab.Matrix;
@@ -152,6 +172,9 @@ public sealed partial class TextsPageModel : PageModel
 
     partial void OnTabChanged(TextsTab value)
     {
+        OnPropertyChanged(nameof(ShowMatrixContent));
+        OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
+        OnPropertyChanged(nameof(ShowParsePrompt));
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 
@@ -162,6 +185,11 @@ public sealed partial class TextsPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.HasEvidence)) OnPropertyChanged(nameof(ShowEmptyResults));
+        if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
+        {
+            OnPropertyChanged(nameof(ShowMatrixContent));
+            OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
+            OnPropertyChanged(nameof(ShowParsePrompt));
+        }
     }
 }

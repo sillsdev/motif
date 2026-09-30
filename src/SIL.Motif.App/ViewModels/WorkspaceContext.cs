@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
@@ -71,6 +72,10 @@ public abstract record PageRequest(WorkspacePage Page);
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
+    private Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?>? _occurrenceContextProvider;
+    private Func<OccurrenceAnchor, bool>? _occurrenceNavigator;
+    private Func<OccurrenceAnchor, TextOccurrenceLocation?>? _occurrenceLocationProvider;
+
     public WorkspaceContext(
         SelectionViewModel selection, AssessViewModel assess, ChangesViewModel changes, ICommandClient commands, IHandoffFolderPicker folderPicker,
         IFileDragSource dragSource, BaselineViewModel baseline, TimeProvider? clock = null, IClipboard? clipboard = null,
@@ -123,6 +128,30 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The shell's action that captures a new Baseline from FieldWorks' last save.</summary>
     public IAsyncRelayCommand? RefreshBaselineCommand { get; init; }
 
+    /// <summary>The shell's action for measuring the saved Default Selection against the current Baseline.</summary>
+    public IAsyncRelayCommand? ParseAllWordsCommand { get; internal set; }
+
+    /// <summary>The shell's action for configuring the words to parse.</summary>
+    public IRelayCommand? ConfigureCommand { get; internal set; }
+
+    /// <summary>The sentence shared by every page when its measurements need a new parse.</summary>
+    public string ParsePromptText => Assess.IsActive
+        ? "Parsing… see the top row."
+        : "These words haven't been parsed since the last Refresh.";
+
+    /// <summary>The action offered by the shared parse prompt.</summary>
+    public string ParsePromptActionText => Setup?.CanRunDefaultSelection == true
+        ? "Parse all words"
+        : "Choose what to parse";
+
+    /// <summary>The command behind the shared parse prompt's action.</summary>
+    public IRelayCommand? ParsePromptActionCommand => Setup?.CanRunDefaultSelection == true
+        ? ParseAllWordsCommand
+        : ConfigureCommand;
+
+    /// <summary>Whether the shared prompt should offer an action while no Assessment is running.</summary>
+    public bool ShowParsePromptAction => !Assess.IsActive;
+
     /// <summary>Where a page asks a person to choose a folder.</summary>
     public IHandoffFolderPicker FolderPicker { get; }
 
@@ -169,7 +198,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     [ObservableProperty]
     private WorkspaceBaseline? _baseline;
 
-    partial void OnBaselineChanged(WorkspaceBaseline? value) => Evidence.Baseline = value;
+    partial void OnBaselineChanged(WorkspaceBaseline? value)
+    {
+        Evidence.Baseline = value;
+        OnPropertyChanged(nameof(NeedsAssessment));
+    }
 
     /// <summary>The grammar check in one line, as the page that owns the check last published it.</summary>
     [ObservableProperty]
@@ -180,6 +213,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The negation of <see cref="HasEvidence"/>, so a view never composes <c>!</c> itself.</summary>
     public bool HasNoEvidence => !Evidence.HasAssessment;
+
+    /// <summary>Whether the current Baseline has no Assessment and needs the saved Default Selection parsed.</summary>
+    public bool NeedsAssessment => Baseline?.HasBaseline == true && !Evidence.HasAssessment;
 
     /// <summary>Whether the project and Selection controls accept input: not while an Assessment runs.</summary>
     public bool ProjectAndSelectionEnabled => !Assess.IsActive;
@@ -210,6 +246,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         Setup = setup;
         _projectParticipants.Add(setup);
+        setup.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(SetupViewModel.CanRunDefaultSelection) or nameof(SetupViewModel.IsOpen)))
+                return;
+            OnPropertyChanged(nameof(ParsePromptActionText));
+            OnPropertyChanged(nameof(ParsePromptActionCommand));
+        };
     }
 
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
@@ -285,8 +328,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>
-    /// Reads the stored evidence for the new Baseline, tells every page it was captured, and returns once each has
-    /// reloaded.
+    /// Rechecks pending changes, reads evidence for the new Baseline, then reloads every page and setup.
     /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
@@ -323,6 +365,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ArgumentNullException.ThrowIfNull(evidence);
         Evidence.ShowRun(evidence);
         Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
+        _ = PublishToPagesAsync(CancellationToken.None);
+    }
+
+    /// <summary>Clears numbers from the replaced Baseline before pages reload its saved evidence.</summary>
+    internal void ClearAssessmentForNewBaseline()
+    {
+        Evidence.ClearForNewBaseline();
+        Changes.AssessmentId = null;
         _ = PublishToPagesAsync(CancellationToken.None);
     }
 
@@ -420,6 +470,34 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));
 
+    public void OpenOccurrence(OccurrenceAnchor? occurrence, string word)
+    {
+        if (occurrence is { } anchor && _occurrenceNavigator?.Invoke(anchor) == true)
+        {
+            OpenTexts(TextsTab.AnalyzeTexts);
+            return;
+        }
+        OpenWord(word);
+    }
+
+    /// <summary>Registers the Texts page as the source of loaded sentence context.</summary>
+    internal void RegisterOccurrenceContextProvider(
+        Func<OccurrenceAnchor, IReadOnlyList<ResultsTokenViewModel>?> provider) =>
+        _occurrenceContextProvider = provider ?? throw new ArgumentNullException(nameof(provider));
+
+    /// <summary>Gets the loaded sentence for an exact source occurrence, when it is available.</summary>
+    internal IReadOnlyList<ResultsTokenViewModel>? OccurrenceContext(OccurrenceAnchor occurrence) =>
+        _occurrenceContextProvider?.Invoke(occurrence);
+
+    internal void RegisterOccurrenceNavigator(Func<OccurrenceAnchor, bool> navigator) =>
+        _occurrenceNavigator = navigator ?? throw new ArgumentNullException(nameof(navigator));
+
+    internal void RegisterOccurrenceLocationProvider(Func<OccurrenceAnchor, TextOccurrenceLocation?> provider) =>
+        _occurrenceLocationProvider = provider ?? throw new ArgumentNullException(nameof(provider));
+
+    internal TextOccurrenceLocation? OccurrenceLocation(OccurrenceAnchor occurrence) =>
+        _occurrenceLocationProvider?.Invoke(occurrence);
+
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));
 
@@ -431,14 +509,20 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(AssessViewModel.IsActive)) OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
+        if (e.PropertyName != nameof(AssessViewModel.IsActive)) return;
+        OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
+        OnPropertyChanged(nameof(ParsePromptText));
+        OnPropertyChanged(nameof(ShowParsePromptAction));
     }
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(ProjectEvidence.HasAssessment)) return;
-        OnPropertyChanged(nameof(HasEvidence));
-        OnPropertyChanged(nameof(HasNoEvidence));
+        if (e.PropertyName == nameof(ProjectEvidence.HasAssessment))
+        {
+            OnPropertyChanged(nameof(HasEvidence));
+            OnPropertyChanged(nameof(HasNoEvidence));
+            OnPropertyChanged(nameof(NeedsAssessment));
+        }
     }
 
     ProjectOpenStage IProjectStateParticipant.OpenStage => ProjectOpenStage.Context;

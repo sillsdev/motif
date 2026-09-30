@@ -119,6 +119,42 @@ internal static class WalkthroughSteps
             Remaining(deadline), "the Assessment did not complete and reach every page");
     }
 
+    internal static void EnsureAssessmentForAnalyze(WalkthroughWindow walkthrough, TimeSpan timeout)
+    {
+        if (!walkthrough.Workspace.Context.NeedsAssessment) return;
+        var setup = walkthrough.Workspace.Context.Setup!;
+        if (setup.CanRunDefaultSelection)
+        {
+            if (setup.IsOpen) walkthrough.SkipSetup();
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            SetupWalkthroughActions.ClickParseAllWordsFromTexts(walkthrough);
+        }
+        else
+        {
+            if (!setup.IsOpen)
+            {
+                walkthrough.ConfigureFromProjectMenu();
+                walkthrough.WaitUntil(
+                    () => setup.IsOpen && setup.ConfigurationLoadTask?.IsCompleted != false,
+                    timeout, "Configure did not open the first-run Selection");
+            }
+
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+            if (walkthrough.Workspace.Selection.Texts.FirstOrDefault() is { } text)
+                SetupWalkthroughActions.SetSetupTextChecked(walkthrough, text.Title, true);
+            else
+                walkthrough.Type("Words to add", "motifa");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            walkthrough.Click("Start first run");
+        }
+
+        walkthrough.WaitUntil(
+            () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                walkthrough.Workspace.Context.EvidencePublication.IsCompleted && !setup.IsOpen,
+            timeout, "the Default Selection did not finish parsing before opening Analyze texts");
+    }
+
     internal static void StartSlowAssessment(WalkthroughWindow walkthrough, long deadline)
     {
         StartSlowAssessment(walkthrough, deadline, ConformanceProject.SlowWords);

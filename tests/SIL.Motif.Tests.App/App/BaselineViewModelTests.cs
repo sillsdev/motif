@@ -11,8 +11,7 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins <see cref="BaselineViewModel"/>: the absent-Baseline state, the exact pinned freshness sentence,
 /// the held/free notice, Refresh enablement, state updated only on success, refusal display, and
-/// <see cref="BaselineViewModel.OfferRerun"/> firing only when an Assessment already covered the Baseline
-/// a successful Refresh just replaced.
+/// <see cref="BaselineViewModel.Refreshed"/> firing after a successful capture.
 /// </summary>
 public sealed class BaselineViewModelTests
 {
@@ -121,40 +120,20 @@ public sealed class BaselineViewModelTests
     }
 
     [Fact]
-    public async Task RefreshOffersARerunOnlyWhenAnAssessmentAlreadyCoveredTheReplacedBaseline()
+    public async Task RefreshRaisesTheCapturedEventAfterUpdatingTheBaseline()
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
         var viewModel = new BaselineViewModel(fake);
         await viewModel.SetProjectAsync(ProjectPath);
-        viewModel.HasAssessment = true;
-
         fake.CaptureBaselineCompletesWith(
             new BaselineCaptureResponse(NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
 
-        var offered = false;
-        viewModel.OfferRerun += (_, _) => offered = true;
+        var refreshed = false;
+        viewModel.Refreshed += (_, _) => refreshed = true;
         await viewModel.RefreshCommand.ExecuteAsync(null);
 
-        Assert.True(offered);
-        Assert.False(viewModel.HasAssessment);
-    }
-
-    [Fact]
-    public async Task RefreshDoesNotOfferARerunWhenNoAssessmentCoveredTheProject()
-    {
-        var fake = new FakeCommandClient();
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-        var viewModel = new BaselineViewModel(fake);
-        await viewModel.SetProjectAsync(ProjectPath);
-
-        fake.CaptureBaselineCompletesWith(
-            new BaselineCaptureResponse(NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
-
-        var offered = false;
-        viewModel.OfferRerun += (_, _) => offered = true;
-        await viewModel.RefreshCommand.ExecuteAsync(null);
-
-        Assert.False(offered);
+        Assert.True(refreshed);
+        Assert.Equal("2026-09-06T00:00:00Z", viewModel.Token!.CapturedUtc);
     }
 }

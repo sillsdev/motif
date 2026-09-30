@@ -36,6 +36,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
             ConfigureFakeReading(project, parserPath);
             walkthrough.Check(SeededProject.TextTitle);
+            Assert.Contains(project.Text.TextId, walkthrough.Workspace.Selection.ChosenTextIds);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
 
             walkthrough.ShowPage(WorkspacePage.Texts);
@@ -89,6 +90,9 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.WaitUntil(() => !review.HasUncertainChanges &&
                     review.Changes.Items.Single().Fit?.Status == "fits",
                 WalkthroughSteps.Remaining(deadline), "Check again did not clear uncertainty");
+            var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
+            Assert.True(checkNumbers.IsEffectivelyVisible);
+            Assert.True(checkNumbers.IsEffectivelyEnabled);
             walkthrough.Click("Check what applying does to the numbers");
             walkthrough.WaitUntil(() => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
                 WalkthroughSteps.Remaining(deadline), "checking the confirmed change did not enable Apply");
@@ -245,7 +249,11 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
 
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             var applyButton = walkthrough.Find<Button>("Apply to FieldWorks project");
+            var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
+            Assert.True(checkNumbers.IsEffectivelyVisible);
+            Assert.True(checkNumbers.IsEffectivelyEnabled);
             walkthrough.Click("Check what applying does to the numbers");
+            Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
             walkthrough.WaitUntil(
                 () => !review.IsMeasuring && review.NumbersText != prompt,
                 StepFor(deadline), "the pending change was not checked");
@@ -266,6 +274,11 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
                 StepFor(deadline), "the window did not clear the held-project status after release");
+            var releasedCheckNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Context.Setup?.IsOpen != true && !walkthrough.SetupDialogIsShown &&
+                    releasedCheckNumbers.IsEffectivelyVisible && releasedCheckNumbers.IsEffectivelyEnabled,
+                StepFor(deadline), "the Review action was not available after FieldWorks was released");
             WaitForMeasurementDisplay(walkthrough, review, deadline);
             Assert.True(checksShareTask, "Concurrent activation checks should share one freshness read.");
             walkthrough.Click("Check what applying does to the numbers");

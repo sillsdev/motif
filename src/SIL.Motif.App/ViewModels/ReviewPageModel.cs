@@ -30,7 +30,11 @@ public sealed class ReviewPageModel : PageModel
             () => HasNonFittingChanges && !Context.Evidence.IsStale);
         ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
             change => change is { IsUncertain: true });
-        ToggleContextCommand = new RelayCommand<ChangeViewModel>(change => change?.ToggleContext());
+        ToggleContextCommand = new RelayCommand<ChangeViewModel>(ToggleContext);
+        GoToTextCommand = new RelayCommand<ChangeViewModel>(change =>
+        {
+            if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word);
+        });
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
         CancelMeasureCommand = new RelayCommand(() => _measurementCancellation?.Cancel(), () => IsMeasuring);
@@ -53,6 +57,8 @@ public sealed class ReviewPageModel : PageModel
     public IAsyncRelayCommand<ChangeViewModel> ReconfirmChangeCommand { get; }
 
     public IRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
+
+    public IRelayCommand<ChangeViewModel> GoToTextCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -82,9 +88,28 @@ public sealed class ReviewPageModel : PageModel
 
     public bool HasNonFittingChanges => Changes.Items.Any(item => item.IsNoLongerFits);
 
-    public IReadOnlyList<ChangeViewModel> ReviewableChanges => Changes.Items.Where(item => !item.IsUncertain).ToArray();
-
     public IReadOnlyList<ChangeViewModel> UncertainChanges => Changes.Items.Where(item => item.IsUncertain).ToArray();
+
+    /// <summary>The pending changes grouped by their effect on FieldWorks.</summary>
+    public IReadOnlyList<ReviewChangeGroupViewModel> ReviewGroups => Changes.Items
+        .Select(change => (Change: change, Group: GroupFor(change)))
+        .GroupBy(item => item.Group)
+        .OrderBy(group => group.Key.Order)
+        .Select(group => new ReviewChangeGroupViewModel(group.Key.Title,
+            group.Select(item => item.Change).Select(change =>
+            {
+                var location = change.Occurrence is { } occurrence ? Context.OccurrenceLocation(occurrence) : null;
+                change.SetWhereText(location?.Description ?? (change.Occurrence is null
+                    ? "Not tied to a text occurrence" : "Text location not loaded"));
+                return (Change: change, Location: location);
+            }).OrderBy(item => item.Location?.TextOrder ?? int.MaxValue)
+                .ThenBy(item => item.Location?.LineOrder ?? int.MaxValue)
+                .ThenBy(item => item.Location?.WordIndex ?? int.MaxValue)
+                .ThenBy(item => item.Change.Word, StringComparer.Ordinal)
+                .ThenBy(item => item.Change.ChangeId, StringComparer.Ordinal)
+                .Select(item => item.Change).ToArray(), Changes,
+            change => Context.OpenOccurrence(change.Occurrence, change.Word)))
+        .ToArray();
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
 
@@ -324,9 +349,9 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(CanApply));
             OnPropertyChanged(nameof(ApplyBlockReason));
             OnPropertyChanged(nameof(HasNonFittingChanges));
-            OnPropertyChanged(nameof(ReviewableChanges));
             OnPropertyChanged(nameof(UncertainChanges));
             OnPropertyChanged(nameof(HasUncertainChanges));
+            OnPropertyChanged(nameof(ReviewGroups));
             ReconfirmChangeCommand.NotifyCanExecuteChanged();
             RemoveNonFittingCommand.NotifyCanExecuteChanged();
             CheckAgainCommand.NotifyCanExecuteChanged();
@@ -334,6 +359,39 @@ public sealed class ReviewPageModel : PageModel
             ApplyCommand.NotifyCanExecuteChanged();
         }
     }
+
+    private void ToggleContext(ChangeViewModel? change)
+    {
+        if (change is null) return;
+        change.ToggleContext();
+        if (change.IsContextExpanded)
+            change.SetContextTokens(change.Occurrence is { } occurrence
+                ? Context.OccurrenceContext(occurrence) ?? [] : []);
+    }
+
+    private static ReviewChangeGroupDefinition GroupFor(ChangeViewModel change)
+    {
+        if (change.IsUncertain) return new(9, "Uncertain — check again");
+        return change.Kind switch
+        {
+            ChangeKinds.AddCandidate => new(6, "Added"),
+            ChangeKinds.Approve or ChangeKinds.Reject when change.StoredAnalysisId is null => new(6, "Added"),
+            ChangeKinds.RemoveAnalysis => new(7, "Removed"),
+            ChangeKinds.IncorrectSpelling => new(8, "Spelling → Incorrect"),
+            _ => change.StagedTransition.Now switch
+            {
+                "Unknown" when change.StagedTransition.AfterApply == "Approved" => new(0, "Unknown → Approved"),
+                "Unknown" when change.StagedTransition.AfterApply == "Disapproved" => new(1, "Unknown → Disapproved"),
+                "Approved" when change.StagedTransition.AfterApply == "Disapproved" => new(2, "Approved → Disapproved"),
+                "Approved" when change.StagedTransition.AfterApply == "Unknown" => new(3, "Approved → Unknown"),
+                "Disapproved" when change.StagedTransition.AfterApply == "Approved" => new(4, "Disapproved → Approved"),
+                "Disapproved" when change.StagedTransition.AfterApply == "Unknown" => new(5, "Disapproved → Unknown"),
+                _ => new(9, "Uncertain — check again"),
+            },
+        };
+    }
+
+    private sealed record ReviewChangeGroupDefinition(int Order, string Title);
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -31,8 +31,8 @@ public enum NumbersFreshness
 /// run. A stored read replaces the Assessment on screen only when it holds a different one: a stored Assessment
 /// whose words changed, or one recorded after the run this window shows, as when an agent ran it from the command
 /// line. The store's copy of this window's own run never replaces it, since a run's rows name readings the store
-/// does not. A stored read with no matching Assessment, as just after a Refresh, leaves the older numbers on
-/// screen, and <see cref="Freshness"/> says they describe an older save.
+/// does not. A successful Refresh clears the in-memory Assessment, then restores stored evidence only when it
+/// matches the captured Baseline and Selection.
 /// </remarks>
 public sealed class ProjectEvidence : ObservableObject
 {
@@ -129,9 +129,20 @@ public sealed class ProjectEvidence : ObservableObject
     internal void ShowStored(CurrentEvidenceSnapshot stored)
     {
         Stored = stored;
-        if (stored.Assessment is not { } assessment) return;
+        if (stored.Assessment is not { } assessment)
+        {
+            if (Assessment?.IsStored == true) Assessment = null;
+            return;
+        }
         if (Assessment is { } shown && !IsNewer(shown, assessment, stored.AssessedUtc)) return;
         Assessment = new WorkspaceEvidence(assessment, stored.AssessedUtc, WasRerun: false) { IsStored = true };
+    }
+
+    internal void ClearForNewBaseline()
+    {
+        Assessment = null;
+        Stored = null;
+        AppliedSinceRefresh = false;
     }
 
     private static bool IsNewer(WorkspaceEvidence shown, AssessCommandResponse stored, DateTimeOffset? storedAt)

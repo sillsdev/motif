@@ -162,6 +162,23 @@ public sealed class CommandRunViewModelTests
         Assert.False(run.IsActive);
     }
 
+    [Fact]
+    public async Task DisposeDoesNotCancelACompletedRunWhileItsCommandIsFinishing()
+    {
+        var run = new FinishingRunViewModel();
+        var execution = run.RunCommand.ExecuteAsync(null);
+        run.Completion.SetResult(CommandOutcome<TestResponse>.Success(new TestResponse("done")));
+        await run.CompletedStateEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var disposal = run.DisposeAsync().AsTask();
+        var cancellationWasRequested = run.RunToken.IsCancellationRequested;
+        run.ReleaseCompletedState.TrySetResult();
+        await disposal;
+
+        Assert.False(cancellationWasRequested);
+        Assert.Equal(RunState.Completed, run.State);
+    }
+
     private sealed class TestRunViewModel : CommandRunViewModel<TestResponse>
     {
         public Func<CancellationToken, IProgress<AssessmentProgress>,
@@ -176,6 +193,35 @@ public sealed class CommandRunViewModelTests
             CancellationToken cancellationToken) => Execute(cancellationToken, this);
 
         protected override void OnReset() => ResetCount++;
+    }
+
+    private sealed class FinishingRunViewModel : CommandRunViewModel<TestResponse>
+    {
+        public TaskCompletionSource<CommandOutcome<TestResponse>> Completion { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource CompletedStateEntered { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseCompletedState { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CancellationToken RunToken { get; private set; }
+
+        protected override bool CanStartCore() => true;
+
+        protected override Task<CommandOutcome<TestResponse>> ExecuteCoreAsync(CancellationToken cancellationToken)
+        {
+            RunToken = cancellationToken;
+            return Completion.Task;
+        }
+
+        protected override void OnRunStateChanged(RunState value)
+        {
+            if (value != RunState.Completed) return;
+            CompletedStateEntered.TrySetResult();
+            ReleaseCompletedState.Task.GetAwaiter().GetResult();
+        }
     }
 
     private sealed record TestResponse(string Value);

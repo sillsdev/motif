@@ -22,7 +22,6 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
                        firstProject.ManagedRoot, firstProject.FwDataPath))
             {
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(firstWalkthrough, deadline);
-                firstWalkthrough.Check(SeededProject.TextTitle);
                 Assert.NotNull(firstWalkthrough.Workspace.Baseline.Token);
                 firstToken = firstWalkthrough.Workspace.Baseline.Token!;
             }
