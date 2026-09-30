@@ -308,6 +308,10 @@ internal static class WalkthroughReplay
                     if (script.Id == "explained-word-card")
                     {
                         var calloutIds = step.Callouts!.Select(callout => callout.AutomationId).ToArray();
+                        // Evidence still publishing can hold the card in a stable but earlier layout under load.
+                        window.WaitUntil(() => window.Workspace.Context.EvidencePublication.IsCompleted &&
+                                !window.Workspace.Assess.IsActive && !window.Workspace.RefreshCommand.IsRunning,
+                            TimeSpan.FromSeconds(10), $"capture '{step.Id}' evidence did not finish publishing");
                         window.WaitUntil(() => calloutIds.All(window.HasVisibleTextOrMark),
                             TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout target content did not appear",
                             () => string.Join(", ", calloutIds.Where(id => !window.HasVisibleTextOrMark(id))));
