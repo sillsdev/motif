@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text;
 using System.Threading;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
@@ -243,7 +242,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                         Detail: $"pangloss {request.Subcommand} exited {process.ExitCode}:" + Environment.NewLine +
                             standardError.Trim());
                 }
-                var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed);
+                var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed,
+                    out var batchFileDigests);
                 if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
                     return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
                         $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
@@ -261,14 +261,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (!File.Exists(tsvPath))
                     return new PanGlossOutcome.Incomplete("The batch wrote no TSV evidence.", standardError);
                 var stderrPath = Path.Combine(scratch, "stderr.txt");
-                var tsvBytes = await File.ReadAllBytesAsync(tsvPath, cancellationToken).ConfigureAwait(false);
-                var tsvDigest = "sha256:" + Convert.ToHexString(
-                    System.Security.Cryptography.SHA256.HashData(tsvBytes)).ToLowerInvariant();
-                var tsvText = Encoding.UTF8.GetString(tsvBytes).TrimStart('\uFEFF');
+                var tsvDigest = BatchInvocationEvidence.DigestFile(tsvPath);
                 await File.WriteAllTextAsync(stderrPath, standardError, cancellationToken).ConfigureAwait(false);
                 var analysesPath = capturedBatch.CollectAnalyses ? Path.Combine(scratch, "analyses.jsonl") : null;
-                var analysesBytes = analysesPath is null ? null
-                    : await File.ReadAllBytesAsync(analysesPath, cancellationToken).ConfigureAwait(false);
+                var analysesDigest = analysesPath is null ? null : BatchInvocationEvidence.DigestFile(analysesPath);
+                if (batchFileDigests?.TsvSha256 != tsvDigest ||
+                    batchFileDigests.AnalysesSha256 != analysesDigest)
+                    return new PanGlossOutcome.Incomplete("The batch artifacts changed while being retained.", standardError);
                 var evidence = new BatchInvocationEvidence(
                     Path.GetFileName(scratch), capturedBatch.ProjectFilePath, sourceDigest!, executableDigest!,
                     wordsPath, wordsDigest!,
@@ -280,16 +279,12 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     1, capturedBatch.StatsCachePath is not null)
                 {
                     AnalysesPath = analysesPath,
-                    AnalysesSha256 = analysesBytes is null ? null : "sha256:" + Convert.ToHexString(
-                        System.Security.Cryptography.SHA256.HashData(analysesBytes)).ToLowerInvariant(),
+                    AnalysesSha256 = analysesDigest,
                 };
-                var morphology = analysesBytes is null ? null : Encoding.UTF8.GetString(analysesBytes).TrimStart('\uFEFF');
-                if (morphology != completed.MorphologyOutput)
-                    return new PanGlossOutcome.Incomplete("Morphology evidence changed while being retained.", standardError);
                 published = true;
                 return completed with
                 {
-                    Output = tsvText, BatchEvidence = evidence, MorphologyOutput = morphology,
+                    BatchEvidence = evidence,
                     ArtifactLease = new Assess.AssessmentArtifactLease(scratch)
                 };
                 }
@@ -316,6 +311,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     private static async Task MonitorBatchProgressAsync(PanGlossRequest.Batch batch, string path,
         CancellationToken cancellationToken)
     {
+        var progressReader = new BatchProgressReader(batch.Words);
         TrialWordProgress? previous = null;
         void Publish(TrialWordProgress? current)
         {
@@ -330,53 +326,11 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
         while (!cancellationToken.IsCancellationRequested)
         {
-            Publish(ReadBatchProgress(path, batch.Words));
+            Publish(progressReader.Read(path));
             try { await Task.Delay(100, cancellationToken).ConfigureAwait(false); }
             catch (OperationCanceledException) { break; }
         }
-        Publish(ReadBatchProgress(path, batch.Words));
-    }
-
-    internal static TrialWordProgress? ReadBatchProgress(string path, IReadOnlyList<string> words)
-    {
-        if (!File.Exists(path)) return null;
-        string content;
-        try
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(stream);
-            content = reader.ReadToEnd();
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-        var end = content.LastIndexOf('\n');
-        if (end < 0) return null;
-        var completed = 0;
-        int? started = null;
-        var sawRow = false;
-        foreach (var line in content[..end].Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var cells = line.TrimEnd('\r').Split('\t');
-            if (cells.Length < 3 || !int.TryParse(cells[0], out var index) ||
-                index < 0 || index >= words.Count || !string.Equals(cells[1], words[index].Trim(), StringComparison.Ordinal))
-                continue;
-            if (cells.Length == 3 && cells[2] == "STARTED")
-            {
-                started = index;
-                sawRow = true;
-            }
-            else if (cells.Length >= 5 && index == completed)
-            {
-                completed++;
-                started = null;
-                sawRow = true;
-            }
-        }
-        return sawRow ? new TrialWordProgress(completed, words.Count,
-            started is { } current && current >= completed ? words[current] : null) : null;
+        Publish(progressReader.Read(path));
     }
 
     private static string MissingExecutableMessage => PanGlossExecutable.NotFoundMessage;

@@ -92,6 +92,53 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.False(Directory.Exists(invoker.ArtifactDirectory));
     }
 
+    [Fact]
+    public async Task ChangedTsvArtifactIsRefusedAndUnpublishedArtifactsAreRemoved()
+    {
+        using var real = RealFakeInvoker();
+        var invoker = new TsvMutatingInvoker(real);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+
+        try
+        {
+            var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+                assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+
+            Assert.Contains("TSV", refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.False(Directory.Exists(invoker.ArtifactDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(invoker.ArtifactDirectory))
+                Directory.Delete(invoker.ArtifactDirectory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CompletedPayloadMustMatchItsRetainedArtifact(bool mutateTsv)
+    {
+        using var real = RealFakeInvoker();
+        var invoker = new PayloadMutatingInvoker(real, mutateTsv);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+
+        try
+        {
+            var refusal = await Assert.ThrowsAsync<AssessorUnavailableException>(() =>
+                assessor.ProduceAsync(Scope(), _candidate, CancellationToken.None));
+
+            Assert.Contains(mutateTsv ? "TSV" : "morphology", refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.True(invoker.ArtifactsMatchEvidence);
+            Assert.False(Directory.Exists(invoker.ArtifactDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(invoker.ArtifactDirectory))
+                Directory.Delete(invoker.ArtifactDirectory, recursive: true);
+        }
+    }
+
     private sealed class CorruptingInvoker(IPanGlossInvoker inner) : IPanGlossInvoker
     {
         public string? ArtifactDirectory { get; private set; }
@@ -107,6 +154,68 @@ public sealed class PanGlossAssessorTests : IDisposable
                 MorphologyOutput = malformed,
                 BatchEvidence = result.BatchEvidence with
                 { AnalysesSha256 = BatchInvocationEvidence.DigestFile(result.BatchEvidence.AnalysesPath!) },
+            };
+        }
+    }
+
+    private sealed class TsvMutatingInvoker(IPanGlossInvoker inner) : IPanGlossInvoker
+    {
+        public string? ArtifactDirectory { get; private set; }
+
+        public async Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            var completed = Assert.IsType<PanGlossOutcome.Completed>(
+                await inner.RunAsync(request, label, cancellationToken, wallClockCap));
+            var evidence = completed.BatchEvidence!;
+            ArtifactDirectory = Path.GetDirectoryName(evidence.TsvPath)!;
+            File.AppendAllText(evidence.TsvPath, "mutated after invocation");
+            return completed;
+        }
+    }
+
+    private sealed class PayloadMutatingInvoker(IPanGlossInvoker inner, bool mutateTsv) : IPanGlossInvoker
+    {
+        public string? ArtifactDirectory { get; private set; }
+        public bool ArtifactsMatchEvidence { get; private set; }
+
+        public async Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            var completed = Assert.IsType<PanGlossOutcome.Completed>(
+                await inner.RunAsync(request, label, cancellationToken, wallClockCap));
+            var evidence = completed.BatchEvidence!;
+            ArtifactDirectory = Path.GetDirectoryName(evidence.TsvPath)!;
+            ArtifactsMatchEvidence = BatchInvocationEvidence.DigestFile(evidence.TsvPath) == evidence.TsvSha256 &&
+                BatchInvocationEvidence.DigestFile(evidence.AnalysesPath!) == evidence.AnalysesSha256;
+            if (!mutateTsv)
+            {
+                var morphology = System.Text.Json.JsonSerializer.Deserialize<SIL.Motif.Contract.Responses.ParseWordEvidence>(
+                    completed.MorphologyOutput!, SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions)!;
+                var changed = morphology with
+                {
+                    Analyses =
+                    [
+                        new SIL.Motif.Contract.Responses.ParseAnalysis(
+                        [
+                            new SIL.Motif.Contract.Responses.ParseMorph(
+                                "00000000-0000-0000-0000-000000000001",
+                                "00000000-0000-0000-0000-000000000002", null, null),
+                        ]),
+                    ],
+                };
+                return completed with
+                {
+                    MorphologyOutput = System.Text.Json.JsonSerializer.Serialize(changed,
+                        SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions),
+                };
+            }
+            var lineEnd = completed.Output.IndexOf('\n');
+            var cells = completed.Output[..lineEnd].Split('\t');
+            cells[^1] = "forged-signature";
+            return completed with
+            {
+                Output = string.Join('\t', cells) + completed.Output[lineEnd..],
             };
         }
     }

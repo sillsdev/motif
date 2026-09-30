@@ -31,7 +31,8 @@ public abstract record PanGlossRequest
     internal abstract void AddArguments(ProcessStartInfo startInfo, string scratch);
 
     /// <summary>Turns process output into the request's outcome.</summary>
-    internal abstract PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed);
+    internal abstract PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+        TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests);
 
     /// <summary>
     /// <c>pangloss batch</c> over a word list, one thread, a per-word limit, and optionally the per-object
@@ -89,21 +90,47 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(StatsCachePath);
         }
 
-        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed)
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
+            batchFileDigests = null;
             if (StatsCachePath is not null && !File.Exists(StatsCachePath))
             {
                 return new PanGlossOutcome.Incomplete(
                     $"pangloss batch --stats exited 0 but wrote no cache to '{StatsCachePath}'.", standardError);
             }
             var outPath = Path.Combine(scratch, "out.tsv");
-            var tsv = File.Exists(outPath) ? File.ReadAllText(outPath) : string.Empty;
+            BatchInvocationEvidence.TextSnapshot? tsvSnapshot = null;
+            var tsv = string.Empty;
+            if (File.Exists(outPath))
+            {
+                if (ArtifactDirectory is null) tsv = File.ReadAllText(outPath);
+                else
+                {
+                    tsvSnapshot = BatchInvocationEvidence.ReadTextWithDigest(outPath);
+                    tsv = tsvSnapshot.Text.TrimStart('\uFEFF');
+                }
+            }
             var analysesPath = Path.Combine(scratch, "analyses.jsonl");
             if (CollectAnalyses && !File.Exists(analysesPath))
                 return new PanGlossOutcome.Incomplete("The batch wrote no requested morphology evidence.", standardError);
+            BatchInvocationEvidence.TextSnapshot? analysesSnapshot = null;
+            string? morphology = null;
+            if (CollectAnalyses)
+            {
+                if (ArtifactDirectory is null) morphology = File.ReadAllText(analysesPath);
+                else
+                {
+                    analysesSnapshot = BatchInvocationEvidence.ReadTextWithDigest(analysesPath);
+                    morphology = analysesSnapshot.Text.TrimStart('\uFEFF');
+                }
+            }
+            if (ArtifactDirectory is not null)
+                batchFileDigests = new BatchInvocationEvidence.BatchFileDigests(
+                    tsvSnapshot?.Sha256, analysesSnapshot?.Sha256);
             return new PanGlossOutcome.Completed(tsv, standardError, elapsed)
             {
-                MorphologyOutput = CollectAnalyses ? File.ReadAllText(analysesPath) : null,
+                MorphologyOutput = morphology,
             };
         }
     }
@@ -133,8 +160,12 @@ public abstract record PanGlossRequest
             foreach (var argument in ForwardedArguments) startInfo.ArgumentList.Add(argument);
         }
 
-        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed) =>
-            new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+        }
     }
 
     /// <summary>
@@ -168,8 +199,12 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--trace-details");
         }
 
-        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed) =>
-            new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            return new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+        }
     }
 
     /// <summary>
@@ -201,8 +236,10 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(FieldWorksProjectName);
         }
 
-        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed)
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
+            batchFileDigests = null;
             return string.IsNullOrWhiteSpace(standardOutput)
                 ? new PanGlossOutcome.Incomplete(
                     "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError)
@@ -230,10 +267,14 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add(GrammarJsonPath);
         }
 
-        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError, TimeSpan elapsed) =>
-            File.Exists(GrammarJsonPath)
+        internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
+            TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
+        {
+            batchFileDigests = null;
+            return File.Exists(GrammarJsonPath)
                 ? new PanGlossOutcome.Completed(string.Empty, standardError, elapsed)
                 : new PanGlossOutcome.Incomplete(
                     $"pangloss import exited 0 but wrote no grammar to '{GrammarJsonPath}'.", standardError);
+        }
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Assess;
@@ -32,20 +33,81 @@ public sealed class PanGlossInvokerTests : IDisposable
     {
         var path = Path.Combine(_root, "progress.tsv");
         File.WriteAllText(path, "0\tone\tSTARTED\n0\tone\t12\tanalysed\tsig\n1\ttwo\tSTARTED\n");
+        var reader = new BatchProgressReader(["one", "two"]);
 
-        var progress = PanGlossInvoker.ReadBatchProgress(path, ["one", "two"]);
+        var progress = reader.Read(path);
 
         Assert.Equal(1, progress?.Completed);
         Assert.Equal(2, progress?.Total);
         Assert.Equal("two", progress?.CurrentWord);
 
         File.AppendAllText(path, "1\ttwo\t8\tanalysed\tsig");
-        Assert.Equal(1, PanGlossInvoker.ReadBatchProgress(path, ["one", "two"])?.Completed);
+        Assert.Equal(1, reader.Read(path)?.Completed);
 
         File.AppendAllText(path, "\n");
-        var finished = PanGlossInvoker.ReadBatchProgress(path, ["one", "two"]);
+        var finished = reader.Read(path);
         Assert.Equal(2, finished?.Completed);
         Assert.Null(finished?.CurrentWord);
+    }
+
+    [Fact]
+    public void BatchProgressReaderPreservesAppendedPartialUtf8RowsInSequence()
+    {
+        var path = Path.Combine(_root, "incremental-progress.tsv");
+        var word = "māŋ";
+        var reader = new BatchProgressReader([word, "two"]);
+        File.WriteAllBytes(path, []);
+
+        Assert.Null(reader.Read(path));
+        AppendBytes(path, Encoding.UTF8.GetBytes($"0\t{word}\tSTARTED\n"));
+        var started = new TrialWordProgress(0, 2, word);
+        Assert.Equal(started, reader.Read(path));
+
+        var nextRows = Encoding.UTF8.GetBytes($"0\t{word}\t12\tanalysed\tñ\n1\ttwo\tSTARTED\n");
+        var split = Array.IndexOf(nextRows, (byte)0xC3) + 1;
+        AppendBytes(path, nextRows[..split]);
+        Assert.Equal(started, reader.Read(path));
+        AppendBytes(path, nextRows[split..]);
+        var secondStarted = new TrialWordProgress(1, 2, "two");
+        Assert.Equal(secondStarted, reader.Read(path));
+        Assert.Equal(secondStarted, reader.Read(path));
+
+        var finalRow = Encoding.UTF8.GetBytes("1\ttwo\t8\tanalysed\tfinal\n");
+        AppendBytes(path, finalRow[..^1]);
+        Assert.Equal(secondStarted, reader.Read(path));
+        AppendBytes(path, finalRow[^1..]);
+        Assert.Equal(new TrialWordProgress(2, 2, null), reader.Read(path));
+    }
+
+    [Fact]
+    public void TextSnapshotKeepsUtf8BomDecodingAndHashesTheOriginalBytes()
+    {
+        var path = Path.Combine(_root, "bom.tsv");
+        var text = "0\tword\t5\tok\tsignature\n";
+        var body = Encoding.UTF8.GetBytes(text);
+        var bytes = new byte[Encoding.UTF8.Preamble.Length + body.Length];
+        Encoding.UTF8.Preamble.CopyTo(bytes.AsSpan());
+        body.CopyTo(bytes.AsSpan(Encoding.UTF8.Preamble.Length));
+        File.WriteAllBytes(path, bytes);
+
+        var snapshot = BatchInvocationEvidence.ReadTextWithDigest(path);
+
+        Assert.Equal(text, snapshot.Text);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(path), snapshot.Sha256);
+        Assert.True(BatchInvocationEvidence.TextMatchesDigest(snapshot.Text, snapshot.Sha256));
+    }
+
+    [Fact]
+    public void TextDigestStreamsASurrogatePairAcrossTheBufferBoundary()
+    {
+        var path = Path.Combine(_root, "unicode.tsv");
+        var text = new string('a', 4095) + char.ConvertFromUtf32(0x1F642) + new string('z', 4097);
+        File.WriteAllBytes(path, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(text));
+
+        var snapshot = BatchInvocationEvidence.ReadTextWithDigest(path);
+
+        Assert.Equal(text, snapshot.Text);
+        Assert.True(BatchInvocationEvidence.TextMatchesDigest(snapshot.Text, snapshot.Sha256));
     }
 
     [Fact]
@@ -61,7 +123,33 @@ public sealed class PanGlossInvokerTests : IDisposable
             "test:batch-progress", CancellationToken.None);
 
         Assert.IsType<PanGlossOutcome.Completed>(outcome);
-        Assert.Contains(seen, item => item.Completed == 1 && item.CurrentWord == "two");
+        var updates = seen.ToArray();
+        Assert.Contains(new TrialWordProgress(1, 2, "two"), updates);
+        Assert.Contains(new TrialWordProgress(2, 2, null), updates);
+        Assert.Equal(updates.Distinct(), updates);
+        Assert.All(updates.Zip(updates.Skip(1)), pair => Assert.True(pair.First.Completed <= pair.Second.Completed));
+    }
+
+    [Fact]
+    public async Task ProgressCallbackFailureDoesNotFailTheCompletedBatch()
+    {
+        var project = Project("batch-progress-callback-failure");
+        FakeParser.Behave(_root, new { streamProgress = true, delayMilliseconds = 50 });
+        using var invoker = Invoker();
+        var callbacks = 0;
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(project,
+            ["one"], TimeSpan.FromSeconds(1))
+        {
+            OnProgress = _ =>
+            {
+                Interlocked.Increment(ref callbacks);
+                throw new InvalidOperationException("progress sink unavailable");
+            },
+        }, "test:batch-progress-callback-failure", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.True(callbacks > 0);
     }
 
     [Fact]
@@ -70,7 +158,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         var path = Path.Combine(_root, "trimmed-progress.tsv");
         File.WriteAllText(path, "0\tone\tSTARTED\n");
 
-        Assert.Equal(" one ", PanGlossInvoker.ReadBatchProgress(path, [" one "])?.CurrentWord);
+        Assert.Equal(" one ", new BatchProgressReader([" one "]).Read(path)?.CurrentWord);
     }
 
     [Fact]
@@ -498,6 +586,12 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     private PanGlossInvoker Invoker() => new(FakeParser.ExecutablePath, NewQueue());
+
+    private static void AppendBytes(string path, byte[] bytes)
+    {
+        using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+        stream.Write(bytes);
+    }
 
     [Theory]
     [InlineData("source.fwdata")]

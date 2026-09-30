@@ -92,6 +92,17 @@ public sealed class PanGlossAssessor : IAssessor
                     ? (int)timeLimit.TotalMilliseconds : null) ||
                 evidence.Threads != 1 || evidence.CollectStatistics != (cachePath is not null))
                 throw new AssessorUnavailableException(AssessorName, "The invocation evidence does not match the requested scope.");
+            try
+            {
+                if (BatchInvocationEvidence.DigestFile(evidence.TsvPath) != evidence.TsvSha256)
+                    throw new InvalidDataException("The retained TSV artifact changed.");
+                if (!BatchInvocationEvidence.TextMatchesDigest(completed.Output, evidence.TsvSha256))
+                    throw new InvalidDataException("The completed TSV payload does not match retained evidence.");
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                throw new AssessorUnavailableException(AssessorName, exception.Message);
+            }
             IReadOnlyList<WordAnalysis> rows;
             try { rows = BatchTsvParser.Parse(completed.Output); }
             catch (InvalidOperationException exception)
@@ -106,9 +117,10 @@ public sealed class PanGlossAssessor : IAssessor
                 throw new AssessorUnavailableException(AssessorName, "The invocation returned no retained morphology evidence.");
             try
             {
-                if (BatchInvocationEvidence.DigestFile(evidence.AnalysesPath) != evidence.AnalysesSha256 ||
-                    File.ReadAllText(evidence.AnalysesPath) != completed.MorphologyOutput)
+                if (BatchInvocationEvidence.DigestFile(evidence.AnalysesPath) != evidence.AnalysesSha256)
                     throw new InvalidDataException("The retained morphology artifact changed.");
+                if (!BatchInvocationEvidence.TextMatchesDigest(completed.MorphologyOutput, evidence.AnalysesSha256))
+                    throw new InvalidDataException("The completed morphology payload does not match retained evidence.");
                 var morphology = ParseMorphEvidence.Read(completed.MorphologyOutput, requestedWords);
                 rows = rows.Select((row, index) =>
                 {
