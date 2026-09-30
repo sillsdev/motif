@@ -735,10 +735,14 @@ public sealed partial class CompareCellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+    public string CountText => IsEmptyImpossible
+        ? "—" : Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 
-    /// <summary>A combination the data cannot produce, and did not: drawn hatched rather than as a zero.</summary>
+    /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
+
+    /// <summary>Whether the cell names what happened; a word FieldWorks lacks has nothing PanGloss could match.</summary>
+    public bool ShowsLabel => Family != CompareFamilyKind.None;
 
     public string AccessibleName => $"{Count} {CountUnit}: {CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row))}, " +
         CompareViewModel.ColumnSentenceOf(Column) +

@@ -96,7 +96,7 @@ public static class CompareSemantics
         if (column == CompareColumnKind.Skipped) return ("Not parsed", CompareFamilyKind.Unknown);
         return (row, column) switch
         {
-            (ProjectStanding.NotPresent, CompareColumnKind.Match) => ("Can't happen", CompareFamilyKind.None),
+            (ProjectStanding.NotPresent, CompareColumnKind.Match) => ("Nothing to compare", CompareFamilyKind.None),
             (ProjectStanding.NotPresent, CompareColumnKind.NoMatch) => ("New: PanGloss proposes", CompareFamilyKind.New),
             (ProjectStanding.NotPresent, _) => ("Nobody can analyze", CompareFamilyKind.Nobody),
             (ProjectStanding.Candidate, CompareColumnKind.Match) => ("PanGloss confirms", CompareFamilyKind.Good),

@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App;
 public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture avalonia)
 {
     // Retired by ADR 0049 or by the owner's column words; the window's pages never show them.
-    [GeneratedRegex(@"\b(candidates?|reject(ed)?|violations?|cannot happen|assessment|assessed|capped|agrees|timed[- ]out)\b",
+    [GeneratedRegex(@"\b(candidates?|reject(ed)?|violations?|can[’']?t happen|cannot happen|assessment|assessed|capped|agrees|timed[- ]out)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex RetiredWord();
 
@@ -84,12 +84,41 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [InlineData(WordProjectStatus.Rejected, CompareColumnKind.Match, "Built anyway")]
     [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, "PanGloss confirms")]
     [InlineData(WordProjectStatus.Candidate, CompareColumnKind.NoMatch, "Differs: have a look")]
-    [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.Match, "Can't happen")]
+    [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.Match, "Nothing to compare")]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, "New: PanGloss proposes")]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, "Unknown yet")]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Skipped, "Not parsed")]
     public void MatrixCellsSayWhatHappenedInPlainPhrases(WordProjectStatus row, CompareColumnKind column, string expected) =>
         Assert.Equal(expected, CompareViewModel.MeaningOf(row, column).Label);
+
+    [Fact]
+    public void TheImpossibleCellShowsADashAndNoLabel()
+    {
+        var cell = new CompareCellViewModel(WordProjectStatus.NotPresent, CompareColumnKind.Match);
+
+        Assert.Equal("—", cell.CountText);
+        Assert.False(cell.ShowsLabel);
+        cell.SetDisplayedCount(6, "word");
+        Assert.Equal("6", cell.CountText);
+        Assert.False(cell.ShowsLabel);
+        Assert.True(new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match).ShowsLabel);
+    }
+
+    [Fact]
+    public void TheImpossibleCellRendersNoLabel()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = Compare(EveryKindOfWord);
+            var labels = WithWindow(new ComparePanel(compare), window => window.GetLogicalDescendants()
+                .OfType<MatrixCell>().Where(cell => cell.DataContext is CompareCellViewModel
+                    { Row: WordProjectStatus.NotPresent, Column: CompareColumnKind.Match })
+                .SelectMany(cell => cell.GetLogicalDescendants().OfType<TextBlock>())
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray());
+
+            Assert.Equal(["—"], labels);
+        });
+    }
 
     [Fact]
     public void MatrixShortcutsNameTheCellsTheyChoose()
