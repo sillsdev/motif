@@ -6,7 +6,7 @@ To remove a change without replacing it:
 
 1. Open **Review changes**.
 2. Find the word and action you want to withdraw.
-3. Choose **Remove** beside it.
+3. Choose **Undo** beside it.
 
 The remaining pending changes stay in the list. Use **Keep editing** to return to the page where the first pending change was collected. Changes belong to the project and remain available if you close Motif and open that project again.
 
