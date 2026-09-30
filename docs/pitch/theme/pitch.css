@@ -113,8 +113,10 @@ section.chapter { padding: 72px 72px 56px; display: flex; flex-direction: column
 section.chapter header { display: none; }
 section.chapter h1 { font: 400 64px/1.08 var(--serif); letter-spacing: -1.4px; margin: 0; max-width: 820px; }
 section.chapter h6 { font: 600 13px var(--sans); border: 1.2px solid currentColor; border-radius: 999px; padding: 2px 12px; margin: 0 0 26px; }
-section.chapter p:has(img) { position: absolute; right: 36px; top: 40px; margin: 0; }
-section.chapter img { width: 560px; }
+/* the chapter's map fills the page behind its title */
+section.chapter p:has(img) { position: absolute; inset: 0; margin: 0; }
+section.chapter img { display: block; width: 100%; height: 100%; }
+section.chapter h1, section.chapter h6 { position: relative; }
 section.chapter.c1 { background: var(--c1); color: var(--on-c1); } section.chapter.c2 { background: var(--c2); color: var(--on-c2); }
 section.chapter.c3 { background: var(--c3); color: var(--on-c3); } section.chapter.c4 { background: var(--c4); color: var(--on-c4); }
 section.chapter.c5 { background: var(--c5); color: var(--on-c5); } section.chapter.c6 { background: var(--c6); color: var(--on-c6); }

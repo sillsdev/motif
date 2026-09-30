@@ -30,7 +30,8 @@ fetched by `npx` on first run.
 | `pitch.md` | The full paper, one page per `---`. The `<!-- _class: ... -->` line picks a layout |
 | `pitch-short.md` | *Motif in Brief*, the short deck, in the same layouts |
 | `theme/pitch.css` | Colours, fonts and page layouts; retheme through the `:root` variables |
-| `art/` | Chapter illustrations (SVG) |
+| `art/` | Chapter-opener maps (SVG), one region of the world each, made by `maps.py` from Natural Earth |
+| `maps.py` | Rewrites the chapter maps; each chapter's region, colours and framing are in its `regions` table |
 | `diagrams/` | The four hand-written diagrams (SVG), inlined at build time so they use the page's fonts |
 | `figures/` | The page figures: Claude Design artboards (`.dc.html`), each drawn at its slot's exact size |
 | `research/` | The sourced fact sheets the pitch draws on |

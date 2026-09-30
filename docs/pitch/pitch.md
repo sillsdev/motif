@@ -860,3 +860,4 @@ Phase 2 reaches beyond SIL's own software, so it needs others:
 
 - [FieldWorks](https://software.sil.org/fieldworks/) · [Paratext](https://paratext.org/) · [Keyman](https://keyman.com/)
 - [Divvun](https://divvun.org/) and [Giellatekno](https://giellalt.github.io/): finite-state language technology for minority languages
+- Chapter maps: [Natural Earth](https://www.naturalearthdata.com/) (public domain)
