@@ -69,10 +69,10 @@ Parserless developer machines should remain usable, while release confidence req
 
 **Files:** parser-enabled CI lane, release packaging verification and real-parser test inventory.
 
-- [ ] Use the version/RID/SHA-256 authority in `pangloss-release.json` and the existing packaging downloader. Require a released artifact, not a sibling development build, in release validation.
-- [ ] Require that artifact in release integration validation and fail when required Motif integration tests skip because the parser is absent. Cover Batch/Trace/import request compatibility, evidence ingestion, entity identities and front-end workflows.
+- [x] Use the version/RID/SHA-256 authority in `pangloss-release.json` and the existing packaging downloader. Require a released artifact, not a sibling development build, in release validation.
+- [x] Require that artifact in release integration validation and fail when required Motif integration tests skip because the parser is absent. Cover Batch/Trace/import request compatibility, evidence ingestion, entity identities and front-end workflows.
 - [x] Remove the imported deep-nesting grammar benchmark and exact 924-analysis expectations from Motif's scope. Replace lifecycle/result-transfer uses with Motif-owned seeded fixtures, preserving cancellation and saved-project invariants.
-- [ ] Regenerate and validate website Help/screenshots for every documentation validation, and videos for releases, using the integration build's outputs.
+- [x] Regenerate and validate website Help/screenshots for every documentation validation, and videos for releases, using the integration build's outputs.
 - [x] Preserve ordinary local `RealParserFactAttribute` skips. Remove obsolete assess-protocol permanent skips only after their invariant owners are accounted for.
 - [x] Report native desktop acceptance separately from headless control/process proof; do not claim the latter exercises native dialogs or a real FieldWorks save boundary.
 
@@ -82,12 +82,12 @@ The front ends currently inherit an executable dependency's packaging files beca
 
 **Files:** Worker implementation and apphost projects, Commands/CLI project references, solution, `Directory.Build.targets`, startup and package assertions.
 
-- [ ] Inventory the command-consumed dependency closure and executable entry point before moving files. Pin portable package contents and discovery of the worker beside each front end.
-- [ ] Extract one reusable runtime library. Retain `SIL.Motif.Worker` as the executable identity and preserve namespaces where practical.
-- [ ] Point Commands at the library; remove direct executable references from consumers when no longer needed. Keep apphost build ordering explicit where needed for the shared development output directory.
-- [ ] Leave only startup/composition in the executable. Do not add repository interfaces for the only SQLite implementation or fold unrelated Host/LiveHost projects.
-- [ ] Narrow the current apphost/deps/runtimeconfig packaging exclusions once transitive executable assets disappear.
-- [ ] Verify real CLI/worker process startup, SQLite workflows, same-directory parser/worker discovery and portable package contents through repository gates.
+- [x] Inventory the command-consumed dependency closure and executable entry point before moving files. Pin portable package contents and discovery of the worker beside each front end.
+- [x] Extract one reusable runtime library. Retain `SIL.Motif.Worker` as the executable identity and preserve namespaces where practical.
+- [x] Point Commands at the library; remove direct executable references from consumers when no longer needed. Keep apphost build ordering explicit where needed for the shared development output directory.
+- [x] Leave only startup/composition in the executable. Do not add repository interfaces for the only SQLite implementation or fold unrelated Host/LiveHost projects.
+- [x] Narrow the current apphost/deps/runtimeconfig packaging exclusions once transitive executable assets disappear.
+- [x] Verify real CLI/worker process startup, SQLite workflows, same-directory parser/worker discovery and portable package contents through repository gates.
 
 ## Order and review
 

@@ -43,3 +43,28 @@ Clean Runtime, admission, usage, release-documentation and disposal branches wer
 The measured full gate still exceeds two minutes, and an intermittent worker wait can add five more minutes. Keep the full suite while identifying that job lifecycle failure and avoiding repeated compilation where the actual phase evidence supports it.
 
 The unchanged 6288d72e gate passed all 3704 cases in 488.064 complete-wrapper seconds, including 448.6 test-phase seconds. The private publication diagnostic then passed its package proof in 108.546 seconds but failed the full gate after 868.113 seconds, predominantly because one workflow received job.wait-timeout after 305.334 seconds instead of its prior 11.100-second pass. Independent Sol 6.1 investigation now targets runner launch, claim and idle shutdown evidence. No timeout, assertion, process concurrency or coverage was reduced. [Measured evidence and limits](../../reviews/2026-09-30-testing-architecture/same-revision-runtime-measurement.md) records both runs and the separate baseline access failures.
+## Distribute complete authored walkthroughs
+
+All authored walkthroughs must remain in the full suite, with screenshots and required release videos. Running independent flows in separate test processes can shorten the slowest App process without opening two LibLCM caches together inside one process.
+
+The post-Analyze Release archive at .tmp/combined-release-red-b7c55b71 recorded seven passing replay rows totaling 153.973 seconds. They were all in WalkthroughReplayTests, so class-based sharding assigned them to one process; the recorded class weight was only 2.6 seconds. The complete run failed elsewhere and is timing evidence, not a green benchmark. Its longest App process took 216.7 seconds. These release-media timings must not be presented as ordinary developer timings.
+
+- [x] Independently review process isolation and the existing class-sharding boundary.
+- [ ] Extract one shared replay harness without changing any behavioral, capture or clip assertion.
+- [ ] Give each authored flow one thin, independently sharded class; keep non-authored harness tests once.
+- [ ] Pin exact discovery coverage and reject duplicate registrations, preserving automatic inclusion pressure for new scripts.
+- [ ] Preserve script IDs, screenshot paths, all video formats and media-tool discovery; record changed test names.
+- [ ] Renew class weights from a representative complete run and compare the same media mode before claiming improvement.
+
+The existing three-process cap remains unchanged. This correction distributes work already in the suite; it does not remove tests or promise a two-minute outcome.
+
+## Preserve job lifecycle evidence
+
+A five-minute job wait needs evidence about whether the job was queued or running. A reproducible retirement ordering helps test that boundary while failure-only diagnostics preserve the original assertion.
+
+The independently reviewed PendingChanges workflow diagnostic records selected job facts and its private runner settings only on an unexpected refusal. A separate characterization commits retirement after an empty sweep, holds disposal, observes the successor acquisition returning false before releasing ownership, then confirms the late job remains queued. It models a possible lost wake; it has not established the cause of the archived 305.334-second failure. Both changes are integrated for the next combined gate, with no product retry or deadline changes.
+
+- [x] Review and integrate the additive failure diagnostic.
+- [x] Review and integrate the deterministic current-behavior characterization.
+- [ ] Execute both in the combined full gate and retain any recurrence facts.
+- [ ] Select a product correction only after the job lifecycle cause is established.

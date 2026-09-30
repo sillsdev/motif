@@ -91,15 +91,15 @@ Files: `RestartAndSwitchWalkthroughTests.cs`, `ApplyReadBackWalkthroughTests.cs`
 
 - [x] Rename the same-process restart claim to close/reopen; retain persisted state and switch/cancel assertions. A true process-restart acceptance scenario belongs in App.Lifetime if selected for the release bar.
 - [x] Preserve Apply’s real LibLCM spelling-status read-back. Assert Refresh changes Baseline identity/source evidence; then explicitly invoke Parse all words and assert a deliberately changed measurement. Refresh must not start a parsing Assessment; its existing automatic Grammar Health diagnostic remains separate.
-- [ ] Add stable AutomationIds for the Try Word input and its result. Add an authored script using an existing prepared fixture, navigation, type `motifa`, and a rendered input/result assertion. An example type step is:
+- [x] Add stable AutomationIds for the Try Word input and its result. Add an authored script using an existing prepared fixture, navigation, type `motifa`, and a rendered input/result assertion. An example type step is:
 
 ```json
 { "id": "enter-word", "kind": "type", "automationId": "motif-try-word-input", "text": "motifa" }
 ```
 
-- [ ] Follow with first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry authored flows. Every step uses a real control ID and bounded state assertion; distinguish fixture preparation from user actions. Register localized titles/descriptions once.
+- [x] Follow with first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry authored flows. Every step uses a real control ID and bounded state assertion; distinguish fixture preparation from user actions. Register localized titles/descriptions once.
 - [ ] Review screenshot baselines visually; keep separate native picker/drag evidence. Generated media output proves current screenshots only when manifests/assets are required.
-- [ ] Run ./test.ps1 with and without media output. See the documentation plan for same-run site consumption.
+- [x] Run ./test.ps1 with and without media output. See the documentation plan for same-run site consumption.
 
 ## Validation and completion
 

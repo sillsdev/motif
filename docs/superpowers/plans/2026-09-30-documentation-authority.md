@@ -71,12 +71,12 @@ Documentation should be generated from the same reviewed build and walkthrough e
 
 **Files:** a repository documentation validation script, site sync arguments, walkthrough artifact validation, `.github/workflows/ci.yml` or a dedicated documentation workflow.
 
-- [ ] Build with `./build.ps1`; export Help into a fresh run directory; require a nonempty valid export and the expected Guide inventory.
-- [ ] Generate walkthrough artifacts into that run's private media directory. Verify manifests and required screenshots before syncing.
-- [ ] Add production sync options accepting explicit export/media/API paths and refusing fixture fallback. Keep fixtures usable for isolated unit tests.
-- [ ] Sync and build the site with those exact inputs; upload the output for review. Deployment is outside this task.
-- [ ] Require screenshots/manifests in every documentation validation and videos additionally in release validation. The release lane must require the encoder and expected video formats; do not silently accept optional-encoder behavior there.
-- [ ] Run the repository test script, site tests and real-source sync/build. Report fixture checks separately from end-to-end publishing checks.
+- [x] Build with `./build.ps1`; export Help into a fresh run directory; require a nonempty valid export and the expected Guide inventory.
+- [x] Generate walkthrough artifacts into that run's private media directory. Verify manifests and required screenshots before syncing.
+- [x] Add production sync options accepting explicit export/media/API paths and refusing fixture fallback. Keep fixtures usable for isolated unit tests.
+- [x] Sync and build the site with those exact inputs; make the generated output available for review. Deployment is outside this task.
+- [x] Require screenshots/manifests in every documentation validation and videos additionally in release validation. The release lane must require the encoder and expected video formats; do not silently accept optional-encoder behavior there.
+- [x] Run the repository test script, site tests and real-source sync/build. Report fixture checks separately from end-to-end publishing checks.
 
 ## Integration order
 
