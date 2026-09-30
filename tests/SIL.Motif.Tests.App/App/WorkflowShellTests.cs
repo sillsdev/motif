@@ -589,26 +589,24 @@ public sealed class WorkflowShellTests
                     text => text.Text == "Added");
                 Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
                     mark => mark.Kind == OpinionMarkKind.None);
-                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
-                    mark => mark.Kind == OpinionMarkKind.Unknown);
-                var groupActions = review.GetVisualDescendants().OfType<Border>().Single(border =>
-                    border.Classes.Contains("hoverReveal") && border.GetVisualDescendants().OfType<Button>().Any(button =>
-                        AutomationProperties.GetName(button) == group.GoToTextAutomationName));
-                Assert.NotNull(groupActions.Background);
+                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Not in FieldWorks → Unknown");
+                Assert.DoesNotContain(review.GetVisualDescendants().OfType<Border>(),
+                    border => border.Classes.Contains("hoverReveal"));
 
                 var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
                 var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
-                Assert.True(undo.IsTabStop);
-                Assert.True(undo.Focus());
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(undo.IsEffectivelyVisible);
                 Assert.True(undo.IsHitTestVisible);
                 Assert.Equal(1d, undo.Opacity);
+                Assert.True(undo.IsTabStop);
                 Assert.Contains(buttons, button =>
                     AutomationProperties.GetName(button) == "Undo all: Added");
-                Assert.Contains(buttons, button =>
+                Assert.DoesNotContain(buttons, button =>
                     AutomationProperties.GetName(button) == "Go to text in Added");
-                Assert.Contains(buttons, button =>
-                    AutomationProperties.GetName(button) == "Go to text: kitabu");
+                var goToText = buttons.Single(button => AutomationProperties.GetName(button) == "Go to text: kitabu");
+                Assert.True(goToText.IsHitTestVisible);
+                Assert.Equal(1d, goToText.Opacity);
             }
             finally
             {
@@ -643,7 +641,7 @@ public sealed class WorkflowShellTests
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
                 Assert.True(change.HasUnavailableContext);
                 var prompts = review.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
-                Assert.Equal(2, prompts.Length);
+                Assert.Equal(3, prompts.Length);
                 Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
             }
             finally

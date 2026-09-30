@@ -108,8 +108,7 @@ public sealed class ReviewPageModel : PageModel
                 .ThenBy(item => item.Location?.WordIndex ?? int.MaxValue)
                 .ThenBy(item => item.Change.Word, StringComparer.Ordinal)
                 .ThenBy(item => item.Change.ChangeId, StringComparer.Ordinal)
-                .Select(item => item.Change).ToArray(), Changes,
-            change => Context.OpenOccurrence(change.Occurrence, change.Word), group.Key.Kind))
+                .Select(item => item.Change).ToArray(), Changes, group.Key.Kind))
         .ToArray();
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
@@ -172,7 +171,7 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>
     /// The page's count of pending changes, which after an unconfirmed Apply cannot honestly say they are unapplied.
     /// </summary>
-    public string CountText => !NeedsReconciliation ? Changes.CountText
+    public string CountText => !NeedsReconciliation ? Changes.HasItems ? Changes.CountText : "No changes yet"
         : Changes.Count == 1 ? "1 change may already be applied"
         : Changes.Count > 1 ? $"{Changes.Count:N0} changes may already be applied"
         : "Changes may already be applied";
@@ -185,6 +184,9 @@ public sealed class ReviewPageModel : PageModel
 
     /// <summary>The last Apply's refusal, unless it is the unconfirmed Apply the page already leads with.</summary>
     public WindowRefusal? ShownApplyRefusal => NeedsReconciliation ? null : ApplyRefusal;
+
+    /// <summary>Whether the page has nothing to review, and no unconfirmed Apply to settle.</summary>
+    public bool ShowsEmptyState => !Changes.HasItems && !NeedsReconciliation;
 
     /// <summary>Whether the numbers and Apply cards have anything to act on or report.</summary>
     public bool ShowsSideCards => Changes.HasItems || HasReceipt || ApplyRefusal is not null;
@@ -406,6 +408,7 @@ public sealed class ReviewPageModel : PageModel
             Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
             OnPropertyChanged(nameof(CountText));
             OnPropertyChanged(nameof(ShowsSideCards));
+            OnPropertyChanged(nameof(ShowsEmptyState));
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             OnPropertyChanged(nameof(CanApply));
@@ -495,6 +498,7 @@ public sealed class ReviewPageModel : PageModel
                 OnPropertyChanged(nameof(ShownApplyRefusal));
                 OnPropertyChanged(nameof(CountText));
                 OnPropertyChanged(nameof(ShowsSideCards));
+                OnPropertyChanged(nameof(ShowsEmptyState));
                 break;
             case nameof(HasReceipt):
                 OnPropertyChanged(nameof(ShowsSideCards));

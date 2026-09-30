@@ -489,15 +489,6 @@ public sealed class ReviewPageModelTests
     }
 
     [Fact]
-    public void AnAnalysisMissingFromTheProjectUsesTheNotPresentLabel()
-    {
-        var viewModel = new ReviewAnalysisViewModel(
-            new ReviewAnalysis(new ParserReading([]), "no-opinion", false, false), "approve");
-
-        Assert.Equal("Not present", viewModel.Opinion);
-    }
-
-    [Fact]
     public async Task FieldWorksHoldingTheProjectBlocksApplyAndKeepEditingReturnsToTheOrigin()
     {
         var fake = new FakeCommandClient();

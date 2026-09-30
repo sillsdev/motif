@@ -19,21 +19,17 @@ public enum ReviewGroupKind
 public sealed class ReviewChangeGroupViewModel
 {
     private readonly ChangesViewModel _changes;
-    private readonly Action<ChangeViewModel> _openChange;
     private readonly int _projectGeneration;
     private readonly ReviewGroupKind _kind;
-    private int _nextWordIndex;
 
     public ReviewChangeGroupViewModel(string title, IReadOnlyList<ChangeViewModel> items,
-        ChangesViewModel changes, Action<ChangeViewModel> openChange, ReviewGroupKind kind = ReviewGroupKind.Ordinary)
+        ChangesViewModel changes, ReviewGroupKind kind = ReviewGroupKind.Ordinary)
     {
         Title = title;
         _kind = kind;
         Items = items;
         _changes = changes;
         _projectGeneration = changes.ProjectGeneration;
-        _openChange = openChange;
-        GoToTextCommand = new RelayCommand(GoToText);
         UndoAllCommand = new AsyncRelayCommand(UndoAllAsync);
     }
 
@@ -73,20 +69,8 @@ public sealed class ReviewChangeGroupViewModel
         }
     }
 
-    public string GoToTextAutomationName => $"Go to text in {Title}";
-
     /// <summary>Removes each change or accepted set in this group.</summary>
     public IAsyncRelayCommand UndoAllCommand { get; }
-
-    /// <summary>Opens the next word in this group in Analyze texts.</summary>
-    public IRelayCommand GoToTextCommand { get; }
-
-    private void GoToText()
-    {
-        if (Items.Count == 0) return;
-        _openChange(Items[_nextWordIndex]);
-        _nextWordIndex = (_nextWordIndex + 1) % Items.Count;
-    }
 
     private async Task UndoAllAsync()
     {

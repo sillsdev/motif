@@ -703,7 +703,7 @@ public sealed record UncertaintyTokenViewModel(int Index, string WordformId, str
         token.WordformId + "\0" + token.Form.Normalize(System.Text.NormalizationForm.FormD);
 }
 
-/// <summary>A reading as the Review page displays its morphs, prior opinion and proposed opinion.</summary>
+/// <summary>An analysis as a Review row shows it: its morphs only, since the row's staged note carries the opinion.</summary>
 public sealed class ReviewAnalysisViewModel
 {
     public ReviewAnalysisViewModel(ReviewAnalysis analysis, string changeKind)
@@ -711,20 +711,9 @@ public sealed class ReviewAnalysisViewModel
         Morphs = analysis.Reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
         Touched = analysis.Touched;
         ParserBuilt = !analysis.Stored;
-        Opinion = analysis.Touched ? changeKind switch
-        {
-            ChangeKinds.Approve => ReadingGradeLabels.Of(ReadingGrade.Approved),
-            ChangeKinds.Reject => ReadingGradeLabels.Of(ReadingGrade.Disapproved),
-            ChangeKinds.Candidate or ChangeKinds.AddCandidate => ReadingGradeLabels.Of(ReadingGrade.Candidate),
-            _ => analysis.Opinion,
-        } : analysis.Opinion is ReadingGrade.Approved or ReadingGrade.Disapproved or ReadingGrade.Candidate
-            ? ReadingGradeLabels.Of(analysis.Opinion)
-            : ReadingGradeLabels.NotPresent;
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public bool Touched { get; }
     public bool ParserBuilt { get; }
-    public string Opinion { get; }
-    public string Source => ParserBuilt ? "Parser reading" : "Stored analysis";
 }

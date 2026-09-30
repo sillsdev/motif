@@ -5,23 +5,17 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that one reading grade reads the same in Analyze texts and in Review: a reading the project rejected is
-/// "Rejected" in both, while the wire keeps its own value.
+/// Pins the window's one label per reading grade in Analyze texts, while the wire keeps its own value. Review rows
+/// show no grade label: their staged note carries the opinion.
 /// </summary>
 public sealed class ReadingGradeVocabularyTests
 {
-    private static ParserReading Reading() =>
-        new([new ParserReadingMorph("kitabu", "book", "n", null, false, null)]);
-
     [Fact]
-    public void ARejectedReadingReadsRejectedInAnalyzeTextsAndInReview()
+    public void ARejectedReadingReadsRejectedInAnalyzeTexts()
     {
         var inText = new ResultsReadingViewModel("kitabu ‘book’", ReadingGrade.Disapproved, isStoredHere: false);
-        var inReview = new ReviewAnalysisViewModel(
-            new ReviewAnalysis(Reading(), ReadingGrade.Disapproved, Touched: false, Stored: true), ChangeKinds.Approve);
 
         Assert.Equal("Rejected", inText.GradeLabel);
-        Assert.Equal("Rejected", inReview.Opinion);
     }
 
     [Theory]

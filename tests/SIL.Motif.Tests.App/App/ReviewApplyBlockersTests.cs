@@ -153,6 +153,7 @@ public sealed class ReviewApplyBlockersTests
         Assert.Same(refresh, blocker.Action);
         Assert.Same(refresh, page.RefreshCommand);
         Assert.Null(page.ShownApplyRefusal);
+        Assert.False(page.ShowsEmptyState);
 
         page.ClearReconciliationNeeded();
 
@@ -172,6 +173,8 @@ public sealed class ReviewApplyBlockersTests
         var capture = new TextsRequestCapture(context);
 
         Assert.False(page.ShowsSideCards);
+        Assert.True(page.ShowsEmptyState);
+        Assert.Equal("No changes yet", page.CountText);
         Assert.Empty(page.ApplyBlockers);
         page.OpenAnalyzeTextsCommand.Execute(null);
 
