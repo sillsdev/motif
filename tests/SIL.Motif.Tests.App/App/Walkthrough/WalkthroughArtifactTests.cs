@@ -18,6 +18,7 @@ public sealed class WalkthroughArtifactTests
         var previousOutput = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT");
         var previousUpdate = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES");
         var previousClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS");
+        var previousRequireClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS");
         try
         {
             var repositoryRoot = FindRepositoryRoot();
@@ -35,9 +36,12 @@ public sealed class WalkthroughArtifactTests
             var capture = new WalkthroughCapture("overview", 0, 1600, [callout], SolidPng(SKColors.White, 0));
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT", output);
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES", "1");
-            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", "0");
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", "1");
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS", "1");
 
-            WalkthroughArtifacts.Write(root, script, help, [capture]);
+            WithScreenshotOnlyWalkthroughOutput(() => WalkthroughArtifacts.Write(root, script, help, [capture]));
+            Assert.Equal("1", Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS"));
+            Assert.Equal("1", Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS"));
 
             var outputDirectory = Path.Combine(output, script.Id);
             var manifestPath = Path.Combine(outputDirectory, "manifest.json");
@@ -72,6 +76,7 @@ public sealed class WalkthroughArtifactTests
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT", previousOutput);
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES", previousUpdate);
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", previousClips);
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS", previousRequireClips);
             WalkthroughTestFiles.DeleteDirectory(root);
         }
     }
@@ -303,6 +308,23 @@ public sealed class WalkthroughArtifactTests
         finally
         {
             Environment.SetEnvironmentVariable(WalkthroughArtifacts.StrictComparisonVariable, previousValue);
+        }
+    }
+
+    private static void WithScreenshotOnlyWalkthroughOutput(Action writeArtifacts)
+    {
+        var previousClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS");
+        var previousRequireClips = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS");
+        try
+        {
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", "0");
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS", "0");
+            writeArtifacts();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", previousClips);
+            Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS", previousRequireClips);
         }
     }
 
