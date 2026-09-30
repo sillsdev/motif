@@ -141,28 +141,6 @@ New-Item -ItemType Directory -Path $userDataDirectory -Force | Out-Null
 $userDataMarker = Join-Path $userDataDirectory ('package-smoke-' + [Guid]::NewGuid().ToString('N') + '.txt')
 [System.IO.File]::WriteAllText($userDataMarker, 'keep')
 
-& $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
-if ($LASTEXITCODE -ne 0) {
-    throw "The installed update smoke exited with code $LASTEXITCODE."
-}
-$updated = $false
-for ($attempt = 0; $attempt -lt 120; $attempt++) {
-    $updatedVersion = (& $cliPath --version | Out-String).Trim()
-    if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
-        $updated = $true
-        break
-    }
-    Start-Sleep -Seconds 1
-}
-if (-not $updated) {
-    throw "Motif did not update from $ProductVersion to $NextProductVersion."
-}
-
-$updateExecutable = Join-Path $install 'Update.exe'
-if (-not (Test-Path -LiteralPath $updateExecutable -PathType Leaf)) {
-    throw "Velopack's uninstaller is missing from $install."
-}
-
 function Get-MotifDiscoveryRegistryState {
     $motifKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\SIL\Motif')
     if ($null -eq $motifKey) { return 'absent' }
@@ -268,6 +246,52 @@ function Get-VelopackLogCandidates {
     return @($paths | Select-Object -Unique)
 }
 
+function Write-VelopackLogs {
+    foreach ($candidatePath in Get-VelopackLogCandidates) {
+        Write-Host "Velopack log candidate: $candidatePath"
+        if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
+            Write-Host (Read-SharedFileText $candidatePath).Trim()
+        }
+        else {
+            Write-Host '<not created>'
+        }
+    }
+}
+
+function Format-InstallProcesses {
+    param([object[]] $Processes)
+
+    if ($Processes.Count -eq 0) { return 'none' }
+    return [string]::Join('; ', [string[]] @($Processes | ForEach-Object {
+        "PID $($_.ProcessId) $($_.Name) at $($_.ExecutablePath)"
+    }))
+}
+
+& $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed update smoke exited with code $LASTEXITCODE."
+}
+$updated = $false
+for ($attempt = 0; $attempt -lt 120; $attempt++) {
+    $updatedVersion = (& $cliPath --version | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
+        $updated = $true
+        break
+    }
+    Start-Sleep -Seconds 1
+}
+if (-not $updated) {
+    Write-VelopackLogs
+    $installProcesses = Format-InstallProcesses @(Get-InstallProcesses)
+    throw ("Motif did not update from $ProductVersion to $NextProductVersion; the CLI last reported " +
+        "'$updatedVersion'. Velopack logs are above; processes running from the install: $installProcesses")
+}
+
+$updateExecutable = Join-Path $install 'Update.exe'
+if (-not (Test-Path -LiteralPath $updateExecutable -PathType Leaf)) {
+    throw "Velopack's uninstaller is missing from $install."
+}
+
 $velopackLogsBeforeUninstall = @{}
 foreach ($candidatePath in Get-VelopackLogCandidates) {
     if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
@@ -310,9 +334,7 @@ foreach ($candidatePath in $velopackLogsBeforeUninstall.Keys | Sort-Object) {
 Write-Host "Velopack uninstall hook trace: $uninstallTrace"
 Write-Host "Motif discovery registry state after uninstall: $registryState"
 if ($remainingInstallProcesses.Count -gt 0) {
-    $processSummary = [string]::Join('; ', [string[]] @($remainingInstallProcesses | ForEach-Object {
-        "PID $($_.ProcessId) $($_.Name) at $($_.ExecutablePath)"
-    }))
+    $processSummary = Format-InstallProcesses $remainingInstallProcesses
     throw "Velopack processes remained after the uninstall wait; verbose logs and hook trace are above: $processSummary"
 }
 if ($uninstallExitCode -ne 0) {
