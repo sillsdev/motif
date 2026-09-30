@@ -7,6 +7,7 @@ namespace SIL.Motif.Host.PanGloss;
 internal static partial class UnixNative
 {
     internal const int LockExclusive = 2;
+    internal const int LockShared = 1;
     internal const int LockNonBlocking = 4;
     internal const int LockUnlock = 8;
 
@@ -25,11 +26,9 @@ internal static partial class UnixNative
     [LibraryImport("libc", EntryPoint = "close", SetLastError = true)]
     internal static partial int Close(int fileDescriptor);
 
-    [LibraryImport("libc", EntryPoint = "fchmod", SetLastError = true)]
-    internal static partial int Fchmod(int fileDescriptor, uint mode);
-
+    // open is variadic, and Apple arm64 passes a variadic mode on the stack, so this import never creates a file.
     [LibraryImport("libc", EntryPoint = "open", SetLastError = true)]
-    internal static partial int Open(IntPtr path, int flags, uint mode);
+    internal static partial int Open(IntPtr path, int flags);
 
     [LibraryImport("libc", EntryPoint = "waitpid", SetLastError = true)]
     internal static partial int WaitPid(int processId, out int status, int options);
@@ -111,6 +110,7 @@ internal sealed class UnixFileLock : IDisposable
 {
     private const int AccessDenied = 13;
     private readonly int _fileDescriptor;
+    private readonly WorkerLockAccess _access;
     private bool _held;
     private bool _disposed;
 
@@ -123,27 +123,20 @@ internal sealed class UnixFileLock : IDisposable
         return Path.Combine("/tmp", "motif-lock-" + digest);
     }
 
-    internal UnixFileLock(string name, bool machineWide)
+    internal UnixFileLock(string name, bool machineWide) : this(name, machineWide, WorkerLockAccess.Exclusive)
     {
+    }
+
+    internal UnixFileLock(string name, bool machineWide, WorkerLockAccess access)
+    {
+        _access = access;
         var lockPath = GetLockPath(name, machineWide);
         var path = UnixNative.Utf8(lockPath);
         try
         {
-            var flags = 2 | Create | CloseOnExec | NoFollow;
-            _fileDescriptor = OpenRetryingInterrupts(path, flags | CreateExclusive, machineWide ? 0x1b6U : 0x180U);
-            if (_fileDescriptor >= 0)
-            {
-                if (UnixNative.Fchmod(_fileDescriptor, machineWide ? 0x1b6U : 0x180U) != 0)
-                {
-                    var error = Marshal.GetLastPInvokeError();
-                    _ = UnixNative.Close(_fileDescriptor);
-                    throw new IOException("Could not set the worker lock's permissions.", error);
-                }
-            }
-            else if (UnixNative.LastError == 17)
-            {
-                _fileDescriptor = OpenRetryingInterrupts(path, flags, 0);
-            }
+            if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+            CreateIfMissing(lockPath, machineWide ? (UnixFileMode)0x1b6 : (UnixFileMode)0x180);
+            _fileDescriptor = OpenRetryingInterrupts(path, 2 | CloseOnExec | NoFollow);
 
             if (_fileDescriptor < 0)
             {
@@ -166,7 +159,8 @@ internal sealed class UnixFileLock : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_held) return true;
-        if (UnixNative.Flock(_fileDescriptor, UnixNative.LockExclusive | UnixNative.LockNonBlocking) == 0)
+        var access = _access == WorkerLockAccess.Shared ? UnixNative.LockShared : UnixNative.LockExclusive;
+        if (UnixNative.Flock(_fileDescriptor, access | UnixNative.LockNonBlocking) == 0)
         {
             _held = true;
             return true;
@@ -192,17 +186,40 @@ internal sealed class UnixFileLock : IDisposable
         _ = UnixNative.Close(_fileDescriptor);
     }
 
-    private static int OpenRetryingInterrupts(IntPtr path, int flags, uint mode)
+    // .NET's own open passes the mode correctly on every ABI; the umask is overridden once the file exists.
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    private static void CreateIfMissing(string lockPath, UnixFileMode mode)
+    {
+        FileStream stream;
+        try
+        {
+            stream = new FileStream(lockPath, new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.ReadWrite,
+                Share = FileShare.ReadWrite | FileShare.Delete,
+                UnixCreateMode = mode,
+            });
+        }
+        catch (IOException) when (Path.Exists(lockPath) || File.ResolveLinkTarget(lockPath, false) is not null)
+        {
+            return;
+        }
+        using (stream)
+        {
+            File.SetUnixFileMode(stream.SafeFileHandle, mode);
+        }
+    }
+
+    private static int OpenRetryingInterrupts(IntPtr path, int flags)
     {
         const int interrupted = 4;
         int descriptor;
-        do descriptor = UnixNative.Open(path, flags, mode);
+        do descriptor = UnixNative.Open(path, flags);
         while (descriptor < 0 && UnixNative.LastError == interrupted);
         return descriptor;
     }
 
-    private static int Create => OperatingSystem.IsLinux() ? 0x40 : 0x200;
-    private static int CreateExclusive => OperatingSystem.IsLinux() ? 0x80 : 0x800;
     private static int CloseOnExec => OperatingSystem.IsLinux() ? 0x80000 : 0x1000000;
     private static int NoFollow => OperatingSystem.IsLinux() ? 0x20000 : 0x100;
 }

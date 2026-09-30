@@ -15,6 +15,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
@@ -327,6 +328,9 @@ internal static class Program
 
         // A stopping runner leaves the row queued for the runner its enqueue kicked.
         if (cancellationToken.IsCancellationRequested) return new SweepOutcome(null, hasActiveWork);
+        using var activityLease = MotifUpdateGate.TryAcquire();
+        if (activityLease is null) return new SweepOutcome(null, hasActiveWork);
+
         var claimed = winner.Loop.TryClaim();
         if (claimed is null) return new SweepOutcome(null, hasActiveWork);
         activity.Set(true);
