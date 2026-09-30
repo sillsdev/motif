@@ -18,10 +18,10 @@ Packaging must still prove the released front ends can launch a sibling Worker. 
 
 Independent Sol review approved an experiment using one fresh GUID intermediate root and one fresh GUID MotifBinRoot for all three sequential publishes. Directory.Build.props gives each project its own subdirectory. The Worker executable is published last; there is no subsequent front-end publish to remove its assets. Normal checkout bin and obj remain untouched.
 
-- [ ] Reuse both private roots, preserving distinct final Worker output and all per-publish shared Worker byte checks.
-- [ ] Record App, CLI, Worker and complete package-test timings.
-- [ ] Run the unchanged full test gate with the pinned real parser.
-- [ ] Review the bounded diff independently before integration.
+- [x] Reuse both private roots, preserving distinct final Worker output and all per-publish shared Worker byte checks.
+- [x] Record App, CLI, Worker and complete package-test timings.
+- [x] Run the unchanged full test gate with the pinned real parser.
+- [x] Review the bounded diff independently before integration.
 
 ## Investigate the remaining runtime
 
@@ -30,3 +30,11 @@ Packaging does not explain the whole slowdown. App tests also took substantially
 - [ ] Compare App class timings and investigate waits or repeated setup that dominate.
 - [ ] Renew class shard weights from representative completed results if imbalance remains.
 - [ ] Verify the ordinary developer gate and complete release validation separately.
+
+## Published result
+
+The reviewed improvement is available to every branch from main. It preserves the complete package proof; the two-minute developer-gate goal still needs more work.
+
+Main and origin/main were verified at 6288d72e after an ordinary fast-forward and push. Candidate ./test.ps1 passed 3,704 tests, failed none and skipped 22 against pinned PanGloss v0.5.1; all five required integrations passed. The reported 558.3 seconds is the test phase, excluding build and offline restore. Website checks passed eight of eight. The package case took 209.327 seconds, including 201.330 seconds of publishing, so this evidence cannot establish a two-minute complete gate. [Verification record](../../reviews/2026-09-30-testing-architecture/merge-runtime-speedup.md) records the independent review and measurement limits.
+
+Clean Runtime, admission, usage, release-documentation and disposal branches were rebased to main with backup refs. Range-diff preserved admission, usage and release-documentation patches exactly; Runtime and disposal patches were already present in main and were omitted as equivalent. Help and authored walkthrough workers are reconciling newer main media changes. Active feature owners were notified to preserve edits and rebase at safe points. The larger integration branch merged main without rewriting its merge history; its ensuing build passed comment/token hygiene and compilation with zero errors and three vulnerability-feed availability warnings.
