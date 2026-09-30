@@ -85,24 +85,27 @@ public static class CompareSemantics
         return new FixFirstPriority(rule.Category, rule.Rank, rule.Label, explanation);
     }
 
-    /// <summary>Returns the label and category the Compare matrix assigns to one cell.</summary>
+    /// <summary>
+    /// Returns the plain phrase the window shows in one Compare cell, in FieldWorks' opinion words (ADR 0049), and
+    /// the category that colours it. No CLI response carries the phrase; commands read only the category.
+    /// </summary>
     public static (string Label, CompareFamilyKind Family) MeaningOf(string? standing, CompareColumnKind column)
     {
         var row = NormalizeStanding(standing);
-        if (column == CompareColumnKind.Timeout) return ("Unknown", CompareFamilyKind.Unknown);
-        if (column == CompareColumnKind.Skipped) return ("Not tested", CompareFamilyKind.Unknown);
+        if (column == CompareColumnKind.Timeout) return ("Unknown yet", CompareFamilyKind.Unknown);
+        if (column == CompareColumnKind.Skipped) return ("Not parsed", CompareFamilyKind.Unknown);
         return (row, column) switch
         {
-            (ProjectStanding.NotPresent, CompareColumnKind.Match) => ("Cannot happen", CompareFamilyKind.None),
-            (ProjectStanding.NotPresent, CompareColumnKind.NoMatch) => ("New: the parser proposes", CompareFamilyKind.New),
-            (ProjectStanding.NotPresent, _) => ("Nobody can analyze it", CompareFamilyKind.Nobody),
-            (ProjectStanding.Candidate, CompareColumnKind.Match) => ("Confirms the candidate", CompareFamilyKind.Good),
-            (ProjectStanding.Candidate, CompareColumnKind.NoMatch) => ("Differs: review", CompareFamilyKind.Review),
+            (ProjectStanding.NotPresent, CompareColumnKind.Match) => ("Can't happen", CompareFamilyKind.None),
+            (ProjectStanding.NotPresent, CompareColumnKind.NoMatch) => ("New: PanGloss proposes", CompareFamilyKind.New),
+            (ProjectStanding.NotPresent, _) => ("Nobody can analyze", CompareFamilyKind.Nobody),
+            (ProjectStanding.Candidate, CompareColumnKind.Match) => ("PanGloss confirms", CompareFamilyKind.Good),
+            (ProjectStanding.Candidate, CompareColumnKind.NoMatch) => ("Differs: have a look", CompareFamilyKind.Review),
             (ProjectStanding.Candidate, _) => ("Grammar can't build it", CompareFamilyKind.Review),
             (ProjectStanding.Approved, CompareColumnKind.Match) => ("Kept", CompareFamilyKind.Good),
-            (ProjectStanding.Approved, CompareColumnKind.NoMatch) => ("Violation: built other", CompareFamilyKind.Violation),
-            (ProjectStanding.Approved, _) => ("Violation: lost", CompareFamilyKind.Violation),
-            (ProjectStanding.Rejected, CompareColumnKind.Match) => ("Violation: built anyway", CompareFamilyKind.Violation),
+            (ProjectStanding.Approved, CompareColumnKind.NoMatch) => ("Built something else", CompareFamilyKind.Violation),
+            (ProjectStanding.Approved, _) => ("Lost", CompareFamilyKind.Violation),
+            (ProjectStanding.Rejected, CompareColumnKind.Match) => ("Built anyway", CompareFamilyKind.Violation),
             (ProjectStanding.Rejected, _) => ("Fine", CompareFamilyKind.Fine),
             (_, CompareColumnKind.Match) => ("Builds a misspelling", CompareFamilyKind.Review),
             (_, CompareColumnKind.NoMatch) => ("Over-generates", CompareFamilyKind.Review),

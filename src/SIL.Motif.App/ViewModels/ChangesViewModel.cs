@@ -235,10 +235,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         WorkspacePage originPage = WorkspacePage.Texts)
     {
         ArgumentNullException.ThrowIfNull(word);
+        if (kind is not (ChangeKinds.AddCandidate or ChangeKinds.IncorrectSpelling))
+            throw new InvalidOperationException("Opinions change one analysis at a time, in the text.");
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
         var generation = _projectGeneration;
-        var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
-            word.SelectedReading is { } selected ? [selected] : [];
+        IReadOnlyList<CompareReadingChoice> readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices : [];
         if (kind == ChangeKinds.IncorrectSpelling)
         {
             await AddOneAsync(kind, word, null, originPage, path, generation).ConfigureAwait(true);

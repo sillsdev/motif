@@ -221,11 +221,11 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             {
                 ["Approved, not parsed"] = [SeededProject.AnalysedWordForm],
                 ["Approved, parsed differently"] = [],
-                ["Candidate the parser confirms"] = [],
-                ["Parsed, not in the project"] = [SeededProject.FirstForm],
+                ["Unknown the parser confirms"] = [],
+                ["Parsed, not in FieldWorks"] = [SeededProject.FirstForm],
                 ["Nobody can analyze"] = [SeededProject.SecondForm],
-                ["Rejected but rebuilt"] = [],
-                ["Timed out"] = ["motifextra"],
+                ["Disapproved but built"] = [],
+                ["Stopped at a limit"] = ["motifextra"],
             };
             var lists = page.TextsLists;
             Assert.Equal(7, lists.Lists.Count);
@@ -245,6 +245,36 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(AnalysisMarkingClass.None, approvedNoParse.Marking.PanGlossClass);
             Assert.Equal([OpinionMarkKind.Approved], approvedNoParse.OpinionMarks.Select(mark => mark.Kind));
 
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task ListsOpenOnAListWithWordsWhenTheFirstListIsEmpty()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        project.Behave(new { words = new[]
+        {
+            new { word = SeededProject.FirstForm, outcome = "complete" },
+            new { word = SeededProject.SecondForm, outcome = "no-analysis" },
+        } });
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath);
+            var workspace = walkthrough.Workspace;
+            var page = workspace.PageModel<TextsPageModel>();
+            workspace.Selection.PastedWords = string.Join(Environment.NewLine,
+                SeededProject.FirstForm, SeededProject.SecondForm);
+            workspace.Assess.ProjectPath = project.FwDataPath;
+            await workspace.Assess.RunCommand.ExecuteAsync(null);
+            Assert.Equal(RunState.Completed, workspace.Assess.State);
+
+            page.Tab = TextsTab.Lists;
+
+            var lists = page.TextsLists;
+            Assert.False(lists.Lists[0].HasWords);
+            Assert.Equal("Parsed, not in FieldWorks", lists.SelectedList?.Name);
+            Assert.Equal([SeededProject.FirstForm], page.Assess.Compare.Words.Select(word => word.Word));
         }, TimeSpan.FromMinutes(1));
     }
 

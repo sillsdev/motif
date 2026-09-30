@@ -1,21 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
-             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+                          xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
              x:DataType="views:TextsListsPanel">
   <UserControl.Styles>
-    <Style Selector="Button.question">
-      <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.ListQuestionPadding}" />
-      <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-      <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
-    </Style>
-    <Style Selector="Button.question.selected">
-      <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+    <Style Selector="Button.filterChip.empty">
+      <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     </Style>
     <Style Selector="ListBox.listWords ListBoxItem">
       <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
@@ -27,62 +18,53 @@
 
   <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
-    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-      <views:CopyableTextBlock Classes="section-title" Text="Word lists" />
-      <ItemsControl ItemsSource="{Binding Lists.Lists}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <WrapPanel />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:TextsListDefinitionViewModel">
-            <Button Classes="question" Classes.selected="{Binding IsSelected}"
-                    Width="{DynamicResource Component.TextsPage.ListQuestionWidth}"
-                    Command="{Binding $parent[views:TextsListsPanel].Lists.SelectListCommand}" CommandParameter="{Binding}"
-                    AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Classes="muted" Text="{Binding CountText}"
-                           FontSize="{DynamicResource Intent.Type.Label}" VerticalAlignment="Center" />
-                <Ellipse Grid.Column="2" Classes="freshDot" IsVisible="{Binding HasPendingChanges}"
-                         ToolTip.Tip="{Binding PendingChangeStatus}" />
-              </Grid>
-            </Button>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
+    <ItemsControl ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="Word lists">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:TextsListDefinitionViewModel">
+          <Button Classes="filterChip" Classes.active="{Binding IsSelected}" Classes.empty="{Binding !HasWords}"
+                  Command="{Binding $parent[views:TextsListsPanel].Lists.SelectListCommand}" CommandParameter="{Binding}"
+                  AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
+            <StackPanel Classes="filterChipRow" Orientation="Horizontal">
+              <TextBlock Text="{Binding Name}" />
+              <TextBlock Classes="chipCount" Text="{Binding WordCount}" FontWeight="SemiBold" />
+              <Ellipse Classes="freshDot" IsVisible="{Binding HasPendingChanges}" VerticalAlignment="Center"
+                       ToolTip.Tip="{Binding PendingChangeStatus}" />
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
 
     <Border Grid.Row="1" Classes="card">
-      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+      <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
             RowSpacing="{DynamicResource Intent.Space.Compact}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Classes="section-title" Text="{Binding Lists.SelectedList.Name}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.SelectedList.Question}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.CheckedWordText}" />
         </StackPanel>
-        <Button Grid.Column="1" Content="AI Handoff" Command="{Binding Lists.HandOffListCommand}"
-                AutomationProperties.Name="AI Handoff for the whole selected list"
-                AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" />
-        <Button Grid.Column="2" Content="AI Handoff" Command="{Binding Lists.HandOffCheckedWordsCommand}"
+        <Button Grid.Column="1" Content="{Binding Lists.HandOffCheckedWordsLabel}"
+                Command="{Binding Lists.HandOffCheckedWordsCommand}" VerticalAlignment="Top"
                 AutomationProperties.Name="AI Handoff for ticked words in the selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
                 ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" />
-        <Button Grid.Column="3" Content="Add as candidate" Command="{Binding Lists.Compare.ProposeCommand}"
-                CommandParameter="add-candidate" AutomationProperties.Name="Add checked words as candidates" />
-        <Button Grid.Column="4" Content="Incorrect spelling" Command="{Binding Lists.Compare.ProposeCommand}"
-                CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark checked words as incorrect spelling" />
-        <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Spacing="{DynamicResource Intent.Space.Compact}">
+        <Button Grid.Column="2" Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
+                VerticalAlignment="Top"
+                AutomationProperties.Name="AI Handoff for the whole selected list"
+                AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
+                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" />
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffListDisabledReason}"
                                    IsVisible="{Binding Lists.HandOffListUnavailable}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffCheckedWordsDisabledReason}"
                                    IsVisible="{Binding Lists.HandOffCheckedWordsUnavailable}" TextWrapping="Wrap" />
-          <views:RefusalBlock DataContext="{Binding Lists.Compare.Changes.ShownRefusal}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.Changes.CollectionNotice}"
-                                   TextWrapping="Wrap"
-                                   IsVisible="{Binding Lists.Compare.Changes.CollectionNotice, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                   Text="Opinions change one analysis at a time, in the text." />
         </StackPanel>
       </Grid>
     </Border>
@@ -97,12 +79,12 @@
               <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                 <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
                           Grid.Column="0" IsChecked="{Binding IsChecked}"
-                          AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
+                          AutomationProperties.Name="{Binding Word, StringFormat='Tick {0}'}" />
                 <Button Grid.Column="1" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
                         HorizontalContentAlignment="Left" Content="{Binding Word}"
                         Command="{Binding $parent[views:TextsListsPanel].Lists.Compare.OpenWordCommand}"
                         CommandParameter="{Binding}"
-                        AutomationProperties.Name="{Binding Word, StringFormat='Analyze {0} in its texts'}" />
+                        AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
                 <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                          Classes="muted" Text="{Binding OccurrenceText}" />
                 <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"

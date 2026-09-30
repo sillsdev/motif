@@ -91,19 +91,30 @@ public sealed partial class TextsListsViewModel : ObservableObject
         Compare = compare;
         Lists =
         [
-            Definition("Approved, not parsed", "What approved words could the grammar not rebuild?",
+            Definition("Approved, not parsed",
+                "Words you approved in FieldWorks that the grammar can no longer build. " +
+                "Same as the Matrix cell Approved × No parse.",
                 Cell(WordProjectStatus.Approved, CompareColumnKind.NoParse)),
-            Definition("Approved, parsed differently", "Where did the grammar build something other than an approved analysis?",
+            Definition("Approved, parsed differently",
+                "Words you approved where the grammar builds something else. " +
+                "Same as the Matrix cell Approved × Different.",
                 Cell(WordProjectStatus.Approved, CompareColumnKind.NoMatch)),
-            Definition("Candidate the parser confirms", "Which candidate words did the grammar reproduce?",
+            Definition("Unknown the parser confirms",
+                "Words with an Unknown analysis that the grammar builds too. Same as the Matrix cell Unknown × Same.",
                 Cell(WordProjectStatus.Candidate, CompareColumnKind.Match)),
-            Definition("Parsed, not in the project", "Which new words did the grammar parse that the project does not store?",
+            Definition("Parsed, not in FieldWorks",
+                "Words the grammar parses that FieldWorks has no analysis for. " +
+                "Same as the Matrix cell Not in FieldWorks × Different.",
                 Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch)),
-            Definition("Nobody can analyze", "Which unstored words had no parser reading?",
+            Definition("Nobody can analyze",
+                "Words neither FieldWorks nor the grammar can analyze. " +
+                "Same as the Matrix cell Not in FieldWorks × No parse.",
                 Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)),
-            Definition("Rejected but rebuilt", "Which words did the grammar rebuild after the project rejected them?",
+            Definition("Disapproved but built",
+                "Words whose disapproved analysis the grammar still builds. Same as the Matrix cell Disapproved × Same.",
                 Cell(WordProjectStatus.Rejected, CompareColumnKind.Match)),
-            Definition("Timed out", "Which words stopped at a time or step limit?",
+            Definition("Stopped at a limit",
+                "Words PanGloss stopped on at a time or step limit. Same as the Matrix column Stopped.",
                 Enum.GetValues<WordProjectStatus>().Select(row => new TextsListCell(row, CompareColumnKind.Timeout)).ToArray()),
         ];
         SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
@@ -113,7 +124,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         compare.ChosenCellsChanged += OnChosenCellsChanged;
         compare.CheckedWordsChanged += OnCheckedWordsChanged;
         RefreshSelection();
-        SelectList(Lists.FirstOrDefault());
+        SelectList(FirstWithWords());
     }
 
     public CompareViewModel Compare { get; }
@@ -125,6 +136,18 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public string HandOffListDisabledReason => SelectedList is null
         ? "Choose a word list first."
         : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
+
+    public string HandOffListLabel => "Hand off the whole list";
+
+    /// <summary>Names the ticked words the second AI Handoff button sends, so it never reads like the first.</summary>
+    public string HandOffCheckedWordsLabel => SelectedList is { } list
+        ? Compare.CheckedWordsInCells(list.Cells).Count switch
+        {
+            0 => "Hand off selected words",
+            1 => "Hand off the 1 selected word",
+            var count => $"Hand off the {count:N0} selected words",
+        }
+        : "Hand off selected words";
 
     public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
 
@@ -163,6 +186,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsHelpText))]
+    [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsLabel))]
     private TextsListDefinitionViewModel? _selectedList;
 
     public IRelayCommand<TextsListDefinitionViewModel> SelectListCommand { get; }
@@ -171,17 +195,20 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public IRelayCommand HandOffCheckedWordsCommand { get; }
 
-    /// <summary>Selects the first question when the chosen matrix cells do not match a named list.</summary>
+    /// <summary>Selects the first list with words when the chosen matrix cells do not match a named list.</summary>
     public void SelectFirstIfNeeded()
     {
         if (SelectedList is null)
-            SelectList(Lists.FirstOrDefault());
+            SelectList(FirstWithWords());
         else if (!string.IsNullOrEmpty(Compare.SearchText))
             SelectList(SelectedList);
     }
 
     private TextsListDefinitionViewModel Definition(string name, string question, params TextsListCell[] cells) =>
         new(name, question, cells, Compare);
+
+    private TextsListDefinitionViewModel? FirstWithWords() =>
+        Lists.FirstOrDefault(list => list.HasWords) ?? Lists.FirstOrDefault();
 
     private static TextsListCell[] Cell(WordProjectStatus row, CompareColumnKind column) => [new(row, column)];
 
@@ -221,6 +248,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         OnPropertyChanged(nameof(HandOffCheckedWordsDisabledReason));
         OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
         OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
+        OnPropertyChanged(nameof(HandOffCheckedWordsLabel));
     }
 
     private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
