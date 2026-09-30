@@ -311,6 +311,18 @@ internal static class WalkthroughReplay
                         window.WaitUntil(() => calloutIds.All(window.HasVisibleTextOrMark),
                             TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout target content did not appear",
                             () => string.Join(", ", calloutIds.Where(id => !window.HasVisibleTextOrMark(id))));
+                        // Under load a target can still be re-measuring after its text appears, which widens the crop.
+                        string? previousBounds = null;
+                        var settledPasses = 0;
+                        window.WaitUntil(() =>
+                        {
+                            window.Window.UpdateLayout();
+                            var currentBounds = string.Join(";",
+                                calloutIds.Select(id => window.BoundsByAutomationId(id).ToString()));
+                            settledPasses = currentBounds == previousBounds ? settledPasses + 1 : 0;
+                            previousBounds = currentBounds;
+                            return settledPasses >= 2;
+                        }, TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout bounds did not settle");
                     }
                     var callouts = step.Callouts!.Select(callout =>
                     {
