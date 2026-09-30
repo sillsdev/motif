@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
@@ -221,6 +222,51 @@ public sealed class WalkthroughWindow : IDisposable
             string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
     }
 
+    internal Control? FindOptionalByAutomationId(string automationId) =>
+        AllControls().SingleOrDefault(control =>
+            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+
+    internal string DescribeAutomationId(string automationId)
+    {
+        var control = FindOptionalByAutomationId(automationId);
+        if (control is null) return $"AutomationId '{automationId}' is missing.";
+        if (control.DataContext is not ResultsTokenViewModel token)
+            return $"AutomationId '{automationId}' visible={control.IsEffectivelyVisible}.";
+        var opinions = string.Join(", ", token.Marking.FieldWorksAnalyses.Select(analysis => analysis.Opinion));
+        var readings = string.Join(", ", token.Marking.PanGlossReadings.Select(reading =>
+            $"stored={reading.MatchesStored}, opinion={reading.MatchingOpinions ?? "none"}"));
+        return $"Word='{token.Form}', visible={control.IsEffectivelyVisible}, verdict={token.Verdict}, " +
+            $"marking={token.Marking.PanGlossClass}, opinions=[{opinions}], readings=[{readings}], " +
+            $"action='{token.Marking.PrimaryAction?.Label ?? "none"}'.";
+    }
+
+    internal void ScrollIntoView(string automationId)
+    {
+        var target = FindByAutomationId(automationId);
+        var viewer = target.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
+        if (viewer is null) return;
+
+        Window.UpdateLayout();
+        var origin = target.TranslatePoint(new Point(), viewer);
+        if (origin is null) return;
+        var deltaX = origin.Value.X < 0 ? origin.Value.X
+            : origin.Value.X + target.Bounds.Width > viewer.Viewport.Width
+                ? origin.Value.X + target.Bounds.Width - viewer.Viewport.Width
+                : 0;
+        var deltaY = origin.Value.Y < 0 ? origin.Value.Y
+            : origin.Value.Y + target.Bounds.Height > viewer.Viewport.Height
+                ? origin.Value.Y + target.Bounds.Height - viewer.Viewport.Height
+                : 0;
+        if (deltaX == 0 && deltaY == 0) return;
+
+        var maxX = Math.Max(0, viewer.Extent.Width - viewer.Viewport.Width);
+        var maxY = Math.Max(0, viewer.Extent.Height - viewer.Viewport.Height);
+        viewer.Offset = new Vector(Math.Clamp(viewer.Offset.X + deltaX, 0, maxX),
+            Math.Clamp(viewer.Offset.Y + deltaY, 0, maxY));
+        Window.UpdateLayout();
+        Pump();
+    }
+
     internal void ClickAutomationId(string automationId)
     {
         var control = FindByAutomationId(automationId);
@@ -256,10 +302,32 @@ public sealed class WalkthroughWindow : IDisposable
     {
         var control = FindByAutomationId(automationId);
         if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
-            throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.");
+        {
+            var state = control.DataContext is ResultsTokenViewModel token
+                ? $" Word='{token.Form}', verdict={token.Verdict}, marking={token.Marking.PanGlossClass}, " +
+                    $"opinion='{string.Join(", ", token.Marking.FieldWorksAnalyses.Select(analysis => analysis.Opinion))}', " +
+                    $"readings={token.Readings.Count}, action='{token.Marking.PrimaryAction?.Label ?? "none"}'."
+                : string.Empty;
+            throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.{state}");
+        }
         var origin = control.TranslatePoint(new Point(), Window)
             ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
         return new Rect(origin, control.Bounds.Size);
+    }
+
+    internal IReadOnlyList<(string AutomationId, Rect Bounds)> VisibleWordStripBounds()
+    {
+        var strips = new List<(string AutomationId, Rect Bounds)>();
+        foreach (var control in AllControls())
+        {
+            var automationId = AutomationProperties.GetAutomationId(control);
+            if (automationId?.EndsWith("-strip", StringComparison.Ordinal) != true ||
+                !control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
+                continue;
+            if (control.TranslatePoint(new Point(), Window) is { } origin)
+                strips.Add((automationId, new Rect(origin, control.Bounds.Size)));
+        }
+        return strips;
     }
 
     private IEnumerable<Control> AllControls()
@@ -406,7 +474,7 @@ public sealed class WalkthroughWindow : IDisposable
         Pump();
     }
 
-    public void WaitUntil(Func<bool> predicate, TimeSpan timeout, string why)
+    public void WaitUntil(Func<bool> predicate, TimeSpan timeout, string why, Func<string>? failureDetail = null)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         ArgumentException.ThrowIfNullOrWhiteSpace(why);
@@ -419,7 +487,7 @@ public sealed class WalkthroughWindow : IDisposable
 
         Pump();
         Assert.True(predicate(),
-            $"{why}; baseline='{Workspace.Baseline.CapturedTimeText}', " +
+            $"{why}; {failureDetail?.Invoke()} baseline='{Workspace.Baseline.CapturedTimeText}', " +
             $"baseline refusal='{Workspace.Baseline.ShownRefusal?.Sentence}', " +
             $"selection empty='{Workspace.Selection.TextsEmptyMessage}', " +
             $"selection refusal='{Workspace.Selection.ShownRefusal?.Sentence}', " +

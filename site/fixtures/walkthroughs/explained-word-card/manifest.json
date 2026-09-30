@@ -1,0 +1,445 @@
+{
+  "id": "explained-word-card",
+  "locale": "en",
+  "title": "Read the word marks",
+  "description": "A means Approved, U Unknown, D Disapproved, and a dashed mark means no reading is stored. Blue means PanGloss found a new or different reading.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "approved-agrees",
+      "caption": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed. A, U and D mean Approved, Unknown and Disapproved; dashed means no reading is stored. Blue means PanGloss found a new or different reading.",
+      "startMs": 1500,
+      "endMs": 1900,
+      "screenshot": "steps/01-approved-agrees.png",
+      "annotated": "steps/01-approved-agrees-annotated.png",
+      "width": 660,
+      "height": 573,
+      "annotatedWidth": 1710,
+      "annotatedHeight": 1080,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 63,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "A means FieldWorks approved this reading."
+        },
+        {
+          "x": 112.5,
+          "y": 20.5,
+          "width": 90,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 272.5,
+          "y": 20.5,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 487.5,
+          "y": 10.5,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 10,
+          "y": 143,
+          "width": 630,
+          "height": 150,
+          "label": "5",
+          "caption": "FieldWorks shows its morphemes with a gloss below each one."
+        },
+        {
+          "x": 10,
+          "y": 298,
+          "width": 630,
+          "height": 282.5,
+          "label": "6",
+          "caption": "PanGloss built the same reading."
+        }
+      ]
+    },
+    {
+      "id": "unknown-agrees",
+      "caption": "U means the reading is stored but not yet approved. PanGloss built the same reading, and Approve changes U to A.",
+      "startMs": 1900,
+      "endMs": 2300,
+      "screenshot": "steps/02-unknown-agrees.png",
+      "annotated": "steps/02-unknown-agrees-annotated.png",
+      "width": 785,
+      "height": 573,
+      "annotatedWidth": 1835,
+      "annotatedHeight": 1310,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 63,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "U means FieldWorks stored this reading but it has not been approved."
+        },
+        {
+          "x": 112.5,
+          "y": 20.5,
+          "width": 92.5,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 275,
+          "y": 20.5,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 612.5,
+          "y": 10.5,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 500,
+          "y": 40.5,
+          "width": 122.5,
+          "height": 80,
+          "label": "5",
+          "caption": "Approve changes this reading from Unknown to Approved."
+        },
+        {
+          "x": 10,
+          "y": 143,
+          "width": 755,
+          "height": 150,
+          "label": "6",
+          "caption": "FieldWorks shows its morphemes with a gloss below each one."
+        },
+        {
+          "x": 10,
+          "y": 298,
+          "width": 755,
+          "height": 282.5,
+          "label": "7",
+          "caption": "PanGloss built the same reading."
+        }
+      ]
+    },
+    {
+      "id": "unknown-staged",
+      "caption": "The blue Staged note records the choice until you apply it. Undo removes the staged choice.",
+      "startMs": 2550,
+      "endMs": 2950,
+      "screenshot": "steps/03-unknown-staged.png",
+      "annotated": "steps/03-unknown-staged-annotated.png",
+      "width": 683,
+      "height": 665,
+      "annotatedWidth": 1733,
+      "annotatedHeight": 785,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 112.5,
+          "y": 10,
+          "width": 92.5,
+          "height": 117.5,
+          "label": "1",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 10,
+          "y": 575,
+          "width": 662.5,
+          "height": 80,
+          "label": "2",
+          "caption": "This blue note waits for Apply and offers Undo."
+        }
+      ]
+    },
+    {
+      "id": "no-stored-new-reading",
+      "caption": "The dashed mark means FieldWorks has no reading stored. Blue shows the new reading PanGloss found.",
+      "startMs": 2950,
+      "endMs": 3350,
+      "screenshot": "steps/04-no-stored-new-reading.png",
+      "annotated": "steps/04-no-stored-new-reading-annotated.png",
+      "width": 953,
+      "height": 498,
+      "annotatedWidth": 2003,
+      "annotatedHeight": 1310,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 63,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "Dashed means FieldWorks has no reading stored."
+        },
+        {
+          "x": 112.5,
+          "y": 20.5,
+          "width": 237.5,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 490,
+          "y": 20.5,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 780,
+          "y": 10.5,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 715,
+          "y": 40.5,
+          "width": 75,
+          "height": 80,
+          "label": "5",
+          "caption": "Add stores PanGloss\u0027s reading as Unknown."
+        },
+        {
+          "x": 10,
+          "y": 143,
+          "width": 922.5,
+          "height": 57.5,
+          "label": "6",
+          "caption": "There is no reading for this word in FieldWorks."
+        },
+        {
+          "x": 10,
+          "y": 205.5,
+          "width": 922.5,
+          "height": 282.5,
+          "label": "7",
+          "caption": "Blue means PanGloss found a new or different reading."
+        }
+      ]
+    },
+    {
+      "id": "disapproved-conflict",
+      "caption": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
+      "startMs": 3350,
+      "endMs": 3750,
+      "screenshot": "steps/05-disapproved-conflict.png",
+      "annotated": "steps/05-disapproved-conflict-annotated.png",
+      "width": 765,
+      "height": 573,
+      "annotatedWidth": 1815,
+      "annotatedHeight": 1360,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 63,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "D means this stored reading was disapproved."
+        },
+        {
+          "x": 112.5,
+          "y": 20.5,
+          "width": 117.5,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 377.5,
+          "y": 20.5,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 592.5,
+          "y": 10.5,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 245,
+          "y": 55.5,
+          "width": 47.5,
+          "height": 50,
+          "label": "5",
+          "caption": "The orange mark warns that PanGloss found a reading FieldWorks has rejected."
+        },
+        {
+          "x": 10,
+          "y": 143,
+          "width": 735,
+          "height": 150,
+          "label": "6",
+          "caption": "FieldWorks shows its morphemes with a gloss below each one."
+        },
+        {
+          "x": 10,
+          "y": 298,
+          "width": 735,
+          "height": 282.5,
+          "label": "7",
+          "caption": "PanGloss builds the reading that FieldWorks marked Disapproved."
+        }
+      ]
+    },
+    {
+      "id": "no-parse",
+      "caption": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
+      "startMs": 3750,
+      "endMs": 4150,
+      "screenshot": "steps/06-no-parse.png",
+      "annotated": "steps/06-no-parse-annotated.png",
+      "width": 690,
+      "height": 295,
+      "annotatedWidth": 1740,
+      "annotatedHeight": 1130,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 62.5,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "Dashed means FieldWorks has no reading stored."
+        },
+        {
+          "x": 112.5,
+          "y": 20,
+          "width": 120,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 302.5,
+          "y": 20,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 517.5,
+          "y": 10,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 10,
+          "y": 142.5,
+          "width": 660,
+          "height": 57.5,
+          "label": "5",
+          "caption": "There is no reading for this word in FieldWorks."
+        },
+        {
+          "x": 10,
+          "y": 205,
+          "width": 660,
+          "height": 80,
+          "label": "6",
+          "caption": "PanGloss completed without finding a reading."
+        }
+      ]
+    },
+    {
+      "id": "capped",
+      "caption": "PanGloss stopped before finishing its search. Other readings may still exist.",
+      "startMs": 4150,
+      "endMs": 4550,
+      "screenshot": "steps/07-capped.png",
+      "annotated": "steps/07-capped-annotated.png",
+      "width": 983,
+      "height": 573,
+      "annotatedWidth": 2033,
+      "annotatedHeight": 1130,
+      "calloutLayout": "side-column",
+      "callouts": [
+        {
+          "x": 65,
+          "y": 63,
+          "width": 32.5,
+          "height": 32.5,
+          "label": "1",
+          "caption": "A means FieldWorks approved this reading."
+        },
+        {
+          "x": 112.5,
+          "y": 20.5,
+          "width": 212.5,
+          "height": 117.5,
+          "label": "2",
+          "caption": "The word as it appears in the text."
+        },
+        {
+          "x": 595,
+          "y": 20.5,
+          "width": 225,
+          "height": 117.5,
+          "label": "3",
+          "caption": "Fix opens the other choices for this word."
+        },
+        {
+          "x": 810,
+          "y": 10.5,
+          "width": 162.5,
+          "height": 137.5,
+          "label": "4",
+          "caption": "Unread marks a word whose current reading has not been reviewed."
+        },
+        {
+          "x": 10,
+          "y": 143,
+          "width": 952.5,
+          "height": 150,
+          "label": "5",
+          "caption": "FieldWorks shows its morphemes with a gloss below each one."
+        },
+        {
+          "x": 10,
+          "y": 298,
+          "width": 952.5,
+          "height": 282.5,
+          "label": "6",
+          "caption": "Brown means PanGloss stopped at a search limit."
+        }
+      ]
+    }
+  ],
+  "clip": null
+}
