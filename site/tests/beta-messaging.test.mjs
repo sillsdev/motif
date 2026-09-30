@@ -80,7 +80,28 @@ test('the home page renders the approved beta hero, audience situations, FAQ, an
 		assert.ok(sampleCards.includes(sample.disclaimer), `the ${sample.id} card shows its own disclaimer`);
 	}
 	assert.doesNotMatch(sampleCards, /not real Synthetic/);
-	assert.equal(syncedSamples.find((sample) => sample.id === 'synthetic-turkic').lessonsHref, '/learn/turkish-plural-harmony/');
+	for (const sample of syncedSamples) {
+		if (sample.lessonsHref === null) continue;
+		const pathname = new URL(sample.lessonsHref, 'https://motif-docs.pages.dev').pathname;
+		const route = pathname === '/learn/'
+			? 'learn/index'
+			: pathname.startsWith('/learn/') ? `learn/${pathname.slice('/learn/'.length, -1)}` : null;
+		assert.ok(route, `${sample.id} must link to a generated Learn route.`);
+		await readFile(path.join(siteRoot, 'src', 'content', 'docs', `${route}.md`));
+		const builtRoute = pathname === '/learn/'
+			? path.join(outputRoot, 'learn', 'index.html')
+			: path.join(outputRoot, ...route.split('/'), 'index.html');
+		await readFile(builtRoute);
+	}
+
+	const guideFeatures = JSON.parse(await readFile(path.join(siteRoot, 'src', 'data', 'guide-features.json'), 'utf8'));
+	assert.equal(guideFeatures.length, 7, 'the preview fixture exports all seven homepage Guide features');
+	const featureGrid = html.match(/<div class="home-feature-grid">([\s\S]*?)<\/div>/)?.[1] ?? '';
+	assert.notEqual(featureGrid, '', 'the home page renders its exported Guide features');
+	for (const feature of guideFeatures) {
+		assert.ok(featureGrid.includes(feature.title), `the home feature grid includes ${feature.title}`);
+		assert.ok(featureGrid.includes(feature.description), `the ${feature.title} card uses its exported description`);
+	}
 });
 
 test('synthetic sample fixtures identify generated data plainly', async () => {

@@ -358,6 +358,7 @@ test('sync builds catalog, Walkthrough, API, and Developer pages', async (t) => 
 	await readFile(path.join(site, 'src', 'content', 'docs', 'learn', 'index.md'), 'utf8');
 	await assert.rejects(readFile(path.join(site, 'src', 'content', 'docs', 'learn', 'synthetic-turkic-plural-harmony.md'), 'utf8'), { code: 'ENOENT' });
 	await assert.rejects(readFile(path.join(site, 'src', 'data', 'synthetic-turkic-performance.json'), 'utf8'), { code: 'ENOENT' });
+	assert.equal(JSON.parse(await readFile(path.join(site, 'src', 'data', 'samples.json'), 'utf8'))[0].lessonsHref, null);
 	exportedHelp.entries.push(guideEntry('unlisted-page'));
 	await writeFile(path.join(repository, 'help-export.json'), JSON.stringify(exportedHelp));
 	await assert.rejects(
@@ -526,4 +527,18 @@ test('sync publishes every authored Guide page from the built CLI export', async
 			assert.ok(entry, `The CLI export must include Guide ${code}.`);
 			return { title: entry.title, description: entry.description };
 		}));
+	const turkicSample = JSON.parse(await readFile(path.join(site, 'src', 'data', 'samples.json'), 'utf8'))
+		.find((sample) => sample.id === 'synthetic-turkic');
+	assert.ok(turkicSample, 'the real export sync must include the Turkic teaching sample');
+	const turkicGuides = guideEntries.filter((entry) => {
+		if (!entry.code.startsWith('learn/')) return false;
+		const lesson = entry.code.slice('learn/'.length).split('/')[0];
+		return lesson.startsWith('turkish-') || lesson.startsWith('synthetic-turkic-');
+	});
+	if (turkicGuides.length === 0) {
+		assert.equal(turkicSample.lessonsHref, null);
+	} else {
+		assert.ok(turkicGuides.some((entry) => new URL(entry.url).pathname === turkicSample.lessonsHref),
+			'A sample lesson link must match a Learn route exported by the CLI.');
+	}
 });

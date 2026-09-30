@@ -4,32 +4,877 @@
   "entries": [
     {
       "kind": "command",
+      "code": "add-corpus",
+      "slug": "add-corpus",
+      "title": "Describe a Corpus",
+      "description": "Creates an empty Corpus and records its provenance, tokenisation, and licence capabilities. Use it before adding Documents to the Corpus.",
+      "helpPage": "# Describe a Corpus\r\n\r\n`add-corpus` records a Corpus and how it was collected and tokenised. It keeps provenance and licence capabilities so later users can tell what use is permitted.\r\n\r\n## When to use it\r\n\r\nUse this before adding Documents to a new Corpus. State what the licence permits, including whether the material may be derived from, redistributed, or used commercially; unknown permissions should remain unknown.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif add-corpus --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --id \"stories\" --description \"Published folktales\" --tokeniser \"motif-basic\" --tokeniser-version \"1\"\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output confirms the Corpus id and shows its origin, location when supplied, licence, tokenisation, and derivation note.\r\n\r\n## Related commands\r\n\r\n- [Add a Corpus Document](cmd:add-document) attaches a source to the Corpus.\r\n- [List Corpora](cmd:corpora) finds recorded Corpus ids.\r\n",
+      "usage": [
+        "Usage: motif add-corpus --project <fwdata> --id <id> --description <text> --tokeniser <name> --tokeniser-version <v> [--uri <url>] [--licence <text>] [--tokeniser-notes <text>] [--may-derive true|false] [--may-redistribute true|false] [--may-use-commercially true|false] [--requires-attribution true|false] [--licence-basis <text>]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/add-corpus/"
+    },
+    {
+      "kind": "command",
+      "code": "add-corpus-bundle",
+      "slug": "add-corpus-bundle",
+      "title": "Load a Corpus bundle",
+      "description": "Reads a bundle from a fetching tool and loads each listed source as a Document in its Corpus. The Motif store keeps the fetched text with its provenance and licence details.",
+      "helpPage": "# Load a Corpus bundle\r\n\r\n`add-corpus-bundle` reads a bundle from a fetching tool, then reads each listed source to add its Document to a Corpus. The bundle records source locations and licences; it does not contain the source text files.\r\n\r\n## When to use it\r\n\r\nUse this when an outside tool has prepared a Corpus bundle and you want Motif to record its provenance in one step. Inspect the bundle and its licences before loading it.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif add-corpus-bundle --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --bundle \"C:\\Temp\\stories-bundle.json\"\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output identifies the Corpus and document count, then shows its origin, licence, derivation restrictions, and accuracy-claim qualification. Motif stores the fetched text with the Corpus; it does not copy text into the FieldWorks project.\r\n\r\n## Related commands\r\n\r\n- [Describe a Corpus](cmd:add-corpus) creates the Corpus directly.\r\n- [List Corpora](cmd:corpora) reads Corpora already recorded for the project.\r\n",
+      "usage": [
+        "Usage: motif add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/add-corpus-bundle/"
+    },
+    {
+      "kind": "command",
+      "code": "add-document",
+      "slug": "add-document",
+      "title": "Add a Corpus Document",
+      "description": "Reads one source file or URL into a named Corpus Document and records its origin and licence details. Use it to preserve where an individual Document came from.",
+      "helpPage": "# Add a Corpus Document\r\n\r\n`add-document` reads one source file or URL and stores its text as a Document in a named Corpus. It records the source, title, and licence without treating the Document as a FieldWorks Text.\r\n\r\n## When to use it\r\n\r\nUse this after creating a Corpus when you need to preserve where one article or file came from. Provide a stable Document id and the source location; include licence details for this item when they differ from the Corpus.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif add-document --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --corpus \"stories\" --doc \"story-12\" --source \"https://example.org/story-12\" --title \"The River Path\"\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output confirms the Corpus and Document ids and shows the title, source, character count, content hash, and licence when supplied.\r\n\r\n## Related commands\r\n\r\n- [Describe a Corpus](cmd:add-corpus) records the shared provenance and tokeniser.\r\n- [Show a Corpus](cmd:show-corpus) reads its provenance and licence capabilities.\r\n",
+      "usage": [
+        "Usage: motif add-document --project <fwdata> --corpus <id> --doc <id> --source <file-or-url> [--title <text>] [--licence <text>] [--may-derive true|false] [--licence-basis <text>]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/add-document/"
+    },
+    {
+      "kind": "command",
+      "code": "analyses",
+      "slug": "analyses",
+      "title": "Inspect word analyses",
+      "description": "Lists manually approved analyses, or adds parser results from a named Assessment when current digests are supplied. It does not run PanGloss.",
+      "helpPage": "# Inspect word analyses\r\n\r\n`analyses` reads the project's manually approved analyses. With an Assessment id and both current digests, it also returns that Assessment's parser results and says whether they still describe the project.\r\n\r\n## When to use it\r\n\r\nUse this command when you need to inspect analysis evidence without starting PanGloss. The Assessment form reports whether the current Selection and grammar digests match the evidence.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif analyses --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nWithout `--assessment`, the response lists manually approved analyses. With an Assessment and current Selection and grammar SHA-256 values, it includes the stored parser results and says whether that evidence still describes the project. JSON returns the same information in a structured response.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) records parser evidence.\r\n- [Query parse statistics](cmd:stats) reads detailed statistics for an Assessment.\r\n",
+      "usage": [
+        "Usage: motif analyses --project <fwdata> [--json]",
+        "Usage: motif analyses --project <fwdata> --assessment <assessmentId> --current-selection-sha256 <sha256> --current-grammar-sha256 <sha256> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/analyses/"
+    },
+    {
+      "kind": "command",
       "code": "apply --all-pending",
       "slug": "apply-all-pending",
       "title": "Apply pending changes",
-      "description": "Applies each pending change to the FieldWorks project in one unit of work.",
-      "helpPage": "# Apply pending changes\n\nApply pending changes to the FieldWorks project in one unit of work. See [Proposal](term:proposal) and the [Refresh control](ui:Motif.Overview.Refresh).\n",
-      "usage": ["Usage: motif apply --all-pending"],
+      "description": "Applies the current pending changes to the FieldWorks project as one unit of work. Use it after FieldWorks releases the project, then reload when Motif reports that changes were applied.",
+      "helpPage": "# Apply pending changes\r\n\r\n`motif apply --all-pending` applies all changes in the current pending Draft Proposal to the FieldWorks project in one unit of work. Motif records a Receipt when it writes changes.\r\n\r\n## When to use it\r\n\r\nUse this command after reviewing the pending Proposal and while FieldWorks has released the project. FieldWorks should reload the project after Motif reports a write.\r\n\r\n## Example\r\n\r\n```text\r\nmotif apply --all-pending --project <project> --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe JSON response reports whether Motif applied changes. Reload after `applied: true`. If the response contains `apply.reconciliation-needed`, reload and inspect the project because a write may have happened. A no-op does not need a reload, and an uncertain change stays pending for review.\r\n\r\n## Related commands\r\n\r\nSee the [Overview](cmd:overview) for the command flow.\r\n",
+      "usage": [
+        "Usage: motif apply --all-pending --project <fwdata> [--revision <r>] [--user <name>] [--json]"
+      ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/apply-all-pending/"
     },
     {
-      "kind": "ui",
-      "code": "Motif.Overview.Refresh",
-      "slug": "motif-overview-refresh",
-      "title": "Refresh numbers",
-      "description": "Capture a new Baseline and measure it again.",
-      "helpPage": "# Refresh numbers\n\nCapture a new Baseline and measure it again.\n",
-      "url": "https://motif-docs.pages.dev/reference/controls/motif-overview-refresh/"
+      "kind": "command",
+      "code": "assess",
+      "slug": "assess",
+      "title": "Measure a Selection",
+      "description": "Runs PanGloss over chosen Texts or word forms and stores the resulting Assessments. After FieldWorks saves project changes, capture a new Baseline before measuring them.",
+      "helpPage": "# Measure a Selection\r\n\r\n`assess` sends a Selection of words through PanGloss and stores the resulting Assessments. It uses the project's stored Baseline when one exists and captures one only when the project has none.\r\n\r\n## When to use it\r\n\r\nUse this to measure how a grammar parses the project's usual words, named Texts, every wordform, or a supplied word list. After FieldWorks saves grammar changes, capture a new Baseline before measuring them.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif assess \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --all-wordforms --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output reports the Selection and stored Assessment ids. JSON returns the Baseline, Selection, and Assessment results. No grammar verdict is inferred from the measurements.\r\n\r\n## Related commands\r\n\r\n- [Show the Default Selection](cmd:selection%20show) reads the usual word list.\r\n- [Read the project Overview](cmd:overview) displays evidence already stored.\r\n",
+      "usage": [
+        "Usage: motif assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] [--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] [--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/assess/"
+    },
+    {
+      "kind": "command",
+      "code": "baseline capture",
+      "slug": "baseline-capture",
+      "title": "Capture a Baseline",
+      "description": "Reads the saved .fwdata project to create or reuse a file-backed Baseline. Use it when the latest FieldWorks save should be the point of comparison for later work.",
+      "helpPage": "# Capture a Baseline\r\n\r\n`baseline capture` reads the saved `.fwdata` file and creates or reuses a file-backed Baseline for the project. The capture represents the project as of FieldWorks' last save.\r\n\r\n## When to use it\r\n\r\nUse this when a later Dry Run or Assessment should be measured against the latest saved project state. FieldWorks may remain open, but unsaved in-memory edits are not part of the capture.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif baseline capture \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response identifies the project, Baseline digest, capture time, source save time, and whether the published bytes were reused. JSON returns the Baseline token and capture facts.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) ensures a Baseline exists before recording parser evidence.\r\n- [Queue a Baseline Refresh](cmd:baseline-refresh) requests a durable queued capture.\r\n",
+      "usage": [
+        "Usage: motif baseline capture <project> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/baseline-capture/"
+    },
+    {
+      "kind": "command",
+      "code": "baseline-refresh",
+      "slug": "baseline-refresh",
+      "title": "Queue a Baseline Refresh",
+      "description": "Queues a job to capture the project's saved state as a Baseline. Use it when you want to monitor the capture through the job queue.",
+      "helpPage": "# Queue a Baseline Refresh\r\n\r\n`baseline-refresh` queues durable work to capture the project's saved state as a new Baseline. The job continues after this command exits.\r\n\r\n## When to use it\r\n\r\nUse this when you want the Baseline capture to run through the job queue and inspect its status later. For an immediate capture, use `baseline capture` instead.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif baseline-refresh --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\"\r\n```\r\n\r\n## What it prints\r\n\r\nThe command prints the job id when work is queued. Use that id to check whether the Baseline capture completed.\r\n\r\n## Related commands\r\n\r\n- [Inspect a job](cmd:jobs%20show) reads its current state.\r\n- [Capture a Baseline](cmd:baseline%20capture) performs the synchronous capture.\r\n",
+      "usage": [
+        "Usage: motif baseline-refresh --project <fwdata>"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/baseline-refresh/"
+    },
+    {
+      "kind": "command",
+      "code": "compare",
+      "slug": "compare",
+      "title": "Compare two Assessments",
+      "description": "Joins two stored Assessments on their shared words and stores the Difference as a new Assessment. It lets you inspect changes without treating the result as a verdict.",
+      "helpPage": "# Compare two Assessments\r\n\r\n`compare` joins the words shared by two stored Assessments and stores the measured Difference as a new Assessment. It describes measured differences without deciding which run is better.\r\n\r\n## When to use it\r\n\r\nUse this after two runs when you want to inspect changed results on words present in both Assessments. Choose Assessments from the same Assessor and kind so the measured values have the same meaning; only shared words are compared.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif compare --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --from <assessmentId> --to <assessmentId> --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output shows the new Difference Assessment id and its summary. JSON includes that id, both source Assessment ids, word counts, the Assessor, any tokeniser warning, and the rendered summary text. The command reads stored evidence rather than rerunning either Assessment.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) records another Assessment.\r\n- [Read an Assessment report](cmd:report) asks a focused question of one Assessment.\r\n",
+      "usage": [
+        "Usage: motif compare --project <fwdata> --from <assessmentId> --to <assessmentId> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/compare/"
+    },
+    {
+      "kind": "command",
+      "code": "config show",
+      "slug": "config-show",
+      "title": "Show project settings",
+      "description": "Reads the project's Assessment scopes and settings. Use it to see the limits and options Motif will use for a later Assessment.",
+      "helpPage": "# Show project settings\r\n\r\n`config show` reads the Assessment scopes and related settings stored beside one FieldWorks project.\r\n\r\n## When to use it\r\n\r\nUse it before measuring when you want to confirm which Assessor, Assessment kinds, or resource limits a named scope selects. A scope provides context for an Assessment; it does not gate whether two measurements can be compared.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif config show --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\"\r\n```\r\n\r\n## What it prints\r\n\r\nThe command prints the saved project settings, or their structured form when `--json` is supplied. It reads configuration and does not run PanGloss.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) uses the configured scope when one is named.\r\n- [Show the Default Selection](cmd:selection%20show) reads the project's usual word list.\r\n",
+      "usage": [
+        "Usage: motif config show --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/config-show/"
+    },
+    {
+      "kind": "command",
+      "code": "corpora",
+      "slug": "corpora",
+      "title": "List Corpora",
+      "description": "Lists the Corpora and their recorded provenance. Use it to find a Corpus id before adding or inspecting a Document.",
+      "helpPage": "# List Corpora\r\n\r\n`corpora` lists the Corpora recorded for a FieldWorks project with their provenance summaries.\r\n\r\n## When to use it\r\n\r\nUse this to find a Corpus id before inspecting it or adding a Document. A Corpus is material Motif holds with provenance; it is not a Text inside the FieldWorks project.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif corpora --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output lists the recorded Corpora. JSON returns their ids and descriptive details for scripts that need to select one.\r\n\r\n## Related commands\r\n\r\n- [Describe a Corpus](cmd:add-corpus) records a new Corpus.\r\n- [Show a Corpus](cmd:show-corpus) reads one Corpus in detail.\r\n",
+      "usage": [
+        "Usage: motif corpora --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/corpora/"
+    },
+    {
+      "kind": "command",
+      "code": "grammar check",
+      "slug": "grammar-check",
+      "title": "Check a grammar",
+      "description": "Runs the grammar checker against the project's current Baseline and stores its findings. Use warnings to read those findings afterward.",
+      "helpPage": "# Check a grammar\r\n\r\n`grammar check` runs the grammar checker against the project's current Baseline and stores its findings. If the project has no Baseline, the command returns successfully with no findings.\r\n\r\n## When to use it\r\n\r\nUse this to collect diagnostics about the grammar, then read them with `warnings`. It is separate from an Assessment, which measures parsing over a Selection.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif grammar check --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response reports whether a Baseline was available and includes grammar findings when a check ran. Error-level findings appear separately from warnings and information. PanGloss can exit nonzero after writing a report with errors; Motif still reads and stores that report. A nonzero exit without a report is a refusal.\r\n\r\n## Related commands\r\n\r\n- [Read grammar warnings](cmd:warnings) filters and displays stored findings.\r\n- [Measure a Selection](cmd:assess) measures parser behavior rather than grammar diagnostics.\r\n",
+      "usage": [
+        "Usage: motif grammar check --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/grammar-check/"
+    },
+    {
+      "kind": "command",
+      "code": "handoff",
+      "slug": "handoff",
+      "title": "Prepare an AI Handoff",
+      "description": "Writes a folder with the grammar and selected Texts, plus retained parse evidence when an invocation is selected. The files contain real project data, so review them before sharing.",
+      "helpPage": "# Prepare an AI Handoff\r\n\r\n`handoff` writes a folder containing a grammar and selected Texts, plus retained parse evidence when an invocation is selected. The folder includes reference files so a reader can understand the data without a network connection or package installation.\r\n\r\n## When to use it\r\n\r\nUse a retained invocation when you want its Baseline, Selection, and parse evidence in the Handoff. Use `--no-assess` for a Baseline-only Handoff; `--texts` can then restrict which Texts are included. The folder contains real language data, so inspect it before sharing it with a chat model.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif handoff \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --out \"C:\\Temp\\koro-handoff\" --invocation <invocationId> --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output reports the output directory, the Baseline's source save time, Selection size, file count, and Assessment ids. With `--no-assess`, the Baseline-only Handoff has four files and no Assessment ids. JSON includes the output directory, Baseline and Selection, relative file paths, invocation and Assessment ids, and the Handoff text fields. Motif builds the folder beside the destination and moves it into place only after it is complete.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) records the evidence a Handoff can include.\r\n- [Query parse statistics](cmd:stats) inspects statistics for that evidence.\r\n",
+      "usage": [
+        "Usage: motif handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]",
+        "Usage: motif handoff <project> --out <folder> --no-assess [--texts <id,…>] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/handoff/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs assessments",
+      "slug": "jobs-assessments",
+      "title": "Read job Assessments",
+      "description": "Lists the Assessments produced by one completed job. Use it after jobs show reports completion and you need the evidence ids.",
+      "helpPage": "# Read job Assessments\r\n\r\n`jobs assessments` lists the Assessments produced by one completed job.\r\n\r\n## When to use it\r\n\r\nUse this after `jobs show` reports that a job completed and you need its evidence ids. The returned ids can be passed to reports, comparisons, or statistics queries.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs assessments <jobId> --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response lists the Assessment ids and their recorded kinds. If the job has not produced Assessments, the list is empty; the command does not start another run.\r\n\r\n## Related commands\r\n\r\n- [Inspect a job](cmd:jobs%20show) checks its state.\r\n- [Read an Assessment report](cmd:report) queries one stored Assessment.\r\n",
+      "usage": [
+        "Usage: motif jobs assessments <jobId> --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-assessments/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs cancel",
+      "slug": "jobs-cancel",
+      "title": "Cancel a job",
+      "description": "Requests cancellation of a queued or running job. Use it when the work is no longer needed, then inspect the final state with jobs show.",
+      "helpPage": "# Cancel a job\r\n\r\n`jobs cancel` requests cancellation of one queued or running job for a project.\r\n\r\n## When to use it\r\n\r\nUse this when the requested work is no longer needed. Cancellation may take time if the job is already running, so inspect its final state afterward.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs cancel <jobId> --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response reports the job state after the request. A cancellation request does not erase completed Assessments or change Proposal content.\r\n\r\n## Related commands\r\n\r\n- [Inspect a job](cmd:jobs%20show) checks whether cancellation completed.\r\n- [List queued jobs](cmd:jobs%20list) shows work across Known projects.\r\n",
+      "usage": [
+        "Usage: motif jobs cancel <jobId> --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-cancel/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs list",
+      "slug": "jobs-list",
+      "title": "List queued jobs",
+      "description": "Lists jobs across Known projects in queue order. Use it to see which work will run next or find a job id for inspection.",
+      "helpPage": "# List queued jobs\r\n\r\n`jobs list` lists queued work across the Known projects on this installation, in the order the Motif job runner will claim it.\r\n\r\n## When to use it\r\n\r\nUse this to find work that is waiting or running, or to get a job id for inspection. The `--all` flag is required because the queue spans projects rather than one project path.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs list --all --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output shows jobs and their queue positions. JSON returns the queue as structured data, including each job's project and status.\r\n\r\n## Related commands\r\n\r\n- [Inspect a job](cmd:jobs%20show) reads one job's detail.\r\n- [Reorder queued work](cmd:jobs%20move) changes which eligible job runs next.\r\n",
+      "usage": [
+        "Usage: motif jobs list --all [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-list/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs move",
+      "slug": "jobs-move",
+      "title": "Reorder queued work",
+      "description": "Changes a job's position in the queue by moving it before another job or to either end. Use it when work across Known projects needs a different order.",
+      "helpPage": "# Reorder queued work\r\n\r\n`jobs move` changes where a job sits in the shared queue by placing it before another job or at the top or bottom.\r\n\r\n## When to use it\r\n\r\nUse this when queued work across Known projects needs a different order. Queue order is stored and determines what work runs next; it is not merely a display sort.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs move <jobId> --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --to-top --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe command reports the moved job's position or its updated queue status. Use `--before <jobId>`, `--to-top`, or `--to-bottom` to choose the destination.\r\n\r\n## Related commands\r\n\r\n- [List queued jobs](cmd:jobs%20list) checks the resulting order.\r\n- [Inspect a job](cmd:jobs%20show) reads one job's current state.\r\n",
+      "usage": [
+        "Usage: motif jobs move <jobId> --project <fwdata> (--before <jobId> | --to-top | --to-bottom) [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-move/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs requeue",
+      "slug": "jobs-requeue",
+      "title": "Retry a job",
+      "description": "Queues an eligible job to run again. Use it after inspecting a refusal or transient failure; requeue does not change Proposal content.",
+      "helpPage": "# Retry a job\r\n\r\n`jobs requeue` requests another run of an eligible job for a project.\r\n\r\n## When to use it\r\n\r\nUse this after inspecting a refused or interrupted job and deciding its work should be tried again. Requeueing changes job scheduling; it does not change the Proposal, Baseline, or Selection that the job used.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs requeue <jobId> --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response reports the job's new state or explains why it cannot be requeued. Check the state with `jobs show` before relying on a completed result.\r\n\r\n## Related commands\r\n\r\n- [Inspect a job](cmd:jobs%20show) shows its status and progress.\r\n- [List queued jobs](cmd:jobs%20list) shows its position among other work.\r\n",
+      "usage": [
+        "Usage: motif jobs requeue <jobId> --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-requeue/"
+    },
+    {
+      "kind": "command",
+      "code": "jobs show",
+      "slug": "jobs-show",
+      "title": "Inspect a job",
+      "description": "Reads the stored status of one durable job. Use it to inspect a Baseline Refresh, Dry Run, Trial, or Apply job's current lifecycle state.",
+      "helpPage": "# Inspect a job\r\n\r\n`jobs show` reads the stored status of one durable job for a project.\r\n\r\n## When to use it\r\n\r\nUse this after a command returns a job id, or when a job appears in the queue. A job can represent a Baseline Refresh, Dry Run, Trial, or Apply; its status shows where that work is in its lifecycle.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif jobs show <jobId> --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output shows the job kind, status, attempt number, update time, and queue order when available. JSON returns the structured status, cancellation and failure details, queue order, and Trial word progress when available.\r\n\r\n## Related commands\r\n\r\n- [List queued jobs](cmd:jobs%20list) finds jobs across Known projects.\r\n- [Read job Assessments](cmd:jobs%20assessments) lists results from a completed job.\r\n",
+      "usage": [
+        "Usage: motif jobs show <jobId> --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/jobs-show/"
+    },
+    {
+      "kind": "command",
+      "code": "open",
+      "slug": "open",
+      "title": "Open a project",
+      "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",
+      "helpPage": "# Open a project\r\n\r\n`open` reads a saved FieldWorks language project and reports its identity and basic counts. It does not change the project.\r\n\r\n## When to use it\r\n\r\nUse `open` to check that a `.fwdata` path names a readable project before you capture a Baseline or inspect its stored evidence.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif open \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\"\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output summarizes the project. Add `--json` to get the structured project summary for a script or an AI agent.\r\n\r\n## Related commands\r\n\r\n- [Capture a Baseline](cmd:baseline%20capture) records the saved project state for later measurements.\r\n- [Measure a Selection](cmd:assess) runs PanGloss over chosen words.\r\n",
+      "usage": [
+        "Usage: motif open <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/open/"
+    },
+    {
+      "kind": "command",
+      "code": "overview",
+      "slug": "overview",
+      "title": "Read the project Overview",
+      "description": "Displays the latest saved counts, Text Coverage, manual-analysis agreement, timing, and warnings. It reads stored evidence and does not start a new run.",
+      "helpPage": "# Read the project Overview\r\n\r\n`overview` presents the latest evidence Motif has already stored for a project: counts, Text Coverage, agreement with manual analyses, timing, and warnings.\r\n\r\n## When to use it\r\n\r\nUse it for a quick read of where the project stands. The Overview is a projection of stored evidence; returning to it does not capture a Baseline or start PanGloss.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif overview --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output shows the available project measurements and warnings. JSON emits the same Overview in a structured response. If nothing has been measured, the response reports that no evidence is available.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) records new parser evidence.\r\n- [Read grammar warnings](cmd:warnings) inspects stored grammar-check findings.\r\n",
+      "usage": [
+        "Usage: motif overview --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/overview/"
+    },
+    {
+      "kind": "command",
+      "code": "report",
+      "slug": "report",
+      "title": "Read an Assessment report",
+      "description": "Calculates a named report from an Assessment and project data. Use it to answer a focused question about words, Texts, or grammar without rerunning PanGloss.",
+      "helpPage": "# Read an Assessment report\r\n\r\n`report` calculates a named Report from one stored Assessment and the project's own data. It answers a focused question about measured evidence without running PanGloss again.\r\n\r\n## When to use it\r\n\r\nUse a Report to inspect counts or findings for words, Texts, or grammar after an Assessment exists. First list the available kinds if you do not know which one matches your question.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif report --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --assessment <assessmentId> --kind <kind> --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response contains findings for the requested kind and can be narrowed to a word or Text. `--json` returns structured results. Reports are advisory; they do not decide whether an Apply is allowed.\r\n\r\n## Related commands\r\n\r\n- [List report kinds](cmd:report%20--list-kinds) shows accepted values for `--kind`.\r\n- [Compare two Assessments](cmd:compare) stores a measured difference between runs.\r\n",
+      "usage": [
+        "Usage: motif report --project <fwdata> --assessment <assessmentId> --kind <kind> [--word <w>] [--text <t>] [--json]",
+        "Usage: motif report --list-kinds [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/report/"
+    },
+    {
+      "kind": "command",
+      "code": "report --list-kinds",
+      "slug": "report-list-kinds",
+      "title": "List report kinds",
+      "description": "Lists the report kinds accepted by report --kind. Run it first when you need to choose a report for stored evidence.",
+      "helpPage": "# List report kinds\r\n\r\n`report --list-kinds` prints the stable kind codes accepted by `report --kind`.\r\n\r\n## When to use it\r\n\r\nRun this when writing a script or choosing a Report and you need to know which kinds Motif supports. The returned codes are machine-readable identifiers; they are not display labels.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif report --list-kinds\r\n```\r\n\r\n## What it prints\r\n\r\nThe command lists available Report kinds. Add `--json` for a structured list that an AI agent or script can select from without parsing terminal text.\r\n\r\n## Related commands\r\n\r\n- [Read an Assessment report](cmd:report) runs one of the listed kinds.\r\n- [Inspect parse timing](cmd:timing) reads recorded timing evidence directly.\r\n",
+      "usage": [
+        "Usage: motif report --list-kinds [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/report-list-kinds/"
+    },
+    {
+      "kind": "command",
+      "code": "selection set-default",
+      "slug": "selection-set-default",
+      "title": "Choose a Default Selection",
+      "description": "Saves which project Texts and words Motif should measure by default. Use it to focus repeated Assessments on material a linguist has chosen.",
+      "helpPage": "# Choose a Default Selection\r\n\r\n`selection set-default` saves which project Texts and added words Motif measures when a command does not name another Selection.\r\n\r\n## When to use it\r\n\r\nUse this to focus repeatable Assessments on a linguist-chosen set of material. Texts are identified by GUID, not by title, and added words can be included even when they do not occur in a Text.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif selection set-default --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --name \"Verb examples\" --texts <textGuid> --add-words \"mala,ma\"\r\n```\r\n\r\n## What it prints\r\n\r\nThe command reports the saved Selection name and its settings. Add `--json` to receive the structured Selection response.\r\n\r\n## Related commands\r\n\r\n- [Show the Default Selection](cmd:selection%20show) reads what was saved.\r\n- [List project Texts](cmd:texts%20list) finds Text GUIDs to select.\r\n",
+      "usage": [
+        "Usage: motif selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] [--add-words <word,word>] [--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/selection-set-default/"
+    },
+    {
+      "kind": "command",
+      "code": "selection show",
+      "slug": "selection-show",
+      "title": "Show the Default Selection",
+      "description": "Reads the saved Texts, added words, and limits that determine what an Assessment measures when no other Selection is supplied.",
+      "helpPage": "# Show the Default Selection\r\n\r\n`selection show` reads the saved Default Selection for a FieldWorks project. It reports the chosen Texts, added words, and measurement limits.\r\n\r\n## When to use it\r\n\r\nUse this before an Assessment when you need to know which words Motif will measure by default. Each Assessment keeps the exact words it resolved, so later edits to this setting do not change earlier evidence.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif selection show --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe command prints the saved Selection name, Text ids, added words, and limits. JSON returns the same settings as a structured response.\r\n\r\n## Related commands\r\n\r\n- [Choose a Default Selection](cmd:selection%20set-default) changes the saved word list.\r\n- [Measure a Selection](cmd:assess) uses it when no explicit source is supplied.\r\n",
+      "usage": [
+        "Usage: motif selection show --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/selection-show/"
+    },
+    {
+      "kind": "command",
+      "code": "setup skip",
+      "slug": "setup-skip",
+      "title": "Skip project setup",
+      "description": "Marks first-time Selection setup as skipped for this project. Use it when the project can be opened but a Default Selection should not be chosen yet.",
+      "helpPage": "# Skip project setup\r\n\r\n`setup skip` records that first-time Selection setup has been skipped for this project.\r\n\r\n## When to use it\r\n\r\nUse it when a project is ready to open but nobody should choose a Default Selection yet. This records the choice without creating a Selection or measuring any words.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif setup skip --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe command confirms the setup choice, or returns it as structured JSON. Later, a Default Selection can still be set explicitly.\r\n\r\n## Related commands\r\n\r\n- [Choose a Default Selection](cmd:selection%20set-default) records the words to measure.\r\n- [Read the project Overview](cmd:overview) reads the latest stored project evidence.\r\n",
+      "usage": [
+        "Usage: motif setup skip --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/setup-skip/"
+    },
+    {
+      "kind": "command",
+      "code": "show-corpus",
+      "slug": "show-corpus",
+      "title": "Show a Corpus",
+      "description": "Reads the provenance, tokeniser, and licence capabilities recorded for one Corpus. Use it to verify what a Corpus allows before using its text as evidence.",
+      "helpPage": "# Show a Corpus\r\n\r\n`show-corpus` reads the provenance, tokeniser, and licence capabilities recorded for one Corpus.\r\n\r\n## When to use it\r\n\r\nUse it before relying on Corpus material as evidence, especially when redistribution or derived use matters. The response preserves unknown licence capabilities instead of treating them as permission.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif show-corpus --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" stories --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe command displays the selected Corpus and its recorded Documents. JSON returns the full detail response, including the three licence capabilities and their recorded basis.\r\n\r\n## Related commands\r\n\r\n- [List Corpora](cmd:corpora) finds Corpus ids.\r\n- [Add a Corpus Document](cmd:add-document) records another Document's source.\r\n",
+      "usage": [
+        "Usage: motif show-corpus --project <fwdata> <corpusId> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/show-corpus/"
+    },
+    {
+      "kind": "command",
+      "code": "stats",
+      "slug": "stats",
+      "title": "Query parse statistics",
+      "description": "Forwards statistics options to PanGloss using the grammar and cache recorded for an Assessment. Use it to inspect parse costs after an Assessment is available.",
+      "helpPage": "# Query parse statistics\r\n\r\n`stats` forwards a PanGloss statistics query using the grammar and cache recorded for an Assessment. Motif preserves the PanGloss options after `--` instead of interpreting them.\r\n\r\n## When to use it\r\n\r\nUse this after an Assessment with statistics when you need a focused count or a JSONL result from PanGloss. Put `--json` before `--` to request structured rows from Motif.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif stats \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json -- --group word\r\n```\r\n\r\n## What it prints\r\n\r\nWithout `--json`, PanGloss's text output is passed through. With `--json`, Motif returns the selected Assessment, grammar and cache paths, and parsed statistics rows.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) records Assessment evidence and statistics.\r\n- [Inspect word analyses](cmd:analyses) reads manual and Assessment-backed analysis evidence.\r\n",
+      "usage": [
+        "Usage: motif stats <project> [--assessment <id>] [--json] [-- <pangloss stats options>]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/stats/"
+    },
+    {
+      "kind": "command",
+      "code": "texts list",
+      "slug": "texts-list",
+      "title": "List project Texts",
+      "description": "Lists Text records from the project's current Baseline with their identity and interlinearization data. Use it to find Text ids for a Default Selection or Assessment.",
+      "helpPage": "# List project Texts\r\n\r\n`texts list` reads Text records from the project's current Baseline and returns their GUIDs, titles, and interlinearization data.\r\n\r\n## When to use it\r\n\r\nUse this to find Text GUIDs before choosing them for a Default Selection or an Assessment. The command reads the Baseline, so capture one after saving project changes if you need to see newly added Texts. Titles help a person recognize a Text; the GUID is the stable selector.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif texts list --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --json\r\n```\r\n\r\n## What it prints\r\n\r\nHuman output lists each Text's title, interlinearization percentage, and GUID. JSON returns those details with a flag showing whether a Baseline was available; without a Baseline, human output asks you to capture one first.\r\n\r\n## Related commands\r\n\r\n- [Choose a Default Selection](cmd:selection%20set-default) stores Text GUIDs for later runs.\r\n- [Measure a Selection](cmd:assess) can measure words from named Texts.\r\n",
+      "usage": [
+        "Usage: motif texts list --project <fwdata> [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/texts-list/"
+    },
+    {
+      "kind": "command",
+      "code": "timing",
+      "slug": "timing",
+      "title": "Inspect parse timing",
+      "description": "Reads timing evidence for an Assessment, optionally narrowed to words or grouped by kind or rule. Use it to locate expensive parsing work after an Assessment.",
+      "helpPage": "# Inspect parse timing\r\n\r\n`timing` reads timing measurements recorded in an Assessment. It can narrow the result to words and group costs by kind or rule.\r\n\r\n## When to use it\r\n\r\nUse this when an Assessment shows slow parsing and you want to identify which rules or kinds account for the time. Name an Assessment when the project has more than one measurement.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif timing --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --assessment <assessmentId> --by rule --top 10\r\n```\r\n\r\n## What it prints\r\n\r\nThe command lists the selected timing groups and their measured costs. `--json` returns rows and totals as structured data for further analysis.\r\n\r\n## Related commands\r\n\r\n- [Measure a Selection](cmd:assess) creates timing evidence.\r\n- [Query parse statistics](cmd:stats) forwards a query to PanGloss for detailed counts.\r\n",
+      "usage": [
+        "Usage: motif timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] [--by kind|rule] [--rule <name>] [--top N] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/timing/"
+    },
+    {
+      "kind": "command",
+      "code": "warnings",
+      "slug": "warnings",
+      "title": "Read grammar warnings",
+      "description": "Reads stored grammar-check findings and can filter them by code or warning level. Use it after grammar check to inspect the reported problems.",
+      "helpPage": "# Read grammar warnings\r\n\r\n`warnings` reads grammar-check findings already stored for a project. It can filter by diagnostic code or show only findings at warning level.\r\n\r\n## When to use it\r\n\r\nUse it after [Check a grammar](cmd:grammar%20check) when you want to inspect reported findings. Combine `--kind` and `--left-out` to narrow a large result without rerunning the check.\r\n\r\n## Example\r\n\r\n```powershell\r\nmotif warnings --project \"C:\\FieldWorks\\Projects\\Koro\\Koro.fwdata\" --left-out --json\r\n```\r\n\r\n## What it prints\r\n\r\nThe response includes separate error, warning, and information counts, plus findings with descriptions, guidance, subjects, and links where available. `--left-out` keeps warning-level findings only. With no Baseline, the command says to capture one; when a Baseline has no stored check, it says the grammar has not been checked yet.\r\n\r\n## Related commands\r\n\r\n- [Check a grammar](cmd:grammar%20check) records fresh findings.\r\n- [Read the project Overview](cmd:overview) includes the warning count with other stored evidence.\r\n",
+      "usage": [
+        "Usage: motif warnings --project <fwdata> [--kind <code>] [--left-out] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/warnings/"
+    },
+    {
+      "kind": "term",
+      "code": "assessment",
+      "slug": "assessment",
+      "title": "A recorded measurement",
+      "description": "An Assessment is one immutable measurement of one kind, made by an Assessor. A PanGloss run may produce several Assessments, such as parse timing and correctness for a Selection.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/assessment/"
+    },
+    {
+      "kind": "term",
+      "code": "baseline",
+      "slug": "baseline",
+      "title": "A saved project starting point",
+      "description": "A Baseline is a saved, minimal, file-backed copy of a project from which Motif can make independent Dry Run copies. When captured from a project FieldWorks holds open, it reflects FieldWorks' last save.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/baseline/"
+    },
+    {
+      "kind": "term",
+      "code": "default-selection",
+      "slug": "default-selection",
+      "title": "Words measured by default",
+      "description": "A project's Default Selection is the chosen Texts plus any added words Motif measures when no other Selection is named. Motif resolves it to an exact word list for each run.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/default-selection/"
+    },
+    {
+      "kind": "term",
+      "code": "drift",
+      "slug": "drift",
+      "title": "Evidence no longer matches",
+      "description": "Drift means a Dry Run or an individual change no longer matches the project state it was made against. In the window, a change with missing or changed inputs is shown as ‘no longer fits’.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/drift/"
+    },
+    {
+      "kind": "term",
+      "code": "dry-run",
+      "slug": "dry-run",
+      "title": "Effects measured on a copy",
+      "description": "A Dry Run applies a Proposal to a throwaway project copy and reads back the effects. It leaves the live model unchanged.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/dry-run/"
+    },
+    {
+      "kind": "term",
+      "code": "overview",
+      "slug": "overview",
+      "title": "The latest stored evidence",
+      "description": "The Overview presents project counts and measurements already recorded by Motif. Reading it does not start a Refresh or Assessment.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/overview/"
+    },
+    {
+      "kind": "term",
+      "code": "preflight",
+      "slug": "preflight",
+      "title": "The final fit check",
+      "description": "The CLI's preflight command checks changes against the live model before Apply. A change whose required inputs changed or disappeared no longer fits.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/preflight/"
     },
     {
       "kind": "term",
       "code": "proposal",
       "slug": "proposal",
-      "title": "Proposal",
-      "description": "A named set of changes that can be reviewed and applied as one unit.",
-      "helpPage": "# Proposal\n\nA named set of Motif operations that is reviewable as one unit.\n",
+      "title": "A reviewable set of changes",
+      "description": "A Proposal groups related Motif operations so a person can inspect, measure, and apply them as one unit.",
+      "helpPage": null,
       "url": "https://motif-docs.pages.dev/reference/terms/proposal/"
+    },
+    {
+      "kind": "term",
+      "code": "text-coverage",
+      "slug": "text-coverage",
+      "title": "Share of your text that parses",
+      "description": "Text Coverage is the share of the Default Selection's words, and of their occurrences in the chosen Texts, that parse. The same share measured over a Corpus is called grammar coverage.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/text-coverage/"
+    },
+    {
+      "kind": "term",
+      "code": "walkthrough",
+      "slug": "walkthrough",
+      "title": "A tested window guide",
+      "description": "A Walkthrough is a script that tests the real Motif window using fixed data and produces screenshots at marked steps. It can also render a short, silent clip.",
+      "helpPage": null,
+      "url": "https://motif-docs.pages.dev/reference/terms/walkthrough/"
+    },
+    {
+      "kind": "guide",
+      "code": "agents/handoff",
+      "slug": "agents/handoff",
+      "title": "Reading a Handoff",
+      "description": "A Motif Handoff is a folder for an agent to inspect without connecting to the project or running Motif. Start with handoff.md: it explains the included material and contains the question prepared for the chat model.",
+      "helpPage": "# Reading a Handoff\r\n\r\nA Motif Handoff is a folder for an agent to inspect without connecting to the project or running Motif. Start with `handoff.md`: it explains the included material and contains the question prepared for the chat model.\r\n\r\nThe folder includes `grammar.json`, `texts.json`, a Python reader named `parse_grammar_texts_assessment.py`, and the handoff notes. When the Handoff includes an Assessment, it also contains `assessment.json`. Read the files as linguistic project data; they may contain real grammar rules, lexicon entries, and text.\r\n\r\nUse the helper’s own help to see its commands, then ask focused questions against the supplied files:\r\n\r\n```powershell\r\npython parse_grammar_texts_assessment.py --help\r\npython parse_grammar_texts_assessment.py word --help\r\n```\r\n\r\nFor an assessed folder, the current CLI exports a retained Assessment invocation rather than silently running a fresh one. To create one, first run [assess](cmd:assess) with `--json`, read `invocationId` from its response, then pass that value to [handoff](cmd:handoff):\r\n\r\n```powershell\r\nmotif handoff \"C:\\Projects\\Sena.fwdata\" --out \"C:\\handoffs\\Sena\" --invocation <invocationId> --json\r\n```\r\n\r\nThe successful JSON response reports `outputDirectory`, `baseline`, `selection`, `files`, `assessmentIds`, optional `invocationId`, `pastedHeader`, and `handoffMarkdown`. Use `--no-assess` for a folder without `assessment.json`; `--texts <guid,guid>` can be used with that option to select texts.\r\n\r\nTreat every file as potentially sensitive and share it only with a service approved for that project.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/agents/handoff/"
+    },
+    {
+      "kind": "guide",
+      "code": "agents/measure-a-grammar",
+      "slug": "agents/measure-a-grammar",
+      "title": "Measuring a grammar",
+      "description": "These commands answer different questions. grammar check asks PanGloss to inspect the whole grammar and stores findings for the current Baseline. It does not parse selected words. assess parses a Selection and records one or more Assessments. overview reads stored summaries; stats queries statistics from a stored run.",
+      "helpPage": "# Measuring a grammar\r\n\r\nThese commands answer different questions. `grammar check` asks PanGloss to inspect the whole grammar and stores findings for the current [Baseline](term:baseline). It does not parse selected words. `assess` parses a Selection and records one or more [Assessments](term:assessment). `overview` reads stored summaries; `stats` queries statistics from a stored run.\r\n\r\nCapture a Baseline explicitly with [baseline capture](cmd:baseline%20capture) when you want to name that step:\r\n\r\n```powershell\r\nmotif baseline capture \"C:\\Projects\\Sena.fwdata\" --json\r\n```\r\n\r\nThen use [assess](cmd:assess) to measure the saved Default Selection, or name a source such as all wordforms. Read stored summaries with [overview](cmd:overview) and query statistics by replaying the retained parser evidence and cache for a stored Assessment with [stats](cmd:stats):\r\n\r\n```powershell\r\nmotif assess \"C:\\Projects\\Sena.fwdata\" --all-wordforms --json\r\nmotif overview --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif stats \"C:\\Projects\\Sena.fwdata\" --json\r\n```\r\n\r\n`assess` is synchronous in the current CLI. If you give no Selection flags, it uses the saved Default Selection. Other supported sources include `--texts <guid,guid>`, `--words <file>`, and retry options such as `--retry-failed --retry-source-assessment <id>`. The command ensures a Baseline exists if needed.\r\n\r\nThe successful `assess --json` response includes the invocation identifier and the Assessment records produced. For example, its relevant fields have this shape:\r\n\r\n```json\r\n{\r\n  \"invocationId\": \"<invocation-id>\",\r\n  \"assessmentIds\": [\"<assessment-id>\"],\r\n  \"measurements\": [\r\n    {\r\n      \"assessmentId\": \"<assessment-id>\",\r\n      \"kind\": \"ObjectTiming\",\r\n      \"invocationId\": \"<invocation-id>\"\r\n    }\r\n  ]\r\n}\r\n```\r\n\r\nUse `invocationId` when you need to create a [Handoff](cmd:handoff) for this exact retained run. The number and kinds of `measurements` can vary with the Assessor’s supported kinds; do not assume a fixed Assessment count.\r\n\r\nUse [grammar check](cmd:grammar%20check) to check the whole grammar. [warnings](cmd:warnings) reads findings that have already been stored:\r\n\r\n```powershell\r\nmotif grammar check --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif warnings --project \"C:\\Projects\\Sena.fwdata\" --json\r\n```\r\n\r\n`warnings` reads findings already stored for that Baseline; it does not rerun the check. Without a Baseline, `grammar check` succeeds with `hasBaseline: false` and no findings. Use **Working with jobs** for commands that enqueue background work.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/agents/measure-a-grammar/"
+    },
+    {
+      "kind": "guide",
+      "code": "agents/output-and-exit-codes",
+      "slug": "agents/output-and-exit-codes",
+      "title": "Output and exit codes",
+      "description": "Use the process exit code as the success signal. Successful text output goes to stdout; handled failures go to stderr. With --json, successful responses are usually the command’s JSON object itself, using camelCase fields, not a common success wrapper. Some enqueue-only commands return a bare job ID even with --json.",
+      "helpPage": "# Output and exit codes\r\n\r\nUse the process exit code as the success signal. Successful text output goes to stdout; handled failures go to stderr. With `--json`, successful responses are usually the command’s JSON object itself, using camelCase fields, not a common success wrapper. Some enqueue-only commands return a bare job ID even with `--json`.\r\n\r\nHandled failures requested with `--json` write a failure object to stderr and nothing to stdout. Its shape is:\r\n\r\n```json\r\n{\r\n  \"ok\": false,\r\n  \"reason\": \"Busy\",\r\n  \"message\": \"<human-readable reason>\",\r\n  \"detail\": { \"project\": \"<project path>\" }\r\n}\r\n```\r\n\r\n`code` and `detail` are optional. The `reason` is a stable failure class; `message` is for a person. Exit codes are `1` for an invalid invocation, `2` for a refusal, missing item, or cancellation, `3` when the request cannot be attempted now (such as a busy project), and `4` for an inconsistent store or unexpected failure. Retry a `3` later; do not retry a refusal unchanged.\r\n\r\nThe `help` command has its own plain stderr errors and exits `2` for invalid help syntax or an unknown entry; it does not use the failure object. An unexpected exception escaping the top-level command handler also prints plain `error: ...` to stderr and exits `4`, even when `--json` was supplied. Treat any nonzero exit as failure and keep stdout and stderr separate.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/agents/output-and-exit-codes/"
+    },
+    {
+      "kind": "guide",
+      "code": "agents/start-here",
+      "slug": "agents/start-here",
+      "title": "Using Motif from an agent",
+      "description": "Call Motif as motif <verb> .... Each process handles one command; durable project state is stored between calls, so commands do not depend on a setup command in the same process. Use an explicit project path with commands that accept --project or take the .fwdata path as a positional argument.",
+      "helpPage": "# Using Motif from an agent\r\n\r\nCall Motif as `motif <verb> ...`. Each process handles one command; durable project state is stored between calls, so commands do not depend on a setup command in the same process. Use an explicit project path with commands that accept `--project` or take the `.fwdata` path as a positional argument.\r\n\r\nPrefer `--json` when the command’s usage line supports it, and read the response from stdout. Do not parse the human text rendering. For example:\r\n\r\n```powershell\r\nmotif overview --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif assess \"C:\\Projects\\Sena.fwdata\" --all-wordforms --json\r\nmotif jobs list --all --json\r\n```\r\n\r\nTo list help entries in one call, run `motif help --all --json`. The JSON has a `locale`, a `siteRoot`, and `entries` for Released commands and glossary terms. Each entry has a code, slug, title, description, a `helpPage` field containing the full Help page Markdown when a page exists, and a URL; command entries also include usage lines and a surface. For one entry, `motif help <code>` prints its title, description, URL, and (for a command) usage. Add `--full` to print the expanded page, or `--json` to get that entry's metadata, including its full Help page when available. The documentation website also publishes `llms.txt`, a plain-text index of every page. With no arguments, `motif` prints the usage catalog to stderr and exits with code 1.\r\n\r\nDeveloper commands are not enabled by default. To use `dry-run` or `trial` in a development environment, set `MOTIF_DEVELOPER_COMMANDS` to exactly `1` before starting Motif. Most commands run synchronously, but `baseline-refresh`, `dry-run`, and `trial` enqueue jobs. See **Working with jobs**. For errors and retry decisions, see **Output and exit codes**.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/agents/start-here/"
+    },
+    {
+      "kind": "guide",
+      "code": "agents/work-with-jobs",
+      "slug": "agents/work-with-jobs",
+      "title": "Working with jobs",
+      "description": "The Motif job runner handles durable work that outlives the command that queued it. baseline-refresh and the Developer commands dry-run and trial enqueue jobs. A synchronous assess command is not a job.",
+      "helpPage": "# Working with jobs\r\n\r\nThe Motif job runner handles durable work that outlives the command that queued it. [baseline-refresh](cmd:baseline-refresh) and the Developer commands `dry-run` and `trial` enqueue jobs. A synchronous [assess](cmd:assess) command is not a job.\r\n\r\n```powershell\r\nmotif jobs list --all --json\r\nmotif jobs show <jobId> --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif jobs assessments <jobId> --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif jobs cancel <jobId> --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif jobs requeue <jobId> --project \"C:\\Projects\\Sena.fwdata\" --json\r\nmotif jobs move <jobId> --project \"C:\\Projects\\Sena.fwdata\" --to-top --json\r\n```\r\n\r\n[`jobs list`](cmd:jobs%20list) with `--all` spans known projects and reports active work in queue order; it is the jobs command that does not take `--project`. [`jobs show`](cmd:jobs%20show) returns the job’s status, attempt, update time, cancellation request, failure category, version, and queue position when available. Status values are lower-case hyphenated strings such as `waiting-for-project-host`. A status response has fields like:\r\n\r\n```json\r\n{\r\n  \"jobId\": \"<job-id>\",\r\n  \"projectKey\": \"<project-key>\",\r\n  \"found\": true,\r\n  \"kind\": \"trial\",\r\n  \"status\": \"waiting-for-project-host\",\r\n  \"attempt\": 1,\r\n  \"updatedUtc\": \"<UTC timestamp>\",\r\n  \"cancellationRequested\": false,\r\n  \"failureCategory\": null,\r\n  \"version\": 1,\r\n  \"queueOrder\": 1\r\n}\r\n```\r\n\r\nThe queue-list response is `{ \"jobs\": [...] }`. Each entry includes `jobId`, `projectKey`, `projectPath`, `kind`, `status`, `attempt`, `updatedUtc`, and `queueOrder`. `jobs assessments` returns `jobId` and an `assessments` array whose entries contain `assessmentId`, `assessor`, `kind`, and `savedUtc`.\r\n\r\n[`jobs cancel`](cmd:jobs%20cancel) on a queued or parked job moves it to cancelled. Cancelling a running job requests cancellation; the runner completes it. [`jobs requeue`](cmd:jobs%20requeue) is for a terminal job and creates a fresh attempt with a new job ID. Use [`jobs assessments`](cmd:jobs%20assessments) to read the Assessment IDs produced by a completed job.\r\n\r\nWithout `--wait`, enqueueing `dry-run` or `trial` returns a bare job ID, including under `--json`. With `--wait`, the CLI waits up to two minutes by default; `--wait-timeout-ms <ms>` changes the bound. See **Output and exit codes** for the failure shape and exit mapping.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/agents/work-with-jobs/"
+    },
+    {
+      "kind": "guide",
+      "code": "ai-handoff",
+      "slug": "ai-handoff",
+      "title": "AI Handoff",
+      "description": "AI Handoff writes a folder you can share with a chat model. It includes project context for the selected Assessment and a starter question. The page shows what it plans to write and a data-sensitivity notice before you start; the folder can include real grammar rules, lexicon entries, and sentences from the selected Texts.",
+      "helpPage": "# AI Handoff\r\n\r\n**AI Handoff** writes a folder you can share with a chat model. It includes project context for the selected Assessment and a starter question. The page shows what it plans to write and a data-sensitivity notice before you start; the folder can include real grammar rules, lexicon entries, and sentences from the selected Texts.\r\n\r\n1. Read the notice. If it says the files will include only words chosen on the Texts page, choose **Hand off the whole Assessment instead** to use the completed Assessment.\r\n2. Choose **Write the AI Handoff**. If you have already written one, the button says **Write the AI Handoff again**.\r\n3. Choose an output folder when prompted and wait for Motif to finish writing.\r\n4. Review the files, then drag the files into your chat or use the page’s copy actions for the prompt and paths.\r\n\r\nThe page tells you if a newer Assessment makes the files out of date. Write the Handoff again when you want the chat model to receive the newer results. Only share the files if you are comfortable sending their linguistic data to that service.\r\n\r\n![AI Handoff files ready to share](shot:ai-handoff/handoff-ready)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/ai-handoff/"
+    },
+    {
+      "kind": "guide",
+      "code": "apply-to-fieldworks",
+      "slug": "apply-to-fieldworks",
+      "title": "Applying changes",
+      "description": "Apply writes the pending analysis changes to the FieldWorks project as one operation. Before starting, save your work in FieldWorks and close the project there; Motif blocks Apply while FieldWorks is holding it open.",
+      "helpPage": "# Applying changes\r\n\r\nApply writes the pending analysis changes to the FieldWorks project as one operation. Before starting, save your work in FieldWorks and close the project there; Motif blocks Apply while FieldWorks is holding it open.\r\n\r\n1. Open **Review changes** and read every listed change.\r\n2. Choose **Check these changes** and wait for the measurement to finish. Review the summary under **What applying does to the numbers**.\r\n3. Confirm that each change still fits, the evidence is complete and current, and no approved analysis would be lost.\r\n4. Choose **Apply to FieldWorks project**. Motif shows a receipt when it succeeds.\r\n\r\nIf Apply is unavailable, read the reason beside the button. A stale result needs **Refresh**; incomplete evidence needs another successful check; a change that says **No longer fits** must be removed or checked against a refreshed project. The window does not offer a way to force a change that no longer fits.\r\n\r\n![Changes applied to the FieldWorks project](shot:apply-to-fieldworks/applied-receipt)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/apply-to-fieldworks/"
+    },
+    {
+      "kind": "guide",
+      "code": "assessment",
+      "slug": "assessment",
+      "title": "Assessment",
+      "description": "An Assessment is one saved measurement of a FieldWorks project. In the desktop workflow, Motif asks PanGloss to parse the selected words and stores the result against the Baseline and Selection used for that run.",
+      "helpPage": "# Assessment\r\n\r\nAn [Assessment](term:assessment) is one saved measurement of a FieldWorks project. In the desktop workflow, Motif asks PanGloss to parse the selected words and stores the result against the Baseline and Selection used for that run.\r\n\r\nAn Assessment can tell you which words parsed, which approved analyses were reproduced, and how much time parsing took. An interrupted or limited search is recorded as incomplete; it should not be read as a completed “no parse.” The **Overview** and **Texts** pages read stored Assessment results. Opening either page does not run PanGloss.\r\n\r\nChoose **Refresh** in the window to capture the saved project and measure its [Default Selection](term:default-selection). An Assessment is evidence about a run, not a verdict that the grammar is good or bad.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/assessment/"
+    },
+    {
+      "kind": "guide",
+      "code": "baseline",
+      "slug": "baseline",
+      "title": "Baseline",
+      "description": "A Baseline is Motif’s saved reference copy of a FieldWorks project. Motif uses it to reproduce parser behavior and to compare later results with the project state it measured. It reads the .fwdata file on disk, so the Baseline reflects FieldWorks’ last save, not edits still open and unsaved there.",
+      "helpPage": "# Baseline\r\n\r\nA [Baseline](term:baseline) is Motif’s saved reference copy of a FieldWorks project. Motif uses it to reproduce parser behavior and to compare later results with the project state it measured. It reads the `.fwdata` file on disk, so the Baseline reflects FieldWorks’ last save, not edits still open and unsaved there.\r\n\r\nThe Baseline is not a backup of linked media, and it is not a live view of FieldWorks. It stays in place until you capture another one. In the window, **Refresh** captures a new Baseline and then measures the current Selection when one is available. Opening the project only reads the Baseline and results already stored.\r\n\r\nIf the project has changed since the Baseline, Motif can mark its stored numbers as stale. A stale Assessment and a change that says **No longer fits** are related to different things: one is old measurement evidence; the other is a particular pending choice that no longer matches the project. See [Drift](term:drift).\r\n",
+      "url": "https://motif-docs.pages.dev/guide/baseline/"
+    },
+    {
+      "kind": "guide",
+      "code": "cancel-a-long-run",
+      "slug": "cancel-a-long-run",
+      "title": "Cancelling a run",
+      "description": "Motif’s long actions have separate Cancel controls. Use the one beside the action that is running:",
+      "helpPage": "# Cancelling a run\r\n\r\nMotif’s long actions have separate **Cancel** controls. Use the one beside the action that is running:\r\n\r\n1. On **Texts**, choose **Cancel** beside the running Assessment.\r\n2. On **Try a Word**, choose **Cancel** while the trace is running.\r\n3. On **AI Handoff**, choose **Cancel** while Motif is writing the folder.\r\n4. On **Timing**, choose **Cancel** beside **Re-run chosen words**.\r\n\r\nThe top bar also shows **Cancel** while Refresh is running. It stops the Assessment part of Refresh if that part has started. A cancelled or interrupted search is not a completed parse result; read the run status before using its numbers.\r\n\r\nThe **Warnings** page does not show a Cancel action while **Check the grammar** is running. Wait for that check to finish before leaving the page or switching projects.\r\n\r\n![An Assessment run being cancelled](shot:cancel-an-assessment/cancelled)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/cancel-a-long-run/"
+    },
+    {
+      "kind": "guide",
+      "code": "change-an-analysis",
+      "slug": "change-an-analysis",
+      "title": "Changing an analysis",
+      "description": "In Texts, inspect the word in context or in the Matrix, then choose the parser reading or project state you want for that word form. In the Matrix, actions include Approve, Disapprove, Make Unknown, Incorrect spelling, and Add as Unknown. In Analyze texts, corresponding actions approve or disapprove a reading, make a reading Unknown, mark a spelling Incorrect, or add parser readings as Unknown. The available action may vary with the word’s current state and the reading you select.",
+      "helpPage": "# Changing an analysis\r\n\r\nIn **Texts**, inspect the word in context or in the Matrix, then choose the parser reading or project state you want for that word form. In the Matrix, actions include **Approve**, **Disapprove**, **Make Unknown**, **Incorrect spelling**, and **Add as Unknown**. In **Analyze texts**, corresponding actions approve or disapprove a reading, make a reading Unknown, mark a spelling Incorrect, or add parser readings as Unknown. The available action may vary with the word’s current state and the reading you select.\r\n\r\nThe change is kept as pending work for this project. It applies to the word form everywhere, not only the occurrence you were looking at. Look for the count of changes not applied yet, then open **Review changes** to inspect it. Nothing is written to FieldWorks while you are choosing or reviewing.\r\n\r\nTo measure the effect before applying, choose **Check these changes** in Review changes. When you are ready, close FieldWorks and choose **Apply to FieldWorks project**. See **Review changes** for the conditions that must be met first.\r\n\r\n![A new pending change in the Review changes page](shot:change-an-analysis/pending-change)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/change-an-analysis/"
+    },
+    {
+      "kind": "guide",
+      "code": "default-selection",
+      "slug": "default-selection",
+      "title": "Default Selection",
+      "description": "The Default Selection is the set of Texts and added words Motif measures when you run the project without choosing another Selection. Motif saves it with the project. Each Assessment keeps the exact word list it measured, so changing the Default Selection does not rewrite earlier results.",
+      "helpPage": "# Default Selection\r\n\r\nThe [Default Selection](term:default-selection) is the set of Texts and added words Motif measures when you run the project without choosing another Selection. Motif saves it with the project. Each [Assessment](term:assessment) keeps the exact word list it measured, so changing the Default Selection does not rewrite earlier results.\r\n\r\nThe first time you set up a project, choose texts and add any extra words in **What should Motif measure every time?** Choose **Configure…** from the project menu to edit that choice later. The Selection needs at least one text or added word before Motif can start an Assessment.\r\n\r\nThe Default Selection is not a search query that changes behind your back. Motif resolves the chosen material for each run and records what it measured. Use **Refresh** when you want the saved project and its current Default Selection measured again.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/default-selection/"
+    },
+    {
+      "kind": "guide",
+      "code": "drift",
+      "slug": "drift",
+      "title": "Stale numbers and changes",
+      "description": "In the window, Motif marks a pending change as No longer fits when the FieldWorks project has changed something that choice depended on, such as the word form or an analysis. This means the pending choice cannot safely be applied as written. It is different from stale numbers, which mean stored measurement evidence describes an earlier project state.",
+      "helpPage": "# Stale numbers and changes\r\n\r\nIn the window, Motif marks a pending change as [**No longer fits**](term:drift) when the FieldWorks project has changed something that choice depended on, such as the word form or an analysis. This means the pending choice cannot safely be applied as written. It is different from stale numbers, which mean stored measurement evidence describes an earlier project state.\r\n\r\nFor steps to check or remove a change, see **When a change no longer fits**.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/drift/"
+    },
+    {
+      "kind": "guide",
+      "code": "first-run-setup",
+      "slug": "first-run-setup",
+      "title": "Choosing what to measure",
+      "description": "For a new project, choose Refresh after opening it. The first Refresh captures a Baseline and opens setup if no Selection has been saved and setup has not been skipped. Before the first Baseline, Configure… is disabled and its detail reads Refresh first to choose Texts. Setup has four steps: Found the project, choose what to measure, choose parsing limits, and confirm the first run.",
+      "helpPage": "# Choosing what to measure\r\n\r\nFor a new project, choose **Refresh** after opening it. The first Refresh captures a Baseline and opens setup if no Selection has been saved and setup has not been skipped. Before the first Baseline, **Configure…** is disabled and its detail reads **Refresh first to choose Texts**. Setup has four steps: **Found the project**, choose what to measure, choose parsing limits, and confirm the first run.\r\n\r\nOn **What should Motif measure every time?**, choose one or more texts, or add words in the box labeled **Add words:**. A text’s interlinearized words are what Motif can compare with the analyses already approved in FieldWorks. You can add words that do not occur in the chosen texts. Choose at least one text or add at least one word to continue.\r\n\r\nOn **How much work should each word get?**, choose a parser step limit. Motif estimates how long a word may take and gives it extra time to finish. The default is 1,000,000 steps. Choose **No step limit** to remove the parser step cap; with no step limit, Motif applies no time limit.\r\n\r\nThe last step saves this as the project’s [Default Selection](term:default-selection) and starts the first [Assessment](term:assessment). Choose **Back** or **Next: texts**, **Next: limits**, and **Next: first run** to move through setup. Choose **Start first run** to save and measure. If you are editing an existing project default, the final action is **Use this Selection**; it saves the choice without starting a run. **Skip for now** closes first-time setup without saving these choices.\r\n\r\n![Choosing texts and added words in first-time setup](shot:first-run-default-selection/selection)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/first-run-setup/"
+    },
+    {
+      "kind": "guide",
+      "code": "install",
+      "slug": "install",
+      "title": "Installing Motif",
+      "description": "Motif’s current application is a Windows desktop app. The project’s README names the .NET 10 SDK for building the app from source, but this repository does not provide a user-facing installer or a download-and-install sequence. Ask your Motif administrator or maintainer which approved build to use.",
+      "helpPage": "# Installing Motif\r\n\r\nMotif’s current application is a Windows desktop app. The project’s README names the .NET 10 SDK for building the app from source, but this repository does not provide a user-facing installer or a download-and-install sequence. Ask your Motif administrator or maintainer which approved build to use.\r\n\r\nMotif can open without PanGloss, but it needs the `pangloss` executable to parse words and produce parsing measurements. If PanGloss is unavailable, parsing and AI Handoff actions can be refused while the other project pages remain available. The current documentation does not explain how end users should obtain or install PanGloss, so follow the instructions supplied with your Motif build.\r\n\r\nMotif keeps project workflow information with the project. The exact location and backup procedure for an installed copy are not described in the current user-facing materials; ask your administrator before moving or removing Motif’s project data.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/install/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/affixes-slots-and-templates",
+      "slug": "learn/affixes-slots-and-templates",
+      "title": "Affixes, slots, and templates",
+      "description": "An affix is a meaningful piece attached to a stem. A prefix comes before it, a suffix after it, and an infix inside it. As illustrative English examples, un-happy shows a prefix and kind-ness a suffix. The Turkish form evler (“houses”) illustrates a suffix attached to ev (“house”).",
+      "helpPage": "# Affixes, slots, and templates\r\n\r\nAn affix is a meaningful piece attached to a stem. A **prefix** comes before it, a **suffix** after it, and an **infix** inside it. As illustrative English examples, *un-happy* shows a prefix and *kind-ness* a suffix. The Turkish form *evler* (“houses”) illustrates a suffix attached to *ev* (“house”).\r\n\r\nLanguages often restrict which affixes can combine and in what order. A **slot** is a position in that sequence. For example, an illustrative verb pattern might allow a person marker before a tense marker. Putting the same affixes in the reverse order could produce a form the language does not use.\r\n\r\nIn FieldWorks, affix templates organize slots for a part of speech. A noun template can describe noun patterns, while a verb template can describe verb patterns. Some slots are obligatory: a valid word using that template must fill them. Others are optional and may be skipped. These settings help the parser avoid treating every affix as freely combinable with every word.\r\n\r\nWhen a trace reaches the right stem but stops before the expected ending, check the relevant template. Is the affix in the right slot? Is the order right? Is the slot required or optional as intended? Does the template apply to this part of speech? Keep one known word that should use the pattern and one similar word that should not; both help you check whether the template says what you mean.\r\n\r\nThe examples here are illustrative and simplified. Real languages can have several templates, and a slot can allow more than one affix.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/affixes-slots-and-templates/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/allomorphs-and-environments",
+      "slug": "learn/allomorphs-and-environments",
+      "title": "Allomorphs and environments",
+      "description": "One meaningful piece can have more than one form. Those forms are allomorphs. The conditions that choose between them are their environments: the sounds or features around a form that make it fit.",
+      "helpPage": "# Allomorphs and environments\r\n\r\nOne meaningful piece can have more than one form. Those forms are **allomorphs**. The conditions that choose between them are their **environments**: the sounds or features around a form that make it fit.\r\n\r\nTurkish vowel harmony is a useful real-language example. The plural suffix has the forms *-lar* and *-ler*. In the standard pattern, *-lar* follows a stem with a back last vowel, as in *okullar* (“schools”), and *-ler* follows a stem with a front last vowel, as in *evler* (“houses”). The forms belong to the same plural pattern; the stem’s vowel helps select which one fits.\r\n\r\nA **natural class** groups sounds by a shared property, such as “front vowels” or “voiceless consonants.” Instead of writing a separate environment for every vowel, a grammar can use a natural class when the same condition applies to that group. This can make a rule clearer and easier to check.\r\n\r\nWhen the parser builds the stem but cannot use the expected affix form, compare the allomorphs and their environments. Does the needed form exist? Does its environment mention the right sounds or features? Is the environment too narrow, so it misses a valid word, or too broad, so it allows the form where it does not belong?\r\n\r\nThe Turkish forms illustrate a common pattern; they are not a full account of Turkish. Real patterns may depend on additional features and exceptions.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/allomorphs-and-environments/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/index",
+      "slug": "learn/index",
+      "title": "Teach a dumb computer your language",
+      "description": "You know the words and patterns of your language. A parser does not. It follows the lexicon and rules someone entered for it, one step at a time. An AI consultant may help you work out which parser setting to inspect; Motif gives both of you evidence about what happened.",
+      "helpPage": "# Teach a dumb computer your language\r\n\r\nYou know the words and patterns of your language. A parser does not. It follows the lexicon and rules someone entered for it, one step at a time. An AI consultant may help you work out which parser setting to inspect; Motif gives both of you evidence about what happened.\r\n\r\nThe work is a loop:\r\n\r\n1. **Measure.** Save your FieldWorks work, then choose **Refresh** or run an [Assessment](term:assessment) to measure words you care about. [Text Coverage](term:text-coverage) tells you how much of the chosen material parsed.\r\n2. **Understand.** Try a difficult word in **Try a Word**. Read the parser’s furthest attempt, then follow its steps to see what it built and where it stopped. Use **Timing** when words take a long time.\r\n3. **Fix.** Use your language knowledge to check the likely cause. Make any grammar or lexicon change in FieldWorks, save it, and measure again.\r\n\r\nMotif's synthetic samples are generated to demonstrate its tools and give us small, safe places to practise. They are synthetic-turkic (Turkish-style), synthetic-bantu (Swahili-style), and synthetic-philippine (Tagalog-style), each modelled loosely on the named language. Their data are invented: they are not real language data and must not be used as descriptions of Turkish, Swahili, Tagalog, or any language.\r\n\r\nYou do not need to become a parser engineer to take part. You can tell an AI consultant what a word should mean and how it is built. Ask it to connect that analysis to the trace, suggest one small change, and name other words that should test the idea. Then check the suggestion against your language knowledge and Motif’s evidence. The AI can help with the machinery; it cannot decide what is right in your language.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/modelling-a-grammar-the-parser-can-use",
+      "slug": "learn/modelling-a-grammar-the-parser-can-use",
+      "title": "Modelling a grammar the parser can use",
+      "description": "FieldWorks will save a grammar the parser cannot fully use, and it will not always tell you. An environment with a typing mistake can quietly stop restricting its allomorph, and a slot with no working affix can drop out of its template. This page lists the habits that keep what you model in FieldWorks the same as what the parser actually runs.",
+      "helpPage": "# Modelling a grammar the parser can use\r\n\r\nFieldWorks will save a grammar the parser cannot fully use, and it will not always tell you. An environment with a typing mistake can quietly stop restricting its allomorph, and a slot with no working affix can drop out of its template. This page lists the habits that keep what you model in FieldWorks the same as what the parser actually runs.\r\n\r\n## Start from the language, then check it arrived\r\n\r\nWrite down what each part of your grammar means before you enter it: \"the plural is *-ler* after front vowels and *-lar* after back vowels.\" After you save, don't take a clean save as proof. Choose **Check the grammar** on **Warnings**, and then measure words that should use each part. Something you entered that no word needs is still unproven.\r\n\r\n## Sounds and spellings\r\n\r\nThe parser only knows the sounds in your first phoneme set, spelled the way their codes say. A sound with no code, or two sounds spelled the same way, is left out. So is any natural class that contains that sound, as a whole. When a word fails near an unusual letter, check its phoneme and code first.\r\n\r\n## Environments\r\n\r\nAn environment such as `/ [V] _` says where an allomorph may occur. Check each one after you type it: a mistake in an affix's environment can leave that allomorph allowed everywhere, so the word still parses and nothing looks wrong. For an infix, the position environment uses `#` for the start of the stem, not the edge of the word: `/# [C] _` puts the infix after the first consonant.\r\n\r\n## Allomorph order\r\n\r\nWhen several allomorphs of one morpheme could fit, the first eligible one wins and blocks the rest. Put the most specific allomorph first and the general one last.\r\n\r\n## Slots and templates\r\n\r\nEvery inflectional affix needs a slot in a template, and every slot needs at least one affix the parser can load. A slot with no usable affix disappears, and a template whose slots all disappear is dropped. **Warnings** reports inflectional affixes that have no slot.\r\n\r\n## Features and classes\r\n\r\nFeatures, their values, and inflection classes link by reference, not by name: two things with the same name are not connected. A noun-class system can use both an inflection class and a feature value for each class, as the synthetic Bantu-style sample does, but test agreement on real words before you rely on it.\r\n\r\n## What the parser does not run yet\r\n\r\nThe PanGloss parser that Motif uses (version 0.5) does not yet run some things FieldWorks lets you model:\r\n\r\n- **Reduplication** written as a copy pattern such as `[C^1][V^1]-` is not loaded. Infixes such as *-um-* do work.\r\n- **Metathesis rules** are skipped.\r\n- **Custom strata** in the parser settings are read but not applied.\r\n\r\nModel them if your analysis needs them, and expect words that depend on them not to parse yet.\r\n\r\n## When a grammar is slow\r\n\r\nParse time comes from the paths the parser has to try. Optional slots, broad environments and duplicated affixes can each add paths, but no single kind of choice is always costly. In the synthetic Bantu-style sample, 160 empty allomorphs added no measurable work, while one duplicated real affix multiplied it. Use [Timing](cmd:timing) after an [Assessment](term:assessment) to see where the work actually went. The Learn page **Why a grammar is slow** shows how to read it.\r\n\r\n## Change one thing at a time\r\n\r\nAfter each change: save in FieldWorks, choose **Refresh**, and check the words you expected to change, plus a few that shouldn't. One change per measurement tells you what each change did.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/modelling-a-grammar-the-parser-can-use/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/phonological-rules",
+      "slug": "learn/phonological-rules",
+      "title": "Phonological rules",
+      "description": "When a sound alternation follows a regular pattern, a phonological rule can describe the change once instead of listing a separate form for every word. The choice depends on how the language works: some alternations are best represented with allomorphs, some with rules, and some with both.",
+      "helpPage": "# Phonological rules\r\n\r\nWhen a sound alternation follows a regular pattern, a phonological rule can describe the change once instead of listing a separate form for every word. The choice depends on how the language works: some alternations are best represented with allomorphs, some with rules, and some with both.\r\n\r\nEnglish plural endings give an illustrative example of a familiar sound pattern. The ending is usually pronounced with a voiceless [s] after a voiceless sound, as in *cats*, and with [z] after a voiced sound, as in *dogs*. After sibilant sounds, as in *buses*, an extra vowel is heard. These examples show how nearby sounds can affect the way an ending is pronounced; spelling alone does not show every sound detail.\r\n\r\nA rule says what changes and in what environment. In plain words, one part of this pattern could be described as “make the ending voiced after a voiced sound.” A well-chosen rule covers the words that share that environment. A rule that is too broad can also change words you meant to leave alone, so check examples from both sides of the pattern.\r\n\r\nRule order matters when one rule changes something that another rule looks for. If Rule 1 creates the sound that Rule 2 needs to see, Rule 1 must apply first. If Rule 2 applies first, it cannot act on a sound that does not exist yet. When a trace shows an unexpected output, check both the rule’s environment and whether earlier rules have already changed the relevant sound.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/phonological-rules/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/reading-why-a-word-fails",
+      "slug": "learn/reading-why-a-word-fails",
+      "title": "Reading why a word fails",
+      "description": "Try a Word traces a word through the grammar in the current Baseline. The word can be new; it does not have to occur in the project’s Texts or lexicon. Enter it in Type any word..., choose Try it, and read the result. You can cancel a running trace.",
+      "helpPage": "# Reading why a word fails\r\n\r\n**Try a Word** traces a word through the grammar in the current [Baseline](term:baseline). The word can be new; it does not have to occur in the project’s Texts or lexicon. Enter it in **Type any word...**, choose **Try it**, and read the result. You can cancel a running trace.\r\n\r\nStart with the answer and search status:\r\n\r\n- **Parsed** means the parser found an analysis.\r\n- **No parse** with **Search complete** means it finished and found no analysis.\r\n- **Search incomplete** gives the stop reason when the parser did not finish. A limit is not evidence that no analysis exists.\r\n- **Nothing to parse** means the word has a character the grammar’s character table does not define.\r\n\r\nFor a failed word, look at **THE PARSER'S FURTHEST TRY** and the rule steps. The attempt shows the pieces it built and the rule that stopped it, when recorded. If it never gets a stem, begin with the lexicon. If it builds a stem but stops at an affix, check the slot order and the affix’s allomorph or environment. If a rule changes an unexpected sound, inspect the phonological rules and their order.\r\n\r\nThe trace is a record of the parser’s search, not a verdict about the word. A rule can stop one attempt while another attempt succeeds. A completed **No parse** can have several plausible causes, so compare the trace with the form and analysis you know are right. If the search was incomplete, adjust the relevant limit and try again before changing the grammar.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/reading-why-a-word-fails/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/stems-and-the-lexicon",
+      "slug": "learn/stems-and-the-lexicon",
+      "title": "Stems and the lexicon",
+      "description": "The lexicon is the grammar’s store of words and their linguistic information. A lexical entry may include a stem, a gloss that reminds you of its meaning, and a part of speech such as noun or verb. Those labels help the grammar decide which forms and patterns can apply.",
+      "helpPage": "# Stems and the lexicon\r\n\r\nThe lexicon is the grammar’s store of words and their linguistic information. A lexical entry may include a stem, a gloss that reminds you of its meaning, and a part of speech such as noun or verb. Those labels help the grammar decide which forms and patterns can apply.\r\n\r\nAs an illustrative English example, *walk* is the stem, *to move on foot* is a possible gloss, and *verb* is its part of speech. The form *walked* can be built from that stem and a past-tense ending. A gloss is a short guide for people, not a complete definition or a promise that two languages divide meaning in the same way.\r\n\r\nOne of the most common causes of failure is a missing stem. If a grammar expects to start with *walk* but that stem is absent or entered under a different form, adding the ending rule will not give the parser a starting point. In a simplified, illustrative Turkish example, the stem *ev* (“house”) is needed before the grammar can analyse *evler* (“houses”) with the plural suffix.\r\n\r\nWhen a word fails, compare the form you typed with the lexicon entry you expect. Check spelling and the relevant writing system, then check that the entry has the stem and part of speech your analysis requires. If the stem is there, move on to the affixes and rules that should build the rest of the word.\r\n\r\nThe examples here are illustrative; real entries and analyses depend on the language and the choices made in its FieldWorks project.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/stems-and-the-lexicon/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/what-the-parser-knows",
+      "slug": "learn/what-the-parser-knows",
+      "title": "What the parser knows",
+      "description": "A parser is literal. It sees the word you give it and searches using the lexicon, grammar, character information, and limits in the current Baseline. It does not know what you meant, guess a missing entry from the conversation, or silently repair a rule.",
+      "helpPage": "# What the parser knows\r\n\r\nA parser is literal. It sees the word you give it and searches using the lexicon, grammar, character information, and limits in the current [Baseline](term:baseline). It does not know what you meant, guess a missing entry from the conversation, or silently repair a rule.\r\n\r\nA **parse** is an analysis the grammar can build for a word. As an illustrative English example, *cats* can be analysed as the stem *cat* plus the plural ending *-s*. The parser must find a matching stem and a permitted way to combine it with the ending. A word can have more than one possible analysis, and a completed search may find none.\r\n\r\nThat makes “it doesn’t parse” useful information. It says that, for this word and this saved grammar, the parser did not build an analysis. The result can narrow your next question: Is the stem present? Is the ending allowed after this kind of stem? Does its form fit the sound environment? Is a sound rule changing the form?\r\n\r\nFirst check whether the search completed. A completed search with **No parse** tells you the grammar did not produce a reading. **Search incomplete** means the parser stopped before finishing; a time or step limit can cause that, so it cannot show that the grammar has no possible analysis. A word with a character missing from the grammar’s character table is a different case again.\r\n\r\nThe parser reports what its grammar allowed. You decide whether that grammar matches the language.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/what-the-parser-knows/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/why-a-grammar-is-slow",
+      "slug": "learn/why-a-grammar-is-slow",
+      "title": "Why a grammar is slow",
+      "description": "A grammar can find the right analysis and still make the parser do too much work. Optional slots, broad environments, duplicated affixes and empty affixes can each give it more paths to explore, but none of them is always costly: measure before you change anything.",
+      "helpPage": "# Why a grammar is slow\r\n\r\nA grammar can find the right analysis and still make the parser do too much work. Optional slots, broad environments, duplicated affixes and empty affixes can each give it more paths to explore, but none of them is always costly: measure before you change anything.\r\n\r\nAn optional slot lets the parser consider a form both with and without that slot. Broad environments let a rule apply in many places, creating more possible continuations. An empty affix adds no visible letters, so the parser can add it without consuming part of the word, though PanGloss often handles these cheaply: in the synthetic Bantu-style sample, 160 empty allomorphs added no measurable work. A duplicated real affix is different; there, copying one object marker into a second slot multiplied the work.\r\n\r\nUse [Timing](cmd:timing) after an [Assessment](term:assessment) to locate recorded parse time. **Timing** groups time first by kind of rule, then by rule, and then shows slow words. Start with **Slowest** or **All**, select a costly rule, and look at the words that use it. A single unusually slow word may point to its stem or environment; a costly rule affecting many words may be a broader pattern to review.\r\n\r\nCheck that each optional slot is truly optional, each environment names the sounds it should, and each affix appears only once. Change one thing at a time and measure again. If the search stopped at a step limit, more time will not fix that outcome; choose a larger step limit for the rerun. A timing result shows where work was spent, while your language knowledge helps decide whether the grammar can be made more specific.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/why-a-grammar-is-slow/"
+    },
+    {
+      "kind": "guide",
+      "code": "learn/working-with-an-ai-consultant",
+      "slug": "learn/working-with-an-ai-consultant",
+      "title": "Working with an AI consultant",
+      "description": "You bring knowledge of the language. An AI consultant can help connect that knowledge to parser rules and FieldWorks settings. Motif adds evidence: AI Handoff writes a folder you can choose to share with a chat model. It contains selected project material and, when available, an Assessment with a starter question. The folder can contain real grammar rules, lexicon entries, and sentences, so read the notice and share it only with a service you trust.",
+      "helpPage": "# Working with an AI consultant\r\n\r\nYou bring knowledge of the language. An AI consultant can help connect that knowledge to parser rules and FieldWorks settings. Motif adds evidence: **AI Handoff** writes a folder you can choose to share with a chat model. It contains selected project material and, when available, an [Assessment](term:assessment) with a starter question. The folder can contain real grammar rules, lexicon entries, and sentences, so read the notice and share it only with a service you trust.\r\n\r\nAsk a focused question. For example: “This word should be stem plus plural. The trace stops at this affix. Which slot or environment would you check first? What evidence supports that, and what other words would distinguish your suggestion from an alternative?” Ask for one small proposed change and examples that should still fail. You can ask the AI to explain parser terminology, but check every claim about your language against what speakers say and use.\r\n\r\nTreat the answer as a hypothesis, not an instruction. Check that it accounts for the failing word without breaking a known-good word. If you decide to change the grammar or lexicon, make the edit in FieldWorks, save, then choose **Refresh** and inspect the new evidence in Motif.\r\n\r\n**Review changes** has a narrower role: it reviews pending analysis choices made in Motif. If the AI suggests choosing or changing an analysis for a word, make that choice through **Texts**, then open **Review changes**. Inspect the word and action, choose **Check these changes** to measure their effect, and apply only if the changes still fit and the evidence is current. Review changes does not import an AI answer or apply grammar edits; your judgement remains in charge.\r\n",
+      "url": "https://motif-docs.pages.dev/learn/working-with-an-ai-consultant/"
+    },
+    {
+      "kind": "guide",
+      "code": "open-a-project",
+      "slug": "open-a-project",
+      "title": "Opening a project",
+      "description": "Open the project menu and choose Select new… to browse for a FieldWorks .fwdata file. To return to another project Motif knows, choose Open recent and select it. The window opens on Overview and reads the project’s stored Baseline, Selection, and results; opening it does not automatically take a new measurement.",
+      "helpPage": "# Opening a project\r\n\r\nOpen the project menu and choose **Select new…** to browse for a FieldWorks `.fwdata` file. To return to another project Motif knows, choose **Open recent** and select it. The window opens on **Overview** and reads the project’s stored Baseline, Selection, and results; opening it does not automatically take a new measurement.\r\n\r\nIf this project has no Baseline yet, press **Refresh**. Motif reads the saved `.fwdata` file to capture the Baseline. Save your latest edits in FieldWorks first if you want them included: unsaved edits in FieldWorks are not part of the file Motif reads. You do not have to close FieldWorks just to open a project, though a capture may be refused while another program holds the project.\r\n\r\nFor a project without a saved Default Selection, setup opens once a Baseline is available, unless setup was skipped. On a new project, the first **Refresh** captures the Baseline and opens setup. Before that first Baseline, **Configure…** is disabled and its detail reads **Refresh first to choose Texts**. In setup, choose texts or add words, set the parsing limits, and start the first run. You can choose **Skip for now** and use **Configure…** later to reopen setup.\r\n\r\nFieldWorks must be closed before you apply changes from Motif. This is separate from opening the project or reading its last saved state.\r\n\r\n![A project open on the Overview](shot:open-project-overview/project-opened)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/open-a-project/"
+    },
+    {
+      "kind": "guide",
+      "code": "overview",
+      "slug": "overview",
+      "title": "Overview",
+      "description": "Overview is the first page when you open a project. It gathers stored results and project counts so you can see where things stand without starting a new run.",
+      "helpPage": "# Overview\r\n\r\n**Overview** is the first page when you open a project. It gathers stored results and project counts so you can see where things stand without starting a new run.\r\n\r\nThe top card shows the project and its [Baseline](term:baseline). Other cards summarize **Text Coverage**, **Accuracy**, **Timing**, and **Warnings**. Text Coverage includes parsed words and occurrences; Accuracy compares parser readings with approved analyses; Timing shows how long parsing took; Warnings are findings from a grammar check. These are separate measures, not one overall score.\r\n\r\nIf FieldWorks has saved since the Baseline, the Overview marks its numbers as stale. Press **Refresh** when you are ready to capture the saved project and assess the [Default Selection](term:default-selection). Use the card links to open **Texts**, **Timing**, or **Warnings** for more detail. Expand **Project history** to see recorded activity.\r\n\r\n![Overview showing stored project results](shot:open-project-overview/headline-numbers)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/overview/"
+    },
+    {
+      "kind": "guide",
+      "code": "pangloss",
+      "slug": "pangloss",
+      "title": "PanGloss",
+      "description": "PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.",
+      "helpPage": "# PanGloss\r\n\r\nPanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/pangloss/"
+    },
+    {
+      "kind": "guide",
+      "code": "pending-changes",
+      "slug": "pending-changes",
+      "title": "Pending changes",
+      "description": "Pending changes are the analysis choices you have collected in Motif but have not yet written to FieldWorks. They can come from Texts and are listed together on Review changes. The window labels them as “changes not applied yet.”",
+      "helpPage": "# Pending changes\r\n\r\nPending changes are the analysis choices you have collected in Motif but have not yet written to FieldWorks. They can come from **Texts** and are listed together on **Review changes**. The window labels them as “changes not applied yet.”\r\n\r\nUse **Remove** to withdraw a choice, or return to **Texts** to make a different choice for the same word and analysis. The list belongs to its project and remains available if you close Motif and open that project again.\r\n\r\nNothing is written to FieldWorks while you are collecting or reading these changes. Before applying, use **Check these changes** to measure the touched words, confirm that the evidence is current and complete, and make sure every choice still fits. Then choose **Apply to FieldWorks project** while FieldWorks is closed.\r\n\r\nThis page describes the window’s “changes not applied yet” wording. The related stored-change concept is linked here as [pending changes](term:proposal).\r\n",
+      "url": "https://motif-docs.pages.dev/guide/pending-changes/"
+    },
+    {
+      "kind": "guide",
+      "code": "reading-the-overview",
+      "slug": "reading-the-overview",
+      "title": "Reading the Overview",
+      "description": "The Overview brings together the results Motif has already stored. The top of the page shows the project, the number of words in the Selection, text occurrences, and counts of wordforms, rules, and lexemes. Its cards summarize Text Coverage, Accuracy, Timing, and Warnings.",
+      "helpPage": "# Reading the Overview\r\n\r\nThe **Overview** brings together the results Motif has already stored. The top of the page shows the project, the number of words in the Selection, text occurrences, and counts of wordforms, rules, and lexemes. Its cards summarize **Text Coverage**, **Accuracy**, **Timing**, and **Warnings**.\r\n\r\nText Coverage reports how many selected words and text occurrences parsed. Accuracy describes whether approved analyses were kept. Timing summarizes how long parsing took, including a median and slow words. Warnings are findings from a grammar check; they are about the grammar, not a count of errors in the selected texts. These numbers answer different questions, so read the labels and breakdowns rather than comparing the headline values as if they were one score.\r\n\r\nIf FieldWorks has saved changes since Motif’s [Baseline](term:baseline), the window marks the stored results as stale. Press **Refresh** to capture the saved project again and measure the current [Default Selection](term:default-selection). Refresh is an explicit action; simply reopening the window does not rerun the parser.\r\n\r\nOpen **Project history** near the bottom of the page to see recorded activity. Choose a card’s link, such as **Texts →**, **Timing →**, or **Warnings →**, to inspect that information on its page.\r\n\r\n![Updated Overview after Refresh](shot:refresh-stale-numbers/updated-overview)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/reading-the-overview/"
+    },
+    {
+      "kind": "guide",
+      "code": "refresh-numbers",
+      "slug": "refresh-numbers",
+      "title": "Refreshing numbers",
+      "description": "Use Refresh after saving changes in FieldWorks when you want Motif’s results to reflect that saved state. Refresh is an action, not an automatic update: it captures a new Baseline from the saved project, checks the grammar for Warnings, and assesses the current Default Selection, when one is available.",
+      "helpPage": "# Refreshing numbers\r\n\r\nUse **Refresh** after saving changes in FieldWorks when you want Motif’s results to reflect that saved state. Refresh is an action, not an automatic update: it captures a new [Baseline](term:baseline) from the saved project, checks the grammar for **Warnings**, and assesses the current [Default Selection](term:default-selection), when one is available.\r\n\r\n1. Save your work in FieldWorks.\r\n2. In Motif, choose **Refresh** in the top bar and let it finish.\r\n3. Check the freshness line and the updated cards on **Overview**. The new [Assessment](term:assessment) records what was measured.\r\n\r\nIf this is the first Baseline, first-time setup may open so you can choose texts or add words before the first Assessment. If you cancel the run or the parser refuses it, the Baseline may still be newer than the numbers; read the freshness message before relying on them. Opening Motif again does not perform a Refresh for you.\r\n\r\n![Numbers refreshed against a saved project](shot:refresh-stale-numbers/updated-overview)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/refresh-numbers/"
+    },
+    {
+      "kind": "guide",
+      "code": "replace-a-pending-change",
+      "slug": "replace-a-pending-change",
+      "title": "Changing a pending change",
+      "description": "You can change your mind before Apply. To replace a pending opinion, return to Texts, open the same word form, choose the reading or action you want instead, and collect that change. A new choice for the same word and analysis slot replaces the earlier pending choice.",
+      "helpPage": "# Changing a pending change\r\n\r\nYou can change your mind before Apply. To replace a pending opinion, return to **Texts**, open the same word form, choose the reading or action you want instead, and collect that change. A new choice for the same word and analysis slot replaces the earlier pending choice.\r\n\r\nTo remove a change without replacing it:\r\n\r\n1. Open **Review changes**.\r\n2. Find the word and action you want to withdraw.\r\n3. Choose **Remove** beside it.\r\n\r\nThe remaining pending changes stay in the list. Use **Keep editing** to return to the page where the first pending change was collected. Changes belong to the project and remain available if you close Motif and open that project again.\r\n\r\n![Replacing a pending change with a new choice](shot:replace-a-pending-change/replaced-choice)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/replace-a-pending-change/"
+    },
+    {
+      "kind": "guide",
+      "code": "review-changes",
+      "slug": "review-changes",
+      "title": "Review changes",
+      "description": "Review changes gathers the analysis changes you have collected from other pages. For each word, it shows the chosen action, the relevant analyses, and whether the change still fits the current FieldWorks project. Reading this page does not apply anything.",
+      "helpPage": "# Review changes\r\n\r\n**Review changes** gathers the analysis changes you have collected from other pages. For each word, it shows the chosen action, the relevant analyses, and whether the change still fits the current FieldWorks project. Reading this page does not apply anything.\r\n\r\n1. Check each listed word and action. Choose **Remove** beside a change you no longer want.\r\n2. Choose **Check these changes** to measure the words you touched and see **What applying does to the numbers**. If the check is still running, you can choose **Cancel**.\r\n3. Apply only when the changes still fit, the numbers are current, the evidence is complete, FieldWorks is not holding the project open, and no approved analysis would be lost.\r\n4. Choose **Apply to FieldWorks project**. After a successful Apply, the page shows a receipt. There is no extra confirmation step.\r\n\r\nIf a change says **No longer fits**, Apply stays blocked. Remove that change or refresh the project and check it again. A change that no longer fits cannot be forced. See **When a change no longer fits** for steps to recheck it.\r\n\r\n![Review changes and measure their effect](shot:review-changes/measure-changes)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/review-changes/"
+    },
+    {
+      "kind": "guide",
+      "code": "switch-projects",
+      "slug": "switch-projects",
+      "title": "Switching projects",
+      "description": "Use the project menu at the top of the Motif window to move between FieldWorks projects.",
+      "helpPage": "# Switching projects\r\n\r\nUse the project menu at the top of the Motif window to move between FieldWorks projects.\r\n\r\n1. Choose **Select new…** to browse for a `.fwdata` file, or choose **Open recent** and select a project Motif already knows.\r\n2. Wait for the project’s Baseline, Selection, and stored results to load.\r\n3. Check the project name on **Overview** before taking an action.\r\n\r\nEach project has its own Motif workflow information. Switching away does not move its pending changes into another project; when you open it again, its changes are shown with that project. If an Assessment or AI Handoff is running, switching projects cancels that work before Motif loads the new project.\r\n\r\nChoose **Configure…** from the project menu to reopen the project’s saved Selection and parsing limits. Use **Refresh** when you want a new Baseline and measurement; opening the project alone only reads stored results.\r\n\r\n![The Overview after reopening a project](shot:switch-projects/project-reopened)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/switch-projects/"
+    },
+    {
+      "kind": "guide",
+      "code": "text-coverage",
+      "slug": "text-coverage",
+      "title": "Text Coverage",
+      "description": "Text Coverage shows what share of the Default Selection’s words, and their occurrences in the chosen Texts, parsed in a stored Assessment. The Overview reports both selected words and their occurrences, so the two numbers may differ: one word form can appear many times in a Text.",
+      "helpPage": "# Text Coverage\r\n\r\n[Text Coverage](term:text-coverage) shows what share of the Default Selection’s words, and their occurrences in the chosen Texts, parsed in a stored Assessment. The Overview reports both selected words and their occurrences, so the two numbers may differ: one word form can appear many times in a Text.\r\n\r\nUse the breakdown to see parsed words alongside words with no parse, incomplete searches, or other recorded outcomes. A word that reached a time or step limit did not complete its search, so read that outcome separately from a completed search with no parse.\r\n\r\nText Coverage is about the selected Texts and words. It is not the same as **Accuracy**, which compares parser readings with approved analyses, or grammar coverage over an outside Corpus. Choose **Texts** to inspect words and occurrences; use [Assessment](term:assessment) to understand which run the Overview is showing.\r\n",
+      "url": "https://motif-docs.pages.dev/guide/text-coverage/"
+    },
+    {
+      "kind": "guide",
+      "code": "texts",
+      "slug": "texts",
+      "title": "Texts",
+      "description": "Texts is where you choose material to measure and compare word analyses. Its tabs are Matrix, Analyze texts, Lists, and What changed. In Analyze texts, use Read text to follow words in context or Word list to inspect words directly. Choose texts or added words there, then use Run assessment to record results for that Selection.",
+      "helpPage": "# Texts\r\n\r\n**Texts** is where you choose material to measure and compare word analyses. Its tabs are **Matrix**, **Analyze texts**, **Lists**, and **What changed**. In **Analyze texts**, use **Read text** to follow words in context or **Word list** to inspect words directly. Choose texts or added words there, then use **Run assessment** to record results for that Selection.\r\n\r\nThe Matrix groups words by their stored project state and parser result. Select a cell to inspect its words, then open a word to see its FieldWorks analyses and parser readings. In the Matrix, available actions include **Approve**, **Disapprove**, **Make Unknown**, **Incorrect spelling**, and **Add as Unknown**. In **Analyze texts**, corresponding actions approve or disapprove a reading, make a reading Unknown, mark a spelling Incorrect, or add parser readings as Unknown. The action applies to the word form everywhere in the project, not only the occurrence currently shown.\r\n\r\nChanges you collect remain pending until you review and apply them. The page’s **Review changes** link opens that list; it does not write anything to FieldWorks. [Text Coverage](term:text-coverage) appears on the Overview after a measurement.\r\n\r\n![Text Coverage changing after texts are measured](shot:texts-choose-texts/coverage)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/texts/"
+    },
+    {
+      "kind": "guide",
+      "code": "timing",
+      "slug": "timing",
+      "title": "Timing",
+      "description": "Timing shows where recorded parse time went: first by kind of rule, then by rule, then by word. It reads timing stored with an Assessment; opening the page does not start a parse. If there is no timing yet, run an Assessment first.",
+      "helpPage": "# Timing\r\n\r\n**Timing** shows where recorded parse time went: first by kind of rule, then by rule, then by word. It reads timing stored with an [Assessment](term:assessment); opening the page does not start a parse. If there is no timing yet, run an Assessment first.\r\n\r\nUnder **Look at**, choose **Step limit**, **Slowest**, or **All**. You can also use **Chosen in Texts**, a Matrix cell, a list, or words you enter by hand. The page shows the selected scope’s timing by kind and rule, followed by the slowest words. Select a rule to see the words that cost most under it.\r\n\r\nFor selected words that need another attempt, use the rerun controls to choose a longer per-word time limit or a larger step limit, then choose **Re-run chosen words**. **Cancel** stops that rerun. More time does not fix a search that reached its step limit; increase the step limit when that is the outcome.\r\n\r\n![Slowest words in Timing](shot:timing-slow-words/slowest-words)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/timing/"
+    },
+    {
+      "kind": "guide",
+      "code": "try-a-word",
+      "slug": "try-a-word",
+      "title": "Try a Word",
+      "description": "Use Try a Word to trace one word through the grammar in the current Baseline. The word does not need to appear in a chosen text or even exist in the FieldWorks project.",
+      "helpPage": "# Try a Word\r\n\r\nUse **Try a Word** to trace one word through the grammar in the current [Baseline](term:baseline). The word does not need to appear in a chosen text or even exist in the FieldWorks project.\r\n\r\n1. Enter a word in **Type any word...**.\r\n2. Choose **Try it** and wait for the trace. You can choose **Cancel** while it is running.\r\n3. Read whether the word parsed, the project’s expected analyses, and the parser’s furthest attempt. The trace lists rule steps and explains where the search stopped or what each step produced.\r\n4. Use **Open in Texts** to inspect a project word there, or follow a timing link when one is available.\r\n\r\nThe result distinguishes a completed search with no parse from a search that did not complete; a limit or interrupted search is not evidence that the grammar cannot parse the word. For a detailed trace file, use the diagnostic tools available from this page. A diagnostic can show real word forms and morphology, so inspect it before sharing.\r\n\r\n![A word parsed in Try a Word](shot:try-a-word-parses/parsed-word)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/try-a-word/"
+    },
+    {
+      "kind": "guide",
+      "code": "warnings",
+      "slug": "warnings",
+      "title": "Warnings",
+      "description": "Warnings shows findings from a check of the whole grammar. They are stored for the Baseline, and do not depend on which texts or words you selected. Findings do not block an Assessment.",
+      "helpPage": "# Warnings\r\n\r\n**Warnings** shows findings from a check of the whole grammar. They are stored for the [Baseline](term:baseline), and do not depend on which texts or words you selected. Findings do not block an Assessment.\r\n\r\nIf the grammar has not been checked for this Baseline, choose **Check the grammar**. The parser reads the whole grammar, so a check can take a minute for a large project. **Refresh** also checks the grammar after capturing a Baseline. Later visits use the stored findings until the Baseline changes; opening the page does not start a check by itself.\r\n\r\nUse **Where...** to narrow findings by where they apply, or **Problem...** to search by the problem described. Select a finding group to read **What it means** and **What usually helps**. Error-level findings are shown separately from warnings and information. A warning describes what the parser reported; use your linguistic judgment to decide what to investigate or change.\r\n\r\n![Filtered grammar findings](shot:warnings-filter/filtered-findings)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/warnings/"
+    },
+    {
+      "kind": "guide",
+      "code": "what-is-motif",
+      "slug": "what-is-motif",
+      "title": "What Motif does",
+      "description": "Motif helps you measure how a FieldWorks grammar works, inspect individual words, and collect changes to word analyses before applying them. It reads the saved FieldWorks project; FieldWorks remains the place where the project’s linguistic data lives.",
+      "helpPage": "# What Motif does\r\n\r\nMotif helps you measure how a FieldWorks grammar works, inspect individual words, and collect changes to word analyses before applying them. It reads the saved FieldWorks project; FieldWorks remains the place where the project’s linguistic data lives.\r\n\r\nMotif uses PanGloss to parse words. An [Assessment](term:assessment) records what a run measured. The [Overview](term:overview) shows stored results such as Text Coverage, accuracy against approved analyses, timing, and grammar warnings. It does not start a new run just because you open the window.\r\n\r\nWhen you want current numbers, press **Refresh**. Motif captures a [Baseline](term:baseline) from the saved project and measures the project’s [Default Selection](term:default-selection). In **Texts**, you can inspect words and choose analysis changes. **Review changes** lets you check those changes and see whether they still fit before you choose **Apply to FieldWorks project**.\r\n\r\nYou can also make an **AI Handoff** folder with project context and a question for a chat model. Review the data-sensitivity notice before sharing it: the folder can contain real grammar, lexicon, and text data.\r\n\r\n![Motif’s Overview after opening a project](shot:open-project-overview/overview)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/what-is-motif/"
+    },
+    {
+      "kind": "guide",
+      "code": "when-a-change-no-longer-fits",
+      "slug": "when-a-change-no-longer-fits",
+      "title": "When a change no longer fits",
+      "description": "When a pending change is marked No longer fits, use these steps to check the original choice against the current project.",
+      "helpPage": "# When a change no longer fits\r\n\r\nWhen a pending change is marked **No longer fits**, use these steps to check the original choice against the current project.\r\n\r\n1. Open **Review changes** and read the reason beside the affected word.\r\n2. If you want to keep trying the change, save the project in FieldWorks, then choose **Refresh** in Motif.\r\n3. On Review changes, choose **Check again against the refreshed project** if it is available. Motif checks whether the original identities still fit.\r\n4. If it still says **No longer fits**, choose **Remove the ones that no longer fit** or remove that change individually. Return to **Texts** and make a new choice against the current project.\r\n\r\nApply remains blocked while any change no longer fits. The window does not offer a way to force a change that no longer fits.\r\n\r\n![A change marked No longer fits](shot:no-longer-fits/not-fitting)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/when-a-change-no-longer-fits/"
+    },
+    {
+      "kind": "guide",
+      "code": "when-something-goes-wrong",
+      "slug": "when-something-goes-wrong",
+      "title": "When something goes wrong",
+      "description": "If a command or action is refused, first read the message in Motif. It often explains what needs to change, such as saving in FieldWorks, refreshing the Baseline, or removing a change that no longer fits.",
+      "helpPage": "# When something goes wrong\r\n\r\nIf a command or action is refused, first read the message in Motif. It often explains what needs to change, such as saving in FieldWorks, refreshing the Baseline, or removing a change that no longer fits.\r\n\r\nFor a parser trace, open **Diagnostic tools** from **Try a Word**. You can save or copy diagnostic information for a particular word. It can include real word forms and morphological details, so review it before sharing.\r\n\r\nIf the app stops after an error, the separate **Motif has stopped** window offers **Copy details**, **Save report**, **Email maintainer**, and **Close**. Include what you were doing, the page, the error message, and steps that reproduce it. Check any saved report or diagnostic for project or linguistic information before sending it to someone else.\r\n\r\n![Diagnostic information copied from Motif](shot:copy-diagnostics/copied-diagnostics)\r\n",
+      "url": "https://motif-docs.pages.dev/guide/when-something-goes-wrong/"
     }
   ]
 }
