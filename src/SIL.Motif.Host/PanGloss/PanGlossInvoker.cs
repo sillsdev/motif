@@ -74,13 +74,11 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 {
                     try
                     {
-                        if (request is PanGlossRequest.Batch or PanGlossRequest.Stats or PanGlossRequest.GrammarHealth)
-                        {
-                            var surface = await VerifySurfaceAsync(_executable, containment, token)
-                                .ConfigureAwait(false);
-                            if (!surface.IsValid)
-                                return new PanGlossOutcome.Unavailable(surface.Message) { Containment = containment.Report };
-                        }
+                        var surface = await VerifySurfaceAsync(_executable, containment, token).ConfigureAwait(false);
+                        var admission = PanGlossSurface.CheckRequest(_executable, request, surface);
+                        if (!admission.IsValid)
+                            return new PanGlossOutcome.Unavailable(admission.Message)
+                                { Containment = containment.Report };
                         var outcome = await LaunchAsync(_executable, request, containment, cap, token).ConfigureAwait(false);
                         return outcome with { Containment = containment.Report };
                     }

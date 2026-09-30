@@ -34,6 +34,9 @@ internal static class Program
 
     internal const string EnvironmentFileName = "_pangloss-environment.json";
 
+    private const string DescribeOmissionsFileName = "_fake-pangloss-describe-omissions.json";
+    private const string AdditionalStatsFlagsFileName = "_fake-pangloss-additional-stats-flags.json";
+
     /// <summary>Beside a copy of the fake, asks it to log every command it runs to <see cref="InvocationsFileName"/>.</summary>
     internal const string RecordInvocationsSentinel = "_fake-pangloss-record-invocations";
 
@@ -102,6 +105,8 @@ internal static class Program
 
     private static int RunDescription(string[] args)
     {
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, RecordInvocationsSentinel)))
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, InvocationsFileName), "describe\n");
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-wrong-description")))
         {
             Console.WriteLine(JsonSerializer.Serialize(new { schema_version = 999, binary = "not-pangloss" }));
@@ -121,21 +126,32 @@ internal static class Program
         // This sentinel makes --describe exceed the caller's timeout without affecting normal commands.
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-describe-hang")))
         {
+            File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-describe-started"), string.Empty);
             Thread.Sleep(Timeout.Infinite);
             return 0;
         }
+
+        var omissionsPath = Path.Combine(AppContext.BaseDirectory, DescribeOmissionsFileName);
+        var omissions = File.Exists(omissionsPath)
+            ? (JsonSerializer.Deserialize<string[]>(File.ReadAllText(omissionsPath)) ?? []).ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+        var additionalStatsFlagsPath = Path.Combine(AppContext.BaseDirectory, AdditionalStatsFlagsFileName);
+        var additionalStatsFlags = File.Exists(additionalStatsFlagsPath)
+            ? JsonSerializer.Deserialize<Flag[]>(File.ReadAllText(additionalStatsFlagsPath)) ?? []
+            : [];
 
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             schema_version = 1,
             binary = "pangloss",
-            commands = Dispatch.Select(command => new
+            commands = Dispatch.Where(command => !omissions.Contains(command.Name)).Select(command => new
             {
                 name = command.Name,
                 summary = "Controlled test implementation of " + command.Name,
                 hidden = false,
                 positionals = command.Positionals,
-                flags = command.Flags.Select(flag => new
+                flags = (command.Name == "stats" ? command.Flags.Concat(additionalStatsFlags) : command.Flags)
+                    .Where(flag => !omissions.Contains(command.Name + " " + flag.Name)).Select(flag => new
                 {
                     name = flag.Name,
                     takes_value = flag.TakesValue,
@@ -301,12 +317,13 @@ internal static class Program
             return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
         }
 
-        // Only the fake reads its own argv for a format; the Motif seam that built it never does.
+        // The fake alone interprets forwarded filters to build the predictable stats output.
         var formatIndex = Array.IndexOf(forwarded, "--format");
-        var jsonl = formatIndex >= 0 && formatIndex + 1 < forwarded.Length
-            && forwarded[formatIndex + 1] == "jsonl";
+        var jsonl = (formatIndex >= 0 && formatIndex + 1 < forwarded.Length
+            && forwarded[formatIndex + 1] == "jsonl") || Array.IndexOf(forwarded, "--format=jsonl") >= 0;
         var groupIndex = Array.IndexOf(forwarded, "--group");
-        var wordGroup = groupIndex >= 0 && groupIndex + 1 < forwarded.Length && forwarded[groupIndex + 1] == "word";
+        var wordGroup = (groupIndex >= 0 && groupIndex + 1 < forwarded.Length
+            && forwarded[groupIndex + 1] == "word") || Array.IndexOf(forwarded, "--group=word") >= 0;
 
         Console.Out.Write(wordGroup && jsonl ? StatsWordJsonl(behaviour) : jsonl ? StatsJsonl(behaviour) : StatsText(behaviour));
         return behaviour.ExitCode;

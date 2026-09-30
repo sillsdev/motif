@@ -84,10 +84,18 @@ public sealed class StatsArgvTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var (_, assessmentId) = CaptureBaselineAndSeedAssessment(fwDataPath, proposalId: null, "cache.sqlite");
+        var arguments =
+            $"stats \"{fwDataPath}\" -- --Group \"word And spaces\" --group word -x --group word -onedash-value";
+        var refusal = Run(arguments);
 
-        var result = Run(
-            $"stats \"{fwDataPath}\" -- --Group \"word And spaces\" --group word -x --group word " +
-            "-onedash-value");
+        Assert.Equal(2, refusal.ExitCode);
+        Assert.Contains("does not declare 'stats --Group'", refusal.Error, StringComparison.Ordinal);
+
+        var parser = FakeParser.Copy(Path.Combine(_workerRoot, "forwarding-parser"));
+        FakeParser.AddStatsDescribeFlags(parser,
+            ("--Group", true), ("-x", false), ("-onedash-value", false));
+
+        var result = Run(arguments, parser);
 
         Assert.Equal(0, result.ExitCode);
         var argv = ReadArgv();
@@ -227,7 +235,7 @@ public sealed class StatsArgvTests : IDisposable
         Assert.Equal(record.Invocation.SourceBytesSha256, BatchInvocationEvidence.DigestFile(record.Invocation.SourcePath));
         Assert.Equal(record.CacheDigest, BatchInvocationEvidence.DigestFile(record.CachePath!));
     }
-    private CliRun Run(string arguments)
+    private CliRun Run(string arguments, string? parserPath = null)
     {
         var executable = BuildOutput.Cli;
         var start = new ProcessStartInfo(executable)
@@ -242,7 +250,7 @@ public sealed class StatsArgvTests : IDisposable
         start.Environment["TEMP"] = _workerRoot;
         start.Environment["TMP"] = _workerRoot;
         start.Environment["TMPDIR"] = _workerRoot;
-        start.Environment[PanGlossExecutable.PathVariable] = FakeParser.ExecutablePath;
+        start.Environment[PanGlossExecutable.PathVariable] = parserPath ?? FakeParser.ExecutablePath;
         using var process = Process.Start(start)!;
         // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();

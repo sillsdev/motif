@@ -132,12 +132,17 @@ public sealed class PanGlossSurfaceTests
         var commands = Commands(realDescription);
         AssertRequestsMatch(commands);
         AssertTraceCommandIsDeclared(commands);
-        foreach (var fake in Commands(fakeDescription))
+        var fakeCommands = Commands(fakeDescription);
+        AssertRequestsMatch(fakeCommands);
+        AssertTraceCommandIsDeclared(fakeCommands);
+        foreach (var fake in fakeCommands)
         {
             Assert.True(commands.TryGetValue(fake.Key, out var real), $"FakePanGloss invented '{fake.Key}'.");
             Assert.False(real.GetProperty("hidden").GetBoolean());
-            Assert.Equal(real.GetProperty("positionals").GetArrayLength(),
-                fake.Value.GetProperty("positionals").GetArrayLength());
+            Assert.Equal(real.GetProperty("positionals").EnumerateArray()
+                    .Select(positional => positional.GetString()).ToArray(),
+                fake.Value.GetProperty("positionals").EnumerateArray()
+                    .Select(positional => positional.GetString()).ToArray());
             var realFlags = real.GetProperty("flags").EnumerateArray()
                 .ToDictionary(flag => flag.GetProperty("name").GetString()!, flag => flag);
             foreach (var fakeFlag in fake.Value.GetProperty("flags").EnumerateArray())
@@ -223,7 +228,8 @@ public sealed class PanGlossSurfaceTests
         Assert.Equal(2, parse.GetProperty("positionals").GetArrayLength());
         var flags = parse.GetProperty("flags").EnumerateArray()
             .ToDictionary(flag => flag.GetProperty("name").GetString()!, flag => flag);
-        Assert.True(flags.ContainsKey("--trace"), "the description does not declare 'parse --trace'.");
+        Assert.True(flags.TryGetValue("--trace", out var trace));
+        Assert.True(trace.GetProperty("takes_value").GetBoolean());
         Assert.True(flags.TryGetValue("--trace-format", out var traceFormat),
             "the description does not declare 'parse --trace-format'.");
         Assert.True(traceFormat.GetProperty("takes_value").GetBoolean());

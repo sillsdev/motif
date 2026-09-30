@@ -47,6 +47,16 @@ internal static class FakeParser
     internal static void BehaveBesideExecutable(string copiedExecutable, object behaviour) =>
         Behave(Path.GetDirectoryName(copiedExecutable)!, behaviour);
 
+    internal static void OmitDescribeEntries(string copiedExecutable, params string[] entries) =>
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!,
+            "_fake-pangloss-describe-omissions.json"), JsonSerializer.Serialize(entries));
+
+    internal static void AddStatsDescribeFlags(
+        string copiedExecutable, params (string Name, bool TakesValue)[] flags) =>
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(copiedExecutable)!,
+            "_fake-pangloss-additional-stats-flags.json"),
+            JsonSerializer.Serialize(flags.Select(flag => new { flag.Name, flag.TakesValue })));
+
     /// <summary>
     /// Copies the fake into <paramref name="directory"/> and has that copy log each command it runs, so a
     /// test can tell that work reached this copy rather than some other parser.

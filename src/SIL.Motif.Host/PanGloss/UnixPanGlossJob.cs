@@ -20,20 +20,22 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
     private readonly bool _linux;
     private readonly ulong _memoryLimitBytes;
     private readonly UnixCgroup? _cgroup;
+    private readonly string? _captureDirectory;
     private readonly HashSet<int> _processGroups = [];
     private bool _disposed;
 
-    internal UnixPanGlossJob(ulong memoryLimitBytes, bool linux)
-        : this(memoryLimitBytes, linux, TryCreateCgroup(memoryLimitBytes, linux))
+    internal UnixPanGlossJob(ulong memoryLimitBytes, bool linux, string? captureDirectory = null)
+        : this(memoryLimitBytes, linux, TryCreateCgroup(memoryLimitBytes, linux), captureDirectory)
     {
     }
 
-    private UnixPanGlossJob(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup)
+    private UnixPanGlossJob(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup, string? captureDirectory)
         : base(CreateReport(memoryLimitBytes, linux, cgroup))
     {
         _linux = linux;
         _memoryLimitBytes = memoryLimitBytes;
         _cgroup = cgroup;
+        _captureDirectory = captureDirectory;
     }
 
     public override PanGlossChildProcess Start(ProcessStartInfo startInfo)
@@ -46,8 +48,8 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             throw new ArgumentException("Contained parser arguments must use ArgumentList.", nameof(startInfo));
         EnsureExecutablePathExists(startInfo);
 
-        var stdout = CreateCaptureStream();
-        var stderr = CreateCaptureStream();
+        var stdout = CreateCaptureStream(_captureDirectory);
+        var stderr = CreateCaptureStream(_captureDirectory);
         var processId = 0;
         var actions = Marshal.AllocHGlobal(1024);
         var attributes = Marshal.AllocHGlobal(1024);
@@ -180,9 +182,22 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             .ToList();
     }
 
-    private static FileStream CreateCaptureStream() => new(Path.Combine(Path.GetTempPath(),
-        "motif-pangloss-" + Guid.NewGuid().ToString("N") + ".out"), FileMode.CreateNew,
-        FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.DeleteOnClose);
+    private static FileStream CreateCaptureStream(string? captureDirectory)
+    {
+        if (OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Private parser captures require a Unix platform.");
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.ReadWrite,
+            Share = FileShare.ReadWrite | FileShare.Delete,
+            BufferSize = 4096,
+            Options = FileOptions.DeleteOnClose,
+            UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite,
+        };
+        return new FileStream(Path.Combine(captureDirectory ?? Path.GetTempPath(),
+            "motif-pangloss-" + Guid.NewGuid().ToString("N") + ".out"), options);
+    }
 
     private static string ShellQuote(string value) => "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
 

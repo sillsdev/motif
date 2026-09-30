@@ -274,6 +274,209 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task BatchChecksAnalysesAgainstTheCachedDescriptionBeforeLaunchingThatRequest()
+    {
+        var project = Project("batch-capability-cache");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "batch-capability-parser"));
+        FakeParser.OmitDescribeEntries(executable, "batch --analyses");
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var ordinary = await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
+            "test:batch-capability-cache", CancellationToken.None);
+        var morphology = await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)) { CollectAnalyses = true },
+            "test:batch-capability-cache", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(ordinary);
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(morphology);
+        Assert.Contains("batch --analyses", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe", "batch"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task TraceChecksItsEmittedFlagsBeforeLaunchingParse()
+    {
+        var grammar = Project("trace-capability");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "trace-capability-parser"));
+        FakeParser.OmitDescribeEntries(executable, "parse --trace-details");
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"),
+            "test:trace-capability", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("parse --trace-details", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task TraceAllowsTheDescribedOptionalValueToBeOmittedBeforeItsOtherFlags()
+    {
+        var grammar = Project("trace-optional-value");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "trace-optional-parser"));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"),
+            "test:trace-optional-value", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal(["parse", grammar, "motifa", "--trace", "--trace-format", "json", "--trace-details"],
+            Argv(grammar));
+        Assert.Equal(["describe", "parse"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task StatsChecksTheCallersForwardedFlagsBeforeLaunchingStats()
+    {
+        var grammar = Project("stats-capability");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "stats-capability-parser"));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Stats(grammar, Path.Combine(_root, "stats.cache"),
+            ["--custom-filter", "selected"]), "test:stats-capability", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("stats --custom-filter", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task StatsAcceptsInlineValuesForAdvertisedFlagsAndPreservesArgv()
+    {
+        var grammar = Project("stats-inline-values");
+        var cache = Path.Combine(_root, "stats-inline-values.cache");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Stats(grammar, cache, ["--group=word", "--format=jsonl"]),
+            "test:stats-inline-values", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Contains("\"orientation\":\"word\"", completed.Output, StringComparison.Ordinal);
+        Assert.Equal(["stats", grammar, "--cache", cache, "--group=word", "--format=jsonl"], Argv(grammar));
+    }
+
+    [Fact]
+    public async Task StatsRefusesInlineValuesForAdvertisedSwitches()
+    {
+        var grammar = Project("stats-inline-switch");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "stats-inline-switch-parser"));
+        FakeParser.AddStatsDescribeFlags(executable, ("--custom-switch", false));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Stats(grammar, Path.Combine(_root, "stats-inline-switch.cache"),
+                ["--custom-switch=value"]),
+            "test:stats-inline-switch", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("stats --custom-switch", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Theory]
+    [InlineData("--undeclared", false)]
+    [InlineData("--custom-switch", true)]
+    public async Task StatsDoesNotLetAValueTakeTheNextOption(string nextOption, bool advertised)
+    {
+        var grammar = Project("stats-missing-value");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "stats-missing-value-parser"));
+        if (advertised) FakeParser.AddStatsDescribeFlags(executable, (nextOption, false));
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Stats(grammar, Path.Combine(_root, "stats-missing-value.cache"),
+                ["--group", nextOption]),
+            "test:stats-missing-value", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("does not accept a value for 'stats --group'", unavailable.Message,
+            StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task GrammarHealthRequiresItsCommandBeforeLaunchingIt()
+    {
+        var grammar = Project("grammar-health-capability");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "grammar-health-capability-parser"));
+        FakeParser.OmitDescribeEntries(executable, "grammar-health");
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.GrammarHealth(grammar, "project"),
+            "test:grammar-health-capability", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("grammar-health", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task ImportRequiresItsCommandBeforeLaunchingIt()
+    {
+        var project = Project("import-capability");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "import-capability-parser"));
+        FakeParser.OmitDescribeEntries(executable, "import");
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Import(project, Path.Combine(_root, "import-capability.json")),
+            "test:import-capability", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("import", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task AMalformedDescriptionRefusesAnImportBeforeTheRequestedCommand()
+    {
+        var project = Project("import-malformed-description");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "import-malformed-parser"));
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(executable)!, "_fake-pangloss-describe-malformed"), string.Empty);
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Import(project, Path.Combine(_root, "import-malformed.json")),
+            "test:import-malformed-description", CancellationToken.None);
+
+        var unavailable = Assert.IsType<PanGlossOutcome.Unavailable>(outcome);
+        Assert.Contains("invalid JSON", unavailable.Message, StringComparison.Ordinal);
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
+    public async Task CancellationDuringDescriptionDoesNotLaunchTheRequestedCommand()
+    {
+        var project = Project("import-cancel-description");
+        var executable = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "import-cancel-parser"));
+        var parserDirectory = Path.GetDirectoryName(executable)!;
+        File.WriteAllText(Path.Combine(parserDirectory, "_fake-pangloss-describe-hang"), string.Empty);
+        using var queue = NewQueue();
+        using var invoker = new PanGlossInvoker(executable, queue);
+        using var cancellation = new CancellationTokenSource();
+
+        var run = invoker.RunAsync(new PanGlossRequest.Import(project, Path.Combine(_root, "import-cancel.json")),
+            "test:import-cancel-description", cancellation.Token);
+        await WaitUntilAsync(() => File.Exists(Path.Combine(parserDirectory, "_fake-pangloss-describe-started")),
+            TimeSpan.FromSeconds(10));
+        await cancellation.CancelAsync();
+
+        Assert.IsType<PanGlossOutcome.Cancelled>(await run.WaitAsync(TimeSpan.FromSeconds(15)));
+        Assert.Equal(["describe"], FakeParser.Invocations(executable));
+    }
+
+    [Fact]
     public async Task Stats_ANonZeroExitIsRefusedWithItsStandardError()
     {
         var grammar = Project("stats-fail");
@@ -688,5 +891,15 @@ public sealed class PanGlossInvokerTests : IDisposable
         var before = File.ReadAllText(heartbeat);
         await Task.Delay(250);
         Assert.Equal(before, File.ReadAllText(heartbeat));
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!predicate())
+        {
+            if (DateTime.UtcNow >= deadline) throw new TimeoutException("The parser condition was not met.");
+            await Task.Delay(20);
+        }
     }
 }

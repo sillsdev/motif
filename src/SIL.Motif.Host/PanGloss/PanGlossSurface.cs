@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -5,7 +6,65 @@ using System.Text.Json;
 
 namespace SIL.Motif.Host.PanGloss;
 
-internal sealed record PanGlossSurfaceCheck(bool IsValid, string Message);
+internal sealed record PanGlossSurfaceCheck(
+    bool IsValid, string Message, PanGlossCapabilities? Capabilities = null);
+
+internal sealed record PanGlossCapabilities(
+    ImmutableDictionary<string, PanGlossCommandCapabilities> Commands)
+{
+    internal string? ValidateRequest(PanGlossRequest request)
+    {
+        var startInfo = new ProcessStartInfo();
+        request.AddArguments(startInfo, "scratch");
+        if (startInfo.ArgumentList.Count == 0 ||
+            !string.Equals(startInfo.ArgumentList[0], request.Subcommand, StringComparison.Ordinal))
+            return $"the request does not emit its declared '{request.Subcommand}' command.";
+
+        var commandName = startInfo.ArgumentList[0];
+        if (!Commands.TryGetValue(commandName, out var command))
+            return $"the description does not expose '{commandName}'.";
+        if (command.Hidden) return $"the description hides '{commandName}'.";
+
+        var positionalCount = 0;
+        for (var index = 1; index < startInfo.ArgumentList.Count; index++)
+        {
+            var argument = startInfo.ArgumentList[index];
+            if (!argument.StartsWith("-", StringComparison.Ordinal))
+            {
+                positionalCount++;
+                continue;
+            }
+            var separator = argument.IndexOf('=');
+            var flagName = separator < 0 ? argument : argument[..separator];
+            if (!command.Flags.TryGetValue(flagName, out var takesValue))
+                return $"the description does not declare '{commandName} {flagName}'.";
+            if (separator >= 0)
+            {
+                if (!takesValue)
+                    return $"the description declares '{commandName} {flagName}' without a value.";
+                continue;
+            }
+            if (!takesValue) continue;
+            var bareTrace = commandName == "parse" && flagName == "--trace";
+            if (bareTrace && (index + 1 == startInfo.ArgumentList.Count ||
+                startInfo.ArgumentList[index + 1].StartsWith("-", StringComparison.Ordinal)))
+                continue;
+            if (index + 1 == startInfo.ArgumentList.Count ||
+                startInfo.ArgumentList[index + 1].StartsWith("-", StringComparison.Ordinal))
+                return $"the description does not accept a value for '{commandName} {argument}'.";
+            index++;
+        }
+
+        var requiredPositionals = command.Positionals.Count(positional =>
+            !positional.EndsWith("?", StringComparison.Ordinal));
+        return positionalCount < requiredPositionals || positionalCount > command.Positionals.Length
+            ? $"the description declares the wrong positional shape for '{commandName}'."
+            : null;
+    }
+}
+
+internal sealed record PanGlossCommandCapabilities(
+    bool Hidden, ImmutableArray<string> Positionals, ImmutableDictionary<string, bool> Flags);
 
 internal static class PanGlossSurface
 {
@@ -77,10 +136,10 @@ internal static class PanGlossSurface
             try
             {
                 using var description = JsonDocument.Parse(standardOutput);
-                var detail = Validate(description.RootElement);
-                return detail is null
-                    ? new PanGlossSurfaceCheck(true, string.Empty)
-                    : Invalid(executable, detail);
+                var capabilities = Validate(description.RootElement, out var detail);
+                return capabilities is not null
+                    ? new PanGlossSurfaceCheck(true, string.Empty, capabilities)
+                    : Invalid(executable, detail!);
             }
             catch (Exception exception) when (
                 exception is JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException or
@@ -91,65 +150,77 @@ internal static class PanGlossSurface
         }
     }
 
-    private static string? Validate(JsonElement root)
+    internal static PanGlossSurfaceCheck CheckRequest(
+        string executable, PanGlossRequest request, PanGlossSurfaceCheck surface)
+    {
+        if (!surface.IsValid) return surface;
+        if (surface.Capabilities is null)
+            return Invalid(executable, "the description has no command capabilities.");
+        var detail = surface.Capabilities.ValidateRequest(request);
+        return detail is null ? surface : Invalid(executable, detail);
+    }
+
+    private static PanGlossCapabilities? Validate(JsonElement root, out string? detail)
     {
         if (root.ValueKind != JsonValueKind.Object)
-            return "the description is not a JSON object.";
+            return InvalidDescription("the description is not a JSON object.", out detail);
         if (!root.TryGetProperty("schema_version", out var version) || version.GetInt32() != 1)
-            return "the description does not declare schema version 1.";
+            return InvalidDescription("the description does not declare schema version 1.", out detail);
         if (!root.TryGetProperty("binary", out var binary) || binary.GetString() != "pangloss")
-            return "the description does not identify pangloss.";
+            return InvalidDescription("the description does not identify pangloss.", out detail);
         if (!root.TryGetProperty("commands", out var commands) || commands.ValueKind != JsonValueKind.Array)
-            return "the description has no command list.";
+            return InvalidDescription("the description has no command list.", out detail);
 
-        var byName = commands.EnumerateArray()
-            .Where(command => command.TryGetProperty("name", out _))
-            .ToDictionary(command => command.GetProperty("name").GetString()!, StringComparer.Ordinal);
-        PanGlossRequest[] requests =
-        [
-            new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite"),
-            new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
-            new PanGlossRequest.Import("project.fwdata", "grammar.json"),
-            new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
-        ];
-        foreach (var request in requests)
+        var byName = ImmutableDictionary.CreateBuilder<string, PanGlossCommandCapabilities>(StringComparer.Ordinal);
+        foreach (var command in commands.EnumerateArray())
         {
-            if (!byName.TryGetValue(request.Subcommand, out var command))
-                return $"the description does not expose '{request.Subcommand}'.";
-            if (command.TryGetProperty("hidden", out var hidden) && hidden.GetBoolean())
-                return $"the description hides '{request.Subcommand}'.";
+            if (command.ValueKind != JsonValueKind.Object ||
+                !command.TryGetProperty("name", out var nameElement) ||
+                nameElement.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(nameElement.GetString()))
+                return InvalidDescription("the description contains a command without a name.", out detail);
+            var name = nameElement.GetString()!;
             if (!command.TryGetProperty("positionals", out var positionals) ||
-                !command.TryGetProperty("flags", out var flags))
-                return $"the description is incomplete for '{request.Subcommand}'.";
-
-            var declaredFlags = flags.EnumerateArray()
-                .Where(flag => flag.TryGetProperty("name", out _))
-                .ToDictionary(flag => flag.GetProperty("name").GetString()!, StringComparer.Ordinal);
-            var startInfo = new ProcessStartInfo();
-            request.AddArguments(startInfo, "scratch");
-            var positionalCount = 0;
-            for (var index = 1; index < startInfo.ArgumentList.Count; index++)
+                positionals.ValueKind != JsonValueKind.Array ||
+                !command.TryGetProperty("flags", out var flags) || flags.ValueKind != JsonValueKind.Array)
+                return InvalidDescription($"the description is incomplete for '{name}'.", out detail);
+            var hidden = false;
+            if (command.TryGetProperty("hidden", out var hiddenElement))
             {
-                var argument = startInfo.ArgumentList[index];
-                if (!argument.StartsWith("--", StringComparison.Ordinal))
-                {
-                    positionalCount++;
-                    continue;
-                }
-                if (!declaredFlags.TryGetValue(argument, out var flag))
-                    return $"the description does not declare '{request.Subcommand} {argument}'.";
-                if (!flag.GetProperty("takes_value").GetBoolean()) continue;
-                if (++index >= startInfo.ArgumentList.Count || startInfo.ArgumentList[index].StartsWith("--"))
-                    return $"the description does not accept a value for '{request.Subcommand} {argument}'.";
+                if (hiddenElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    return InvalidDescription($"the description has an invalid hidden value for '{name}'.", out detail);
+                hidden = hiddenElement.GetBoolean();
             }
-            var declaredPositionals = positionals.EnumerateArray()
-                .Select(positional => positional.GetString()!)
-                .ToArray();
-            var requiredPositionals = declaredPositionals.Count(positional =>
-                !positional.EndsWith("?", StringComparison.Ordinal));
-            if (positionalCount < requiredPositionals || positionalCount > declaredPositionals.Length)
-                return $"the description declares the wrong positional shape for '{request.Subcommand}'.";
+            var positionalNames = ImmutableArray.CreateBuilder<string>();
+            foreach (var positional in positionals.EnumerateArray())
+            {
+                if (positional.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(positional.GetString()))
+                    return InvalidDescription($"the description has an invalid positional for '{name}'.", out detail);
+                positionalNames.Add(positional.GetString()!);
+            }
+            var declaredFlags = ImmutableDictionary.CreateBuilder<string, bool>(StringComparer.Ordinal);
+            foreach (var flag in flags.EnumerateArray())
+            {
+                if (flag.ValueKind != JsonValueKind.Object ||
+                    !flag.TryGetProperty("name", out var flagNameElement) ||
+                    flagNameElement.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(flagNameElement.GetString()) ||
+                    !flag.TryGetProperty("takes_value", out var takesValueElement) ||
+                    takesValueElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    return InvalidDescription($"the description has an invalid flag for '{name}'.", out detail);
+                declaredFlags.Add(flagNameElement.GetString()!, takesValueElement.GetBoolean());
+            }
+            byName.Add(name, new PanGlossCommandCapabilities(
+                hidden, positionalNames.ToImmutable(), declaredFlags.ToImmutable()));
         }
+
+        detail = null;
+        return new PanGlossCapabilities(byName.ToImmutable());
+    }
+
+    private static PanGlossCapabilities? InvalidDescription(string message, out string? detail)
+    {
+        detail = message;
         return null;
     }
 
