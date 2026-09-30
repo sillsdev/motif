@@ -69,6 +69,36 @@ public sealed class WorkspaceShellViewModelTests
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DisposalWaitsForTheProjectMenuReadEvenWhenItFails(bool failRead)
+    {
+        var response = new TaskCompletionSource<IReadOnlyList<KnownProjectSummary>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var (client, _, _, _, workspace) = NewWorkspace();
+        client.OnListKnownProjects(_ => response.Task);
+        var refresh = workspace.RefreshKnownProjectsAsync();
+        var disposal = workspace.DisposeAsync().AsTask();
+
+        try
+        {
+            Assert.False(refresh.IsCompleted);
+            Assert.False(disposal.IsCompleted,
+                "Disposal completed while the project menu's database read still owned its resources.");
+        }
+        finally
+        {
+            if (failRead) response.TrySetException(new IOException("Project list refused."));
+            else response.TrySetResult([]);
+            await refresh.WaitAsync(TimeSpan.FromSeconds(5));
+            await disposal.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        Assert.True(disposal.IsCompletedSuccessfully);
+        Assert.Empty(workspace.Project.KnownProjects);
+    }
+
     [Fact]
     public async Task RerunningFromTimingKeepsTimingOpen()
     {

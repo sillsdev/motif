@@ -724,5 +724,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         await Assess.DisposeAsync().ConfigureAwait(true);
         await Context.StopPageWorkAsync().ConfigureAwait(true);
+        if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);
     }
 }
