@@ -159,3 +159,12 @@ section figure.narrow { width: 78%; margin-left: auto; margin-right: auto; }
 section .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 section .trio p { margin: 0; background: var(--paper); border-radius: 14px; padding: 14px 16px; }
 section .trio p strong:first-child { display: block; font: 600 14.5px/1.3 var(--sans); margin-bottom: 4px; }
+
+/* a diagram across both columns of a cols page: `![wide](diagrams/x.svg)` */
+section figure.wide { column-span: all; }
+
+/* a Claude Design artboard from figures/, inlined at its slot's exact size: `![](figures/x.dc.html)` */
+section figure.frame { margin: 4px 0 14px; break-inside: avoid; }
+section figure.frame > div { margin: 0 auto; }
+/* the paragraph leading into a wide figure spans too, or the columns would split it in two */
+section.cols p:has(+ figure.wide) { column-span: all; }

@@ -14,10 +14,10 @@ Everything else is formatting. Edit the words there; the build turns them into a
 ## Build
 
 ```powershell
-./build.ps1                # dist/A-Working-Grammar-for-Every-Language.pdf and .html
+./build.ps1                # both decks, PDF and HTML: A-Working-Grammar-for-Every-Language, Motif-in-Brief
 ./build.ps1 -Format pdf    # one format: pdf, html or pptx
-./build.ps1 -Watch         # rebuild HTML on every save (diagrams fall back to system fonts)
-./build.ps1 -Source pitch-short.md   # the short deck: dist/Motif-in-Brief.pdf and .html
+./build.ps1 -Source pitch-short.md   # one deck only
+./build.ps1 -Watch         # rebuild the full deck's HTML on every save (diagrams fall back to system fonts)
 ```
 
 Needs Node.js and Chrome, Edge or Chromium. [Marp CLI](https://github.com/marp-team/marp-cli) is
@@ -31,9 +31,10 @@ fetched by `npx` on first run.
 | `pitch-short.md` | *Motif in Brief*, the short deck, in the same layouts |
 | `theme/pitch.css` | Colours, fonts and page layouts; retheme through the `:root` variables |
 | `art/` | Chapter illustrations (SVG) |
-| `diagrams/` | The four diagrams (SVG), inlined at build time so they use the page's fonts |
+| `diagrams/` | The four hand-written diagrams (SVG), inlined at build time so they use the page's fonts |
+| `figures/` | The page figures: Claude Design artboards (`.dc.html`), each drawn at its slot's exact size |
 | `research/` | The sourced fact sheets the pitch draws on |
-| `build.ps1` | Builds PDF, HTML or PPTX into `dist/` |
+| `build.ps1` | Builds both decks as PDF, HTML or PPTX into `dist/` |
 
 ## Page layouts
 
@@ -56,3 +57,19 @@ font by language; have a speaker check any word added there. A diagram is a line
 
 The diagrams were tried out on a Claude Design canvas and then written as plain SVG with the same
 geometry. To change one, edit its SVG in `diagrams/` directly.
+
+## Figures
+
+Most pages carry one figure from `figures/`. Each is a Claude Design artboard, kept verbatim from the canvas
+[Pitch image options](https://claude.ai/artifact/EjB9HVrNXq69gK6djdRjra), page *Deck figures (in use)*, where
+`figures/NAME.dc.html` is the artboard `fig-NAME`. The canvas's other pages hold the options that were not chosen.
+
+A figure is a line of its own: `![](figures/tools.dc.html)`, with `wide` to span both columns of a `cols` page
+or `narrow` on a full-width page. `build.ps1` inlines the artboard's markup unscaled, so it is drawn at the size
+its slot has: 436 px wide in one column of a `cols` page, 912 px across a page, 711 px for `narrow`. Its height
+must fit the space the page has left; a page that overflows loses its last lines off the bottom or pushes a
+column off the right edge, so look at every page after changing a figure or the words around it.
+
+To change a figure, edit its artboard on the canvas, copy the artboard's file over `figures/NAME.dc.html`, and
+rebuild. A new artboard needs its `<head>`, `<helmet>` and `<x-dc>` shape unchanged: the build takes only the
+markup between `</helmet>` and `</x-dc>`, and no `{{holes}}`, because nothing fills them at build time.
