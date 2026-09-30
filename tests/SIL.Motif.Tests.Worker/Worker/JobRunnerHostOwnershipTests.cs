@@ -1,4 +1,11 @@
+using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
+using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Host.PanGloss;
 using Xunit;
 
@@ -59,6 +66,99 @@ public sealed class JobRunnerHostOwnershipTests
 
         Assert.True(await retrying.WaitAsync(TimeSpan.FromSeconds(10)));
         Assert.True(kicked.IsOwner);
+    }
+
+    [Fact]
+    public async Task AnExpiredOwnershipRetryLeavesALateQueuedJobAfterTheRetiringOwnerReleases()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-retiring-owner-" + Guid.NewGuid().ToString("N"));
+        var ns = "kick-late-release-" + Guid.NewGuid().ToString("N");
+        Directory.CreateDirectory(root);
+        try
+        {
+            using var exiting = JobRunnerHost.CreateForTests(ns, composeRuntime: false, workerRoot: root);
+            using var kicked = JobRunnerHost.ForNamespace(ns);
+            using var machine = MachineDatabase.Open(root);
+            var known = new KnownProjectRegistry(machine);
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
+            var ownership = WorkspaceOwnership.Bootstrap(root);
+            var runtimes = exiting.CreateRuntimeRegistry(catalog, (jobs, _) =>
+                new WorkerRecoveryCoordinator(new WorkerRecovery(jobs), new WorkspaceCleaner(ownership)));
+            Assert.True(exiting.TryAcquireOwnership());
+            exiting.Start();
+
+            var path = Path.Combine(root, "retiring-owner.fwdata");
+            File.WriteAllText(path, "placeholder");
+            var project = new ProjectLocator(path, "retiring-owner");
+            var key = ProjectWorkspaceKey.Compute(project);
+            known.Record(key, path, DateTimeOffset.UtcNow);
+            var activity = new WorkerRuntime.SweepActivity();
+            var empty = await WorkerRuntime.SweepOnceAsync(known, runtimes, exiting.ProjectLanes,
+                new RunnerOptions { Root = root }, new FakeInvoker(), "retiring-owner",
+                CancellationToken.None, activity);
+            Assert.Null(empty.JobId);
+            Assert.True(runtimes.TryGet(key, out _));
+            Assert.False(activity.HasActiveWork);
+            Assert.True(activity.TryRetire());
+            Assert.False(activity.TryBeginSweep());
+
+            var disposalEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var releaseDisposal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var clock = new RetryTimeProvider(DateTimeOffset.UtcNow);
+            Task? disposing = null;
+            Task<bool>? retrying = null;
+            try
+            {
+                exiting.SetRuntimeRegistryDisposeOverrideForTests(registry =>
+                {
+                    disposalEntered.TrySetResult();
+                    try { releaseDisposal.Task.WaitAsync(TimeSpan.FromSeconds(30)).GetAwaiter().GetResult(); }
+                    finally { registry.Dispose(); }
+                });
+                disposing = Task.Run(exiting.Dispose);
+                await disposalEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+                const string jobId = "queued-during-retirement";
+                using (var enqueueStore = catalog.OpenOwned(project, TimeSpan.FromSeconds(10)))
+                {
+                    var jobs = new JobRepository(enqueueStore);
+                    jobs.Create(jobId, key, "probe", "{}", JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+                    Assert.Equal(JobStatus.Queued, jobs.Get(jobId)!.Status);
+                }
+
+                retrying = WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked, clock);
+                await clock.WaitForTimerAsync();
+                clock.Advance(TimeSpan.FromSeconds(3));
+
+                // Observe the expired result before release to distinguish a missed wake from a later acquisition.
+                Assert.False(await retrying.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.False(kicked.IsOwner);
+                Assert.False(releaseDisposal.Task.IsCompleted);
+                Assert.False(disposing.IsCompleted);
+
+                releaseDisposal.TrySetResult();
+                await disposing.WaitAsync(TimeSpan.FromSeconds(10));
+                using var reopened = catalog.OpenOwned(project, TimeSpan.FromSeconds(10));
+                Assert.Equal(JobStatus.Queued, new JobRepository(reopened).Get(jobId)!.Status);
+            }
+            finally
+            {
+                releaseDisposal.TrySetResult();
+                clock.Advance(TimeSpan.FromSeconds(3));
+                try
+                {
+                    if (disposing is not null) await disposing.WaitAsync(TimeSpan.FromSeconds(10));
+                }
+                finally
+                {
+                    if (retrying is not null) await retrying.WaitAsync(TimeSpan.FromSeconds(10));
+                }
+            }
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     private sealed class RetryTimeProvider(DateTimeOffset now) : TimeProvider
