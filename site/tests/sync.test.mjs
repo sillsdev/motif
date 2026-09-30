@@ -356,6 +356,8 @@ test('sync builds catalog, Walkthrough, API, and Developer pages', async (t) => 
 	await rm(path.join(samples, 'synthetic-turkic', 'expected.json'));
 	exportedHelp.entries = exportedHelp.entries.filter((entry) => entry.kind !== 'guide'
 		|| !entry.code.startsWith('learn/') || entry.code === 'learn/index');
+	exportedHelp.entries.find((entry) => entry.kind === 'command').helpPage =
+		'# Open a project\n\nRead [Proposal](term:proposal) and [the agent guide](guide:agents/start-here).\n';
 	await writeFile(path.join(repository, 'help-export.json'), JSON.stringify(exportedHelp));
 	await syncSiteContent({ repository, site, helpExportPath: path.join(repository, 'help-export.json'), helpRoot: path.join(repository, 'help'), walkthroughRoot: walks, docsRoot: docs, apiXmlPath: apiXml, samplesRoot: samples, samplesOut: sampleBuild });
 	await readFile(path.join(site, 'src', 'content', 'docs', 'learn', 'index.md'), 'utf8');
@@ -436,6 +438,19 @@ test('sync renders Guide metadata and content from the exported catalog', async 
 	assert.match(guideIndex, /\[Catalog title\]\(\/guide\/what-is-motif\/\)/);
 	const features = JSON.parse(await readFile(path.join(site, 'src', 'data', 'guide-features.json'), 'utf8'));
 	assert.equal(features[0].title, 'overview');
+	const sentinel = path.join(site, 'src', 'route-escape.md');
+	await writeFile(sentinel, 'Keep this file unchanged.');
+	const exported = JSON.parse(await readFile(helpExportPath, 'utf8'));
+	const target = exported.entries.find((entry) => entry.kind === 'guide' && entry.code === 'what-is-motif');
+	for (const separator of ['%2f', '%5c']) {
+		target.url = 'https://motif-docs.pages.dev/guide/ok' + separator + '..' + separator + '..' + separator + '..' + separator + '..' + separator + 'route-escape/';
+		await writeFile(helpExportPath, JSON.stringify(exported));
+		await assert.rejects(syncSiteContent({
+			repository, site, helpExportPath, helpRoot, walkthroughRoot: walks,
+			docsRoot: docs, apiXmlPath: apiXml, samplesRoot: samples, samplesOut: sampleBuild,
+		}), /Invalid help entry route: guide what-is-motif/);
+		assert.equal(await readFile(sentinel, 'utf8'), 'Keep this file unchanged.');
+	}
 });
 
 test('sync publishes every authored Guide page from the built CLI export', async (t) => {

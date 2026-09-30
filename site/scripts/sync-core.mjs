@@ -113,7 +113,7 @@ function entrySiteRoute(entry, siteRoot, locale) {
 	}
 	const segment = (value) => {
 		const decoded = value.split('/').map((part) => decodeURIComponent(part));
-		if (decoded.some((part) => !part || part === '.' || part === '..')) {
+		if (decoded.some((part) => !part || part === '.' || part === '..' || part.includes('/') || part.includes('\\'))) {
 			throw new Error(`Invalid help entry route: ${entry.kind} ${entry.code}`);
 		}
 		return decoded.join('/');
