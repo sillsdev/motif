@@ -155,9 +155,30 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
 
             walkthrough.WaitUntil(() => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
                 StepTimeout(deadline), "releasing the parser did not enable Apply");
+            var remainingBeforeApply = WalkthroughSteps.Remaining(deadline);
+            var applyClock = Stopwatch.StartNew();
             walkthrough.Click("Apply to FieldWorks project");
-            walkthrough.WaitUntil(() => review.HasReceipt && changes.Items.Count == 0,
-                StepTimeout(deadline), "Apply did not finish from the Review page");
+            var remainingAfterApplyClick = WalkthroughSteps.Remaining(deadline);
+            var applyTimeout = StepTimeout(deadline);
+            try
+            {
+                walkthrough.WaitUntil(() => review.HasReceipt && changes.Items.Count == 0,
+                    applyTimeout, "Apply did not finish from the Review page");
+            }
+            catch (Xunit.Sdk.XunitException exception)
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"{exception.Message}; remaining before Apply='{remainingBeforeApply}', " +
+                    $"remaining after click='{remainingAfterApplyClick}', allocated wait='{applyTimeout}', " +
+                    $"Apply phase elapsed='{applyClock.Elapsed}', IsApplying='{review.IsApplying}', " +
+                    $"HasReceipt='{review.HasReceipt}', CanApply='{review.CanApply}', " +
+                    $"ApplyBlockReason='{review.ApplyBlockReason}', " +
+                    $"Apply refusal='{review.ApplyRefusal?.Code}: {review.ApplyRefusal?.Sentence}', " +
+                    $"Apply task='{review.ApplyCommand.ExecutionTask?.Status}', " +
+                    $"Apply fault='{review.ApplyCommand.ExecutionTask?.Exception}', " +
+                    $"pending count='{changes.Items.Count}', revision='{changes.Snapshot.Revision}', " +
+                    $"reload refusal='{changes.LastRefusal?.Code}: {changes.LastRefusal?.Message}'");
+            }
             return;
         }, WalkthroughSteps.Remaining(deadline));
     }
