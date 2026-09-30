@@ -404,7 +404,7 @@ public sealed record AnalysisMarkingState(
     private static void AddAcceptNewSetChoice(List<AnalysisMarkingChoice> choices) =>
         choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Accept the new set as present",
             "Parser-only readings → Unknown", null, null, null,
-            "FieldWorks set", "Parser set with missing readings Unknown", ChangeKinds.AcceptNewSet));
+            "FieldWorks set", "Parser set with missing readings Unknown", null));
 
     private static AnalysisMarkingChoice Choice(AnalysisMarkingActionKind kind, string label, string subtitle,
         string? storedAnalysisId, ParseAnalysis? reading, int? readingIndex, string now, string afterApply,

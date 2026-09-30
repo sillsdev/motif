@@ -33,7 +33,6 @@ public static class ChangeKinds
     public const string RemoveAnalysis = "remove-analysis";
 
     /// <summary>Add all missing readings from the current completed Assessment.</summary>
-    public const string AcceptNewSet = "accept-new-set";
 
     /// <summary>The words a change of <paramref name="kind"/> is listed with.</summary>
     public static string LabelOf(string kind) => kind switch
@@ -163,7 +162,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Stages removal of one stored analysis from its wordform.</summary>
-    public async Task RemoveAnalysisAsync(string wordformId, string word, string analysisId,
+    public async Task<bool> RemoveAnalysisAsync(string wordformId, string word, string analysisId,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(wordformId);
@@ -175,11 +174,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             CanonicalId.Mint().Value, wordformId, word, analysisId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
-        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+        return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Stages removal of selected stored analyses.</summary>
-    public async Task RemoveAnalysesAsync(IReadOnlyList<string> analysisIds,
+    public async Task<bool> RemoveAnalysesAsync(IReadOnlyList<string> analysisIds,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(analysisIds);
@@ -190,11 +189,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             AnalysisIds: analysisIds);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
-        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+        return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Stages removal of the stored analyses used in one Text.</summary>
-    public async Task RemoveAnalysesInTextAsync(Guid textId, CancellationToken cancellationToken = default)
+    public async Task<bool> RemoveAnalysesInTextAsync(Guid textId, CancellationToken cancellationToken = default)
     {
         if (ProjectPath is not { } path)
             throw new InvalidOperationException("Open a project before collecting changes.");
@@ -202,11 +201,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var request = new RemoveAnalysisRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             TextId: textId);
         var outcome = await _client.RemoveAnalysisAsync(request, cancellationToken).ConfigureAwait(true);
-        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+        return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>Stages the missing readings from a complete Assessment in one word, Selection, or Text.</summary>
-    public async Task AcceptNewSetAsync(string assessmentId, string? wordformId = null, Guid? textId = null,
+    public async Task<bool> AcceptNewSetAsync(string assessmentId, string? wordformId = null, Guid? textId = null,
         bool selection = false, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(assessmentId);
@@ -218,16 +217,17 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         var request = new AcceptNewSetRequest(path, MotifProductVersion.CurrentText, Snapshot.Revision,
             assessmentId, wordformId, textId, selection);
         var outcome = await _client.AcceptNewSetAsync(request, cancellationToken).ConfigureAwait(true);
-        await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
+        return await AcceptStagingOutcomeAsync(outcome, path, generation, cancellationToken).ConfigureAwait(true);
     }
 
-    private async Task AcceptStagingOutcomeAsync(CommandOutcome<PendingChangesSnapshot> outcome,
+    private async Task<bool> AcceptStagingOutcomeAsync(CommandOutcome<PendingChangesSnapshot> outcome,
         string path, int generation, CancellationToken cancellationToken)
     {
-        if (!IsCurrentProject(path, generation)) return;
+        if (!IsCurrentProject(path, generation)) return false;
         Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
+        return outcome.Succeeded;
     }
 
     public async Task AddAsync(string kind, CompareWordViewModel word,

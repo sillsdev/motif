@@ -40,6 +40,19 @@ public sealed partial class ResultsInTextPanel : UserControl
         if (await OpenTokenCardOnKeyboardAsync(e.Key, token, InText.OpenTokenCardAsync)) e.Handled = true;
     }
 
+    private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            InText.CloseTokenCard();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key is not (Key.Left or Key.Right)) return;
+        await InText.MoveTokenCardAsync(e.Key == Key.Left ? -1 : 1).ConfigureAwait(true);
+        e.Handled = true;
+    }
+
     /// <summary>Opens a word card for Enter or Space and leaves other keys available to the control.</summary>
     /// <param name="key">The key pressed on the word.</param>
     /// <param name="token">The word occurrence attached to the focused control.</param>

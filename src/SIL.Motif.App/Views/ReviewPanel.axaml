@@ -197,11 +197,11 @@
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap"
                                    IsVisible="{Binding !Context.NeedsAssessment}" />
-          <Button Content="Check these changes" Command="{Binding MeasureCommand}"
-                  AutomationProperties.Name="Check what applying does to the numbers" />
           <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
+          <Button Content="Check these changes" Command="{Binding MeasureCommand}"
+                  AutomationProperties.Name="Check what applying does to the numbers" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
                   IsVisible="{Binding IsMeasuring}" />
           <views:ParsePrompt DataContext="{Binding Context}"

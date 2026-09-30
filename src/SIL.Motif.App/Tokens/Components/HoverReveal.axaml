@@ -9,7 +9,7 @@
     <StaticResource x:Key="Component.HoverReveal.ButtonPadding" ResourceKey="Primitive.Inset.4_0_4_0" />
     <StaticResource x:Key="Component.HoverReveal.ButtonRadius" ResourceKey="Primitive.Radius.2" />
   </Styles.Resources>
-  <Style Selector="Button.revealControl.revealButton">
+  <Style Selector=":is(Button).revealControl.revealButton">
     <Setter Property="Height" Value="{DynamicResource Component.HoverReveal.Height}" />
     <Setter Property="Padding" Value="{DynamicResource Component.HoverReveal.ButtonPadding}" />
     <Setter Property="FontSize" Value="{DynamicResource Component.HoverReveal.ButtonType}" />
@@ -20,7 +20,7 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Component.HoverReveal.ButtonRadius}" />
     <Setter Property="HorizontalAlignment" Value="Left" />
   </Style>
-  <Style Selector="Button.revealControl.revealLink">
+  <Style Selector=":is(Button).revealControl.revealLink">
     <Setter Property="Height" Value="{DynamicResource Component.HoverReveal.Height}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="FontSize" Value="{DynamicResource Component.HoverReveal.LinkType}" />
@@ -30,17 +30,17 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
     <Setter Property="HorizontalAlignment" Value="Left" />
   </Style>
-  <Style Selector="Button.revealControl:focus-visible">
+  <Style Selector=":is(Button).revealControl:focus-visible">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
-  <Style Selector="Border.hoverReveal Button.revealControl, Border.stagedStrip Button.revealControl">
+  <Style Selector="Border.hoverReveal :is(Button).revealControl, Border.stagedStrip :is(Button).revealControl">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.HiddenOpacity}" />
     <!-- Opacity-hidden actions cannot receive pointer hits until this region reveals them. -->
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
-  <Style Selector="Border.hoverReveal:pointerover Button.revealControl, Border.hoverReveal:focus-within Button.revealControl, Border.stagedStrip:pointerover Button.revealControl, Border.stagedStrip:focus-within Button.revealControl">
+  <Style Selector="Border.hoverReveal:pointerover :is(Button).revealControl, Border.hoverReveal:focus-within :is(Button).revealControl, Border.stagedStrip:pointerover :is(Button).revealControl, Border.stagedStrip:focus-within :is(Button).revealControl">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
     <Setter Property="IsHitTestVisible" Value="True" />
   </Style>

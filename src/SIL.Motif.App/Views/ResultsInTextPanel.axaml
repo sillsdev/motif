@@ -6,7 +6,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
              x:DataType="views:ResultsInTextPanel">
-  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}"
+  <Grid ColumnDefinitions="*"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
       <ComboBox ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
@@ -18,7 +18,7 @@
         </ComboBox.ItemTemplate>
       </ComboBox>
 
-      <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasTexts}">
+      <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="{Binding InText.SelectedReadStateCount}" IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
                      AutomationProperties.Name="Selected occurrence count" />
@@ -67,42 +67,61 @@
         <Expander Header="Actions for this Text or Selection">
           <WrapPanel>
             <Button Content="Add readings as Unknown in this Text"
-                    Command="{Binding InText.AddParserReadingsForSelectedTextCommand}"
+                    Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                     AutomationProperties.Name="Add parser readings as Unknown in this Text" />
-            <Button Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetForSelectedTextCommand}"
+            <Button Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                     AutomationProperties.Name="Accept new set for the selected Text" />
             <Button Content="Mark spellings Incorrect in this Text"
-                    Command="{Binding InText.MarkSpellingsIncorrectForSelectedTextCommand}"
+                    Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                     AutomationProperties.Name="Mark spellings Incorrect in the selected Text" />
-            <Button Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetForSelectionCommand}"
+            <Button Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
                     AutomationProperties.Name="Accept new set for the Selection" />
-            <Button Content="Add readings as Unknown in Selection"
-                    Command="{Binding InText.AddParserReadingsForSelectionCommand}"
-                    AutomationProperties.Name="Add parser readings as Unknown for the Selection" />
-            <Button Content="Mark spellings Incorrect in Selection"
-                    Command="{Binding InText.MarkSpellingsIncorrectForSelectionCommand}"
-                    AutomationProperties.Name="Mark spellings Incorrect for the Selection" />
-            <Button Content="Remove analyses in this Text" Command="{Binding InText.RemoveAnalysesForSelectedTextCommand}"
-                    AutomationProperties.Name="Remove analyses in the selected Text" />
-            <Button Content="Remove analyses in selected Texts" Command="{Binding InText.RemoveAnalysesForSelectionCommand}"
-                    AutomationProperties.Name="Remove stored analyses in the selected Texts" />
-            <Button Content="Undo changes in this Text" Command="{Binding InText.UndoChangesForSelectedTextCommand}"
+            <Button Content="Add readings as Unknown in all chosen Texts"
+                    Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                    AutomationProperties.Name="Add parser readings as Unknown in all chosen Texts" />
+            <Button Content="Mark spellings Incorrect in all chosen Texts"
+                    Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                    AutomationProperties.Name="Mark spellings Incorrect in all chosen Texts" />
+            <Expander Header="{Binding InText.SelectedTextRemoveHeader}" IsVisible="{Binding InText.HasSelectedTextAnalyses}">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
+                <Button Content="Stage removal from this Text" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                        AutomationProperties.Name="Stage removal of the analyses used in this Text" />
+              </StackPanel>
+            </Expander>
+            <Expander Header="{Binding InText.ChosenTextsRemoveHeader}" IsVisible="{Binding InText.HasChosenTextAnalyses}">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
+                <Button Content="Stage removal from all chosen Texts" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                        AutomationProperties.Name="Stage removal of the analyses used in all chosen Texts" />
+              </StackPanel>
+            </Expander>
+            <Button Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                     AutomationProperties.Name="Undo changes in the selected Text" />
-            <Button Content="Undo changes in Selection" Command="{Binding InText.UndoChangesForSelectionCommand}"
-                    AutomationProperties.Name="Undo changes in the Selection" />
+            <Button Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                    AutomationProperties.Name="Undo changes in all chosen Texts" />
             <Button Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
                     AutomationProperties.Name="Check uncertain changes again" />
           </WrapPanel>
         </Expander>
-        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasCheckedWords}">
-          <views:CopyableTextBlock Text="{Binding InText.CheckedWordCount, StringFormat='Selected: {0}'}"
-                                   FontWeight="SemiBold" />
-          <WrapPanel>
-            <Button Content="Add readings as Unknown" Command="{Binding InText.AddCheckedParserReadingsCommand}" />
-            <Button Content="Accept the new set" Command="{Binding InText.AcceptCheckedNewSetCommand}" />
-            <Button Content="Mark Incorrect" Command="{Binding InText.MarkCheckedSpellingsIncorrectCommand}" />
-            <Button Content="Remove analyses" Command="{Binding InText.RemoveCheckedAnalysesCommand}" />
-            <Button Content="Undo changes" Command="{Binding InText.UndoCheckedChangesCommand}" />
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+            <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="SemiBold" />
+            <Button Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
+                    AutomationProperties.Name="Select all chosen word occurrences" />
+            <Button Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
+                    IsVisible="{Binding InText.HasCheckedWords}"
+                    AutomationProperties.Name="Clear selected word occurrences" />
+          </StackPanel>
+          <views:CopyableTextBlock Classes="muted" Text="Approve one analysis at a time. Opinions apply to one word because each word has its own readings."
+                                   IsVisible="{Binding InText.HasCheckedWords}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
+          <WrapPanel IsVisible="{Binding InText.HasCheckedWords}">
+            <Button Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+            <Button Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+            <Button Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+            <Button Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+            <Button Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
             <Button Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
                     IsVisible="{Binding InText.HasCheckedUncertainChanges}" />
           </WrapPanel>
@@ -137,7 +156,7 @@
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                       <Panel Margin="{DynamicResource Component.TextsPage.WordGap}">
                         <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="{DynamicResource Intent.Type.Brand}" />
-                        <Border IsVisible="{Binding IsWord}" Classes="wordVerdict hoverReveal" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
+                        <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordVerdict analysisDensity hoverReveal" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
                                 views:VerdictClasses.Verdict="{Binding Meaning}" Classes.dimmed="{Binding IsDimmed}"
                                 PointerPressed="OnTokenPressed" KeyDown="OnTokenKeyDown"
                                 ToolTip.Tip="{Binding HoverSummary}">
@@ -161,7 +180,22 @@
                               <Button DockPanel.Dock="Right" Classes="actionChip" Content="{Binding Marking.PrimaryAction.Label}"
                                       Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
                                       CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
-                                      AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Stage {0} for this word'}" />
+                                      AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
+                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions for this word">
+                                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
+                                          CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
+                                  <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
+                                        <Button Content="{Binding Label}"
+                                                Command="{Binding $parent[ItemsControl].DataContext.Actions.StageMarkingChoiceCommand}"
+                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                </StackPanel>
+                              </Expander>
                             <Ellipse DockPanel.Dock="Right" Width="{DynamicResource Component.MatrixCell.MarkerSize}"
                                      Height="{DynamicResource Component.MatrixCell.MarkerSize}"
                                        Fill="{DynamicResource Intent.Warning.Text}"
@@ -223,6 +257,123 @@
                             </ItemsControl>
                           </StackPanel>
                         </Border>
+                        <Popup IsOpen="{Binding IsCardOpen}" PlacementTarget="{Binding #WordStrip}"
+                               Placement="Bottom" IsLightDismissEnabled="True">
+                          <Border Classes="card wordCard" Width="{DynamicResource Component.TextsPage.TextInspectorWidth}"
+                                  Focusable="True" KeyDown="OnTokenCardKeyDown">
+                            <ScrollViewer>
+                              <StackPanel Spacing="{DynamicResource Intent.Space.Related}" x:DataType="vm:ResultsTokenViewModel">
+                                <DockPanel LastChildFill="False">
+                                  <views:CopyableTextBlock Text="{Binding Text}" FontWeight="SemiBold"
+                                                           FontSize="{DynamicResource Intent.Type.Section}" />
+                                  <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PendingChangeStatus}"
+                                                           IsVisible="{Binding IsPending}" />
+                                </DockPanel>
+                                <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
+                                <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                                <CheckBox Content="Select this occurrence for actions"
+                                          IsChecked="{Binding IsSelectedForActions, Mode=TwoWay}"
+                                          AutomationProperties.Name="Select this word occurrence for actions" />
+
+                                <views:CopyableTextBlock Classes="section-title" Text="FieldWorks"
+                                                         FontSize="{DynamicResource Intent.Type.Body}" />
+                                <views:CopyableTextBlock Classes="muted" Text="Nothing is stored for this word."
+                                                         IsVisible="{Binding HasNothingStored}" />
+                                <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
+                                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                          <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding Opinion}" />
+                                          <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                        <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                                      </StackPanel>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <views:CopyableTextBlock Classes="section-title" Text="PanGloss"
+                                                         FontSize="{DynamicResource Intent.Type.Body}" />
+                                <Border Classes="panGlossLine" Classes.same="{Binding IsPanGlossSame}"
+                                        Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
+                                        Classes.capped="{Binding IsPanGlossCapped}">
+                                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                    <DockPanel LastChildFill="False">
+                                      <views:CopyableTextBlock Classes="f" Text="{Binding PanGlossSummary}" />
+                                      <Button DockPanel.Dock="Right" Classes="revealControl revealLink" Content="PanGloss help"
+                                              Command="{Binding Actions.OpenPanGlossGuideCommand}"
+                                              AutomationProperties.Name="About PanGloss" />
+                                    </DockPanel>
+                                    <ItemsControl ItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
+                                      <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ResultsReadingViewModel">
+                                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                            <views:CopyableTextBlock Text="{Binding Text}" />
+                                            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                                          </StackPanel>
+                                        </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                  </StackPanel>
+                                </Border>
+
+                                <views:CopyableTextBlock Classes="section-title" Text="What to do"
+                                                         FontSize="{DynamicResource Intent.Type.Body}" />
+                                <views:CopyableTextBlock Classes="muted" Text="Approve one analysis at a time."
+                                                         IsVisible="{Binding HasReadings}" />
+                                <ComboBox ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
+                                          IsVisible="{Binding HasReadings}"
+                                          AutomationProperties.Name="Choose a PanGloss reading for this word">
+                                  <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ResultsReadingViewModel">
+                                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                                          <views:CopyableTextBlock Text="{Binding Text}" />
+                                          <views:CopyableTextBlock Classes="muted" Text="{Binding GradeLabel}" IsVisible="{Binding HasGrade}" />
+                                          <views:CopyableTextBlock Classes="muted" Text="(stored here)" IsVisible="{Binding IsStoredHere}" />
+                                        </StackPanel>
+                                        <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}"
+                                                           ShowCategory="False" RevealLinks="True" />
+                                      </StackPanel>
+                                    </DataTemplate>
+                                  </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Expander Header="Fix ▾" AutomationProperties.Name="Fix actions for this word">
+                                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                    <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
+                                            CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
+                                    <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
+                                      <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
+                                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                            <Button Content="{Binding Label}"
+                                                    Command="{Binding $parent[ItemsControl].DataContext.Actions.StageMarkingChoiceCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
+                                            <views:CopyableTextBlock Classes="muted" Text="{Binding Subtitle}" />
+                                          </StackPanel>
+                                        </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                  </StackPanel>
+                                </Expander>
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                                  <Button Content="Mark as read" Command="{Binding Actions.MarkTokenReadCommand}"
+                                          CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as read" />
+                                  <Button Content="Mark as unread" Command="{Binding Actions.MarkTokenUnreadCommand}"
+                                          CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread" />
+                                </StackPanel>
+                                <Button Content="Check again" Command="{Binding Actions.RecheckChangesCommand}"
+                                        IsVisible="{Binding Marking.IsUncertain}" AutomationProperties.Name="Check this uncertain change again" />
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                  <Button Content="Try a Word" Command="{Binding Actions.TryWordCommand}" />
+                                  <HyperlinkButton Content="Open in FieldWorks" NavigateUri="{Binding WordLink}"
+                                                   IsVisible="{Binding HasWordLink}" AutomationProperties.Name="{Binding WordLinkName}" />
+                                </StackPanel>
+                              </StackPanel>
+                            </ScrollViewer>
+                          </Border>
+                        </Popup>
                       </Panel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -234,121 +385,5 @@
       </ScrollViewer>
     </Grid>
 
-    <Border Grid.Column="1" Classes="card hoverReveal" Width="{DynamicResource Component.TextsPage.TextInspectorWidth}"
-            IsVisible="{Binding InText.HasSelectedToken}">
-      <ScrollViewer>
-        <StackPanel Spacing="{DynamicResource Intent.Space.Related}" DataContext="{Binding InText.SelectedToken}"
-                    x:DataType="vm:ResultsTokenViewModel">
-          <DockPanel LastChildFill="False">
-            <views:CopyableTextBlock Text="{Binding Text}" FontWeight="SemiBold" FontSize="{DynamicResource Intent.Type.Section}" />
-            <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Text="{Binding PendingChangeStatus}"
-                                       IsVisible="{Binding IsPending}" />
-          </DockPanel>
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
-          <views:CopyableTextBlock Text="{Binding VerdictLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
-          <CheckBox Content="Select this occurrence for read or unread actions"
-                    IsChecked="{Binding IsSelectedForReadState, Mode=TwoWay}"
-                    AutomationProperties.Name="Select this occurrence for read or unread actions" />
-          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-            <Button Content="Mark as read"
-                    Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenReadCommand}"
-                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as read" />
-            <Button Content="Mark as unread"
-                    Command="{Binding $parent[views:ResultsInTextPanel].InText.MarkTokenUnreadCommand}"
-                    CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread" />
-          </StackPanel>
-
-          <views:CopyableTextBlock Classes="section-title" Text="FieldWorks" FontSize="{DynamicResource Intent.Type.Body}" />
-          <views:CopyableTextBlock Classes="muted" Text="Nothing is stored for this word."
-                                   IsVisible="{Binding HasNothingStored}" />
-          <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
-                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding Opinion}" />
-                    <views:CopyableTextBlock Text="{Binding Opinion}" FontWeight="SemiBold" />
-                  </StackPanel>
-                  <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <views:CopyableTextBlock Classes="section-title" Text="PanGloss" FontSize="{DynamicResource Intent.Type.Body}" />
-          <Border Classes="panGlossLine" Classes.same="{Binding IsPanGlossSame}"
-                  Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
-                  Classes.capped="{Binding IsPanGlossCapped}">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <DockPanel LastChildFill="False">
-                <views:CopyableTextBlock Classes="f" Text="{Binding PanGlossSummary}" />
-                <Button DockPanel.Dock="Right" Classes="revealControl revealLink" Content="PanGloss help"
-                        Command="{Binding $parent[views:ResultsInTextPanel].InText.OpenPanGlossGuideCommand}"
-                        AutomationProperties.Name="About PanGloss" />
-              </DockPanel>
-              <ItemsControl ItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ResultsReadingViewModel">
-                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                      <views:CopyableTextBlock Text="{Binding Text}" />
-                      <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Border>
-
-          <views:CopyableTextBlock Classes="section-title" Text="What to do" FontSize="{DynamicResource Intent.Type.Body}" />
-          <views:CopyableTextBlock Classes="muted" Text="Choose a PanGloss reading when an action needs one."
-                                   IsVisible="{Binding HasReadings}" />
-          <ListBox ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
-                   IsVisible="{Binding HasReadings}"
-                   AutomationProperties.Name="Choose a PanGloss reading for this word">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ResultsReadingViewModel">
-                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                    <views:CopyableTextBlock Text="{Binding Text}" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding GradeLabel}" IsVisible="{Binding HasGrade}" />
-                    <views:CopyableTextBlock Classes="muted" Text="(stored here)" IsVisible="{Binding IsStoredHere}" />
-                  </StackPanel>
-                  <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" ShowCategory="False" RevealLinks="True" />
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <Expander Header="Fix ▾" AutomationProperties.Name="Fix actions for this word">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <Button Content="Incorrect spelling"
-                      Command="{Binding $parent[views:ResultsInTextPanel].InText.AddChangeCommand}"
-                      CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
-              <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                      <Button Content="{Binding Label}"
-                              Command="{Binding $parent[views:ResultsInTextPanel].InText.StageMarkingChoiceCommand}"
-                              CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding Subtitle}" />
-                    </StackPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Expander>
-          <Button Content="Check again" Command="{Binding $parent[views:ResultsInTextPanel].InText.RecheckChangesCommand}"
-                  IsVisible="{Binding Marking.IsUncertain}" AutomationProperties.Name="Check this uncertain change again" />
-          <views:CopyableTextBlock Classes="muted" Text="These changes apply to this word form everywhere, not just this occurrence."
-                                     TextWrapping="Wrap" />
-          <views:RefusalBlock DataContext="{Binding $parent[views:ResultsInTextPanel].InText.Changes.ShownRefusal}" />
-          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-            <Button Content="Try a Word" Command="{Binding $parent[views:ResultsInTextPanel].InText.TryWordCommand}" />
-            <HyperlinkButton Content="Open in FieldWorks" NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                             AutomationProperties.Name="{Binding WordLinkName}" />
-          </StackPanel>
-        </StackPanel>
-      </ScrollViewer>
-    </Border>
   </Grid>
 </UserControl>

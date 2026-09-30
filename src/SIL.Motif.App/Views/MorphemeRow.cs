@@ -1,8 +1,11 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -75,31 +78,64 @@ public sealed class MorphemeRow : WrapPanel
     private Control BlockFor(ParserReadingMorphViewModel morph, bool last)
     {
         var column = new StackPanel();
-        column.Children.Add(morph.HasLink
-            ? Link(morph, morph.Form, FontWeight.SemiBold, "morphForm", RevealLinks)
-            : new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
-        column.Children.Add(morph.HasLink
-            ? Link(morph, morph.GlossOrPlaceholder, FontWeight.Normal, "morphGloss", RevealLinks)
-            : new CopyableTextBlock { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
+        column.Children.Add(new CopyableTextBlock
+            { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
+        column.Children.Add(new CopyableTextBlock
+            { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
         if (ShowCategory && morph.Category is { Length: > 0 })
             column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
+        if (morph.HasLink) column.Children.Add(Link(morph, RevealLinks));
 
-        var block = new Border { Child = column, Classes = { "morph" } };
+        var block = new Border { Child = column, Classes = { "morph" }, Focusable = true };
         if (last) block.Classes.Add("last");
         else if (Separators) block.Classes.Add("morphEdge");
-        return block;
+        var popup = new Popup
+        {
+            PlacementTarget = block,
+            IsLightDismissEnabled = true,
+            Child = MorphemeCard(morph),
+        };
+        block.PointerPressed += (_, e) =>
+        {
+            if (e.Source is Visual source && source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
+                return;
+            popup.IsOpen = true;
+            e.Handled = true;
+        };
+        block.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) popup.IsOpen = false;
+            else if (e.Key is Key.Enter or Key.Space) popup.IsOpen = true;
+            else return;
+            e.Handled = true;
+        };
+        var container = new Panel();
+        container.Children.Add(block);
+        container.Children.Add(popup);
+        return container;
     }
 
-    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, string text, FontWeight weight,
-        string role, bool reveal)
+    private static Border MorphemeCard(ParserReadingMorphViewModel morph)
+    {
+        var content = new StackPanel();
+        content.Children.Add(new CopyableTextBlock { Text = "Morpheme details", Classes = { "section-title" } });
+        content.Children.Add(new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold });
+        content.Children.Add(new CopyableTextBlock { Text = morph.GlossOrPlaceholder });
+        if (morph.Category is { Length: > 0 })
+            content.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "muted" } });
+        if (morph.HasLink)
+            content.Children.Add(Link(morph, reveal: true));
+        return new Border { Classes = { "card", "hoverReveal" }, Child = content };
+    }
+
+    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, bool reveal)
     {
         var button = new HyperlinkButton
         {
-            Content = text,
+            Content = "FW ↗",
             NavigateUri = morph.Link,
             Padding = new Thickness(0),
-            FontWeight = weight,
-            Classes = { role },
+            Classes = { "morphLink" },
         };
         if (reveal)
         {

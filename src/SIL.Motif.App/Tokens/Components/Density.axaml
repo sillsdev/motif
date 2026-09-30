@@ -32,16 +32,16 @@
   <Style Selector="StackPanel.analysisDensity.normal Button.actionChip">
     <Setter Property="Height" Value="{DynamicResource Component.Density.NormalActionHeight}" />
   </Style>
-  <Style Selector="StackPanel.analysisDensity Border.wordVerdict">
+  <Style Selector="Border.wordVerdict.analysisDensity">
     <Setter Property="Height" Value="{DynamicResource Component.Density.CompactWordHeight}" />
   </Style>
-  <Style Selector="StackPanel.analysisDensity.normal Border.wordVerdict">
+  <Style Selector="Border.wordVerdict.analysisDensity.normal">
     <Setter Property="Height" Value="{DynamicResource Component.Density.NormalWordHeight}" />
   </Style>
-  <Style Selector="StackPanel.analysisDensity Border.wordVerdict TextBlock">
+  <Style Selector="Border.wordVerdict.analysisDensity TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactWordType}" />
   </Style>
-  <Style Selector="StackPanel.analysisDensity.normal Border.wordVerdict TextBlock">
+  <Style Selector="Border.wordVerdict.analysisDensity.normal TextBlock">
     <Setter Property="FontSize" Value="{DynamicResource Component.Density.NormalWordType}" />
   </Style>
 </Styles>
