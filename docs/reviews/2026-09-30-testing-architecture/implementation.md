@@ -83,3 +83,20 @@ Validated code `9dca8e32` passed fresh ./test.ps1: 3,682 passed, zero failed, 22
 
 The larger branch's first runtime integration gate was stopped after confirming missing shared Worker launch files and resulting unclaimed jobs; retained logs are under the private `.tmp/runtime-split-failed-gate-a3744cb8cee74316a4864c70d43885e5` directory. Its runtime, usage, admission, content relocation and authored media stages still require their own corrected combined verification.
 The runtime build-order and publish-isolation correction is integrated as `c3fcb4b1`. Its owner reproduced the stale-output deletion before the fix, retained all four Worker files afterward, and passed a fresh Release suite (3,644 passed, zero failed, 64 skipped). Independent Sol accepted the two-file correction. The parent build now retains all four launch assets; the corrected real-parser combined suite is running, so runtime completion remains unchecked until its result.
+## First tranche merged
+
+The first reviewed set of improvements is available on main. Further changes remain isolated until their combined behavior and release documentation pass verification.
+
+Local main, origin/main and the actual remote main were verified at 0ad3f9a260631a1f2a624f506a12cda397183e50 after a fast-forward merge and ordinary push. Its evidence remains 3,682 passing .NET tests, no failures, 22 skips and eight passing website tests.
+
+## Further integration and timing
+
+Parser admission and action accounting are integrated and independently reviewed. Testing speed remains an unresolved requirement: the target is approximately two minutes for the full developer gate.
+
+The corrected Runtime parent run passed 3,683 tests, failed one and skipped 22 in 1,251.2 seconds. FirstProjectSmokeTests failed waiting for Apply; added diagnostics preserve its existing deadlines. All five required real-parser checks passed. The copied archive and current Debug results describe the same run, rather than two independent measurements.
+
+Admission is integrated as dcd685d6. Usage is integrated as 3ee2aef0, 80c118d7 and fa5aac53; the owner demonstrated eight failing selector accounting cases before the correction and a complete 3,662-pass, zero-failure, 61-skip parserless gate afterward.
+
+Help content relocation and exported catalog consumers are integrated. A merged fixture retained links to removed Learn entries; the fixture now removes those links in the same phase. Independent review also found encoded URL separators could escape the generated documentation directory. The consumer regression failed before the route guard and passes afterward, preserving an outside sentinel for both slash forms. Commit f7d8cc96 contains the correction. The complete website suite passes 20 tests with no failures or skips, including current built CLI parity and an Astro build.
+
+The latest retained full gate includes a 470.916-second portable-package test that performs three private self-contained publishes. This exceeds the two-minute target on its own. App shards also slowed broadly; investigation is separating packaging work, waits, shard imbalance and concurrent machine activity. No speedup is claimed from these results.
