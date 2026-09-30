@@ -122,7 +122,6 @@ public sealed class ReviewPageModel : PageModel
 
     public bool NeedsReconciliation => ApplyRefusal?.Code == RefusalCodes.ApplyReconciliationNeeded;
 
-
     /// <summary>
     /// Every reason Apply is blocked, in <see cref="ApplyBlockerKind"/> order, so the page names them all rather
     /// than the first one found.
@@ -186,6 +185,11 @@ public sealed class ReviewPageModel : PageModel
     public WindowRefusal? ShownApplyRefusal => NeedsReconciliation ? null : ApplyRefusal;
 
     /// <summary>Whether the page has nothing to review, and no unconfirmed Apply to settle.</summary>
+    /// <summary>
+    /// Whether the header adds that nothing reaches FieldWorks until Apply, which an unconfirmed Apply makes untrue.
+    /// </summary>
+    public bool ShowsHeaderNote => Changes.HasItems && !NeedsReconciliation;
+
     public bool ShowsEmptyState => !Changes.HasItems && !NeedsReconciliation;
 
     /// <summary>Whether the numbers and Apply cards have anything to act on or report.</summary>
@@ -409,6 +413,7 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(CountText));
             OnPropertyChanged(nameof(ShowsSideCards));
             OnPropertyChanged(nameof(ShowsEmptyState));
+            OnPropertyChanged(nameof(ShowsHeaderNote));
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             OnPropertyChanged(nameof(CanApply));
@@ -499,6 +504,7 @@ public sealed class ReviewPageModel : PageModel
                 OnPropertyChanged(nameof(CountText));
                 OnPropertyChanged(nameof(ShowsSideCards));
                 OnPropertyChanged(nameof(ShowsEmptyState));
+                OnPropertyChanged(nameof(ShowsHeaderNote));
                 break;
             case nameof(HasReceipt):
                 OnPropertyChanged(nameof(ShowsSideCards));

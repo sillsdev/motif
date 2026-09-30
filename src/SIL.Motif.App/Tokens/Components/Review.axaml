@@ -84,10 +84,6 @@
   <Style Selector=":is(TextBlock).reviewGapEnd">
     <Setter Property="Margin" Value="{DynamicResource Component.Review.GapEnd}" />
   </Style>
-  <Style Selector=":is(TextBlock).reviewHeaderNote">
-    <Setter Property="Margin" Value="{DynamicResource Component.Review.GapStart}" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
 
   <!-- One change per row: the word and its analysis, the staged note, then the context and the actions. -->
   <Style Selector="Border.reviewRow">

@@ -21,9 +21,12 @@ public sealed class ReviewApplyBlockersTests
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Snapshot(Fits("kept"), Gone("gone"), Unsure("unsure")));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+            FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = ["kept"] }));
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
         var saved = DateTimeOffset.UtcNow;
         context.Baseline = new WorkspaceBaseline(true, "", "", "", "", null)
         {
@@ -40,11 +43,29 @@ public sealed class ReviewApplyBlockersTests
             ApplyBlockerKind.Uncertain,
             ApplyBlockerKind.FieldWorksHoldsProject,
             ApplyBlockerKind.FieldWorksSavedSince,
-            ApplyBlockerKind.NotMeasured,
+            ApplyBlockerKind.LosesApprovedAnalysis,
         ], page.ApplyBlockers.Select(blocker => blocker.Kind));
         Assert.Equal("Apply is blocked by 6 things", page.ApplyBlockedTitle);
         Assert.False(page.CanApply);
-        Assert.All(page.ApplyBlockers, blocker => Assert.Contains(blocker.Sentence, page.ApplyBlockReason));
+        Assert.StartsWith("FieldWorks may already have these changes. Refresh to check. " +
+            "1 change no longer fits: FieldWorks changed its word since you decided. " +
+            "1 change needs another look", page.ApplyBlockReason);
+        Assert.EndsWith("would lose an approved analysis for 1 word: kept. " +
+            "Change or remove the changes that cause it before applying.", page.ApplyBlockReason);
+    }
+
+    [Fact]
+    public async Task UnmeasuredNumbersAreTheLastBlocker()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(Snapshot(Gone("gone")));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal([ApplyBlockerKind.NoLongerFits, ApplyBlockerKind.NotMeasured],
+            page.ApplyBlockers.Select(blocker => blocker.Kind));
+        Assert.True(page.ShowsHeaderNote);
     }
 
     [Fact]
@@ -154,6 +175,7 @@ public sealed class ReviewApplyBlockersTests
         Assert.Same(refresh, page.RefreshCommand);
         Assert.Null(page.ShownApplyRefusal);
         Assert.False(page.ShowsEmptyState);
+        Assert.False(page.ShowsHeaderNote);
 
         page.ClearReconciliationNeeded();
 
@@ -175,6 +197,7 @@ public sealed class ReviewApplyBlockersTests
         Assert.False(page.ShowsSideCards);
         Assert.True(page.ShowsEmptyState);
         Assert.Equal("No changes yet", page.CountText);
+        Assert.False(page.ShowsHeaderNote);
         Assert.Empty(page.ApplyBlockers);
         page.OpenAnalyzeTextsCommand.Execute(null);
 

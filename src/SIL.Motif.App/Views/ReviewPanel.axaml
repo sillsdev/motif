@@ -9,11 +9,10 @@
     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
       <StackPanel Classes="reviewStack">
         <StackPanel Classes="reviewCompact">
-          <WrapPanel>
-            <views:CopyableTextBlock Classes="section-title" Text="{Binding CountText}" />
-            <views:CopyableTextBlock Classes="muted reviewHeaderNote" IsVisible="{Binding Changes.HasItems}"
-                                     Text="· grouped by what they do · nothing reaches FieldWorks until you apply" />
-          </WrapPanel>
+          <views:CopyableTextBlock Classes="section-title" Text="{Binding CountText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock x:Name="ReviewHeaderNote" Classes="muted" IsVisible="{Binding ShowsHeaderNote}"
+                                   TextWrapping="Wrap"
+                                   Text="Grouped by what they do. Nothing reaches FieldWorks until you apply." />
           <views:CopyableTextBlock x:Name="ApplyBlockedTitle" Classes="reviewBlockedTitle"
                                    Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
         </StackPanel>
@@ -49,7 +48,7 @@
                         <HyperlinkButton Classes="reviewLink" Content="Check again"
                                          Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
                                          IsVisible="{Binding IsNoLongerFits}"
-                                         AutomationProperties.Name="Check the changes that no longer fit again" />
+                                         AutomationProperties.Name="Check all changes again against the refreshed project" />
                         <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
                                 IsVisible="{Binding IsNoLongerFits}"
                                 AutomationProperties.Name="{Binding UndoAllAutomationName}" />
@@ -216,8 +215,6 @@
           <views:CopyableTextBlock Classes="section-title" Text="{Binding ProjectName, StringFormat='Apply to {0}'}"
                                    TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="reviewBlockedTitle" Text="{Binding ApplyBlockedTitle}"
-                                   IsVisible="{Binding IsApplyBlocked}" TextWrapping="Wrap" />
           <ItemsControl x:Name="ApplyBlockers" ItemsSource="{Binding ApplyBlockers}"
                         AutomationProperties.Name="What blocks Apply">
             <ItemsControl.ItemsPanel>
