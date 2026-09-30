@@ -13,3 +13,9 @@ The new Unix permission test scans all temporary parser captures and reads them 
 ## Accepted aspects and verification limits
 
 Read-only review found no additional issue in cancellation, capability caching or atomic Unix user-read/write creation. All three findings were returned to the owning Luna worker. Independent Sol re-review accepted the current corrective diff: the fake retains the real Trace declaration, inline Stats values preserve argv, and the Unix test examines only its injected private capture directory. Its fresh parserless suite passed 3,664 tests, failed none and skipped 59. The pinned-release gate is running and has exposed the separate known cancellation-walkthrough Refresh completion race; that correction belongs to the walkthrough owner. Corrective commits, fresh combined real-parser verification and native Unix execution remain pending. No parent admission change is integrated on the strength of a parserless run alone.
+
+## Final admission review
+
+Actual request validation and private captures are integrated as dcd685d6. Independent final review accepted owner commit bfed68c5 with no actionable findings; Commands shards passed 492 tests, failed none and skipped four on Windows.
+
+The owner's entire pinned-parser gate had one separate Infix sample failure; it is not a green whole-gate claim. Unix permissions are source-reviewed and require native Unix execution. Parent integrated build and hygiene gates pass; combined behavioral verification remains pending.

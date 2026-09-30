@@ -19,11 +19,11 @@ Every parser call should check the capabilities it will actually use. A represen
 
 **Files:** `PanGlossSurface`, `PanGlossRequest`, `PanGlossInvoker`, parser surface/invoker contract tests.
 
-- [ ] Add failing tests for a description missing Batch `--analyses`, Trace requirements and a flag supplied by a typed request. Assert refusal before executing the requested parser command.
-- [ ] Parse `--describe` into an owned capability value and cache it within the existing invoker lifetime. Do not retain a disposed JsonDocument or introduce a process-global cache.
-- [ ] Derive required command/flags/positionals from the actual typed request argument construction. Cover Batch, Stats, Grammar Health, Import and Trace.
-- [ ] Retain schema version, binary identity, hidden-command and global shape checks. Describe itself remains contained, cancellable and bounded.
-- [ ] Test valid requests, missing capability, malformed describe, cancellation and command-specific variation through the real fake executable.
+- [x] Add failing tests for a description missing Batch `--analyses`, Trace requirements and a flag supplied by a typed request. Assert refusal before executing the requested parser command.
+- [x] Parse `--describe` into an owned capability value and cache it within the existing invoker lifetime. Do not retain a disposed JsonDocument or introduce a process-global cache.
+- [x] Derive required command/flags/positionals from the actual typed request argument construction. Cover Batch, Stats, Grammar Health, Import and Trace.
+- [x] Retain schema version, binary identity, hidden-command and global shape checks. Describe itself remains contained, cancellable and bounded.
+- [x] Test valid requests, missing capability, malformed describe, cancellation and command-specific variation through the real fake executable.
 
 ## Task 2: consume capture efficiently while preserving parser evidence
 
@@ -38,7 +38,7 @@ A child memory limit does not cover Motif's own captured strings and repeated fi
 - [x] Evaluate file-backed/streaming consumption at the actual parsing seam. Preserve complete structured results, concurrent stdout/stderr draining, cancellation, admission release and cleanup; do not merely spool and then allocate the same entire content several times.
 - [x] Retain the existing 10 GiB child-process memory ceiling as selected by the owner; add no output quotas.
 - [x] Preserve valid per-word capped results and their incomplete-evidence semantics; these differ from malformed or truncated protocol output.
-- [ ] Create Unix capture files with `FileStreamOptions.UnixCreateMode` restricted to user read/write. Test permissions while capture files exist, then cleanup.
+- [x] Create Unix capture files with `FileStreamOptions.UnixCreateMode` restricted to user read/write. Test permissions while capture files exist, then cleanup.
 - [x] Verify simultaneous stream draining, cancellation, complete representative large output, admission reuse, digest/provenance refusal and absence of leaked files/processes. Do not claim constant memory while downstream consumers still materialize full results.
 
 ## Task 3: resolve Batch runtime policy explicitly
@@ -58,10 +58,10 @@ Usage measurements should count the actions the owner intends to understand. Log
 **Files:** CLI usage adapter, shared invocation recorder if selected, GUI action entry points and usage-log tests.
 
 - [x] Record the owner's choice: explicit outer user actions in both front ends, excluding automatic refresh/polling and nested helpers.
-- [ ] Record exactly once at the chosen boundary for success, refusal and cancellation, including Overview, which currently lacks a supplied record.
-- [ ] Store argument shapes and command identity, not user/project values. Preserve existing SQLite coordination and privacy constraints.
-- [ ] Verify a nested workflow creates one outer event; verify selected GUI actions only if they belong to the chosen observation unit.
-- [ ] Narrow the misleading CLI source-guard test name to what it actually checks. Legitimate instrumentation storage access is not proof of a broken front-end seam.
+- [x] Record exactly once at the chosen boundary for success, refusal and cancellation, including Overview, which currently lacks a supplied record.
+- [x] Store argument shapes and command identity, not user/project values. Preserve existing SQLite coordination and privacy constraints.
+- [x] Verify a nested workflow creates one outer event; verify selected GUI actions only if they belong to the chosen observation unit.
+- [x] Narrow the misleading CLI source-guard test name to what it actually checks. Legitimate instrumentation storage access is not proof of a broken front-end seam.
 
 ## Task 5: require parser-enabled Motif release integration proof
 

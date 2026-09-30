@@ -47,10 +47,10 @@ The same exported page and metadata should appear in all readers, with their exi
 
 - [x] Support `motif help guide:overview --full` and nested Guide codes. Include Guides in `help --all --json`, with stable kinds/codes/routes and full content.
 - [x] Replace App's private Guide resource reader and metadata parser with catalog calls, including the PanGloss page. Preserve localized control overrides and existing popup behavior.
-- [ ] Have site synchronization render exported pages and metadata. Do not replace exported content by rereading a different physical Help tree.
-- [ ] Reference exported codes in Guide navigation and home cards; derive human labels/summaries from the catalog. Keep site-specific layout and ordering, validating missing, duplicate and nonexistent entries.
-- [ ] Preserve the authored Learn index rather than overwriting its body with an independently generated substitute.
-- [ ] Add parity checks for representative command, term, control, Guide, nested agent Guide and Learn pages. Assert catalog content/metadata and public routes, not identical HTML across readers.
+- [x] Have site synchronization render exported pages and metadata. Do not replace exported content by rereading a different physical Help tree.
+- [x] Reference exported codes in Guide navigation and home cards; derive human labels/summaries from the catalog. Keep site-specific layout and ordering, validating missing, duplicate and nonexistent entries.
+- [x] Preserve the authored Learn index rather than overwriting its body with an independently generated substitute.
+- [x] Add parity checks for representative command, term, control, Guide, nested agent Guide and Learn pages. Assert catalog content/metadata and public routes, not identical HTML across readers.
 
 ## Task 4: move content once and repair current orientation
 
@@ -58,8 +58,8 @@ Locating shared content with Help makes its owner obvious. Moving files must pre
 
 **Files:** `help/**` moved to `src/SIL.Motif.Help/Content/**`, Help `.csproj`, all source/test/tool references, translation configuration, README and current architecture/API documentation.
 
-- [ ] Integrate vocabulary edits before moving their content files. Inventory references with `rg` before the move, including translation configuration and site fixtures.
-- [ ] Change physical paths and resource includes together while preserving `help/...` logical names. Update site/tool/test inputs explicitly; add no old-path compatibility reader.
+- [x] Integrate vocabulary edits before moving their content files. Inventory references with `rg` before the move, including translation configuration and site fixtures.
+- [x] Change physical paths and resource includes together while preserving `help/...` logical names. Update site/tool/test inputs explicitly; add no old-path compatibility reader.
 - [x] Write one current architecture overview with the actual dependency graph, typed front-end seam, parser process boundary, SQLite coordination and lifecycle ownership. Link normative contracts instead of restating them.
 - [x] Remove current-facing claims about retired net48/netstandard targets, CLI-only GUI communication, obsolete parser flags and retired store topology.
 - [x] Mark superseded plans as historical, linking their replacement. Keep ADR history and rationale intact unless recording an explicit new decision.
