@@ -37,9 +37,10 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 if (walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
                     throw new XunitException("The slow Assessment finished before cancellation could be requested.");
 
-                return appeared.Count > 0 &&
-                    PanglossProcesses.AnyAlive(parserPath, appeared) &&
-                    walkthrough.Workspace.Assess.Progress?.Stage == AssessmentStage.Parsing;
+                var progress = walkthrough.Workspace.Assess.Progress;
+                return walkthrough.Workspace.Assess.State == RunState.Running &&
+                    progress is { Stage: AssessmentStage.Parsing, Completed: 0 } &&
+                    progress.Total == firstProject.Words.Count;
             }, WalkthroughSteps.Remaining(deadline), "the real parser did not reach Parsing with work still running");
 
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
@@ -47,11 +48,10 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             walkthrough.Click("Cancel the running Assessment");
             walkthrough.WaitUntil(() =>
             {
-                return walkthrough.Workspace.Assess.State == RunState.Cancelled;
+                PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                return walkthrough.Workspace.Assess.State == RunState.Cancelled &&
+                    !PanglossProcesses.AnyAlive(parserPath, appeared);
             }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
-            Assert.NotEmpty(appeared);
-            Assert.False(PanglossProcesses.AnyAlive(parserPath, appeared),
-                "the first Assessment's PanGloss process survived cancellation");
             Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;
