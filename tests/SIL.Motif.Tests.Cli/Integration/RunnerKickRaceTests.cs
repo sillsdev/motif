@@ -1,17 +1,14 @@
 using System.Diagnostics;
 using System.Globalization;
+using SIL.Motif.Commands;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
 
 namespace SIL.Motif.Tests.Integration;
 
-/// <summary>
-/// Covers the kick ADR 0041 decision 5 requires: the CLI spawns a runner unconditionally after
-/// enqueueing, and the race that makes that not a one-liner — a runner the CLI kicks can lose the
-/// ownership mutex to one that is alive but about to exit, and must retry rather than give up, or the job
-/// it just queued is stranded until the next command happens to wake one.
-/// </summary>
+/// <summary>Covers the CLI's durable enqueue-and-kick process boundary with a competing runner owner.</summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class RunnerKickRaceTests : IDisposable
 {
@@ -26,70 +23,67 @@ public sealed class RunnerKickRaceTests : IDisposable
         Directory.CreateDirectory(_root);
     }
 
-    /// <summary>
-    /// Stands in for "a live runner inside its final idle tick" by holding the same ownership mutex
-    /// directly, rather than racing a real process's own idle timer — which cannot be made to hit a
-    /// precise instant without a sleep-and-hope test. The kicked runner is a real process throughout.
-    /// </summary>
     [Fact]
-    public void AnEnqueueThatLandsWhileTheOwnerIsAboutToExitStillEndsWithTheJobRun()
+    public async Task ARealCliKickRunsTheJobQueuedWhileAnotherOwnerHoldsTheRunnerLock()
     {
         var project = _projects.CopyProjectFile();
         using var occupying = JobRunnerHost.ForNamespace(_ownerNamespace);
         Assert.True(occupying.TryAcquireOwnership());
 
-        // Enqueues and kicks a real runner; its first acquisition attempt is guaranteed to fail here.
-        var jobId = Cli($"baseline-refresh --project \"{project}\"").Output.Trim();
+        var run = await Cli(project);
+        Assert.True(run.ExitCode == 0, run.Error);
+        var jobId = run.Output.Trim();
         Assert.False(string.IsNullOrWhiteSpace(jobId));
+        Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
 
-        // Comfortably inside the runner's own retry window (docs/adr/0041-the-database-is-the-only-store.md).
-        Thread.Sleep(500);
         occupying.Dispose();
 
-        // Bounded by progress, not by how long a loaded machine takes to capture a Baseline.
-        JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");
+        var completed = JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");
+        Assert.Equal(JobStatus.Completed, completed.Status);
     }
 
     [Fact]
-    public void ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
+    public async Task ACapturingCallerGetsEndOfFileWithoutWaitingForTheRunnerItKicked()
     {
         var project = _projects.CopyProjectFile();
         var elapsed = Stopwatch.StartNew();
 
-        var run = Cli($"baseline-refresh --project \"{project}\"", idleSeconds: 12);
+        var run = await Cli(project, idleSeconds: 12);
 
-        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.ExitCode == 0, run.Error);
         Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(8),
             $"Reading the CLI's output took {elapsed.Elapsed}: the kicked runner held its standard handles.");
     }
 
-    /// Runs the real CLI with the kick enabled, sharing this test's isolated root and runner namespace.
-    private CliRun Cli(string arguments, int idleSeconds = 2)
+    private async Task<CliRun> Cli(string project, int idleSeconds = 2)
     {
-        var executable = BuildOutput.Cli;
-        var start = new ProcessStartInfo(executable)
-        {
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        start.Environment[RunnerOptions.RootVariable] = _root;
-        start.Environment[RunnerOptions.NamespaceVariable] = _ownerNamespace;
-        // The runner this kicks is nobody's to wait on, so bound how long it outlives the test.
+        var options = new JobRunnerLaunchOptions(_root, null) { OwnerNamespace = _ownerNamespace };
+        var start = CliProcess.Start(options, "baseline-refresh", "--project", project);
         start.Environment[RunnerOptions.IdleVariable] = idleSeconds.ToString(CultureInfo.InvariantCulture);
+        start.Environment.Remove(ProcessRunnerLauncher.SuppressVariable);
         using var process = Process.Start(start)!;
-        // Both pipes drain concurrently: a sequential read deadlocks past the pipe buffer.
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        // One bound over exit and both drains: a handle held open blocks a drain as surely as a hung exit.
-        if (!Task.WhenAll(outputTask, errorTask, process.WaitForExitAsync()).Wait(CliBound))
+        var exited = process.WaitForExitAsync();
+
+        try
+        {
+            await Task.WhenAll(outputTask, errorTask, exited).WaitAsync(CliBound);
+        }
+        catch (TimeoutException)
         {
             try { process.Kill(entireProcessTree: true); }
             catch (InvalidOperationException) { }
-            Assert.Fail("'motif " + arguments + "' did not exit and close its output within " + CliBound + ".");
+            catch (System.ComponentModel.Win32Exception) { }
+            try { await Task.WhenAll(outputTask, errorTask, exited).WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (TimeoutException) { }
+            var output = outputTask.IsCompletedSuccessfully ? outputTask.Result : "(stdout did not close)";
+            var error = errorTask.IsCompletedSuccessfully ? errorTask.Result : "(stderr did not close)";
+            Assert.Fail("The CLI did not exit and close its output within " + CliBound + "." +
+                Environment.NewLine + "Standard error:" + Environment.NewLine + error +
+                Environment.NewLine + "Standard output:" + Environment.NewLine + output);
         }
+
         return new CliRun(process.ExitCode, outputTask.Result, errorTask.Result);
     }
 
@@ -99,7 +93,6 @@ public sealed class RunnerKickRaceTests : IDisposable
 
     public void Dispose()
     {
-        // The kicked runner is still sweeping this root; give its bounded idle timeout time to expire.
         for (var attempt = 0; attempt < 20; attempt++)
         {
             try { Directory.Delete(_root, true); return; }

@@ -110,14 +110,16 @@ internal static class Program
     /// Retries a bounded window rather than giving up on the first failed attempt: closes the race where
     /// the currently-owning runner is inside its final idle tick and about to release the mutex, not gone.
     /// </summary>
-    internal static async Task<bool> TryAcquireOwnershipWithRetryAsync(JobRunnerHost host)
+    internal static async Task<bool> TryAcquireOwnershipWithRetryAsync(
+        JobRunnerHost host, TimeProvider? timeProvider = null)
     {
-        var deadline = DateTimeOffset.UtcNow + OwnershipRetryWindow;
+        timeProvider ??= TimeProvider.System;
+        var deadline = timeProvider.GetUtcNow() + OwnershipRetryWindow;
         while (true)
         {
             if (host.TryAcquireOwnership()) return true;
-            if (DateTimeOffset.UtcNow >= deadline) return false;
-            await Task.Delay(OwnershipRetryPoll).ConfigureAwait(false);
+            if (timeProvider.GetUtcNow() >= deadline) return false;
+            await Task.Delay(OwnershipRetryPoll, timeProvider).ConfigureAwait(false);
         }
     }
 
