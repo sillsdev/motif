@@ -69,21 +69,33 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Timing shows where recorded parse time went",
                     helpDescription?.Text ?? string.Empty);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
+                const string expectedSentence = "More time does not fix a search that reached its step limit";
+                const string expectedSection = "Slowest words in Timing";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                bool TimingIsRendered()
+                {
+                    if (markdownRenderer.RenderedTextProjection is not { } projection) return false;
+                    var text = string.Join("\n", projection.Buffers.Select(buffer => buffer.Text.ToString()));
+                    return text.Contains(expectedSentence, StringComparison.Ordinal) &&
+                        text.Contains(expectedSection, StringComparison.Ordinal);
+                }
                 markdownRenderer.PropertyChanged += (_, changed) =>
                 {
-                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty)
+                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty && TimingIsRendered())
                         projectionCommitted.TrySetResult();
                 };
-                if (markdownRenderer.RenderedTextProjection is not null) projectionCommitted.TrySetResult();
+                if (TimingIsRendered()) projectionCommitted.TrySetResult();
                 await projectionCommitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 var renderedTextProjection = Assert.IsType<MarkdownTextProjection>(
                     markdownRenderer.RenderedTextProjection);
-                Assert.Contains("More time does not fix a search that reached its step limit",
-                    string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
+                var renderedText = string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString()));
+                Assert.Contains(expectedSentence, renderedText);
+                Assert.Contains(expectedSection, renderedText);
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
-                Assert.Contains("More time does not fix a search that reached its step limit", help.Markdown);
-                Assert.Contains("Slowest words in Timing", help.Markdown);
+                Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                Assert.Equal(help.Description, helpDescription?.Text);
+                Assert.Contains(expectedSentence, help.Markdown);
+                Assert.Contains(expectedSection, help.Markdown);
             }
             finally
             {
