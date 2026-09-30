@@ -62,6 +62,7 @@ public sealed partial class MainWindow : Window
 
         var host = this.FindControl<Panel>("PageHost")
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
+        workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuide = OpenPanGlossGuide;
         foreach (var entry in workspace.Pages)
         {
             var view = PageRegistry.For(entry.Page).CreateView(entry.Model);
@@ -78,6 +79,14 @@ public sealed partial class MainWindow : Window
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
         RebuildRecentProjects(workspace);
+    }
+
+    private void OpenPanGlossGuide()
+    {
+        if (this.FindControl<Button>("HelpButton") is not { } button ||
+            HelpPopup?.DataContext is not HelpPopupViewModel help) return;
+        button.Flyout?.ShowAt(button);
+        help.ShowPanGlossPage();
     }
 
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using Avalonia.Input;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -26,6 +27,9 @@ public sealed class ResultsInTextViewModelTests
     private static readonly Guid SegmentId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly Guid SecondParagraphId = Guid.Parse("44444444-4444-4444-4444-444444444444");
     private static readonly Guid SecondSegmentId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+    private static readonly Guid OtherTextId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    private static readonly Guid OtherParagraphId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    private static readonly Guid OtherSegmentId = Guid.Parse("88888888-8888-8888-8888-888888888888");
 
     private static readonly ParseAnalysis Book = Reading("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly ParseAnalysis Love = Reading("aaaaaaaa-0000-0000-0000-000000000002");
@@ -71,10 +75,12 @@ public sealed class ResultsInTextViewModelTests
 
     private static async Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)> Loaded(
         PendingChangesSnapshot? pending = null, IReadOnlyList<TextLine>? sourceLines = null,
+        IReadOnlyList<TextLines>? sourceTexts = null,
         IReadOnlyList<OccurrenceAnchor>? readOccurrences = null,
         Func<WordReadStateRequest, CancellationToken, Task<CommandOutcome<WordReadStateResponse>>>? readStateHandler = null,
         bool waitForReadState = true,
-        Func<ResultsInTextViewModel, ChangesViewModel, FakeCommandClient, Task>? afterAssessment = null)
+        Func<ResultsInTextViewModel, ChangesViewModel, FakeCommandClient, Task>? afterAssessment = null,
+        IReadOnlyList<AssessmentWordResult>? assessmentWords = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
@@ -103,9 +109,12 @@ public sealed class ResultsInTextViewModelTests
             },
         ];
         var readState = (readOccurrences ?? []).ToHashSet();
-        var availableOccurrences = lines.Where(line => line.ParagraphId != Guid.Empty && line.SegmentId != Guid.Empty)
-            .SelectMany(line => line.Tokens.Where(token => token.Form is not null)
-                .Select(token => new OccurrenceAnchor(TextId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)))
+        var loadedTexts = sourceTexts ?? [new TextLines(TextId, "Alpha", lines)];
+        var availableOccurrences = loadedTexts.SelectMany(text => text.Lines
+                .Where(line => line.ParagraphId != Guid.Empty && line.SegmentId != Guid.Empty)
+                .SelectMany(line => line.Tokens.Where(token => token.Form is not null)
+                    .Select(token => new OccurrenceAnchor(text.TextId, line.ParagraphId, line.SegmentId,
+                        token.OccurrenceIndex))))
             .ToArray();
         fake.OnReadWordState(readStateHandler ?? ((request, _) =>
         {
@@ -120,8 +129,7 @@ public sealed class ResultsInTextViewModelTests
             return Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(
                 readState.Where(occurrence => occurrence.TextId == request.TextId).ToArray(), true)));
         }));
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([],
-            [new TextLines(TextId, "Alpha", lines)], HasBaseline: true));
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([], loadedTexts, HasBaseline: true));
         await texts.SetProjectAsync(ProjectPath);
 
         fake.AssessCompletesWith(new AssessCommandResponse(
@@ -131,7 +139,7 @@ public sealed class ResultsInTextViewModelTests
         {
             Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime,
                 "invocation/one")],
-            Words =
+            Words = assessmentWords ??
             [
                 Result("kitabu", Book, Child),
                 Result("anapenda", Like),
@@ -385,8 +393,8 @@ public sealed class ResultsInTextViewModelTests
         var first = inText.VisibleLines[0].Tokens[0];
         var second = inText.VisibleLines[0].Tokens[1];
         var outside = inText.VisibleLines[0].Tokens[2];
-        first.IsSelectedForReadState = true;
-        second.IsSelectedForReadState = true;
+        first.IsSelectedForActions = true;
+        second.IsSelectedForActions = true;
 
         Assert.Equal(2, inText.SelectedReadStateCount);
         await inText.MarkSelectionReadCommand.ExecuteAsync(null);
@@ -454,6 +462,310 @@ public sealed class ResultsInTextViewModelTests
         inText.SetFilterCommand.Execute(ResultsInTextFilter.All);
         Assert.Equal(2, inText.VisibleLines.Count);
         Assert.DoesNotContain(inText.VisibleLines.SelectMany(l => l.Tokens), token => token.IsDimmed);
+    }
+
+    [Fact]
+    public async Task NeedsALookFilterKeepsWordsWithAvailableMarkingActions()
+    {
+        var (inText, _, _) = await Loaded();
+
+        Assert.Contains("NeedsALook", Enum.GetNames<ResultsInTextFilter>());
+        inText.SetFilterCommand.Execute(Enum.Parse<ResultsInTextFilter>("NeedsALook"));
+
+        var visibleWords = inText.VisibleLines.SelectMany(line => line.Tokens)
+            .Where(token => token.IsWord && !token.IsDimmed).Select(token => token.Form).ToArray();
+        Assert.Equal(["kitabu", "anapenda", "mtoto", "kitabu"], visibleWords);
+        Assert.Equal(4, inText.NeedsALookCount);
+        Assert.DoesNotContain(inText.VisibleLines.SelectMany(line => line.Tokens),
+            token => token.Form == "zzz" && !token.IsDimmed);
+    }
+
+    [Fact]
+    public async Task NeedsALookFilterRefreshesWhenAnActionIsStaged()
+    {
+        var (inText, _, _) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(candidate => candidate.Form == "mtoto");
+        inText.SetFilterCommand.Execute(ResultsInTextFilter.NeedsALook);
+        inText.SelectToken(token);
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        Assert.Equal(3, inText.NeedsALookCount);
+        Assert.False(token.Marking.NeedsALook);
+        Assert.True(token.IsDimmed);
+    }
+
+    [Fact]
+    public async Task AWordStripCanStageItsActionWithoutOpeningTheCard()
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Single(candidate => candidate.Form == "mtoto");
+
+        Assert.True(inText.StagePrimaryMarkingActionForTokenCommand.CanExecute(token));
+        await inText.StagePrimaryMarkingActionForTokenCommand.ExecuteAsync(token);
+
+        var request = Assert.Single(client.PendingPutRequests);
+        Assert.Equal(ChangeKinds.AddCandidate, request.Change.Kind);
+        Assert.Equal("mtoto", request.Change.Word);
+        Assert.Equal(CanonicalId.FromGuid(token.WordformId!.Value).Value, request.Change.WordformId);
+    }
+
+    [Fact]
+    public async Task StagingAnActionKeepsVisibleLineContainersInPlace()
+    {
+        var (inText, _, _) = await Loaded();
+        var resets = 0;
+        inText.VisibleLines.CollectionChanged += (_, args) =>
+        {
+            if (args.Action == NotifyCollectionChangedAction.Reset) resets++;
+        };
+        var token = inText.VisibleLines.SelectMany(line => line.Tokens)
+            .Single(candidate => candidate.Form == "mtoto");
+        inText.SelectToken(token);
+
+        await inText.StagePrimaryMarkingActionCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, resets);
+    }
+
+    [Fact]
+    public async Task SelectAllCountsChosenWordsAndUsesTheSameSelectionForReadActions()
+    {
+        var (inText, _, _) = await Loaded();
+
+        Assert.Equal($"Selected 0 of {inText.AllCount} words", inText.CheckedWordCountLabel);
+        inText.SelectAllWordsCommand.Execute(null);
+
+        Assert.Equal(inText.AllCount, inText.CheckedWordCount);
+        Assert.Equal(inText.AllCount, inText.SelectedReadStateCount);
+        Assert.Equal($"Selected {inText.AllCount} of {inText.AllCount} words", inText.CheckedWordCountLabel);
+        inText.ClearSelectedWordsCommand.Execute(null);
+        Assert.Equal(0, inText.CheckedWordCount);
+    }
+
+    [Fact]
+    public async Task BulkRemovalPreviewNamesAffectedWordsAndTheirUsesBeforeStaging()
+    {
+        var (inText, _, client) = await Loaded();
+
+        Assert.True(inText.ChosenTextsAnalysisCount > 0);
+        Assert.EndsWith($"({inText.ChosenTextsAnalysisCount})", inText.ChosenTextsRemoveHeader,
+            StringComparison.Ordinal);
+        Assert.Contains("all chosen Texts", inText.ScopeCountSummary, StringComparison.Ordinal);
+        Assert.StartsWith($"{inText.ChosenTextsAnalysisCount} stored analyses on",
+            inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
+        Assert.Contains("stored analyses on", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
+        Assert.Contains("occurrences", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
+        Assert.Contains("everywhere in the project", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
+        Assert.Empty(client.PendingRemoveRequests);
+    }
+
+    [Fact]
+    public async Task AcceptNewSetForTheSelectedTextUsesTheRealTextScope()
+    {
+        var (inText, _, client) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        client.AcceptNewSetResponse = new PendingChangesSnapshot(null, "accepted", [], []);
+
+        await inText.AcceptNewSetCommand.ExecuteAsync(AnalysisOperationScope.SelectedText);
+
+        var request = Assert.Single(client.AcceptNewSetRequests);
+        Assert.Equal(TextId, request.TextId);
+        Assert.Null(request.WordformId);
+        Assert.False(request.Selection);
+        Assert.Equal("assessment/one", request.AssessmentId);
+    }
+
+    [Fact]
+    public async Task AcceptNewSetForTheSelectionUsesTheSelectionScope()
+    {
+        var (inText, _, client) = await Loaded();
+        inText.Changes.AssessmentId = "assessment/one";
+        client.AcceptNewSetResponse = new PendingChangesSnapshot(null, "accepted", [], []);
+
+        await inText.AcceptNewSetCommand.ExecuteAsync(AnalysisOperationScope.AssessmentSelection);
+
+        var request = Assert.Single(client.AcceptNewSetRequests);
+        Assert.Null(request.TextId);
+        Assert.Null(request.WordformId);
+        Assert.True(request.Selection);
+        Assert.Equal("assessment/one", request.AssessmentId);
+    }
+
+    [Fact]
+    public async Task AcceptNewSetEligibilityUsesTheSharedWordClassification()
+    {
+        var completeByMarking = Result("kitabu", Book, Child);
+        var cappedParserMetadata = completeByMarking with
+        {
+            Morphology = completeByMarking.Morphology! with { Capped = true },
+        };
+        var words = new[]
+        {
+            cappedParserMetadata,
+            Result("anapenda", Like),
+            Result("mtoto", Child),
+            Result("zzz"),
+        };
+        var (inText, _, _) = await Loaded(assessmentWords: words);
+        inText.Changes.AssessmentId = "assessment/one";
+
+        Assert.Equal(AnalysisMarkingClass.Extra,
+            inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+                .First(token => token.Form == "kitabu").Marking.PanGlossClass);
+        Assert.True(inText.AcceptNewSetCommand.CanExecute(AnalysisOperationScope.SelectedText));
+        Assert.True(inText.AcceptNewSetCommand.CanExecute(AnalysisOperationScope.AssessmentSelection));
+    }
+
+    [Fact]
+    public async Task RemovingAnalysesForTheSelectedTextUsesTheRealTextScope()
+    {
+        var (inText, _, client) = await Loaded();
+        client.AnalysisRemovalResponse = new PendingChangesSnapshot(null, "removed", [], []);
+
+        await inText.RemoveAnalysesCommand.ExecuteAsync(AnalysisOperationScope.SelectedText);
+
+        var request = Assert.Single(client.AnalysisRemovalRequests);
+        Assert.Equal(TextId, request.TextId);
+        Assert.Null(request.AnalysisIds);
+    }
+
+    [Fact]
+    public async Task MarkingSpellingsIncorrectForTheSelectedTextStagesEachWordformOnce()
+    {
+        var (inText, _, client) = await Loaded();
+        var expected = inText.SelectedText!.Lines.SelectMany(line => line.Tokens).Where(token => token.IsWord)
+            .Select(token => token.Form).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+
+        await inText.MarkSpellingsIncorrectCommand.ExecuteAsync(AnalysisOperationScope.SelectedText);
+
+        Assert.Equal(expected, client.PendingPutRequests.Select(request => request.Change.Word)
+            .Order(StringComparer.Ordinal));
+        Assert.All(client.PendingPutRequests, request => Assert.Equal(ChangeKinds.IncorrectSpelling,
+            request.Change.Kind));
+    }
+
+    [Fact]
+    public async Task CheckedOccurrencesExposeASelectionAndRemoveEachStoredAnalysisOnce()
+    {
+        var (inText, _, client) = await Loaded();
+        var occurrences = inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+            .Where(token => token.Form == "kitabu").ToArray();
+        foreach (var token in occurrences) token.IsSelectedForActions = true;
+        client.AnalysisRemovalResponse = new PendingChangesSnapshot(null, "removed", [], []);
+
+        Assert.Equal(2, inText.CheckedWordCount);
+        Assert.True(inText.HasCheckedWords);
+        await inText.RemoveAnalysesCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
+
+        var request = Assert.Single(client.AnalysisRemovalRequests);
+        Assert.Equal(["stored-aaaaaaaa-0000-0000-0000-000000000001"], request.AnalysisIds);
+    }
+
+    [Fact]
+    public async Task RemovingAnalysesForTheSelectionUsesEveryDistinctStoredAnalysisId()
+    {
+        var (inText, _, client) = await Loaded();
+        client.AnalysisRemovalResponse = new PendingChangesSnapshot(null, "removed", [], []);
+        var expected = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .SelectMany(token => token.Marking.FieldWorksAnalyses).Select(analysis => analysis.StoredAnalysisId)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+
+        await inText.RemoveAnalysesCommand.ExecuteAsync(AnalysisOperationScope.ChosenTexts);
+
+        var request = Assert.Single(client.AnalysisRemovalRequests);
+        Assert.Null(request.TextId);
+        Assert.Equal(expected, request.AnalysisIds!.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task RemovingAStoredAnalysisStagesTheExactAnalysis()
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(candidate => candidate.Form == "kitabu");
+        inText.SelectToken(token);
+        var stored = Assert.Single(token.Marking.FieldWorksAnalyses);
+        var remove = Assert.Single(token.Marking.FixChoices, choice =>
+            choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis &&
+            choice.StoredAnalysisId == stored.StoredAnalysisId);
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(remove);
+
+        var request = Assert.Single(client.AnalysisRemovalRequests);
+        Assert.Equal(stored.StoredAnalysisId, request.AnalysisId);
+        Assert.Equal(token.Form, request.Word);
+        Assert.Equal(CanonicalId.FromGuid(token.WordformId!.Value).Value, request.WordformId);
+        Assert.Equal("remove-analysis", Assert.Single(inText.Changes.Snapshot.Changes).Kind);
+    }
+
+    [Fact]
+    public async Task ARefusedAnalysisRemovalLeavesTheWordUnread()
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(candidate => candidate.Form == "kitabu");
+        inText.SelectToken(token);
+        var removal = Assert.Single(token.Marking.FixChoices, choice =>
+            choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
+        client.RemoveAnalysisHandler = (_, _) => Task.FromResult(
+            CommandOutcome<PendingChangesSnapshot>.Refused(new Refusal("remove.refused",
+                FailureReason.InvalidArgument, "The stored analysis changed.")));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(removal);
+
+        Assert.True(token.Marking.IsUnread);
+    }
+
+    [Fact]
+    public async Task ARefusedAcceptNewSetLeavesTheWordUnread()
+    {
+        var (inText, _, client) = await Loaded();
+        var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .First(candidate => candidate.Marking.FixChoices.Any(choice =>
+                choice.Kind == AnalysisMarkingActionKind.AcceptNewSet));
+        inText.SelectToken(token);
+        inText.Changes.AssessmentId = "assessment/one";
+        var accept = Assert.Single(token.Marking.FixChoices, choice =>
+            choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
+        client.AcceptNewSetHandler = (_, _) => Task.FromResult(
+            CommandOutcome<PendingChangesSnapshot>.Refused(new Refusal("accept.refused",
+                FailureReason.InvalidArgument, "The Assessment is no longer current.")));
+
+        await inText.StageMarkingChoiceCommand.ExecuteAsync(accept);
+
+        Assert.True(token.Marking.IsUnread);
+    }
+
+    [Fact]
+    public async Task UndoInASelectedTextLeavesTheSameWordInAnotherTextStaged()
+    {
+        const string selectedChangeId = "selected-text-change";
+        const string otherChangeId = "other-text-change";
+        var selectedOccurrence = new OccurrenceAnchor(TextId, ParagraphId, SegmentId, 0);
+        var otherOccurrence = new OccurrenceAnchor(OtherTextId, OtherParagraphId, OtherSegmentId, 0);
+        var pending = new PendingChangesSnapshot("draft/scoped-undo", "revision/scoped-undo",
+            [new PendingChange(selectedChangeId, Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, []),
+             new PendingChange(otherChangeId, Wordform("kitabu"), "kitabu", ChangeKinds.Approve,
+                    null, null, [])],
+            [new ChangeFit(selectedChangeId, ChangeFitStatus.Uncertain, []) { Occurrence = selectedOccurrence },
+             new ChangeFit(otherChangeId, ChangeFitStatus.Uncertain, []) { Occurrence = otherOccurrence }]);
+        var selectedLine = new TextLine(1, [Word("kitabu", Stored(Book, "book"))])
+            { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true };
+        var otherLine = new TextLine(1, [Word("kitabu", Stored(Book, "book"))])
+            { ParagraphId = OtherParagraphId, SegmentId = OtherSegmentId, ParseIsCurrent = true };
+        var (inText, _, client) = await Loaded(pending: pending, sourceTexts:
+        [
+            new TextLines(TextId, "Alpha", [selectedLine]),
+            new TextLines(OtherTextId, "Beta", [otherLine]),
+        ]);
+
+        await inText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.SelectedText);
+
+        Assert.Equal([selectedChangeId], client.PendingRemoveRequests.Select(request => request.ChangeId));
     }
 
     [Fact]
@@ -863,11 +1175,13 @@ public sealed class ResultsInTextViewModelTests
 
         Assert.Null(inText.Message);
         Assert.False(inText.HasMessage);
+        Assert.False(inText.HasAssessment);
+        Assert.False(inText.HasResults);
         Assert.Empty(inText.VisibleLines);
     }
 
     [Fact]
-    public async Task BeforeAssessmentTheReaderShowsChosenTextAndItsWords()
+    public async Task BeforeAssessmentTheReaderKeepsChosenTextButShowsNoWordResults()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -881,10 +1195,9 @@ public sealed class ResultsInTextViewModelTests
         await texts.SetProjectAsync(ProjectPath);
 
         Assert.True(inText.HasTexts);
+        Assert.False(inText.HasResults);
         Assert.Equal("Alpha", Assert.Single(inText.Texts).Title);
-        Assert.Equal("kitabu", Assert.Single(Assert.Single(inText.VisibleLines).Tokens).Form);
-        Assert.Equal(OccurrenceVerdict.NotAssessed,
-            Assert.Single(Assert.Single(inText.VisibleLines).Tokens).Verdict);
+        Assert.Empty(inText.VisibleLines);
         Assert.Null(inText.Message);
     }
 }

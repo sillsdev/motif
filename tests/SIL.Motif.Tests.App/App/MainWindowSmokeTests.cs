@@ -65,8 +65,9 @@ public sealed class MainWindowSmokeTests
                 Assert.True(helpButton.Flyout?.IsOpen);
                 var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
                 Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.Contains("Timing shows where recorded parse time went",
-                    helpView.FindControl<TextBlock>("HelpDescription")?.Text);
+                    helpDescription?.Text ?? string.Empty);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 markdownRenderer.PropertyChanged += (_, changed) =>
@@ -89,6 +90,70 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void PanGlossHelpFromAnalyzeTextsOpensTheLinguistPageInTheWindow()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuideCommand.Execute(null);
+                window.UpdateLayout();
+
+                var helpButton = Assert.IsType<Button>(window.FindControl<Button>("HelpButton"));
+                Assert.True(helpButton.Flyout?.IsOpen);
+                var help = Assert.IsType<HelpPopupViewModel>(
+                    Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content).DataContext);
+                Assert.Equal("PanGloss", help.Title);
+                Assert.Equal("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.", help.Description);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AnalyzeTextsWithoutAnAssessmentUsesTheSharedParsePrompt()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
+                    string.Empty, string.Empty, null);
+                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                window.UpdateLayout();
+                var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>(),
+                    candidate => candidate.IsEffectivelyVisible);
+                Assert.True(prompt.IsEffectivelyVisible);
+                var parse = Assert.Single(prompt.GetVisualDescendants().OfType<Button>());
+                Assert.True(parse.IsEffectivelyVisible);
+                Assert.Equal(workspace.Context.ParsePromptActionText, parse.Content);
+
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Parse the words in the selected texts");
+                var readButtons = panel.GetLogicalDescendants().OfType<Button>()
+                    .Where(button => AutomationProperties.GetName(button) is
+                        "Mark selected occurrences as read" or "Mark selected occurrences as unread" or
+                        "Mark the selected Text as read" or "Mark the selected Text as unread").ToArray();
+                Assert.Equal(4, readButtons.Length);
+                Assert.All(readButtons, button => Assert.False(button.IsEffectivelyVisible));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
     }
 
     [Fact]
@@ -670,13 +735,24 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void TextsMatrixShowsAssessmentWordsWithoutIdentifiers()
+    public async Task TextsMatrixShowsAssessmentWordsWithoutIdentifiers()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             try
             {
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                var page = workspace.PageModel<TextsPageModel>();
+                var textId = Guid.Parse("55555555-5555-4555-8555-555555555555");
+                fake.ListTextWordsCompletesWith(new TextWordsResponse(
+                    [new TextWord("motifa", null,
+                        [new WordOccurrence(textId, "Alpha", 1, "motifa.", "unanalysed", null)], [], [])],
+                    [new TextLines(textId, "Alpha",
+                        [new TextLine(1, [new TextToken("motifa", "motifa", null, null)
+                            { OccurrenceIndex = 0 }])])],
+                    HasBaseline: true));
+                await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Assess.Result = new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -749,20 +825,46 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal("motif-", Assert.Single(selected.Readings).Morphs.Single().Form);
                 window.UpdateLayout();
 
-                var visibleMorphLinks = window.GetLogicalDescendants().OfType<HyperlinkButton>()
-                    .Where(button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks" &&
-                        button.IsEffectivelyVisible)
+                Assert.True(selected.IsCardOpen);
+                var resultsPanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+                var selectionBoxes = resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
+                    .Where(checkBox => checkBox.IsEffectivelyVisible &&
+                        (AutomationProperties.GetName(checkBox) ?? string.Empty)
+                        .StartsWith("Select ", StringComparison.Ordinal))
                     .ToArray();
-                Assert.NotEmpty(visibleMorphLinks);
-                Assert.Contains(visibleMorphLinks, button => Equals(button.Content, "motif-"));
+                Assert.Single(selectionBoxes);
+                var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
+                    .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
+                var cardPopup = Assert.Single(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
+                Assert.Same(strip, cardPopup.PlacementTarget);
+                Dispatcher.UIThread.RunJobs();
+                cardPopup.Child!.UpdateLayout();
+                var cardLinks = cardPopup.Child.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
+                Assert.True(cardLinks.Length > 0,
+                    $"Card context={cardPopup.Child.DataContext?.GetType().Name ?? "null"}; " +
+                    $"reading link={selected.Readings.Single().Morphs.Single().Link}; " +
+                    $"morpheme rows={cardPopup.Child.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
+                    $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
+                var morphLink = Assert.Single(cardLinks,
+                    button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks");
+                Assert.Equal("FW ↗", morphLink.Content);
+                Assert.True(morphLink.Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(1, morphLink.Opacity);
+                Assert.True(morphLink.IsHitTestVisible);
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
+                workspace.CurrentPage = WorkspacePage.Review;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.False(cardPopup.IsOpen);
             }
             finally
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -918,6 +1020,8 @@ public sealed class MainWindowSmokeTests
                     HasBaseline: true));
                 await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
                 await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
+                workspace.Assess.Result = AssessedWords(
+                    new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null));
                 workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
                 window.Show();
                 window.ApplyTemplate();
@@ -1216,6 +1320,7 @@ public sealed class MainWindowSmokeTests
                 };
                 await changes.PutAsync(new ChangeIntent("newer", "reject", "wordform/one", "motifa"));
                 var notice = Assert.IsType<string>(changes.CollectionNotice);
+                workspace.Assess.Result = AssessedWords();
 
                 window.Show();
                 window.ApplyTemplate();
@@ -1289,6 +1394,16 @@ public sealed class MainWindowSmokeTests
         window.MouseDown(centre, MouseButton.Left);
         window.MouseUp(centre, MouseButton.Left);
     }
+
+    private static AssessCommandResponse AssessedWords(params AssessmentWordResult[] words) => new(
+        new BaselineCaptureResponse(
+            new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
+            "project.fwdata", DateTimeOffset.UtcNow, false, false),
+        new SelectionProjection([], []), [], $"{words.Length} words assessed")
+    {
+        Words = words,
+    };
 
     private static void AssertSelectableCells(DataGrid grid)
     {

@@ -215,8 +215,8 @@ public sealed class MarkingsGalleryTests
                 var normalMark = new Border { Classes = { "opinionMark", "approved" } };
                 var compactChip = new Button { Content = "Fix", Classes = { "actionChip" } };
                 var normalChip = new Button { Content = "Fix", Classes = { "actionChip" } };
-                var compactWord = DensityWord();
-                var normalWord = DensityWord();
+                var compactWord = DensityWord(normal: false);
+                var normalWord = DensityWord(normal: true);
                 gallery.CompactRoot.Children.Add(compactMark);
                 gallery.NormalRoot.Children.Add(normalMark);
                 gallery.CompactRoot.Children.Add(compactChip);
@@ -228,8 +228,8 @@ public sealed class MarkingsGalleryTests
                 Assert.Equal(15d, normalMark.Width);
                 Assert.Equal(17d, compactChip.Height);
                 Assert.Equal(19d, normalChip.Height);
-                Assert.Equal(19d, compactWord.Height);
-                Assert.Equal(27d, normalWord.Height);
+                Assert.Equal(19d, compactWord.MinHeight);
+                Assert.Equal(27d, normalWord.MinHeight);
                 Assert.Equal(13d, ((TextBlock)compactWord.Child!).FontSize);
                 Assert.Equal(15d, ((TextBlock)normalWord.Child!).FontSize);
             }
@@ -287,11 +287,16 @@ public sealed class MarkingsGalleryTests
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)
         ?? throw new InvalidOperationException("The control is not positioned in the window.");
 
-    private static Border DensityWord() => new()
+    private static Border DensityWord(bool normal)
     {
-        Classes = { "wordVerdict" },
-        Child = new TextBlock { Text = "word" },
-    };
+        var word = new Border
+        {
+            Classes = { "wordVerdict", "analysisDensity" },
+            Child = new TextBlock { Text = "word" },
+        };
+        if (normal) word.Classes.Add("normal");
+        return word;
+    }
 
     private static Color ColorResource(string key, ThemeVariant variant)
     {

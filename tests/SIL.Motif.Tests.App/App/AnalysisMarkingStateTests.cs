@@ -11,14 +11,14 @@ public sealed class AnalysisMarkingStateTests
     private static readonly ParseAnalysis Book = Reading("form-1", "msa-1");
     private static readonly ParseAnalysis Child = Reading("form-2", "msa-2");
 
-    public static IEnumerable<object?[]> R4PrimaryActionCases =>
+    public static IEnumerable<object?[]> PrimaryActionCases =>
     [
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, AnalysisMarkingActionKind.Approve, "Approve", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"),
-            AnalysisMarkingClass.None, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
+            AnalysisMarkingClass.None, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(), Result("new", Child), AnalysisMarkingClass.Different,
             AnalysisMarkingActionKind.Add, "Add", ChangeKinds.AddCandidate, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("extra", Book, Child),
@@ -30,10 +30,10 @@ public sealed class AnalysisMarkingStateTests
     ];
 
     [Theory]
-    [MemberData(nameof(R4PrimaryActionCases))]
-    public void PrimaryActionAndNeedsALookFollowTheR4ClassOpinionTable(TextToken token,
+    [MemberData(nameof(PrimaryActionCases))]
+    public void PrimaryActionAndNeedsALookFollowTheClassOpinionTable(TextToken token,
         AssessmentWordResult? result, AnalysisMarkingClass expectedClass, AnalysisMarkingActionKind? expectedKind,
-        string? expectedLabel, string? expectedChangeKind, bool expectedUnread)
+        string? expectedLabel, string? expectedChangeKind, bool expectedNeedsALook)
     {
         var state = AnalysisMarkingState.Create(token, result);
 
@@ -41,14 +41,13 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal(expectedKind, state.PrimaryAction?.Kind);
         Assert.Equal(expectedLabel, state.PrimaryAction?.Label);
         Assert.Equal(expectedChangeKind, state.PrimaryAction?.ChangeKind);
-        Assert.Equal(expectedUnread, state.NeedsALook);
+        Assert.Equal(expectedNeedsALook, state.NeedsALook);
     }
 
     [Fact]
     public void UnreadDoesNotDependOnWhetherAnActionIsAvailable()
     {
-        var state = AnalysisMarkingState.Create(
-            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book));
+        var state = AnalysisMarkingState.Create(Token(), Result("capped", true, Book));
 
         Assert.Null(state.PrimaryAction);
         Assert.Empty(state.FixChoices);
@@ -145,7 +144,49 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks &&
             choice.Label == "Keep FieldWorks");
-        Assert.True(state.NeedsALook);
+        Assert.False(state.NeedsALook);
+    }
+
+    [Fact]
+    public void NeedsALookTracksAvailableUnstagedActions()
+    {
+        var actionable = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("book", Book));
+        var staged = actionable.WithStagedTransitions(
+            [new StagedMarkingTransition("Unknown", "Approved")]);
+        var capped = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("book", true, Book));
+
+        Assert.True(actionable.NeedsALook);
+        Assert.False(staged.NeedsALook);
+        Assert.False(capped.NeedsALook);
+    }
+
+    [Fact]
+    public void AgreementRemovalAndKeepChoicesDoNotNeedALook()
+    {
+        var agreement = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book));
+        var noParse = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"));
+        var capped = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("capped", true, Book));
+
+        Assert.False(agreement.NeedsALook);
+        Assert.False(noParse.NeedsALook);
+        Assert.False(capped.NeedsALook);
+    }
+
+    [Fact]
+    public void AStoredAnalysisCanBeRemovedEvenWhenTheParserAgrees()
+    {
+        var stored = Stored(Book, ReadingGrade.Approved, "stored-1");
+
+        var state = AnalysisMarkingState.Create(Token(stored), Result("book", Book));
+
+        var remove = Assert.Single(state.FixChoices, choice => choice.Label == "Remove analysis");
+        Assert.Equal("stored-1", remove.StoredAnalysisId);
+        Assert.Equal("remove-analysis", remove.ChangeKind);
     }
 
     [Fact]
@@ -160,15 +201,28 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
-    public void DisapprovedDifferentReadingUsesTheR4FixMenu()
+    public void DisapprovedDifferentReadingUsesTheFixMenu()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Keep FieldWorks"],
+        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Accept the new set as present",
+            "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
         Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);
         Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[1].ChangeKind);
+    }
+
+    [Fact]
+    public void MatchingUnknownAnalysisOffersOpinionActionsInTheFixMenu()
+    {
+        var state = AnalysisMarkingState.Create(Token(Stored(Book, ReadingGrade.Candidate, "stored-1")),
+            Result("book", Book));
+
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Approve &&
+            choice.StoredAnalysisId == "stored-1");
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.Disapprove &&
+            choice.StoredAnalysisId == "stored-1");
     }
 
     [Fact]
@@ -179,6 +233,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Equal(AnalysisMarkingClass.Capped, state.PanGlossClass);
         Assert.Null(state.PrimaryAction);
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
         Assert.False(state.NeedsALook);
     }
 

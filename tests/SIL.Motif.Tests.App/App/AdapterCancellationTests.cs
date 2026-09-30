@@ -191,6 +191,12 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
         yield return new("PutPendingChange", Observe(token => client.PutPendingChangeAsync(
             new PutPendingChangeRequest(path, ProductVersion, revision, new ChangeIntent(
                 CanonicalId.Mint().Value, "incorrect-spelling", CanonicalId.Mint().Value, "motifa")), token)));
+        yield return new("RemoveAnalysis", Observe(token => client.RemoveAnalysisAsync(
+            new RemoveAnalysisRequest(path, ProductVersion, revision, ChangeId: CanonicalId.Mint().Value,
+                WordformId: CanonicalId.Mint().Value, Word: "motifa", AnalysisId: CanonicalId.Mint().Value), token)));
+        yield return new("AcceptNewSet", Observe(token => client.AcceptNewSetAsync(
+            new AcceptNewSetRequest(path, ProductVersion, revision, "assessment/test",
+                WordformId: CanonicalId.Mint().Value), token)));
         yield return new("RemovePendingChange", Observe(token => client.RemovePendingChangeAsync(
             new RemovePendingChangeRequest(path, ProductVersion, revision, CanonicalId.Mint().Value), token)));
         yield return new("RecheckPendingChanges", Observe(token => client.RecheckPendingChangesAsync(

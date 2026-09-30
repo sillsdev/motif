@@ -1,13 +1,17 @@
 using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Diagnostics;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -71,14 +75,157 @@ public sealed class ViewTokenTests
             new("a form", row => Nth<CopyableTextBlock>(row, 0), TextBlock.FontSizeProperty, "Intent.Type.Body"),
             new("a gloss", row => Nth<CopyableTextBlock>(row, 1), TextBlock.FontSizeProperty, "Intent.Type.Small"),
             new("a category", row => Nth<CopyableTextBlock>(row, 2), TextBlock.FontSizeProperty, "Intent.Type.Label"),
-            new("a linked form", row => Nth<HyperlinkButton>(row, 0), HyperlinkButton.FontSizeProperty, "Intent.Type.Body"),
-            new("a linked gloss", row => Nth<HyperlinkButton>(row, 1), HyperlinkButton.FontSizeProperty, "Intent.Type.Small"),
-            new("a block", row => Nth<Border>(row, 0), Border.PaddingProperty, "Component.MorphemeRow.BlockPadding"),
-            new("a block", row => Nth<Border>(row, 0), Border.MarginProperty, "Component.MorphemeRow.BlockMargin"),
-            new("a block", row => Nth<Border>(row, 0), Border.BorderThicknessProperty, "Intent.Stroke.DividerEnd"),
-            new("the last block", row => Nth<Border>(row, 1), Border.PaddingProperty, "Intent.Inset.None"),
-            new("the last block", row => Nth<Border>(row, 1), Border.MarginProperty, "Component.MorphemeRow.LastBlockMargin"),
+            new("a block", row => MorphBlock(row, 0), Border.PaddingProperty, "Component.MorphemeRow.BlockPadding"),
+            new("a block", row => MorphBlock(row, 0), Border.MarginProperty, "Component.MorphemeRow.BlockMargin"),
+            new("a block", row => MorphBlock(row, 0), Border.BorderThicknessProperty, "Intent.Stroke.DividerEnd"),
+            new("the last block", row => MorphBlock(row, 1), Border.PaddingProperty, "Intent.Inset.None"),
+            new("the last block", row => MorphBlock(row, 1), Border.MarginProperty, "Component.MorphemeRow.LastBlockMargin"),
         ]);
+    }
+
+    [Fact]
+    public void AWordCardCanHideFieldWorksLinksUntilHoverOrKeyboardFocus()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var row = new MorphemeRow
+            {
+                RevealLinks = true,
+                Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph(
+                    "form", "gloss", "n", null, false, "silfw://entry"))],
+            };
+            var form = Assert.Single(row.GetLogicalDescendants().OfType<CopyableTextBlock>(),
+                block => block.Classes.Contains("morphForm"));
+            var gloss = Assert.Single(row.GetLogicalDescendants().OfType<CopyableTextBlock>(),
+                block => block.Classes.Contains("morphGloss"));
+            Assert.Equal("form", form.Text);
+            Assert.Equal("gloss", gloss.Text);
+            var links = row.GetLogicalDescendants().OfType<HyperlinkButton>().ToArray();
+            Assert.Equal(2, links.Length);
+            Assert.All(links, link =>
+            {
+                Assert.Equal("FW ↗", link.Content);
+                Assert.Contains("revealControl", link.Classes);
+                Assert.True(link.Focusable);
+            });
+
+            var host = new Border { Classes = { "hoverReveal" }, Child = row };
+            var window = new Window { Content = host, Width = 400, Height = 200 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.All(links, link =>
+                {
+                    Assert.Equal(0, link.Opacity);
+                    Assert.False(link.IsHitTestVisible);
+                });
+                var formCenter = form.TranslatePoint(
+                    new Point(form.Bounds.Width / 2, form.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(formCenter);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(host.IsPointerOver);
+                Assert.All(links, link =>
+                {
+                    Assert.Equal(1, link.Opacity);
+                    Assert.True(link.IsHitTestVisible);
+                });
+                window.MouseMove(new Point(1, 1));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.All(links, link =>
+                {
+                    Assert.Equal(0, link.Opacity);
+                    Assert.False(link.IsHitTestVisible);
+                });
+                Assert.True(links[0].Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(1, links[0].Opacity);
+                Assert.True(links[0].IsHitTestVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void WordCardIsAnchoredToTheStripAndStacksItsSectionsInOrder()
+    {
+        var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        var start = markup.IndexOf("<Popup", StringComparison.Ordinal);
+        Assert.True(start >= 0, "The word card must be a popup.");
+        var end = markup.IndexOf("</Popup>", start, StringComparison.Ordinal);
+        Assert.True(end > start, "The word popup must have a closing element.");
+        var popup = markup[start..end];
+
+        Assert.Contains("PlacementTarget=\"{Binding #WordStrip}\"", popup, StringComparison.Ordinal);
+        Assert.Contains("KeyDown=\"OnTokenCardKeyDown\"", popup, StringComparison.Ordinal);
+        Assert.True(popup.IndexOf("FieldWorks", StringComparison.Ordinal) <
+                    popup.IndexOf("PanGloss", StringComparison.Ordinal));
+        Assert.True(popup.IndexOf("PanGloss", StringComparison.Ordinal) <
+                    popup.IndexOf("What to do", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void HoverSummaryIsReadOnlyTextWithoutButtons()
+    {
+        var token = new ResultsTokenViewModel("Text", 1,
+            new TextToken("word", "word", null, null), null);
+        var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not assessed", token.HoverSummary);
+        Assert.Null(token.Actions);
+        Assert.Contains("ToolTip.Tip=\"{Binding HoverSummary}\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ToolTip", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StripAndCardOfferFixAndApproveOneReadingAtATime()
+    {
+        var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        Assert.Equal(2, Regex.Matches(markup, "Header=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
+            StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,
+            StringComparison.Ordinal);
+        Assert.Contains("<ComboBox ItemsSource=\"{Binding Readings}\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BulkActionsNameChosenTextsCountWordsAndExplainWordOnlyOpinions()
+    {
+        var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        var bulk = markup[..markup.IndexOf("<ScrollViewer Grid.Row=\"3\"", StringComparison.Ordinal)];
+        Assert.Contains("Select all", bulk, StringComparison.Ordinal);
+        Assert.Contains("all chosen Texts", bulk, StringComparison.Ordinal);
+        Assert.Contains("Approve one analysis at a time", bulk, StringComparison.Ordinal);
+        Assert.Contains("InText.AllCount", bulk, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MorphemeRowsOfferAnAnchoredMorphemeCard()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var row = new MorphemeRow
+            {
+                Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph(
+                    "form", "gloss", "n", null, false, "silfw://entry"))],
+            };
+            var host = Assert.IsType<Panel>(Assert.Single(row.Children));
+            var anchor = Assert.IsType<Border>(host.Children[0]);
+            var popup = Assert.IsType<Popup>(host.Children[1]);
+
+            Assert.Same(anchor, popup.PlacementTarget);
+            Assert.True(popup.IsLightDismissEnabled);
+            Assert.Contains(popup.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                text.Text == "Morpheme details");
+        });
     }
 
     [Fact]
@@ -146,6 +293,9 @@ public sealed class ViewTokenTests
 
     private static Control Swatch(Control bar) =>
         LegendEntry(bar).GetLogicalChildren().OfType<Border>().First();
+
+    private static Border MorphBlock(Control row, int index) =>
+        row.GetLogicalDescendants().OfType<Border>().Where(block => block.Classes.Contains("morph")).ElementAt(index);
 
     private static StackPanel LegendEntry(Control bar) => Nth<StackPanel>(Nth<WrapPanel>(bar, 0), 0);
 
