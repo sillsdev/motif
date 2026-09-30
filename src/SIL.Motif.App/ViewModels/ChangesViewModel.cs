@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -484,7 +485,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     /// change needs a look, else where the change was made and where an added analysis came from.
     /// </summary>
     public string DetailText => IsNoLongerFits ? NoLongerFitsDetail()
-        : IsUncertain ? UncertaintyReason
+        : IsUncertain ? Fit?.Uncertainty?.Reason == WordsChangedReason ? string.Empty : UncertaintyReason
         : string.Join(" · ", new[] { Occurrence is null ? string.Empty : WhereText, SourceText }
             .Where(part => part.Length > 0));
 
@@ -501,37 +502,28 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     private ReviewAnalysisViewModel? RowAnalysis =>
         Analyses.FirstOrDefault(analysis => analysis.Touched) ?? Analyses.FirstOrDefault();
 
-    // The fit reasons are written for the CLI and name internal ids; the window says what changed in FieldWorks.
+    // The "Now reads" sentence and the group's note already say that the words changed.
+    private const string WordsChangedReason = "The words in the source sentence have changed.";
+
+    // The fit reasons name internal ids, so the window words each by the kind the fit check gives it.
     private string NoLongerFitsDetail()
     {
-        var reason = Fit?.Reasons.FirstOrDefault() ?? string.Empty;
         var forms = string.Concat(RowMorphs.Select(morph => morph.Form));
         var analysis = forms.Length > 0 ? forms : "this analysis";
-        if (reason.StartsWith("Wordform ", StringComparison.Ordinal))
+        return ChangeFitReasons.KindOf(Fit?.Reasons.FirstOrDefault()) switch
         {
-            if (reason.EndsWith(" was deleted.", StringComparison.Ordinal))
-                return $"the word {Word} was deleted in FieldWorks";
-            if (reason.EndsWith(" changed form.", StringComparison.Ordinal))
-                return $"the spelling of {Word} was changed in FieldWorks";
-            if (reason.EndsWith(" changed spelling status.", StringComparison.Ordinal))
-                return $"the spelling status of {Word} was changed in FieldWorks";
-        }
-        if (reason.StartsWith("Analysis ", StringComparison.Ordinal))
-        {
-            if (reason.Contains(" was deleted or moved ", StringComparison.Ordinal))
-                return $"the analysis {analysis} was deleted or moved in FieldWorks";
-            if (reason.EndsWith(" changed its reading.", StringComparison.Ordinal))
-                return $"the analysis {analysis} was edited in FieldWorks";
-            if (reason.EndsWith(" changed its human opinion.", StringComparison.Ordinal))
-                return $"the opinion on {analysis} was changed in FieldWorks";
-        }
-        if (reason.StartsWith("Candidate morph reference ", StringComparison.Ordinal))
-            return $"a morpheme in {analysis} was deleted or changed in FieldWorks";
-        if (reason.StartsWith("The parser reading already exists ", StringComparison.Ordinal))
-            return "FieldWorks already has this analysis";
-        if (reason == "The collected change's Baseline is no longer current.")
-            return "FieldWorks saved the project since you decided; check again";
-        return "FieldWorks changed this word since you decided";
+            ChangeFitReasonKind.WordformDeleted => $"the word {Word} was deleted in FieldWorks",
+            ChangeFitReasonKind.WordformChangedForm => $"the spelling of {Word} was changed in FieldWorks",
+            ChangeFitReasonKind.WordformSpellingChanged => $"the spelling status of {Word} was changed in FieldWorks",
+            ChangeFitReasonKind.AnalysisMissing => $"the analysis {analysis} was deleted or moved in FieldWorks",
+            ChangeFitReasonKind.AnalysisReadingChanged => $"the analysis {analysis} was edited in FieldWorks",
+            ChangeFitReasonKind.AnalysisOpinionChanged => $"the opinion on {analysis} was changed in FieldWorks",
+            ChangeFitReasonKind.MorphReferenceMissing => $"a morpheme in {analysis} was deleted or changed in FieldWorks",
+            ChangeFitReasonKind.ReadingAlreadyExists => "FieldWorks already has this analysis",
+            ChangeFitReasonKind.BaselineNotCurrent => "FieldWorks saved the project since you decided; check again",
+            ChangeFitReasonKind.CannotCheck => "Motif can no longer check this change; undo it and make it again",
+            _ => "FieldWorks changed this word since you decided",
+        };
     }
     public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
     public bool HasUncertainty => Fit?.Uncertainty is not null;

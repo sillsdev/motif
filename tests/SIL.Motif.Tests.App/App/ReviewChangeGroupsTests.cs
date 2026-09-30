@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -209,20 +210,27 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal("The sentence changed in FieldWorks since you decided.", uncertain.Note);
     }
 
+    public static TheoryData<string, string> FitCheckReasons() => new()
+    {
+        { ChangeFitReasons.WordformDeleted("wordform/x"), "the word kitabu was deleted in FieldWorks" },
+        { ChangeFitReasons.WordformChangedForm("wordform/x"), "the spelling of kitabu was changed in FieldWorks" },
+        { ChangeFitReasons.WordformSpellingChanged("wordform/x"),
+            "the spelling status of kitabu was changed in FieldWorks" },
+        { ChangeFitReasons.AnalysisMissing("analysis/x", "wordform/x"),
+            "the analysis ki-tabu was deleted or moved in FieldWorks" },
+        { ChangeFitReasons.AnalysisReadingChanged("analysis/x"), "the analysis ki-tabu was edited in FieldWorks" },
+        { ChangeFitReasons.AnalysisOpinionChanged("analysis/x"), "the opinion on ki-tabu was changed in FieldWorks" },
+        { ChangeFitReasons.MorphReferenceMissing("morph/x"), "a morpheme in ki-tabu was deleted or changed in FieldWorks" },
+        { ChangeFitReasons.ReadingAlreadyExists("wordform/x"), "FieldWorks already has this analysis" },
+        { ChangeFitReasons.BaselineNotCurrent, "FieldWorks saved the project since you decided; check again" },
+        { ChangeFitReasons.FingerprintMalformed, "Motif can no longer check this change; undo it and make it again" },
+        { ChangeFitReasons.SpellingEvidenceMissing, "Motif can no longer check this change; undo it and make it again" },
+        { ChangeFitReasons.MappingMissing, "Motif can no longer check this change; undo it and make it again" },
+        { "A reason no one wrote.", "FieldWorks changed this word since you decided" },
+    };
+
     [Theory]
-    [InlineData("Wordform wordform/x was deleted.", "the word kitabu was deleted in FieldWorks")]
-    [InlineData("Wordform wordform/x changed form.", "the spelling of kitabu was changed in FieldWorks")]
-    [InlineData("Wordform wordform/x changed spelling status.", "the spelling status of kitabu was changed in FieldWorks")]
-    [InlineData("Analysis analysis/x was deleted or moved from wordform wordform/x.",
-        "the analysis ki-tabu was deleted or moved in FieldWorks")]
-    [InlineData("Analysis analysis/x changed its reading.", "the analysis ki-tabu was edited in FieldWorks")]
-    [InlineData("Analysis analysis/x changed its human opinion.", "the opinion on ki-tabu was changed in FieldWorks")]
-    [InlineData("Candidate morph reference morph/x was deleted or changed type.",
-        "a morpheme in ki-tabu was deleted or changed in FieldWorks")]
-    [InlineData("The parser reading already exists under wordform wordform/x.", "FieldWorks already has this analysis")]
-    [InlineData("The collected change's Baseline is no longer current.",
-        "FieldWorks saved the project since you decided; check again")]
-    [InlineData("Change fingerprint is malformed.", "FieldWorks changed this word since you decided")]
+    [MemberData(nameof(FitCheckReasons))]
     public void NoLongerFitsSaysWhatChangedInTheLinguistsWords(string reason, string expected)
     {
         var analysis = new ReviewAnalysis(new ParserReading(
@@ -268,6 +276,21 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal("Added as Approved from PanGloss", added.DetailText);
         Assert.Equal("Uncertain", unsure.NoteTitle);
         Assert.False(unsure.StillFits);
+    }
+
+    [Fact]
+    public void AnUncertainRowRepeatsNoGroupNoteAndNamesAnyOtherReason()
+    {
+        const string wordsChanged = "The words in the source sentence have changed.";
+        const string notReparsed = "The paragraph parse is not current.";
+        ChangeViewModel Unsure(string reason) => new(ChangeKinds.Approve, "watoto", "reading",
+            fit: new ChangeFit("unsure", ChangeFitStatus.Uncertain, [reason])
+            {
+                Uncertainty = new ChangeUncertainty(reason, [], []),
+            });
+
+        Assert.False(Unsure(wordsChanged).HasDetailText);
+        Assert.Equal("FieldWorks has not reparsed this paragraph after the edit.", Unsure(notReparsed).DetailText);
     }
 
     private static async Task<(ReviewPageModel Page, FakeCommandClient Client)> OpenReviewAsync(
