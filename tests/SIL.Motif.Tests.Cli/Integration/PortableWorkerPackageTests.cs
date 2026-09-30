@@ -45,6 +45,9 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
                 package, rid, intermediateRoot, null);
             Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
                 "The CLI publish did not include the reusable Worker runtime library.");
+            var icuPayload = ReadIcuPayload(repoRoot, rid);
+            if (!OperatingSystem.IsWindows()) StageIcuPayload(package, icuPayload);
+            AssertIcuPayload(package, icuPayload);
             await PublishAsync(Path.Combine(repoRoot, "src", "SIL.Motif.Worker", "SIL.Motif.Worker.csproj"),
                 workerPublish, rid, intermediateRoot, workerBuildRoot);
 
@@ -218,7 +221,7 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         }
 
         var expectedPath = Path.GetFullPath(executable);
-        var processName = Path.GetFileNameWithoutExtension(executable);
+        var processName = WorkerProcessName(executable);
         while (WorkerProcessIsRunning(processName, expectedPath))
         {
             if (stopwatch.Elapsed > CliBound)
@@ -255,7 +258,7 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
     {
         if (!File.Exists(executable)) return;
         var expectedPath = Path.GetFullPath(executable);
-        var processName = Path.GetFileNameWithoutExtension(executable);
+        var processName = WorkerProcessName(executable);
         var stopwatch = Stopwatch.StartNew();
         while (stopwatch.Elapsed < ProcessCleanupBound)
         {
@@ -379,6 +382,54 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
         throw new PlatformNotSupportedException("No portable package RID is defined for this platform.");
     }
 
+    private static string WorkerProcessName(string executable) => OperatingSystem.IsWindows()
+        ? Path.GetFileNameWithoutExtension(executable)
+        : Path.GetFileName(executable);
+
+    private static IcuPayload ReadIcuPayload(string repoRoot, string rid)
+    {
+        var path = Path.Combine(repoRoot, "tools", "icu-payload.json");
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        var rids = document.RootElement.GetProperty("rids");
+        Assert.True(rids.TryGetProperty(rid, out var ridPayload),
+            "The ICU manifest has no payload for " + rid + ".");
+        var outputDirectory = ridPayload.GetProperty("nativeOutputDirectory").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(outputDirectory),
+            "The ICU manifest has no native output directory for " + rid + ".");
+        var libraries = ridPayload.GetProperty("libraries").EnumerateArray()
+            .Select(library => library.GetString() ?? string.Empty).ToArray();
+        Assert.NotEmpty(libraries);
+        Assert.All(libraries, library => Assert.Equal(Path.GetFileName(library), library));
+        return new IcuPayload(outputDirectory!, libraries);
+    }
+
+    private static void StageIcuPayload(string package, IcuPayload payload)
+    {
+        var sourceDirectories = new List<string>();
+        var configuredStage = Environment.GetEnvironmentVariable("MOTIF_SIL_ICU_STAGE");
+        if (!string.IsNullOrWhiteSpace(configuredStage)) sourceDirectories.Add(configuredStage);
+        sourceDirectories.Add(Path.Combine(BuildOutput.ProductDirectory, payload.NativeOutputDirectory));
+        sourceDirectories.Add(Path.Combine(BuildOutput.ProductDirectory, "tests", payload.NativeOutputDirectory));
+
+        var source = sourceDirectories.FirstOrDefault(directory => payload.Libraries.All(library =>
+            File.Exists(Path.Combine(directory, library))));
+        Assert.True(source is not null,
+            "No staged SIL ICU payload contains every manifest library: " + string.Join(", ", sourceDirectories));
+
+        var destination = Path.Combine(package, payload.NativeOutputDirectory);
+        Directory.CreateDirectory(destination);
+        foreach (var library in payload.Libraries)
+            File.Copy(Path.Combine(source!, library), Path.Combine(destination, library), overwrite: true);
+    }
+
+    private static void AssertIcuPayload(string package, IcuPayload payload)
+    {
+        var directory = Path.Combine(package, payload.NativeOutputDirectory);
+        foreach (var library in payload.Libraries)
+            Assert.True(File.Exists(Path.Combine(directory, library)),
+                "The portable package is missing manifest SIL ICU library " + library + ".");
+    }
+
     private static string FindRepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -409,4 +460,5 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
 
     private sealed record CliResult(int ExitCode, string Output, string Error);
     private sealed record ProcessCleanup(bool Exited, string StandardOutput, string StandardError);
+    private sealed record IcuPayload(string NativeOutputDirectory, string[] Libraries);
 }
