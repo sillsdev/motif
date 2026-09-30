@@ -41,7 +41,7 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
                         holdUntilPath = releasePath,
                         holdTimeoutMs = 120_000,
                     });
-                    walkthrough.Click("Run the Assessment");
+                    walkthrough.Click("Parse all words in the Selection");
                     walkthrough.WaitUntil(
                         () => File.Exists(startedPath) && workspace.Assess.State == RunState.Running,
                         WalkthroughSteps.Remaining(deadline), "the parser did not start before window disposal");

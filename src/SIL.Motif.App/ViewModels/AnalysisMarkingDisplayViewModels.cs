@@ -27,6 +27,14 @@ public sealed class FieldWorksAnalysisDisplayViewModel
     /// <summary>The current FieldWorks opinion for this analysis.</summary>
     public string Opinion { get; }
 
+    /// <summary>The opinion in FieldWorks' own words: Approved, Disapproved or Unknown.</summary>
+    public string OpinionLabel => OpinionMarkKind switch
+    {
+        OpinionMarkKind.Approved => "Approved",
+        OpinionMarkKind.Disapproved => "Disapproved",
+        _ => "Unknown",
+    };
+
     /// <summary>The mark that uses FieldWorks' shape and letter for this opinion.</summary>
     public OpinionMarkKind OpinionMarkKind { get; }
 
@@ -40,8 +48,10 @@ public sealed class StagedMarkingDisplayViewModel(ChangeViewModel change)
     /// <summary>The pending change used by the Undo command.</summary>
     public ChangeViewModel Change { get; } = change ?? throw new ArgumentNullException(nameof(change));
 
-    /// <summary>The short opinion or presence transition shown in the staged strip.</summary>
-    public string Transition => Change.StagedTransition.Text;
+    /// <summary>The short opinion or presence transition shown in the staged strip; an addition says what it adds.</summary>
+    public string Transition => Change.StagedTransition is { IsAddition: true } addition
+        ? $"Will add as {addition.AfterApply}"
+        : Change.StagedTransition.Text;
 
     /// <summary>The current fit message, when the project has been checked.</summary>
     public string FitStatus => Change.FitStatus;

@@ -27,7 +27,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 await SelectProjectAndFinishFirstRun(
                     first, project.FwDataPath, SeededProject.TextTitle, 3100, deadline);
                 selectedTextId = Assert.Single(first.Workspace.Selection.ChosenTextIds);
-                Assert.True(first.Find<Avalonia.Controls.Button>("Run the Assessment").IsEffectivelyEnabled);
+                Assert.True(first.Find<Avalonia.Controls.Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             }
 
             using var reopened = NewWindow(project);
@@ -44,7 +44,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Equal(selectedTextId, Assert.Single(selection.TextIds));
             Assert.Equal(1000, selection.PerWordLimitMs);
             Assert.Equal(3100, selection.PerWordStepLimit!.Steps);
-            Assert.True(reopened.Find<Avalonia.Controls.Button>("Run the Assessment").IsEffectivelyEnabled);
+            Assert.True(reopened.Find<Avalonia.Controls.Button>("Parse all words in the Selection").IsEffectivelyEnabled);
         }, WalkthroughSteps.Remaining(deadline));
     }
 
@@ -150,7 +150,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 changed.Value.Selection.PerWordLimitMs);
 
             var previousInvocation = walkthrough.Workspace.Assess.Result!.InvocationId;
-            walkthrough.Click("Run the Assessment");
+            walkthrough.Click("Parse all words in the Selection");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Assess.Result?.InvocationId is { } invocationId &&

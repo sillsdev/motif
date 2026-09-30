@@ -115,7 +115,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
                 text.Text == walkthrough.Workspace.Selection.SummaryText && text.IsVisible);
             Assert.Equal(1m, walkthrough.Workspace.Selection.PerWordTimeLimitSeconds);
-            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
 
             var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
             var stored = await commands.ReadDefaultSelectionAsync(

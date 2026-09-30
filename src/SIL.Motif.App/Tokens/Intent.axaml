@@ -18,6 +18,8 @@
     Intent.Surface.Subtle         a panel set just apart from the window, such as the sidebar
     Intent.Surface.Hover          what a row shows under the pointer (Semi's Fill0)
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
+    Intent.Surface.Raised         a card lifted above the page, such as an open word card
+    Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
@@ -192,6 +194,8 @@
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey25}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
+      <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey0}" />
+      <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
@@ -260,6 +264,8 @@
       <SolidColorBrush x:Key="Intent.Surface.Subtle" Color="{StaticResource Primitive.Color.Grey900}" />
       <StaticResource x:Key="Intent.Surface.Hover" ResourceKey="SemiColorFill0" />
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
+      <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey800}" />
+      <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />

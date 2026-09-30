@@ -806,7 +806,9 @@ public sealed class WorkspaceShellViewModelTests
 
         texts.Tab = TextsTab.AnalyzeTexts;
         Assert.True(texts.ShowParsePrompt);
-        Assert.False(texts.ShowAnalyzeTextsContent);
+        Assert.True(texts.ShowAnalyzeParsePrompt);
+        Assert.False(texts.ShowCentredParsePrompt);
+        Assert.True(texts.ShowAnalyzeTextsContent);
         texts.Tab = TextsTab.Lists;
         Assert.True(texts.ShowLists);
         Assert.False(texts.ShowParsePrompt);

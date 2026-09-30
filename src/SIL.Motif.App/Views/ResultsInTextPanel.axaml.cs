@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 
@@ -19,6 +20,11 @@ public sealed partial class ResultsInTextPanel : UserControl
         InText = inText;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        InText.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ResultsInTextViewModel.SelectedToken) && InText.SelectedToken is { } token)
+                Dispatcher.UIThread.Post(() => FocusCard(token), DispatcherPriority.Loaded);
+        };
     }
 
     public ResultsInTextViewModel InText { get; }
@@ -61,22 +67,58 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     private async void OnTokenKeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is not Control { Tag: ResultsTokenViewModel token }) return;
+        if (sender is not Control { Tag: ResultsTokenViewModel token } strip) return;
+        if (e.Key is Key.Left or Key.Right)
+        {
+            e.Handled = FocusNeighbour(strip, e.Key == Key.Left ? -1 : 1);
+            return;
+        }
         if (await OpenTokenCardOnKeyboardAsync(e.Key, token, InText.OpenTokenCardAsync)) e.Handled = true;
+    }
+
+    private bool FocusNeighbour(Control strip, int direction)
+    {
+        var strips = this.GetVisualDescendants().OfType<Border>()
+            .Where(border => border.Name == "WordStrip" && border.IsEffectivelyVisible).ToList();
+        var next = strips.IndexOf((Border)strip) + direction;
+        return next >= 0 && next < strips.Count && strips[next].Focus(NavigationMethod.Directional);
     }
 
     private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            InText.CloseTokenCard();
+            CloseCardOntoItsWord();
             e.Handled = true;
             return;
         }
         if (e.Key is not (Key.Left or Key.Right)) return;
-        await InText.MoveTokenCardAsync(e.Key == Key.Left ? -1 : 1).ConfigureAwait(true);
         e.Handled = true;
+        await InText.MoveTokenCardAsync(e.Key == Key.Left ? -1 : 1).ConfigureAwait(true);
     }
+
+    private void OnCloseCardClick(object? sender, RoutedEventArgs e) => CloseCardOntoItsWord();
+
+    private void CloseCardOntoItsWord()
+    {
+        if (InText.SelectedToken is not { } token) return;
+        InText.CloseTokenCard();
+        Dispatcher.UIThread.Post(() => StripFor(token)?.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+    }
+
+    // The card is built under its line after the selection changes, so focus waits for that layout pass.
+    private void FocusCard(ResultsTokenViewModel token)
+    {
+        if (!ReferenceEquals(InText.SelectedToken, token)) return;
+        var card = this.GetVisualDescendants().OfType<Border>().FirstOrDefault(border =>
+            border.Classes.Contains("wordCard") && ReferenceEquals(border.DataContext, token));
+        if (card is null) return;
+        card.Focus(NavigationMethod.Directional);
+        card.BringIntoView();
+    }
+
+    private Border? StripFor(ResultsTokenViewModel token) => this.GetVisualDescendants().OfType<Border>()
+        .FirstOrDefault(border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token));
 
     /// <summary>Opens a word card for Enter or Space and leaves other keys available to the control.</summary>
     /// <param name="key">The key pressed on the word.</param>

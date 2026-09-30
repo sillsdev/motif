@@ -71,10 +71,12 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                     $"{word.Word}: {word.Outcome}, {word.Morphology?.Analyses.Count ?? 0} analyses") ?? []));
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
                 .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, token));
-            var fixMenu = strip.GetLogicalDescendants().OfType<Expander>().Single();
+            var fixMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
+                Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Fix actions from the word strip"));
             HeadlessClick.Click(walkthrough.Window, fixMenu, "Fix actions from the word strip");
-            Assert.True(fixMenu.IsExpanded);
-            var approveChoice = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
+            Assert.True(fixMenu.Flyout?.IsOpen);
+            var fixChoices = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(fixMenu.Flyout).Content);
+            var approveChoice = fixChoices.GetLogicalDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Add as Approved"));
             Assert.Null(inText.SelectedToken);
             Assert.Same(token.StageMarkingChoiceForTokenCommand, approveChoice.Command);
@@ -82,7 +84,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
                 $"choices: {string.Join(", ", token.Marking.FixChoices.Select(choice => choice.Label))}");
             Assert.False(token.IsCardOpen, "Opening Fix actions also opened the word comparison card.");
-            walkthrough.Click("Add as Approved");
+            HeadlessClick.Click(TopLevel.GetTopLevel(approveChoice)
+                ?? throw new InvalidOperationException("The Fix menu is not in a top level."), approveChoice, "Add as Approved");
             walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1 && token.IsPending &&
                     token.Marking.StagedTransitions.Any(transition =>
                         transition.Text == "Not in FieldWorks → Approved"),
@@ -91,15 +94,15 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.NotEmpty(FakeParser.Invocations(parserPath));
             Assert.True(token.IsPending);
             Assert.Contains(token.StagedChanges,
-                change => change.Transition == "Not in FieldWorks → Approved");
+                change => change.Transition == "Will add as Approved");
             Assert.Equal(SeededProject.FirstForm,
                 walkthrough.Workspace.Context.Changes.Items.Single().Word);
             Assert.Equal(expectedAnchor, ReadOccurrenceAnchor(project.FwDataPath));
 
-            fixMenu.IsExpanded = false;
+            fixMenu.Flyout!.Hide();
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            Assert.False(fixMenu.IsExpanded);
+            Assert.False(fixMenu.Flyout.IsOpen);
 
             walkthrough.ShowPage(WorkspacePage.Review);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();

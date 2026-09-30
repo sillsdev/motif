@@ -1,8 +1,10 @@
+using System.Reflection;
 using Avalonia.Controls;
 using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
@@ -26,6 +28,69 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
                 inflType = (string?)null, guessedString = (string?)null },
         } } },
     };
+    [Fact]
+    public async Task BeforeTheFirstParseAnalyzeTextsShowsTheTextAndItsFieldWorksAnalysesWithoutReadState()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var real = RealCommandClient.Create(project.ManagedRoot, FakeParser.ExecutablePath);
+        var captured = await real.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath),
+            CancellationToken.None);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var client = CountingCommandClient.Around(real);
+        var selection = new SelectionViewModel(client);
+        await selection.SetProjectAsync(project.FwDataPath);
+        var texts = new TextWordsViewModel(client, selection);
+        var assess = new AssessViewModel(client, selection) { ProjectPath = project.FwDataPath };
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, new ChangesViewModel(client), client);
+        Assert.Single(selection.Texts, text => text.Title == SeededProject.TextTitle).IsChecked = true;
+        await texts.SetProjectAsync(project.FwDataPath);
+        await texts.ReloadAsync();
+        await inText.ReadStateRefresh;
+
+        Assert.False(inText.HasAssessment);
+        Assert.True(inText.HasLines);
+        Assert.Null(inText.Message);
+        var word = inText.VisibleLines.SelectMany(line => line.Tokens)
+            .Single(token => token.Form == SeededProject.AnalysedWordForm);
+        Assert.Equal([SeededProject.FirstGloss, SeededProject.SecondGloss],
+            word.PrimaryFieldWorksMorphs.Select(morph => morph.GlossOrPlaceholder));
+        Assert.Equal("Not parsed yet", word.PanGlossSummary);
+        Assert.False(word.ShowUnread);
+        Assert.Equal(0, CountingCommandClient.CallsTo(client, nameof(ICommandClient.ReadWordStateAsync)));
+    }
+
+    /// <summary>Passes every call to the real client and counts them by method name.</summary>
+    public class CountingCommandClient : DispatchProxy
+    {
+        private readonly Dictionary<string, int> _calls = new(StringComparer.Ordinal);
+        private ICommandClient? _inner;
+
+        internal static ICommandClient Around(ICommandClient inner)
+        {
+            var proxy = Create<ICommandClient, CountingCommandClient>();
+            ((CountingCommandClient)(object)proxy)._inner = inner;
+            return proxy;
+        }
+
+        internal static int CallsTo(ICommandClient proxy, string method) =>
+            ((CountingCommandClient)(object)proxy)._calls.GetValueOrDefault(method);
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            ArgumentNullException.ThrowIfNull(targetMethod);
+            _calls[targetMethod.Name] = _calls.GetValueOrDefault(targetMethod.Name) + 1;
+            try
+            {
+                return targetMethod.Invoke(_inner, args);
+            }
+            catch (TargetInvocationException invocation) when (invocation.InnerException is not null)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(invocation.InnerException).Throw();
+                throw;
+            }
+        }
+    }
+
     [Fact]
     public async Task AParserBuiltApprovedReadingIsShownAsSameWithAnApprovedMark()
     {

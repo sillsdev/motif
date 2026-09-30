@@ -61,7 +61,7 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
             Assert.Equal(
                 "Capture a Baseline to choose Texts.",
                 reopenedWalkthrough.Workspace.Selection.TextsEmptyMessage);
-            Assert.False(reopenedWalkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            Assert.False(reopenedWalkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             Assert.False(reopenedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", reopenedWalkthrough.Workspace.Selection.SummaryText);
 

@@ -200,6 +200,8 @@ public sealed class ComponentStyleTests
 
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.BackgroundProperty, "Intent.Clear");
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Component.FilterChip.Margin");
+        yield return new("FilterChip", "a compact chip", host => Add(host, Press("filterChip", "compact")),
+            Button.PaddingProperty, "Component.FilterChip.CompactPadding");
         yield return new("FilterChip", "an active chip", host => Add(host, Press("filterChip", "active")),
             Button.ForegroundProperty, "Intent.Primary");
 
@@ -239,6 +241,8 @@ public sealed class ComponentStyleTests
             ProgressBar.HeightProperty, "Component.TopBar.ParseProgressHeight");
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
+        yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Component.Menu.ActionGap");
+        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.HeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
@@ -374,6 +378,8 @@ public sealed class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
         yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
             Button.HeightProperty, "Component.ActionChip.Height");
+        yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),
+            Button.MinHeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
             Button.BorderBrushProperty, "Intent.Marking.Border");
         yield return new("ActionChip", "the Fix menu text", host => Add(host, Press("actionChip", "fix")),
@@ -382,6 +388,26 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Opinion.Approved.Text");
         yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
             Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("WordCard", "the word card surface", host => Add(host, Box("card", "wordCard")),
+            Border.BackgroundProperty, "Intent.Surface.Raised");
+        yield return new("WordCard", "the word card shadow", host => Add(host, Box("card", "wordCard")),
+            Border.BoxShadowProperty, "Intent.Shadow.Raised");
+        yield return new("WordCard", "the word card edge", host => Add(host, Box("card", "wordCard")),
+            Border.BorderBrushProperty, "Intent.Accent");
+        yield return new("WordCard", "the word card header", host => Add(host, Box("wordCardHead")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("WordStrip", "a resting word strip edge", host => Add(host, Box("wordStrip")),
+            Border.BorderBrushProperty, "Intent.Clear");
+        yield return new("WordStrip", "an open word strip edge", host => Add(host, Box("wordStrip", "open")),
+            Border.BorderBrushProperty, "Intent.Accent");
+        yield return new("WordStrip", "an open word strip", host => Add(host, Box("wordStrip", "open")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("WordStrip", "an analysis row", host => Add(host, Box("stripRow", "analysisRow")),
+            Control.HeightProperty, "Component.WordStrip.AnalysisRowHeight");
+        yield return new("WordStrip", "an analysis row rule", host => Add(host, Box("stripRow")),
+            Border.BorderBrushProperty, "Intent.Marking.Divider");
+        yield return new("UnreadMark", "the unread dot alone", host => Add(host, Box("unreadMark", "dotOnly")),
+            Border.BackgroundProperty, "Intent.Clear");
         yield return new("HoverReveal", "a hidden secondary action", RevealControl,
             Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),

@@ -1236,7 +1236,7 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
-    public async Task BeforeAssessmentTheReaderKeepsChosenTextButShowsNoWordResults()
+    public async Task BeforeTheFirstParseTheReaderShowsTheTextWithItsFieldWorksLine()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
@@ -1245,14 +1245,20 @@ public sealed class ResultsInTextViewModelTests
         var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { }, _ => { },
             new ChangesViewModel(fake), fake);
         fake.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(TextId, "Alpha",
-            [new TextLine(1, [Word("kitabu", null)])])], HasBaseline: true));
+            [new TextLine(1, [Word("kitabu", Stored(Book, "book"))])])], HasBaseline: true));
 
         await texts.SetProjectAsync(ProjectPath);
 
         Assert.True(inText.HasTexts);
         Assert.False(inText.HasResults);
+        Assert.True(inText.HasLines);
         Assert.Equal("Alpha", Assert.Single(inText.Texts).Title);
-        Assert.Empty(inText.VisibleLines);
+        var word = Assert.Single(Assert.Single(inText.VisibleLines).Tokens);
+        Assert.True(word.HasFieldWorksAnalyses);
+        Assert.Equal("Not parsed yet", word.PanGlossSummary);
+        Assert.False(word.ShowUnread);
+        Assert.False(word.HasPrimaryAction);
         Assert.Null(inText.Message);
+        Assert.Empty(fake.ReadWordStateRequests);
     }
 }
