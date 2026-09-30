@@ -70,6 +70,9 @@ $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 $testsRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'tests')) + [IO.Path]::DirectorySeparatorChar
 $env:MOTIF_DEVELOPER_COMMANDS = '1'
+# Short-lived, oversubscribed test processes spend CPU on tiering and spinning: 4 suites used 25% less without.
+$env:DOTNET_TieredPGO = '0'
+$env:DOTNET_ThreadPool_UnfairSemaphoreSpinLimit = '0'
 
 function Write-Step {
     param([string] $Text)
