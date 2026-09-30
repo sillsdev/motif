@@ -95,10 +95,13 @@ public sealed class CatalogAggregationTests
             ProjectStanding.Approved, "analysed", false, null, ["approved"], MissedApprovedCount: 1));
         var timeout = CompareSemantics.Place(new CompareWordFacts(
             ProjectStanding.Approved, "analysed", true, null, ["approved"], MissedApprovedCount: 1));
+        var extra = CompareSemantics.Place(new CompareWordFacts(
+            ProjectStanding.Approved, "analysed", false, null, ["approved", "no-opinion"], MissedApprovedCount: 0));
 
         Assert.Equal(CompareColumnKind.Match, complete.Column);
         Assert.Equal(CompareColumnKind.NoMatch, partial.Column);
         Assert.Equal(CompareColumnKind.Timeout, timeout.Column);
+        Assert.Equal(CompareColumnKind.NoMatch, extra.Column);
         Assert.Equal(CompareFamilyKind.Unknown,
             CompareSemantics.MeaningOf(timeout.Standing, timeout.Column).Family);
     }

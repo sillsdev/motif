@@ -35,7 +35,7 @@ public static class CompareSemantics
             "Candidate × No parse", "The parser could not rebuild this candidate."),
     ];
 
-    /// <summary>Places a word using the same all-approved-analyses rule in both the App and Overview.</summary>
+    /// <summary>Places recorded words from grades produced by the morphology matcher.</summary>
     public static ComparePlacement Place(CompareWordFacts word)
     {
         ArgumentNullException.ThrowIfNull(word);
@@ -56,7 +56,8 @@ public static class CompareSemantics
             ProjectStanding.Rejected => Built(ReadingGrade.Disapproved),
             _ => Built(ReadingGrade.Approved) || Built(ReadingGrade.Candidate) || Built(ReadingGrade.Disapproved),
         };
-        return new ComparePlacement(standing, matched ? CompareColumnKind.Match : CompareColumnKind.NoMatch);
+        return new ComparePlacement(standing, matched && grades.All(grade =>
+            grade is not ReadingGrade.NoOpinion) ? CompareColumnKind.Match : CompareColumnKind.NoMatch);
     }
 
     /// <summary>Whether the search stopped at a time or step limit, including when it returned partial readings.</summary>

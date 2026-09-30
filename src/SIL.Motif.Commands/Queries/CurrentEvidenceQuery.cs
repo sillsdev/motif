@@ -40,6 +40,10 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolvedReadingsByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
+    /// <summary>Stored analyses in the captured Text projection, keyed by word form.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> StoredAnalysesByWord { get; init; } =
+        new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+
     /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingCorrectnessAssessmentId { get; init; }
 
@@ -148,7 +152,20 @@ public static class CurrentEvidenceQuery
         var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current
             ? ResolveReadings(project, effectiveWords)
             : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
+        var storedAnalyses = new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        if (assessment is not null && saved is { TextIds.Count: > 0 })
+        {
+            var projected = TextWordsQuery.Query(new TextWordsRequest(project.FullFwDataPath, saved.TextIds));
+            if (projected.Succeeded)
+                foreach (var word in projected.Value!.Words)
+                    storedAnalyses[word.Form] = word.Analyses.Select(analysis =>
+                        new ParserReading(analysis.Morphs)
+                        {
+                            StoredAnalysisId = analysis.StoredAnalysisId,
+                            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+                            Identity = analysis.Identity,
+                        }).ToArray();
+        }        return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
@@ -156,6 +173,7 @@ public static class CurrentEvidenceQuery
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
             ResolvedReadingsByWord = resolvedReadings,
+            StoredAnalysesByWord = storedAnalyses,
         });
     }
 

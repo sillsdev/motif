@@ -178,6 +178,29 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         var result = Assert.Single(assessment.Words);
 
         Assert.Equal(expected, AnalysisMarkingState.Create(token, result).PanGlossClass);
+        var table = new AssessWordsViewModel();
+        table.Load([result]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        var row = Assert.Single(compare.Words);
+        var lists = new TextsListsViewModel(compare);
+        var inText = await LoadInTextAsync(project, assessment, null);
+        var card = ResultsToken(inText, token.Form!);
+        var placement = CompareViewModel.Place(Assert.Single(table.AllRows));
+
+        Assert.Equal(expected, row.Marking.PanGlossClass);
+        Assert.Equal(expected, card.Marking.PanGlossClass);
+        Assert.Equal(card.PanGlossSummary, card.VerdictLabel);
+        Assert.Equal(expected switch
+        {
+            AnalysisMarkingClass.Same => CompareColumnKind.Match,
+            AnalysisMarkingClass.None => CompareColumnKind.NoParse,
+            AnalysisMarkingClass.Capped => CompareColumnKind.Timeout,
+            _ => CompareColumnKind.NoMatch,
+        }, placement.Item2);
+        Assert.Equal(expected == AnalysisMarkingClass.Same ? 0 : 1,
+            lists.Lists.Count(list => list.HasWords && list.Cells.Contains(new TextsListCell(
+                placement.Item1, placement.Item2))));
     }
 
     [Fact]
