@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.LibLcm.Installation;
@@ -9,6 +10,7 @@ public sealed class MotifUpdateGateTests
     private const string ChildGateNameVariable = "MOTIF_UPDATE_GATE_CHILD_NAME";
     private const string ChildReadyPathVariable = "MOTIF_UPDATE_GATE_CHILD_READY";
     private const string ChildReleasePathVariable = "MOTIF_UPDATE_GATE_CHILD_RELEASE";
+    private static readonly TimeSpan ChildHangGuard = TimeSpan.FromMinutes(2);
 
     [Fact]
     public void ConcurrentActivitiesCanShareTheUpdateGate()
@@ -78,8 +80,9 @@ public sealed class MotifUpdateGateTests
         childStart.ArgumentList.Add("--no-restore");
         childStart.ArgumentList.Add("--filter");
         childStart.ArgumentList.Add("FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
-        childStart.Environment.Remove("MOTIF_TEST_SHARD");
-        childStart.Environment.Remove("MOTIF_TEST_SHARD_WEIGHTS");
+        // The child runs one named test, so it must not inherit this process's shard, which may exclude it.
+        childStart.Environment.Remove(ShardedTestFramework.ShardVariable);
+        childStart.Environment.Remove(ShardedTestFramework.WeightsVariable);
         childStart.Environment[ChildGateNameVariable] = gateName;
         childStart.Environment[ChildReadyPathVariable] = readyFile;
         childStart.Environment[ChildReleasePathVariable] = releaseFile;
@@ -90,13 +93,13 @@ public sealed class MotifUpdateGateTests
         var error = child.StandardError.ReadToEndAsync();
         try
         {
-            await WaitForChildReadyAsync(child, readyFile, output, error, TimeSpan.FromSeconds(15));
+            await WaitForChildReadyAsync(child, readyFile, output, error, ChildHangGuard);
             using var parentActivity = MotifUpdateGate.TryAcquire(gateName);
             Assert.NotNull(parentActivity);
             Assert.Null(MotifUpdateGate.TryAcquireForUpdate(gateName));
 
             await File.WriteAllTextAsync(releaseFile, string.Empty);
-            if (!await WaitForChildExitAsync(child, TimeSpan.FromSeconds(15)))
+            if (!await WaitForChildExitAsync(child, ChildHangGuard))
             {
                 await KillChildTreeAndWaitForExitAsync(child);
                 throw new TimeoutException(

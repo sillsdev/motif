@@ -534,7 +534,8 @@ export async function syncSiteContent({ repository, site, helpExportPath, walkth
 	for (const entry of helpExport.entries) {
 		const key = `${entry.kind}:${entry.code}`;
 		const expectedSlug = entry.kind === 'guide' ? entry.code : slugify(entry.code);
-		if (!entry.kind || !entry.code || !entry.title || !entry.description || entry.slug !== expectedSlug || !entry.url) {
+		const validGuideCode = entry.kind !== 'guide' || /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(entry.code);
+		if (!entry.kind || !entry.code || !entry.title || !entry.description || !validGuideCode || entry.slug !== expectedSlug || !entry.url) {
 			throw new Error(`Invalid help entry: ${entry.code ?? '(missing code)'}`);
 		}
 		if (seenEntries.has(key)) throw new Error(`Duplicate help entry: ${entry.kind} ${entry.code}`);

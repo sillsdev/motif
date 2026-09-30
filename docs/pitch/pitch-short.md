@@ -27,12 +27,9 @@ A proving ground for FieldWorks grammars, built on forty years of SIL parsing wo
 
 A **grammar** describes how the words of a language are built. A **parser** runs it backwards: give it a word, and it tells you what the word is made of. SIL has been building both for decades.
 
-- **1988 · AMPLE** David Weber, Andy Black and Stephen McConnel's morphological parser.
-- **1990 · PC-KIMMO** Evan Antworth's two-level processor.
-- **1990s · Hermit Crab** Mike Maxwell's parser for ordered sound rules.
-- **2009 · HermitCrab in FLEx** Built into FieldWorks, largely by Damien Daspit.
-- **2015 · FLExTrans** Ron Lockwood's machine translation on FLEx grammars.
-- **Today · SIL.Machine** Damien Daspit and John Maxwell continue HermitCrab's development, with 5–10× speedups from algorithm work.
+![wide](figures/timeline.dc.html)
+
+HermitCrab's maintainers continue its development today, with 5–10× speedups from algorithm work in SIL.Machine.
 
 <div class="break"></div>
 
@@ -55,6 +52,8 @@ The linguistics is sound. What gets harder as a grammar grows is everything arou
 - **Seeing** Try a Word shows how one word was parsed. Nothing shows, across a whole text, where the time goes, which rules never fire, or which let in forms the language does not have.
 - **Reaching** A finished grammar serves FieldWorks and FLExTrans. Paratext, word processors and keyboards cannot yet use it for back-translations or spelling.
 
+![narrow](figures/seconds.dc.html)
+
 > **What would help** Faster re-parsing, a clear view of what the grammar is doing, and a safe way to try a change and see whether it helped.
 
 ---
@@ -67,6 +66,8 @@ The linguistics is sound. What gets harder as a grammar grows is everything arou
 **Motif** is a desktop application and command-line tool that works on the FieldWorks project a team already uses. It runs on Windows, macOS and Linux.
 
 ### Seven pages in the window
+
+![](figures/window.dc.html)
 
 - **Overview**: how much of the chosen texts the grammar parses, how accurately, and how fast
 - **Texts**: every word in context, parsed or not
@@ -136,7 +137,7 @@ An optimisation may cost memory, never a correct answer. On the hardest words te
 
 ### Runs anywhere
 
-A single native program for Windows, macOS and Linux, a C library for hosts such as FieldWorks and Paratext, and WebAssembly for the browser.
+![](figures/surfaces.dc.html)
 
 > **Why a port** Every hour already spent on a FLEx grammar is kept, and every answer can be checked against the original.
 
@@ -159,6 +160,8 @@ Motif is not meant to be one more program to install. It is where new ideas meet
 Motif is built on .NET 10 and Avalonia, the same move FieldWorks' own interface work is making, so a later merge is a move, not a rewrite.
 
 <div class="break"></div>
+
+![](figures/nursery.dc.html)
 
 ### Phase 2: perhaps its own app
 
@@ -186,5 +189,7 @@ Once grammars are fast and easy to build, they can work in **Paratext**, for bac
 ### With thanks
 
 This work stands on that of David Weber, Andy Black, Stephen McConnel, Evan Antworth, Mike Maxwell, Gary Simons, Damien Daspit, John Maxwell and Ron Lockwood, and on every linguist who has built a grammar in FieldWorks.
+
+![](figures/baton.dc.html)
 
 > > **The invitation** Help carry forty years of SIL's parsing work the rest of the way: into FieldWorks first, then to every translation team, and one day to every language community.

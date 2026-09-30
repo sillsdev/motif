@@ -113,7 +113,7 @@ test('sync builds catalog, Walkthrough, API, and Developer pages', async (t) => 
 				slug: 'open-project',
 				title: 'Open a project',
 				description: 'Loads a language project into Motif.',
-				helpPage: '# Open a project\n\nLearn about [Proposal](term:proposal).\n\n![Project view](shot:open-project/overview)\n',
+				helpPage: '# Open a project\n\nLearn about [Proposal](term:proposal), [the agent guide](guide:agents/start-here), [lessons](guide:learn/index), and [stems](guide:learn/stems-and-the-lexicon).\n\n![Project view](shot:open-project/overview)\n',
 				usage: ['Usage: motif open project'],
 				surface: 'Released',
 				url: 'https://motif-docs.pages.dev/reference/commands/open-project/',
@@ -262,6 +262,9 @@ test('sync builds catalog, Walkthrough, API, and Developer pages', async (t) => 
 	assert.match(command, /Learn about/);
 	assert.doesNotMatch(command, /Physical command copy/);
 	assert.match(command, /\/walkthroughs\/open-project\/steps\/01-overview\.png/);
+	assert.ok(command.includes('[the agent guide](/guide/agents/start-here/)'));
+	assert.ok(command.includes('[lessons](/learn/)'));
+	assert.ok(command.includes('[stems](/learn/stems-and-the-lexicon/)'));
 	assert.match(command, /Surface: Released/);
 	assert.match(command, /Usage: motif open project/);
 	assert.doesNotMatch(command, /^# Open a project$/m);
