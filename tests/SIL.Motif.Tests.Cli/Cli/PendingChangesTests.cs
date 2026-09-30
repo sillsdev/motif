@@ -6,10 +6,12 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
@@ -17,6 +19,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -720,6 +723,52 @@ public sealed class PendingChangesTests
 
         Assert.Equal("change.assessment-required", result.Refusal?.Code);
         Assert.Empty(PendingChanges.Load(new PendingChangesRequest(_path, "1.0")).Value!.Changes);
+    }
+
+    [Fact]
+    public void AnIncorrectSpellingFromAParsedWordIsAcceptedWithItsAssessment()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("misspelled", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path),
+            Path.Combine(Path.GetDirectoryName(_path)!, "spelling-managed")).Succeeded);
+        const string assessmentId = "spelling-assessment";
+        RecordParseAssessment(_path, assessmentId, "misspelled");
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        var put = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling", CanonicalId.FromGuid(wordformId).Value,
+                "misspelled", assessmentId, OriginPage: "Texts")));
+
+        Assert.True(put.Succeeded, put.Refusal?.Message);
+        Assert.Equal("incorrect-spelling", Assert.Single(put.Value!.Changes).Kind);
+    }
+
+    private static void RecordParseAssessment(string path, string assessmentId, string word)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!;
+        var reading = new ParseAnalysis([new ParseMorph(null, null, null, word)]);
+        var assessedWord = new AssessedWord(word, "analysed", [new ParsedAnalysis(null, [], 0, "sha256:spelling")])
+        {
+            Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, word, 0, false, false, false, [reading], []),
+        };
+        new AssessmentRepository(database).Record(new NewAssessmentRecord(
+            assessmentId, null, null, "test", AssessmentKind.ParseTime.ToStoredKind(), "{}",
+            "sha256:spelling-scope", "whitespace-and-punctuation", "1", JsonSerializer.Serialize(baseline.Token),
+            Selection.Create("Spelling", [word]), "sha256:spelling-outcome", "sha256:spelling-semantic",
+            "sha256:spelling-grammar", "spelling-test", "spelling-test", 0, [assessedWord],
+            SavedUtc: "2026-09-30T12:00:00Z"));
     }
 
     [Fact]

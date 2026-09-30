@@ -521,7 +521,7 @@ public static class PendingChanges
                         ("assessmentId", assessmentId));
                 var word = assessment.Words?.SingleOrDefault(item =>
                     item.Word.Normalize(NormalizationForm.FormD) == form.Normalize(NormalizationForm.FormD));
-                if (change.StoredAnalysisId is null &&
+                if (change.StoredAnalysisId is null && CarriesReading(change.Kind) &&
                     (reading is null || (change.ReadingIndex is { } index
                         ? index < 0 || index >= (word?.Morphology?.Analyses.Count ?? 0) ||
                           ChangeFitPreflight.ReadingDigest(word!.Morphology!.Analyses[index]) !=
@@ -538,8 +538,7 @@ public static class PendingChanges
                     ("changeId", change.ChangeId), ("assessmentId", assessmentId));
             }
         }
-        if (change.Kind is not (AnalysisChangeKinds.IncorrectSpelling or AnalysisChangeKinds.RemoveAnalysis) &&
-            reading is null)
+        if (CarriesReading(change.Kind) && reading is null)
             return RefusePut("change.reading-missing", "Choose an exact reading for this change.",
                 ("changeId", change.ChangeId), ("wordformId", change.WordformId));
 
@@ -1180,6 +1179,10 @@ public static class PendingChanges
             new Refusal(code, FailureReason.Refused, message,
                 facts.Where(item => item.Value is not null).ToDictionary(item => item.Name,
                     item => item.Value!, StringComparer.Ordinal)));
+
+    // A spelling mark or a removal names the wordform or a stored analysis, never a parser reading.
+    private static bool CarriesReading(string kind) =>
+        kind is not (AnalysisChangeKinds.IncorrectSpelling or AnalysisChangeKinds.RemoveAnalysis);
 
     private static CommandOutcome<PutDetails> RefusePut(string code, string message,
         params (string Name, string? Value)[] facts) => CommandOutcome<PutDetails>.Refused(
