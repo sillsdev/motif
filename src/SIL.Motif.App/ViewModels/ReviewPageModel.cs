@@ -109,7 +109,7 @@ public sealed class ReviewPageModel : PageModel
                 .ThenBy(item => item.Change.Word, StringComparer.Ordinal)
                 .ThenBy(item => item.Change.ChangeId, StringComparer.Ordinal)
                 .Select(item => item.Change).ToArray(), Changes,
-            change => Context.OpenOccurrence(change.Occurrence, change.Word)))
+            change => Context.OpenOccurrence(change.Occurrence, change.Word), group.Key.Kind))
         .ToArray();
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
@@ -433,7 +433,8 @@ public sealed class ReviewPageModel : PageModel
 
     private static ReviewChangeGroupDefinition GroupFor(ChangeViewModel change)
     {
-        if (change.IsUncertain) return new(9, "Uncertain — check again");
+        if (change.IsNoLongerFits) return new(-1, "No longer fits", ReviewGroupKind.NoLongerFits);
+        if (change.IsUncertain) return Uncertain;
         return change.Kind switch
         {
             ChangeKinds.AddCandidate => new(6, "Added"),
@@ -448,12 +449,16 @@ public sealed class ReviewPageModel : PageModel
                 "Approved" when change.StagedTransition.AfterApply == "Unknown" => new(3, "Approved → Unknown"),
                 "Disapproved" when change.StagedTransition.AfterApply == "Approved" => new(4, "Disapproved → Approved"),
                 "Disapproved" when change.StagedTransition.AfterApply == "Unknown" => new(5, "Disapproved → Unknown"),
-                _ => new(9, "Uncertain — check again"),
+                _ => Uncertain,
             },
         };
     }
 
-    private sealed record ReviewChangeGroupDefinition(int Order, string Title);
+    private static readonly ReviewChangeGroupDefinition Uncertain =
+        new(9, "Uncertain — check again", ReviewGroupKind.Uncertain);
+
+    private sealed record ReviewChangeGroupDefinition(int Order, string Title,
+        ReviewGroupKind Kind = ReviewGroupKind.Ordinary);
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

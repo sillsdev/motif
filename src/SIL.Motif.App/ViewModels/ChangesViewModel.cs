@@ -460,6 +460,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         if (_whereText == whereText) return;
         _whereText = whereText;
         OnPropertyChanged(nameof(WhereText));
+        OnPropertyChanged(nameof(DetailText));
+        OnPropertyChanged(nameof(HasDetailText));
     }
 
     public string? StoredAnalysisId { get; } = storedAnalysisId;
@@ -472,6 +474,65 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         _ => "No longer fits the current project. Remove this change before review.",
     };
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
+    public bool StillFits => Fit?.StillFits == true;
+
+    /// <summary>The first line of the row's staged note: whether the change waits as staged or needs a look.</summary>
+    public string NoteTitle => IsUncertain ? "Uncertain" : "Staged";
+
+    /// <summary>
+    /// The row's one line of context: what FieldWorks changed for a change that no longer fits, why an Uncertain
+    /// change needs a look, else where the change was made and where an added analysis came from.
+    /// </summary>
+    public string DetailText => IsNoLongerFits ? NoLongerFitsDetail()
+        : IsUncertain ? UncertaintyReason
+        : string.Join(" · ", new[] { Occurrence is null ? string.Empty : WhereText, SourceText }
+            .Where(part => part.Length > 0));
+
+    public bool HasDetailText => DetailText.Length > 0;
+
+    /// <summary>The morphs of the one analysis this change is about, as the row's strip shows them.</summary>
+    public IReadOnlyList<ParserReadingMorphViewModel> RowMorphs => RowAnalysis?.Morphs ?? [];
+
+    public bool HasRowMorphs => RowMorphs.Count > 0;
+
+    /// <summary>Whether the row's analysis comes from the parser, so FieldWorks holds nothing like it yet.</summary>
+    public bool RowAnalysisIsParserBuilt => RowAnalysis?.ParserBuilt == true;
+
+    private ReviewAnalysisViewModel? RowAnalysis =>
+        Analyses.FirstOrDefault(analysis => analysis.Touched) ?? Analyses.FirstOrDefault();
+
+    // The fit reasons are written for the CLI and name internal ids; the window says what changed in FieldWorks.
+    private string NoLongerFitsDetail()
+    {
+        var reason = Fit?.Reasons.FirstOrDefault() ?? string.Empty;
+        var forms = string.Concat(RowMorphs.Select(morph => morph.Form));
+        var analysis = forms.Length > 0 ? forms : "this analysis";
+        if (reason.StartsWith("Wordform ", StringComparison.Ordinal))
+        {
+            if (reason.EndsWith(" was deleted.", StringComparison.Ordinal))
+                return $"the word {Word} was deleted in FieldWorks";
+            if (reason.EndsWith(" changed form.", StringComparison.Ordinal))
+                return $"the spelling of {Word} was changed in FieldWorks";
+            if (reason.EndsWith(" changed spelling status.", StringComparison.Ordinal))
+                return $"the spelling status of {Word} was changed in FieldWorks";
+        }
+        if (reason.StartsWith("Analysis ", StringComparison.Ordinal))
+        {
+            if (reason.Contains(" was deleted or moved ", StringComparison.Ordinal))
+                return $"the analysis {analysis} was deleted or moved in FieldWorks";
+            if (reason.EndsWith(" changed its reading.", StringComparison.Ordinal))
+                return $"the analysis {analysis} was edited in FieldWorks";
+            if (reason.EndsWith(" changed its human opinion.", StringComparison.Ordinal))
+                return $"the opinion on {analysis} was changed in FieldWorks";
+        }
+        if (reason.StartsWith("Candidate morph reference ", StringComparison.Ordinal))
+            return $"a morpheme in {analysis} was deleted or changed in FieldWorks";
+        if (reason.StartsWith("The parser reading already exists ", StringComparison.Ordinal))
+            return "FieldWorks already has this analysis";
+        if (reason == "The collected change's Baseline is no longer current.")
+            return "FieldWorks saved the project since you decided; check again";
+        return "FieldWorks changed this word since you decided";
+    }
     public bool IsNoLongerFits => Fit?.Status == ChangeFitStatus.NoLongerFits;
     public bool HasUncertainty => Fit?.Uncertainty is not null;
     public bool HasContext => Occurrence is not null || HasUncertainty;

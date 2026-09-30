@@ -2,18 +2,33 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace SIL.Motif.App.ViewModels;
 
+/// <summary>Whether a group of pending changes can be applied as it stands, or needs attention first.</summary>
+public enum ReviewGroupKind
+{
+    /// <summary>Changes that still fit, grouped by what they do.</summary>
+    Ordinary,
+
+    /// <summary>Changes made against a word or analysis FieldWorks has since changed.</summary>
+    NoLongerFits,
+
+    /// <summary>Changes whose sentence changed in FieldWorks since they were made.</summary>
+    Uncertain,
+}
+
 /// <summary>A group of pending changes with one Undo all action.</summary>
 public sealed class ReviewChangeGroupViewModel
 {
     private readonly ChangesViewModel _changes;
     private readonly Action<ChangeViewModel> _openChange;
     private readonly int _projectGeneration;
+    private readonly ReviewGroupKind _kind;
     private int _nextWordIndex;
 
     public ReviewChangeGroupViewModel(string title, IReadOnlyList<ChangeViewModel> items,
-        ChangesViewModel changes, Action<ChangeViewModel> openChange)
+        ChangesViewModel changes, Action<ChangeViewModel> openChange, ReviewGroupKind kind = ReviewGroupKind.Ordinary)
     {
         Title = title;
+        _kind = kind;
         Items = items;
         _changes = changes;
         _projectGeneration = changes.ProjectGeneration;
@@ -27,6 +42,25 @@ public sealed class ReviewChangeGroupViewModel
 
     /// <summary>The changes shown inside this group.</summary>
     public IReadOnlyList<ChangeViewModel> Items { get; }
+
+    /// <summary>Whether these changes no longer fit the project and must go before anything is applied.</summary>
+    public bool IsNoLongerFits => _kind == ReviewGroupKind.NoLongerFits;
+
+    /// <summary>Whether these changes' sentences changed, so each needs reconfirming or undoing.</summary>
+    public bool IsUncertain => _kind == ReviewGroupKind.Uncertain;
+
+    /// <summary>Why the whole group needs attention, beside its title; empty for an ordinary group.</summary>
+    public string Note => _kind switch
+    {
+        ReviewGroupKind.NoLongerFits => "FieldWorks changed this word since you decided. It can't be applied as it is.",
+        ReviewGroupKind.Uncertain => "The sentence changed in FieldWorks since you decided.",
+        _ => string.Empty,
+    };
+
+    public bool HasNote => Note.Length > 0;
+
+    /// <summary>The words on the action that takes back every change in the group.</summary>
+    public string UndoAllText => IsNoLongerFits ? "Remove the ones that no longer fit" : "Undo all";
 
     public string UndoAllAutomationName => $"Undo all: {Title}";
 

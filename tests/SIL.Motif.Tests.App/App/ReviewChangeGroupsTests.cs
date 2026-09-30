@@ -183,16 +183,105 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal(["Undo: kitabu", "Undo: kitabu cha"], changes.Select(change => change.UndoAutomationName));
     }
 
+    [Fact]
+    public async Task NoLongerFitsIsItsOwnGroupAtTheTopAndUncertainIsLast()
+    {
+        var changes = new[]
+        {
+            Change("unsure", "unsure", ChangeKinds.Approve),
+            Change("kept", "kept", ChangeKinds.Approve),
+            Change("gone", "gone", ChangeKinds.Approve),
+        };
+        var (page, _) = await OpenReviewAsync(changes, ["unsure"], noLongerFitsChangeIds: ["gone"]);
+
+        Assert.Equal(["No longer fits", "Unknown → Approved", "Uncertain — check again"],
+            page.ReviewGroups.Select(group => group.Title));
+        var noLongerFits = page.ReviewGroups[0];
+        Assert.True(noLongerFits.IsNoLongerFits);
+        Assert.Equal("FieldWorks changed this word since you decided. It can't be applied as it is.", noLongerFits.Note);
+        Assert.Equal("Remove the ones that no longer fit", noLongerFits.UndoAllText);
+        Assert.Equal("gone", Assert.Single(noLongerFits.Items).ChangeId);
+        var ordinary = page.ReviewGroups[1];
+        Assert.False(ordinary.HasNote);
+        Assert.Equal("Undo all", ordinary.UndoAllText);
+        var uncertain = page.ReviewGroups[2];
+        Assert.True(uncertain.IsUncertain);
+        Assert.Equal("The sentence changed in FieldWorks since you decided.", uncertain.Note);
+    }
+
+    [Theory]
+    [InlineData("Wordform wordform/x was deleted.", "the word kitabu was deleted in FieldWorks")]
+    [InlineData("Wordform wordform/x changed form.", "the spelling of kitabu was changed in FieldWorks")]
+    [InlineData("Wordform wordform/x changed spelling status.", "the spelling status of kitabu was changed in FieldWorks")]
+    [InlineData("Analysis analysis/x was deleted or moved from wordform wordform/x.",
+        "the analysis ki-tabu was deleted or moved in FieldWorks")]
+    [InlineData("Analysis analysis/x changed its reading.", "the analysis ki-tabu was edited in FieldWorks")]
+    [InlineData("Analysis analysis/x changed its human opinion.", "the opinion on ki-tabu was changed in FieldWorks")]
+    [InlineData("Candidate morph reference morph/x was deleted or changed type.",
+        "a morpheme in ki-tabu was deleted or changed in FieldWorks")]
+    [InlineData("The parser reading already exists under wordform wordform/x.", "FieldWorks already has this analysis")]
+    [InlineData("The collected change's Baseline is no longer current.",
+        "FieldWorks saved the project since you decided; check again")]
+    [InlineData("Change fingerprint is malformed.", "FieldWorks changed this word since you decided")]
+    public void NoLongerFitsSaysWhatChangedInTheLinguistsWords(string reason, string expected)
+    {
+        var analysis = new ReviewAnalysis(new ParserReading(
+            [new ParserReadingMorph("ki-", "7", "n", null, false, null),
+             new ParserReadingMorph("tabu", "book", "n", null, false, null)]), ReadingGrade.Candidate, true, true);
+
+        var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading",
+            fit: new ChangeFit("change", false, [reason]), analyses: [analysis], storedAnalysisId: "analysis/x");
+
+        Assert.Equal(expected, change.DetailText);
+        Assert.DoesNotContain("/x", change.DetailText);
+    }
+
+    [Fact]
+    public void ARowShowsItsOneAnalysisAndLeavesOutAnEmptyWhere()
+    {
+        var chosen = new ReviewAnalysis(new ParserReading(
+            [new ParserReadingMorph("wa-", "2", "n", null, false, null)]), ReadingGrade.Candidate, true, true);
+        var other = new ReviewAnalysis(new ParserReading(
+            [new ParserReadingMorph("x", "y", "n", null, false, null)]), ReadingGrade.Candidate, false, true);
+
+        var change = new ChangeViewModel(ChangeKinds.Approve, "watoto", "reading",
+            fit: new ChangeFit("change", true, []), analyses: [other, chosen], storedAnalysisId: "analysis/x");
+
+        Assert.Equal(["wa-"], change.RowMorphs.Select(morph => morph.Form));
+        Assert.False(change.RowAnalysisIsParserBuilt);
+        Assert.True(change.StillFits);
+        Assert.Equal("Staged", change.NoteTitle);
+        Assert.Equal(string.Empty, change.DetailText);
+        Assert.False(change.HasDetailText);
+    }
+
+    [Fact]
+    public void AnAddedRowNamesItsSourceAndAnUncertainRowIsMarkedUncertain()
+    {
+        var added = new ChangeViewModel(ChangeKinds.Approve, "chakula", "reading",
+            fit: new ChangeFit("added", true, []),
+            analyses: [new ReviewAnalysis(new ParserReading([]), ReadingGrade.NoOpinion, true, false)]);
+        var unsure = new ChangeViewModel(ChangeKinds.Approve, "watoto", "reading",
+            fit: new ChangeFit("unsure", ChangeFitStatus.Uncertain, ["x"]));
+
+        Assert.True(added.RowAnalysisIsParserBuilt);
+        Assert.Equal("Added as Approved from PanGloss", added.DetailText);
+        Assert.Equal("Uncertain", unsure.NoteTitle);
+        Assert.False(unsure.StillFits);
+    }
+
     private static async Task<(ReviewPageModel Page, FakeCommandClient Client)> OpenReviewAsync(
         IReadOnlyList<PendingChange> changes, string[]? uncertainChangeIds = null,
-        Func<OccurrenceAnchor, TextOccurrenceLocation?>? occurrenceLocation = null)
+        Func<OccurrenceAnchor, TextOccurrenceLocation?>? occurrenceLocation = null,
+        string[]? noLongerFitsChangeIds = null)
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", changes,
             changes.Select(change => new ChangeFit(change.ChangeId,
-                uncertainChangeIds?.Contains(change.ChangeId) == true
-                    ? ChangeFitStatus.Uncertain : ChangeFitStatus.Fits, [])).ToArray()));
+                uncertainChangeIds?.Contains(change.ChangeId) == true ? ChangeFitStatus.Uncertain
+                    : noLongerFitsChangeIds?.Contains(change.ChangeId) == true ? ChangeFitStatus.NoLongerFits
+                    : ChangeFitStatus.Fits, [])).ToArray()));
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
