@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Avalonia;
+using SIL.Motif.Help;
 using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
 using Xunit;
@@ -268,7 +269,9 @@ public sealed class WalkthroughArtifactTests
             Assert.Equal("FieldWorks analyses appear here.", fieldworks);
         }
 
-        var guide = File.ReadAllText(Path.Combine(root, "help", "en", "guide", "pangloss.md"));
+        var guide = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
+            .GetHelpPage(HelpEntryKind.Guide, "pangloss");
+        Assert.NotNull(guide);
         Assert.Contains("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.", guide,
             StringComparison.Ordinal);
     }

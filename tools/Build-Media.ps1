@@ -99,7 +99,7 @@ function Get-UnresolvedGuideShots {
     }
 
     $unresolved = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
-    $guideRoot = Join-Path $repositoryRoot 'help/en/guide'
+    $guideRoot = Join-Path $repositoryRoot 'src/SIL.Motif.Help/Content/en/guide'
     foreach ($file in Get-ChildItem -LiteralPath $guideRoot -Filter '*.md' -File -Recurse) {
         $content = Get-Content -LiteralPath $file.FullName -Raw
         foreach ($match in [regex]::Matches($content, '\]\(shot:([^)]+)\)')) {
@@ -199,7 +199,7 @@ function Invoke-MediaStep {
             $syncArgs = @(
                 'run', 'sync', '--prefix', $siteRoot, '--',
                 '--help-export', $helpExport,
-                '--help-root', (Join-Path $repositoryRoot 'help'),
+                '--help-root', (Join-Path $repositoryRoot 'src/SIL.Motif.Help/Content'),
                 '--samples-root', (Join-Path $repositoryRoot 'samples'),
                 '--samples-out', (Join-Path $configurationRoot 'samples'),
                 '--api-xml', (Join-Path $configurationRoot 'SIL.Motif.Contract.xml')
