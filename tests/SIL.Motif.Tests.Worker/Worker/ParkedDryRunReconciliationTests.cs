@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.Worker;
 /// <summary>
 /// Covers two guarantees: a Dry Run or Trial parked at <see cref="JobStatus.WaitingForBaseline"/> must ask
 /// for the Baseline it is waiting on, and it must never wait forever.
-/// <see cref="SIL.Motif.Worker.Program.ReconcileParkedJobs"/> is what a sweep tick runs before it peeks any
+/// <see cref="SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs"/> is what a sweep tick runs before it peeks any
 /// project's queue head.
 /// </summary>
 public sealed class ParkedDryRunReconciliationTests : IDisposable
@@ -33,7 +33,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var runtime = OpenRuntime("no-refresh-yet");
         var parked = ParkDryRun(runtime, "dry-1");
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         var refreshes = runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind);
         var refresh = Assert.Single(refreshes);
@@ -49,7 +49,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         ParkDryRun(runtime, "dry-1");
         runtime.Jobs.Create("existing-refresh", runtime.WorkspaceKey, BaselineRefreshKind, "{}", Stamp(_now));
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         var refresh = Assert.Single(runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind));
         Assert.Equal("existing-refresh", refresh.JobId);
@@ -63,7 +63,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         runtime.Jobs.Create("existing-refresh", runtime.WorkspaceKey, BaselineRefreshKind, "{}", Stamp(_now));
         runtime.Jobs.Transition("existing-refresh", JobStatus.Running);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         var refresh = Assert.Single(runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind));
         Assert.Equal(JobStatus.Running, refresh.Status);
@@ -76,7 +76,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var parked = ParkDryRun(runtime, "dry-1");
         RecordBaseline(runtime);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         Assert.Equal(JobStatus.Queued, runtime.Jobs.Get(parked)!.Status);
         // A Baseline settles it directly; no refresh job is needed once one already exists.
@@ -90,7 +90,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var parked = Park(runtime, "trial-1", "trial");
         RecordBaseline(runtime);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         Assert.Equal(JobStatus.Queued, runtime.Jobs.Get(parked)!.Status);
     }
@@ -101,7 +101,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var runtime = OpenRuntime("trial-no-refresh-yet");
         var parked = Park(runtime, "trial-1", "trial");
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         Assert.Equal(JobStatus.Queued,
             Assert.Single(runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind)).Status);
@@ -115,7 +115,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         runtime.Jobs.Create("dry-1", runtime.WorkspaceKey, "dry-run", "{}", Stamp(_now));
         runtime.Jobs.Transition("dry-1", JobStatus.WaitingForProjectHost);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         Assert.Equal(JobStatus.Queued, runtime.Jobs.Get("dry-1")!.Status);
     }
@@ -127,7 +127,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var parked = ParkDryRun(runtime, "dry-1");
         FailInfrastructure(runtime, "refresh-1", attempt: 1);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         var all = runtime.Jobs.ListByProjectAndKind(runtime.WorkspaceKey, BaselineRefreshKind);
         Assert.Equal(2, all.Count);
@@ -144,7 +144,7 @@ public sealed class ParkedDryRunReconciliationTests : IDisposable
         var secondParked = ParkDryRun(runtime, "dry-2");
         SeedExhaustedBaselineRefresh(runtime);
 
-        SIL.Motif.Worker.Program.ReconcileParkedJobs(runtime, _now);
+        SIL.Motif.Worker.WorkerRuntime.ReconcileParkedJobs(runtime, _now);
 
         var first = runtime.Jobs.Get(firstParked)!;
         var second = runtime.Jobs.Get(secondParked)!;

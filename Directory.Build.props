@@ -34,7 +34,7 @@
     <MotifTestAssembly Include="@(_MotifTestProjectFile->'%(Filename)')" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.LiveHost' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Commands' or '$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.LiveHost' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker.Runtime'">
     <InternalsVisibleTo Include="@(MotifTestAssembly)" />
   </ItemGroup>
 
@@ -42,7 +42,7 @@
     <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker'">
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Host' or '$(MSBuildProjectName)' == 'SIL.Motif.Worker.Runtime'">
     <InternalsVisibleTo Include="SIL.Motif.Tests.Support" />
   </ItemGroup>
 

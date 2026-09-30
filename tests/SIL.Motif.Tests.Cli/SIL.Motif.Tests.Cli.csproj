@@ -19,7 +19,8 @@
     <ProjectReference Include="..\..\src\SIL.Motif.Model\SIL.Motif.Model.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
-    <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
   </ItemGroup>
 </Project>
