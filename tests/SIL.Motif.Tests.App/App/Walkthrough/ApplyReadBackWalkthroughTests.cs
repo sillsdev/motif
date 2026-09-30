@@ -49,7 +49,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             });
             var batchesBeforeManualAssessment = FakeParser.Invocations(parserPath).Count(command => command == "batch");
             walkthrough.TypePastedWords(SeededProject.AnalysedWordForm);
-            walkthrough.Click("Run the Assessment");
+            walkthrough.Click("Parse all words in the Selection");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted &&
