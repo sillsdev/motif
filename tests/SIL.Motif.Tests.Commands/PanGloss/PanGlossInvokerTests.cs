@@ -7,6 +7,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.PanGloss;
 
@@ -16,16 +17,25 @@ namespace SIL.Motif.Tests.PanGloss;
 /// </summary>
 public sealed class PanGlossInvokerTests : IDisposable
 {
+    private readonly ITestOutputHelper _output;
     private readonly string _root =
         Path.Combine(Path.GetTempPath(), "motif-invoker-" + Guid.NewGuid().ToString("N"));
 
-    public PanGlossInvokerTests() => Directory.CreateDirectory(_root);
+    public PanGlossInvokerTests(ITestOutputHelper output)
+    {
+        _output = output;
+        Directory.CreateDirectory(_root);
+    }
 
     public void Dispose()
     {
         try { Directory.Delete(_root, true); }
         catch (DirectoryNotFoundException) { }
         catch (IOException) { }
+        catch (UnauthorizedAccessException exception)
+        {
+            _output.WriteLine($"Temporary parser cleanup refused (HRESULT 0x{exception.HResult:X8}): {exception.Message}");
+        }
     }
 
     [Fact]
