@@ -7,9 +7,21 @@
     <StaticResource x:Key="Component.Timing.PickerHeight" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.Timing.RowPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Timing.HeaderPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Timing.HeadlineGap" ResourceKey="Primitive.Space.28" />
   </Styles.Resources>
   <Style Selector="Border.timingPage">
     <Setter Property="Padding" Value="{DynamicResource Component.Timing.PagePadding}" />
+  </Style>
+  <Style Selector="StackPanel.timingHeadline">
+    <Setter Property="Spacing" Value="{DynamicResource Component.Timing.HeadlineGap}" />
+  </Style>
+  <Style Selector=":is(TextBlock).timingHeadlineValue">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).timingHeadlineCaption">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="Border.timingTableHeader">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
