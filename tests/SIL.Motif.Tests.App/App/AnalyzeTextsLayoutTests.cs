@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -114,6 +115,11 @@ public sealed class AnalyzeTextsLayoutTests
                 var strip = Assert.Single(Strips(Panel(window)), candidate =>
                     candidate.Tag is ResultsTokenViewModel { Form: "chakula" });
                 Assert.True(strip.IsFocused, "Escape returns the keyboard to the word whose card closed.");
+
+                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Null(inText.SelectedToken);
+                Assert.True(StripOf(Panel(window), "watoto").IsFocused, "With no card open, arrows move between words.");
             }
             finally
             {
@@ -234,6 +240,159 @@ public sealed class AnalyzeTextsLayoutTests
         }, Deadline);
     }
 
+    [Fact]
+    public void EachLineHasAWordFieldWorksPanGlossGutterAlignedWithItsStrips()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var sungura = StripOf(panel, "Sungura");
+                var line = sungura.GetVisualAncestors().OfType<ContentPresenter>()
+                    .First(presenter => presenter.DataContext is ResultsLineViewModel);
+                foreach (var (label, part) in new[] { ("Word", "word"), ("FieldWorks", "fieldworks"), ("PanGloss", "pangloss") })
+                {
+                    var gutter = Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
+                        text.Text == label && text.Classes.Contains("gutterLabel"));
+                    var row = Part(sungura, part);
+                    Assert.True(Math.Abs(BoundsIn(gutter, panel).Top - BoundsIn(row, panel).Top) <= 2,
+                        $"{label} sits at {BoundsIn(gutter, panel).Top}, its row at {BoundsIn(row, panel).Top}.");
+                }
+                Assert.Contains(line.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Sungura alikula chakula." && text.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void StripsReadAsRoundFour()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                Assert.Equal("= same", VisibleText(Part(StripOf(panel, "anapenda"), "pangloss")));
+                Assert.Equal("∅ No parse", VisibleText(Part(StripOf(panel, "hawajafika"), "pangloss")));
+                Assert.Equal("Stopped at the step limit", VisibleText(Part(StripOf(panel, "mwalimu"), "pangloss")));
+                Assert.StartsWith("Nothing in FieldWorks", VisibleText(Part(StripOf(panel, "chakula"), "fieldworks")), StringComparison.Ordinal);
+                Assert.Equal("ch- 7 akula food", VisibleText(Part(StripOf(panel, "chakula"), "pangloss")));
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "Different from FieldWorks");
+
+                foreach (var strip in Strips(panel))
+                {
+                    var form = ((ResultsTokenViewModel)strip.Tag!).Form;
+                    Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Expander>(), _ => true);
+                    var fix = Assert.Single(strip.GetVisualDescendants().OfType<Button>(), button =>
+                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip");
+                    Assert.Equal("Fix ▾", fix.Content);
+                    Assert.NotNull(fix.Flyout);
+                    Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
+                    Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
+
+                    var links = strip.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
+                    var link = Assert.Single(links);
+                    Assert.Equal($"Open {form} in FieldWorks", Avalonia.Automation.AutomationProperties.GetName(link));
+                    Assert.Equal(0, link.Opacity);
+                    Assert.True(link.Focusable && link.IsTabStop, $"The FieldWorks link of {form} leaves the tab order.");
+                }
+
+                var alikula = StripOf(panel, "alikula");
+                var unread = Part(alikula, "unread");
+                Assert.True(BoundsIn(unread, panel).Right <= BoundsIn(Part(alikula, "word"), panel).Left,
+                    "The Unread dot comes before the word.");
+                Assert.DoesNotContain(unread.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible);
+                var alikulaLink = Assert.Single(alikula.GetVisualDescendants().OfType<HyperlinkButton>());
+                Assert.True(alikulaLink.Focus(NavigationMethod.Tab));
+                Settle(window);
+                Assert.Equal(1, alikulaLink.Opacity);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void AStagedAddSaysWillAddAsApprovedAndCoversNoOtherWord()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                inText.CloseTokenCard();
+                var chakula = inText.VisibleLines[0].Tokens.Single(token => token.Form == "chakula");
+                var add = Assert.Single(chakula.Marking.FixChoices, choice => choice.Label == "Add as Approved");
+                await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
+                Settle(window);
+
+                var panel = Panel(window);
+                var staged = Part(StripOf(panel, "chakula"), "staged");
+                Assert.Contains("Will add as Approved", VisibleText(staged), StringComparison.Ordinal);
+                var stagedBounds = BoundsIn(staged, panel);
+                Assert.All(Strips(panel).Where(strip => !ReferenceEquals(strip.Tag, chakula)), strip =>
+                    Assert.False(BoundsIn(strip, panel).Intersects(stagedBounds),
+                        $"The staged note covers {((ResultsTokenViewModel)strip.Tag!).Form}."));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void ThreeLinesOfTextFitAboveTheFoldAt1240()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var viewer = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), candidate =>
+                    candidate.IsEffectivelyVisible && candidate.Content is ItemsControl);
+                var kitabu = BoundsIn(StripOf(panel, "kitabu"), viewer);
+                Assert.True(kitabu.Bottom <= viewer.Viewport.Height,
+                    $"Line 3 ends at {kitabu.Bottom}, below the {viewer.Viewport.Height} px the reader shows.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    internal static Border StripOf(ResultsInTextPanel panel, string form) =>
+        Assert.Single(Strips(panel), strip => strip.Tag is ResultsTokenViewModel token && token.Form == form);
+
+    internal static Control Part(Border strip, string part) =>
+        Assert.Single(strip.GetVisualDescendants().OfType<Control>(), control =>
+            (Avalonia.Automation.AutomationProperties.GetAutomationId(control) ?? string.Empty)
+                .EndsWith("-" + part, StringComparison.Ordinal) && control.IsEffectivelyVisible);
+
+    internal static string VisibleText(Control part) => string.Join(" ",
+        part.GetVisualDescendants().Prepend(part).OfType<TextBlock>()
+            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text))
+            .Select(text => text.Text));
+
     internal static T Named<T>(Visual root, string name) where T : Control =>
         Assert.Single(root.GetVisualDescendants().OfType<T>(), control =>
             Avalonia.Automation.AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
@@ -241,7 +400,7 @@ public sealed class AnalyzeTextsLayoutTests
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
         int width = 1240, bool parse = true)
     {
-        var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse);
+        var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: parse);
         window.Width = width;
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;

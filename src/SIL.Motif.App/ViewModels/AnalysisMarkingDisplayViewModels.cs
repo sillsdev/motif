@@ -40,8 +40,10 @@ public sealed class StagedMarkingDisplayViewModel(ChangeViewModel change)
     /// <summary>The pending change used by the Undo command.</summary>
     public ChangeViewModel Change { get; } = change ?? throw new ArgumentNullException(nameof(change));
 
-    /// <summary>The short opinion or presence transition shown in the staged strip.</summary>
-    public string Transition => Change.StagedTransition.Text;
+    /// <summary>The short opinion or presence transition shown in the staged strip; an addition says what it adds.</summary>
+    public string Transition => Change.StagedTransition is { Now: "Not in FieldWorks" } addition
+        ? $"Will add as {addition.AfterApply}"
+        : Change.StagedTransition.Text;
 
     /// <summary>The current fit message, when the project has been checked.</summary>
     public string FitStatus => Change.FitStatus;

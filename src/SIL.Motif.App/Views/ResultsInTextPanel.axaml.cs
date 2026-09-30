@@ -67,8 +67,21 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     private async void OnTokenKeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is not Control { Tag: ResultsTokenViewModel token }) return;
+        if (sender is not Control { Tag: ResultsTokenViewModel token } strip) return;
+        if (e.Key is Key.Left or Key.Right)
+        {
+            e.Handled = FocusNeighbour(strip, e.Key == Key.Left ? -1 : 1);
+            return;
+        }
         if (await OpenTokenCardOnKeyboardAsync(e.Key, token, InText.OpenTokenCardAsync)) e.Handled = true;
+    }
+
+    private bool FocusNeighbour(Control strip, int direction)
+    {
+        var strips = this.GetVisualDescendants().OfType<Border>()
+            .Where(border => border.Name == "WordStrip" && border.IsEffectivelyVisible).ToList();
+        var next = strips.IndexOf((Border)strip) + direction;
+        return next >= 0 && next < strips.Count && strips[next].Focus(NavigationMethod.Directional);
     }
 
     private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)

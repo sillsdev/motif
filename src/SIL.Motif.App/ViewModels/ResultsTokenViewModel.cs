@@ -158,6 +158,53 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>Whether the word has a primary action available in its strip.</summary>
     public bool HasPrimaryAction => Marking.PrimaryAction is not null;
 
+    /// <summary>The strip's one-click action, marked with a tick as Round 4 draws it.</summary>
+    public string PrimaryActionLabel => Marking.PrimaryAction is { } action ? $"✓ {action.Label}" : string.Empty;
+
+    /// <summary>The first stored analysis, which the strip's FieldWorks line shows; the card shows them all.</summary>
+    public IReadOnlyList<ParserReadingMorphViewModel> PrimaryFieldWorksMorphs =>
+        FieldWorksAnalyses.Count == 0 ? [] : FieldWorksAnalyses[0].Morphs;
+
+    /// <summary>Whether FieldWorks stores more analyses than the strip's one line shows.</summary>
+    public bool HasMoreFieldWorksAnalyses => FieldWorksAnalyses.Count > 1;
+
+    /// <summary>How many stored analyses the strip leaves to the card.</summary>
+    public string MoreFieldWorksLabel => $"+{FieldWorksAnalyses.Count - 1}";
+
+    /// <summary>
+    /// The PanGloss reading the strip shows when PanGloss differs from FieldWorks: the first one not stored at this
+    /// occurrence, so an extra reading shows rather than the one FieldWorks already holds.
+    /// </summary>
+    public IReadOnlyList<ParserReadingMorphViewModel> PanGlossReadingMorphs =>
+        (Readings.FirstOrDefault(reading => !reading.IsStoredHere) ?? Readings.FirstOrDefault())?.Morphs ?? [];
+
+    /// <summary>Whether the strip's PanGloss line shows a reading rather than a short note.</summary>
+    public bool ShowsPanGlossReading => (IsPanGlossDifferent || IsPanGlossExtra) && PanGlossReadingMorphs.Count > 0;
+
+    /// <summary>Whether the strip's PanGloss line shows a short note rather than a reading.</summary>
+    public bool ShowsPanGlossNote => !ShowsPanGlossReading;
+
+    /// <summary>Whether PanGloss has more readings than the strip's one line shows.</summary>
+    public bool HasMorePanGlossReadings => ShowsPanGlossReading && Readings.Count > 1;
+
+    /// <summary>How many PanGloss readings the strip leaves to the card.</summary>
+    public string MorePanGlossLabel => $"+{Readings.Count - 1}";
+
+    /// <summary>The strip's PanGloss line when it shows no reading, in Round 4's short words.</summary>
+    public string PanGlossNote => Marking.PanGlossClass switch
+    {
+        AnalysisMarkingClass.Same => "= same",
+        AnalysisMarkingClass.None => "∅ No parse",
+        AnalysisMarkingClass.Capped => "Stopped at the step limit",
+        _ => PanGlossSummary,
+    };
+
+    /// <summary>Whether a staged change replaces the strip's actions with its Staged note.</summary>
+    public bool HasStagedChanges => StagedChanges.Count > 0;
+
+    /// <summary>Whether the strip offers its actions, which it does until a change is staged for the word.</summary>
+    public bool ShowsActions => !HasStagedChanges;
+
     /// <summary>The read-only hover summary for the stored opinion and current PanGloss result.</summary>
     public string HoverSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";
 
@@ -232,8 +279,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     {
         _isUnread = !isRead;
         Marking = Marking with { IsUnread = _isUnread };
-        OnPropertyChanged(nameof(Marking));
-        OnPropertyChanged(nameof(ShowUnread));
+        OnMarkingChanged();
     }
 
     internal void SetStagedMarkings(IReadOnlyList<ChangeViewModel> changes)
@@ -247,7 +293,22 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             FitStatus = change.Fit?.Status,
         }).ToArray());
         OnPropertyChanged(nameof(StagedChanges));
-        OnPropertyChanged(nameof(Marking));
+        OnPropertyChanged(nameof(HasStagedChanges));
+        OnPropertyChanged(nameof(ShowsActions));
+        OnMarkingChanged();
+    }
+
+    private void OnMarkingChanged()
+    {
+        foreach (var name in new[]
+                 {
+                     nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
+                     nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
+                     nameof(PanGlossNote), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
+                     nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel),
+                     nameof(HoverSummary),
+                 })
+            OnPropertyChanged(name);
     }
 
     /// <summary>Pending changes that affect this word and can be undone from its strip.</summary>

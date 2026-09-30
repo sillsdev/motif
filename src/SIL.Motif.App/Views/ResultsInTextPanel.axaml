@@ -164,130 +164,142 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}">
+              <StackPanel Classes="lineHead" Orientation="Horizontal">
+                <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" />
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}" />
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}" />
+              </StackPanel>
               <DockPanel LastChildFill="True">
-                <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Number}"
-                                         Width="{DynamicResource Component.TextsPage.ReaderLineNumberWidth}" />
+                <StackPanel DockPanel.Dock="Left" Classes="gutter stripRows">
+                  <TextBlock Classes="gutterLabel wordRow" Text="Word" />
+                  <TextBlock Classes="gutterLabel analysisRow" Text="FieldWorks" />
+                  <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
+                </StackPanel>
                 <ItemsControl ItemsSource="{Binding Tokens}">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                      <Panel Margin="{DynamicResource Component.TextsPage.WordGap}">
-                        <views:CopyableTextBlock Text="{Binding Text}" IsVisible="{Binding !IsWord}" FontSize="{DynamicResource Intent.Type.Brand}" />
-                        <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordVerdict analysisDensity hoverReveal" Classes.uncertainChanged="{Binding IsUncertainChanged}" Focusable="True" Tag="{Binding}"
-                                views:VerdictClasses.Verdict="{Binding Meaning}" Classes.dimmed="{Binding IsDimmed}"
-                                AutomationProperties.AutomationId="{Binding StripAutomationId}"
-                                KeyDown="OnTokenKeyDown"
-                                ToolTip.Tip="{Binding HoverSummary}">
-                          <StackPanel Classes="analysisDensity" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <DockPanel LastChildFill="False">
-                              <CheckBox DockPanel.Dock="Left" IsChecked="{Binding IsSelectedForActions}"
+                      <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
+                              Classes.open="{Binding IsCardOpen}" Classes.uncertainChanged="{Binding IsUncertainChanged}"
+                              Classes.dimmed="{Binding IsDimmed}" Focusable="True" Tag="{Binding}"
+                              AutomationProperties.AutomationId="{Binding StripAutomationId}"
+                              KeyDown="OnTokenKeyDown" ToolTip.Tip="{Binding HoverSummary}">
+                        <StackPanel Orientation="Horizontal">
+                          <StackPanel Classes="stripStack stripRows" Tag="{Binding}" PointerPressed="OnTokenPressed">
+                            <StackPanel Classes="stripWordRow wordRow" Orientation="Horizontal">
+                              <CheckBox Classes="stripCheck" IsChecked="{Binding IsSelectedForActions}"
                                         IsVisible="{Binding $parent[views:ResultsInTextPanel].InText.ShowWordCheckboxes}"
                                         AutomationProperties.Name="{Binding SelectionAutomationName}" />
-                              <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding PrimaryOpinionMarkKind}"
-                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}"
-                                                     Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Text}" Tag="{Binding}"
-                                                       PointerPressed="OnTokenPressed"
-                                                       AutomationProperties.AutomationId="{Binding WordAutomationId}"
-                                                       FontSize="{DynamicResource Intent.Type.Brand}" FontWeight="SemiBold" />
-                              <controls:UnreadMark DockPanel.Dock="Right" IsVisible="{Binding ShowUnread}"
+                              <controls:UnreadMark Classes.dotOnly="True" IsVisible="{Binding ShowUnread}"
+                                                   VerticalAlignment="Center"
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
-                              <Border DockPanel.Dock="Left" Classes="verdictChip differs compact"
-                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
+                              <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
+                                                       AutomationProperties.AutomationId="{Binding WordAutomationId}" />
+                              <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
+                                                    AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
+                              <Border Classes="verdictChip differs compact" VerticalAlignment="Center"
                                       IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
                                       AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}">
                                 <views:CopyableTextBlock Text="!" />
                               </Border>
-                              <HyperlinkButton DockPanel.Dock="Left" Classes="revealControl revealLink" Content="FW ↗"
-                                               NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                                               AutomationProperties.Name="{Binding WordLinkName}" />
-                              <Button DockPanel.Dock="Right" Classes="actionChip" Content="{Binding Marking.PrimaryAction.Label}"
-                                      Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
-                                      CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
-                                      AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
-                                      AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
-                                        AutomationProperties.AutomationId="{Binding FixAutomationId}">
-                                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                  <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
-                                          CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
-                                  <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
-                                    <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                                        <Button Content="{Binding Label}"
-                                                Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
-                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
-                                      </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                  </ItemsControl>
-                                </StackPanel>
-                              </Expander>
-                            <Ellipse DockPanel.Dock="Right" Width="{DynamicResource Component.MatrixCell.MarkerSize}"
-                                     Height="{DynamicResource Component.MatrixCell.MarkerSize}"
-                                       Fill="{DynamicResource Intent.Warning.Text}"
-                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}"
-                                       IsVisible="{Binding IsPending}" ToolTip.Tip="{Binding PendingChangeStatus}" />
-                            </DockPanel>
-                            <StackPanel AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
-                              <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
-                                <ItemsControl.ItemTemplate>
-                                  <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
-                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}"
-                                                            ToolTip.Tip="{Binding Opinion}" />
-                                      <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                                    </StackPanel>
-                                  </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                                          IsVisible="{Binding HasNothingStored}">
-                                <controls:OpinionMark Kind="None" />
-                                <views:CopyableTextBlock Classes="muted" Text="Nothing in FieldWorks" FontStyle="Italic" />
-                              </StackPanel>
                             </StackPanel>
-                            <Border Classes="panGlossLine" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
-                                    Classes.same="{Binding IsPanGlossSame}"
-                                    Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
-                                    Classes.capped="{Binding IsPanGlossCapped}">
-                              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                <DockPanel LastChildFill="False">
-                                  <views:CopyableTextBlock Classes="f" Text="{Binding PanGlossSummary}" />
-                                  <Button DockPanel.Dock="Right" Classes="revealControl revealLink" Content="PanGloss help"
-                                          Command="{Binding $parent[views:ResultsInTextPanel].InText.OpenPanGlossGuideCommand}"
-                                          AutomationProperties.Name="About PanGloss" />
-                                </DockPanel>
-                                <ItemsControl ItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
+                            <Border Classes="stripRow stripFieldWorks analysisRow"
+                                    AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                                <ItemsControl ItemsSource="{Binding PrimaryFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ResultsReadingViewModel">
-                                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                        <views:CopyableTextBlock Text="{Binding Text}" />
-                                        <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                      <StackPanel>
+                                        <TextBlock Classes="stripMorphForm" Text="{Binding Form}" />
+                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}" />
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMoreFieldWorksAnalyses}">
+                                  <TextBlock Text="{Binding MoreFieldWorksLabel}" />
+                                </Border>
+                                <TextBlock Classes="stripNothing" Text="Nothing in FieldWorks" IsVisible="{Binding HasNothingStored}" />
+                                <HyperlinkButton Classes="revealControl revealLink" Content="FW ↗" VerticalAlignment="Top"
+                                                 NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
+                                                 AutomationProperties.Name="{Binding WordLinkName}" />
                               </StackPanel>
                             </Border>
-                            <ItemsControl ItemsSource="{Binding StagedChanges}" IsVisible="{Binding StagedChanges.Count}"
-                                          AutomationProperties.AutomationId="{Binding StagedAutomationId}">
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
-                                  <Border Classes="stagedStrip" ToolTip.Tip="{Binding FitStatus}">
-                                    <DockPanel LastChildFill="False">
-                                      <views:CopyableTextBlock Classes="stagedLabel" Text="{Binding Transition}" />
-                                      <Button DockPanel.Dock="Right" Classes="revealControl revealButton" Content="Undo"
-                                              Command="{Binding $parent[views:ResultsInTextPanel].InText.Changes.RemoveCommand}"
-                                              CommandParameter="{Binding Change}"
-                                              AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
-                                    </DockPanel>
-                                  </Border>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <Border Classes="stripRow panGlossLine analysisRow" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
+                                    Classes.same="{Binding IsPanGlossSame}"
+                                    Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
+                                    Classes.capped="{Binding IsPanGlossCapped}">
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                                <ItemsControl ItemsSource="{Binding PanGlossReadingMorphs}" IsVisible="{Binding ShowsPanGlossReading}">
+                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                      <StackPanel>
+                                        <TextBlock Classes="stripMorphForm f" Text="{Binding Form}" />
+                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}" />
+                                      </StackPanel>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
+                                  <TextBlock Text="{Binding MorePanGlossLabel}" />
+                                </Border>
+                                <TextBlock Classes="f stripNote" Text="{Binding PanGlossNote}" IsVisible="{Binding ShowsPanGlossNote}" />
+                              </StackPanel>
+                            </Border>
                           </StackPanel>
-                        </Border>
-                      </Panel>
+                          <Border Classes="stripActions" IsVisible="{Binding ShowsActions}">
+                            <StackPanel Classes="stripRows">
+                              <StackPanel Classes="wordRow stripActionRow" Orientation="Horizontal">
+                              <Button Classes="actionChip primary" Content="{Binding PrimaryActionLabel}" VerticalAlignment="Center"
+                                      Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
+                                      CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
+                                      AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
+                                      AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
+                              <Button Classes="actionChip fix" Content="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
+                                      VerticalAlignment="Center"
+                                      AutomationProperties.AutomationId="{Binding FixAutomationId}">
+                                <Button.Flyout>
+                                  <Flyout Placement="BottomEdgeAlignedLeft">
+                                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                      <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
+                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
+                                      <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
+                                        <ItemsControl.ItemTemplate>
+                                          <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
+                                            <Button Content="{Binding Label}"
+                                                    Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
+                                          </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                      </ItemsControl>
+                                    </StackPanel>
+                                  </Flyout>
+                                </Button.Flyout>
+                              </Button>
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                          <ItemsControl ItemsSource="{Binding StagedChanges}" IsVisible="{Binding HasStagedChanges}"
+                                        AutomationProperties.AutomationId="{Binding StagedAutomationId}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
+                                <Border Classes="stagedStrip" ToolTip.Tip="{Binding FitStatus}">
+                                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
+                                    <TextBlock Classes="stagedLabel" Text="Staged" />
+                                    <views:CopyableTextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
+                                    <Button Classes="revealControl revealButton" Content="Undo"
+                                            Command="{Binding $parent[views:ResultsInTextPanel].InText.Changes.RemoveCommand}"
+                                            CommandParameter="{Binding Change}"
+                                            AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
+                                  </StackPanel>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>

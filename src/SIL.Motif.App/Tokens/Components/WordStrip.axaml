@@ -1,0 +1,134 @@
+<!--
+  One word of a text in Analyze texts, as Round 4 draws it: the word with its mark, then a FieldWorks line
+  and a PanGloss line whose heights match the line's gutter labels, then its action or its Staged note.
+  The strip itself has no verdict colour; it shows an edge only under the pointer or while its card is open.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.WordStrip.Gap" ResourceKey="Primitive.Inset.0_0_4_4" />
+    <StaticResource x:Key="Component.WordStrip.Radius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.WordStrip.WordRowHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.WordStrip.AnalysisRowHeight" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.WordStrip.RowRule" ResourceKey="Primitive.Inset.0_1_0_0" />
+    <StaticResource x:Key="Component.WordStrip.ActionRule" ResourceKey="Primitive.Inset.1_0_0_0" />
+    <StaticResource x:Key="Component.WordStrip.ActionPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
+    <StaticResource x:Key="Component.WordStrip.StagedWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordStrip.GutterWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.WordStrip.GutterMargin" ResourceKey="Primitive.Inset.0_1_6_0" />
+    <StaticResource x:Key="Component.WordStrip.GutterType" ResourceKey="Primitive.Type.9" />
+    <StaticResource x:Key="Component.WordStrip.GutterWordPadding" ResourceKey="Primitive.Inset.0_5_0_0" />
+    <StaticResource x:Key="Component.WordStrip.MorphType" ResourceKey="Primitive.Type.11" />
+    <StaticResource x:Key="Component.WordStrip.GlossType" ResourceKey="Primitive.Type.9p5" />
+    <StaticResource x:Key="Component.WordStrip.MorphLine" ResourceKey="Primitive.Size.14" />
+    <StaticResource x:Key="Component.WordStrip.GlossLine" ResourceKey="Primitive.Size.13" />
+    <StaticResource x:Key="Component.WordStrip.NoteType" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.WordStrip.HeadType" ResourceKey="Primitive.Type.10" />
+  </Styles.Resources>
+  <Style Selector="Border.wordStrip">
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordStrip.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.Padding}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.WordStrip.Gap}" />
+  </Style>
+  <Style Selector="Border.wordStrip:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector="Border.wordStrip.open">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Border.wordStrip.uncertainChanged">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+  </Style>
+  <Style Selector="Border.wordStrip.dimmed">
+    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
+  </Style>
+  <Style Selector=":is(Control).wordRow">
+    <Setter Property="Height" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
+  </Style>
+  <Style Selector=":is(Control).analysisRow">
+    <Setter Property="Height" Value="{DynamicResource Component.WordStrip.AnalysisRowHeight}" />
+  </Style>
+  <Style Selector="StackPanel.stripRows">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.stripActionRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.stripWordRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(TextBlock).stripWord">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="CheckBox.stripCheck">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.stripRow">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordStrip.RowRule}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Marking.Divider}" />
+  </Style>
+  <Style Selector="StackPanel.stripMorphs">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="TextBlock.stripMorphForm">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.MorphType}" />
+    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.MorphLine}" />
+  </Style>
+  <Style Selector="TextBlock.stripMorphGloss">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.GlossType}" />
+    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.GlossLine}" />
+  </Style>
+  <Style Selector="Border.stripFieldWorks TextBlock.stripMorphGloss">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="TextBlock.stripNothing">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.NoteType}" />
+    <Setter Property="FontStyle" Value="Italic" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.stripNote">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.stripActions">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordStrip.ActionRule}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Marking.Divider}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.ActionPadding}" />
+  </Style>
+  <Style Selector="Border.wordStrip Border.stagedStrip">
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.WordStrip.StagedWidth}" />
+  </Style>
+  <Style Selector="StackPanel.gutter">
+    <Setter Property="Width" Value="{DynamicResource Component.WordStrip.GutterWidth}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.WordStrip.GutterMargin}" />
+  </Style>
+  <Style Selector="TextBlock.gutterLabel">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.GutterType}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="TextAlignment" Value="Right" />
+  </Style>
+  <Style Selector="TextBlock.gutterLabel.wordRow">
+    <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.GutterWordPadding}" />
+  </Style>
+  <Style Selector="StackPanel.lineHead">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(TextBlock).lineNumber">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.HeadType}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector=":is(TextBlock).lineSentence">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.HeadType}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+</Styles>

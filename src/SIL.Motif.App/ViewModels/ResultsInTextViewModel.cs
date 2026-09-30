@@ -917,8 +917,24 @@ public sealed class ResultsLineViewModel : ObservableObject
     /// <summary>Whether a word card is open under this line.</summary>
     public bool HasOpenCard => OpenCard is not null;
 
+    /// <summary>The line as it reads, words and punctuation, above its word strips.</summary>
+    public string Sentence => string.Concat(Tokens.Select((token, index) =>
+        index > 0 && token.IsWord ? " " + token.Text : token.Text));
+
+    /// <summary>How many of the line's words have an action waiting, or nothing when none do.</summary>
+    public string NeedsALookSummary => Tokens.Count(token => token.IsWord && token.Marking.NeedsALook) switch
+    {
+        0 => string.Empty,
+        var count => $"· {count} need{(count == 1 ? "s" : string.Empty)} a look",
+    };
+
     private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ResultsTokenViewModel.Marking))
+        {
+            OnPropertyChanged(nameof(NeedsALookSummary));
+            return;
+        }
         if (e.PropertyName != nameof(ResultsTokenViewModel.IsCardOpen)) return;
         OnPropertyChanged(nameof(OpenCard));
         OnPropertyChanged(nameof(HasOpenCard));

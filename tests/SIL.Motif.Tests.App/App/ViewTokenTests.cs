@@ -187,8 +187,8 @@ public sealed class ViewTokenTests
     public void StripAndCardOfferFixAndApproveOneReadingAtATime()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
-        Assert.Equal(1, Regex.Matches(markup, "Header=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
-        Assert.Equal(1, Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.DoesNotContain("Header=\"Fix ▾\"", markup, StringComparison.Ordinal);
+        Assert.Equal(2, Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
         Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
             StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,
