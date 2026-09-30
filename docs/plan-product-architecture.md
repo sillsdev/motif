@@ -1,12 +1,6 @@
 # Product architecture — semantic collaboration for language projects
 
-
-> **Current Motif architecture.** Motif targets LibLCM objects directly; Harmony, Chorus, LcmCrdt, and
-> replication are outside this product boundary. [ADR 0040](adr/0040-one-api-the-cli.md) defines the process
-> boundary: there is one API and it is the CLI, a job runner takes work that outlives a command, and no Motif
-> assembly loads inside FieldWorks. [ADR 0039](adr/0039-one-worker-baseline-and-live-host-authority.md)
-> still defines the evaluation model — a saved Baseline supports reusable Dry Runs and Apply is immediate in
-> the live host — but its named-pipe protocol is withdrawn.
+> **Historical architecture plan.** Its target model has been superseded by the implementation described in the [current architecture overview](current-architecture.md). Keep this file for its design rationale; its CLI-only and FieldWorks-host assumptions are not current product facts.
 
 *This is the product-level architecture served by the cross-repository milestone ladder. It
 consolidates the controlled-materialization amendment and the 2026-08-01 literature reviews.*

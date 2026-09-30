@@ -1,5 +1,7 @@
 # Architecture and decided design
 
+> **Historical architecture proposal.** This document preserves an earlier product design and does not describe the current implementation. Use the [current architecture overview](current-architecture.md) for present project references, process boundaries and ownership.
+
 ## Purpose
 
 **Primary purpose — the grammar-experimentation loop.** A person or an AI working on a language asks

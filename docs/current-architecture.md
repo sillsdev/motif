@@ -1,0 +1,53 @@
+# Current architecture
+
+Motif provides a command-line tool and a desktop application for working with FieldWorks language projects. Both front ends call the same typed command handlers, while the loaded LibLCM cache remains owned by the caller that opened the project.
+
+## Front ends and shared commands
+
+`SIL.Motif.Cli` maps command-line arguments to typed requests. `SIL.Motif.App` calls those same commands in-process; it does not launch the CLI or parse its JSON output. The command catalog is the shared handler inventory, and the CLI catalog maps that inventory to command names and usage.
+
+## Project references
+
+These arrows show direct `<ProjectReference>` edges in the current project files; they do not show package dependencies or runtime process launches.
+
+```text
+SIL.Motif.App -> SIL.Motif.Commands, SIL.Motif.Contract, SIL.Motif.Help
+SIL.Motif.Cli -> SIL.Motif.Commands, SIL.Motif.Host, SIL.Motif.Runner, SIL.Motif.Worker,
+                 SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Projection, SIL.Motif.Help
+SIL.Motif.Commands -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.Model,
+                      SIL.Motif.Projection, SIL.Motif.Runner, SIL.Motif.LiveHost,
+                      SIL.Motif.Worker
+SIL.Motif.Host -> SIL.Motif.Projection, SIL.Motif.Runner
+SIL.Motif.LiveHost -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
+SIL.Motif.Model -> SIL.Motif.Contract
+SIL.Motif.Projection -> SIL.Motif.Contract, SIL.Motif.Model, SIL.Motif.Runner
+SIL.Motif.Runner -> SIL.Motif.Contract, SIL.Motif.Model
+SIL.Motif.Worker -> SIL.Motif.Contract, SIL.Motif.Host, SIL.Motif.LiveHost
+SIL.Motif.Contract -> (no Motif project references)
+SIL.Motif.Generator -> (no Motif project references)
+SIL.Motif.Help -> (no Motif project references)
+```
+
+`SIL.Motif.Contract` contains request and response shapes and has no LibLCM reference. `SIL.Motif.Projection` contains projections that need LibLCM types. All Motif projects target `net10.0`; integrations outside .NET use the CLI's JSON shapes rather than loading a Motif assembly in a `net48` process.
+
+`SIL.Motif.Worker` is currently an executable referenced by both `Commands` and `Cli`, so those consumers also inherit its executable project assets. The staged architecture plan calls for extracting the command-consumed implementation into a library while retaining the Worker executable identity; that correction is pending and is not represented as complete here.
+
+## Process coordination and project ownership
+
+Motif uses SQLite for process-shared workflow state and coordination. A machine store tracks known projects and usage; each project's Motif database holds its workflow, jobs and retained evidence. The CLI and Worker coordinate through those stores. They do not make Motif's database a second authority for FieldWorks language data.
+
+The caller supplies an already-loaded `LcmCache` and owns its project lifetime and persistence. LibLCM operations use that cache; the caller decides when the live project is saved. A scratch cache is used when a caller needs evaluation without changing the live project. See the [semantic change contract](change-set-contract.md) and the [Proposal lifecycle](proposal-lifecycle.md) for their normative rules.
+
+Motif invokes PanGloss through a child process. The Host contains the process adapter and translates the supported request and result into typed Motif data. The CLI and desktop application both reach that adapter through shared commands; neither front end defines a separate parser protocol.
+
+## Help ownership today
+
+The `SIL.Motif.Help` project supplies shared Help data to the CLI and App. Its current authored files remain under the repository's `help/` directory and are embedded with logical resource names beginning `help/`. The documentation-authority plan stages a one-time move to `src/SIL.Motif.Help/Content/`; the move has not happened yet.
+
+## Normative references
+
+- [CLI and command API](cli-api.md) — current entry points and generated command reference.
+- [Semantic change contract](change-set-contract.md) — Proposal and operation shapes.
+- [Proposal lifecycle](proposal-lifecycle.md) — current workflow semantics.
+- [Assessment scope](assessment-scope-design.md) — what parser Assessments measure.
+- [FieldWorks integration contract](../AGENTS.md#compatibility-targets) — the save-boundary command and response fields.
