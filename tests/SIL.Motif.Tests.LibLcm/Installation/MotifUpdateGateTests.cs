@@ -9,6 +9,7 @@ public sealed class MotifUpdateGateTests
     private const string ChildGateNameVariable = "MOTIF_UPDATE_GATE_CHILD_NAME";
     private const string ChildReadyPathVariable = "MOTIF_UPDATE_GATE_CHILD_READY";
     private const string ChildReleasePathVariable = "MOTIF_UPDATE_GATE_CHILD_RELEASE";
+    private static readonly TimeSpan ChildHangGuard = TimeSpan.FromMinutes(2);
 
     [Fact]
     public void ConcurrentActivitiesCanShareTheUpdateGate()
@@ -88,13 +89,16 @@ public sealed class MotifUpdateGateTests
         var error = child.StandardError.ReadToEndAsync();
         try
         {
-            await WaitUntilAsync(() => File.Exists(readyFile), TimeSpan.FromSeconds(15));
+            // A nested test host starts slowly under a full suite, so wait on its signal or its exit, not a clock.
+            await WaitUntilAsync(() => File.Exists(readyFile) || child.HasExited, ChildHangGuard);
+            if (!File.Exists(readyFile))
+                Assert.Fail($"Child test exited before it held the gate. stdout: {await output} stderr: {await error}");
             using var parentActivity = MotifUpdateGate.TryAcquire(gateName);
             Assert.NotNull(parentActivity);
             Assert.Null(MotifUpdateGate.TryAcquireForUpdate(gateName));
 
             await File.WriteAllTextAsync(releaseFile, string.Empty);
-            await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
+            await child.WaitForExitAsync().WaitAsync(ChildHangGuard);
             Assert.True(child.ExitCode == 0, $"Child test failed. stdout: {await output} stderr: {await error}");
         }
         finally
