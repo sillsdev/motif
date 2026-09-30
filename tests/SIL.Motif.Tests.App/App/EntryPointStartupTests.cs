@@ -85,6 +85,32 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
+    public async Task TheBuiltAppsSmokeRunRendersAWindowAndExitsCleanly()
+    {
+        var app = Path.Combine(BuildOutput.ProductDirectory,
+            OperatingSystem.IsWindows() ? "SIL.Motif.App.exe" : "SIL.Motif.App");
+        var start = new System.Diagnostics.ProcessStartInfo(app, "--smoke")
+        {
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        start.Environment.Remove("ICU_DATA");
+        using var process = System.Diagnostics.Process.Start(start)!;
+        var error = process.StandardError.ReadToEndAsync();
+        using var limit = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        try { await process.WaitForExitAsync(limit.Token); }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+            Assert.Fail("The app's --smoke run did not exit within two minutes.");
+        }
+
+        Assert.True(process.ExitCode == 0,
+            $"The app's --smoke run exited {process.ExitCode}. stderr: {await error}");
+    }
+
+    [Fact]
     public void PackageSmokeScriptsUseTheSampleProjectBuilderOutput()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));

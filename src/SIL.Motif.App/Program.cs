@@ -37,6 +37,7 @@ internal static class Program
     private static int Smoke()
     {
         AppBuilder.Configure<App>()
+            .UseSkia()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
             .SetupWithoutStarting();
         var window = new Views.MainWindow();
