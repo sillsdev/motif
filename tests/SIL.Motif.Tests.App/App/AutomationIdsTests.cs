@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -19,15 +21,33 @@ public sealed class AutomationIdsTests
     [Fact]
     public void WordStripPartIdsAreStableSafeAndDistinct()
     {
-        var parts = new[] { "word", "opinion", "fieldworks", "pangloss", "action", "fix", "staged", "unread" };
-        var ids = parts.Select(part => AutomationIds.ForWordPart("günler", 2, part)).ToArray();
+        var parts = new[]
+        {
+            "strip", "word", "opinion", "disapproved", "fieldworks", "pangloss", "action", "fix", "staged", "unread",
+        };
+        var textId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var ids = parts.Select(part => AutomationIds.ForWordPart(textId, "günler", 2, part)).ToArray();
 
-        Assert.All(ids, id => Assert.Matches("^motif-word-2-[a-f0-9]+-[a-z]+$", id));
+        Assert.All(ids, id => Assert.Matches("^motif-word-11111111111111111111111111111111-2-[a-f0-9]+-[a-z]+$", id));
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
-        Assert.Equal("motif-word-2-67c3bc6e6c6572-word", ids[0]);
-        Assert.Equal(ids, parts.Select(part => AutomationIds.ForWordPart("gu\u0308nler", 2, part)));
-        Assert.NotEqual(ids[0], AutomationIds.ForWordPart("günler", 3, "word"));
-        Assert.NotEqual(ids[0], AutomationIds.ForWordPart("geldi", 2, "word"));
+        Assert.Equal("motif-word-11111111111111111111111111111111-2-67c3bc6e6c6572-strip", ids[0]);
+        Assert.Equal(ids, parts.Select(part => AutomationIds.ForWordPart(textId, "gu\u0308nler", 2, part)));
+        Assert.NotEqual(ids[1], AutomationIds.ForWordPart(textId, "günler", 3, "word"));
+        Assert.NotEqual(ids[1], AutomationIds.ForWordPart(textId, "geldi", 2, "word"));
+    }
+
+    [Fact]
+    public void WordPartIdsIncludeTheirChosenTextIdentity()
+    {
+        static ResultsTokenViewModel Token(Guid textId) => new ResultsLineViewModel("Text",
+            new TextLine(1, [new TextToken("same", "same", null, "unanalysed") { OccurrenceIndex = 0 }]),
+            new Dictionary<string, AssessmentWordResult>(StringComparer.Ordinal), textId: textId).Tokens.Single();
+
+        var first = Token(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+        var second = Token(Guid.Parse("22222222-2222-2222-2222-222222222222"));
+
+        Assert.NotEqual(first.WordAutomationId, second.WordAutomationId);
+        Assert.NotEqual(first.StripAutomationId, second.StripAutomationId);
     }
 
     [Fact]

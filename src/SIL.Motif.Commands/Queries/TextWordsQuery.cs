@@ -154,7 +154,13 @@ public static class TextWordsQuery
         return new ProjectAnalysis(analysis.Key, morphs)
         {
             StoredAnalysisId = CanonicalId.FromGuid(analysis.AnalysisId).Value,
-            StoredAnalysisOpinion = analysis.Opinion,
+            StoredAnalysisOpinion = analysis.Opinion switch
+            {
+                "approved" => ReadingGrade.Approved,
+                "disapproved" => ReadingGrade.Disapproved,
+                "unknown" => ReadingGrade.Candidate,
+                _ => ReadingGrade.NoOpinion,
+            },
             Identity = analysis.Identity,
         };
     }

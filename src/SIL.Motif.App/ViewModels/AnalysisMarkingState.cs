@@ -210,7 +210,6 @@ public sealed record AnalysisMarkingState(
     private static string NormalizeOpinion(string? opinion) =>
         opinion switch
         {
-            "unknown" => ReadingGrade.Candidate,
             null => ReadingGrade.Candidate,
             _ => opinion,
         };

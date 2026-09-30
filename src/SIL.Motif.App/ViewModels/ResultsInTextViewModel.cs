@@ -876,7 +876,8 @@ public sealed class ResultsLineViewModel
             occurrence: token.Form is not null && textId != Guid.Empty && line.ParagraphId != Guid.Empty &&
                 line.SegmentId != Guid.Empty && token.OccurrenceIndex >= 0
                     ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
-                    : null)).ToArray();
+                    : null,
+            textId: textId)).ToArray();
     }
 
     public int Number { get; }

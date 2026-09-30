@@ -29,11 +29,13 @@ public static class AutomationIds
 
     /// <summary>Creates a repeatable identifier for one part of a word's compact result strip.</summary>
     /// <param name="form">The displayed form, normalized so canonically equivalent Unicode has one identifier.</param>
+    /// <param name="textId">The identity of the selected Text containing the occurrence.</param>
     /// <param name="occurrenceIndex">The word's position in the selected Text.</param>
     /// <param name="part">One of strip, word, opinion, disapproved, fieldworks, pangloss, action, fix, staged, or unread.</param>
     /// <returns>An ASCII identifier that names this part of this word occurrence.</returns>
-    internal static string ForWordPart(string form, int occurrenceIndex, string part)
+    internal static string ForWordPart(Guid textId, string form, int occurrenceIndex, string part)
     {
+        ArgumentOutOfRangeException.ThrowIfEqual(textId, Guid.Empty);
         ArgumentException.ThrowIfNullOrWhiteSpace(form);
         ArgumentOutOfRangeException.ThrowIfNegative(occurrenceIndex);
         if (part is not ("strip" or "word" or "opinion" or "disapproved" or "fieldworks" or "pangloss" or
@@ -42,6 +44,6 @@ public static class AutomationIds
 
         var formCode = Convert.ToHexString(Encoding.UTF8.GetBytes(form.Normalize(NormalizationForm.FormC)))
             .ToLowerInvariant();
-        return $"motif-word-{occurrenceIndex}-{formCode}-{part}";
+        return $"motif-word-{textId:N}-{occurrenceIndex}-{formCode}-{part}";
     }
 }
