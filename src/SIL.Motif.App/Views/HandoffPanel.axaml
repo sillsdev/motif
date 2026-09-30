@@ -13,11 +13,11 @@
       <StackPanel Spacing="{DynamicResource Component.Handoff.SectionGap}">
 
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                   Text="Give a chat model the files it needs to help you read this Assessment." />
+                   Text="Give a chat model the files it needs to help you read these results." />
 
         <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
           <DockPanel>
-            <Button DockPanel.Dock="Right" Content="Hand off the whole Assessment instead" Click="OnUseWholeAssessmentClick"
+            <Button DockPanel.Dock="Right" Content="Hand off every parsed word instead" Click="OnUseWholeAssessmentClick"
                     VerticalAlignment="Center" Margin="{DynamicResource Component.Handoff.ActionMargin}" />
             <views:CopyableTextBlock Text="{Binding Handoff.ChosenWordsText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           </DockPanel>

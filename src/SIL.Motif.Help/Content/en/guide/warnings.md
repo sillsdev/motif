@@ -1,6 +1,6 @@
 # Warnings
 
-**Warnings** shows findings from a check of the whole grammar. They are stored for the [Baseline](term:baseline), and do not depend on which texts or words you selected. Findings do not block an Assessment.
+**Warnings** shows findings from a check of the whole grammar. They are stored for the [Baseline](term:baseline), and do not depend on which texts or words you selected. Findings do not stop **Parse all words**.
 
 If the grammar has not been checked for this Baseline, choose **Check the grammar**. The parser reads the whole grammar, so a check can take a minute for a large project. **Refresh** also checks the grammar after capturing a Baseline. Later visits use the stored findings until the Baseline changes; opening the page does not start a check by itself.
 

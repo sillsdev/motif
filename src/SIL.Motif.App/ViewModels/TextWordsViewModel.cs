@@ -76,8 +76,8 @@ public static class WordProjectStatuses
     public static string LabelOf(WordProjectStatus status, int approvedCount = 1) => status switch
     {
         WordProjectStatus.Approved => approvedCount > 1 ? $"Approved, {approvedCount} analyses" : "Approved",
-        WordProjectStatus.Candidate => "Candidate",
-        WordProjectStatus.Rejected => "Rejected",
+        WordProjectStatus.Candidate => "Unknown",
+        WordProjectStatus.Rejected => "Disapproved",
         WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
         _ => ReadingGradeLabels.NotPresent,
     };
@@ -479,8 +479,8 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             : Status switch
             {
                 WordProjectStatus.Approved => DistinctGlosses(word).FirstOrDefault() ?? string.Empty,
-                WordProjectStatus.Candidate => "A candidate: stored, but nobody has approved it",
-                WordProjectStatus.Rejected => "Only rejected analyses are stored",
+                WordProjectStatus.Candidate => "Unknown: stored, but nobody has approved it",
+                WordProjectStatus.Rejected => "Only disapproved analyses are stored",
                 WordProjectStatus.IncorrectSpelling => "FieldWorks marks this spelling as incorrect",
                 _ => "Not analysed in the project",
             };

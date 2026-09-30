@@ -103,19 +103,28 @@ public sealed class PageScreenshots
 
     internal static void Save(MainWindow window, string path)
     {
+        Settle(window);
+        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
+        frame.Save(path, PngBitmapEncoderOptions.Default);
+    }
+
+    /// <summary>Lets bindings, layout and a render pass catch up with the last change to the window.</summary>
+    internal static void Settle(Avalonia.Controls.Window window)
+    {
         for (var pass = 0; pass < 3; pass++)
         {
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
-        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
-        frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
-    /// <summary>Opens the window over the sample project; without <paramref name="parse"/> it stops before the first parse.</summary>
+    /// <summary>
+    /// Opens the window over the sample project; without <paramref name="parse"/> it stops before the first parse,
+    /// and with <paramref name="leaveSetupOpen"/> it stops with first-run setup still showing.
+    /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
-        bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null)
+        bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false)
     {
         var fake = new FakeCommandClient();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
@@ -154,6 +163,7 @@ public sealed class PageScreenshots
         window.Show();
 
         await workspace.SetProjectAsync(ProjectPath);
+        if (leaveSetupOpen) return (workspace, window);
         workspace.Context.Setup?.SkipCommand.Execute(null);
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();

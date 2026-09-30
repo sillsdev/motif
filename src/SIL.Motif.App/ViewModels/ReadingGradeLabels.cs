@@ -18,8 +18,8 @@ public static class ReadingGradeLabels
     public static string Of(string? grade) => grade switch
     {
         ReadingGrade.Approved => "Approved",
-        ReadingGrade.Disapproved => "Rejected",
-        ReadingGrade.Candidate => "Candidate",
+        ReadingGrade.Disapproved => "Disapproved",
+        ReadingGrade.Candidate => "Unknown",
         ReadingGrade.NoOpinion => NotPresent,
         _ => string.Empty,
     };

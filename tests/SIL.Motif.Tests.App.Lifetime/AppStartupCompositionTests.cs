@@ -211,9 +211,9 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.Equal("Last written 10:30", await UntilFound(session.Window,
                     () => "written is '" + handoff.WrittenAtText + "'",
                     text => text.StartsWith("Last written", StringComparison.Ordinal)));
-                Assert.StartsWith("Covers the Assessment of Wed 4 Mar, 10:30 AM: ", await UntilFound(session.Window,
+                Assert.StartsWith("Covers the words parsed on Wed 4 Mar, 10:30 AM: ", await UntilFound(session.Window,
                     () => "coverage is '" + handoff.CoverageText + "'",
-                    text => text.StartsWith("Covers the Assessment of", StringComparison.Ordinal)));
+                    text => text.StartsWith("Covers the words parsed on", StringComparison.Ordinal)));
 
                 var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
                 Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");

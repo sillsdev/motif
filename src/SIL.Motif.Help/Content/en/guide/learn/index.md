@@ -4,7 +4,7 @@ You know the words and patterns of your language. A parser does not. It follows 
 
 The work is a loop:
 
-1. **Measure.** Save your FieldWorks work, then choose **Refresh** or run an [Assessment](term:assessment) to measure words you care about. [Text Coverage](term:text-coverage) tells you how much of the chosen material parsed.
+1. **Measure.** Save your FieldWorks work, then choose **Refresh** or choose [Parse all words](term:assessment) to measure words you care about. [Text Coverage](term:text-coverage) tells you how much of the chosen material parsed.
 2. **Understand.** Try a difficult word in **Try a Word**. Read the parser’s furthest attempt, then follow its steps to see what it built and where it stopped. Use **Timing** when words take a long time.
 3. **Fix.** Use your language knowledge to check the likely cause. Make any grammar or lexicon change in FieldWorks, save it, and measure again.
 

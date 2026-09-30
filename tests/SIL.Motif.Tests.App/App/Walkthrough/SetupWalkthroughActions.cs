@@ -126,7 +126,7 @@ internal static class SetupWalkthroughActions
         Assert.True(File.Exists(heartbeat), "Finish completed without holding the batch parser.");
         Assert.False(setup.IsOpen);
         Assert.Equal(SIL.Motif.Contract.Responses.AssessmentStage.Capturing, stageWhenSetupClosed);
-        walkthrough.Click("Cancel the running Assessment");
+        walkthrough.Click("Cancel parsing");
         walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Cancelled,
             timeout, "the held first run did not cancel");
         walkthrough.SetFakeParserBehavior(new

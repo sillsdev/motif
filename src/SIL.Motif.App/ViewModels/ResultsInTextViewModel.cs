@@ -395,7 +395,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         }
 
         var projectWord = _texts.ProjectWords.FirstOrDefault(candidate => candidate.Form == word);
-        SelectToken(new ResultsTokenViewModel("Assessment", 0, new TextToken(word, word, null, null), result,
+        SelectToken(new ResultsTokenViewModel("Parsed words", 0, new TextToken(word, word, null, null), result,
             projectWord, "Not in a chosen text"));
     }
 

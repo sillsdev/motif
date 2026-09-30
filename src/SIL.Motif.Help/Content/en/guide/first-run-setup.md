@@ -6,6 +6,6 @@ On **What should Motif measure every time?**, choose one or more texts, or add w
 
 On **How much work should each word get?**, choose a parser step limit. Motif estimates how long a word may take and gives it extra time to finish. The default is 1,000,000 steps. Choose **No step limit** to remove the parser step cap; with no step limit, Motif applies no time limit.
 
-The last step saves this as the project’s [Default Selection](term:default-selection) and starts the first [Assessment](term:assessment). Choose **Back** or **Next: texts**, **Next: limits**, and **Next: first run** to move through setup. Choose **Start first run** to save and measure. If you are editing an existing project default, the final action is **Use this Selection**; it saves the choice without starting a run. **Skip for now** closes first-time setup without saving these choices.
+The last step saves this as the project’s [Default Selection](term:default-selection) and starts the first [parse](term:assessment). Choose **Back** or **Next: texts**, **Next: limits**, and **Next: first run** to move through setup. Choose **Start first run** to save and measure. If you are editing an existing project default, the final action is **Use this Selection**; it saves the choice without starting a run. **Skip for now** closes first-time setup without saving these choices.
 
 ![Choosing texts and added words in first-time setup](shot:first-run-default-selection/selection)

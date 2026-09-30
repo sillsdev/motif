@@ -85,8 +85,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.False(walkthrough.SetupDialogIsShown);
             Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);
             Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.Context.CurrentPage);
-            Assert.True(walkthrough.Find<ProgressBar>("Assessment progress").IsEffectivelyVisible);
-            walkthrough.Click("Cancel the running Assessment");
+            Assert.True(walkthrough.Find<ProgressBar>("Parsing progress").IsEffectivelyVisible);
+            walkthrough.Click("Cancel parsing");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
                 TimeSpan.FromSeconds(30), "the held first run did not cancel");
@@ -127,7 +127,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
             walkthrough.WaitUntil(
-                () => setup.StepLimitEstimateText.Contains("latest Assessment's parser statistics", StringComparison.Ordinal),
+                () => setup.StepLimitEstimateText.Contains("parser statistics from the last parse", StringComparison.Ordinal),
                 WalkthroughSteps.Remaining(deadline), "Configure did not load the parser rate from the completed run");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
             Assert.True(walkthrough.Workspace.Context.Setup!.Selection.Texts

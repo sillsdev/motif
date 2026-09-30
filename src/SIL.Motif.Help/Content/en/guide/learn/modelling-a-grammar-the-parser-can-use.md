@@ -38,7 +38,7 @@ Model them if your analysis needs them, and expect words that depend on them not
 
 ## When a grammar is slow
 
-Parse time comes from the paths the parser has to try. Optional slots, broad environments and duplicated affixes can each add paths, but no single kind of choice is always costly. In the synthetic Bantu-style sample, 160 empty allomorphs added no measurable work, while one duplicated real affix multiplied it. Use [Timing](cmd:timing) after an [Assessment](term:assessment) to see where the work actually went. The Learn page **Why a grammar is slow** shows how to read it.
+Parse time comes from the paths the parser has to try. Optional slots, broad environments and duplicated affixes can each add paths, but no single kind of choice is always costly. In the synthetic Bantu-style sample, 160 empty allomorphs added no measurable work, while one duplicated real affix multiplied it. Use [Timing](cmd:timing) after [Parse all words](term:assessment) to see where the work actually went. The Learn page **Why a grammar is slow** shows how to read it.
 
 ## Change one thing at a time
 
