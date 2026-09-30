@@ -13,17 +13,7 @@ public sealed class JobArchiveCapTests
     public void FiveHundredOneFinishedJobsLeaveFiveHundredOldestDropped()
     {
         using var fixture = new Fixture();
-        var ids = new List<string>();
-        for (var i = 0; i < 501; i++)
-        {
-            var id = "job-" + i.ToString("D4");
-            ids.Add(id);
-            Complete(fixture.Jobs, id);
-        }
-        // Give every row a distinct, ordered ArchivedUtc so "oldest" is unambiguous.
-        for (var i = 0; i < ids.Count; i++)
-            SetArchive(fixture.Database, ids[i], "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z",
-                DateTimeOffset.Parse("2026-01-01T00:00:00Z").AddMinutes(i).ToString("O"));
+        var ids = InsertArchivedJobs(fixture.Database, 501);
 
         var purged = fixture.Jobs.PurgeArchived(ArchivePolicy.Default);
 
@@ -97,6 +87,37 @@ public sealed class JobArchiveCapTests
         var running = jobs.Transition(queued.JobId, JobStatus.Running, queued.Version);
         return jobs.Transition(running.JobId, JobStatus.Failed, running.Version,
             JobFailureCategory.Infrastructure, "{\"error\":true}");
+    }
+
+    private static IReadOnlyList<string> InsertArchivedJobs(MotifDatabase database, int count)
+    {
+        using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO Jobs (JobId, ProjectKey, Kind, Status, Attempt, LineageId, InputJson,
+                CreatedUtc, UpdatedUtc, Version, FailureCategory, ArchivedUtc)
+            VALUES ($id, 'project', 'dry-run', $status, 1, $id, '{}', $created, $created,
+                3, 'none', $archived);
+            """;
+        command.Parameters.AddWithValue("$id", string.Empty);
+        command.Parameters.AddWithValue("$status", JobStatusJson.ToWire(JobStatus.Completed));
+        command.Parameters.AddWithValue("$created", "2026-01-01T00:00:00Z");
+        command.Parameters.AddWithValue("$archived", string.Empty);
+
+        var ids = new List<string>(count);
+        var archiveStart = DateTimeOffset.Parse("2026-01-01T00:00:00Z");
+        for (var i = 0; i < count; i++)
+        {
+            var id = "job-" + i.ToString("D4");
+            ids.Add(id);
+            command.Parameters["$id"].Value = id;
+            command.Parameters["$archived"].Value = archiveStart.AddMinutes(i).ToString("O");
+            command.ExecuteNonQuery();
+        }
+        transaction.Commit();
+        return ids;
     }
 
     // Mixed "+00:00"/"Z" spellings, matched against ValidateUtc's own acceptance of both.

@@ -46,10 +46,13 @@ internal static class SetupWalkthroughActions
     {
         walkthrough.Click("Refresh the project");
         var setup = walkthrough.Workspace.Context.Setup!;
+        var baseline = walkthrough.Workspace.Baseline;
         walkthrough.WaitUntil(
-            () => setup.IsOpen && walkthrough.Workspace.Baseline.HasBaseline &&
-                walkthrough.Workspace.Selection.Texts.Count == textCount,
+            () => baseline.ShownRefusal is not null ||
+                setup.IsOpen && baseline.HasBaseline && walkthrough.Workspace.Selection.Texts.Count == textCount,
             timeout, "Refresh did not open setup with the project's Texts");
+        Assert.True(baseline.ShownRefusal is null,
+            $"Refresh was refused: {baseline.ShownRefusal?.Sentence} {baseline.ShownRefusal?.Details}");
         walkthrough.WaitUntil(
             () => !walkthrough.Workspace.RefreshCommand.IsRunning,
             timeout, "Refresh did not finish loading the captured Baseline");

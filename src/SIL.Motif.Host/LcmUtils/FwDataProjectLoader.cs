@@ -81,7 +81,7 @@ public class FwDataProjectLoader
                     "LibLCM reports HaveCustomIcuLibrary=false and would use stock normalization");
             }
 
-            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            InitializeSldr();
             InstallConfiguredGlobalWritingSystemRepository();
             _init = true;
         }
@@ -203,6 +203,37 @@ public class FwDataProjectLoader
     private static bool SldrOfflineRequested() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SldrOfflineVariable));
 
+    /// <summary>
+    /// Points a process's SLDR cache at a private directory instead of the machine-wide one. <b>Test-only.</b>
+    /// </summary>
+    /// <remarks>
+    /// The machine-wide cache holds whatever SLDR data earlier FieldWorks or Motif runs on that machine
+    /// downloaded, so an offline lookup there returns about 1.4 MB of LDML per writing system on one machine
+    /// and nothing on a fresh one. Every writing system a test project creates then carries that data, and
+    /// every later open of the project re-parses it and recompiles its non-default ICU collations, which
+    /// costs several hundred milliseconds per open. A test process sets this to an empty directory, so each
+    /// process gets the bare writing systems a fresh machine gets, whatever machine it runs on. Pinned by
+    /// `InitReadsTheSldrCacheTheEnvironmentNames`.
+    /// </remarks>
+    internal const string SldrCachePathVariable = "MOTIF_TEST_SLDR_CACHE_PATH";
+
+    private static void InitializeSldr()
+    {
+        var cachePath = Environment.GetEnvironmentVariable(SldrCachePathVariable);
+        if (string.IsNullOrWhiteSpace(cachePath))
+        {
+            Sldr.Initialize(offlineTestMode: SldrOfflineRequested());
+            return;
+        }
+
+        Directory.CreateDirectory(cachePath);
+        // The cache-path overload is internal to SIL.WritingSystems; the pinning test fails if it is renamed.
+        var initialize = typeof(Sldr).GetMethod(nameof(Sldr.Initialize), BindingFlags.Static | BindingFlags.NonPublic,
+            [typeof(bool), typeof(string)]) ?? throw new InvalidOperationException(
+            $"SIL.WritingSystems no longer offers Sldr.Initialize(bool, string), which '{SldrCachePathVariable}' needs.");
+        initialize.Invoke(null, [SldrOfflineRequested(), Path.GetFullPath(cachePath)]);
+    }
+
     private const string WritingSystemRepositoryPathEnvironmentVariable = "MOTIF_WRITING_SYSTEM_REPOSITORY_PATH";
 
     // The path constructor is internal; InitInstallsTheRepositorySelectedByTheEnvironment pins this route.
@@ -213,6 +244,7 @@ public class FwDataProjectLoader
 
         var repositoryPath = Path.GetFullPath(configuredPath);
         Directory.CreateDirectory(repositoryPath);
+        RedirectDefaultWritingSystemRepository(repositoryPath);
         var repository = (CoreGlobalWritingSystemRepository?)Activator.CreateInstance(
             typeof(CoreGlobalWritingSystemRepository),
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
@@ -310,12 +342,29 @@ public class FwDataProjectLoader
         });
     }
 
+    // A repository's lock is named after its path, so a machine-wide default queued every test process's disposals.
+    private static void RedirectDefaultWritingSystemRepository(string repositoryPath)
+    {
+        // Each closed generic keeps its own default; the parameterless constructor reads the plain one.
+        foreach (var type in new[]
+                 {
+                     typeof(GlobalWritingSystemRepository<WritingSystemDefinition>),
+                     typeof(GlobalWritingSystemRepository<CoreWritingSystemDefinition>),
+                 })
+        {
+            var field = type.GetField("_defaultBasePath", BindingFlags.Static | BindingFlags.NonPublic) ??
+                throw new InvalidOperationException("SIL.WritingSystems no longer keeps the default repository " +
+                    $"path where '{WritingSystemRepositoryPathEnvironmentVariable}' sets it.");
+            field.SetValue(null, repositoryPath);
+        }
+    }
+
     // Key SingletonsContainer stores the shared writing-system repository under (BackendProvider.cs).
     private static readonly string GlobalWritingSystemRepositoryKey =
         typeof(CoreGlobalWritingSystemRepository).FullName!;
 
-    // One decoy for the process: the base holds a GlobalMutex, so one per scratch would leak a handle.
-    private static readonly DiscardingGlobalWritingSystemRepository SharedDecoy = new();
+    // One per process, as its base holds a GlobalMutex; built after Init picks the path that lock is named after.
+    private static DiscardingGlobalWritingSystemRepository? _sharedDecoy;
 
     // Swaps the decoy in for one cache open, so that cache is wired to it for life (see the decoy's remarks).
     private static IDisposable SuppressGlobalWritingSystemPersistence()
@@ -323,7 +372,7 @@ public class FwDataProjectLoader
         var restore = SingletonsContainer.Item(GlobalWritingSystemRepositoryKey) as CoreGlobalWritingSystemRepository;
         if (restore is not null) SingletonsContainer.Remove(GlobalWritingSystemRepositoryKey);
 
-        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey, SharedDecoy);
+        SingletonsContainer.Add(GlobalWritingSystemRepositoryKey, _sharedDecoy ??= new DiscardingGlobalWritingSystemRepository());
         return new RestoreGlobalWritingSystemRepository(restore);
     }
 

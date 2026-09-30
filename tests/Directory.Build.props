@@ -16,10 +16,12 @@
   <ItemGroup Condition="'$(MotifTestProject)' == 'true'">
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessPanGlossQueueInitializer.cs" Link="ProcessPanGlossQueueInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessRunnerEnvironmentInitializer.cs" Link="ProcessRunnerEnvironmentInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessSldrOfflineInitializer.cs" Link="ProcessSldrOfflineInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\NoCrashDialogs.cs" Link="NoCrashDialogs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\CultureScope.cs" Link="CultureScope.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ShardedTestFrameworkRegistration.cs" Link="ShardedTestFrameworkRegistration.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">

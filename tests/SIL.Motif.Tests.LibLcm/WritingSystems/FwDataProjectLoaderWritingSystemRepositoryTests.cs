@@ -28,6 +28,31 @@ public sealed class FwDataProjectLoaderWritingSystemRepositoryTests
     }
 
     [Fact]
+    public void InitPointsTheDefaultWritingSystemRepositoryAtTheConfiguredPath()
+    {
+        FwDataProjectLoader.Init();
+
+        Assert.Equal(Path.GetFullPath(ProcessWritingSystemRepository.BasePath),
+            GlobalWritingSystemRepository<WritingSystemDefinition>.DefaultBasePath);
+        Assert.Equal(Path.GetFullPath(ProcessWritingSystemRepository.BasePath),
+            GlobalWritingSystemRepository<CoreWritingSystemDefinition>.DefaultBasePath);
+        using var defaultRepository = new CoreGlobalWritingSystemRepository();
+        Assert.Equal(CoreGlobalWritingSystemRepository.CurrentVersionPath(ProcessWritingSystemRepository.BasePath),
+            defaultRepository.PathToWritingSystems);
+    }
+
+    [Fact]
+    public void InitReadsTheSldrCacheTheEnvironmentNames()
+    {
+        FwDataProjectLoader.Init();
+
+        Assert.Equal(
+            Path.GetFullPath(Environment.GetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable)!),
+            Sldr.SldrCachePath);
+        Assert.Equal(Path.GetFullPath(ProcessWritingSystemRepository.SldrCachePath), Sldr.SldrCachePath);
+    }
+
+    [Fact]
     public void InitKeepsSldrLookupsOffTheNetworkWhenTheEnvironmentAsks()
     {
         Assert.False(string.IsNullOrWhiteSpace(

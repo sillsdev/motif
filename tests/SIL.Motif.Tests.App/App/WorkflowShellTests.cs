@@ -11,6 +11,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
@@ -326,6 +327,151 @@ public sealed class WorkflowShellTests
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void ConfigureEntryExplainsWhyItWaitsForTheFirstBaseline()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create(fake);
+            try
+            {
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+                await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+
+                var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
+                var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
+                flyout.ShowAt(menuButton);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                var flyoutPanel = Assert.IsAssignableFrom<Panel>(flyout.Content);
+                var configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
+                Assert.False(configure.IsEffectivelyEnabled);
+                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text == WorkspaceShellViewModel.ConfigureNeedsBaselineText && text.IsEffectivelyVisible);
+
+                flyout.Hide();
+                fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+                    new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
+                        "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
+                    @"C:\projects\one.fwdata", DateTimeOffset.UtcNow, false, false));
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
+                    HasBaseline: true));
+                await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+
+                flyout.ShowAt(menuButton);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Configure the project");
+                Assert.True(configure.IsEffectivelyEnabled);
+                Assert.Contains(configure.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Texts, added words and limits" && text.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void ConfigureStaysVisibleWhenAnAssessmentReportsProgressAndIsCancelled()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
+            new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
+                "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
+            DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
+            HasBaseline: true));
+        var startAssessment = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parsingReported = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parsingDisplayed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelledRefusal = new Refusal(
+            "assessment.cancelled", FailureReason.Cancelled, "The Assessment run was cancelled.");
+        fake.OnAssess(async (_, progress, cancellationToken) =>
+        {
+            await startAssessment.Task.WaitAsync(cancellationToken);
+            progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing..."));
+            parsingReported.SetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return CommandOutcome<AssessCommandResponse>.Refused(cancelledRefusal);
+            }
+            throw new InvalidOperationException("The held Assessment completed before it was cancelled.");
+        });
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = NewComposedWindow(fake);
+            Task? running = null;
+            try
+            {
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+                await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+                var setup = workspace.Context.Setup!;
+                if (setup.IsOpen)
+                    await setup.SkipCommand.ExecuteAsync(null);
+                workspace.Selection.Texts[0].IsChecked = true;
+                var setupDialog = Assert.Single(window.GetLogicalDescendants().OfType<SetupDialog>());
+                workspace.Assess.PropertyChanged += (_, changed) =>
+                {
+                    if (changed.PropertyName == nameof(AssessViewModel.Progress) &&
+                        workspace.Assess.Progress?.Stage == AssessmentStage.Parsing)
+                        parsingDisplayed.TrySetResult();
+                };
+
+                running = workspace.Assess.RunCommand.ExecuteAsync(null);
+                Assert.True(workspace.Assess.IsActive);
+                Assert.Null(workspace.Assess.Progress);
+                Assert.True(workspace.ConfigureCommand.CanExecute(null));
+                workspace.ConfigureCommand.Execute(null);
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(setup.IsOpen);
+                Assert.True(setupDialog.IsEffectivelyVisible);
+
+                startAssessment.SetResult();
+                await parsingReported.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                await parsingDisplayed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.True(setupDialog.IsEffectivelyVisible);
+
+                workspace.Assess.CancelCommand.Execute(null);
+                await running.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Equal(RunState.Cancelled, workspace.Assess.State);
+                Assert.True(setupDialog.IsEffectivelyVisible);
+                await setup.SkipCommand.ExecuteAsync(null);
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.False(setup.IsOpen);
+                Assert.False(setupDialog.IsEffectivelyVisible);
+            }
+            finally
+            {
+                startAssessment.TrySetResult();
+                if (workspace.Assess.CancelCommand.CanExecute(null))
+                    workspace.Assess.CancelCommand.Execute(null);
+                if (running is not null)
+                    await running;
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]

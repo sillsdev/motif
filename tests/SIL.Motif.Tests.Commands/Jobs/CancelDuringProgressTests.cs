@@ -33,7 +33,7 @@ public sealed class CancelDuringProgressTests
                     JobStatus.Queued, 1, "{\"proposal\":[]}", null, "2026-09-25T00:00:00Z",
                     "2026-09-25T00:00:00Z"));
                 jobs.Transition(queued.JobId, JobStatus.Running);
-                using var firstWrite = new ManualResetEventSlim();
+                var firstWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var writer = Task.Run(() =>
                 {
                     using var writerDatabase = MotifDatabase.OpenOwned(databasePath, project,
@@ -45,13 +45,13 @@ public sealed class CancelDuringProgressTests
                         {
                             var current = writerJobs.Get(jobId)!;
                             writerJobs.UpdateProgress(jobId, "{\"completed\":" + progress + "}", current.Version);
-                            firstWrite.Set();
+                            firstWrite.TrySetResult();
                         }
                         catch (InvalidOperationException) { }
                         Thread.Yield();
                     }
                 });
-                Assert.True(firstWrite.Wait(TimeSpan.FromSeconds(5)));
+                await firstWrite.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 var cancelled = JobCommands.Cancel(new CancelJobRequest(path, jobId, "1.0"));
                 Assert.True(cancelled.Succeeded, cancelled.Refusal?.Message);
                 Assert.True(cancelled.Value!.CancellationRequested);

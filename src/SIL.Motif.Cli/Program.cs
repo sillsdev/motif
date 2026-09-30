@@ -27,19 +27,41 @@ using SIL.Motif.Worker;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Help;
 
-CrashDialogs.Suppress();
+namespace SIL.Motif.Cli;
 
+internal static class Program
+{
+public static int Main(string[] args)
+{
+    CrashDialogs.Suppress();
+    var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        environment[(string)entry.Key] = entry.Value?.ToString();
+    return Run(args, Console.Out, Console.Error, environment,
+        static (project, reportWarning) => ProcessRunnerLauncher.FromEnvironment().Start(project, reportWarning));
+}
+
+internal static int Run(
+    string[] args,
+    TextWriter output,
+    TextWriter error,
+    IReadOnlyDictionary<string, string?> environment,
+    Action<string, Action<string>?> startRunner)
+{
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
-    Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
 
 if (args.Length > 0 && args[0] == "help")
-    return HelpCommand.Run(args[1..], commandPolicy, Console.Out, Console.Error);
+    return HelpCommand.Run(args[1..], commandPolicy, output, error);
 
 if (args.Length == 0)
 {
-    PrintUsage(Console.Error, commandPolicy);
+    PrintUsage(error, commandPolicy);
     return 1;
 }
+
+string ResolveRoot() => environment.TryGetValue(RunnerOptions.RootVariable, out var root)
+    && !string.IsNullOrWhiteSpace(root) ? root : RunnerOptions.DefaultRoot;
 
 var verb = args[0];
 var rest = args[1..];
@@ -50,11 +72,11 @@ try
     var commandName = ResolveCommandName(verb, flags, positionals);
     var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
     if (command is not null && !commandPolicy.IsAvailable(command))
-        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"));
+        return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, commandPolicy);
 
     // Every invocation naming a project upserts it into the machine store (ADR 0041 decision 4).
     if (flags.TryGetValue("project", out var projectForRegistry))
-        RecordKnownProject(projectForRegistry);
+        RecordKnownProject(projectForRegistry, ResolveRoot(), error);
 
     // Every migrated read surface renders both ways from one projection (ADR 0021 decision 2).
     var asJson = flags.ContainsKey("json");
@@ -512,7 +534,7 @@ try
                     new EnqueueDryRunRequest(dryRunProject, CliProductVersion(), positionals[0]), usage),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(dryRunProject, Console.Error.WriteLine);
+            if (result.ExitCode == 0) startRunner(dryRunProject, error.WriteLine);
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var dryRunJobId = result.Output.Trim();
@@ -569,7 +591,7 @@ try
                     usage),
                 successAsJson: false);
             // A job just entered the queue: wake the runner before anything below waits on it.
-            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(trialProject, Console.Error.WriteLine);
+            if (result.ExitCode == 0) startRunner(trialProject, error.WriteLine);
             if (result.ExitCode == 0 && flags.ContainsKey("wait"))
             {
                 var trialJobId = result.Output.Trim();
@@ -701,7 +723,7 @@ try
                 JobCommands.EnqueueBaselineRefresh(
                     new EnqueueBaselineRefreshRequest(refreshProject, CliProductVersion())),
                 successAsJson: false);
-            if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(refreshProject, Console.Error.WriteLine);
+            if (result.ExitCode == 0) startRunner(refreshProject, error.WriteLine);
             break;
 
         case "config":
@@ -930,7 +952,7 @@ try
                 : null;
             result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
                 new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+                asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "stats":
@@ -958,7 +980,7 @@ try
                 handoffTextIds.Count == 0, handoffTextIds, Array.Empty<string>(), false, null);
             result = RunWithConsoleCancellation(cancellationToken => RenderCommand(HandoffCommand.Handoff(
                 new HandoffRequest(positionals[0], handoffOut, handoffSelection, !handoffNoAssess, handoffInvocation),
-                asJson ? null : progress => Console.Error.WriteLine(progress.Message), cancellationToken)));
+                asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken)));
             break;
 
         case "jobs":
@@ -998,7 +1020,7 @@ try
                         return Usage("Usage: motif jobs requeue <jobId> --project <fwdata> [--json]", asJson);
                     result = RenderCommand(JobCommands.Requeue(
                         new RequeueJobRequest(jobsRequeueProject, positionals[1], CliProductVersion())));
-                    if (result.ExitCode == 0) ProcessRunnerLauncher.FromEnvironment().Start(jobsRequeueProject, Console.Error.WriteLine);
+                    if (result.ExitCode == 0) startRunner(jobsRequeueProject, error.WriteLine);
                     break;
 
                 case "move":
@@ -1028,7 +1050,7 @@ try
     // One process is one call; the machine store is what accumulates a session (ADR 0021 decision 4).
     if (usage.Entries.Count > 0)
     {
-        using var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot());
+        using var machine = MachineDatabase.Open(ResolveRoot());
         var machineUsage = new MachineUsageLog(machine);
         foreach (var entry in usage.Entries)
             machineUsage.Append(entry);
@@ -1036,11 +1058,11 @@ try
 
     if (result.ExitCode == 0)
     {
-        Console.Out.Write(result.Output);
+        output.Write(result.Output);
         return result.ExitCode;
     }
     // A caller that asked for JSON gets JSON when it goes wrong too; a Proposal verb already did this itself.
-    Console.Error.Write(!alreadyRendered && asJson && result.Reason is { } reason
+    error.Write(!alreadyRendered && asJson && result.Reason is { } reason
         ? ProjectionJson.Serialize(new FailureEnvelope(reason, result.Output.Trim())) + Environment.NewLine
         : result.Output);
     return result.ExitCode;
@@ -1048,7 +1070,7 @@ try
 catch (Exception ex)
 {
     // Nothing decided this; it escaped. That is a bug, not a refusal, and it gets its own code.
-    Console.Error.WriteLine($"error: {ex.Message}");
+    error.WriteLine($"error: {ex.Message}");
     return FailureEnvelope.ExitCodeFor(FailureReason.StoreInconsistent);
 }
 
@@ -1056,12 +1078,12 @@ int Usage(string message, bool asJson = false, bool withUsageBanner = false)
 {
     if (asJson)
     {
-        Console.Error.WriteLine(ProjectionJson.Serialize(
+        error.WriteLine(ProjectionJson.Serialize(
             new FailureEnvelope(FailureReason.InvalidArgument, message)));
         return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
     }
-    Console.Error.WriteLine(message);
-    if (withUsageBanner) PrintUsage(Console.Error, commandPolicy);
+    error.WriteLine(message);
+    if (withUsageBanner) PrintUsage(error, commandPolicy);
     return FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument);
 }
 
@@ -1167,18 +1189,19 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
     return verb;
 }
 
-static int RefuseUnavailableCommand(string commandName, bool asJson)
+static int RefuseUnavailableCommand(
+    string commandName, bool asJson, TextWriter error, CommandSurfacePolicy commandPolicy)
 {
     const string code = "command.not-in-release";
     var message = $"Command '{commandName}' is not part of Motif 0.1.0.";
     if (asJson)
     {
-        Console.Error.WriteLine(ProjectionJson.Serialize(
+        error.WriteLine(ProjectionJson.Serialize(
             new FailureEnvelope(FailureReason.Refused, message, code: code)));
     }
     else
     {
-        Console.Error.WriteLine("error: " + message);
+        error.WriteLine("error: " + message);
     }
     return FailureEnvelope.ExitCodeFor(FailureReason.Refused);
 }
@@ -1303,7 +1326,7 @@ static string CliProductVersion() => MotifProductVersion.CurrentText;
 static bool IsTruthyFlag(string value) => !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase);
 
 /// <summary>Upserts a named project into the machine store's <c>KnownProjects</c>.</summary>
-static void RecordKnownProject(string fwDataPath)
+static void RecordKnownProject(string fwDataPath, string root, TextWriter error)
 {
     try
     {
@@ -1311,15 +1334,17 @@ static void RecordKnownProject(string fwDataPath)
         if (!File.Exists(fullPath)) return;
 
         var project = new ProjectLocator(fullPath, Path.GetFileNameWithoutExtension(fullPath));
-        var failure = KnownProjectRecorder.TryRecord(RunnerOptions.ResolveRoot(), project);
+        var failure = KnownProjectRecorder.TryRecord(root, project);
         if (failure is not null)
-            Console.Error.WriteLine("warning: this project could not be recorded for background work (" +
+            error.WriteLine("warning: this project could not be recorded for background work (" +
                 failure.Message + "). Queued jobs will not run until it is.");
     }
     catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
     {
         // Reported, not thrown: an unregistered project is never swept, so silence would hide lost work.
-        Console.Error.WriteLine("warning: this project could not be recorded for background work (" +
+        error.WriteLine("warning: this project could not be recorded for background work (" +
             exception.Message + "). Queued jobs will not run until it is.");
     }
+}
+}
 }

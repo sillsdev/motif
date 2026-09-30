@@ -5,22 +5,30 @@ using SIL.Motif.Host.Parser;
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 /// <summary>
-/// Tracks parser processes started by this test after its snapshot and matching the configured executable.
-/// Other Motif test hosts using that executable are indistinguishable, so a foreign parser that appears in
-/// the window and survives can fail these tests.
+/// Tracks parser processes launched from a walkthrough's private executable copy.
 /// </summary>
 internal static class PanglossProcesses
 {
-    internal static HashSet<int> Snapshot()
+    internal static string CopyExecutable(string managedRoot)
+    {
+        var source = PanGlossExecutable.TryLocate()
+            ?? throw new InvalidOperationException(PanGlossExecutable.NotFoundMessage);
+        var directory = Path.Combine(managedRoot, "pangloss-process-check", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var executablePath = Path.Combine(directory, Path.GetFileName(source));
+        File.Copy(source, executablePath);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(executablePath, File.GetUnixFileMode(source));
+        return executablePath;
+    }
+
+    internal static HashSet<int> Snapshot(string executablePath)
     {
         var ids = new HashSet<int>();
-        var executablePath = PanGlossExecutable.TryLocate();
-        if (executablePath is null) return ids;
-
         Process[] processes;
         try
         {
-            processes = Process.GetProcessesByName("pangloss");
+            processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(executablePath));
         }
         catch (Win32Exception)
         {
@@ -42,7 +50,7 @@ internal static class PanglossProcesses
                 var modulePath = process.MainModule?.FileName;
                 if (modulePath is not null && string.Equals(
                         Path.GetFullPath(modulePath), Path.GetFullPath(executablePath),
-                        StringComparison.OrdinalIgnoreCase))
+                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                     ids.Add(process.Id);
             }
             catch (Win32Exception)
@@ -66,11 +74,12 @@ internal static class PanglossProcesses
         return ids;
     }
 
-    internal static void TrackNew(IReadOnlySet<int> existing, ISet<int> appeared)
+    internal static void TrackNew(string executablePath, IReadOnlySet<int> existing, ISet<int> appeared)
     {
-        foreach (var id in Snapshot())
+        foreach (var id in Snapshot(executablePath))
             if (!existing.Contains(id)) appeared.Add(id);
     }
 
-    internal static bool AnyAlive(IEnumerable<int> ids) => Snapshot().Intersect(ids).Any();
+    internal static bool AnyAlive(string executablePath, IEnumerable<int> ids) =>
+        Snapshot(executablePath).Intersect(ids).Any();
 }

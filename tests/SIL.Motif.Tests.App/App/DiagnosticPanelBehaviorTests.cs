@@ -77,7 +77,11 @@ public sealed class DiagnosticPanelBehaviorTests
                 var branchContainer = Assert.IsType<TreeViewItem>(container.ContainerFromIndex(0));
                 Assert.True(branchContainer.IsExpanded);
                 var selected = model.FilteredRoots[0].Children[0].Children[0];
-                model.SelectedStep = selected;
+                var selectedItem = tree.GetVisualDescendants().OfType<TreeViewItem>().Single(item =>
+                    AutomationProperties.GetName(item) == selected.Label);
+                Assert.False(string.IsNullOrWhiteSpace(selected.Label));
+                selectedItem.IsSelected = true;
+                Assert.Same(selected, model.SelectedStep);
                 Assert.Contains("past", selected.ContextText);
                 Assert.Contains("present", selected.ContextText);
                 Assert.Equal("needle", Assert.Single(selected.AttemptedMorphs).Form);

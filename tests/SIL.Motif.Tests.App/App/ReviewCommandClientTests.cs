@@ -155,11 +155,16 @@ public sealed class ReviewCommandClientTests(PristineProjectFixture pristine)
     {
         foreach (var name in new[]
                  {
-                     RunnerOptions.RootVariable, RunnerOptions.NamespaceVariable, RunnerOptions.IdleVariable,
+                     RunnerOptions.IdleVariable,
                      RunnerOptions.LeaseVariable, ProcessRunnerLauncher.ExecutableVariable,
                      ProcessRunnerLauncher.SuppressVariable,
                  })
             Assert.Null(Environment.GetEnvironmentVariable(name));
+        // Only the isolation every test process sets, never a namespace or root this path depends on.
+        Assert.Equal(ProcessRunnerEnvironmentInitializer.Namespace,
+            Environment.GetEnvironmentVariable(RunnerOptions.NamespaceVariable));
+        Assert.Equal(ProcessRunnerEnvironmentInitializer.Root,
+            Environment.GetEnvironmentVariable(RunnerOptions.RootVariable));
     }
 
     [Fact]

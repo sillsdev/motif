@@ -196,9 +196,9 @@
         <StackPanel Classes="reviewRelated">
           <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap"
+          <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap"
                                    IsVisible="{Binding !Context.NeedsAssessment}" />
-          <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
+          <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
           <Button Content="Check these changes" Command="{Binding MeasureCommand}"

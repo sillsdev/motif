@@ -83,8 +83,18 @@ internal static class FakeParser
             if (Path.GetFileName(source).StartsWith('_')) continue;
             var target = Path.Combine(candidateDirectory, Path.GetRelativePath(sourceDirectory, source));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            // A second copy into one directory must not rewrite an executable a parser it started still runs.
+            if (IsSameFile(source, target)) continue;
             File.Copy(source, target, overwrite: true);
         }
         return Path.Combine(candidateDirectory, ExecutableFileName);
+    }
+
+    private static bool IsSameFile(string source, string target)
+    {
+        var existing = new FileInfo(target);
+        if (!existing.Exists) return false;
+        var original = new FileInfo(source);
+        return existing.Length == original.Length && existing.LastWriteTimeUtc == original.LastWriteTimeUtc;
     }
 }

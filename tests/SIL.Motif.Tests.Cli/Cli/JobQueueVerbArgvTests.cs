@@ -308,7 +308,7 @@ public sealed class JobQueueVerbArgvTests : IDisposable
 
     private string Enqueue(string project)
     {
-        var result = Run($"baseline-refresh --project \"{project}\"");
+        var result = RunInProcess($"baseline-refresh --project \"{project}\"");
         Assert.Equal(0, result.ExitCode);
         return result.Output.Trim();
     }
@@ -406,6 +406,12 @@ public sealed class JobQueueVerbArgvTests : IDisposable
         var error = errorTask.GetAwaiter().GetResult();
         Assert.True(process.WaitForExit(60000), "The CLI did not exit within its bound.");
         return new CliRun(process.ExitCode, output, error);
+    }
+
+    private CliRun RunInProcess(string arguments)
+    {
+        var result = CliInProcess.RunCommandLine(_root, null, developerCommands: true, arguments);
+        return new CliRun(result.ExitCode, result.Output, result.Error);
     }
 
     private sealed record CliRun(int ExitCode, string Output, string Error);

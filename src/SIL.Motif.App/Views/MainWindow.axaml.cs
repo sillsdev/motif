@@ -109,7 +109,7 @@ public sealed partial class MainWindow : Window
             };
             ToolTip.SetTip(item, recent.FullFwDataPath);
             Avalonia.Automation.AutomationProperties.SetName(item, recent.AutomationName);
-            // Handled too, as running its Command marks the Click handled: pinned by `OpenRecentClosesTheProjectMenu`.
+            // Close after the command consumes Click; pinned by `NewProjectsAppearAndMissingProjectsLeaveOpenRecent`.
             item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
             menu.Items.Add(item);
         }
@@ -140,7 +140,7 @@ public sealed partial class MainWindow : Window
         help.ShowForPage(page, _helpAutomationId);
     }
 
-    // Hide after the Command runs, as hiding unbinds it: pinned by `ConfigureReopensSetupAfterSkipAndRefresh`.
+    // Hiding unbinds the entry; pinned by `ConfigureOpensOnceFromKeyboardAndDoubleClick`.
     private void OnProjectMenuEntryClick(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(HideProjectMenu);
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();

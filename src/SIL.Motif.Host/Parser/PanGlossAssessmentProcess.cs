@@ -119,6 +119,8 @@ public sealed class PanGlossAssessmentProcess : IPanGlossAssessor
         catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch { /* already gone */ }
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            await Task.WhenAll(stdErrTask, stdOutTask).ConfigureAwait(false);
             throw;
         }
 

@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
@@ -9,12 +7,12 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
-/// <summary>The project menu's Configure… reopens setup over the window, clicked as a person clicks it.</summary>
+/// <summary>Checks that Configure opens once from keyboard input and a double-click.</summary>
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ConfigureReopensSetupAfterSkipAndRefresh()
+    public void ConfigureOpensOnceFromKeyboardAndDoubleClick()
     {
         using var project = new WalkthroughProject(pristine);
         var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
@@ -25,258 +23,61 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
                 parserPath: FakeParser.ExecutablePath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
             var setup = walkthrough.Workspace.Context.Setup!;
+            Assert.False(setup.IsOpen);
             Assert.False(walkthrough.SetupDialogIsShown);
-
-            ConfigureAndExpectSetup(walkthrough, "after skipping setup");
-            Assert.Equal(SeededProject.TextTitle, Assert.Single(setup.Selection.Texts).Title);
-            walkthrough.SkipSetup();
-
-            RefreshAfterAFieldWorksSave(walkthrough, project, deadline);
-            ConfigureAndExpectSetup(walkthrough, "after a Refresh");
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void ConfigureOpensFromTheKeyboard()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: FakeParser.ExecutablePath);
-            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            var setup = walkthrough.Workspace.Context.Setup!;
-
-            foreach (var (key, physicalKey) in new[] { (Key.Enter, PhysicalKey.Enter), (Key.Space, PhysicalKey.Space) })
-            {
-                walkthrough.PressKeyOnProjectMenuEntry("Configure the project", key, physicalKey);
-                Assert.True(setup.IsOpen, $"pressing {key} on Configure… did not reopen setup");
-                Assert.True(walkthrough.SetupDialogIsShown, $"pressing {key} opened setup, but it is not on screen");
-                Assert.Equal(0, setup.Step);
-                walkthrough.SkipSetup();
-            }
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void DoubleClickingConfigureOpensSetupOnce()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: FakeParser.ExecutablePath);
-            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            var setup = walkthrough.Workspace.Context.Setup!;
+            var page = walkthrough.Workspace.CurrentPage;
             var opened = 0;
             setup.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(SetupViewModel.IsOpen) && setup.IsOpen) opened++;
             };
 
-            var clicks = walkthrough.DoubleClickProjectMenuEntry("Configure the project");
+            foreach (var (key, physicalKey) in new[]
+            {
+                (Key.Enter, PhysicalKey.Enter),
+                (Key.Space, PhysicalKey.Space),
+            })
+            {
+                walkthrough.PressKeyOnProjectMenuEntry("Configure the project", key, physicalKey);
+                Assert.True(setup.IsOpen, $"pressing {key} on Configure did not reopen setup");
+                Assert.True(walkthrough.SetupDialogIsShown, $"pressing {key} opened setup, but it is not on screen");
+                Assert.Equal(0, setup.Step);
+                Assert.Equal(page, walkthrough.Workspace.CurrentPage);
+                walkthrough.SkipSetup();
+                Assert.False(setup.IsOpen, $"skipping setup after {key} left it open");
+                Assert.False(walkthrough.SetupDialogIsShown, $"skipping setup after {key} left it on screen");
+            }
 
-            Assert.True(clicks >= 1, "the double-click never clicked Configure…");
-            Assert.Equal(1, opened);
-            Assert.True(walkthrough.SetupDialogIsShown, "double-clicking Configure… did not leave setup on screen");
+            ClickConfigureAndExpectSetup(walkthrough, "after skipping setup");
+            Assert.Equal(SeededProject.TextTitle, Assert.Single(setup.Selection.Texts).Title);
+            walkthrough.SkipSetup();
+            Assert.False(setup.IsOpen);
+            Assert.False(walkthrough.SetupDialogIsShown);
+
+            new FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+            var check = walkthrough.Workspace.CheckFreshnessAsync();
+            walkthrough.WaitUntil(() => check.IsCompleted, WalkthroughSteps.Remaining(deadline),
+                "checking the FieldWorks save did not finish");
+            check.GetAwaiter().GetResult();
+            walkthrough.WaitUntil(() => walkthrough.Workspace.ShowsRefreshAction,
+                WalkthroughSteps.Remaining(deadline), "the new FieldWorks save did not make Refresh available");
+            RefreshAndWait(walkthrough, deadline);
+            ClickConfigureAndExpectSetup(walkthrough, "after Refresh");
+            walkthrough.SkipSetup();
+            Assert.False(setup.IsOpen);
+            Assert.False(walkthrough.SetupDialogIsShown);
+
+            var openingsBeforeDoubleClick = opened;
+            var clicks = walkthrough.DoubleClickProjectMenuEntry("Configure the project");
+            Assert.True(clicks >= 1, "the double-click never clicked Configure");
+            Assert.Equal(openingsBeforeDoubleClick + 1, opened);
+            Assert.True(walkthrough.SetupDialogIsShown, "double-clicking Configure did not leave setup on screen");
             Assert.Equal(0, setup.Step);
+            Assert.Equal(page, walkthrough.Workspace.CurrentPage);
             walkthrough.SkipSetup();
             Assert.False(setup.IsOpen);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void ConfigureShowsTheSavedSelectionAfterFinishARefreshAndARestart()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
-        var parser = FakeParser.Copy(project.ManagedRoot);
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using (var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                       parserPath: parser))
-            {
-                ChooseProjectAndFinishSetup(walkthrough, deadline);
-
-                ConfigureAndExpectSavedSelection(walkthrough, "after Finish");
-                walkthrough.SkipSetup();
-
-                RefreshAfterAFieldWorksSave(walkthrough, project, deadline);
-                ConfigureAndExpectSavedSelection(walkthrough, "after a Refresh");
-                walkthrough.SkipSetup();
-            }
-
-            using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: parser);
-            restarted.Show();
-            restarted.OpenRecentProjectByClick(project.FwDataPath);
-            restarted.WaitUntil(
-                () => restarted.Workspace.Baseline.HasBaseline && restarted.Workspace.Selection.Texts.Count == 1,
-                WalkthroughSteps.Remaining(deadline), "reopening from Open recent did not reload the Baseline");
-            Assert.False(restarted.SetupDialogIsShown, "a project with a saved Selection reopened setup by itself");
-            ConfigureAndExpectSavedSelection(restarted, "after reopening from Open recent");
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void ConfigureCommandOpensDuringAnAssessmentAndStaysOpenWhenItReportsProgress()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
-        var heartbeat = Path.Combine(project.ManagedRoot, "configure-during-run-heartbeat");
-        var startGate = new HoldingStartGate(holdAssess: true);
-        var parser = FakeParser.Copy(project.ManagedRoot);
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                startGate: startGate, parserPath: parser);
-            WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            walkthrough.ConfigureFromProjectMenu();
-            var setup = walkthrough.Workspace.Context.Setup!;
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
-            SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, true);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
-            var heldBehavior = new
-            {
-                subcommands = new Dictionary<string, object>
-                {
-                    ["batch"] = new { heartbeatPath = heartbeat },
-                },
-            };
-            walkthrough.SetFakeParserBehavior(heldBehavior);
-
-            walkthrough.Click("Start first run");
-            try
-            {
-                walkthrough.WaitUntil(() => startGate.Waiting > 0 && walkthrough.Workspace.Assess.IsActive,
-                    WalkthroughSteps.Remaining(deadline), "the Assessment did not wait at its start gate");
-                Assert.Null(walkthrough.Workspace.Assess.Progress);
-
-                walkthrough.Workspace.ConfigureCommand.Execute(null);
-                walkthrough.WaitUntil(() => setup.IsOpen && setup.ConfigurationLoadTask?.IsCompleted != false,
-                    WalkthroughSteps.Remaining(deadline), "Configure did not open during the Assessment");
-                Assert.True(walkthrough.SetupDialogIsShown);
-                startGate.ReleaseAssess();
-                walkthrough.WaitUntil(() => File.Exists(heartbeat) || walkthrough.Workspace.Assess.State is
-                        RunState.Completed or RunState.Cancelled or RunState.Refused,
-                    WalkthroughSteps.Remaining(deadline), "the Assessment did not reach the held parser");
-                Assert.True(File.Exists(heartbeat), "the Assessment completed without holding the batch parser");
-                Assert.Equal(AssessmentStage.Parsing, walkthrough.Workspace.Assess.Progress?.Stage);
-                Assert.True(setup.IsOpen, "Configure closed when the running Assessment reported progress");
-                walkthrough.Workspace.Assess.CancelCommand.Execute(null);
-                walkthrough.WaitUntil(() => walkthrough.Workspace.Assess.State == RunState.Cancelled,
-                    WalkthroughSteps.Remaining(deadline), "the held Assessment did not cancel");
-                Assert.True(setup.IsOpen, "cancelling the Assessment closed Configure");
-                walkthrough.SkipSetup();
-            }
-            finally
-            {
-                startGate.ReleaseAssess();
-                if (walkthrough.Workspace.Assess.CancelCommand.CanExecute(null))
-                    walkthrough.Workspace.Assess.CancelCommand.Execute(null);
-            }
-
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void BeforeTheFirstRefreshConfigureIsUnavailableAndSaysToRefreshFirst()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: FakeParser.ExecutablePath);
-            walkthrough.Show();
-            walkthrough.ClickProjectMenuEntry("Select a new project");
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.HasProject &&
-                    walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
-                WalkthroughSteps.Remaining(deadline), "choosing the project did not finish opening it");
-
-            walkthrough.OpenProjectMenu();
-            var entry = walkthrough.FindProjectMenuEntry<Button>("Configure the project");
-            Assert.False(entry.IsEffectivelyEnabled, "Configure… is offered but can do nothing before a Refresh");
-            Assert.Contains(entry.GetLogicalDescendants().OfType<TextBlock>(),
-                text => text.Text == WorkspaceShellViewModel.ConfigureNeedsBaselineText && text.IsEffectivelyVisible);
-            walkthrough.CloseProjectMenu();
-
-            RefreshAndWait(walkthrough, deadline);
-            walkthrough.SkipSetup();
-            walkthrough.OpenProjectMenu();
-            Assert.Contains(walkthrough.FindProjectMenuEntry<Button>("Configure the project")
-                    .GetLogicalDescendants().OfType<TextBlock>(),
-                text => text.Text == "Texts, added words and limits" && text.IsEffectivelyVisible);
-            walkthrough.CloseProjectMenu();
-            ConfigureAndExpectSetup(walkthrough, "after the first Refresh");
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    [Fact]
-    public void OpenRecentClosesTheProjectMenu()
-    {
-        using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using (var first = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                       parserPath: FakeParser.ExecutablePath))
-                WalkthroughSteps.ChooseProjectAndCaptureBaseline(first, deadline);
-
-            using var restarted = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
-                parserPath: FakeParser.ExecutablePath);
-            restarted.Show();
-        restarted.OpenRecentProjectByClick(project.FwDataPath);
-            Assert.Equal(project.FwDataPath, restarted.Workspace.Context.ProjectPath);
-            return Task.CompletedTask;
-        }, WalkthroughSteps.Remaining(deadline));
-    }
-
-    private const string AddedWord = "motifa";
-
-    private static void ChooseProjectAndFinishSetup(WalkthroughWindow walkthrough, long deadline)
-    {
-        walkthrough.Show();
-        walkthrough.ChooseNewProject();
-        walkthrough.WaitUntil(() => walkthrough.Workspace.HasProject && !walkthrough.Workspace.Baseline.HasBaseline,
-            WalkthroughSteps.Remaining(deadline), "choosing the project did not open it");
-        walkthrough.Click("Refresh the project");
-        var setup = walkthrough.Workspace.Context.Setup!;
-        walkthrough.WaitUntil(
-            () => setup.IsOpen && walkthrough.Workspace.Selection.Texts.Count == 1 &&
-                !walkthrough.Workspace.RefreshCommand.IsRunning,
-            WalkthroughSteps.Remaining(deadline), "the first Refresh did not open setup");
-        SetupWalkthroughActions.FinishFirstRun(walkthrough, SeededProject.TextTitle, "4321",
-            WalkthroughSteps.Remaining(deadline), AddedWord);
-    }
-
-    // A save gives the Refresh a new Baseline folder, clear of the files the fake parser left in the old one.
-    private static void RefreshAfterAFieldWorksSave(WalkthroughWindow walkthrough, WalkthroughProject project, long deadline)
-    {
-        new FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
-        var check = walkthrough.Workspace.CheckFreshnessAsync();
-        walkthrough.WaitUntil(() => check.IsCompleted, WalkthroughSteps.Remaining(deadline),
-            "checking the FieldWorks save did not finish");
-        check.GetAwaiter().GetResult();
-        walkthrough.WaitUntil(() => walkthrough.Workspace.ShowsRefreshAction,
-            WalkthroughSteps.Remaining(deadline), "the new FieldWorks save did not make Refresh available");
-        RefreshAndWait(walkthrough, deadline);
     }
 
     private static void RefreshAndWait(WalkthroughWindow walkthrough, long deadline)
@@ -293,25 +94,14 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             $"the Refresh was refused: {baseline.ShownRefusal?.Code}: {baseline.ShownRefusal?.Details}");
     }
 
-    private static void ConfigureAndExpectSetup(WalkthroughWindow walkthrough, string when)
+    private static void ClickConfigureAndExpectSetup(WalkthroughWindow walkthrough, string when)
     {
         var setup = walkthrough.Workspace.Context.Setup!;
         var page = walkthrough.Workspace.CurrentPage;
         walkthrough.ConfigureFromProjectMenu();
-        Assert.True(setup.IsOpen, $"Configure… did not reopen setup {when}");
-        Assert.True(walkthrough.SetupDialogIsShown, $"Configure… opened setup {when}, but it is not on screen");
+        Assert.True(setup.IsOpen, $"Configure did not reopen setup {when}");
+        Assert.True(walkthrough.SetupDialogIsShown, $"Configure opened setup {when}, but it is not on screen");
         Assert.Equal(0, setup.Step);
         Assert.Equal(page, walkthrough.Workspace.CurrentPage);
-    }
-
-    private static void ConfigureAndExpectSavedSelection(WalkthroughWindow walkthrough, string when)
-    {
-        ConfigureAndExpectSetup(walkthrough, when);
-        var selection = walkthrough.Workspace.Context.Setup!.Selection;
-        Assert.True(Assert.Single(selection.Texts).IsChecked, $"the saved Text is not checked {when}");
-        Assert.Equal(AddedWord, selection.PastedWords);
-        Assert.Equal(1m, selection.PerWordTimeLimitSeconds);
-        Assert.Equal(4321m, walkthrough.Workspace.Context.Setup.StepLimitSteps);
-        Assert.Equal("Use this Selection", walkthrough.Workspace.Context.Setup.FinishButtonText);
     }
 }

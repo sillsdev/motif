@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -28,7 +29,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
     {
         var project = _pristine.CopyProjectFile();
         await CaptureBaseline(project);
-        var setup = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default", "--project", project,
+        var setup = CliInProcess.Run(_workerRoot, null, false, "selection", "set-default", "--project", project,
             "--name", "Default", "--add-words", "motifa", "--json");
         Assert.True(setup.ExitCode == 0, setup.FailureDetails);
 
@@ -40,14 +41,14 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.Contains("motifa", response.Selection.Words);
         Assert.NotEmpty(response.AssessmentIds);
 
-        var timingResult = await CliProcess.RunAsync(_workerRoot, null, false,
+        var timingResult = CliInProcess.Run(_workerRoot, null, false,
             "timing", "--project", project, "--json");
         Assert.True(timingResult.ExitCode == 0, timingResult.FailureDetails);
         var timing = ProjectionJson.Deserialize<TimingResponse>(timingResult.Output)!;
         Assert.Contains(timing.AssessmentId, response.AssessmentIds);
         Assert.Contains(timing.Words, row => row.Word == "motifa");
 
-        var overviewResult = await CliProcess.RunAsync(_workerRoot, null, false,
+        var overviewResult = CliInProcess.Run(_workerRoot, null, false,
             "overview", "--project", project, "--json");
         Assert.True(overviewResult.ExitCode == 0, overviewResult.FailureDetails);
         var overview = ProjectionJson.Deserialize<OverviewResponse>(overviewResult.Output)!;
@@ -59,7 +60,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
     {
         var project = _pristine.CopyProjectFile();
         await CaptureBaseline(project);
-        var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default",
+        var selection = CliInProcess.Run(_workerRoot, null, false, "selection", "set-default",
             "--project", project, "--name", "Default", "--add-words", "motifanalysed", "--json");
         Assert.True(selection.ExitCode == 0, selection.FailureDetails);
         var wordsPath = Path.Combine(_root, "words.txt");
@@ -98,15 +99,21 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         var process = launched.Process;
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while ((!File.Exists(heartbeat) || !File.Exists(parserIdPath)) &&
-            !process.HasExited && DateTime.UtcNow < deadline)
+        int? parserId = null;
+        while (!process.HasExited && DateTime.UtcNow < deadline)
+        {
+            if (File.Exists(heartbeat) && TryReadProcessId(parserIdPath) is { } parsedId)
+            {
+                parserId = parsedId;
+                break;
+            }
             await Task.Delay(25);
-        Assert.True(File.Exists(heartbeat) && File.Exists(parserIdPath),
+        }
+        Assert.True(parserId is not null,
             $"The fake parser did not start its held batch.{Environment.NewLine}" +
             launched.ReadStderr() + launched.ReadStdout());
         Assert.False(process.HasExited, "The CLI exited before cancellation was sent.");
 
-        var parserId = int.Parse(File.ReadAllText(parserIdPath));
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
         await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
         var error = launched.ReadStderr();
@@ -116,7 +123,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.Equal("assessment.cancelled", failure.Code);
         Assert.Equal(FailureReason.Cancelled, failure.Reason);
         Assert.Empty(output);
-        await AssertProcessStopped(parserId);
+        await AssertProcessStopped(parserId.Value);
         Assert.Equal(0L, ReadAssessmentCount(project));
         Assert.Equal(0L, ReadInvocationCount(project));
         var statsCacheRoot = Path.Combine(_workerRoot, "assessment-runs");
@@ -131,11 +138,12 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
-    private async Task CaptureBaseline(string project)
+    private Task CaptureBaseline(string project)
     {
-        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+        var result = CliInProcess.Run(_workerRoot, null, false,
             "baseline", "capture", project, "--json");
         Assert.True(result.ExitCode == 0, result.FailureDetails);
+        return Task.CompletedTask;
     }
 
     private string CopyFakeParser(object behavior)
@@ -170,5 +178,18 @@ public sealed class AssessRoundTripArgvTests : IDisposable
             Assert.True(parser.HasExited);
         }
         catch (ArgumentException) { }
+    }
+
+    private static int? TryReadProcessId(string path)
+    {
+        try
+        {
+            return int.TryParse(File.ReadAllText(path), NumberStyles.None, CultureInfo.InvariantCulture,
+                out var processId) ? processId : null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 }

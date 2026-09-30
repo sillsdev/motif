@@ -26,18 +26,34 @@ owner's ruling. The one external dependency that remains is the `pangloss` execu
 build; tests needing it are gated by `RealParserFactAttribute`, which skips — rather than fails — when
 it is not built, since "the parser is not built here" is an ordinary state of a developer's machine.
 
-**`./test.ps1` runs one process per test project, with concurrency capped at half the available processor
-count (rounded down, minimum one).** It discovers test projects listed in `Motif.sln` under `tests/`, so
+**`./test.ps1` runs each test project as one or more processes, with concurrency capped at a sixth of the
+available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. Opening two LibLCM caches at once inside one process races, so every
 class that opens one shares the serialized `LcmCacheTestCollection` in its test assembly. Separate test
-processes cannot race, and the cap allows project-level parallelism when the runner has spare cores.
-Each project writes its console log to
-`bin/<Configuration>/test-results/<project>.log` and its TRX to
-`bin/<Configuration>/test-results/<project>/<project>.trx`. When a run fails, open that project's log
-first. Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The operating
+processes cannot race, so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.csproj` is
+split by test class into N processes (`ShardedTestFramework`, driven by `MOTIF_TEST_SHARD=index/count`), and its
+LibLCM tests run N at a time. Classes go to shards by the seconds `tests/test-shard-weights.json` records
+(`MOTIF_TEST_SHARD_WEIGHTS`), heaviest first; after a full run that leaves one shard far behind the others,
+renew it with `tools/Update-TestShardWeights.ps1` and commit it. A bare `dotnet test` leaves the variables unset and
+runs every test.
+Each process writes its console log to `bin/<Configuration>/test-results/<run>.log` and its TRX to
+`bin/<Configuration>/test-results/<run>/<run>.trx`, where `<run>` is the project name, or
+`<project>.shard<i>` for a sharded project. When a run fails, open that process's log first.
+Every test process gets a private writing-system repository (`ProcessWritingSystemRepository`). The operating
 system's shared writing-system store is shared across processes, and concurrent saves into it collide.
 Tests set `MOTIF_WRITING_SYSTEM_REPOSITORY_PATH` at module load, and child processes inherit it.
+The same module initializer points SLDR at a private, empty cache (`MOTIF_TEST_SLDR_CACHE_PATH`): the
+machine-wide SLDR cache holds whatever earlier runs downloaded, about 1.4 MB of LDML per writing system, and a
+project whose writing systems carry it takes several hundred milliseconds longer to open, every time.
+**Nothing a test process touches may be shared with another test process**, because four suites in four
+worktrees must run at once: each process also gets its own runner namespace (`MOTIF_RUNNER_NAMESPACE`) and
+worker root (`MOTIF_WORKER_ROOT`), and the writing-system repository's default location follows its private
+one. Each of these was once machine-wide, and each serialized every suite on the machine behind one lock; the
+worker root also put test projects into the developer's real machine database. A test about the shared
+default sets its own value, and a new per-user or machine-wide resource gets a per-process test value too.
+Test processes also sweep their temporary roots of directories older runs left behind
+(`StaleTestDirectories`).
 No test run may show a Windows crash dialog: `test.ps1` suppresses it for its whole process tree, every
 test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
 startup. `CrashDialogsTests` checks Windows suppression and requires a crashing child to exit promptly on

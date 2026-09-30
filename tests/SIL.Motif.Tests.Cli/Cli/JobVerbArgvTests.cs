@@ -13,9 +13,8 @@ namespace SIL.Motif.Tests.Cli;
 /// Covers the verbs that let anything outside this process put work in the queue and read it back.
 /// </summary>
 /// <remarks>
-/// Driven against the real executable rather than the command layer. A verb that only works in-process is
-/// exactly what this suite exists to stop believing: the deleted wire protocol kept green seam tests for
-/// months while its executable was never once driven.
+/// Queue verbs are checked through the executable. Proposal and queue setup use the same dispatch in-process,
+/// so the process boundary is exercised by each behavior under test rather than by every prerequisite command.
 /// </remarks>
 public sealed class JobVerbArgvTests : IDisposable
 {
@@ -175,13 +174,13 @@ public sealed class JobVerbArgvTests : IDisposable
 
     private string FinalizeOneOperationProposal()
     {
-        Assert.Equal(0, Run($"new --project \"{Project}\" --draft d").ExitCode);
-        Assert.Equal(0, Run(
+        Assert.Equal(0, RunInProcess($"new --project \"{Project}\" --draft d").ExitCode);
+        Assert.Equal(0, RunInProcess(
             $"add-set-gloss --project \"{Project}\" --draft d --target agent_AAECAwQFBgcICQoLDA0ODw " +
-            "--ws en --text hello").ExitCode);
-        Assert.Equal(0, Run($"label --project \"{Project}\" --draft d \"a label\"").ExitCode);
-        Assert.Equal(0, Run($"comment --project \"{Project}\" --draft d \"a comment\"").ExitCode);
-        var finalized = Run($"finalize --project \"{Project}\" --draft d");
+                "--ws en --text hello").ExitCode);
+        Assert.Equal(0, RunInProcess($"label --project \"{Project}\" --draft d \"a label\"").ExitCode);
+        Assert.Equal(0, RunInProcess($"comment --project \"{Project}\" --draft d \"a comment\"").ExitCode);
+        var finalized = RunInProcess($"finalize --project \"{Project}\" --draft d");
         Assert.Equal(0, finalized.ExitCode);
 
         const string marker = "-> Proposal ";
@@ -242,10 +241,13 @@ public sealed class JobVerbArgvTests : IDisposable
 
     private string Enqueue()
     {
-        var result = Run($"baseline-refresh --project \"{Project}\"");
+        var result = RunInProcess($"baseline-refresh --project \"{Project}\"");
         Assert.Equal(0, result.ExitCode);
         return result.Output.Trim();
     }
+
+    private CliProcessResult RunInProcess(string arguments) =>
+        CliInProcess.RunCommandLine(_root, null, developerCommands: true, arguments);
 
     private static FailureEnvelope Envelope(string stderr) =>
         ProjectionJson.Deserialize<FailureEnvelope>(stderr)!;

@@ -510,7 +510,14 @@ internal static class Program
         File.WriteAllText(Path.Combine(directory, EnvironmentFileName), JsonSerializer.Serialize(
             Environment.GetEnvironmentVariables().Keys.Cast<string>().OrderBy(name => name)));
         if (Path.GetFileName(directory).StartsWith("motif-stats-replay-", StringComparison.Ordinal))
-            File.WriteAllText(Path.Combine(Path.GetTempPath(), ArgvFileName), serialized);
+            WriteSharedTempArgv(serialized);
+    }
+
+    // A shared temp directory is written by every suite's fakes at once; only a private TEMP ever reads it back.
+    private static void WriteSharedTempArgv(string serialized)
+    {
+        try { File.WriteAllText(Path.Combine(Path.GetTempPath(), ArgvFileName), serialized); }
+        catch (IOException) { }
     }
 
     private static string GrammarJson(Behaviour behaviour) =>

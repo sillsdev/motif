@@ -58,7 +58,7 @@
     "sampleVariantExpected": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["words", "parsed", "textCoverage", "work", "steps", "wallClockMs", "slowestWords", "failing"],
+      "required": ["words", "parsed", "textCoverage", "wallClockMs", "failing"],
       "properties": {
         "words": { "type": "integer", "minimum": 0 },
         "parsed": { "type": "integer", "minimum": 0 },
@@ -66,7 +66,9 @@
         "work": { "type": "integer", "minimum": 0 },
         "steps": { "type": "integer", "minimum": 0 },
         "wallClockMs": { "type": "integer", "minimum": 0 },
+        "selectedWords": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "slowestWords": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "tracedWords": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "failing": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
       }
     },

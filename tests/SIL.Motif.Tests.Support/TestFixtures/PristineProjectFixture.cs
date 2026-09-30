@@ -107,7 +107,7 @@ public sealed class PristineProjectFixture : IDisposable
         Directory.CreateDirectory(projectFolder);
         _scratchRoots.Add(scratchRoot);
 
-        CopyDirectory(_masterFolder, projectFolder);
+        CopyFieldWorksProjectFiles(_masterFolder, projectFolder);
 
         return new FwDataProjectLoader().LoadScratchCache(
             Path.Combine(projectFolder, NewLangProjFixture.ProjectName + ".fwdata"));
@@ -124,20 +124,60 @@ public sealed class PristineProjectFixture : IDisposable
         var projectFolder = Path.Combine(scratchRoot, NewLangProjFixture.ProjectName);
         Directory.CreateDirectory(projectFolder);
         _scratchRoots.Add(scratchRoot);
-        CopyDirectory(_masterFolder, projectFolder);
+        CopyFieldWorksProjectFiles(_masterFolder, projectFolder);
         return Path.Combine(projectFolder, NewLangProjFixture.ProjectName + ".fwdata");
     }
 
-    private static void CopyDirectory(string sourceDir, string destDir)
+    /// <summary>Copies only FieldWorks project files, leaving any Motif state in the source behind.</summary>
+    internal static void CopyFieldWorksProjectFiles(string sourceDir, string destDir)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceDir);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destDir);
         Directory.CreateDirectory(destDir);
-        foreach (var file in Directory.GetFiles(sourceDir))
-            File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true);
 
-        foreach (var subDir in Directory.GetDirectories(sourceDir))
-            CopyDirectory(subDir, Path.Combine(destDir, Path.GetFileName(subDir)));
+        var projectName = NewLangProjFixture.ProjectName;
+        var projectFile = Path.Combine(sourceDir, projectName + ".fwdata");
+        if (!File.Exists(projectFile) || IsReparsePoint(projectFile))
+            throw new FileNotFoundException("The FieldWorks project file is missing.", projectFile);
+        File.Copy(projectFile, Path.Combine(destDir, projectName + ".fwdata"), overwrite: true);
+        CopyFileIfPresent(sourceDir, destDir, projectName + ".bak");
+        CopyFieldWorksDirectory(sourceDir, destDir, "WritingSystemStore", IsWritingSystemFile);
+        CopyFieldWorksDirectory(sourceDir, destDir, "SharedSettings", IsSharedSettingFile);
     }
 
+    private static void CopyFileIfPresent(string sourceDir, string destDir, string name)
+    {
+        var source = Path.Combine(sourceDir, name);
+        if (File.Exists(source) && !IsReparsePoint(source))
+            File.Copy(source, Path.Combine(destDir, name), overwrite: true);
+    }
+
+    private static void CopyFieldWorksDirectory(
+        string sourceDir, string destDir, string name, Func<string, bool> isFieldWorksFile)
+    {
+        var source = Path.Combine(sourceDir, name);
+        if (!Directory.Exists(source) || IsReparsePoint(source)) return;
+
+        var destination = Path.Combine(destDir, name);
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.GetFiles(source, "*", SearchOption.TopDirectoryOnly))
+        {
+            var fileName = Path.GetFileName(file);
+            if (!isFieldWorksFile(fileName) || IsReparsePoint(file)) continue;
+            File.Copy(file, Path.Combine(destination, fileName), overwrite: true);
+        }
+    }
+
+    private static bool IsWritingSystemFile(string name) =>
+        name.Equals("idchangelog.xml", StringComparison.OrdinalIgnoreCase) ||
+        Path.GetExtension(name).Equals(".ldml", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSharedSettingFile(string name) =>
+        Path.GetExtension(name).Equals(".plsx", StringComparison.OrdinalIgnoreCase) ||
+        Path.GetExtension(name).Equals(".ulsx", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsReparsePoint(string path) =>
+        (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
     public void Dispose()
     {
         try { Directory.Delete(_tempRoot, recursive: true); }

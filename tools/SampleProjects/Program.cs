@@ -31,9 +31,11 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length < 3 || args[0] != "build")
+        var buildMatrix = args.Length > 0 && args[0] == "build-matrix";
+        if (args.Length < 3 || (!buildMatrix && args[0] != "build"))
         {
             Console.Error.WriteLine("Usage: SIL.Motif.SampleProjects build <sample.json> <output-root> [--bugs <bugs.json> --bug <id> ...] [--check]");
+            Console.Error.WriteLine("       SIL.Motif.SampleProjects build-matrix <sample.json> <output-root> --bugs <bugs.json>");
             return 2;
         }
 
@@ -59,6 +61,10 @@ internal static class Program
                 var siblingBugsPath = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1]))!, "bugs.json");
                 if (File.Exists(siblingBugsPath)) bugsPath = siblingBugsPath;
             }
+            if (buildMatrix && (check || bugIds.Count > 0))
+                throw new InvalidDataException("Build-matrix cannot be combined with --check or --bug.");
+            if (buildMatrix && bugsPath is null)
+                throw new InvalidDataException("A bug list is required when building a sample matrix.");
             if (bugIds.Count > 0 && bugsPath is null)
                 throw new InvalidDataException("A bug list is required when applying bug patches.");
 
@@ -69,9 +75,13 @@ internal static class Program
                 : JsonSerializer.Deserialize<BugSpec[]>(File.ReadAllText(bugsPath), JsonOptions)
                   ?? throw new InvalidDataException("The bug list is empty.");
             var outputRoot = Path.GetFullPath(args[2]);
-            var result = check
-                ? CheckVariants(spec, outputRoot, bugs)
-                : SampleBuilder.Build(spec, outputRoot, bugs, bugIds);
+            object result;
+            if (buildMatrix)
+                result = BuildMatrix(spec, outputRoot, bugs);
+            else if (check)
+                result = CheckVariants(spec, outputRoot, bugs);
+            else
+                result = SampleBuilder.Build(spec, outputRoot, bugs, bugIds);
             Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
             return 0;
         }
@@ -80,6 +90,16 @@ internal static class Program
             Console.Error.WriteLine(exception.Message);
             return 1;
         }
+    }
+
+    private static BuildMatrixResult BuildMatrix(
+        SampleSpec spec, string outputRoot, IReadOnlyList<BugSpec> bugs)
+    {
+        var variants = new List<NamedBuildResult> { new("fixed", SampleBuilder.Build(spec, Path.Combine(outputRoot, "fixed"), bugs, [])) };
+        foreach (var bug in bugs)
+            variants.Add(new NamedBuildResult(bug.Id,
+                SampleBuilder.Build(spec, Path.Combine(outputRoot, bug.Id), bugs, [bug.Id])));
+        return new BuildMatrixResult(variants.ToArray());
     }
 
     private static BuildResult CheckVariants(SampleSpec spec, string outputRoot, IReadOnlyList<BugSpec> bugs)
@@ -220,6 +240,8 @@ internal sealed record PatchOperation(
     AllomorphSpec? Allomorph = null);
 internal sealed record BuildResult(string ProjectPath, string BackupPath, BuiltText[] Texts, string[] AppliedBugs);
 internal sealed record BuiltText(string Id, string Guid);
+internal sealed record BuildMatrixResult(NamedBuildResult[] Variants);
+internal sealed record NamedBuildResult(string Name, BuildResult Build);
 
 internal static class SampleBuilder
 {

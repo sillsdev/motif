@@ -18,11 +18,16 @@
   that remains is the `pangloss` executable, a separate Rust build gated by `RealParserFactAttribute`
   -- those tests skip, rather than fail, when it is not built.
 
-  Each test project runs in a separate process, with concurrent projects capped at half the available
-  processor count. Test processes can start CLI and worker child processes, so the cap leaves CPU
-  capacity for their work and allows project parallelism on larger runners. Classes that open a
-  LibLCM cache share a serialized xUnit collection within their assembly. Projects are discovered
-  from Motif.sln and their IsTestProject declarations. New test projects are included automatically.
+  Each test project runs in one or more separate processes, with concurrent processes capped at a sixth of the
+  available processor count (at least two). Test processes start CLI, worker and parser child processes, and
+  the cap is sized so that four suites running side by side in separate worktrees still share the machine
+  without oversubscribing it: on 20 processors, four suites at 10 processes each took 326 s, at 3 each 276-300 s. Classes that open a LibLCM cache share a serialized xUnit collection within their
+  assembly, because two caches opening in one process race; a project that declares
+  <MotifTestShards>N</MotifTestShards> is split by test class into N processes, which cannot race, so its
+  LibLCM tests run N at a time. Classes are dealt to shards by the seconds tests/test-shard-weights.json records
+  for them (renew it with tools/Update-TestShardWeights.ps1 after a full run); a class the file does not know
+  still runs. Projects are discovered from Motif.sln and their IsTestProject declarations.
+  New test projects are included automatically.
 
   No process the run starts can show a Windows crash dialog. The script sets the error mode that suppresses
   it before anything else starts, and Windows hands that mode to every child: dotnet, the test hosts, and
@@ -68,6 +73,12 @@ $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 $testsRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'tests')) + [IO.Path]::DirectorySeparatorChar
 $env:MOTIF_DEVELOPER_COMMANDS = '1'
+# Short-lived, oversubscribed test processes spend CPU on tiering and spinning: 4 suites used 25% less without.
+$env:DOTNET_TieredPGO = '0'
+$env:DOTNET_ThreadPool_UnfairSemaphoreSpinLimit = '0'
+# Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
+$shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
+if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
 
 function Write-Step {
     param([string] $Text)
@@ -122,15 +133,30 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
     if (-not $solutionProjectPaths.ContainsKey($projectPath)) {
         throw "Test project is not listed in Motif.sln: $projectPath"
     }
-    $testProjects += [pscustomobject]@{ Name = $projectFile.BaseName; Path = $projectPath }
+    $shardNode = $projectDocument.SelectSingleNode("//*[local-name()='MotifTestShards']")
+    $shards = 1
+    if ($shardNode -and -not [int]::TryParse($shardNode.InnerText.Trim(), [ref] $shards)) { $shards = 0 }
+    if ($shards -lt 1) { throw "MotifTestShards must be a positive whole number in $projectPath" }
+    $testProjects += [pscustomobject]@{ Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards }
 }
 
 if ($testProjects.Count -eq 0) { throw 'No test projects were found under tests/ and listed in Motif.sln.' }
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 $availableProcessors = [Environment]::ProcessorCount
-$projectConcurrency = [Math]::Max(1, [int][Math]::Floor($availableProcessors / 2))
-$projectConcurrency = [Math]::Min($testProjects.Count, $projectConcurrency)
+# Sized so four suites side by side do not oversubscribe the machine; see the help text.
+$projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 6))
+# The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
+$testRuns = @(foreach ($project in @($testProjects | Sort-Object -Property Shards -Descending)) {
+    for ($index = 0; $index -lt $project.Shards; $index++) {
+        $label = if ($project.Shards -eq 1) { $project.Name } else { "$($project.Name).shard$index" }
+        [pscustomobject]@{
+            Project = $project.Name; Label = $label; Path = $project.Path
+            Shard = if ($project.Shards -eq 1) { '' } else { "$index/$($project.Shards)" }
+        }
+    }
+})
+$projectConcurrency = [Math]::Min($testRuns.Count, $projectConcurrency)
 
 $binRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'bin')) + [IO.Path]::DirectorySeparatorChar
 $resultsRoot = [IO.Path]::GetFullPath((Join-Path (Join-Path $repoRoot 'bin') (Join-Path $Configuration 'test-results')))
@@ -140,15 +166,16 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
-Write-Step "dotnet test (full suite, $($testProjects.Count) projects, up to $projectConcurrency at a time; $availableProcessors processors)"
+Write-Step ("dotnet test (full suite, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
+    "up to $projectConcurrency at a time; $availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()
-$jobs = foreach ($project in $testProjects) {
-    $projectResults = Join-Path $resultsRoot $project.Name
-    $projectLog = Join-Path $resultsRoot "$($project.Name).log"
-    $projectErrorLog = Join-Path $resultsRoot "$($project.Name).stderr.log"
-    Start-ThreadJob -Name $project.Name -ThrottleLimit $projectConcurrency `
-        -ArgumentList $project.Name, $project.Path, $Configuration, $projectResults, $projectLog, $projectErrorLog -ScriptBlock {
-        param($name, $projectPath, $configuration, $projectResults, $log, $errorLog)
+$jobs = foreach ($run in $testRuns) {
+    $projectResults = Join-Path $resultsRoot $run.Label
+    $projectLog = Join-Path $resultsRoot "$($run.Label).log"
+    $projectErrorLog = Join-Path $resultsRoot "$($run.Label).stderr.log"
+    Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
+        -ArgumentList $run.Label, $run.Path, $run.Shard, $Configuration, $projectResults, $projectLog, $projectErrorLog -ScriptBlock {
+        param($name, $projectPath, $shard, $configuration, $projectResults, $log, $errorLog)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         $arguments = @(
             'test'
@@ -167,6 +194,8 @@ $jobs = foreach ($project in $testProjects) {
             '--blame-hang-dump-type'
             'none'
         )
+        # Passed to the test host alone: a thread job's own environment is shared with every other job.
+        if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
             -RedirectStandardOutput $log -RedirectStandardError $errorLog
@@ -199,7 +228,7 @@ $jobs = foreach ($project in $testProjects) {
         }
     }
 }
-$outcomes = @($jobs | Receive-Job -Wait -AutoRemoveJob)
+$outcomes = @($jobs | Receive-Job -Wait -AutoRemoveJob | Sort-Object Name)
 
 $failed = $false
 $totals = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
@@ -220,10 +249,10 @@ foreach ($outcome in $outcomes) {
 
     $stale = $counters.total -eq 0
     $ok = $outcome.ExitCode -eq 0 -and -not $stale
-    $line = '  {0,-22} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}' -f $outcome.Name, $outcome.Seconds,
+    $line = '  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}' -f $outcome.Name, $outcome.Seconds,
         $counters.passed, $counters.failed, $counters.notExecuted
     Write-Host $line -ForegroundColor $(if ($ok) { 'Gray' } else { 'Red' })
-    if ($stale) { Write-Host '    project reported zero test results' -ForegroundColor Red }
+    if ($stale) { Write-Host '    reported zero test results (a shard with none means too many shards)' -ForegroundColor Red }
     if (-not $ok) {
         $failed = $true
         if ($outcome.StopReason) { Write-Host "    stopped: $($outcome.StopReason)" -ForegroundColor Red }
@@ -239,7 +268,7 @@ foreach ($outcome in $outcomes) {
         }
     }
 }
-Write-Host ('  {0,-22} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}  (total {5})' -f 'all projects',
+Write-Host ('  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}  (total {5})' -f 'all projects',
     $clock.Elapsed.TotalSeconds, $totals.passed, $totals.failed, $totals.notExecuted, $totals.total)
 
 if ($failed) {

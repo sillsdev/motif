@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
@@ -28,7 +29,7 @@ public sealed class CommandRunViewModelTests
     }
 
     [Fact]
-    public void ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
+    public async Task ProgressFromAnotherThreadGoesToTheOwnersContextOrAppliesDirectlyWithoutOne()
     {
         var progress = new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing...");
         var recording = new RecordingSynchronizationContext();
@@ -37,16 +38,34 @@ public sealed class CommandRunViewModelTests
         SynchronizationContext.SetSynchronizationContext(recording);
         try { withContext = new TestRunViewModel(); }
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
-        var withoutContext = new TestRunViewModel();
+        TestRunViewModel withoutContext;
+        SynchronizationContext.SetSynchronizationContext(null);
+        try { withoutContext = new TestRunViewModel(); }
+        finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        var appliedWithoutContext = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        withoutContext.PropertyChanged += (_, changed) =>
+        {
+            if (changed.PropertyName == nameof(CommandRunViewModel<TestResponse>.Progress))
+                appliedWithoutContext.TrySetResult();
+        };
+        var reporterCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // A dedicated thread, since a pool thread could be the one that created the runs.
         var reporter = new Thread(() =>
         {
-            ((IProgress<AssessmentProgress>)withContext).Report(progress);
-            ((IProgress<AssessmentProgress>)withoutContext).Report(progress);
+            try
+            {
+                ((IProgress<AssessmentProgress>)withContext).Report(progress);
+                ((IProgress<AssessmentProgress>)withoutContext).Report(progress);
+            }
+            finally
+            {
+                reporterCompleted.TrySetResult();
+            }
         });
         reporter.Start();
-        reporter.Join();
+        await recording.WaitForPost.WaitAsync(TimeSpan.FromSeconds(5));
+        await appliedWithoutContext.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reporterCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.Null(withContext.Progress);
         Assert.Equal(1, recording.Posted);
@@ -57,16 +76,22 @@ public sealed class CommandRunViewModelTests
 
     private sealed class RecordingSynchronizationContext : SynchronizationContext
     {
-        private readonly List<(SendOrPostCallback Callback, object? State)> _posted = [];
+        private readonly ConcurrentQueue<(SendOrPostCallback Callback, object? State)> _posted = new();
+        private readonly TaskCompletionSource _postedSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Posted => _posted.Count;
 
-        public override void Post(SendOrPostCallback d, object? state) => _posted.Add((d, state));
+        public Task WaitForPost => _postedSignal.Task;
+
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            _posted.Enqueue((d, state));
+            _postedSignal.TrySetResult();
+        }
 
         public void RunPosted()
         {
-            foreach (var (callback, state) in _posted) callback(state);
-            _posted.Clear();
+            while (_posted.TryDequeue(out var item)) item.Callback(item.State);
         }
     }
 

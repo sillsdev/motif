@@ -283,6 +283,24 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task BatchDoesNotWriteInvocationDiagnosticsBesideAPublishedBaseline()
+    {
+        var publication = Path.Combine(_root, new string('a', 64));
+        Directory.CreateDirectory(publication);
+        var project = Path.Combine(publication, "MotifTestProj.fwdata");
+        File.WriteAllText(project, "the fake parser never reads this.");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)),
+            "test:batch-baseline", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.False(File.Exists(Path.Combine(publication, "_pangloss-argv.json")));
+        Assert.False(File.Exists(Path.Combine(publication, "_pangloss-environment.json")));
+    }
+
+    [Fact]
     public async Task Batch_AZeroExitThatWroteNoCacheIsIncomplete()
     {
         var project = Project("batch-nocache");

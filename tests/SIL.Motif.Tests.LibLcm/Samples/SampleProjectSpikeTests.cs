@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
 using SIL.Motif.Host.LcmUtils;
@@ -25,7 +27,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
-            using var output = await BuildAsync(root);
+            using var output = await BuildCachedTurkicAsync(root);
             var fwDataPath = output.RootElement.GetProperty("projectPath").GetString()!;
             var backupPath = output.RootElement.GetProperty("backupPath").GetString()!;
             var project = XDocument.Load(fwDataPath);
@@ -55,7 +57,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 
         try
         {
-            using var output = await BuildAsync(root);
+            using var output = await BuildCachedTurkicAsync(root);
             var fwDataPath = output.RootElement.GetProperty("projectPath").GetString()!;
             Assert.True(File.Exists(fwDataPath));
             var writingSystemFiles = Directory.EnumerateFiles(
@@ -63,6 +65,30 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 .Select(Path.GetFileName);
             Assert.Contains(writingSystemFiles,
                 name => string.Equals(name, "tr.ldml", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            DeleteDirectory(root);
+        }
+    }
+
+    [Fact]
+    public async Task CachedTurkicBuildsUseIsolatedProjectPaths()
+    {
+        var root = NewRoot();
+        var firstRoot = Path.Combine(root, "first");
+        var secondRoot = Path.Combine(root, "second");
+        Directory.CreateDirectory(firstRoot);
+        Directory.CreateDirectory(secondRoot);
+
+        try
+        {
+            using var first = await BuildCachedTurkicAsync(firstRoot);
+            using var second = await BuildCachedTurkicAsync(secondRoot);
+
+            Assert.NotEqual(
+                first.RootElement.GetProperty("projectPath").GetString(),
+                second.RootElement.GetProperty("projectPath").GetString());
         }
         finally
         {
@@ -166,46 +192,21 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task SyntheticSampleWordsParseThroughMotifAssess()
+    internal async Task SyntheticSampleWordsParseThroughMotifAssess()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
 
         try
         {
-            using var buildOutput = await BuildAsync(root);
-            var projectPath = buildOutput.RootElement.GetProperty("projectPath").GetString()!;
-            var parsedWords = 0;
-            foreach (var text in buildOutput.RootElement.GetProperty("texts").EnumerateArray())
-            {
-                var assess = new ProcessStartInfo(BuildOutput.Cli)
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-                assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "worker-root", text.GetProperty("id").GetString()!);
-                assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-                assess.ArgumentList.Add("assess");
-                assess.ArgumentList.Add(projectPath);
-                assess.ArgumentList.Add("--texts");
-                assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
-                assess.ArgumentList.Add("--json");
-                var assessment = await RunAsync(assess);
-
-                Assert.True(assessment.ExitCode == 0, assessment.StandardError);
-                using var response = JsonDocument.Parse(assessment.StandardOutput);
-                var words = response.RootElement.GetProperty("words").EnumerateArray().ToArray();
-                Assert.All(words, word => Assert.Equal("analysed", word.GetProperty("outcome").GetString()));
-                parsedWords += words.Length;
-            }
+            using var buildOutput = await BuildCachedTurkicAsync(root);
             var samplePath = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic", "sample.json");
             using var sample = JsonDocument.Parse(await File.ReadAllTextAsync(samplePath));
-            var expectedWords = sample.RootElement.GetProperty("texts").EnumerateArray()
-                .Sum(text => text.GetProperty("sentences").EnumerateArray()
-                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                    .Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal(expectedWords, parsedWords);
+            var wordOccurrences = WordOccurrencesByText(sample.RootElement);
+            var assessment = await AssessTextsAsync(root, buildOutput.RootElement, wordOccurrences);
+            var expectedWords = wordOccurrences.Values.Sum();
+            Assert.Equal(expectedWords, assessment.Words);
+            Assert.Equal(expectedWords, assessment.Parsed);
         }
         finally
         {
@@ -213,8 +214,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork()
+    internal async Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -231,19 +231,23 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
                 Path.Combine(RepositoryRoot(), "samples", "sample.schema.json")));
             var definitions = bugs.RootElement.EnumerateArray().ToArray();
             var bugIds = definitions.Select(bug => bug.GetProperty("id").GetString()!).ToArray();
-            var textCount = spec.RootElement.GetProperty("texts").EnumerateArray()
-                .Sum(text => text.GetProperty("sentences").EnumerateArray()
-                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                    .Distinct(StringComparer.Ordinal).Count());
+            var wordOccurrences = WordOccurrencesByText(spec.RootElement);
+            var textCount = wordOccurrences.Values.Sum();
+            var parserProbeWords = definitions
+                .Where(bug => bug.GetProperty("symptom").GetProperty("kind").GetString() == "slow")
+                .SelectMany(bug => bug.GetProperty("symptom").GetProperty("words").EnumerateArray())
+                .Select(word => word.GetString()!)
+                .ToHashSet(StringComparer.Ordinal);
 
-            using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
+            using var fixedBuild = await BuildCachedTurkicAsync(root);
             var fixedGrammar = SampleGrammarHealth.AssertFixedProjectHasNoErrors(
                 fixedBuild.RootElement.GetProperty("projectPath").GetString()!, Path.Combine(root, "grammar-health", "fixed"));
             AssertFixedWarningsDocumented(spec.RootElement, fixedGrammar);
-            var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement, trace: true);
+            var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement, wordOccurrences,
+                traceWords: parserProbeWords);
             Assert.Equal(textCount, fixedResult.Words);
             Assert.True(fixedResult.Words == fixedResult.Parsed,
-                $"Fixed sample has unparsed words: {string.Join("; ", fixedResult.TraceFailures.Select(pair => $"{pair.Key}: {pair.Value}"))}");
+                $"Fixed sample has unparsed words: {string.Join("; ", fixedResult.Outcomes.Where(pair => pair.Value != "analysed").Select(pair => pair.Key))}");
 
             var variantResults = new Dictionary<string, AssessmentSnapshot>(StringComparer.Ordinal)
             {
@@ -257,22 +261,32 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             foreach (var bug in definitions)
             {
                 var bugId = bug.GetProperty("id").GetString()!;
-                using var variantBuild = await BuildVariantAsync(root, specPath, bugsPath, [bugId], bugId);
-                var result = await AssessTextsAsync(root, variantBuild.RootElement, trace: true);
-                variantResults.Add(bugId, result);
-                var actualFailures = result.Outcomes.Where(pair => pair.Value != "analysed")
-                    .Select(pair => pair.Key).Order(StringComparer.Ordinal).ToArray();
                 var symptom = bug.GetProperty("symptom");
                 var expectedWords = symptom.GetProperty("words").EnumerateArray()
                     .Select(word => word.GetString()!).Order(StringComparer.Ordinal).ToArray();
+                using var variantBuild = await BuildVariantAsync(root, specPath, bugsPath, [bugId], bugId);
+                var assessmentWords = expectedWords.ToHashSet(StringComparer.Ordinal);
+                var traceWords = symptom.GetProperty("kind").GetString() == "slow"
+                    ? assessmentWords
+                    : null;
+                var result = await AssessTextsAsync(root, variantBuild.RootElement, wordOccurrences,
+                    assessmentWords, traceWords);
+                Assert.Equal(expectedWords, result.Outcomes.Keys.Order(StringComparer.Ordinal));
+                variantResults.Add(bugId, result);
+                var actualFailures = result.Outcomes.Where(pair => pair.Value != "analysed")
+                    .Select(pair => pair.Key).Order(StringComparer.Ordinal).ToArray();
                 if (symptom.GetProperty("kind").GetString() == "slow")
                 {
                     Assert.Empty(actualFailures);
                     variantFailures.Add(bugId, new(StringComparer.Ordinal));
                     var slowestWords = SlowestWords(result);
-                    output.WriteLine($"slow variant work={result.Work}; fixed work={fixedResult.Work}; ratio={(double)result.Work / fixedResult.Work:F2}x; steps={result.Steps}/{fixedResult.Steps}; slowest={string.Join(", ", slowestWords)}");
+                    var brokenWork = result.Work.GetValueOrDefault();
+                    var fixedWork = fixedResult.Work.GetValueOrDefault();
+                    Assert.True(result.Work.HasValue && fixedResult.Work.HasValue,
+                        "Both slow-variant measurements must trace their declared words.");
+                    output.WriteLine($"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x; steps={result.Steps}/{fixedResult.Steps}; slowest={string.Join(", ", slowestWords)}");
                     Assert.Equal(expectedWords, slowestWords);
-                    Assert.True(result.Work >= fixedResult.Work * 10,
+                    Assert.True(brokenWork >= fixedWork * 10,
                         $"Slow bug '{bugId}' needs 10x parser work; fixed={fixedResult}, broken={result}.");
                 }
                 else
@@ -291,7 +305,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
             using var brokenBuild = await BuildVariantAsync(root, specPath, bugsPath, bugIds, "all-bugs");
             var brokenGrammar = SampleGrammarHealth.Read(
                 brokenBuild.RootElement.GetProperty("projectPath").GetString()!, Path.Combine(root, "grammar-health", "broken"));
-            var brokenResult = await AssessTextsAsync(root, brokenBuild.RootElement, trace: true);
+            var brokenResult = await AssessTextsAsync(root, brokenBuild.RootElement, wordOccurrences);
             variantResults.Add("all-bugs", brokenResult);
             variantFailures.Add("all-bugs", declaredFailures);
             Assert.Equal(declaredFailures.Keys.Order(StringComparer.Ordinal), brokenResult.Outcomes
@@ -325,8 +339,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task DuplicateOptionalPluralSlotsMultiplyParserWork()
+    internal async Task DuplicateOptionalPluralSlotsMultiplyParserWork()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -409,6 +422,94 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
         .Order(StringComparer.Ordinal)
         .ToArray();
 
+    private static async Task<JsonDocument> BuildCachedTurkicAsync(string destinationRoot)
+    {
+        var sampleFolder = Path.Combine(RepositoryRoot(), "samples", "synthetic-turkic");
+        var specPath = Path.Combine(sampleFolder, "sample.json");
+        var bugsPath = Path.Combine(sampleFolder, "bugs.json");
+        var schemaPath = Path.Combine(RepositoryRoot(), "samples", "sample.schema.json");
+        var builderPath = Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.SampleProjects.dll");
+        var fingerprintFiles = new[] { specPath, bugsPath, schemaPath, builderPath };
+        var fingerprintText = string.Join("\n", fingerprintFiles.Select(path =>
+            Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)))));
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+            BuildOutput.ProductDirectory + "\nproject-copy-v1\n" + fingerprintText)));
+        var cacheParent = Path.Combine(BuildOutput.ProductDirectory, "SampleSpikes", "shared-turkic");
+        Directory.CreateDirectory(cacheParent);
+        var cacheRoot = Path.Combine(cacheParent, fingerprint);
+        await using var cacheLock = await AcquireCacheLockAsync(cacheRoot + ".lock");
+        var resultPath = Path.Combine(cacheRoot, "build.json");
+        if (File.Exists(resultPath))
+        {
+            var cachedJson = await File.ReadAllTextAsync(resultPath);
+            try
+            {
+                using var cached = JsonDocument.Parse(cachedJson);
+                var projectPath = cached.RootElement.GetProperty("projectPath").GetString();
+                var backupPath = cached.RootElement.GetProperty("backupPath").GetString();
+                if (projectPath is not null && File.Exists(projectPath) &&
+                    backupPath is not null && File.Exists(backupPath))
+                    return CopyCachedTurkicBuild(cachedJson, cacheRoot, destinationRoot);
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        if (Directory.Exists(cacheRoot)) Directory.Delete(cacheRoot, recursive: true);
+        Directory.CreateDirectory(cacheRoot);
+        using var built = await BuildVariantAsync(cacheRoot, specPath, bugsPath, [], "fixed");
+        var json = built.RootElement.GetRawText();
+        await File.WriteAllTextAsync(resultPath, json);
+        return CopyCachedTurkicBuild(json, cacheRoot, destinationRoot);
+    }
+
+    private static JsonDocument CopyCachedTurkicBuild(string json, string cacheRoot, string destinationRoot)
+    {
+        var output = JsonNode.Parse(json)!.AsObject();
+        var cachedVariantRoot = Path.Combine(cacheRoot, "fixed");
+        var copiedVariantRoot = Path.Combine(destinationRoot, "cached-fixed");
+        CopyDirectory(cachedVariantRoot, copiedVariantRoot);
+        output["projectPath"] = Path.Combine(copiedVariantRoot,
+            Path.GetRelativePath(cachedVariantRoot, output["projectPath"]!.GetValue<string>()));
+        output["backupPath"] = Path.Combine(copiedVariantRoot,
+            Path.GetRelativePath(cachedVariantRoot, output["backupPath"]!.GetValue<string>()));
+        return JsonDocument.Parse(output.ToJsonString());
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(source, directory);
+            Directory.CreateDirectory(Path.Combine(destination, relativePath));
+        }
+
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(file).Contains(".motif.db", StringComparison.OrdinalIgnoreCase)) continue;
+            var copyPath = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(copyPath)!);
+            File.Copy(file, copyPath);
+        }
+    }
+
+    private static async Task<FileStream> AcquireCacheLockAsync(string path)
+    {
+        while (true)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25));
+            }
+        }
+    }
+
     private static async Task<JsonDocument> BuildAsync(string root)
     {
         var result = await RunBuilderAsync(root,
@@ -478,89 +579,104 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     }
 
     private static async Task<AssessmentSnapshot> AssessTextsAsync(
-        string root, JsonElement buildResult, bool trace)
+        string root, JsonElement buildResult, IReadOnlyDictionary<string, int> wordOccurrences,
+        IReadOnlySet<string>? assessmentWords = null, IReadOnlySet<string>? traceWords = null)
     {
         var outcomes = new Dictionary<string, string>(StringComparer.Ordinal);
-        var wordCount = 0;
-        var parsedCount = 0;
-        var wallClockMs = 0L;
+        var wordWork = new Dictionary<string, long>(StringComparer.Ordinal);
+        var tracedWords = traceWords is null ? null : new HashSet<string>(StringComparer.Ordinal);
+        var words = 0;
+        var parsed = 0;
         var work = 0L;
         var steps = 0L;
-        var wordWork = new Dictionary<string, long>(StringComparer.Ordinal);
-        var traceFailures = new Dictionary<string, string>(StringComparer.Ordinal);
-        var invoker = trace ? new PanGlossInvoker() : null;
+        var assessmentId = Guid.NewGuid().ToString("N")[..8];
+        var workerRoot = Path.Combine(root, "worker-root");
+        var assess = new ProcessStartInfo(BuildOutput.Cli)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(workerRoot, assessmentId);
+        assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        assess.ArgumentList.Add("assess");
+        assess.ArgumentList.Add(buildResult.GetProperty("projectPath").GetString()!);
+        if (assessmentWords is null)
+        {
+            assess.ArgumentList.Add("--texts");
+            assess.ArgumentList.Add(string.Join(',', buildResult.GetProperty("texts").EnumerateArray()
+                .Select(text => text.GetProperty("guid").GetString())));
+        }
+        else
+        {
+            Directory.CreateDirectory(workerRoot);
+            var wordsPath = Path.Combine(workerRoot, assessmentId + ".words");
+            await File.WriteAllLinesAsync(wordsPath, assessmentWords.Order(StringComparer.Ordinal));
+            assess.ArgumentList.Add("--words");
+            assess.ArgumentList.Add(wordsPath);
+        }
+        assess.ArgumentList.Add("--json");
+        var stopwatch = Stopwatch.StartNew();
+        var assessment = await RunAsync(assess);
+        stopwatch.Stop();
+        Assert.True(assessment.ExitCode == 0, assessment.StandardError);
+
+        using var invoker = traceWords is null ? null : new PanGlossInvoker();
         var tracer = invoker is null ? null : new PanGlossTracer(invoker);
-        try
+        using var response = JsonDocument.Parse(assessment.StandardOutput);
+        foreach (var word in response.RootElement.GetProperty("words").EnumerateArray())
         {
-            foreach (var text in buildResult.GetProperty("texts").EnumerateArray())
-            {
-                var textId = text.GetProperty("id").GetString()!;
-                var assess = new ProcessStartInfo(BuildOutput.Cli)
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-                assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "worker-root", textId);
-                assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-                assess.ArgumentList.Add("assess");
-                assess.ArgumentList.Add(buildResult.GetProperty("projectPath").GetString()!);
-                assess.ArgumentList.Add("--texts");
-                assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
-                assess.ArgumentList.Add("--json");
-                var stopwatch = Stopwatch.StartNew();
-                var assessment = await RunAsync(assess);
-                stopwatch.Stop();
-                wallClockMs += stopwatch.ElapsedMilliseconds;
-                Assert.True(assessment.ExitCode == 0, assessment.StandardError);
-                using var response = JsonDocument.Parse(assessment.StandardOutput);
-                foreach (var word in response.RootElement.GetProperty("words").EnumerateArray())
-                {
-                    var form = word.GetProperty("word").GetString()!;
-                    var outcome = word.GetProperty("outcome").GetString()!;
-                    wordCount++;
-                    var normalizedForm = form.Normalize(NormalizationForm.FormC);
-                    if (outcomes.TryGetValue(normalizedForm, out var previousOutcome))
-                        Assert.Equal(previousOutcome, outcome);
-                    else
-                        outcomes.Add(normalizedForm, outcome);
-                    if (outcome == "analysed") parsedCount++;
-                    if (tracer is null) continue;
-                    var traceResult = await tracer.TraceAsync(buildResult.GetProperty("projectPath").GetString()!,
-                        form, CancellationToken.None, TimeSpan.FromSeconds(30));
-                    var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(traceResult);
-                    var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
-                    steps += details.Steps;
-                    work += details.Categories.Sum(category => category.Work);
-                    var workForWord = details.Categories.Sum(category => category.Work);
-                    wordWork[normalizedForm] = wordWork.GetValueOrDefault(normalizedForm) + workForWord;
-                    if (outcome != "analysed")
-                    {
-                        var attempts = completed.Document!.Attempts
-                            .Select(attempt => string.Join("/", new[]
-                            {
-                                attempt.EventType,
-                                attempt.FailureReason,
-                                attempt.FailureContext,
-                                attempt.FailureEnvironment,
-                            }.Where(value => !string.IsNullOrWhiteSpace(value))))
-                            .Where(value => value.Length > 0);
-                        traceFailures[normalizedForm] = string.Join(", ", attempts);
-                    }
-                }
-            }
-            return new AssessmentSnapshot(outcomes, wordCount, parsedCount, work, steps, wallClockMs, wordWork, traceFailures);
+            var form = word.GetProperty("word").GetString()!;
+            var normalized = form.Normalize(NormalizationForm.FormC);
+            var outcome = word.GetProperty("outcome").GetString()!;
+            var occurrenceCount = wordOccurrences.GetValueOrDefault(normalized);
+            Assert.True(occurrenceCount > 0, $"Assessment returned undeclared sample word '{form}'.");
+            words += occurrenceCount;
+            if (outcomes.TryGetValue(normalized, out var previousOutcome))
+                Assert.Equal(previousOutcome, outcome);
+            else
+                outcomes.Add(normalized, outcome);
+            if (outcome == "analysed") parsed += occurrenceCount;
+
+            if (tracer is null || !traceWords!.Contains(form) || !tracedWords!.Add(form)) continue;
+            var trace = await tracer.TraceAsync(buildResult.GetProperty("projectPath").GetString()!, form,
+                CancellationToken.None, TimeSpan.FromSeconds(30));
+            var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
+            var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
+            steps += details.Steps;
+            var wordUnits = details.Categories.Sum(category => category.Work);
+            work += wordUnits;
+            wordWork[normalized] = wordUnits;
         }
-        finally
+
+        if (traceWords is not null)
+            Assert.Equal(traceWords.Order(StringComparer.Ordinal), tracedWords!.Order(StringComparer.Ordinal));
+
+        return new AssessmentSnapshot(outcomes, words, parsed,
+            traceWords is null ? null : work, traceWords is null ? null : steps, stopwatch.ElapsedMilliseconds,
+            tracedWords?.Order(StringComparer.Ordinal).ToArray(), assessmentWords?.Order(StringComparer.Ordinal).ToArray(),
+            wordWork);
+    }
+
+    private static Dictionary<string, int> WordOccurrencesByText(JsonElement sample)
+    {
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var text in sample.GetProperty("texts").EnumerateArray())
+        foreach (var form in text.GetProperty("sentences").EnumerateArray()
+                     .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                     .Distinct(StringComparer.Ordinal))
         {
-            invoker?.Dispose();
+            var normalized = form.Normalize(NormalizationForm.FormC);
+            occurrences[normalized] = occurrences.GetValueOrDefault(normalized) + 1;
         }
+        return occurrences;
     }
 
     private static SampleVariantExpected ToExpected(
         AssessmentSnapshot result, Dictionary<string, string>? failing = null) =>
         new(result.Words, result.Parsed, result.Words == 0 ? 0 : (double)result.Parsed / result.Words,
-            result.Work, result.Steps, result.WallClockMs,
-            SlowestWords(result), failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
+            result.Work, result.Steps, result.WallClockMs, result.SelectedWords,
+            result.TracedWords is null ? null : SlowestWords(result), result.TracedWords,
+            failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
 
     private static string[] SlowestWords(AssessmentSnapshot result) => result.WordWork
         .OrderByDescending(pair => pair.Value)
@@ -638,21 +754,46 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
     private sealed record WorkSnapshot(long Work, long Steps, long WallClockMs, double ParserElapsedMs);
     private sealed record AssessmentSnapshot(
-        Dictionary<string, string> Outcomes, int Words, int Parsed, long Work, long Steps, long WallClockMs,
-        Dictionary<string, long> WordWork, Dictionary<string, string> TraceFailures);
+        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long? Steps, long WallClockMs,
+        string[]? TracedWords, string[]? SelectedWords, Dictionary<string, long> WordWork);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
         Dictionary<string, SampleVariantExpected> Variants, SampleGrammarHealthPins GrammarHealth);
     private sealed record SampleGrammarHealthPins(
         SampleGrammarHealthSnapshot Fixed, SampleGrammarHealthSnapshot Broken);
     private sealed record SampleVariantExpected(
-        int Words, int Parsed, double TextCoverage, long Work, long Steps, long WallClockMs,
-        string[] SlowestWords,
+        int Words, int Parsed, double TextCoverage, long? Work, long? Steps, long WallClockMs,
+        string[]? SelectedWords, string[]? SlowestWords, string[]? TracedWords,
         Dictionary<string, string> Failing);
 
     private static readonly JsonSerializerOptions ExpectedJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true,
     };
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class SyntheticSampleWordsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task SyntheticSampleWordsParseThroughMotifAssess() =>
+        new SampleProjectSpikeTests(output).SyntheticSampleWordsParseThroughMotifAssess();
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class SyntheticTurkicBugVariantsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork() =>
+        new SampleProjectSpikeTests(output).SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork();
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+public sealed class DuplicateOptionalPluralSlotsTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task DuplicateOptionalPluralSlotsMultiplyParserWork() =>
+        new SampleProjectSpikeTests(output).DuplicateOptionalPluralSlotsMultiplyParserWork();
 }

@@ -129,7 +129,7 @@ public sealed class WalkthroughArtifactTests
     public void BaselineComparisonWritesDiagnosticsWithoutFailingWhenStrictGateIsOff()
     {
         var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
-        var diagnosticsDirectory = Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs");
+        var diagnosticsDirectory = WalkthroughTestFiles.DiagnosticsDirectory;
         var fileName = Path.GetFileNameWithoutExtension(baselinePath);
         var actualPath = Path.Combine(diagnosticsDirectory, $"{fileName}-actual.png");
         var diffPath = Path.Combine(diagnosticsDirectory, $"{fileName}-diff.png");

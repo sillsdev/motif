@@ -31,6 +31,12 @@ internal static class ProcessWritingSystemRepository
         Path.GetTempPath(), "SIL.Motif.Tests.WritingSystems", Environment.ProcessId + "-" + Guid.NewGuid().ToString("N"));
 
     /// <summary>The repository LibLCM will hand the next cache it opens.</summary>
+    /// <summary>
+    /// This process's private, empty SLDR cache, so a writing system it creates is the same on every machine.
+    /// Deleted with <see cref="BasePath"/>, beside the repository's own versioned directory.
+    /// </summary>
+    internal static string SldrCachePath { get; } = Path.Combine(BasePath, "SldrCache");
+
     internal static object? Current => SingletonsContainer.Item(
         typeof(CoreGlobalWritingSystemRepository).FullName!);
 

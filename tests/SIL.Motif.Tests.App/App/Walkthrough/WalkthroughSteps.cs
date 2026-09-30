@@ -4,6 +4,7 @@ using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using Xunit.Sdk;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -156,16 +157,26 @@ internal static class WalkthroughSteps
 
     internal static void StartSlowAssessment(WalkthroughWindow walkthrough, long deadline)
     {
-        walkthrough.TypePastedWords(string.Join(Environment.NewLine, ConformanceProject.SlowWords));
+        StartSlowAssessment(walkthrough, deadline, ConformanceProject.SlowWords);
+    }
+
+    internal static void StartSlowAssessment(
+        WalkthroughWindow walkthrough, long deadline, IReadOnlyList<string> words)
+    {
+        walkthrough.TypePastedWords(string.Join(Environment.NewLine, words));
         Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
 
         walkthrough.Click("Run the Assessment");
         Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
-        walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Assess.State == RunState.Running &&
-                walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled,
-            Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
+        walkthrough.WaitUntil(() =>
+        {
+            if (walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
+                throw new XunitException("The slow Assessment finished before its cancellable state appeared.");
+
+            return walkthrough.Workspace.Assess.State == RunState.Running &&
+                walkthrough.Find<Button>("Cancel the running Assessment").IsEffectivelyEnabled;
+        }, Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
     }
 
     internal static void StartAssessmentOverPastedWords(
