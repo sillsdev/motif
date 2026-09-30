@@ -89,7 +89,7 @@ public sealed class PageScreenshots
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
     ];
 
-    private static void Save(MainWindow window, string path)
+    internal static void Save(MainWindow window, string path)
     {
         for (var pass = 0; pass < 3; pass++)
         {
@@ -101,7 +101,8 @@ public sealed class PageScreenshots
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
-    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData()
+    internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null)
     {
         var fake = new FakeCommandClient();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
@@ -124,6 +125,8 @@ public sealed class PageScreenshots
         {
             InvocationId = "assessment/one",
         });
+
+        configure?.Invoke(fake, Assessment());
 
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(
