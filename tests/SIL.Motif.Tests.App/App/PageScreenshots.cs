@@ -157,7 +157,7 @@ public sealed class PageScreenshots
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake, techDemoNotice: new TechDemoNoticeViewModel(new NoticeNotYetSeen(), new Launcher()));
+            fake, techDemoNotice: FirstRunNotice());
         var window = new MainWindow();
         window.Compose(workspace);
         window.Show();
@@ -304,7 +304,9 @@ public sealed class PageScreenshots
             Task.FromResult<string?>(@"C:\Users\linguist\Documents\Motif Handoffs");
     }
 
-    // The banner shows as it does on a first run: the harness never remembers an acknowledgment.
+    /// <summary>The tech demo notice as a first run shows it, live, so a capture never draws it disabled.</summary>
+    internal static TechDemoNoticeViewModel FirstRunNotice() => new(new NoticeNotYetSeen(), new Launcher());
+
     private sealed class NoticeNotYetSeen : ITechDemoNoticePreferences
     {
         public bool HasSeenTechDemoNotice => false;
