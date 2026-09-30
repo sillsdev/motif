@@ -9,11 +9,11 @@ using SIL.Motif.Help;
 
 namespace SIL.Motif.Cli;
 
-/// <summary>Prints the shared command and glossary help content from the CLI.</summary>
+/// <summary>Prints the shared command, glossary, and Guide Help content from the CLI.</summary>
 public static class HelpCommand
 {
     private static readonly Regex MarkdownLinkPattern = new(
-        @"\[(?<text>[^\]]+)\]\((?<kind>cmd|term|ui):(?<code>[^)]+)\)", RegexOptions.CultureInvariant);
+        @"\[(?<text>[^\]]+)\]\((?<kind>cmd|term|ui|guide):(?<code>[^)]+)\)", RegexOptions.CultureInvariant);
     private static readonly Regex ScreenshotPattern = new(
         @"!\[(?<alt>[^\]]*)\]\(shot:(?<id>[^/)]+)/(?<step>[^)]+)\)", RegexOptions.CultureInvariant);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -60,13 +60,18 @@ public static class HelpCommand
         }
 
         var code = string.Join(' ', codeParts);
-        var entryKind = catalog.Find(HelpEntryKind.Command, code) is not null
-            ? HelpEntryKind.Command
-            : HelpEntryKind.Term;
-        var entry = catalog.Find(entryKind, code);
+        var guidePrefix = "guide:";
+        var isGuide = code.StartsWith(guidePrefix, StringComparison.Ordinal);
+        var entryKind = isGuide
+            ? HelpEntryKind.Guide
+            : catalog.Find(HelpEntryKind.Command, code) is not null
+                ? HelpEntryKind.Command
+                : HelpEntryKind.Term;
+        var lookupCode = isGuide ? Uri.UnescapeDataString(code[guidePrefix.Length..]) : code;
+        var entry = catalog.Find(entryKind, lookupCode);
         if (entry is null)
         {
-            error.WriteLine($"No released command or glossary term named '{code}'. Run 'motif help' for commands.");
+            error.WriteLine($"No released command, glossary term, or Guide named '{code}'. Run 'motif help' for commands.");
             return 2;
         }
 
@@ -168,7 +173,8 @@ public static class HelpCommand
                 output.WriteLine(NormalizeUsage(usage));
         }
         output.WriteLine("Online: " + entry.Url);
-        output.WriteLine("Expanded help: motif help " + entry.Code + " --full");
+        var fullCode = kind == HelpEntryKind.Guide ? "guide:" + entry.Code : entry.Code;
+        output.WriteLine("Expanded help: motif help " + fullCode + " --full");
     }
 
     private static string ResolvePage(string page, HelpCatalog catalog)
@@ -178,9 +184,12 @@ public static class HelpCommand
             var text = match.Groups["text"].Value;
             var linkKind = match.Groups["kind"].Value;
             var code = Uri.UnescapeDataString(match.Groups["code"].Value);
-            return linkKind == "cmd"
-                ? $"{text} (motif help {code})"
-                : $"{text} ({catalog.BuildUrl(ParseKind(linkKind), code)})";
+            return linkKind switch
+            {
+                "cmd" => $"{text} (motif help {code})",
+                "guide" => $"{text} (motif help guide:{code} --full)",
+                _ => $"{text} ({catalog.BuildUrl(ParseKind(linkKind), code)})",
+            };
         });
         return ScreenshotPattern.Replace(resolved, match =>
         {
@@ -195,6 +204,7 @@ public static class HelpCommand
     {
         "term" => HelpEntryKind.Term,
         "ui" => HelpEntryKind.Ui,
+        "guide" => HelpEntryKind.Guide,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -203,12 +213,13 @@ public static class HelpCommand
         HelpEntryKind.Command => "command",
         HelpEntryKind.Ui => "ui",
         HelpEntryKind.Term => "term",
+        HelpEntryKind.Guide => "guide",
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
     private static int Usage(TextWriter error)
     {
-        error.WriteLine("Usage: motif help [<command> [--full | --json]] | --all --json");
+        error.WriteLine("Usage: motif help [<command> | guide:<code> [--full | --json]] | --all --json");
         return 1;
     }
 }

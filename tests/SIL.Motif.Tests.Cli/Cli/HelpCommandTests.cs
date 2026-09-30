@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Help;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -64,6 +65,49 @@ public sealed class HelpCommandTests
     }
 
     [Fact]
+    public void FullHelpResolvesAQualifiedNestedGuide()
+    {
+        var result = Run("help", "guide:agents/start-here", "--full");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("Using Motif from an agent", result.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "Expanded help: motif help guide:agents/start-here --full", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Call Motif as", result.Output, StringComparison.Ordinal);
+        Assert.Contains("https://motif-docs.pages.dev/guide/agents/start-here/", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void JsonHelpExportsAQualifiedGuideWithItsHierarchicalCodeAndFullPage()
+    {
+        var result = Run("help", "guide:learn/stems-and-the-lexicon", "--json");
+
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        var entry = json.RootElement;
+
+        Assert.Equal("guide", entry.GetProperty("kind").GetString());
+        Assert.Equal("learn/stems-and-the-lexicon", entry.GetProperty("code").GetString());
+        Assert.Equal("learn/stems-and-the-lexicon", entry.GetProperty("slug").GetString());
+        Assert.Contains(
+            "# Stems and the lexicon", entry.GetProperty("helpPage").GetString(), StringComparison.Ordinal);
+        Assert.EndsWith("/learn/stems-and-the-lexicon/", entry.GetProperty("url").GetString());
+    }
+
+    [Fact]
+    public void GuideQualifierSelectsTheGuideWhenItsCodeMatchesAnotherEntry()
+    {
+        var result = Run("help", "guide:overview", "--json");
+
+        Assert.Equal(0, result.ExitCode);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal("guide", json.RootElement.GetProperty("kind").GetString());
+        Assert.Equal("overview", json.RootElement.GetProperty("code").GetString());
+        Assert.Equal("Overview", json.RootElement.GetProperty("title").GetString());
+        Assert.EndsWith("/guide/overview/", json.RootElement.GetProperty("url").GetString());
+    }
+
+    [Fact]
     public void FullHelpAcceptsACommandCodeThatContainsAFlagLikePart()
     {
         var result = Run("help", "apply", "--all-pending", "--full");
@@ -89,7 +133,7 @@ public sealed class HelpCommandTests
         var result = Run("help", "not-a-released-command");
 
         Assert.Equal(2, result.ExitCode);
-        Assert.Contains("No released command or glossary term", result.Error, StringComparison.Ordinal);
+        Assert.Contains("No released command, glossary term, or Guide", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -155,6 +199,7 @@ public sealed class HelpCommandTests
 
         var entries = root.GetProperty("entries").EnumerateArray().ToArray();
         var commands = entries.Where(entry => entry.GetProperty("kind").GetString() == "command").ToArray();
+        var guides = entries.Where(entry => entry.GetProperty("kind").GetString() == "guide").ToArray();
         Assert.Equal(
             CommandCatalog.All.Where(command => command.Surface == CommandSurface.Released)
                 .Select(command => command.Name).Order(StringComparer.Ordinal),
@@ -174,6 +219,17 @@ public sealed class HelpCommandTests
             Assert.True(entry.TryGetProperty("usage", out _));
             Assert.Equal("Released", entry.GetProperty("surface").GetString());
         });
+        var catalogGuides = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
+            .Entries.Where(entry => entry.Kind == HelpEntryKind.Guide)
+            .Select(entry => entry.Code).Order(StringComparer.Ordinal);
+        Assert.Equal(catalogGuides, guides.Select(entry => entry.GetProperty("code").GetString()!)
+            .Order(StringComparer.Ordinal));
+        Assert.Contains(entries, entry => entry.GetProperty("kind").GetString() == "guide"
+            && entry.GetProperty("code").GetString() == "agents/start-here"
+            && entry.GetProperty("url").GetString() == "https://motif-docs.pages.dev/guide/agents/start-here/");
+        Assert.Contains(entries, entry => entry.GetProperty("kind").GetString() == "guide"
+            && entry.GetProperty("code").GetString() == "learn/index"
+            && entry.GetProperty("url").GetString() == "https://motif-docs.pages.dev/learn/");
     }
 
     private static CliRun Run(params string[] arguments)

@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SIL.Motif.Tests.Cli" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="..\..\help\**\*">
       <LogicalName>help/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>

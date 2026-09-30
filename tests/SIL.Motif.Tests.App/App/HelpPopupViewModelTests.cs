@@ -40,6 +40,30 @@ public sealed class HelpPopupViewModelTests
     }
 
     [Fact]
+    public void GuideLinkNavigatesToTheCataloguedNestedGuide()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var launcher = new RecordingUriLauncher();
+            var catalog = HelpCatalog.Load();
+            var viewModel = new HelpPopupViewModel(launcher, catalog);
+            var link = new Link();
+            var args = new LinkClickedEventArgs(
+                TestLinkClickEvent, link, new Uri("guide:agents/start-here"));
+
+            viewModel.LinkCommand.Execute(args);
+
+            var entry = Assert.Single(catalog.Entries, candidate =>
+                candidate.Kind == HelpEntryKind.Guide && candidate.Code == "agents/start-here");
+            Assert.Equal(entry.Title, viewModel.Title);
+            Assert.Equal(entry.Description, viewModel.Description);
+            Assert.Equal(entry.Url, viewModel.OnlineUrl);
+            Assert.Contains("Call Motif as", viewModel.Markdown);
+            Assert.Empty(launcher.Launches);
+        });
+    }
+
+    [Fact]
     public void OpenOnlineLaunchesTheGuideUrlForTheCurrentPage()
     {
         _avalonia.Invoke(() =>

@@ -105,8 +105,7 @@ translation task and never a code change.
 
 ## Consequences
 
-- `CommandDescriptor` gains references to its Title, Description and Help page, and the App gains AutomationIds
-  on every control a Walkthrough touches.
+- The CLI joins each command to its Help entry by stable code. HelpCatalog owns titles, descriptions and pages; the App gives Walkthrough controls stable AutomationIds.
 - The screenshot fixture loses its live clock and machine paths.
 - The public assemblies begin emitting XML documentation.
 - Node enters the repository for the site build only; the product build stays .NET.

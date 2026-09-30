@@ -45,7 +45,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     /// <summary>Opens the current help page in the default browser.</summary>
     public IAsyncRelayCommand OpenOnlineCommand { get; }
 
-    /// <summary>Follows a command or term link inside Help, or opens a web link.</summary>
+    /// <summary>Follows a command, term, control, or Guide link inside Help, or opens a web link.</summary>
     public IAsyncRelayCommand<LinkClickedEventArgs> LinkCommand { get; }
 
     /// <summary>Shows the help entry for <paramref name="page"/> or a focused control with catalogued help.</summary>
@@ -87,9 +87,6 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     {
         private static readonly Regex ShotImage = new(
             @"!\[(?<alt>[^\]]*)\]\(shot:[^)]+\)", RegexOptions.CultureInvariant);
-        private static readonly Regex MarkdownLink = new(
-            @"\[(?<text>[^\]]+)\]\([^)]+\)", RegexOptions.CultureInvariant);
-        private static readonly Regex MarkdownMarks = new(@"\*{1,2}|_{1,2}|`", RegexOptions.CultureInvariant);
         private readonly HelpCatalog _catalog;
 
         public HelpContentSource(HelpCatalog catalog) => _catalog = catalog;
@@ -111,11 +108,9 @@ public sealed partial class HelpPopupViewModel : ObservableObject
 
         public HelpPageContent PanGlossPage()
         {
-            var markdown = ReadGuide(_catalog.Locale, "pangloss") ?? ReadGuide("en", "pangloss")
-                ?? throw new InvalidDataException("The PanGloss guide page is missing from the Help resources.");
-            var description = FindDescription(markdown);
-            return new HelpPageContent(FindTitle(markdown), description, PrepareMarkdown(markdown),
-                BuildGuideUrl(_catalog.Locale, "pangloss"));
+            var entry = _catalog.Find(HelpEntryKind.Guide, "pangloss")
+                ?? throw new InvalidDataException("The PanGloss guide page is missing from the Help catalog.");
+            return EntryPage(entry);
         }
 
         public bool TryResolveLink(Uri uri, out HelpPageContent page)
@@ -125,6 +120,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
                 "cmd" => HelpEntryKind.Command,
                 "term" => HelpEntryKind.Term,
                 "ui" => HelpEntryKind.Ui,
+                "guide" => HelpEntryKind.Guide,
                 _ => (HelpEntryKind?)null,
             };
             if (kind is null)
@@ -153,48 +149,14 @@ public sealed partial class HelpPopupViewModel : ObservableObject
 
         private HelpPageContent GuidePage(WorkspacePage page)
         {
-            var slug = GuideSlug(page);
-            var markdown = ReadGuide(_catalog.Locale, slug) ?? ReadGuide("en", slug)
-                ?? throw new InvalidDataException($"The guide page '{slug}' is missing from the Help resources.");
-            var title = FindTitle(markdown);
-            var description = FindDescription(markdown);
-            return new HelpPageContent(title, description, PrepareMarkdown(markdown), BuildGuideUrl(_catalog.Locale, slug));
-        }
-
-        private string? ReadGuide(string locale, string slug)
-        {
-            var resourceName = $"help/{locale}/guide/{slug}.md";
-            var assembly = typeof(HelpCatalog).Assembly;
-            var name = assembly.GetManifestResourceNames().FirstOrDefault(candidate =>
-                string.Equals(candidate.Replace('\\', '/'), resourceName, StringComparison.Ordinal));
-            if (name is null) return null;
-            using var stream = assembly.GetManifestResourceStream(name);
-            if (stream is null) return null;
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
-
-        private static string FindTitle(string markdown) =>
-            markdown.Split('\n').Select(line => line.TrimEnd('\r'))
-                .FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal))?[2..].Trim()
-            ?? throw new InvalidDataException("A guide page must start with a title heading.");
-
-        private static string FindDescription(string markdown)
-        {
-            var lines = markdown.Split('\n').Select(line => line.TrimEnd('\r')).ToArray();
-            var titleIndex = Array.FindIndex(lines, line => line.StartsWith("# ", StringComparison.Ordinal));
-            var paragraph = lines.Skip(titleIndex + 1).SkipWhile(string.IsNullOrWhiteSpace)
-                .TakeWhile(line => !string.IsNullOrWhiteSpace(line));
-            var text = string.Join(" ", paragraph).Trim();
-            text = MarkdownLink.Replace(text, "${text}");
-            return MarkdownMarks.Replace(text, string.Empty);
+            var code = GuideCode(page);
+            var entry = _catalog.Find(HelpEntryKind.Guide, code)
+                ?? throw new InvalidDataException($"The guide page '{code}' is missing from the Help catalog.");
+            return EntryPage(entry);
         }
 
         private static string PrepareMarkdown(string markdown) =>
             ShotImage.Replace(markdown, "${alt}");
-
-        private static string BuildGuideUrl(string locale, string slug) =>
-            HelpCatalog.SiteRoot + (locale == "en" ? string.Empty : "/" + locale) + "/guide/" + slug + "/";
 
         private static string PageCode(WorkspacePage page) => page switch
         {
@@ -208,7 +170,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
-        private static string GuideSlug(WorkspacePage page) => page switch
+        private static string GuideCode(WorkspacePage page) => page switch
         {
             WorkspacePage.Overview => "overview",
             WorkspacePage.Texts => "texts",
