@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440">
-  <path d="M40 250 q-6-70 60-96 q70-22 110 30 q40 60-6 116 q-50 52-116 24 q-44-20-48-74z" fill="#FAF9F5"/>
-  <path d="M360 60 l150 4 q14 2 12 18 l-8 150 q-2 14-18 12 l-146-6 q-14-2-12-18 l6-148 q2-14 16-12z" fill="#FAF9F5"/>
-  <path d="M130 250 C 180 230, 220 200, 262 190" fill="none" stroke="#141413" stroke-width="12" stroke-linecap="round"/>
-  <path d="M318 176 C 350 168, 390 160, 430 150" fill="none" stroke="#141413" stroke-width="12" stroke-linecap="round"/>
-  <circle cx="130" cy="252" r="18" fill="#141413"/><circle cx="432" cy="150" r="18" fill="#141413"/>
+  <path d="M40 236 q0-26 26-26 l170 0 q26 0 26 26 l0 88 q0 26-26 26 l-120 0 l-44 40 l6-40 l-12 0 q-26 0-26-26z" fill="#F9FAFB"/>
+  <path d="M310 64 q0-26 26-26 l170 0 q26 0 26 26 l0 96 q0 26-26 26 l-12 0 l6 42 l-46-42 l-118 0 q-26 0-26-26z" fill="#F9FAFB"/>
+  <g fill="none" stroke="#003049" stroke-linecap="round">
+    <path d="M78 262 q20-14 40 0 t40 0 M180 262 l40 0 M78 298 l56 0 M156 298 q16-12 32 0 t32 0" stroke-width="9"/>
+    <path d="M350 92 l54 0 M426 92 q18-14 36 0 t36 0 M350 128 q20-14 40 0 t40 0 M452 128 l46 0" stroke-width="9"/>
+    <path d="M250 200 C 270 170, 290 160, 306 150" stroke-width="7" stroke-dasharray="2 18"/>
+  </g>
 </svg>

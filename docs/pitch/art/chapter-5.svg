@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440">
-  <ellipse cx="110" cy="360" rx="70" ry="30" fill="#FAF9F5"/>
-  <ellipse cx="250" cy="280" rx="64" ry="28" fill="#FAF9F5"/>
-  <ellipse cx="370" cy="190" rx="58" ry="26" fill="#FAF9F5"/>
-  <ellipse cx="470" cy="100" rx="52" ry="24" fill="#FAF9F5"/>
-  <path d="M110 350 C 150 300, 200 320, 250 272 S 330 200, 370 184 S 440 120, 470 94" fill="none" stroke="#141413" stroke-width="10" stroke-linecap="round" stroke-dasharray="2 26"/>
-  <circle cx="110" cy="352" r="16" fill="#141413"/>
-  <path d="M470 94 l0-70 M470 24 l40 14 l-40 14" fill="none" stroke="#141413" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="110" cy="360" rx="70" ry="30" fill="#F9FAFB"/>
+  <ellipse cx="250" cy="280" rx="64" ry="28" fill="#F9FAFB"/>
+  <ellipse cx="370" cy="190" rx="58" ry="26" fill="#F9FAFB"/>
+  <ellipse cx="470" cy="100" rx="52" ry="24" fill="#F9FAFB"/>
+  <path d="M110 350 C 150 300, 200 320, 250 272 S 330 200, 370 184 S 440 120, 470 94" fill="none" stroke="#003049" stroke-width="10" stroke-linecap="round" stroke-dasharray="2 26"/>
+  <circle cx="110" cy="352" r="16" fill="#003049"/>
+  <path d="M470 94 l0-70 M470 24 l40 14 l-40 14" fill="none" stroke="#003049" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

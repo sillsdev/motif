@@ -86,8 +86,25 @@ Research checked 29 September 2026. “Date not displayed” means the source pa
 
 - A 2006 XAMPLE paper reports 140 words/second on a full Southeastern Puebla Nahuatl description and 4.9 words/second on a related Orizaba Nahuatl description. This is a historical XAMPLE/PC-PATR result on the paper’s hardware, not a HermitCrab or modern FLEx benchmark. [The SIL FieldWorks Language Explorer Approach to Morphological Parsing](https://web.stanford.edu/group/cslipublications/cslipublicationsTLS/TLS10-2006/TLS10_Black_Simons.pdf). **Source date:** 2006.
 - FieldWorks help says ordering HermitCrab strata can improve parsing speed, while trying templates and processes in all possible orders can affect performance. It provides no general throughput or latency benchmark. [Strata as a String in HermitCrab properties](https://downloads.languagetechnology.org/fieldworks/Documentation/en/User_Interface/Menus/Parser/Strata_as_a_String_in_the_Hermit_Crab_properties.htm). **Source date:** help page date not displayed; accessed 2026-09-29.
-- A 2024 FLEx-list forum post reports a user’s “Try Word” parse taking up to 20 minutes in their project. This is a user report, not a controlled test or typical performance estimate. [FLEx-list thread](https://groups.google.com/g/flex-list/c/pkxCwIxIktg). **Source date:** 2024-04; accessed 2026-09-29.
+- A 2024 FLEx-list forum post reports a user’s “Try Word” parse taking up to 20 minutes in their project, an Aweti grammar, even for bare stems. This is a user report, not a controlled test or typical performance estimate. [FLEx-list thread](https://groups.google.com/g/flex-list/c/pkxCwIxIktg). **Source date:** 2024-07-04 to 2024-07-05; accessed 2026-09-29.
+- HermitCrab's maintainers report 5–10× speedups from algorithm work in SIL.Machine. **Source:** the pitch's owner, September 2026; cite the Machine commits or release notes before quoting a specific figure outside SIL.
 - I found no modern published HermitCrab/FLEx controlled performance benchmark. Do not use the XAMPLE number as a current target or represent a single forum complaint as typical.
+
+## 13. History of SIL parsing
+
+The pitch presents PanGloss and Motif as a continuation of this lineage. Items marked *unverified* must not be stated as fact.
+
+- 1988: Weber, Black and McConnel, *AMPLE: A Tool for Exploring Morphology* (SIL Occasional Publications in Academic Computing 12). Weber (ACL W89-0231, 1989) says AMPLE grew out of computer-assisted dialect adaptation (CARLA, with STAMP).
+- 1990: Antworth, *PC-KIMMO: a two-level processor for morphological analysis*, SIL.
+- 1994: Maxwell, "Parsing Using Linearly Ordered Phonological Rules" (ACL W94-0206). 1998: Maxwell, "Two Theories of Morphology, One Implementation", SIL Electronic Working Papers 1998-001, which Andy Black's *Conceptual Introduction* cites as HermitCrab's source. Hermit Crab's original implementation language is *unverified*.
+- 2006: Black and Simons, "The SIL FieldWorks Language Explorer Approach to Morphological Parsing" (link in section 12).
+- 2009-05-15: FLEx-list announcement of FieldWorks 6.0 / Language Explorer 3.0, adding phonological rules and "an alternative parser called 'Hermit crab'".
+- 2010-04-23: Andy Black on FLEx-list (thread 1IUnphVdJmk): the original Hermit Crab "had only been applied to test data"; Damien Daspit "did the lion's share of the work". FLEx help: "We are deeply indebted to Mike for his pioneering work on this parser."
+- 2011–2016: Daspit's C# HermitCrab (first Machine commit 2011-05-11), merged into SIL.Machine in 2016; Daspit and John T. Maxwell III are its main authors in Machine's history. John T. Maxwell III is not Mike Maxwell.
+- 2015: Ron Lockwood creates FLExTrans ([about](https://software.sil.org/flextrans/about)).
+- 2026: John T. Maxwell III lands "Add ability to limit HermitCrab parses" (LT-22605) and "Parse only words without an approved analysis" (LT-22015) in FieldWorks.
+- Grammars in use or under way: FLExTrans for Ayta Mag-Antsi (SIL blog, 2024-02-21) and Quechua languages in Peru ([ai.sil.org](https://ai.sil.org/projects/flextrans)); a Manila FLEx parser workshop, 2025-08-11 to 22, with 12 participants, and a Nairobi workshop planned for 2026-08 (DLS newsletter, Fall 2025).
+- *Unverified*: "11 language communities receiving Scripture drafts via FLExTrans" came from an untraceable search snippet; confirm with Ron Lockwood before use.
 
 ## Top 12 sourced facts for the pitch
 
