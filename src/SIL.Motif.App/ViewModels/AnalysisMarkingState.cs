@@ -182,8 +182,7 @@ public sealed record AnalysisMarkingState(
     {
         ArgumentNullException.ThrowIfNull(token);
         var stored = token.StoredAnalyses.Select(analysis => new FieldWorksAnalysisMarking(
-            analysis.StoredAnalysisId ?? string.Empty,
-            analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate,
+            analysis.StoredAnalysisId ?? string.Empty, NormalizeOpinion(analysis.StoredAnalysisOpinion),
             analysis.Morphs)).ToArray();
         var parses = result?.Morphology?.Analyses ?? [];
         var renderings = result?.Readings;
@@ -193,7 +192,7 @@ public sealed record AnalysisMarkingState(
             var matches = token.StoredAnalyses.Where(storedAnalysis =>
                 storedAnalysis.Identity is { } identity && AnalysisMorphologyMatcher.Matches(analysis, identity))
                 .ToArray();
-            var opinions = matches.Select(match => match.StoredAnalysisOpinion ?? ReadingGrade.Candidate)
+            var opinions = matches.Select(match => NormalizeOpinion(match.StoredAnalysisOpinion))
                 .Distinct(StringComparer.Ordinal).ToArray();
             return new PanGlossReadingMarking(analysis,
                 display,
@@ -207,6 +206,14 @@ public sealed record AnalysisMarkingState(
         return new AnalysisMarkingState(stored, markingClass, readings, primary, fixes, [],
             false, false, isUnread);
     }
+
+    private static string NormalizeOpinion(string? opinion) =>
+        opinion switch
+        {
+            "unknown" => ReadingGrade.Candidate,
+            null => ReadingGrade.Candidate,
+            _ => opinion,
+        };
 
     /// <summary>Builds the shared marking state from the resolved evidence for one Assessment word.</summary>
     public static AnalysisMarkingState Create(AssessmentWordResult result)

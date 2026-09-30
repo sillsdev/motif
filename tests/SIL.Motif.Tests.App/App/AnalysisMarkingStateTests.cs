@@ -17,6 +17,8 @@ public sealed class AnalysisMarkingStateTests
             AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, AnalysisMarkingActionKind.Approve, "Approve", ChangeKinds.Approve, true],
+        [Token(Stored(Book, "unknown", "stored-1")), Result("same", Book),
+            AnalysisMarkingClass.Same, AnalysisMarkingActionKind.Approve, "Approve", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"),
             AnalysisMarkingClass.None, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(), Result("new", Child), AnalysisMarkingClass.Different,
