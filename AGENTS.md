@@ -33,7 +33,10 @@ worker, and parser child processes. Opening two LibLCM caches at once inside one
 class that opens one shares the serialized `LcmCacheTestCollection` in its test assembly. Separate test
 processes cannot race, so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.csproj` is
 split by test class into N processes (`ShardedTestFramework`, driven by `MOTIF_TEST_SHARD=index/count`), and its
-LibLCM tests run N at a time. A bare `dotnet test` leaves the variable unset and runs every test.
+LibLCM tests run N at a time. Classes go to shards by the seconds `tests/test-shard-weights.json` records
+(`MOTIF_TEST_SHARD_WEIGHTS`), heaviest first; after a full run that leaves one shard far behind the others,
+renew it with `tools/Update-TestShardWeights.ps1` and commit it. A bare `dotnet test` leaves the variables unset and
+runs every test.
 Each process writes its console log to `bin/<Configuration>/test-results/<run>.log` and its TRX to
 `bin/<Configuration>/test-results/<run>/<run>.trx`, where `<run>` is the project name, or
 `<project>.shard<i>` for a sharded project. When a run fails, open that process's log first.

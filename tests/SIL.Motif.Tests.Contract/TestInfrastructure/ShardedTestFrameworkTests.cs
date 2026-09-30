@@ -27,6 +27,26 @@ public sealed class ShardedTestFrameworkTests
         Assert.Equal(0, ShardedTestFramework.ShardOf("SIL.Motif.Tests.Cli.PendingApplyArgvTests", 1));
     }
 
+    [Fact]
+    public void WeightsDealTheHeaviestClassesApart()
+    {
+        var weights = new Dictionary<string, double> { ["A"] = 100, ["B"] = 90, ["C"] = 20, ["D"] = 10 };
+
+        var assignment = ShardedTestFramework.Assign(["D", "C", "B", "A", "E"], 2, weights);
+
+        Assert.NotEqual(assignment["A"], assignment["B"]);
+        Assert.Equal(assignment["B"], assignment["C"]);
+        Assert.Equal(assignment["A"], assignment["D"]);
+        Assert.Equal(assignment["A"], assignment["E"]);
+        Assert.Equal(assignment, ShardedTestFramework.Assign(["E", "A", "B", "C", "D"], 2, weights));
+    }
+
+    [Fact]
+    public void WithoutWeightsAClassKeepsItsHashedShard() =>
+        Assert.Equal(ShardedTestFramework.ShardOf("SIL.Motif.Tests.Cli.PendingApplyArgvTests", 4),
+            ShardedTestFramework.Assign(["SIL.Motif.Tests.Cli.PendingApplyArgvTests"], 4, null)
+                ["SIL.Motif.Tests.Cli.PendingApplyArgvTests"]);
+
     [Theory]
     [InlineData(null, null, null)]
     [InlineData("", null, null)]

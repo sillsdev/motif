@@ -1,6 +1,5 @@
 using SIL.Motif.Tests.TestFixtures;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using SIL.Motif.Cli;
@@ -226,28 +225,9 @@ public sealed class ReleaseSurfaceTests : IDisposable
 
     private CliRun Run(string arguments, bool developerCommands)
     {
-        var executable = BuildOutput.Cli;
-        var start = new ProcessStartInfo(executable)
-        {
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        start.Environment[RunnerOptions.RootVariable] = Path.Combine(_root, "machine");
-        if (developerCommands)
-            start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-        else
-            start.Environment.Remove("MOTIF_DEVELOPER_COMMANDS");
-
-        using var process = Process.Start(start)!;
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        var output = outputTask.GetAwaiter().GetResult();
-        var error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.WaitForExit(60000), "The CLI did not exit within its bound.");
-        return new CliRun(process.ExitCode, output, error);
+        var result = CliInProcess.RunCommandLine(
+            Path.Combine(_root, "machine"), FakeParser.ExecutablePath, developerCommands, arguments);
+        return new CliRun(result.ExitCode, result.Output, result.Error);
     }
 
     private sealed record CliRun(int ExitCode, string Output, string Error);

@@ -4,14 +4,20 @@
     "words": 16,
     "parsed": 16,
     "textCoverage": 1,
-    "work": 9116,
-    "steps": 191,
-    "wallClockMs": 19247,
+    "work": 3414,
+    "steps": 56,
+    "wallClockMs": 1503,
     "slowestWords": [
       "adamlar\u0131nda",
       "geldi",
-      "okullar\u0131nda",
-      "telefonlar"
+      "kediyi",
+      "okullar\u0131nda"
+    ],
+    "tracedWords": [
+      "adamlar\u0131nda",
+      "geldi",
+      "kediyi",
+      "okullar\u0131nda"
     ],
     "failing": {}
   },
@@ -19,15 +25,7 @@
     "words": 16,
     "parsed": 10,
     "textCoverage": 0.625,
-    "work": 104147,
-    "steps": 2418,
-    "wallClockMs": 11861,
-    "slowestWords": [
-      "adamlar\u0131nda",
-      "geldi",
-      "okullar\u0131nda",
-      "telefonlar"
-    ],
+    "wallClockMs": 2569,
     "failing": {
       "g\u00FCnler": "plural-front-class-too-narrow",
       "adamlar\u0131nda": "possessive-before-plural",
@@ -42,46 +40,43 @@
       "words": 16,
       "parsed": 16,
       "textCoverage": 1,
-      "work": 9116,
-      "steps": 191,
-      "wallClockMs": 19247,
+      "work": 3414,
+      "steps": 56,
+      "wallClockMs": 1503,
       "slowestWords": [
         "adamlar\u0131nda",
         "geldi",
-        "okullar\u0131nda",
-        "telefonlar"
+        "kediyi",
+        "okullar\u0131nda"
+      ],
+      "tracedWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "kediyi",
+        "okullar\u0131nda"
       ],
       "failing": {}
     },
     "plural-front-class-too-narrow": {
-      "words": 16,
-      "parsed": 15,
-      "textCoverage": 0.9375,
-      "work": 9108,
-      "steps": 191,
-      "wallClockMs": 12405,
-      "slowestWords": [
-        "adamlar\u0131nda",
-        "geldi",
-        "okullar\u0131nda",
-        "telefonlar"
+      "words": 1,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 1587,
+      "selectedWords": [
+        "g\u00FCnler"
       ],
       "failing": {
         "g\u00FCnler": "plural-front-class-too-narrow"
       }
     },
     "possessive-before-plural": {
-      "words": 16,
-      "parsed": 14,
-      "textCoverage": 0.875,
-      "work": 9154,
-      "steps": 194,
-      "wallClockMs": 15947,
-      "slowestWords": [
+      "words": 2,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 1520,
+      "selectedWords": [
         "adamlar\u0131nda",
-        "geldi",
-        "okullar\u0131nda",
-        "telefonlar"
+        "okullar\u0131nda"
       ],
       "failing": {
         "adamlar\u0131nda": "possessive-before-plural",
@@ -89,17 +84,14 @@
       }
     },
     "missing-vowel-final-y-allomorphs": {
-      "words": 16,
-      "parsed": 13,
-      "textCoverage": 0.8125,
-      "work": 8102,
-      "steps": 180,
-      "wallClockMs": 11738,
-      "slowestWords": [
-        "adamlar\u0131nda",
-        "geldi",
-        "okullar\u0131nda",
-        "telefonlar"
+      "words": 3,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 1583,
+      "selectedWords": [
+        "kediye",
+        "kediyi",
+        "masaya"
       ],
       "failing": {
         "kediye": "missing-vowel-final-y-allomorphs",
@@ -108,13 +100,25 @@
       }
     },
     "duplicated-active-noun-templates": {
-      "words": 16,
-      "parsed": 16,
+      "words": 6,
+      "parsed": 6,
       "textCoverage": 1,
-      "work": 120176,
-      "steps": 2546,
-      "wallClockMs": 12384,
+      "work": 46734,
+      "steps": 776,
+      "wallClockMs": 2541,
+      "selectedWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "kediyi",
+        "okullar\u0131nda"
+      ],
       "slowestWords": [
+        "adamlar\u0131nda",
+        "geldi",
+        "kediyi",
+        "okullar\u0131nda"
+      ],
+      "tracedWords": [
         "adamlar\u0131nda",
         "geldi",
         "kediyi",
@@ -126,15 +130,7 @@
       "words": 16,
       "parsed": 10,
       "textCoverage": 0.625,
-      "work": 104147,
-      "steps": 2418,
-      "wallClockMs": 11861,
-      "slowestWords": [
-        "adamlar\u0131nda",
-        "geldi",
-        "okullar\u0131nda",
-        "telefonlar"
-      ],
+      "wallClockMs": 2569,
       "failing": {
         "g\u00FCnler": "plural-front-class-too-narrow",
         "adamlar\u0131nda": "possessive-before-plural",

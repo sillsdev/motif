@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text;
 using Xunit.Abstractions;
 using Xunit.Sdk;
@@ -23,11 +24,26 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// contents do not depend on discovery order and a failing shard reruns the same classes. Unset, every test
 /// runs, which is how a bare <c>dotnet test</c> behaves. Pinned by <c>ShardsPartitionEveryClassExactlyOnce</c>.
 /// </para>
+/// <para>
+/// A hash balances test classes, not seconds, and a few slow classes can land together. When
+/// <see cref="WeightsVariable"/> names a file of recorded class durations, the classes are instead dealt out
+/// heaviest first, each to the lightest shard so far. Every shard process reads the same file and discovers the
+/// same classes, so they agree on the deal. A class the file does not know weighs <see cref="UnknownWeight"/>
+/// seconds, so a stale file costs balance, never a test. Pinned by <c>WeightsDealTheHeaviestClassesApart</c>.
+/// </para>
 /// </remarks>
 public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFramework(messageSink)
 {
     /// <summary>The environment variable naming the shard to run, as <c>index/count</c>.</summary>
     public const string ShardVariable = "MOTIF_TEST_SHARD";
+
+    /// <summary>
+    /// The environment variable naming a JSON file that maps test class full names to recorded seconds.
+    /// </summary>
+    public const string WeightsVariable = "MOTIF_TEST_SHARD_WEIGHTS";
+
+    /// <summary>The seconds a class missing from the weights file is assumed to take.</summary>
+    public const double UnknownWeight = 1.0;
 
     /// <inheritdoc />
     protected override ITestFrameworkExecutor CreateExecutor(AssemblyName assemblyName) =>
@@ -59,6 +75,40 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
         return (int)(BitConverter.ToUInt32(digest, 0) % (uint)count);
     }
 
+    /// <summary>
+    /// Assigns each of <paramref name="classNames"/> to one of <paramref name="count"/> shards: by
+    /// <see cref="ShardOf"/> without <paramref name="weights"/>, and heaviest first to the lightest shard with them.
+    /// </summary>
+    public static IReadOnlyDictionary<string, int> Assign(
+        IEnumerable<string> classNames, int count, IReadOnlyDictionary<string, double>? weights)
+    {
+        var names = classNames.Distinct(StringComparer.Ordinal).ToArray();
+        if (weights is null) return names.ToDictionary(name => name, name => ShardOf(name, count), StringComparer.Ordinal);
+
+        var load = new double[count];
+        var assignment = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var name in names
+                     .OrderByDescending(name => weights.TryGetValue(name, out var seconds) ? seconds : UnknownWeight)
+                     .ThenBy(name => name, StringComparer.Ordinal))
+        {
+            var lightest = 0;
+            for (var shard = 1; shard < count; shard++)
+                if (load[shard] < load[lightest]) lightest = shard;
+            load[lightest] += weights.TryGetValue(name, out var weight) ? weight : UnknownWeight;
+            assignment[name] = lightest;
+        }
+        return assignment;
+    }
+
+    /// <summary>Reads the file <see cref="WeightsVariable"/> names, or returns <see langword="null"/> when it is unset.</summary>
+    public static IReadOnlyDictionary<string, double>? CurrentWeights()
+    {
+        var path = Environment.GetEnvironmentVariable(WeightsVariable);
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        return JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(path))
+            ?? throw new InvalidOperationException($"{WeightsVariable} names '{path}', which holds no weights.");
+    }
+
     private sealed class ShardedExecutor(
         AssemblyName assemblyName, ISourceInformationProvider sourceInformationProvider, IMessageSink diagnosticMessageSink)
         : XunitTestFrameworkExecutor(assemblyName, sourceInformationProvider, diagnosticMessageSink)
@@ -68,10 +118,17 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
             ITestFrameworkExecutionOptions executionOptions)
         {
             var shard = CurrentShard();
-            var selected = shard is { } s
-                ? testCases.Where(testCase => ShardOf(testCase.TestMethod.TestClass.Class.Name, s.Count) == s.Index)
-                : testCases;
-            base.RunTestCases(selected, executionMessageSink, executionOptions);
+            if (shard is not { } s)
+            {
+                base.RunTestCases(testCases, executionMessageSink, executionOptions);
+                return;
+            }
+            var cases = testCases.ToArray();
+            var assignment = Assign(cases.Select(ClassOf), s.Count, CurrentWeights());
+            base.RunTestCases(cases.Where(testCase => assignment[ClassOf(testCase)] == s.Index),
+                executionMessageSink, executionOptions);
         }
+
+        private static string ClassOf(IXunitTestCase testCase) => testCase.TestMethod.TestClass.Class.Name;
     }
 }

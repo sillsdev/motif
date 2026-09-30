@@ -23,7 +23,9 @@
   capacity for their work. Classes that open a LibLCM cache share a serialized xUnit collection within their
   assembly, because two caches opening in one process race; a project that declares
   <MotifTestShards>N</MotifTestShards> is split by test class into N processes, which cannot race, so its
-  LibLCM tests run N at a time. Projects are discovered from Motif.sln and their IsTestProject declarations.
+  LibLCM tests run N at a time. Classes are dealt to shards by the seconds tests/test-shard-weights.json records
+  for them (renew it with tools/Update-TestShardWeights.ps1 after a full run); a class the file does not know
+  still runs. Projects are discovered from Motif.sln and their IsTestProject declarations.
   New test projects are included automatically.
 
   No process the run starts can show a Windows crash dialog. The script sets the error mode that suppresses
@@ -70,6 +72,12 @@ $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 $testsRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'tests')) + [IO.Path]::DirectorySeparatorChar
 $env:MOTIF_DEVELOPER_COMMANDS = '1'
+# Short-lived, oversubscribed test processes spend CPU on tiering and spinning: 4 suites used 25% less without.
+$env:DOTNET_TieredPGO = '0'
+$env:DOTNET_ThreadPool_UnfairSemaphoreSpinLimit = '0'
+# Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
+$shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
+if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
 
 function Write-Step {
     param([string] $Text)

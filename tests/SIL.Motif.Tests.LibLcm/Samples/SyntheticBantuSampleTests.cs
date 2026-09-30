@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
@@ -74,19 +75,22 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             using var bugs = JsonDocument.Parse(await File.ReadAllTextAsync(bugsPath));
             var definitions = bugs.RootElement.EnumerateArray().ToArray();
             var bugIds = definitions.Select(bug => bug.GetProperty("id").GetString()!).ToArray();
-            var textCount = spec.RootElement.GetProperty("texts").EnumerateArray()
-                .Sum(text => text.GetProperty("sentences").EnumerateArray()
-                    .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                    .Distinct(StringComparer.Ordinal).Count());
+            var wordOccurrences = WordOccurrencesByText(spec.RootElement);
+            var textCount = wordOccurrences.Values.Sum();
+            var parserProbeWords = definitions
+                .Where(bug => bug.GetProperty("symptom").GetProperty("kind").GetString() == "slow")
+                .SelectMany(bug => bug.GetProperty("symptom").GetProperty("words").EnumerateArray())
+                .Select(word => word.GetString()!)
+                .ToHashSet(StringComparer.Ordinal);
 
             using var fixedBuild = await BuildVariantAsync(root, specPath, bugsPath, [], "fixed");
-            var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement);
+            var fixedResult = await AssessTextsAsync(root, fixedBuild.RootElement, wordOccurrences,
+                traceWords: parserProbeWords);
             Assert.Equal(textCount, fixedResult.Words);
             Assert.True(fixedResult.Words == fixedResult.Parsed,
                 $"Fixed sample has unparsed words: {string.Join(", ", fixedResult.Outcomes.Where(pair => pair.Value != "analysed").Select(pair => pair.Key))}");
             var fixedGrammar = ReadGrammarFindings(fixedBuild.RootElement);
             Assert.DoesNotContain(fixedGrammar, finding => finding.Level == "error");
-            WriteGrammarFindings(output, "fixed", fixedGrammar);
 
             var variantResults = new Dictionary<string, AssessmentSnapshot>(StringComparer.Ordinal)
             {
@@ -96,35 +100,37 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             {
                 ["fixed"] = new(StringComparer.Ordinal),
             };
-            var grammarFindings = new Dictionary<string, GrammarFindingExpected[]>(StringComparer.Ordinal)
-            {
-                ["fixed"] = fixedGrammar,
-            };
             var declaredFailures = new Dictionary<string, string>(StringComparer.Ordinal);
 
             foreach (var bug in definitions)
             {
                 var bugId = bug.GetProperty("id").GetString()!;
-                using var variantBuild = await BuildVariantAsync(root, specPath, bugsPath, [bugId], bugId);
-                var result = await AssessTextsAsync(root, variantBuild.RootElement);
-                variantResults.Add(bugId, result);
-                var findings = ReadGrammarFindings(variantBuild.RootElement);
-                grammarFindings.Add(bugId, findings);
-                WriteGrammarFindings(output, bugId, findings);
-                var actualFailures = result.Outcomes.Where(pair => pair.Value != "analysed")
-                    .Select(pair => pair.Key).Order(StringComparer.Ordinal).ToArray();
                 var symptom = bug.GetProperty("symptom");
                 var expectedWords = symptom.GetProperty("words").EnumerateArray()
                     .Select(word => word.GetString()!).Order(StringComparer.Ordinal).ToArray();
-
+                using var variantBuild = await BuildVariantAsync(root, specPath, bugsPath, [bugId], bugId);
+                var traceWords = symptom.GetProperty("kind").GetString() == "slow"
+                    ? expectedWords.ToHashSet(StringComparer.Ordinal)
+                    : null;
+                var assessmentWords = expectedWords.ToHashSet(StringComparer.Ordinal);
+                var result = await AssessTextsAsync(root, variantBuild.RootElement, wordOccurrences,
+                    assessmentWords, traceWords);
+                Assert.Equal(expectedWords, result.Outcomes.Keys.Order(StringComparer.Ordinal));
+                variantResults.Add(bugId, result);
+                var actualFailures = result.Outcomes.Where(pair => pair.Value != "analysed")
+                    .Select(pair => pair.Key).Order(StringComparer.Ordinal).ToArray();
                 if (symptom.GetProperty("kind").GetString() == "slow")
                 {
                     Assert.Empty(actualFailures);
                     variantFailures.Add(bugId, new(StringComparer.Ordinal));
                     Assert.All(expectedWords, word => Assert.Contains(word, result.Outcomes.Keys));
+                    var brokenWork = result.Work.GetValueOrDefault();
+                    var fixedWork = fixedResult.Work.GetValueOrDefault();
+                    Assert.True(result.Work.HasValue && fixedResult.Work.HasValue,
+                        "Both slow-variant measurements must trace their declared words.");
                     output.WriteLine(
-                        $"slow variant work={result.Work}; fixed work={fixedResult.Work}; ratio={(double)result.Work / fixedResult.Work:F2}x; steps={result.Steps}/{fixedResult.Steps}");
-                    Assert.True(result.Work >= fixedResult.Work * 10,
+                        $"slow variant work={brokenWork}; fixed work={fixedWork}; ratio={(double)brokenWork / fixedWork:F2}x; steps={result.Steps}/{fixedResult.Steps}");
+                    Assert.True(brokenWork >= fixedWork * 10,
                         $"Slow bug '{bugId}' needs 10x parser work; fixed={fixedResult}, broken={result}.");
                 }
                 else
@@ -140,11 +146,8 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             }
 
             using var brokenBuild = await BuildVariantAsync(root, specPath, bugsPath, bugIds, "all-bugs");
-            var brokenResult = await AssessTextsAsync(root, brokenBuild.RootElement);
+            var brokenResult = await AssessTextsAsync(root, brokenBuild.RootElement, wordOccurrences);
             variantResults.Add("all-bugs", brokenResult);
-            var combinedGrammar = ReadGrammarFindings(brokenBuild.RootElement);
-            grammarFindings.Add("all-bugs", combinedGrammar);
-            WriteGrammarFindings(output, "all-bugs", combinedGrammar);
             var combinedFailures = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var word in brokenResult.Outcomes.Where(pair => pair.Value != "analysed")
                          .Select(pair => pair.Key).Order(StringComparer.Ordinal))
@@ -157,10 +160,10 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
 
             var expected = new SampleExpected(
                 spec.RootElement.GetProperty("disclaimer").GetString()!,
-                ToExpected(fixedResult, grammarFindings: fixedGrammar),
-                ToExpected(brokenResult, combinedFailures, combinedGrammar),
+                ToExpected(fixedResult),
+                ToExpected(brokenResult, combinedFailures),
                 variantResults.ToDictionary(pair => pair.Key,
-                    pair => ToExpected(pair.Value, variantFailures[pair.Key], grammarFindings[pair.Key]),
+                    pair => ToExpected(pair.Value, variantFailures[pair.Key]),
                     StringComparer.Ordinal));
             var json = JsonSerializer.Serialize(expected, ExpectedJsonOptions);
             if (Environment.GetEnvironmentVariable("MOTIF_SAMPLES_UPDATE_EXPECTED") == "1")
@@ -202,65 +205,97 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
         return JsonDocument.Parse(result.StandardOutput);
     }
 
-    private static async Task<AssessmentSnapshot> AssessTextsAsync(string root, JsonElement buildResult)
+    private static async Task<AssessmentSnapshot> AssessTextsAsync(
+        string root, JsonElement buildResult, IReadOnlyDictionary<string, int> wordOccurrences,
+        IReadOnlySet<string>? assessmentWords = null, IReadOnlySet<string>? traceWords = null)
     {
         var outcomes = new Dictionary<string, string>(StringComparer.Ordinal);
         var wordWork = new Dictionary<string, long>(StringComparer.Ordinal);
+        var tracedWords = traceWords is null ? null : new HashSet<string>(StringComparer.Ordinal);
         var words = 0;
         var parsed = 0;
         var work = 0L;
         var steps = 0L;
-        var wallClockMs = 0L;
         var assessmentId = Guid.NewGuid().ToString("N")[..8];
-        using var invoker = new PanGlossInvoker();
-        var tracer = new PanGlossTracer(invoker);
-
-        foreach (var text in buildResult.GetProperty("texts").EnumerateArray())
+        var assess = new ProcessStartInfo(BuildOutput.Cli)
         {
-            var textId = text.GetProperty("id").GetString()!;
-            var assess = new ProcessStartInfo(BuildOutput.Cli)
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "w", assessmentId, textId);
-            assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
-            assess.ArgumentList.Add("assess");
-            assess.ArgumentList.Add(buildResult.GetProperty("projectPath").GetString()!);
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        assess.Environment["MOTIF_WORKER_ROOT"] = Path.Combine(root, "w", assessmentId);
+        assess.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
+        assess.ArgumentList.Add("assess");
+        assess.ArgumentList.Add(buildResult.GetProperty("projectPath").GetString()!);
+        if (assessmentWords is null)
+        {
             assess.ArgumentList.Add("--texts");
-            assess.ArgumentList.Add(text.GetProperty("guid").GetString()!);
-            assess.ArgumentList.Add("--json");
-            var stopwatch = Stopwatch.StartNew();
-            var assessment = await RunAsync(assess);
-            stopwatch.Stop();
-            wallClockMs += stopwatch.ElapsedMilliseconds;
-            Assert.True(assessment.ExitCode == 0, assessment.StandardError);
+            assess.ArgumentList.Add(string.Join(',', buildResult.GetProperty("texts").EnumerateArray()
+                .Select(text => text.GetProperty("guid").GetString())));
+        }
+        else
+        {
+            var workerRoot = Path.Combine(root, "w");
+            Directory.CreateDirectory(workerRoot);
+            var wordsPath = Path.Combine(workerRoot, assessmentId + ".words");
+            await File.WriteAllLinesAsync(wordsPath, assessmentWords.Order(StringComparer.Ordinal));
+            assess.ArgumentList.Add("--words");
+            assess.ArgumentList.Add(wordsPath);
+        }
+        assess.ArgumentList.Add("--json");
+        var stopwatch = Stopwatch.StartNew();
+        var assessment = await RunAsync(assess);
+        stopwatch.Stop();
+        Assert.True(assessment.ExitCode == 0, assessment.StandardError);
 
-            using var response = JsonDocument.Parse(assessment.StandardOutput);
-            foreach (var word in response.RootElement.GetProperty("words").EnumerateArray())
-            {
-                var form = word.GetProperty("word").GetString()!;
-                var normalized = form.Normalize(NormalizationForm.FormC);
-                var outcome = word.GetProperty("outcome").GetString()!;
-                words++;
-                if (outcomes.TryGetValue(normalized, out var previous))
-                    Assert.Equal(previous, outcome);
-                else
-                    outcomes.Add(normalized, outcome);
-                if (outcome == "analysed") parsed++;
+        using var invoker = traceWords is null ? null : new PanGlossInvoker();
+        var tracer = invoker is null ? null : new PanGlossTracer(invoker);
+        using var response = JsonDocument.Parse(assessment.StandardOutput);
+        foreach (var word in response.RootElement.GetProperty("words").EnumerateArray())
+        {
+            var form = word.GetProperty("word").GetString()!;
+            var normalized = form.Normalize(NormalizationForm.FormC);
+            var outcome = word.GetProperty("outcome").GetString()!;
+            var occurrenceCount = wordOccurrences.GetValueOrDefault(normalized);
+            Assert.True(occurrenceCount > 0, $"Assessment returned undeclared sample word '{form}'.");
+            words += occurrenceCount;
+            if (outcomes.TryGetValue(normalized, out var previous))
+                Assert.Equal(previous, outcome);
+            else
+                outcomes.Add(normalized, outcome);
+            if (outcome == "analysed") parsed += occurrenceCount;
 
-                var trace = await tracer.TraceAsync(buildResult.GetProperty("projectPath").GetString()!, form,
-                    CancellationToken.None, TimeSpan.FromSeconds(30));
-                var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
-                var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
-                steps += details.Steps;
-                var wordUnits = details.Categories.Sum(category => category.Work);
-                work += wordUnits;
-                wordWork[normalized] = wordWork.GetValueOrDefault(normalized) + wordUnits;
-            }
+            if (tracer is null || !traceWords!.Contains(form) || !tracedWords!.Add(form)) continue;
+            var trace = await tracer.TraceAsync(buildResult.GetProperty("projectPath").GetString()!, form,
+                CancellationToken.None, TimeSpan.FromSeconds(30));
+            var completed = Assert.IsType<PanGlossTraceOutcome.Completed>(trace);
+            var details = Assert.IsType<PanGlossTraceDetails>(completed.Details);
+            steps += details.Steps;
+            var wordUnits = details.Categories.Sum(category => category.Work);
+            work += wordUnits;
+            wordWork[normalized] = wordUnits;
         }
 
-        return new AssessmentSnapshot(outcomes, words, parsed, work, steps, wallClockMs, wordWork);
+        if (traceWords is not null)
+            Assert.Equal(traceWords.Order(StringComparer.Ordinal), tracedWords!.Order(StringComparer.Ordinal));
+
+        return new AssessmentSnapshot(outcomes, words, parsed,
+            traceWords is null ? null : work, traceWords is null ? null : steps, stopwatch.ElapsedMilliseconds,
+            tracedWords?.Order(StringComparer.Ordinal).ToArray(), assessmentWords?.Order(StringComparer.Ordinal).ToArray(),
+            wordWork);
+    }
+
+    private static Dictionary<string, int> WordOccurrencesByText(JsonElement sample)
+    {
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var text in sample.GetProperty("texts").EnumerateArray())
+        foreach (var form in text.GetProperty("sentences").EnumerateArray()
+                     .SelectMany(sentence => sentence.GetString()!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                     .Distinct(StringComparer.Ordinal))
+        {
+            var normalized = form.Normalize(NormalizationForm.FormC);
+            occurrences[normalized] = occurrences.GetValueOrDefault(normalized) + 1;
+        }
+        return occurrences;
     }
 
     private static GrammarFindingExpected[] ReadGrammarFindings(JsonElement buildResult)
@@ -300,14 +335,6 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
             .ToArray();
     }
 
-    private static void WriteGrammarFindings(
-        ITestOutputHelper output, string variant, IReadOnlyList<GrammarFindingExpected> findings)
-    {
-        output.WriteLine($"grammar-health {variant}: {findings.Count} finding(s)");
-        foreach (var finding in findings)
-            output.WriteLine($"{finding.Level} {finding.Code}: {finding.Description}");
-    }
-
     private static void Reopen(string projectPath, string disclaimer)
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(projectPath);
@@ -316,11 +343,11 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
     }
 
     private static SampleVariantExpected ToExpected(
-        AssessmentSnapshot result, Dictionary<string, string>? failing = null,
-        GrammarFindingExpected[]? grammarFindings = null) =>
+        AssessmentSnapshot result, Dictionary<string, string>? failing = null) =>
         new(result.Words, result.Parsed, result.Words == 0 ? 0 : (double)result.Parsed / result.Words,
-            result.Work, result.Steps, result.WallClockMs, SlowestWords(result),
-            failing ?? new Dictionary<string, string>(StringComparer.Ordinal), grammarFindings ?? []);
+            result.Work, result.Steps, result.WallClockMs, result.SelectedWords,
+            result.TracedWords is null ? null : SlowestWords(result), result.TracedWords,
+            failing ?? new Dictionary<string, string>(StringComparer.Ordinal));
 
     private static string[] SlowestWords(AssessmentSnapshot result) => result.WordWork
         .OrderByDescending(pair => pair.Value)
@@ -371,15 +398,14 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
     private sealed record AssessmentSnapshot(
-        Dictionary<string, string> Outcomes, int Words, int Parsed, long Work, long Steps, long WallClockMs,
-        Dictionary<string, long> WordWork);
+        Dictionary<string, string> Outcomes, int Words, int Parsed, long? Work, long? Steps, long WallClockMs,
+        string[]? TracedWords, string[]? SelectedWords, Dictionary<string, long> WordWork);
     private sealed record SampleExpected(
         string Disclaimer, SampleVariantExpected Fixed, SampleVariantExpected Broken,
         Dictionary<string, SampleVariantExpected> Variants);
     private sealed record SampleVariantExpected(
-        int Words, int Parsed, double TextCoverage, long Work, long Steps, long WallClockMs,
-        string[] SlowestWords, Dictionary<string, string> Failing,
-        GrammarFindingExpected[] GrammarFindings);
+        int Words, int Parsed, double TextCoverage, long? Work, long? Steps, long WallClockMs, string[]? SelectedWords,
+        string[]? SlowestWords, string[]? TracedWords, Dictionary<string, string> Failing);
     private sealed record GrammarFindingExpected(
         string Level, string Code, string Group, string Description, string? Guidance,
         string[] Subjects, string? WarningReason);
@@ -387,6 +413,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
     private static readonly JsonSerializerOptions ExpectedJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true,
     };
 

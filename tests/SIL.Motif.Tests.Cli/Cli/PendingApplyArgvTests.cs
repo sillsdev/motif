@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -240,11 +241,20 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = await CliProcess.TryStartQueuedWorkerAsync(path, runner.Options, process);
+        using var worker = StartWorker(runner.Options with { IdleTimeout = TimeSpan.FromMinutes(5) });
         try
         {
             await WaitForPendingProposalAnchorAsync(path);
-            await process.WaitForExitAsync();
+            try
+            {
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
+            }
+            catch (TimeoutException)
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync();
+                throw;
+            }
             var output = await outputTask;
             var error = await errorTask;
 
@@ -271,8 +281,22 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
         finally
         {
-            if (worker is not null) await worker.WaitForExitAsync();
+            try
+            {
+                if (!worker.HasExited) worker.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException) { }
+            catch (Win32Exception) { }
+            await worker.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
         }
+    }
+
+    private static Process StartWorker(JobRunnerLaunchOptions options)
+    {
+        var start = new ProcessStartInfo(options.WorkerExecutable!) { UseShellExecute = false };
+        foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options))
+            start.ArgumentList.Add(argument);
+        return Process.Start(start)!;
     }
 
     private static async Task WaitForPendingProposalAnchorAsync(string projectPath)
