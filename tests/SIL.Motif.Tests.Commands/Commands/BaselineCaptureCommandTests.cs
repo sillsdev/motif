@@ -83,6 +83,24 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.Equal(first.Value.Token.SemanticSnapshotDigest, second.Value.Token.SemanticSnapshotDigest);
     }
 
+    // The window holds whatever token a capture answers with, and an Assessment records the stored one.
+    [Fact]
+    public void RecapturingTheSameSavedBytesAnswersWithTheBaselineTheStoreKeepsCurrent()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        var first = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+        Assert.True(first.Succeeded);
+
+        var second = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+
+        Assert.True(second.Succeeded);
+        var current = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath));
+        Assert.True(current.Succeeded);
+        Assert.Equal(current.Value!.Token, second.Value!.Token);
+        Assert.Equal(first.Value!.Token, second.Value.Token);
+    }
+
     [Fact]
     public void RecapturingAfterTheProjectIsSavedAgainProducesANewCapture()
     {

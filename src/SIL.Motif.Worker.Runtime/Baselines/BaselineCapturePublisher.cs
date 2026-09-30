@@ -68,12 +68,14 @@ public sealed class BaselineCapturePublisher
             .ConfigureAwait(false);
 
         var baselines = new BaselineRepository(_database);
+        var workspaceKey = ProjectWorkspaceKey.Compute(project);
         baselines.Record(
-            ProjectWorkspaceKey.Compute(project), outcome.Publication, _now(), sourceLastWriteUtc, textWordsProjection,
-            projectSummary);
+            workspaceKey, outcome.Publication, _now(), sourceLastWriteUtc, textWordsProjection, projectSummary);
 
-        return new BaselineCapturePublication(
-            outcome.Publication.Token, outcome.Publication.FwDataPath, !outcome.Created);
+        // Unchanged bytes keep the stored Baseline, so answer with that token rather than the one just declared.
+        var current = baselines.GetCurrent(workspaceKey)
+            ?? throw new InvalidDataException("The Baseline just recorded is not the project's current Baseline.");
+        return new BaselineCapturePublication(current.Token, outcome.Publication.FwDataPath, !outcome.Created);
     }
 
     /// Hashes what actually landed on disk rather than trusting what the caller reported writing.
