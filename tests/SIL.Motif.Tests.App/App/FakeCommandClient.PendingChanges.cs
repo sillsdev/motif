@@ -75,16 +75,11 @@ public sealed partial class FakeCommandClient
     public void AcceptNewSetCompletesWith(PendingChangesSnapshot response) => _acceptNewSetResponse = response;
 
     public List<PutPendingChangeRequest> PendingPutRequests { get; } = [];
-    public List<RemoveAnalysisRequest> AnalysisRemovalRequests { get; } = [];
-    public List<AcceptNewSetRequest> AcceptNewSetRequests { get; } = [];
+    public List<RemoveAnalysisRequest> AnalysisRemovalRequests => RemoveAnalysisRequests;
     public List<RecheckPendingChangesRequest> PendingRecheckRequests { get; } = [];
     public List<ReconfirmPendingChangeRequest> PendingReconfirmRequests { get; } = [];
     public PendingChangesSnapshot? AnalysisRemovalResponse { get; set; }
     public PendingChangesSnapshot? AcceptNewSetResponse { get; set; }
-    public Func<RemoveAnalysisRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
-        AnalysisRemovalHandler { get; set; }
-    public Func<AcceptNewSetRequest, CancellationToken, Task<CommandOutcome<PendingChangesSnapshot>>>?
-        AcceptNewSetHandler { get; set; }
     private PendingChangesSnapshot? _recheckResponse;
     private PendingChangesSnapshot? _reconfirmResponse;
 
@@ -146,37 +141,6 @@ public sealed partial class FakeCommandClient
         return Completed(_pending);
     }
 
-    public Task<CommandOutcome<PendingChangesSnapshot>> RemoveAnalysisAsync(
-        RemoveAnalysisRequest request, CancellationToken cancellationToken)
-    {
-        AnalysisRemovalRequests.Add(request);
-        if (AnalysisRemovalHandler is { } handler) return handler(request, cancellationToken);
-        if (request.AnalysisId is { } analysisId && request.ChangeId is { } changeId &&
-            request.WordformId is { } wordformId && request.Word is { } word)
-            return PutPendingChangeAsync(new PutPendingChangeRequest(request.FwDataPath, request.ProductVersion,
-                request.ExpectedRevision, new ChangeIntent(changeId, "remove-analysis", wordformId, word,
-                    StoredAnalysisId: analysisId)), cancellationToken);
-        if (AnalysisRemovalResponse is { } response)
-        {
-            _pending = response;
-            return Completed(response);
-        }
-        throw NotConfigured(nameof(RemoveAnalysisAsync));
-    }
-
-    public Task<CommandOutcome<PendingChangesSnapshot>> AcceptNewSetAsync(
-        AcceptNewSetRequest request, CancellationToken cancellationToken)
-    {
-        AcceptNewSetRequests.Add(request);
-        if (AcceptNewSetHandler is { } handler) return handler(request, cancellationToken);
-        if (AcceptNewSetResponse is { } response)
-        {
-            _pending = response;
-            return Completed(response);
-        }
-        throw NotConfigured(nameof(AcceptNewSetAsync));
-    }
-
     public Task<CommandOutcome<PendingChangesSnapshot>> RemovePendingChangeAsync(
         RemovePendingChangeRequest request, CancellationToken cancellationToken)
     {
@@ -196,9 +160,22 @@ public sealed partial class FakeCommandClient
     {
         RemoveAnalysisRequests.Add(request);
         if (RemoveAnalysisHandler is { } handler) return handler(request, cancellationToken);
-        if (_removeAnalysisResponse is not { } response) throw NotConfigured(nameof(RemoveAnalysisAsync));
-        _pending = response;
-        return Completed(_pending);
+        if (AnalysisRemovalResponse is { } configuredResponse)
+        {
+            _pending = configuredResponse;
+            return Completed(_pending);
+        }
+        if (_removeAnalysisResponse is { } response)
+        {
+            _pending = response;
+            return Completed(_pending);
+        }
+        if (request.AnalysisId is { } analysisId && request.ChangeId is { } changeId &&
+            request.WordformId is { } wordformId && request.Word is { } word)
+            return PutPendingChangeAsync(new PutPendingChangeRequest(request.FwDataPath, request.ProductVersion,
+                request.ExpectedRevision, new ChangeIntent(changeId, "remove-analysis", wordformId, word,
+                    StoredAnalysisId: analysisId)), cancellationToken);
+        throw NotConfigured(nameof(RemoveAnalysisAsync));
     }
 
     public Task<CommandOutcome<PendingChangesSnapshot>> AcceptNewSetAsync(
@@ -206,6 +183,11 @@ public sealed partial class FakeCommandClient
     {
         AcceptNewSetRequests.Add(request);
         if (AcceptNewSetHandler is { } handler) return handler(request, cancellationToken);
+        if (AcceptNewSetResponse is { } configuredResponse)
+        {
+            _pending = configuredResponse;
+            return Completed(_pending);
+        }
         if (_acceptNewSetResponse is not { } response) throw NotConfigured(nameof(AcceptNewSetAsync));
         _pending = response;
         return Completed(_pending);
