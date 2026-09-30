@@ -11,7 +11,7 @@ public sealed class AnalysisMarkingStateTests
     private static readonly ParseAnalysis Book = Reading("form-1", "msa-1");
     private static readonly ParseAnalysis Child = Reading("form-2", "msa-2");
 
-    public static IEnumerable<object?[]> R4PrimaryActionCases =>
+    public static IEnumerable<object?[]> PrimaryActionCases =>
     [
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
@@ -30,8 +30,8 @@ public sealed class AnalysisMarkingStateTests
     ];
 
     [Theory]
-    [MemberData(nameof(R4PrimaryActionCases))]
-    public void PrimaryActionAndNeedsALookFollowTheR4ClassOpinionTable(TextToken token,
+    [MemberData(nameof(PrimaryActionCases))]
+    public void PrimaryActionAndNeedsALookFollowTheClassOpinionTable(TextToken token,
         AssessmentWordResult? result, AnalysisMarkingClass expectedClass, AnalysisMarkingActionKind? expectedKind,
         string? expectedLabel, string? expectedChangeKind, bool expectedNeedsALook)
     {
@@ -201,7 +201,7 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
-    public void DisapprovedDifferentReadingUsesTheR4FixMenu()
+    public void DisapprovedDifferentReadingUsesTheFixMenu()
     {
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));

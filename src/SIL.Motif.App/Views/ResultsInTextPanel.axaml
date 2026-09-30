@@ -29,8 +29,10 @@
                   IsVisible="{Binding InText.HasSelectedReadStateOccurrences}"
                   AutomationProperties.Name="Mark selected occurrences as unread" />
           <Button Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
+                  IsVisible="{Binding InText.HasAssessment}"
                   AutomationProperties.Name="Mark the selected Text as read" />
           <Button Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
+                  IsVisible="{Binding InText.HasAssessment}"
                   AutomationProperties.Name="Mark the selected Text as unread" />
         </StackPanel>
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding InText.HasResults}">
@@ -64,7 +66,7 @@
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
         </WrapPanel>
-        <Expander Header="Actions for this Text or Selection">
+        <Expander Header="Actions by scope">
           <WrapPanel>
             <Button Content="Add readings as Unknown in this Text"
                     Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
@@ -181,7 +183,7 @@
                                       Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
                                       CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions for this word">
+                              <Expander DockPanel.Dock="Right" Header="Fix ▾" AutomationProperties.Name="Fix actions from the word strip">
                                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                                   <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
                                           CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
@@ -189,7 +191,7 @@
                                     <ItemsControl.ItemTemplate>
                                       <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
                                         <Button Content="{Binding Label}"
-                                                Command="{Binding $parent[ItemsControl].DataContext.Actions.StageMarkingChoiceCommand}"
+                                                Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
                                                 CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -259,7 +261,7 @@
                         </Border>
                         <Popup IsOpen="{Binding IsCardOpen}" PlacementTarget="{Binding #WordStrip}"
                                Placement="Bottom" IsLightDismissEnabled="True">
-                          <Border Classes="card wordCard" Width="{DynamicResource Component.TextsPage.TextInspectorWidth}"
+                          <Border Classes="card wordCard hoverReveal" Width="{DynamicResource Component.TextsPage.TextInspectorWidth}"
                                   Focusable="True" KeyDown="OnTokenCardKeyDown">
                             <ScrollViewer>
                               <StackPanel Spacing="{DynamicResource Intent.Space.Related}" x:DataType="vm:ResultsTokenViewModel">

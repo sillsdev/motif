@@ -551,6 +551,11 @@ public sealed class ResultsInTextViewModelTests
         var (inText, _, client) = await Loaded();
 
         Assert.True(inText.ChosenTextsAnalysisCount > 0);
+        Assert.EndsWith($"({inText.ChosenTextsAnalysisCount})", inText.ChosenTextsRemoveHeader,
+            StringComparison.Ordinal);
+        Assert.Contains("all chosen Texts", inText.ScopeCountSummary, StringComparison.Ordinal);
+        Assert.StartsWith($"{inText.ChosenTextsAnalysisCount} stored analyses on",
+            inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
         Assert.Contains("stored analyses on", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
         Assert.Contains("occurrences", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);
         Assert.Contains("everywhere in the project", inText.ChosenTextsRemovalPreview, StringComparison.Ordinal);

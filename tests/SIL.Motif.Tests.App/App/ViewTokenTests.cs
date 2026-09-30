@@ -4,11 +4,14 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Diagnostics;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -118,6 +121,30 @@ public sealed class ViewTokenTests
                     Assert.Equal(0, link.Opacity);
                     Assert.False(link.IsHitTestVisible);
                 });
+                var formCenter = form.TranslatePoint(
+                    new Point(form.Bounds.Width / 2, form.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(formCenter);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(host.IsPointerOver);
+                Assert.All(links, link =>
+                {
+                    Assert.Equal(1, link.Opacity);
+                    Assert.True(link.IsHitTestVisible);
+                });
+                window.MouseMove(new Point(1, 1));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.All(links, link =>
+                {
+                    Assert.Equal(0, link.Opacity);
+                    Assert.False(link.IsHitTestVisible);
+                });
+                Assert.True(links[0].Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(1, links[0].Opacity);
+                Assert.True(links[0].IsHitTestVisible);
             }
             finally
             {
@@ -145,10 +172,26 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
+    public void HoverSummaryIsReadOnlyTextWithoutButtons()
+    {
+        var token = new ResultsTokenViewModel("Text", 1,
+            new TextToken("word", "word", null, null), null);
+        var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        Assert.Equal("word · No analysis in FieldWorks · PanGloss: Not assessed", token.HoverSummary);
+        Assert.Null(token.Actions);
+        Assert.Contains("ToolTip.Tip=\"{Binding HoverSummary}\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ToolTip", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StripAndCardOfferFixAndApproveOneReadingAtATime()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
         Assert.Equal(2, Regex.Matches(markup, "Header=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
+            StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,
+            StringComparison.Ordinal);
         Assert.Contains("<ComboBox ItemsSource=\"{Binding Readings}\"", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
     }
