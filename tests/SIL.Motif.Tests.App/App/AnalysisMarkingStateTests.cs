@@ -14,11 +14,11 @@ public sealed class AnalysisMarkingStateTests
     public static IEnumerable<object?[]> R4PrimaryActionCases =>
     [
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book),
-            AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
+            AnalysisMarkingClass.Same, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), Result("same", Book),
             AnalysisMarkingClass.Same, AnalysisMarkingActionKind.Approve, "Approve", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"),
-            AnalysisMarkingClass.None, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
+            AnalysisMarkingClass.None, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
         [Token(), Result("new", Child), AnalysisMarkingClass.Different,
             AnalysisMarkingActionKind.Add, "Add", ChangeKinds.AddCandidate, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("extra", Book, Child),
@@ -26,7 +26,7 @@ public sealed class AnalysisMarkingStateTests
         [Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child),
             AnalysisMarkingClass.Different, AnalysisMarkingActionKind.Accept, "Accept", ChangeKinds.Approve, true],
         [Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("capped", true, Book),
-            AnalysisMarkingClass.Capped, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, true],
+            AnalysisMarkingClass.Capped, (AnalysisMarkingActionKind?)null, (string?)null, (string?)null, false],
     ];
 
     [Theory]
@@ -144,7 +144,7 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.KeepFieldWorks &&
             choice.Label == "Keep FieldWorks");
-        Assert.True(state.NeedsALook);
+        Assert.False(state.NeedsALook);
     }
 
     [Fact]
@@ -159,7 +159,22 @@ public sealed class AnalysisMarkingStateTests
 
         Assert.True(actionable.NeedsALook);
         Assert.False(staged.NeedsALook);
-        Assert.True(capped.NeedsALook);
+        Assert.False(capped.NeedsALook);
+    }
+
+    [Fact]
+    public void AgreementRemovalAndKeepChoicesDoNotNeedALook()
+    {
+        var agreement = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("same", Book));
+        var noParse = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("none"));
+        var capped = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("capped", true, Book));
+
+        Assert.False(agreement.NeedsALook);
+        Assert.False(noParse.NeedsALook);
+        Assert.False(capped.NeedsALook);
     }
 
     [Fact]
@@ -219,7 +234,7 @@ public sealed class AnalysisMarkingStateTests
         Assert.Equal(AnalysisMarkingClass.Capped, state.PanGlossClass);
         Assert.Null(state.PrimaryAction);
         Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.RemoveAnalysis);
-        Assert.True(state.NeedsALook);
+        Assert.False(state.NeedsALook);
     }
 
     [Theory]

@@ -723,19 +723,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         result.Outcome is not ("skipped" or "capped" or "timed-out") &&
         result.Morphology is { Capped: false, TimedOut: false, InvalidShape: false, Unavailable.Count: 0 };
 
-    private Task AcceptNewSetForSelectedTextAsync() => SelectedText is { } text
-        ? _changes.AcceptNewSetForTextAsync(text.TextId) : Task.CompletedTask;
+    private Task AcceptNewSetForSelectedTextAsync() => SelectedText is { } text &&
+        _changes.AssessmentId is { } assessmentId
+            ? _changes.AcceptNewSetAsync(assessmentId, textId: text.TextId) : Task.CompletedTask;
 
-    private Task AcceptNewSetForSelectionAsync() => _changes.AcceptNewSetForSelectionAsync();
+    private Task AcceptNewSetForSelectionAsync() => _changes.AssessmentId is { } assessmentId
+        ? _changes.AcceptNewSetAsync(assessmentId, selection: true) : Task.CompletedTask;
 
     private Task RemoveAnalysesForSelectedTextAsync() => SelectedText is { } text
-        ? _changes.StageAnalysisRemovalForTextAsync(text.TextId) : Task.CompletedTask;
+        ? _changes.RemoveAnalysesInTextAsync(text.TextId) : Task.CompletedTask;
 
     private Task RemoveAnalysesForSelectionAsync()
     {
         var ids = _allWords.SelectMany(token => token.Marking.FieldWorksAnalyses)
             .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal).ToArray();
-        return _changes.StageAnalysisRemovalListAsync(ids);
+        return ids.Length == 0 ? Task.CompletedTask : _changes.RemoveAnalysesAsync(ids);
     }
 
     private static bool CanAddParserReadings(IEnumerable<ResultsTokenViewModel> tokens) =>
@@ -761,15 +763,18 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private async Task AcceptCheckedNewSetAsync()
     {
+        if (_changes.AssessmentId is not { } assessmentId) return;
         foreach (var token in DistinctWords(CheckedTokens))
-            await _changes.AcceptNewSetForWordAsync(token).ConfigureAwait(true);
+            if (token.WordformId is { } wordformId)
+                await _changes.AcceptNewSetAsync(assessmentId, CanonicalId.FromGuid(wordformId).Value)
+                    .ConfigureAwait(true);
     }
 
     private Task RemoveCheckedAnalysesAsync()
     {
         var ids = CheckedTokens.SelectMany(token => token.Marking.FieldWorksAnalyses)
             .Select(analysis => analysis.StoredAnalysisId).Distinct(StringComparer.Ordinal).ToArray();
-        return _changes.StageAnalysisRemovalListAsync(ids);
+        return ids.Length == 0 ? Task.CompletedTask : _changes.RemoveAnalysesAsync(ids);
     }
 
     private Task MarkCheckedSpellingsIncorrectAsync() => MarkSpellingsIncorrectAsync(CheckedTokens);
@@ -903,9 +908,17 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             return;
         }
         if (action.Kind == AnalysisMarkingActionKind.RemoveAnalysis)
-            await _changes.StageAnalysisRemovalAsync(token, action).ConfigureAwait(true);
+        {
+            if (token.WordformId is { } wordformId && action.StoredAnalysisId is { } analysisId)
+                await _changes.RemoveAnalysisAsync(CanonicalId.FromGuid(wordformId).Value, token.Form, analysisId)
+                    .ConfigureAwait(true);
+        }
         else if (action.Kind == AnalysisMarkingActionKind.AcceptNewSet)
-            await _changes.AcceptNewSetForWordAsync(token).ConfigureAwait(true);
+        {
+            if (_changes.AssessmentId is { } assessmentId && token.WordformId is { } wordformId)
+                await _changes.AcceptNewSetAsync(assessmentId, CanonicalId.FromGuid(wordformId).Value)
+                    .ConfigureAwait(true);
+        }
         else
         {
             var staged = await _changes.AddFromMarkingAsync(action, token).ConfigureAwait(true);

@@ -143,7 +143,13 @@ public sealed record AnalysisMarkingState(
     bool IsUnread)
 {
     /// <summary>Whether an available action or Fix choice remains unstaged.</summary>
-    public bool NeedsALook => StagedTransitions.Count == 0 && (PrimaryAction is not null || FixChoices.Count > 0);
+    public bool NeedsALook => StagedTransitions.Count == 0 &&
+        (CountsTowardNeedsALook(PrimaryAction?.Kind) || PanGlossClass != AnalysisMarkingClass.Same &&
+            FixChoices.Any(choice => CountsTowardNeedsALook(choice.Kind)));
+
+    private static bool CountsTowardNeedsALook(AnalysisMarkingActionKind? kind) =>
+        kind is not null and not AnalysisMarkingActionKind.KeepFieldWorks and
+            not AnalysisMarkingActionKind.RemoveAnalysis;
 
     private static readonly IReadOnlyDictionary<(AnalysisMarkingClass Class, string Opinion), PrimaryActionRule?>
         PrimaryActionTable = new Dictionary<(AnalysisMarkingClass, string), PrimaryActionRule?>
