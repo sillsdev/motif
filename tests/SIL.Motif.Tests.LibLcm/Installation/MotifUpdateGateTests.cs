@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.LibLcm.Installation;
@@ -79,6 +80,9 @@ public sealed class MotifUpdateGateTests
         childStart.ArgumentList.Add("--no-restore");
         childStart.ArgumentList.Add("--filter");
         childStart.ArgumentList.Add("FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
+        // The child runs one named test, so it must not inherit this process's shard, which may exclude it.
+        childStart.Environment.Remove(ShardedTestFramework.ShardVariable);
+        childStart.Environment.Remove(ShardedTestFramework.WeightsVariable);
         childStart.Environment[ChildGateNameVariable] = gateName;
         childStart.Environment[ChildReadyPathVariable] = readyFile;
         childStart.Environment[ChildReleasePathVariable] = releaseFile;
