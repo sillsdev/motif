@@ -1,0 +1,174 @@
+using Avalonia;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.Styling;
+using Avalonia.Threading;
+using SIL.Motif.App.Services;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
+using Xunit;
+
+namespace SIL.Motif.Tests.App;
+
+/// <summary>
+/// Saves Review changes in the states a person meets there, which the every-page capture cannot reach from its
+/// empty list: changes blocked by one that no longer fits and one that is Uncertain, the page after an Apply whose
+/// result could not be confirmed, and the empty page.
+/// </summary>
+[Collection(AvaloniaHeadlessCollection.Name)]
+public sealed class ReviewScreenshots
+{
+    private const string ProjectPath = @"C:\Users\linguist\FieldWorks\Projects\Sample\Sample.fwdata";
+    private static readonly Guid Story = Guid.Parse("11111111-0000-0000-0000-000000000001");
+
+    [ScreenshotFact]
+    public void CaptureReviewStates()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(Blocked());
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                var review = workspace.PageModel<ReviewPageModel>();
+                workspace.CurrentPage = WorkspacePage.Review;
+                SaveAll(window, folder, "review-blocked");
+
+                review.ShowReconciliationNeeded();
+                SaveAll(window, folder, "review-unconfirmed-apply");
+                review.ClearReconciliationNeeded();
+
+                fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/empty", [], []));
+                await workspace.Context.Changes.ReloadAsync();
+                SaveAll(window, folder, "review-empty");
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void SaveAll(MainWindow window, string folder, string name)
+    {
+        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            foreach (var width in new[] { 1040, 1240 })
+            {
+                window.Width = width;
+                window.Height = 780;
+                Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
+            }
+        }
+    }
+
+    private static void Save(MainWindow window, string path)
+    {
+        for (var pass = 0; pass < 3; pass++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        }
+        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
+        frame.Save(path, PngBitmapEncoderOptions.Default);
+    }
+
+    private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAsync(FakeCommandClient fake)
+    {
+        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), DateTimeOffset.UtcNow.AddHours(-2), false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(Story, "Hadithi ya sungura")], HasBaseline: true));
+        var selection = new SelectionViewModel(fake);
+        var workspace = new WorkspaceShellViewModel(
+            new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
+            selection, new AssessViewModel(fake, selection), new Folder(), new Drag(), fake);
+        var window = new MainWindow();
+        window.Compose(workspace);
+        window.Show();
+        await workspace.SetProjectAsync(ProjectPath);
+        workspace.Context.Setup?.SkipCommand.Execute(null);
+        workspace.Context.RegisterOccurrenceLocationProvider(occurrence =>
+            new TextOccurrenceLocation(0, occurrence.Index, occurrence.Index,
+                $"Hadithi ya sungura, line {occurrence.Index + 1}"));
+        await workspace.Context.Changes.ReloadAsync();
+        return (workspace, window);
+    }
+
+    private static PendingChangesSnapshot Blocked()
+    {
+        var kitabu = Change("kitabu", ChangeKinds.Approve, "analysis/kitabu", Stored(("ki-", "7"), ("tabu", "book")));
+        var anapenda = Change("anapenda", ChangeKinds.Approve, "analysis/anapenda",
+            Stored(("a-", "3SG"), ("na-", "PRS"), ("pend", "love"), ("-a", "FV"))) with
+        {
+            Occurrence = new OccurrenceAnchor(Story, Story, Story, 2),
+        };
+        var chakula = Change("chakula", ChangeKinds.Approve, null,
+            new ReviewAnalysis(Reading(("ch-", "7"), ("akula", "food")), ReadingGrade.NoOpinion, true, false));
+        var watoto = Change("watoto", ChangeKinds.Candidate, "analysis/watoto",
+            new ReviewAnalysis(Reading(("wa-", "2"), ("toto", "child")), ReadingGrade.Approved, true, true));
+        var uncertain = new ChangeFit("watoto", ChangeFitStatus.Uncertain, ["The words in the source sentence have changed."])
+        {
+            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.",
+                [Token(0, "watoto"), Token(1, "hawajafika"), Token(2, "mwalimu")],
+                [Token(0, "watoto"), Token(1, "hawajaja"), Token(2, "mwalimu")]),
+        };
+        return new PendingChangesSnapshot("draft/one", "revision/one", [kitabu, anapenda, chakula, watoto],
+        [
+            new ChangeFit("kitabu", false, ["Analysis analysis/kitabu was deleted or moved from wordform wordform/kitabu."]),
+            new ChangeFit("anapenda", true, []),
+            new ChangeFit("chakula", true, []),
+            uncertain,
+        ]);
+    }
+
+    private static OccurrenceWordToken Token(int index, string form) => new(index, "wordform/" + form, form);
+
+    private static PendingChange Change(string word, string kind, string? storedAnalysisId, ReviewAnalysis analysis) =>
+        new(word, "wordform/" + word, word, kind, "assessment/one", word, ["operation/" + word])
+        {
+            Analyses = [analysis],
+            OriginPage = WorkspacePage.Texts.ToString(),
+            StoredAnalysisId = storedAnalysisId,
+        };
+
+    private static ReviewAnalysis Stored(params (string Form, string Gloss)[] morphs) =>
+        new(Reading(morphs), ReadingGrade.Candidate, true, true);
+
+    private static ParserReading Reading(params (string Form, string Gloss)[] morphs) =>
+        new(morphs.Select(morph => new ParserReadingMorph(morph.Form, morph.Gloss, "n", null, false, null)).ToArray());
+
+    private static BaselineToken Token() =>
+        new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
+
+    private sealed class Picker : IProjectPicker
+    {
+        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(ProjectPath);
+    }
+
+    private sealed class Folder : IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class Drag : IFileDragSource
+    {
+        public Task<DragDropEffects> StartDragAsync(
+            PointerPressedEventArgs trigger, IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) =>
+            Task.FromResult(allowedEffects);
+    }
+}

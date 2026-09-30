@@ -27,7 +27,7 @@ public sealed class ReviewPageModelTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.False(page.CanApply);
-        Assert.Contains("No longer fits", page.ApplyBlockReason);
+        Assert.Contains("1 change no longer fits", page.ApplyBlockReason);
         var fitStatus = context.Changes.Items.Single(item => item.ChangeId == "deleted").FitStatus;
         Assert.Equal("No longer fits the current project. Remove this change before review.", fitStatus);
         Assert.DoesNotContain(InternalId, fitStatus);
@@ -113,7 +113,7 @@ public sealed class ReviewPageModelTests
         Assert.Same(item, Assert.Single(page.UncertainChanges));
         Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
         Assert.False(page.CanApply);
-        Assert.Equal("1 change needs another look because its sentence changed. Check it again or undo it.",
+        Assert.StartsWith("1 change needs another look because its sentence changed. Check it again or undo it.",
             page.ApplyBlockReason);
     }
 
@@ -486,15 +486,6 @@ public sealed class ReviewPageModelTests
         await page.ApplyCommand.ExecuteAsync(null);
 
         Assert.Contains("worse results", page.ApplyRefusal?.Sentence);
-    }
-
-    [Fact]
-    public void AnAnalysisMissingFromTheProjectUsesTheNotPresentLabel()
-    {
-        var viewModel = new ReviewAnalysisViewModel(
-            new ReviewAnalysis(new ParserReading([]), "no-opinion", false, false), "approve");
-
-        Assert.Equal("Not present", viewModel.Opinion);
     }
 
     [Fact]

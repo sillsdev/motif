@@ -72,7 +72,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
                 path is null ? Task.CompletedTask : OpenProjectSafelyAsync(path)),
-            RefreshBaselineCommand = baseline.RefreshCommand,
         };
         PublishBaseline();
         ParseAllWordsCommand = new AsyncRelayCommand(ParseAllWordsAsync, CanParseAllWords);
@@ -106,6 +105,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Context.ConfigureCommand = ConfigureCommand;
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
+        Context.RefreshProjectCommand = RefreshCommand;
         SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
         DeleteRefusedStoreCommand = new RelayCommand<WindowRefusal>(AskToDeleteRefusedStore, CanAskToDeleteRefusedStore);
         ConfirmStoreDeletionCommand = new AsyncRelayCommand(DeleteRefusedStoreAndReopenAsync,

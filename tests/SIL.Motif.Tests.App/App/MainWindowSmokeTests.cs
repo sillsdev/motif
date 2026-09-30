@@ -203,7 +203,7 @@ public sealed class MainWindowSmokeTests
             var (_, window, _) = NewComposedWindow();
             try
             {
-                Assert.Contains("Tech demo: make sure you have a FieldWorks backup before applying.",
+                Assert.Contains("FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.",
                     window.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
             }
             finally

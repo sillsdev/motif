@@ -125,8 +125,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The shell's action that opens the project at the path given as the parameter.</summary>
     public IAsyncRelayCommand<string>? OpenProjectCommand { get; init; }
 
-    /// <summary>The shell's action that captures a new Baseline from FieldWorks' last save.</summary>
-    public IAsyncRelayCommand? RefreshBaselineCommand { get; init; }
+    /// <summary>
+    /// The shell's Refresh: captures a new Baseline from FieldWorks' last save, reloads every page, and settles an
+    /// Apply whose result could not be confirmed.
+    /// </summary>
+    public IAsyncRelayCommand? RefreshProjectCommand { get; internal set; }
 
     /// <summary>The shell's action for measuring the saved Default Selection against the current Baseline.</summary>
     public IAsyncRelayCommand? ParseAllWordsCommand { get; internal set; }

@@ -67,27 +67,6 @@ public sealed class ComponentStyleTests
     }
 
     [Fact]
-    public void ReviewParserOutlineKeepsItsDashedStroke()
-    {
-        _avalonia.Invoke(() =>
-        {
-            var outline = new Rectangle();
-            outline.Classes.Add("reviewParserOutline");
-            var window = new Window { Content = outline };
-            try
-            {
-                window.Show();
-                Dispatcher.UIThread.RunJobs();
-                Assert.Equal([3d, 2d], outline.StrokeDashArray);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
     public void ActionChipUsesItsHoverSurface()
     {
         _avalonia.Invoke(() =>
@@ -311,14 +290,24 @@ public sealed class ComponentStyleTests
             Button.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("Warnings", "warning severity", host => Add(host, Text("warningSeverity", "warning")),
             TextBlock.ForegroundProperty, "Intent.Warning");
-        yield return new("Review", "a reading", host => Add(host, Box("reviewReading")),
+        yield return new("Review", "a group of changes", host => Add(host, Box("reviewGroup")),
             Border.BorderBrushProperty, "Intent.Border");
+        yield return new("Review", "the no longer fits group", host => Add(host, Box("reviewGroup", "noLongerFits")),
+            Border.BorderBrushProperty, "Intent.Danger");
+        yield return new("Review", "the Uncertain group", host => Add(host, Box("reviewGroup", "uncertain")),
+            Border.BorderBrushProperty, "Intent.Warning");
+        yield return new("Review", "a staged note", host => Add(host, Box("reviewNote")),
+            Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("Review", "an Uncertain note", host => Add(host, Box("reviewNote", "uncertain")),
+            Border.BackgroundProperty, "Intent.Warning.Fill");
+        yield return new("Review", "a parser analysis", host => Add(host, Box("reviewAnalysis", "parser")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Review", "a still fits pill", host => Add(host, Box("reviewPill")),
+            Border.BackgroundProperty, "Intent.Success.Fill");
         yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
             Border.BackgroundProperty, "Intent.Warning.Fill");
         yield return new("Review", "a changed sentence word", host => Add(host, Box("reviewSentenceToken", "changed")),
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
-        yield return new("Review", "a parser outline", host => Add(host, With(new Rectangle(), ["reviewParserOutline"])),
-            Rectangle.StrokeProperty, "Intent.TextFaint");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger");
         yield return new("Timing", "the page", host => Add(host, Box("timingPage")), Border.PaddingProperty,

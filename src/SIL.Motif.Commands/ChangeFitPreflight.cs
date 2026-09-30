@@ -46,12 +46,12 @@ public static class ChangeFitPreflight
             if (operation.Extensions is not { } extensions)
             {
                 if (authoredChanges.Contains(operation.OperationId.Value))
-                    result.Add(NoFit("Change fingerprint is missing or invalid.", ""));
+                    result.Add(NoFit(ChangeFitReasons.FingerprintMissing, ""));
                 continue;
             }
             if (extensions.ValueKind != JsonValueKind.Object)
             {
-                result.Add(NoFit("Change fingerprint is missing or invalid.", ""));
+                result.Add(NoFit(ChangeFitReasons.FingerprintMissing, ""));
                 continue;
             }
             changeId = PendingChanges.Property(extensions, "changeId");
@@ -60,7 +60,7 @@ public static class ChangeFitPreflight
                 !authoredChanges.Contains(operation.OperationId.Value)) continue;
             if (!hasFit || fit.ValueKind != JsonValueKind.Object)
             {
-                result.Add(NoFit("Change fingerprint is missing or invalid.", ""));
+                result.Add(NoFit(ChangeFitReasons.FingerprintMissing, ""));
                 continue;
             }
             ChangeFitFingerprint? fingerprint;
@@ -71,53 +71,52 @@ public static class ChangeFitPreflight
             }
             catch (JsonException)
             {
-                result.Add(NoFit("Change fingerprint is malformed.", ""));
+                result.Add(NoFit(ChangeFitReasons.FingerprintMalformed, ""));
                 continue;
             }
             if (fingerprint is null || !CanonicalId.TryParse(fingerprint.WordformId, out var wordId) ||
                 string.IsNullOrWhiteSpace(fingerprint.WordformForm) ||
                 string.IsNullOrWhiteSpace(fingerprint.BaselineToken))
             {
-                result.Add(NoFit("Change fingerprint has missing or invalid identity, form, or Baseline evidence.",
+                result.Add(NoFit(ChangeFitReasons.FingerprintIncomplete,
                     fingerprint?.BaselineToken ?? ""));
                 continue;
             }
             if (!objects.TryGetObject(wordId.ToGuid(), out var wordObject) || wordObject is not IWfiWordform wordform)
             {
-                result.Add(NoFit($"Wordform {wordId.Value} was deleted.", fingerprint.BaselineToken));
+                result.Add(NoFit(ChangeFitReasons.WordformDeleted(wordId.Value), fingerprint.BaselineToken));
                 continue;
             }
             var currentForm = wordform.Form.VernacularDefaultWritingSystem?.Text ?? "";
             if (!string.Equals(currentForm.Normalize(System.Text.NormalizationForm.FormD),
                 fingerprint.WordformForm.Normalize(System.Text.NormalizationForm.FormD), StringComparison.Ordinal))
             {
-                result.Add(NoFit($"Wordform {wordId.Value} changed form.", fingerprint.BaselineToken));
+                result.Add(NoFit(ChangeFitReasons.WordformChangedForm(wordId.Value), fingerprint.BaselineToken));
                 continue;
             }
             if (operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus &&
                 fingerprint.SpellingStatus is null)
             {
-                result.Add(NoFit(
-                    "The collected change has no spelling status evidence. Remove it and collect it again.",
+                result.Add(NoFit(ChangeFitReasons.SpellingEvidenceMissing,
                     fingerprint.BaselineToken));
                 continue;
             }
             if (operation.Kind == WfiWordformSpellingStatusOperationKinds.SetSpellingStatus &&
                 wordform.SpellingStatus != fingerprint.SpellingStatus)
             {
-                result.Add(NoFit($"Wordform {wordId.Value} changed spelling status.", fingerprint.BaselineToken));
+                result.Add(NoFit(ChangeFitReasons.WordformSpellingChanged(wordId.Value), fingerprint.BaselineToken));
                 continue;
             }
             if (fingerprint.AnalysisId is { } analysisId)
             {
                 if (!CanonicalId.TryParse(analysisId, out var parsed))
                 {
-                    result.Add(NoFit("Change fingerprint has an invalid analysis identity.", fingerprint.BaselineToken));
+                    result.Add(NoFit(ChangeFitReasons.AnalysisIdentityInvalid, fingerprint.BaselineToken));
                     continue;
                 }
                 if (!wordform.AnalysesOC.Any(analysis => analysis.Guid == parsed.ToGuid()))
                 {
-                    result.Add(NoFit($"Analysis {parsed.Value} was deleted or moved from wordform {wordId.Value}.",
+                    result.Add(NoFit(ChangeFitReasons.AnalysisMissing(parsed.Value, wordId.Value),
                         fingerprint.BaselineToken));
                     continue;
                 }
@@ -125,7 +124,7 @@ public static class ChangeFitPreflight
                 if (fingerprint.AnalysisContentDigest is { } expected &&
                     !string.Equals(ContentDigest(analysis), expected, StringComparison.Ordinal))
                 {
-                    result.Add(NoFit($"Analysis {parsed.Value} changed its reading.", fingerprint.BaselineToken));
+                    result.Add(NoFit(ChangeFitReasons.AnalysisReadingChanged(parsed.Value), fingerprint.BaselineToken));
                     continue;
                 }
                 if (operation.Kind is WfiAnalysisOperationKinds.AddRefEvaluations or
@@ -134,7 +133,7 @@ public static class ChangeFitPreflight
                     !string.Equals(analysis.GetAgentOpinion(cache.LangProject.DefaultUserAgent).ToString(),
                         fingerprint.HumanOpinion, StringComparison.Ordinal))
                 {
-                    result.Add(NoFit($"Analysis {parsed.Value} changed its human opinion.", fingerprint.BaselineToken));
+                    result.Add(NoFit(ChangeFitReasons.AnalysisOpinionChanged(parsed.Value), fingerprint.BaselineToken));
                     continue;
                 }
             }
@@ -153,8 +152,7 @@ public static class ChangeFitPreflight
                          !reference.Type.IsInstanceOfType(value)));
                 if (missing.Id is { } missingId)
                 {
-                    result.Add(NoFit(
-                        $"Candidate morph reference {missingId.Value} was deleted or changed type.",
+                    result.Add(NoFit(ChangeFitReasons.MorphReferenceMissing(missingId.Value),
                         fingerprint.BaselineToken));
                     continue;
                 }
@@ -163,7 +161,7 @@ public static class ChangeFitPreflight
                 fingerprint.Reading is { } reading &&
                 wordform.AnalysesOC.Any(analysis => AnalysisChangeComposer.Matches(analysis, reading)))
             {
-                result.Add(NoFit($"The parser reading already exists under wordform {wordId.Value}.",
+                result.Add(NoFit(ChangeFitReasons.ReadingAlreadyExists(wordId.Value),
                     fingerprint.BaselineToken));
                 continue;
             }
@@ -177,7 +175,7 @@ public static class ChangeFitPreflight
             if (captured is null || currentBaseline is null ||
                 requireSameBaseline && !captured.HasSameSemanticIdentity(currentBaseline))
             {
-                result.Add(NoFit("The collected change's Baseline is no longer current.", fingerprint.BaselineToken));
+                result.Add(NoFit(ChangeFitReasons.BaselineNotCurrent, fingerprint.BaselineToken));
                 continue;
             }
             if (fingerprint.Occurrence is { } occurrence)
