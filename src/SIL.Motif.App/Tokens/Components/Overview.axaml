@@ -10,7 +10,6 @@
     <StaticResource x:Key="Component.Overview.TilePadding" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Overview.HandoffPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
     <StaticResource x:Key="Component.Overview.CardRadius" ResourceKey="Primitive.Radius.12" />
-    <StaticResource x:Key="Component.Overview.HeaderGap" ResourceKey="Primitive.Space.16" />
     <StaticResource x:Key="Component.Overview.HandoffGap" ResourceKey="Primitive.Space.12" />
     <StaticResource x:Key="Component.Overview.CountMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.Overview.HistoryEntryPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
@@ -29,8 +28,8 @@
   <Style Selector="StackPanel.overviewProject">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
-  <Style Selector="StackPanel.overviewFingerprints">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  <Style Selector="StackPanel.overviewRefusalActions">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector="UniformGrid.overviewCounts">
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterGroup}" />
@@ -46,10 +45,6 @@
   <Style Selector=":is(TextBlock).overviewProjectName">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-  <Style Selector=":is(TextBlock).overviewAssessment">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector=":is(TextBlock).overviewMuted">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />

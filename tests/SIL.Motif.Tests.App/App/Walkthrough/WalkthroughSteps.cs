@@ -52,15 +52,11 @@ internal static class WalkthroughSteps
         Assert.NotNull(overview.Overview?.BaselineCapturedUtc);
         Assert.NotNull(overview.Overview?.BaselineSourceLastWriteUtc);
         Assert.Equal(overview.Overview?.LastFieldWorksSaveUtc, overview.Overview?.BaselineSourceLastWriteUtc);
-        var baselineDetails = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
-            text.Text == overview.BaselineDetails);
-        Assert.True(baselineDetails.IsVisible);
-        Assert.Contains("Baseline ", baselineDetails.Text, StringComparison.Ordinal);
-        Assert.Contains("saved ", baselineDetails.Text, StringComparison.Ordinal);
-        var projectDetails = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>().Single(text =>
-            text.Text == overview.ProjectDetails);
-        Assert.True(projectDetails.IsVisible);
-        Assert.Contains("last FieldWorks save ", projectDetails.Text, StringComparison.Ordinal);
+        // Freshness is said once, in the top bar; the Overview repeats none of it.
+        Assert.DoesNotContain(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
+            text.IsEffectivelyVisible && text.Text is { } shown &&
+            (shown.Contains("last FieldWorks save", StringComparison.Ordinal) ||
+             shown.StartsWith("Baseline ", StringComparison.Ordinal) && shown.Contains("saved", StringComparison.Ordinal)));
         Assert.Equal("FieldWorks does not currently hold this project.",
             walkthrough.Workspace.Baseline.HeldStatusText);
         Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);

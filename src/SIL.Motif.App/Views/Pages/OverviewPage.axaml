@@ -11,21 +11,24 @@
     <StackPanel Classes="overviewPage">
       <Border Classes="card overviewHeader" AutomationProperties.Name="Project summary">
         <StackPanel Classes="overviewHeaderContent">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HeaderGap}">
-            <StackPanel Grid.Column="0" Classes="overviewProject">
-              <views:CopyableTextBlock Classes="overviewProjectName" Text="{Binding ProjectTitle}" />
-              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding ProjectDetails}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="overviewAssessment" Text="{Binding AssessmentDetails}"
-                                       IsVisible="{Binding ShowAssessmentDetails}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Classes="overviewFingerprints" HorizontalAlignment="Right">
-              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding FingerprintSummary}" TextAlignment="Right"
-                                       IsVisible="{Binding !Context.NeedsAssessment}" />
-              <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding BaselineDetails}" TextAlignment="Right" />
-              <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
-            </StackPanel>
-          </Grid>
-          <UniformGrid Classes="overviewCounts" Rows="1" Columns="5">
+          <StackPanel Classes="overviewProject">
+            <views:CopyableTextBlock Classes="overviewProjectName" Text="{Binding ProjectTitle}" />
+            <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding ProjectFileName}" />
+          </StackPanel>
+          <Border Classes="notice" IsVisible="{Binding HasOverviewRefusal}"
+                  AutomationProperties.Name="The Overview could not be read">
+            <DockPanel LastChildFill="True">
+              <StackPanel Classes="overviewRefusalActions" DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="Try again" Command="{Binding RetryOverviewCommand}"
+                        AutomationProperties.Name="Read the Overview again" />
+                <HyperlinkButton Classes="reviewLink" Content="Report a problem" NavigateUri="{Binding ReportProblemUri}"
+                                 AutomationProperties.Name="Report a problem with the Overview" />
+              </StackPanel>
+              <views:CopyableTextBlock Text="{Binding OverviewRefusalLine}" TextWrapping="Wrap"
+                                       VerticalAlignment="Center" />
+            </DockPanel>
+          </Border>
+          <UniformGrid Classes="overviewCounts" Rows="1" Columns="5" IsVisible="{Binding ShowNumbers}">
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}"
                                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSelectionWordCount}" />
@@ -63,70 +66,66 @@
         <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
 
-      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowWarningsTile}"
             ColumnSpacing="{DynamicResource Intent.Space.Group}"
             RowSpacing="{DynamicResource Intent.Space.Group}">
-        <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
-                IsVisible="{Binding !Context.NeedsAssessment}"
+        <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
+                IsVisible="{Binding ShowTiles}"
+                AutomationProperties.Name="Open Timing">
+          <StackPanel Classes="overviewTileContent">
+            <DockPanel LastChildFill="False">
+              <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileLink" Text="Timing →" DockPanel.Dock="Right" />
+            </DockPanel>
+            <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedDetails}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Button>
+
+        <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
+                IsVisible="{Binding ShowTiles}"
                 AutomationProperties.Name="Open Text Coverage in Texts">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Text Coverage" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
               <TextBlock Classes="overviewTileLink" Text="Texts →" DockPanel.Dock="Right" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowLegend="False"
                               AutomationProperties.Name="Text Coverage outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding TextCoverageBreakdown}" TextWrapping="Wrap" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding TextCoverageOccurrences}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>
 
-        <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
-                IsVisible="{Binding !Context.NeedsAssessment}"
+        <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
+                IsVisible="{Binding ShowTiles}"
                 AutomationProperties.Name="Open accuracy in Texts">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Accuracy" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileTitle" Text="Approved analyses kept" DockPanel.Dock="Left" />
               <TextBlock Classes="overviewTileLink" Text="Matrix →" DockPanel.Dock="Right" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" />
-            <TextBlock Classes="overviewMuted" Text="approved words kept; every approved analysis rebuilt"
-                       TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding AccuracySegments}" ShowLegend="False"
                               AutomationProperties.Name="Accuracy outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding AccuracyBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>
 
-        <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
-                IsVisible="{Binding !Context.NeedsAssessment}"
-                AutomationProperties.Name="Open Timing">
-          <StackPanel Classes="overviewTileContent">
-            <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Timing" DockPanel.Dock="Left" />
-              <TextBlock Classes="overviewTileLink" Text="Timing →" DockPanel.Dock="Right" />
-            </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding TimingMedian}" />
-            <TextBlock Classes="overviewMuted" Text="median parse time per word" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding TimingDetails}" TextWrapping="Wrap" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding SlowestWords}" TextWrapping="Wrap" />
-          </StackPanel>
-        </Button>
-
         <Button Grid.Row="1" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenWarningsCommand}"
+                IsVisible="{Binding ShowWarningsTile}"
                 AutomationProperties.Name="Open Warnings">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
-              <TextBlock Classes="overviewTileTitle" Text="Warnings" DockPanel.Dock="Left" />
+              <TextBlock Classes="overviewTileTitle" Text="Grammar warnings" DockPanel.Dock="Left" />
               <TextBlock Classes="overviewTileLink" Text="Warnings →" DockPanel.Dock="Right" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" />
-            <TextBlock Classes="overviewMuted" Text="findings in the grammar as PanGloss read it"
+            <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="found in the grammar as PanGloss read it"
                        TextWrapping="Wrap" IsVisible="{Binding HasWarningSummary}" />
-            <TextBlock Classes="overviewTileDetail error" Text="{Binding WarningsLeftOut}" TextWrapping="Wrap"
-                       IsVisible="{Binding HasWarningSummary}" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsDetails}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>

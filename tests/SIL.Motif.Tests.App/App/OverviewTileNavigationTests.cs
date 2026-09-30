@@ -19,6 +19,7 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -72,6 +73,7 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -101,6 +103,7 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
