@@ -102,7 +102,7 @@ public sealed class CompareActionsTests
     {
         var (table, compare) = Loaded();
 
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.New));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
 
         Assert.Equal(["mwalimu"], table.Rows.Select(row => row.Word));
 
@@ -141,78 +141,23 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public async Task MatrixAllowsBulkChangesAndOneExplicitOpinion()
+    public async Task MatrixAllowsOnlyBulkAddAndSpellingForCheckedWords()
     {
         var table = new AssessWordsViewModel();
-        table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2)]);
+        table.Load([Word("ambiguous", "analysed", ProjectStanding.NotPresent, readingCount: 2),
+            Word("other", "analysed", ProjectStanding.NotPresent)]);
         var compare = NewCompare();
         compare.Load(table.AllRows);
-        compare.Words.Single().IsChecked = true;
+        foreach (var word in compare.Words) word.IsChecked = true;
 
         Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
         await compare.ProposeCommand.ExecuteAsync(ChangeKinds.AddCandidate);
-        Assert.Equal(2, compare.Changes.Items.Count);
-
-        var chosen = compare.Words.Single();
-        chosen.IsChecked = true;
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
-        chosen.SelectedReading = chosen.ReadingChoices[1];
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
-    }
-
-    [Theory]
-    [InlineData(ChangeKinds.Approve)]
-    [InlineData(ChangeKinds.Reject)]
-    [InlineData(ChangeKinds.Candidate)]
-    public async Task ACheckedWordOpinionUsesItsOneChosenAnalysis(string kind)
-    {
-        var table = new AssessWordsViewModel();
-        table.Load([Word("pasted-word", "analysed", ProjectStanding.Approved, readingCount: 2)]);
-        var compare = NewCompare();
-        compare.Load(table.AllRows);
-        var word = compare.Words.Single();
-        word.IsChecked = true;
-        var chosen = word.ReadingChoices[1];
-        word.SelectedReading = chosen;
-
-        Assert.True(compare.ProposeCommand.CanExecute(kind));
-
-        await compare.ProposeCommand.ExecuteAsync(kind);
-
-        var change = Assert.Single(compare.Changes.Items);
-        Assert.Equal(kind, change.Kind);
-        Assert.Equal("pasted-word", change.Word);
-        Assert.Equal(chosen.Label, change.Reading);
-        Assert.False(word.IsChecked);
-    }
-
-    [Fact]
-    public void OpinionActionsRefuseSeveralCheckedWordsEvenWhenEachHasASelectedReading()
-    {
-        var table = new AssessWordsViewModel();
-        table.Load([Word("one", "analysed", ProjectStanding.NotPresent),
-            Word("two", "analysed", ProjectStanding.NotPresent)]);
-        var compare = NewCompare();
-        compare.Load(table.AllRows);
-        foreach (var word in compare.Words)
-        {
-            word.IsChecked = true;
-            word.SelectedReading = word.ReadingChoices.Single();
-        }
-
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
-        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
-        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+        Assert.Equal(3, compare.Changes.Items.Count);
+        Assert.All(compare.Changes.Items, change => Assert.Equal(ChangeKinds.AddCandidate, change.Kind));
     }
 
     [Fact]
@@ -221,10 +166,10 @@ public sealed class CompareActionsTests
         var (_, compare) = Loaded();
         IReadOnlyList<string>? handed = null;
         compare.HandOff = words => handed = words;
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Unknown));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Stopped"));
 
         compare.HandOffCommand.Execute(null);
 
-        Assert.Equal(["alimpiga", "walipiga", "x y"], handed!.Order());
+        Assert.Equal(["alimpiga", "walipiga"], handed!.Order());
     }
 }

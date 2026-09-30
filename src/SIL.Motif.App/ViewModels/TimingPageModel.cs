@@ -191,7 +191,7 @@ public sealed partial class TimingPageModel : PageModel
     public string UseTextsListDisabledReason => Context.ProjectPath is null
         ? "Open a project first."
         : SelectedTextsList is null ? "Choose a word list above first."
-        : Context.Assess.Compare.WordsInFamily(SelectedTextsList.Family).Count == 0
+        : Context.Assess.Compare.WordsInPreset(SelectedTextsList).Count == 0
             ? "No words in this list to use for Timing." : string.Empty;
 
     public bool UseTextsListUnavailable => UseTextsListDisabledReason.Length > 0;
@@ -375,7 +375,7 @@ public sealed partial class TimingPageModel : PageModel
     private async Task UseTextsListAsync()
     {
         var words = SelectedTextsList is { } list
-            ? Context.Assess.Compare.WordsInFamily(list.Family) : [];
+            ? Context.Assess.Compare.WordsInPreset(list) : [];
         using var usageAction = Context.Commands.BeginUsageAction("timing",
             UsageArgumentShape.List("words", words.Count));
         await SelectExplicitWordsAsync(words);
@@ -395,7 +395,7 @@ public sealed partial class TimingPageModel : PageModel
     private bool CanUsePickedWords() => Context.ProjectPath is not null && PickedWordValues.Count > 0;
 
     private bool CanUseTextsList() => Context.ProjectPath is not null && SelectedTextsList is { } list &&
-        Context.Assess.Compare.WordsInFamily(list.Family).Count > 0;
+        Context.Assess.Compare.WordsInPreset(list).Count > 0;
 
     private bool CanUseCheckedWords() => Context.ProjectPath is not null &&
         Context.Assess.Compare.CheckedWords.Count > 0;

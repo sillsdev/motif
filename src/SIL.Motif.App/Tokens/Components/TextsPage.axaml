@@ -26,7 +26,7 @@
     <StaticResource x:Key="Component.TextsPage.WordProjectWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.WordParserWidth" ResourceKey="Primitive.Size.100" />
     <StaticResource x:Key="Component.TextsPage.WordMeaningWidth" ResourceKey="Primitive.Size.190" />
-    <StaticResource x:Key="Component.TextsPage.WordOpenWidth" ResourceKey="Primitive.Size.70" />
+    <StaticResource x:Key="Component.TextsPage.WordOpenWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.ListProjectWidth" ResourceKey="Primitive.Size.160" />
     <StaticResource x:Key="Component.TextsPage.ListParserWidth" ResourceKey="Primitive.Size.160" />
     <StaticResource x:Key="Component.TextsPage.MiniMatrixRowLabelWidth" ResourceKey="Primitive.Size.92" />

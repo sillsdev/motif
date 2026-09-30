@@ -199,7 +199,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         if (inText is not null) workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(inText);
 
         var compare = workspace.Assess.Compare;
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
         if (compare.Words.FirstOrDefault() is { } spelling)
         {
             spelling.IsChecked = true;
@@ -207,19 +207,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
                 TimeSpan.FromMinutes(2), "The spelling change did not finish");
         }
-        compare.ClearSelectionCommand.Execute(null);
-        var reading = compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0);
-        if (reading is not null)
-        {
-            reading.SelectedReading = reading.ReadingChoices[0];
-            reading.IsChecked = true;
-            compare.ProposeCommand.Execute(ChangeKinds.Approve);
-            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
-                TimeSpan.FromMinutes(2), "The analysis change did not finish");
-        }
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.New));
-        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0 && word.Word != reading?.Word)
-            is { } candidate)
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
+        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0) is { } candidate)
         {
             candidate.IsChecked = true;
             compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
@@ -318,7 +307,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     {
         var compare = walkthrough.Workspace.Assess.Compare;
         walkthrough.Workspace.Context.OpenTexts(TextsTab.Matrix);
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Family == CompareFamilyKind.Violation));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));

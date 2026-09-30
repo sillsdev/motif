@@ -1,6 +1,6 @@
 # Changing an analysis
 
-In **Texts**, inspect the word in context or in the Matrix, then choose the parser reading or project state you want for that word form. In the Matrix, actions include **Approve**, **Disapprove**, **Make Unknown**, **Incorrect spelling**, and **Add as Unknown**. In **Analyze texts**, corresponding actions approve or disapprove a reading, make a reading Unknown, mark a spelling Incorrect, or add parser readings as Unknown. The available action may vary with the word’s current state and the reading you select.
+In **Texts**, open the word in **Analyze texts**, then choose the analysis and the opinion you want for it: approve or disapprove it, or make it Unknown. Opinions change one analysis at a time, in the text. For several words at once, the Matrix and **Analyze texts** can add parser readings as Unknown or mark a spelling Incorrect. The available action may vary with the word’s current state and the reading you select.
 
 The change is kept as pending work for this project. It applies to the word form everywhere, not only the occurrence you were looking at. Look for the count of changes not applied yet, then open **Review changes** to inspect it. Nothing is written to FieldWorks while you are choosing or reviewing.
 

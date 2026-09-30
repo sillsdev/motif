@@ -375,7 +375,7 @@ public sealed class WorkspaceContextTests
                 ]);
                 var list = context.Assess.Compare.Presets.First(preset => preset.Count > 0);
                 timing.SelectedTextsList = list;
-                shape = $"words:list({context.Assess.Compare.WordsInFamily(list.Family).Count})";
+                shape = $"words:list({context.Assess.Compare.WordsInPreset(list).Count})";
                 execute = () => timing.UseTextsListCommand.ExecuteAsync(null);
                 break;
             case "checked":
@@ -561,7 +561,8 @@ public sealed class WorkspaceContextTests
         ]);
         timing.SelectedTextsList = context.Assess.Compare.Presets.First(preset => preset.Count > 0);
         var expected = context.Assess.Compare.Words.Where(word =>
-            word.Family == timing.SelectedTextsList.Family).Select(word => word.Word).ToArray();
+            timing.SelectedTextsList.Cells.Any(cell => cell.Row == word.Row && cell.Column == word.Column))
+            .Select(word => word.Word).ToArray();
         Assert.NotEmpty(expected);
         context.Assess.Compare.SearchText = "no matching words";
         Assert.Empty(context.Assess.Compare.Words);
@@ -939,48 +940,6 @@ public sealed class WorkspaceContextTests
         var change = Assert.Single(fake.PendingPutRequests).Change;
         Assert.Equal(second, change.Reading);
         Assert.Equal(1, change.ReadingIndex);
-    }
-
-    [Fact]
-    public async Task MatrixOpinionSendsTheChosenAnalysisForATypedWordWithoutTextOccurrences()
-    {
-        var fake = new FakeCommandClient();
-        var context = NewContext(fake);
-        var texts = new TextsPageModel(context);
-        var first = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000001", null, null)]);
-        var second = new ParseAnalysis([new ParseMorph("typed-only", "bbbbbbbb-0000-0000-0000-000000000002", null, null)]);
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
-        await context.OpenProjectAsync(ProjectPath);
-        context.Changes.AssessmentId = "assessment/one";
-        context.Assess.Result = Assessment() with
-        {
-            Words =
-            [
-                new AssessmentWordResult("typed-only", "analysed", false, "Search completed", 3, null)
-                {
-                    Morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, "typed-only", 3,
-                        false, false, false, [first, second], []),
-                    Readings =
-                    [
-                        new ParserReading([new ParserReadingMorph("typed-only", "first", "n", null, false, null)]),
-                        new ParserReading([new ParserReadingMorph("typed-only", "second", "n", null, false, null)]),
-                    ],
-                    ReadingGrades = ["no-opinion", "no-opinion"],
-                },
-            ],
-        };
-        var word = Assert.Single(texts.Assess.Compare.Words);
-        word.IsChecked = true;
-        word.SelectedReading = word.ReadingChoices[1];
-
-        Assert.True(texts.Assess.Compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
-        await texts.Assess.Compare.ProposeCommand.ExecuteAsync(ChangeKinds.Approve);
-
-        var change = Assert.Single(fake.PendingPutRequests).Change;
-        Assert.Equal(second, change.Reading);
-        Assert.Equal(1, change.ReadingIndex);
-        Assert.DoesNotContain(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
-            .SelectMany(line => line.Tokens), token => token.IsWord);
     }
 
     [Fact]

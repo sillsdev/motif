@@ -251,10 +251,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         WorkspacePage originPage = WorkspacePage.Texts)
     {
         ArgumentNullException.ThrowIfNull(word);
+        if (kind is not (ChangeKinds.AddCandidate or ChangeKinds.IncorrectSpelling))
+            throw new InvalidOperationException("Opinions change one analysis at a time, in the text.");
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
         var generation = _projectGeneration;
-        var readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices :
-            word.SelectedReading is { } selected ? [selected] : [];
+        IReadOnlyList<CompareReadingChoice> readings = kind == ChangeKinds.AddCandidate ? word.ReadingChoices : [];
         var operationCount = kind == ChangeKinds.IncorrectSpelling ? 1 : readings.Count;
         using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
             UsageArgumentShape.Text("kind"), UsageArgumentShape.List("changes", operationCount));

@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
-    public void MatrixOpinionActionsUseFieldWorksWordsForVisibleAndAccessibleNames()
+    public void MatrixBulkActionsUseFieldWorksWordsAndOfferNoOpinion()
     {
         avalonia.Invoke(() =>
         {
@@ -37,18 +37,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(addUnknown.IsVisible);
                 Assert.Equal("Add as Unknown", addUnknown.Content);
                 Assert.Equal("Add checked words as Unknown", AutomationProperties.GetName(addUnknown));
-
-                var disapprove = Action("reject");
-                Assert.True(disapprove.IsVisible);
-                Assert.Equal("Disapprove", disapprove.Content);
-                Assert.Equal("Disapprove the chosen analysis for the checked word",
-                    AutomationProperties.GetName(disapprove));
-
-                var makeUnknown = Action("candidate");
-                Assert.True(makeUnknown.IsVisible);
-                Assert.Equal("Make Unknown", makeUnknown.Content);
-                Assert.Equal("Make the chosen analysis Unknown for the checked word",
-                    AutomationProperties.GetName(makeUnknown));
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    button.CommandParameter is "approve" or "reject" or "candidate");
 
                 Button Action(string kind) => Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
                     Equals(button.CommandParameter, kind));
@@ -99,8 +89,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(5, compare.Columns.Count);
                 Assert.Equal(25, window.GetLogicalDescendants().OfType<MatrixCell>().Count());
                 Assert.Equal(10, window.GetLogicalDescendants().OfType<OpinionMark>().Count());
-                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Conflict");
-                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not assessed");
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
                 var wordCell = window.GetLogicalDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("matrixWordCell"));
                 Assert.Equal("kitabu: Approved in FieldWorks, PanGloss found no parse.",

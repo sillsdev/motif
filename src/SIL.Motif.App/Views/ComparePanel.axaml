@@ -34,17 +34,18 @@
 
   <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}" IsVisible="{Binding Compare.HasWords}">
-    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
         <views:CopyableTextBlock TextWrapping="Wrap"
                                  Text="These words aren't sorted by what FieldWorks holds yet. Parse all words again to fill the rows." />
       </Border>
-      <views:FilterChip Label="All words" Count="{Binding Compare.TotalCount}" IsActive="{Binding !Compare.AnySelected}"
-                        Command="{Binding Compare.ClearSelectionCommand}" />
+      <DockPanel>
+        <views:FilterChip DockPanel.Dock="Left" VerticalAlignment="Top" Label="All words" Count="{Binding Compare.TotalCount}"
+                          IsActive="{Binding !Compare.AnySelected}" Command="{Binding Compare.ClearSelectionCommand}" />
       <ItemsControl ItemsSource="{Binding Compare.Presets}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
+            <WrapPanel />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
@@ -54,6 +55,7 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+      </DockPanel>
     </StackPanel>
 
     <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Compact}" AutomationProperties.Name="Compare matrix">
@@ -172,7 +174,7 @@
       </StackPanel>
     </StackPanel>
 
-    <Border Grid.Row="2" Classes="card">
+    <Border Grid.Row="2" Classes="card" IsVisible="{Binding Compare.HasFixFirst}">
       <Expander IsExpanded="True">
         <Expander.Header>
           <DockPanel LastChildFill="True">
@@ -266,45 +268,38 @@
         <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="Mark checked words as incorrect spelling" />
-        <Button Content="Approve" Command="{Binding Compare.ProposeCommand}" CommandParameter="approve"
-                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Approve the chosen analysis for the checked word" />
-        <Button Content="Disapprove" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject"
-                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Disapprove the chosen analysis for the checked word" />
-        <Button Content="Make Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate"
-                Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Make the chosen analysis Unknown for the checked word" />
+        <views:CopyableTextBlock Classes="muted" Text="Seconds per word" IsVisible="{Binding Compare.CanRerun}"
+                                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
         <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
                        Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
                        IsVisible="{Binding Compare.CanRerun}"
                        AutomationProperties.Name="Seconds each word gets when run again" />
-        <Button Content="Run timed-out words again" Command="{Binding Compare.RerunCommand}"
+        <Button Content="Parse stopped words again" Command="{Binding Compare.RerunCommand}"
                 IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Run the timed-out and untried words again" />
+                AutomationProperties.Name="Parse the stopped and unparsed words again" />
         <Button Content="AI Handoff for these words" Command="{Binding Compare.HandOffCommand}"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="AI Handoff for the listed words" />
       </WrapPanel>
+      <views:CopyableTextBlock Classes="muted" Text="Approve one analysis at a time, in the text." TextWrapping="Wrap" />
       <views:RefusalBlock DataContext="{Binding Compare.Changes.ShownRefusal}" />
       <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.Changes.CollectionNotice}" TextWrapping="Wrap" />
     </StackPanel>
 
     <Grid Grid.Row="5" RowDefinitions="Auto,*">
-      <Grid ColumnDefinitions="Auto,*,*,Auto,*,Auto" Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
+      <Grid ColumnDefinitions="Auto,*,*,Auto,Auto" Margin="{DynamicResource Component.TextsPage.DenseRowPadding}">
         <Border Width="{DynamicResource Component.TextsPage.WordCheckWidth}" />
         <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="WORD · FIELDWORKS · PANGLOSS" />
         <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="MEANING" />
         <views:CopyableTextBlock Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                  Classes="columnHeader" Text="IN TEXTS" />
-        <views:CopyableTextBlock Grid.Column="4" Classes="columnHeader" Text="CHOOSE AN ANALYSIS" />
-        <Border Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordOpenWidth}" />
+        <Border Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordOpenWidth}" />
       </Grid>
       <ListBox Grid.Row="1" Classes="denseWords" ItemsSource="{Binding Compare.Words}"
                AutomationProperties.Name="Words in the chosen cells">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
-            <Grid ColumnDefinitions="Auto,*,*,Auto,*,Auto" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+            <Grid ColumnDefinitions="Auto,*,*,Auto,Auto" Margin="{DynamicResource Intent.Gap.AfterRelated}">
               <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
                         Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
                         AutomationProperties.Name="{Binding Word, StringFormat='Tick {0} for a change'}" />
@@ -340,18 +335,8 @@
                                        VerticalAlignment="Center" Classes.error="{Binding IsViolation}" TextTrimming="CharacterEllipsis" />
               <views:CopyableTextBlock Grid.Column="3" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                        Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-              <ComboBox Grid.Column="4" ItemsSource="{Binding ReadingChoices}" SelectedItem="{Binding SelectedReading}"
-                        PlaceholderText="Choose an analysis for an opinion" HorizontalAlignment="Stretch"
-                        VerticalAlignment="Center"
-                        AutomationProperties.Name="{Binding Word, StringFormat='Analysis for {0}'}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CompareReadingChoice">
-                    <views:CopyableTextBlock Text="{Binding Label}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <HyperlinkButton Grid.Column="5" Width="{DynamicResource Component.TextsPage.WordOpenWidth}"
-                               Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
+              <HyperlinkButton Grid.Column="4" Width="{DynamicResource Component.TextsPage.WordOpenWidth}"
+                               Content="Open in text" HorizontalAlignment="Right" VerticalAlignment="Center"
                                Command="{Binding $parent[views:ComparePanel].Compare.OpenWordCommand}" CommandParameter="{Binding}"
                                AutomationProperties.Name="{Binding Word, StringFormat='Analyze {0} in its texts'}" />
             </Grid>
