@@ -124,6 +124,24 @@ public sealed class EntryPointStartupTests
         }
     }
 
+    [Fact]
+    public void WindowsPackageSmokeRequiresAndPrintsUninstallHookDiagnostics()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var smoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke.ps1"));
+        var lifecycle = File.ReadAllText(Path.Combine(repositoryRoot,
+            "src/SIL.Motif.Host/Installation/MotifInstallLifecycle.cs"));
+        var registration = File.ReadAllText(Path.Combine(repositoryRoot,
+            "src/SIL.Motif.Host/Installation/InstallRegistration.cs"));
+
+        Assert.Contains("OnBeforeUninstallFastCallback(_ => RunUninstallCallback())", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("MOTIF_PACKAGE_UNINSTALL_TRACE", lifecycle, StringComparison.Ordinal);
+        Assert.Contains("DeleteSubKeyTree(RegistryKeyPath", registration, StringComparison.Ordinal);
+        Assert.Contains("callback completed:", smoke, StringComparison.Ordinal);
+        Assert.Contains("Velopack uninstaller output:", smoke, StringComparison.Ordinal);
+        Assert.Contains("Get-MotifDiscoveryRegistryState", smoke, StringComparison.Ordinal);
+    }
+
     private static Assembly LoadAppAssembly() =>
         ProductContext.LoadFromAssemblyPath(Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.App.dll"));
 

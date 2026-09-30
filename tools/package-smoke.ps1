@@ -162,14 +162,47 @@ $updateExecutables = @(Get-ChildItem -LiteralPath $install -Filter 'Update.exe' 
 if ($updateExecutables.Count -eq 0) {
     throw "Velopack's uninstaller is missing from $install."
 }
-$updateExecutable = $updateExecutables[0].FullName
-& $updateExecutable uninstall --silent
-if ($LASTEXITCODE -ne 0) {
-    throw "Velopack uninstall failed with exit code $LASTEXITCODE."
+
+function Get-MotifDiscoveryRegistryState {
+    $motifKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\SIL\Motif')
+    if ($null -eq $motifKey) { return 'absent' }
+    try {
+        $values = @($motifKey.GetValueNames() | ForEach-Object {
+            "$_=$($motifKey.GetValue($_, $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames))"
+        })
+        $subKeys = @($motifKey.GetSubKeyNames())
+        return "present; values=[$($values -join '; ')]; subkeys=[$($subKeys -join '; ')]"
+    }
+    finally {
+        $motifKey.Dispose()
+    }
 }
 
-if (Test-Path -LiteralPath 'HKCU:\Software\SIL\Motif') {
-    throw 'The Motif discovery key remains after uninstall.'
+$updateExecutable = $updateExecutables[0].FullName
+$uninstallTracePath = Join-Path $work 'uninstall-hook.log'
+Remove-Item -LiteralPath $uninstallTracePath -Force -ErrorAction SilentlyContinue
+$env:MOTIF_PACKAGE_UNINSTALL_TRACE = $uninstallTracePath
+$uninstallOutput = & $updateExecutable uninstall --silent 2>&1
+$uninstallExitCode = $LASTEXITCODE
+$uninstallOutputText = [string]::Join([Environment]::NewLine, [string[]] $uninstallOutput)
+Remove-Item Env:MOTIF_PACKAGE_UNINSTALL_TRACE -ErrorAction SilentlyContinue
+$uninstallTrace = if (Test-Path -LiteralPath $uninstallTracePath -PathType Leaf) {
+    [System.IO.File]::ReadAllText($uninstallTracePath).Trim()
+} else {
+    '<no callback trace>'
+}
+$registryState = Get-MotifDiscoveryRegistryState
+Write-Host "Velopack uninstaller output: $uninstallOutputText"
+Write-Host "Velopack uninstall hook trace: $uninstallTrace"
+Write-Host "Motif discovery registry state after uninstall: $registryState"
+if ($uninstallExitCode -ne 0) {
+    throw "Velopack uninstall failed with exit code $uninstallExitCode; output: $uninstallOutputText; hook trace: $uninstallTrace"
+}
+if (-not $uninstallTrace.Contains('callback completed:', [System.StringComparison]::Ordinal)) {
+    throw "Velopack did not complete Motif's uninstall callback; hook trace: $uninstallTrace; registry: $registryState"
+}
+if ($registryState -ne 'absent') {
+    throw "The Motif discovery key remains after uninstall; hook trace: $uninstallTrace; registry: $registryState"
 }
 $environmentKey = Get-ItemProperty -LiteralPath 'HKCU:\Environment' -ErrorAction SilentlyContinue
 $remainingPathProperty = if ($null -eq $environmentKey) { $null } else { $environmentKey.PSObject.Properties['Path'] }

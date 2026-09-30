@@ -47,13 +47,10 @@ internal static class InstallRegistration
         RegisterUnix(installDirectory, cliPath, Path.Combine(configDirectory, "install.json"), shimPath, appImagePath);
     }
 
-    internal static void UnregisterCurrent()
+    internal static string UnregisterCurrent()
     {
         if (OperatingSystem.IsWindows())
-        {
-            UnregisterWindows();
-            return;
-        }
+            return UnregisterWindows();
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var shimPath = Path.Combine(home, ".local", "bin", "motif");
@@ -64,7 +61,9 @@ internal static class InstallRegistration
                     ? Path.GetFullPath(xdg)
                     : Path.Combine(home, ".config"),
                 "SIL", "Motif");
-        UnregisterUnix(Path.Combine(configDirectory, "install.json"), shimPath);
+        return UnregisterUnix(Path.Combine(configDirectory, "install.json"), shimPath)
+            ? "Unix registration removed."
+            : "Unix registration was absent.";
     }
 
     internal static string AddUserPathEntry(string? currentPath, string installDirectory)
@@ -229,49 +228,47 @@ internal static class InstallRegistration
     }
 
     [SupportedOSPlatform("windows")]
-    private static void UnregisterWindows()
+    private static string UnregisterWindows()
     {
-        using var motifKey = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, writable: true);
-        if (motifKey is null)
-            return;
-
-        var installDirectory = motifKey.GetValue("InstallDir") as string;
-        if (installDirectory is not null &&
-            string.Equals(motifKey.GetValue("InstallDir") as string, installDirectory, StringComparison.OrdinalIgnoreCase))
-            motifKey.DeleteValue("InstallDir", throwOnMissingValue: false);
-        if (installDirectory is not null &&
-            string.Equals(motifKey.GetValue("CliPath") as string,
-                Path.Combine(installDirectory, "motif.exe"), StringComparison.OrdinalIgnoreCase))
-            motifKey.DeleteValue("CliPath", throwOnMissingValue: false);
-
-        if (installDirectory is not null &&
-            string.Equals(motifKey.GetValue("PathEntryAdded") as string, "true", StringComparison.OrdinalIgnoreCase))
+        string initialState;
+        using (var motifKey = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, writable: true))
         {
-            using var environmentKey = Registry.CurrentUser.OpenSubKey(UserEnvironmentKeyPath, writable: true);
-            if (environmentKey is not null)
+            if (motifKey is null)
+                return "Windows discovery key was absent.";
+
+            var values = motifKey.GetValueNames()
+                .Select(name => $"{name}={motifKey.GetValue(name)}");
+            var subKeys = motifKey.GetSubKeyNames();
+            initialState = $"values=[{string.Join(", ", values)}]; subkeys=[{string.Join(", ", subKeys)}]";
+
+            var installDirectory = motifKey.GetValue("InstallDir") as string;
+            if (installDirectory is not null &&
+                string.Equals(motifKey.GetValue("PathEntryAdded") as string, "true", StringComparison.OrdinalIgnoreCase))
             {
-                var currentPath = environmentKey.GetValue(
-                    "Path", null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
-                var updatedPath = RemoveUserPathEntry(currentPath, installDirectory);
-                if (!string.Equals(currentPath ?? string.Empty, updatedPath, StringComparison.Ordinal))
+                using var environmentKey = Registry.CurrentUser.OpenSubKey(UserEnvironmentKeyPath, writable: true);
+                if (environmentKey is not null)
                 {
-                    var pathWasMissing = string.Equals(
-                        motifKey.GetValue("PathWasMissing") as string, "true", StringComparison.OrdinalIgnoreCase);
-                    if (pathWasMissing && updatedPath.Length == 0)
-                        environmentKey.DeleteValue("Path", throwOnMissingValue: false);
-                    else if (Enum.TryParse<RegistryValueKind>(motifKey.GetValue("PathKind") as string, out var pathKind))
-                        environmentKey.SetValue("Path", updatedPath, pathKind);
-                    else
-                        environmentKey.SetValue("Path", updatedPath, RegistryValueKind.String);
-                    BroadcastEnvironmentChange();
+                    var currentPath = environmentKey.GetValue(
+                        "Path", null, RegistryValueOptions.DoNotExpandEnvironmentNames) as string;
+                    var updatedPath = RemoveUserPathEntry(currentPath, installDirectory);
+                    if (!string.Equals(currentPath ?? string.Empty, updatedPath, StringComparison.Ordinal))
+                    {
+                        var pathWasMissing = string.Equals(
+                            motifKey.GetValue("PathWasMissing") as string, "true", StringComparison.OrdinalIgnoreCase);
+                        if (pathWasMissing && updatedPath.Length == 0)
+                            environmentKey.DeleteValue("Path", throwOnMissingValue: false);
+                        else if (Enum.TryParse<RegistryValueKind>(motifKey.GetValue("PathKind") as string, out var pathKind))
+                            environmentKey.SetValue("Path", updatedPath, pathKind);
+                        else
+                            environmentKey.SetValue("Path", updatedPath, RegistryValueKind.String);
+                        BroadcastEnvironmentChange();
+                    }
                 }
             }
         }
 
-        foreach (var valueName in new[] { "PathEntryAdded", "PathWasMissing", "PathKind" })
-            motifKey.DeleteValue(valueName, throwOnMissingValue: false);
-        if (motifKey.GetValueNames().Length == 0 && motifKey.GetSubKeyNames().Length == 0)
-            Registry.CurrentUser.DeleteSubKey(RegistryKeyPath, throwOnMissingSubKey: false);
+        Registry.CurrentUser.DeleteSubKeyTree(RegistryKeyPath, throwOnMissingSubKey: false);
+        return "Windows discovery key tree removed; before removal " + initialState + ".";
     }
 
     private static string MacAppBundlePath()

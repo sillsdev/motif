@@ -28,7 +28,7 @@ public static class MotifInstallLifecycle
         if (OperatingSystem.IsWindows())
         {
             app.OnAfterInstallFastCallback(_ => InstallRegistration.RegisterCurrent())
-                .OnBeforeUninstallFastCallback(_ => InstallRegistration.UnregisterCurrent());
+                .OnBeforeUninstallFastCallback(_ => RunUninstallCallback());
         }
         return app;
     }
@@ -66,5 +66,34 @@ public static class MotifInstallLifecycle
 
         if (OperatingSystem.IsMacOS() && InstallRegistration.IsRunningFromMacAppBundle())
             InstallRegistration.RegisterCurrent();
+    }
+
+    private static void RunUninstallCallback()
+    {
+        WriteUninstallTrace("callback started");
+        try
+        {
+            WriteUninstallTrace("callback completed: " + InstallRegistration.UnregisterCurrent());
+        }
+        catch (Exception exception)
+        {
+            WriteUninstallTrace($"callback failed: {exception.GetType().Name}: {exception.Message}");
+            throw;
+        }
+    }
+
+    private static void WriteUninstallTrace(string message)
+    {
+        var tracePath = Environment.GetEnvironmentVariable("MOTIF_PACKAGE_UNINSTALL_TRACE");
+        if (string.IsNullOrWhiteSpace(tracePath))
+            return;
+        try
+        {
+            File.AppendAllText(tracePath, message + Environment.NewLine);
+        }
+        catch (Exception exception) when (exception is
+            IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+        }
     }
 }
