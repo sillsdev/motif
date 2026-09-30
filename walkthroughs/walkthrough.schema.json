@@ -93,7 +93,8 @@
                   }
                 }
               },
-              "cropPadding": { "type": "integer", "minimum": 0, "maximum": 256 }
+              "cropPadding": { "type": "integer", "minimum": 0, "maximum": 256 },
+              "scale": { "type": "number", "minimum": 1, "maximum": 4 }
             }
           }
         ]

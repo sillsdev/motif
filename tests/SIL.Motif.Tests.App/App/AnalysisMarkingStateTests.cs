@@ -163,6 +163,16 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
+    public void HoverSummaryUsesUnknownForTheCandidateGrade()
+    {
+        var token = new ResultsTokenViewModel("Text", 1,
+            Token(Stored(Book, ReadingGrade.Candidate, "stored-1")), null);
+
+        Assert.Contains("Unknown", token.HoverSummary, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate", token.HoverSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void AgreementRemovalAndKeepChoicesDoNotNeedALook()
     {
         var agreement = AnalysisMarkingState.Create(

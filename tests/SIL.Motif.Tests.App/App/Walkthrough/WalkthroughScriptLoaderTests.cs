@@ -68,6 +68,36 @@ public sealed class WalkthroughScriptLoaderTests
         }
     }
 
+    [Fact]
+    public void ExplainedWordCardWalkthroughCoversTheSixRoundThreeExamplesAndAStagedDecision()
+    {
+        var root = FindRepositoryRoot();
+        var script = WalkthroughScriptLoader.Load(Path.Combine(root, "walkthroughs",
+            "explained-word-card.walkthrough.json"));
+        var captures = script.Steps.Where(step => step.Kind == WalkthroughStepKind.Capture).ToArray();
+        var targets = captures.SelectMany(step => step.Callouts!).Select(callout => callout.AutomationId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal("explained-word-card", script.Id);
+        Assert.Equal("explained-word-card", script.Fixture);
+        Assert.Equal(7, captures.Length);
+        Assert.All(captures, step => Assert.True(step.Scale >= 2));
+        Assert.Contains(captures.Single(step => step.Id == "approved-agrees").Callouts!, callout =>
+            callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal));
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-opinion", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged", targets);
+        Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.Click &&
+            step.AutomationId == "motif-run-assessment");
+        Assert.DoesNotContain(script.Steps, step => step.Kind == WalkthroughStepKind.WaitFor &&
+            step.AutomationId == "motif-assessment-progress");
+    }
+
     [Theory]
     [InlineData("{\"id\":\"example\",\"fixture\":\"fresh-project\",\"steps\":[{\"id\":\"step\",\"kind\":\"type\",\"automationId\":\"motif-pages\",\"text\":\" \"}]}")]
     [InlineData("{\"id\":\"example\",\"fixture\":\"fresh-project\",\"steps\":[{\"id\":\"step\",\"kind\":\"waitFor\",\"automationId\":\"motif-pages\",\"condition\":\"text\",\"expectedText\":\" \",\"timeoutMs\":1}]}")]
@@ -105,7 +135,11 @@ public sealed class WalkthroughScriptLoaderTests
     {
         if (schema.TryGetProperty("type", out var type))
         {
-            Assert.Equal(type.GetString(), value.ValueKind switch
+            if (type.GetString() == "number")
+            {
+                Assert.Equal(JsonValueKind.Number, value.ValueKind);
+            }
+            else Assert.Equal(type.GetString(), value.ValueKind switch
             {
                 JsonValueKind.String => "string",
                 JsonValueKind.Number when value.TryGetInt32(out _) => "integer",
@@ -131,8 +165,8 @@ public sealed class WalkthroughScriptLoaderTests
             Assert.True(value.GetString()!.Length >= minLength.GetInt32());
         if (schema.TryGetProperty("maxLength", out var maxLength))
             Assert.True(value.GetString()!.Length <= maxLength.GetInt32());
-        if (schema.TryGetProperty("minimum", out var minimum)) Assert.True(value.GetInt32() >= minimum.GetInt32());
-        if (schema.TryGetProperty("maximum", out var maximum)) Assert.True(value.GetInt32() <= maximum.GetInt32());
+        if (schema.TryGetProperty("minimum", out var minimum)) Assert.True(value.GetDouble() >= minimum.GetDouble());
+        if (schema.TryGetProperty("maximum", out var maximum)) Assert.True(value.GetDouble() <= maximum.GetDouble());
         if (schema.TryGetProperty("minItems", out var minItems)) Assert.True(value.GetArrayLength() >= minItems.GetInt32());
     }
 

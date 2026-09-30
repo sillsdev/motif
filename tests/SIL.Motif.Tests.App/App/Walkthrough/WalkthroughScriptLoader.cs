@@ -16,7 +16,8 @@ internal sealed record WalkthroughStep(
     int? TimeoutMs = null,
     int? DurationMs = null,
     IReadOnlyList<WalkthroughCallout>? Callouts = null,
-    int? CropPadding = null);
+    int? CropPadding = null,
+    double Scale = 1);
 
 internal sealed record WalkthroughScript(
     string Id, IReadOnlyList<WalkthroughStep> Steps, string Fixture = "fresh-project");
@@ -129,7 +130,7 @@ internal static class WalkthroughScriptLoader
 
     private static WalkthroughStep ReadCapture(JsonElement element, string id)
     {
-        CheckProperties(element, $"step '{id}'", "id", "kind", "durationMs", "callouts", "cropPadding");
+        CheckProperties(element, $"step '{id}'", "id", "kind", "durationMs", "callouts", "cropPadding", "scale");
         var items = Required(element, "callouts", $"step '{id}'");
         if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() == 0)
             throw Invalid($"step '{id}' callouts must be a non-empty array");
@@ -141,11 +142,18 @@ internal static class WalkthroughScriptLoader
         }).ToArray();
         if (callouts.Select(item => item.AutomationId).Distinct(StringComparer.Ordinal).Count() != callouts.Length)
             throw Invalid($"step '{id}' callout AutomationIds must be unique");
+        var scale = element.TryGetProperty("scale", out var scaleElement) && scaleElement.TryGetDouble(out var requestedScale)
+            ? requestedScale
+            : element.TryGetProperty("scale", out _)
+                ? throw Invalid($"step '{id}' scale must be a number from 1 to 4")
+                : 1;
+        if (scale is < 1 or > 4) throw Invalid($"step '{id}' scale must be a number from 1 to 4");
         return new WalkthroughStep(id, WalkthroughStepKind.Capture,
             DurationMs: ReadBoundedInteger(element, "durationMs", id, 100, 60000), Callouts: callouts,
             CropPadding: element.TryGetProperty("cropPadding", out _)
                 ? ReadBoundedInteger(element, "cropPadding", id, 0, 256)
-                : null);
+                : null,
+            Scale: scale);
     }
 
     private static string ReadAutomationId(JsonElement element, string context)

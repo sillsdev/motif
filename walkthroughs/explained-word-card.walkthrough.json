@@ -1,0 +1,115 @@
+{
+  "id": "explained-word-card",
+  "fixture": "explained-word-card",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "open-texts", "kind": "click", "automationId": "motif-page-texts" },
+    { "id": "open-analyze-texts", "kind": "click", "automationId": "motif-analyze-texts-tab" },
+    { "id": "wait-for-first-word", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "wait-for-evler-approval", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", "condition": "visible", "timeoutMs": 30000 },
+
+    { "id": "highlight-geldi-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word" },
+    { "id": "highlight-geldi-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-opinion" },
+    { "id": "highlight-geldi-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks" },
+    { "id": "highlight-geldi-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss" },
+    { "id": "highlight-geldi-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix" },
+    { "id": "highlight-geldi-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread" },
+    { "id": "approved-agrees", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread" }
+    ] },
+
+    { "id": "highlight-evler-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word" },
+    { "id": "highlight-evler-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-opinion" },
+    { "id": "highlight-evler-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks" },
+    { "id": "highlight-evler-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss" },
+    { "id": "highlight-evler-action", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action" },
+    { "id": "highlight-evler-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix" },
+    { "id": "highlight-evler-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread" },
+    { "id": "unknown-agrees", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread" }
+    ] },
+    { "id": "stage-evler-approval", "kind": "click", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action" },
+    { "id": "wait-for-staged-evler", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "highlight-evler-staged", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged" },
+    { "id": "unknown-staged", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged" }
+    ] },
+
+    { "id": "highlight-adamlar-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-word" },
+    { "id": "highlight-adamlar-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-opinion" },
+    { "id": "highlight-adamlar-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fieldworks" },
+    { "id": "highlight-adamlar-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-pangloss" },
+    { "id": "highlight-adamlar-action", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action" },
+    { "id": "highlight-adamlar-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fix" },
+    { "id": "highlight-adamlar-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-unread" },
+    { "id": "no-stored-new-reading", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-unread" }
+    ] },
+
+    { "id": "highlight-kediye-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-word" },
+    { "id": "highlight-kediye-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion" },
+    { "id": "highlight-kediye-disapproved", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved" },
+    { "id": "highlight-kediye-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fieldworks" },
+    { "id": "highlight-kediye-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-pangloss" },
+    { "id": "highlight-kediye-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix" },
+    { "id": "highlight-kediye-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-unread" },
+    { "id": "disapproved-conflict", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-unread" }
+    ] },
+
+    { "id": "highlight-gunler-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-word" },
+    { "id": "highlight-gunler-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-opinion" },
+    { "id": "highlight-gunler-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fieldworks" },
+    { "id": "highlight-gunler-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss" },
+    { "id": "highlight-gunler-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fix" },
+    { "id": "highlight-gunler-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-unread" },
+    { "id": "no-parse", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-unread" }
+    ] },
+
+    { "id": "highlight-okullarinda-word", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-word" },
+    { "id": "highlight-okullarinda-opinion", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-opinion" },
+    { "id": "highlight-okullarinda-fieldworks", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fieldworks" },
+    { "id": "highlight-okullarinda-pangloss", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss" },
+    { "id": "highlight-okullarinda-fix", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix" },
+    { "id": "highlight-okullarinda-unread", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread" },
+    { "id": "capped", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-word" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-opinion" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fieldworks" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix" },
+      { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread" }
+    ] }
+  ]
+}
