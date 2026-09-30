@@ -480,7 +480,10 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(word);
         var row = word.Standing ?? WordProjectStatus.NotPresent;
-        var column = word.Marking.PanGlossClass switch
+        var column = word.StoppedAtALimit ? CompareColumnKind.Timeout
+            : word.Outcome == "skipped" ? CompareColumnKind.Skipped
+            : !word.IsParsed || word.ReadingCount == 0 ? CompareColumnKind.NoParse
+            : word.Marking.PanGlossClass switch
         {
             AnalysisMarkingClass.Same => CompareColumnKind.Match,
             AnalysisMarkingClass.Conflict when word.Marking.PanGlossReadings.Count > 0 &&

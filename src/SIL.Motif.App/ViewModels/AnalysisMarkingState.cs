@@ -255,7 +255,7 @@ public sealed record AnalysisMarkingState(
         IReadOnlyList<FieldWorksAnalysisMarking> stored, IReadOnlyList<PanGlossReadingMarking> readings)
     {
         if (result is null || result.Outcome == "skipped") return AnalysisMarkingClass.NotAssessed;
-        if (incorrectSpelling) return AnalysisMarkingClass.Conflict;
+        if (incorrectSpelling && readings.Count > 0) return AnalysisMarkingClass.Conflict;
         if (readings.Any(reading => reading.MatchingAnalysisIds.Any(id => stored.Any(analysis =>
                 analysis.StoredAnalysisId == id && analysis.Opinion == ReadingGrade.Disapproved))))
             return AnalysisMarkingClass.Conflict;

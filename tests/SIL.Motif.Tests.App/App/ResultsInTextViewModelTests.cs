@@ -223,7 +223,20 @@ public sealed class ResultsInTextViewModelTests
         var tokens = inText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord);
 
         foreach (var token in tokens)
-            Assert.Equal(token.PanGlossSummary, token.VerdictLabel);
+        {
+            var expected = token.Marking.PanGlossClass switch
+            {
+                AnalysisMarkingClass.Same => "Agrees with FieldWorks",
+                AnalysisMarkingClass.Conflict => "Conflicts with a FieldWorks opinion",
+                AnalysisMarkingClass.Different => "Different from FieldWorks",
+                AnalysisMarkingClass.Extra => "Has additional readings",
+                AnalysisMarkingClass.None => "No parse",
+                AnalysisMarkingClass.Capped => "Search stopped at a limit",
+                _ => "Not assessed",
+            };
+            Assert.Equal(expected, token.PanGlossSummary);
+            Assert.Equal(expected, token.VerdictLabel);
+        }
     }
     [Fact]
     public async Task OccurrenceFiltersFollowTheSharedMarkingClass()

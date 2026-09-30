@@ -74,15 +74,58 @@ public sealed class CompareViewModelTests
     }
 
     [Theory]
-    [InlineData(ProjectStanding.Candidate, "candidate", CompareColumnKind.Match)]
-    [InlineData(ProjectStanding.Candidate, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.Rejected, "disapproved", CompareColumnKind.Match)]
-    [InlineData(ProjectStanding.Rejected, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.NotPresent, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.IncorrectSpelling, "approved", CompareColumnKind.Match)]
-    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(string standing, string grade, CompareColumnKind expected) =>
-        Assert.Equal(expected, PlaceOne(Word("w", "analysed", standing, [grade])).Item2);
+    [InlineData(ProjectStanding.Candidate, "analysed", "candidate", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Candidate, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.Rejected, "analysed", "disapproved", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Rejected, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.NotPresent, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "analysed", "approved", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "no-analysis", null, CompareColumnKind.NoParse)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "capped", null, CompareColumnKind.Timeout)]
+    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(
+        string standing, string outcome, string? grade, CompareColumnKind expected) =>
+        Assert.Equal(expected, PlaceOne(Word("w", outcome, standing, grade is null ? null : [grade])).Item2);
 
+    [Fact]
+    public void MatrixAndRecordedPlacementAgreeAcrossStandingAndOutcomeCases()
+    {
+        var cases = new (string Outcome, string[]? Grades, bool Incomplete, int MissedApproved)[]
+        {
+            ("analysed", null, false, 0),
+            ("analysed", [], false, 0),
+            ("analysed", [ReadingGrade.Approved], false, 0),
+            ("analysed", [ReadingGrade.Candidate], false, 0),
+            ("analysed", [ReadingGrade.Disapproved], false, 0),
+            ("analysed", [ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved, ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved], false, 1),
+            ("analysed", [ReadingGrade.Disapproved, ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved], true, 0),
+            ("no-analysis", null, false, 0),
+            ("capped", [ReadingGrade.Approved], true, 0),
+            ("skipped", null, false, 0),
+        };
+        foreach (var standing in new[] { ProjectStanding.Approved, ProjectStanding.Candidate,
+                     ProjectStanding.Rejected, ProjectStanding.NotPresent, ProjectStanding.IncorrectSpelling })
+        foreach (var (outcome, grades, incomplete, missedApproved) in cases)
+        {
+            if (outcome == "analysed" && grades is { Length: > 0 } && (standing switch
+                {
+                    ProjectStanding.Approved => !grades.Contains(ReadingGrade.Approved),
+                    ProjectStanding.Candidate => !grades.Contains(ReadingGrade.Candidate),
+                    ProjectStanding.Rejected => !grades.Contains(ReadingGrade.Disapproved),
+                    ProjectStanding.NotPresent => grades.Any(grade => grade != ReadingGrade.NoOpinion),
+                    _ => false,
+                })) continue;
+            var word = Word("w", outcome, standing, grades, incomplete, missedApproved);
+            var matrix = PlaceOne(word).Item2;
+            var recorded = CompareSemantics.Place(new CompareWordFacts(standing, outcome, incomplete,
+                word.Morphology, grades, missedApproved)).Column;
+            Assert.True(matrix == recorded,
+                $"{standing}/{outcome}/{string.Join(',', grades ?? [])}/{incomplete}/{missedApproved}: " +
+                $"Matrix {matrix}, recorded {recorded}");
+        }
+    }
     [Fact]
     public void EveryCellMeansWhatTheGridSaysAndTimeoutsAreNeverViolations()
     {

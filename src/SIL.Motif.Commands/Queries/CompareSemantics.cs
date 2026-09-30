@@ -46,17 +46,19 @@ public static class CompareSemantics
             return new ComparePlacement(standing, CompareColumnKind.Skipped);
         if (!StringComparer.Ordinal.Equals(word.Outcome, "analysed"))
             return new ComparePlacement(standing, CompareColumnKind.NoParse);
+        if ((word.Morphology?.Analyses.Count ?? 0) == 0)
+            return new ComparePlacement(standing, CompareColumnKind.NoParse);
 
         var grades = word.ReadingGrades ?? Array.Empty<string>();
         bool Built(string grade) => grades.Any(value => StringComparer.Ordinal.Equals(value, grade));
         var matched = standing switch
         {
-            ProjectStanding.Approved => Built(ReadingGrade.Approved) && word.MissedApprovedCount == 0,
+            ProjectStanding.Approved => Built(ReadingGrade.Approved),
             ProjectStanding.Candidate => Built(ReadingGrade.Candidate),
             ProjectStanding.Rejected => Built(ReadingGrade.Disapproved),
             _ => Built(ReadingGrade.Approved) || Built(ReadingGrade.Candidate) || Built(ReadingGrade.Disapproved),
         };
-        return new ComparePlacement(standing, matched && grades.All(grade =>
+        return new ComparePlacement(standing, matched && word.MissedApprovedCount == 0 && grades.All(grade =>
             grade is not ReadingGrade.NoOpinion) ? CompareColumnKind.Match : CompareColumnKind.NoMatch);
     }
 
