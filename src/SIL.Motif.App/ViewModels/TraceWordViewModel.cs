@@ -642,6 +642,9 @@ public sealed class TraceAnalysisViewModel
     public string? ProjectionError { get; }
     public string? LegacyMorphemes { get; }
     public bool HasLegacyMorphemes => LegacyMorphemes is { Length: > 0 };
+
+    /// <summary>The parser's own names for the analysis's morphemes, kept for the tooltip on its surface form.</summary>
+    public string? LegacyMorphemesTip => HasLegacyMorphemes ? $"The parser's morphemes: {LegacyMorphemes}" : null;
     public IReadOnlyList<TraceMorphViewModel> Morphs { get; }
     public string Label => Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
     public bool HasProjectionError => ProjectionError is { Length: > 0 };

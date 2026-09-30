@@ -55,7 +55,7 @@ public sealed class WarningsPageWordsTests
                     .Select(block => block.Text!)
                     .ToList();
                 Assert.Contains("Environment couldn't be read", visible);
-                Assert.Contains("Partly analysed entry", visible);
+                Assert.Contains("Stem with no category", visible);
                 Assert.Contains("Grammar-wide", visible);
                 Assert.Contains("no single place", visible);
                 Assert.Contains("Check the grammar again", panel.GetVisualDescendants().OfType<Button>()

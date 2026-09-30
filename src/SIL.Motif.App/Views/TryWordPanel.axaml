@@ -23,6 +23,12 @@
                         HorizontalAlignment="Stretch" AutomationProperties.Name="Save full diagnostic JSON" />
                 <Button Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
                         HorizontalAlignment="Stretch" AutomationProperties.Name="Copy full diagnostic JSON" />
+                <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap"
+                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}"
+                                         AutomationProperties.Name="Diagnostic capture details" />
+                <views:CopyableTextBlock Text="{Binding Trace.WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
+                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasResult}"
+                                         AutomationProperties.Name="Writing system direction and font" />
               </StackPanel>
             </Flyout>
           </Button.Flyout>

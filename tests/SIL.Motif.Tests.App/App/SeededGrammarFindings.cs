@@ -50,9 +50,9 @@ internal static class SeededGrammarFindings
         var entry = 10;
         foreach (var name in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
         {
-            Add("hc-partial-morpheme", "Partial morpheme analysis",
+            Add("hc-stem-no-grammatical-category", "Stem has no category",
                 Named(name, "LexEntry", "lexiconEdit", $"5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d{entry++}"),
-                $"Lexical entry '{name}' is partially analyzed.", 1, GrammarFindingOrigin.Check);
+                $"Lexical entry '{name}' has no grammatical category.", 1, GrammarFindingOrigin.Check);
         }
         return findings;
     }

@@ -74,8 +74,8 @@ public sealed class GrammarWarningsViewModelTests
         // Counts stay in reports, so the stage badge and the table agree; the table shows two rows.
         Assert.Equal(2, table.Rows.Count);
         Assert.Equal("3 findings", table.CountSummary);
-        var repeated = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.IsRepeated);
-        Assert.Equal("reported twice", repeated.RepeatText);
+        var repeated = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.RepeatCount == 2);
+        Assert.Equal("2×", repeated.SeenText);
     }
 
     [Fact]

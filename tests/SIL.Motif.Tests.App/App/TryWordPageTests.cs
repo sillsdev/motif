@@ -52,8 +52,14 @@ public sealed class TryWordPageTests
                 // Opening a saved trace is a tool, so it waits behind the menu beside Try it.
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Open a saved diagnostic");
-                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                var tools = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Try a Word tools");
+                // The flyout keeps the trace's capture details and writing systems the embedded panel no longer shows.
+                var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(tools.Flyout).Content);
+                var names = menu.GetLogicalDescendants().OfType<CopyableTextBlock>()
+                    .Select(block => AutomationProperties.GetName(block)).ToList();
+                Assert.Contains("Diagnostic capture details", names);
+                Assert.Contains("Writing system direction and font", names);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
                     Equals(expander.Header, "Aggregate parser effort by category"));
             }
@@ -272,6 +278,9 @@ public sealed class TryWordPageTests
             Assert.True(page.Trace.HasResult);
             // The word parsed, so every rule on its best path applied; one attempt is left to show, in the singular.
             Assert.All(page.RulesOnBestPath, row => Assert.Equal("applied", row.Outcome));
+            // Each rule reads as the form before it and the form it left, taken from the step it follows.
+            Assert.Equal("matinlu → matin", page.RulesOnBestPath.Single(row => row.Rule == "lu").Explanation);
+            Assert.Equal("matin → tin", page.RulesOnBestPath.Single(row => row.Rule == "ma").Explanation);
             Assert.Equal("Show the other attempt", page.Trace.MoreAttemptsText);
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
@@ -297,6 +306,8 @@ public sealed class TryWordPageTests
         Assert.Contains("Affix rule", visible);
         Assert.Contains("unknown morpheme", visible);
         Assert.Contains("Further derivation is prohibited after a final template.", visible);
+        // The parser's own morpheme names are its detail, kept for the tooltip.
+        Assert.DoesNotContain(visible, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));
         Assert.DoesNotContain(visible, text => EngineWords.IsMatch(text));
     }
 

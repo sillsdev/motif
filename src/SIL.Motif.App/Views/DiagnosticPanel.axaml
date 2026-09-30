@@ -164,12 +164,10 @@
                 <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                     <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                    <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" />
+                    <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
                   </Grid>
                   <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                              IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Morphemes: {0}'}"
-                             IsVisible="{Binding HasLegacyMorphemes}" Classes="muted" TextWrapping="Wrap" />
                   <ItemsControl ItemsSource="{Binding Morphs}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>

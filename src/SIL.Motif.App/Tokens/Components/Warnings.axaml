@@ -68,9 +68,6 @@
   <Style Selector="StackPanel.warningCell">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.CellMargin}" />
   </Style>
-  <Style Selector=":is(TextBlock).warningRepeat">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
-  </Style>
   <Style Selector=":is(SelectableTextBlock).warningPart">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
   </Style>

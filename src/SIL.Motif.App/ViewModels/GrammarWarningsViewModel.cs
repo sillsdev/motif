@@ -123,7 +123,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
                          rows.Sum(row => row.RepeatCount),
                          rows.Select(row => row.HasMeaning ? row.Meaning : row.Description)
                              .FirstOrDefault(text => text.Length > 0),
-                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0)))
+                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0),
+                         rows.Any(row => row.HasMeaning)))
                      .OrderByDescending(group => group.Count)
                      .ThenBy(group => group.Name, StringComparer.CurrentCulture))
         {
@@ -223,8 +224,9 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 {
     public GrammarFindingGroupViewModel(
         string code, string name, GrammarDiagnosticLevel level, int count, string? description = null,
-        string? guidance = null)
+        string? guidance = null, bool isKnown = false)
     {
+        IsKnown = isKnown;
         Code = code;
         Name = name;
         Level = level;
@@ -235,6 +237,9 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 
     public string Code { get; }
     public string Name { get; }
+
+    /// <summary>Whether Motif's table has a plain meaning for this code, rather than only the parser's words.</summary>
+    public bool IsKnown { get; }
     /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
@@ -291,13 +296,6 @@ public sealed class GrammarWarningRowViewModel
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
     public bool IsError => Level == GrammarDiagnosticLevel.Error;
     public int RepeatCount { get; }
-    public string RepeatText => RepeatCount switch
-    {
-        1 => string.Empty,
-        2 => "reported twice",
-        _ => $"reported {RepeatCount} times",
-    };
-    public bool IsRepeated => RepeatCount > 1;
 
     /// <summary>How often the parser reported this warning, as the Seen column shows it.</summary>
     public string SeenText => $"{RepeatCount:N0}×";

@@ -189,7 +189,7 @@ public sealed class TryWordPageModel : PageModel
                         string.Join(" · ", steps.Select(step => step.KindText).Distinct(StringComparer.Ordinal)),
                         steps.Any(step => step.IsFailure) ? "stopped"
                             : attempt.Succeeded || steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
-                        Explain(steps),
+                        Explain(steps, attempt.Steps),
                         () => Context.OpenTiming([result.Word], rule.Key)));
                 }
             }
@@ -199,16 +199,34 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(TimingLinkText));
     }
 
-    // One plain line per rule: why it stopped the word, else what it did to the form.
-    private static string Explain(IReadOnlyList<TraceStepViewModel> steps)
+    // One plain line per rule: why it stopped the word, else the form it met and the form it left.
+    private static string Explain(IReadOnlyList<TraceStepViewModel> steps, IReadOnlyList<TraceStepViewModel> path)
     {
         if (steps.FirstOrDefault(step => step.IsFailure) is { } failed)
             return failed.ContextualFailure ??
                 (failed.FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code) : "stopped here");
-        var changed = steps.FirstOrDefault(step => step.Input is { Length: > 0 } && step.Output is { Length: > 0 } &&
-            !string.Equals(step.Input, step.Output, StringComparison.Ordinal));
-        return changed is not null ? $"{changed.Input} → {changed.Output}"
-            : steps.Select(step => step.Output ?? step.Input).FirstOrDefault(text => text is { Length: > 0 }) ?? "—";
+        foreach (var step in steps)
+        {
+            if (step.Output is not { Length: > 0 } output) continue;
+            var input = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
+            if (input is not null && !string.Equals(input, output, StringComparison.Ordinal)) return $"{input} → {output}";
+        }
+        return steps.Select(step => step.Output ?? step.Input).FirstOrDefault(text => text is { Length: > 0 }) ?? "—";
+    }
+
+    // A rule step records only the form it left; the form it met is the one the step before it on the path holds.
+    private static string? FormBefore(TraceStepViewModel step, IReadOnlyList<TraceStepViewModel> path)
+    {
+        for (var index = IndexOf(path, step) - 1; index >= 0; index--)
+            if ((path[index].Output ?? path[index].Input) is { Length: > 0 } form) return form;
+        return null;
+    }
+
+    private static int IndexOf(IReadOnlyList<TraceStepViewModel> path, TraceStepViewModel step)
+    {
+        for (var index = 0; index < path.Count; index++)
+            if (ReferenceEquals(path[index], step)) return index;
+        return -1;
     }
 
     private async Task LoadStoredRuleTimingsAsync()
