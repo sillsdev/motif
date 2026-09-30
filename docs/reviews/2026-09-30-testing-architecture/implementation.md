@@ -75,3 +75,10 @@ The truthful walkthrough commits are integrated as `1ffe5c88` (close/reopen nami
 The front ends now consume the job implementation as a reusable library, while the Worker remains a separately launched executable beside them. This removes inherited executable packaging assets without changing SQLite coordination or project ownership.
 
 The extraction, current architecture diagram and independently reviewed package corrections are integrated as `a474f0bb`, `0703377c` and `d9d46be8`. The owner verified the actual self-contained CLI/Worker package workflow and a fresh Windows full suite: 3,644 passed, zero failed, 64 skipped on its isolated parserless base. Independent Sol review accepted the manifest-based ICU staging and shared Unix process-name correction. A fresh combined parent gate uses the hash-verified PanGloss release; its result is pending. Native Unix package execution still belongs to CI.
+## Verified first merge candidate
+
+The first behavioral improvements can land independently of the remaining architecture work. The isolated `review/ready-first-fixes` branch includes current main `24e33e4e` and its own reviewed compatibility correction; its evidence is recorded in `docs/reviews/2026-09-30-testing-architecture/merge-first-tranche.md` on that branch.
+
+Validated code `9dca8e32` passed fresh ./test.ps1: 3,682 passed, zero failed, 22 skipped, 600.2 seconds, with zero build warnings and all five critical real-parser integrations Passed. Its complete npm suite passed eight tests with no failures or skips, including real CLI export parity and an Astro site build. Independent Sol accepted the candidate and the final Guide compatibility correction. Documentation commit `0ad3f9a2` records the concrete merge boundary. Main was not changed.
+
+The larger branch's first runtime integration gate was stopped after confirming missing shared Worker launch files and resulting unclaimed jobs; retained logs are under the private `.tmp/runtime-split-failed-gate-a3744cb8cee74316a4864c70d43885e5` directory. Its runtime, usage, admission, content relocation and authored media stages still require their own corrected combined verification.
