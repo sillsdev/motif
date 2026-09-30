@@ -55,6 +55,12 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
             Assert.False(walkthrough.SetupDialogIsShown);
 
             new FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+            var check = walkthrough.Workspace.CheckFreshnessAsync();
+            walkthrough.WaitUntil(() => check.IsCompleted, WalkthroughSteps.Remaining(deadline),
+                "checking the FieldWorks save did not finish");
+            check.GetAwaiter().GetResult();
+            walkthrough.WaitUntil(() => walkthrough.Workspace.ShowsRefreshAction,
+                WalkthroughSteps.Remaining(deadline), "the new FieldWorks save did not make Refresh available");
             RefreshAndWait(walkthrough, deadline);
             ClickConfigureAndExpectSetup(walkthrough, "after Refresh");
             walkthrough.SkipSetup();

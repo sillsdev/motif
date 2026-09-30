@@ -23,6 +23,7 @@ public sealed class CancelAssessmentWalkthroughTests
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
             WalkthroughSteps.ChooseConformanceProjectAndCaptureBaseline(walkthrough, deadline);
+            walkthrough.TypePastedWords(string.Join(Environment.NewLine, ConformanceProject.SlowWords));
             var beforeCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
             var setupInvocation = Assert.Single(beforeCancellation);
             Assert.Equal(["motifa"], setupInvocation.Selection.ResolvedWords);
