@@ -4,143 +4,115 @@
     "words": 11,
     "parsed": 11,
     "textCoverage": 1,
-    "work": 1723,
-    "steps": 158,
-    "wallClockMs": 9056,
+    "work": 477,
+    "steps": 36,
+    "wallClockMs": 1692,
     "slowestWords": [
-      "nililala",
       "ninampiga",
-      "ninasoma",
       "ninawapiga"
     ],
-    "failing": {},
-    "grammarFindings": []
+    "tracedWords": [
+      "ninampiga",
+      "ninawapiga"
+    ],
+    "failing": {}
   },
   "broken": {
     "words": 11,
     "parsed": 9,
     "textCoverage": 0.8181818181818182,
-    "work": 32268,
-    "steps": 4957,
-    "wallClockMs": 9004,
-    "slowestWords": [
-      "ninaleta",
-      "ninampiga",
-      "ninasoma",
-      "ninawapiga"
-    ],
+    "wallClockMs": 2484,
     "failing": {
       "nililala": "past-marker-entered-as-lu",
       "vitabu": "class-8-prefix-entered-as-ki"
-    },
-    "grammarFindings": []
+    }
   },
   "variants": {
     "fixed": {
       "words": 11,
       "parsed": 11,
       "textCoverage": 1,
-      "work": 1723,
-      "steps": 158,
-      "wallClockMs": 9056,
+      "work": 477,
+      "steps": 36,
+      "wallClockMs": 1692,
       "slowestWords": [
-        "nililala",
         "ninampiga",
-        "ninasoma",
         "ninawapiga"
       ],
-      "failing": {},
-      "grammarFindings": []
+      "tracedWords": [
+        "ninampiga",
+        "ninawapiga"
+      ],
+      "failing": {}
     },
     "class-8-prefix-entered-as-ki": {
-      "words": 11,
-      "parsed": 10,
-      "textCoverage": 0.9090909090909091,
-      "work": 1723,
-      "steps": 158,
-      "wallClockMs": 9089,
-      "slowestWords": [
-        "nililala",
-        "ninampiga",
-        "ninasoma",
-        "ninawapiga"
+      "words": 1,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 1594,
+      "selectedWords": [
+        "vitabu"
       ],
       "failing": {
         "vitabu": "class-8-prefix-entered-as-ki"
-      },
-      "grammarFindings": []
+      }
     },
     "object-before-tense": {
-      "words": 11,
-      "parsed": 9,
-      "textCoverage": 0.8181818181818182,
-      "work": 1685,
-      "steps": 158,
-      "wallClockMs": 10259,
-      "slowestWords": [
-        "nililala",
+      "words": 2,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 2070,
+      "selectedWords": [
         "ninampiga",
-        "ninasoma",
         "ninawapiga"
       ],
       "failing": {
         "ninampiga": "object-before-tense",
         "ninawapiga": "object-before-tense"
-      },
-      "grammarFindings": []
+      }
     },
     "past-marker-entered-as-lu": {
-      "words": 11,
-      "parsed": 10,
-      "textCoverage": 0.9090909090909091,
-      "work": 1690,
-      "steps": 155,
-      "wallClockMs": 10191,
-      "slowestWords": [
-        "ninaleta",
-        "ninampiga",
-        "ninasoma",
-        "ninawapiga"
+      "words": 1,
+      "parsed": 0,
+      "textCoverage": 0,
+      "wallClockMs": 2870,
+      "selectedWords": [
+        "nililala"
       ],
       "failing": {
         "nililala": "past-marker-entered-as-lu"
-      },
-      "grammarFindings": []
+      }
     },
     "duplicated-object-marker-slots": {
-      "words": 11,
-      "parsed": 11,
+      "words": 2,
+      "parsed": 2,
       "textCoverage": 1,
-      "work": 33595,
-      "steps": 5214,
-      "wallClockMs": 9007,
-      "slowestWords": [
-        "nililala",
+      "work": 30301,
+      "steps": 4580,
+      "wallClockMs": 2795,
+      "selectedWords": [
         "ninampiga",
-        "ninasoma",
         "ninawapiga"
       ],
-      "failing": {},
-      "grammarFindings": []
+      "slowestWords": [
+        "ninampiga",
+        "ninawapiga"
+      ],
+      "tracedWords": [
+        "ninampiga",
+        "ninawapiga"
+      ],
+      "failing": {}
     },
     "all-bugs": {
       "words": 11,
       "parsed": 9,
       "textCoverage": 0.8181818181818182,
-      "work": 32268,
-      "steps": 4957,
-      "wallClockMs": 9004,
-      "slowestWords": [
-        "ninaleta",
-        "ninampiga",
-        "ninasoma",
-        "ninawapiga"
-      ],
+      "wallClockMs": 2484,
       "failing": {
         "nililala": "past-marker-entered-as-lu",
         "vitabu": "class-8-prefix-entered-as-ki"
-      },
-      "grammarFindings": []
+      }
     }
   }
 }

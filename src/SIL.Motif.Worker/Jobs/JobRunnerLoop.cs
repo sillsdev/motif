@@ -38,11 +38,13 @@ public sealed class JobRunnerLoop
     private readonly TimeSpan _lease;
     private readonly TimeSpan _poll;
     private readonly IReadOnlyDictionary<string, Handler> _handlers;
+    private readonly TimeProvider _timeProvider;
     private readonly Random _jitter = new();
 
     /// <summary>Creates a loop bound to one project's queue and the kinds it can run.</summary>
+    /// <param name="timeProvider">Clock used by claims and delays; defaults to system time.</param>
     public JobRunnerLoop(JobClaims claims, string projectKey, string ownerId, TimeSpan lease,
-        TimeSpan poll, IReadOnlyDictionary<string, Handler> handlers)
+        TimeSpan poll, IReadOnlyDictionary<string, Handler> handlers, TimeProvider? timeProvider = null)
     {
         _claims = claims ?? throw new ArgumentNullException(nameof(claims));
         _projectKey = projectKey ?? throw new ArgumentNullException(nameof(projectKey));
@@ -51,6 +53,7 @@ public sealed class JobRunnerLoop
         _lease = lease;
         _poll = poll;
         _handlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>Runs every job it can claim, then returns once the queue is empty.</summary>
@@ -66,7 +69,7 @@ public sealed class JobRunnerLoop
             await RunOneAsync(claimed, cancellationToken).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested) return;
             if (_poll > TimeSpan.Zero)
-                await Task.Delay(Jittered(_poll), CancellationToken.None).ConfigureAwait(false);
+                await Task.Delay(Jittered(_poll), _timeProvider, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
@@ -119,7 +122,7 @@ public sealed class JobRunnerLoop
         var interval = _lease < HeartbeatShare * 3 ? _lease / 3 : HeartbeatShare;
         while (!stopping.IsCancellationRequested)
         {
-            try { await Task.Delay(interval, stopping).ConfigureAwait(false); }
+            try { await Task.Delay(interval, _timeProvider, stopping).ConfigureAwait(false); }
             catch (OperationCanceledException) { return; }
             _claims.Renew(claimed.JobId, claimed.ClaimToken!, Now(), _lease);
             if (_claims.IsCancellationRequested(claimed.JobId)) cancelIfRequested.Cancel();
@@ -148,7 +151,7 @@ public sealed class JobRunnerLoop
     private TimeSpan Jittered(TimeSpan interval) =>
         interval + TimeSpan.FromMilliseconds(_jitter.Next(0, (int)interval.TotalMilliseconds + 1));
 
-    private static string Now() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
+    private string Now() => JobTimestamp.FormatUtc(_timeProvider.GetUtcNow());
 }
 
 /// <summary>The terminal status a <see cref="JobRunnerLoop.Handler"/> asks the loop to finish a job with.</summary>

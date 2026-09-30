@@ -69,16 +69,24 @@ public sealed class SampleProjectBuildTests
             Directory.CreateDirectory(root);
             try
             {
-                using var fixedResult = await BuildAsync(root, specPath, bugsPath, [], "fixed");
-                Reopen(fixedResult.RootElement.GetProperty("projectPath").GetString()!, disclaimer);
-                AssertBackup(fixedResult.RootElement.GetProperty("backupPath").GetString()!, languageTag);
+                using var buildMatrix = await BuildMatrixAsync(root, specPath, bugsPath);
+                var variants = buildMatrix.RootElement.GetProperty("variants").EnumerateArray()
+                    .ToDictionary(variant => variant.GetProperty("name").GetString()!,
+                        variant => variant.GetProperty("build"), StringComparer.Ordinal);
+                Assert.Equal(bugs.RootElement.GetArrayLength() + 1, variants.Count);
+
+                var fixedResult = variants["fixed"];
+                Reopen(fixedResult.GetProperty("projectPath").GetString()!, disclaimer);
+                AssertBackup(fixedResult.GetProperty("backupPath").GetString()!, languageTag);
 
                 foreach (var bug in bugs.RootElement.EnumerateArray())
                 {
                     var bugId = bug.GetProperty("id").GetString()!;
-                    using var brokenResult = await BuildAsync(root, specPath, bugsPath, [bugId], bugId);
-                    Reopen(brokenResult.RootElement.GetProperty("projectPath").GetString()!, disclaimer);
-                    AssertBackup(brokenResult.RootElement.GetProperty("backupPath").GetString()!, languageTag);
+                    var brokenResult = variants[bugId];
+                    Assert.Equal([bugId], brokenResult.GetProperty("appliedBugs").EnumerateArray()
+                        .Select(appliedBug => appliedBug.GetString()!).ToArray());
+                    Reopen(brokenResult.GetProperty("projectPath").GetString()!, disclaimer);
+                    AssertBackup(brokenResult.GetProperty("backupPath").GetString()!, languageTag);
                 }
             }
             finally
@@ -90,22 +98,16 @@ public sealed class SampleProjectBuildTests
         }
     }
 
-    private static async Task<JsonDocument> BuildAsync(
-        string root, string specPath, string bugsPath, string[] bugIds, string variant)
+    private static async Task<JsonDocument> BuildMatrixAsync(string root, string specPath, string bugsPath)
     {
         var builder = Path.Combine(BuildOutput.ProductDirectory,
             OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
         var start = new ProcessStartInfo(builder) { RedirectStandardOutput = true, RedirectStandardError = true };
-        start.ArgumentList.Add("build");
+        start.ArgumentList.Add("build-matrix");
         start.ArgumentList.Add(specPath);
-        start.ArgumentList.Add(Path.Combine(root, variant));
+        start.ArgumentList.Add(root);
         start.ArgumentList.Add("--bugs");
         start.ArgumentList.Add(bugsPath);
-        foreach (var bugId in bugIds)
-        {
-            start.ArgumentList.Add("--bug");
-            start.ArgumentList.Add(bugId);
-        }
         start.UseShellExecute = false;
         start.CreateNoWindow = true;
         using var process = Process.Start(start)!;
