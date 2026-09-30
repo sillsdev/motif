@@ -260,21 +260,21 @@
       <WrapPanel>
         <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.CheckedWordText}"
                                  Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
-        <Button Content="Add as candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
+        <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Add checked words as candidates" />
+                AutomationProperties.Name="Add checked words as Unknown" />
         <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="Mark checked words as incorrect spelling" />
         <Button Content="Approve" Command="{Binding Compare.ProposeCommand}" CommandParameter="approve"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                 AutomationProperties.Name="Approve the chosen analysis for the checked word" />
-        <Button Content="Reject" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject"
+        <Button Content="Disapprove" Command="{Binding Compare.ProposeCommand}" CommandParameter="reject"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Reject the chosen analysis for the checked word" />
-        <Button Content="Back to candidate" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate"
+                AutomationProperties.Name="Disapprove the chosen analysis for the checked word" />
+        <Button Content="Make Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="candidate"
                 Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                AutomationProperties.Name="Return the chosen analysis to candidate" />
+                AutomationProperties.Name="Make the chosen analysis Unknown for the checked word" />
         <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
                        Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
                        IsVisible="{Binding Compare.CanRerun}"

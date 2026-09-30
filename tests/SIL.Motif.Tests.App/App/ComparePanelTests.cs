@@ -15,6 +15,52 @@ namespace SIL.Motif.Tests.App;
 public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
+    public void MatrixOpinionActionsUseFieldWorksWordsForVisibleAndAccessibleNames()
+    {
+        avalonia.Invoke(() =>
+        {
+            var panel = new ComparePanel(new CompareViewModel());
+            var window = new Window
+            {
+                Content = panel,
+                RequestedThemeVariant = ThemeVariant.Light,
+                Width = 1400,
+                Height = 900,
+            };
+
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var addUnknown = Action("add-candidate");
+                Assert.True(addUnknown.IsVisible);
+                Assert.Equal("Add as Unknown", addUnknown.Content);
+                Assert.Equal("Add checked words as Unknown", AutomationProperties.GetName(addUnknown));
+
+                var disapprove = Action("reject");
+                Assert.True(disapprove.IsVisible);
+                Assert.Equal("Disapprove", disapprove.Content);
+                Assert.Equal("Disapprove the chosen analysis for the checked word",
+                    AutomationProperties.GetName(disapprove));
+
+                var makeUnknown = Action("candidate");
+                Assert.True(makeUnknown.IsVisible);
+                Assert.Equal("Make Unknown", makeUnknown.Content);
+                Assert.Equal("Make the chosen analysis Unknown for the checked word",
+                    AutomationProperties.GetName(makeUnknown));
+
+                Button Action(string kind) => Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    Equals(button.CommandParameter, kind));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void MatrixRendersFiveByFiveFiltersWithOpinionAndAgreementLegends()
     {
         avalonia.Invoke(() =>

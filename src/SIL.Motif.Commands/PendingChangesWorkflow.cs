@@ -193,11 +193,11 @@ public static class PendingChangesWorkflow
     {
         var parts = new List<string>();
         Add(AnalysisChangeKinds.Approve, "Approved", "analysis", "analyses");
-        Add(AnalysisChangeKinds.Reject, "Rejected", "analysis", "analyses");
+        Add(AnalysisChangeKinds.Reject, "Disapproved", "analysis", "analyses");
         var returned = Count(AnalysisChangeKinds.Candidate);
         if (returned > 0)
-            parts.Add($"Returned {Counted(returned, "analysis", "analyses")} to candidate status");
-        Add(AnalysisChangeKinds.AddCandidate, "Added", "candidate analysis", "candidate analyses");
+            parts.Add($"Set {Counted(returned, "analysis", "analyses")} to Unknown");
+        Add(AnalysisChangeKinds.AddCandidate, "Added", "analysis as Unknown", "analyses as Unknown");
         Add(AnalysisChangeKinds.IncorrectSpelling, "Marked", "word as incorrectly spelled",
             "words as incorrectly spelled");
         return parts.Count == 0 ? "Applied pending changes." : string.Join(", ", parts) + ".";

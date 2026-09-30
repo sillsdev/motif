@@ -912,7 +912,7 @@ public sealed class MainWindowSmokeTests
                 foreach (var kind in new[] { ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate })
                 {
                     var button = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
-                        Equals(candidate.Content, ChangeKinds.LabelOf(kind)));
+                        Equals(candidate.CommandParameter, kind));
                     Assert.Equal(kind, button.CommandParameter);
                     Assert.True(button.Command?.CanExecute(button.CommandParameter));
                 }

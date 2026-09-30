@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
@@ -24,6 +25,65 @@ namespace SIL.Motif.Tests.Commands;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task ApplyingAnalysisOpinionChangesSummarizesDisapprovedAndUnknownInFieldWorksTerms()
+    {
+        using var scratch = pristine.NewScratch();
+        var text = SeededProject.SeedText(scratch, pristine.Seed);
+        Guid disapprovedAnalysisId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+        {
+            var wordform = scratch.ServiceLocator.GetInstance<IWfiWordformRepository>()
+                .GetObject(text.AnalysedWordformId);
+            var unknownAnalysis = scratch.ServiceLocator.GetInstance<IWfiAnalysisRepository>()
+                .GetObject(text.ApprovedAnalysisId);
+            scratch.LangProject.DefaultUserAgent.SetEvaluation(unknownAnalysis, Opinions.noopinion);
+
+            var disapprovedAnalysis = scratch.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+            wordform.AnalysesOC.Add(disapprovedAnalysis);
+            var entry = scratch.ServiceLocator.GetInstance<ILexEntryRepository>()
+                .GetObject(pristine.Seed.FirstEntryId);
+            var bundle = scratch.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+            disapprovedAnalysis.MorphBundlesOS.Add(bundle);
+            bundle.MorphRA = entry.LexemeFormOA;
+            bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+            bundle.SenseRA = entry.SensesOS.First();
+            scratch.LangProject.DefaultUserAgent.SetEvaluation(disapprovedAnalysis, Opinions.disapproves);
+            disapprovedAnalysisId = disapprovedAnalysis.Guid;
+        });
+        new FwDataProjectLoader().Save(scratch);
+        var path = scratch.ProjectId.Path;
+        var root = NewManagedRoot(path);
+        var runner = IsolatedRunner.Process(root);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+
+        var pending = LoadPending(path);
+        var wordformId = CanonicalId.FromGuid(text.AnalysedWordformId).Value;
+        var disapprove = PendingChanges.Put(new PutPendingChangeRequest(path, ProductVersion, pending.Revision,
+            new ChangeIntent("disapprove-unknown-analysis", AnalysisChangeKinds.Reject, wordformId,
+                SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(text.ApprovedAnalysisId).Value)));
+        Assert.True(disapprove.Succeeded, disapprove.Refusal?.Message);
+        var makeUnknown = PendingChanges.Put(new PutPendingChangeRequest(path, ProductVersion,
+            disapprove.Value!.Revision,
+            new ChangeIntent("make-disapproved-analysis-unknown", AnalysisChangeKinds.Candidate, wordformId,
+                SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(disapprovedAnalysisId).Value)));
+        Assert.True(makeUnknown.Succeeded, makeUnknown.Refusal?.Message);
+
+        var measured = await MeasureStepAsync("the opinion vocabulary Trial", new MeasurePendingRequest(path,
+            makeUnknown.Value!.DraftId, makeUnknown.Value.Revision, [SeededProject.AnalysedWordForm]), runner);
+        Assert.True(measured.Succeeded, "the opinion vocabulary Trial: " + measured.Refusal?.Message);
+
+        var applied = await ApplyStepAsync("the opinion vocabulary Apply", new ApplyPendingRequest(path,
+            makeUnknown.Value.DraftId!, makeUnknown.Value.Revision, "test-user"), runner);
+
+        Assert.True(applied.Succeeded, "the opinion vocabulary Apply: " + applied.Refusal?.Message);
+        using var response = JsonDocument.Parse(ProjectionJson.Serialize(applied.Value!));
+        Assert.Equal("Disapproved 1 analysis, Set 1 analysis to Unknown.",
+            response.RootElement.GetProperty("summary").GetString());
+    }
+
     [Fact]
     public void PendingChangeWorkflowsAreCataloguedForBothFrontEnds()
     {
