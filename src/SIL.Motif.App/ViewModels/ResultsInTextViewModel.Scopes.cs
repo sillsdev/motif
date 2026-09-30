@@ -105,8 +105,9 @@ public sealed partial class ResultsInTextViewModel
             case AnalysisOperationScope.CheckedWords:
                 foreach (var token in DistinctWords(CheckedTokens))
                     if (token.WordformId is { } wordformId)
-                        await _changes.AcceptNewSetAsync(assessmentId,
-                            CanonicalId.FromGuid(wordformId).Value).ConfigureAwait(true);
+                        if (!await _changes.AcceptNewSetAsync(assessmentId,
+                                CanonicalId.FromGuid(wordformId).Value).ConfigureAwait(true))
+                            return;
                 break;
         }
     }
@@ -129,9 +130,10 @@ public sealed partial class ResultsInTextViewModel
                          .Where(item => item.reading.IsParserOnly)
                          .DistinctBy(item => ProjectAnalysisKey.For(item.reading.Analysis)))
             {
-                await _changes.AddFromMarkingAsync(new AnalysisMarkingAction(
+                if (!await _changes.AddFromMarkingAsync(new AnalysisMarkingAction(
                     AnalysisMarkingActionKind.Add, "Add as Unknown", null, reading.Analysis, index,
-                    "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate), token).ConfigureAwait(true);
+                    "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate), token).ConfigureAwait(true))
+                    return;
             }
         }
     }
@@ -150,7 +152,8 @@ public sealed partial class ResultsInTextViewModel
     private async Task MarkSpellingsIncorrectAsync(IEnumerable<ResultsTokenViewModel> tokens)
     {
         foreach (var token in DistinctWords(tokens))
-            await _changes.AddFromTextAsync(ChangeKinds.IncorrectSpelling, token).ConfigureAwait(true);
+            if (!await _changes.AddFromTextAsync(ChangeKinds.IncorrectSpelling, token).ConfigureAwait(true))
+                return;
     }
 
     private bool CanRemoveAnalyses(AnalysisOperationScope scope) => scope switch

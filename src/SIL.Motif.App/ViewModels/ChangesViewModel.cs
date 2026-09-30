@@ -259,16 +259,20 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         }
     }
 
-    public async Task AddFromTextAsync(string kind, ResultsTokenViewModel token, ResultsReadingViewModel? reading = null)
+    public async Task<bool> AddFromTextAsync(string kind, ResultsTokenViewModel token,
+        ResultsReadingViewModel? reading = null)
     {
         ArgumentNullException.ThrowIfNull(token);
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
         var occurrence = kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate
             ? token.Occurrence : null;
         var wordformId = token.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
-        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, token.Form,
+        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, kind, wordformId, token.Form,
             AssessmentId, reading?.Analysis, DisplayReading: reading?.Text,
             ReadingIndex: reading?.Index, OriginPage: WorkspacePage.Texts.ToString(),
-            Occurrence: occurrence)).ConfigureAwait(true);
+            Occurrence: occurrence), path, generation, CancellationToken.None).ConfigureAwait(true);
     }
 
     public async Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
