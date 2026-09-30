@@ -25,7 +25,7 @@ internal static class WalkthroughSteps
         Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
         Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
         Assert.True(walkthrough.Find<Button>("Refresh the project").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
         Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
         Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
@@ -120,9 +120,9 @@ internal static class WalkthroughSteps
         WalkthroughWindow walkthrough, long deadline, IReadOnlyList<string> words)
     {
         walkthrough.TypePastedWords(string.Join(Environment.NewLine, words));
-        Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
 
-        walkthrough.Click("Run the Assessment");
+        walkthrough.Click("Parse all words in the Selection");
         Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
         Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
         walkthrough.WaitUntil(() =>
@@ -139,9 +139,9 @@ internal static class WalkthroughSteps
         WalkthroughWindow walkthrough, long deadline, HoldingStartGate? holdingGate = null)
     {
         walkthrough.TypePastedWords("motifa\nmotifb\nmofita");
-        Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
 
-        walkthrough.Click("Run the Assessment");
+        walkthrough.Click("Parse all words in the Selection");
 
         if (holdingGate is not null)
         {

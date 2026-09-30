@@ -155,12 +155,9 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse the words in the selected texts");
-                var readButtons = panel.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => AutomationProperties.GetName(button) is
-                        "Mark selected occurrences as read" or "Mark selected occurrences as unread" or
-                        "Mark the selected Text as read" or "Mark the selected Text as unread").ToArray();
-                Assert.Equal(4, readButtons.Length);
-                Assert.All(readButtons, button => Assert.False(button.IsEffectivelyVisible));
+                var readMenu = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Mark read or unread");
+                Assert.False(readMenu.IsEffectivelyVisible);
             }
             finally
             {
@@ -840,23 +837,29 @@ public sealed class MainWindowSmokeTests
 
                 Assert.True(selected.IsCardOpen);
                 var resultsPanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
-                var selectionBoxes = resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
+                CheckBox[] SelectionBoxes() => resultsPanel.GetLogicalDescendants().OfType<CheckBox>()
                     .Where(checkBox => checkBox.IsEffectivelyVisible &&
                         (AutomationProperties.GetName(checkBox) ?? string.Empty)
                         .StartsWith("Select ", StringComparison.Ordinal))
                     .ToArray();
-                Assert.Single(selectionBoxes);
+                Assert.Empty(SelectionBoxes());
+                workspace.PageModel<TextsPageModel>().ResultsInText.ChooseWordsCommand.Execute(null);
+                window.UpdateLayout();
+                Assert.Single(SelectionBoxes());
                 var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
                     .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
-                var cardPopup = Assert.Single(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
-                Assert.Same(strip, cardPopup.PlacementTarget);
+                Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
                 Dispatcher.UIThread.RunJobs();
-                cardPopup.Child!.UpdateLayout();
-                var cardLinks = cardPopup.Child.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
+                window.UpdateLayout();
+                var card = Assert.Single(resultsPanel.GetVisualDescendants().OfType<Border>(), border =>
+                    border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+                Assert.Same(selected, card.DataContext);
+                Assert.True(card.TranslatePoint(new Point(0, 0), strip)!.Value.Y >= strip.Bounds.Height);
+                var cardLinks = card.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
                 Assert.True(cardLinks.Length > 0,
-                    $"Card context={cardPopup.Child.DataContext?.GetType().Name ?? "null"}; " +
+                    $"Card context={card.DataContext?.GetType().Name ?? "null"}; " +
                     $"reading link={selected.Readings.Single().Morphs.Single().Link}; " +
-                    $"morpheme rows={cardPopup.Child.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
+                    $"morpheme rows={card.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
                     $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
                 var morphLink = Assert.Single(cardLinks,
                     button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks");
@@ -871,7 +874,7 @@ public sealed class MainWindowSmokeTests
                 workspace.CurrentPage = WorkspacePage.Review;
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.False(cardPopup.IsOpen);
+                Assert.False(selected.IsCardOpen);
             }
             finally
             {

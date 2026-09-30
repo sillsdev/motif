@@ -58,8 +58,8 @@ public sealed class ConcurrentWalkthroughTests
                     holdUntilPath = secondRelease,
                 });
 
-                firstWalkthrough.Click("Run the Assessment");
-                secondWalkthrough.Click("Run the Assessment");
+                firstWalkthrough.Click("Parse all words in the Selection");
+                secondWalkthrough.Click("Parse all words in the Selection");
                 var firstExecution = firstWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                 var secondExecution = secondWalkthrough.Workspace.Assess.RunCommand.ExecutionTask;
                 Assert.NotNull(firstExecution);

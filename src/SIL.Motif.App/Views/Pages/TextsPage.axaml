@@ -22,10 +22,10 @@
               <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button DockPanel.Dock="Right" Content="Run assessment" Command="{Binding Assess.RunCommand}"
+          <Button DockPanel.Dock="Right" Content="Parse all words" Command="{Binding Assess.RunCommand}"
                 VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                 IsVisible="{Binding !Context.NeedsAssessment}"
-                AutomationProperties.Name="Run the Assessment"
+                AutomationProperties.Name="Parse all words in the Selection"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
             <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
@@ -73,7 +73,7 @@
             IsVisible="{Binding ShowAnalyzeTextsContent}">
         <ContentControl x:Name="SelectionHost" Width="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
                         IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
-        <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
             <Button Content="Read text" Classes="tab" Classes.active="{Binding ShowTextReader}"
                     Command="{Binding ShowAnalyzeViewCommand}"
@@ -84,16 +84,16 @@
                     CommandParameter="{x:Static vm:AnalyzeTextsView.WordList}"
                     AutomationProperties.Name="Show the word list" />
           </StackPanel>
-          <ContentControl x:Name="AnalyzeReaderHost" Grid.Row="1" IsVisible="{Binding ShowTextReader}" />
-          <ContentControl x:Name="WordListHost" Grid.Row="1" IsVisible="{Binding ShowWordList}" />
+          <ContentControl x:Name="AnalyzeParsePromptHost" Grid.Row="1" IsVisible="{Binding ShowAnalyzeParsePrompt}"
+                          HorizontalAlignment="Left" />
+          <ContentControl x:Name="AnalyzeReaderHost" Grid.Row="2" IsVisible="{Binding ShowTextReader}" />
+          <ContentControl x:Name="WordListHost" Grid.Row="2" IsVisible="{Binding ShowWordList}" />
         </Grid>
       </Grid>
       <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" />
       <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
-      <Border Classes="card" IsVisible="{Binding ShowParsePrompt}"
-              HorizontalAlignment="Center" VerticalAlignment="Center">
-        <views:ParsePrompt DataContext="{Binding Context}" />
-      </Border>
+      <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>
   </Grid>
 </UserControl>

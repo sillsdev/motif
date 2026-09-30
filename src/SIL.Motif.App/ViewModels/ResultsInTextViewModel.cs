@@ -90,6 +90,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
         SelectAllWordsCommand = new RelayCommand(SelectAllWords, CanSelectAllWords);
         ClearSelectedWordsCommand = new RelayCommand(ClearSelectedWords, () => HasCheckedWords);
+        ChooseWordsCommand = new RelayCommand(() => IsChoosingWords = !IsChoosingWords);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
         OpenPanGlossGuideCommand = new RelayCommand(() => OpenPanGlossGuide?.Invoke());
@@ -186,6 +187,24 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     public bool HasCheckedWords => CheckedWordCount > 0;
 
+    /// <summary>Whether the reader asked to choose words, which shows a checkbox on every word strip.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowWordCheckboxes))]
+    [NotifyPropertyChangedFor(nameof(ChooseWordsLabel))]
+    private bool _isChoosingWords;
+
+    /// <summary>The Select menu's choosing toggle, named for what pressing it does.</summary>
+    public string ChooseWordsLabel => IsChoosingWords ? "Stop choosing words" : "Choose words";
+
+    /// <summary>Turns word choosing on or off from the Select menu.</summary>
+    public IRelayCommand ChooseWordsCommand { get; }
+
+    /// <summary>Whether word strips show their checkboxes: while choosing, or while any word is checked.</summary>
+    public bool ShowWordCheckboxes => IsChoosingWords || HasCheckedWords;
+
+    /// <summary>The Select menu's button, which counts the checked words once there are any.</summary>
+    public string SelectMenuLabel => HasCheckedWords ? $"{CheckedWordCount} selected ▾" : "Select ▾";
+
     public bool HasCheckedUncertainChanges => CheckedTokens.Any(token =>
         _changes.Items.Any(change => change.Word == token.Form && change.IsUncertain));
 
@@ -217,8 +236,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string ChosenTextsRemovalPreview => RemovalUsesPreview(_allWords);
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message => _assess.Result is null ? null
-        : Texts.Count == 0 ? "Check a text in Texts to read the results in place."
+    public string? Message => Texts.Count == 0
+            ? _assess.Result is null ? null : "Check a text in Texts to read the results in place."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
             ? "This text has no lines split into words yet. Open it once in FieldWorks' Interlinear Texts, then refresh the Baseline."
@@ -235,6 +254,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Whether the selected Text has results to display.</summary>
     public bool HasResults => HasAssessment && !HasMessage;
+
+    /// <summary>Whether the reader has lines to show, which it does before the first parse too.</summary>
+    public bool HasLines => !HasMessage && VisibleLines.Count > 0;
 
     /// <summary>The Assessment action for the empty Analyze texts state.</summary>
     public IAsyncRelayCommand ParseWordsCommand => _assess.RunCommand;
@@ -474,6 +496,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNotAssessed));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(HasCheckedWords));
+        OnPropertyChanged(nameof(ShowWordCheckboxes));
+        OnPropertyChanged(nameof(SelectMenuLabel));
         NotifyScopeCommands();
 
         var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
@@ -484,19 +508,16 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private void RefreshLines()
     {
         var matchingLines = new List<ResultsLineViewModel>();
-        if (HasAssessment)
+        foreach (var line in SelectedText?.Lines ?? [])
         {
-            foreach (var line in SelectedText?.Lines ?? [])
+            var any = false;
+            foreach (var token in line.Tokens.Where(token => token.IsWord))
             {
-                var any = false;
-                foreach (var token in line.Tokens.Where(token => token.IsWord))
-                {
-                    var matches = MatchesFilter(token);
-                    token.IsDimmed = !matches;
-                    any |= matches;
-                }
-                if (any) matchingLines.Add(line);
+                var matches = !HasAssessment || MatchesFilter(token);
+                token.IsDimmed = !matches;
+                any |= matches;
             }
+            if (any) matchingLines.Add(line);
         }
         for (var index = 0; index < matchingLines.Count; index++)
         {
@@ -512,6 +533,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(HasTexts));
         OnPropertyChanged(nameof(HasAssessment));
         OnPropertyChanged(nameof(HasResults));
+        OnPropertyChanged(nameof(HasLines));
         OnPropertyChanged(nameof(NeedsTexts));
     }
 
@@ -587,6 +609,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             OnPropertyChanged(nameof(CheckedWordCountLabel));
             OnPropertyChanged(nameof(HasCheckedWords));
             OnPropertyChanged(nameof(HasCheckedUncertainChanges));
+            OnPropertyChanged(nameof(ShowWordCheckboxes));
+            OnPropertyChanged(nameof(SelectMenuLabel));
             OnPropertyChanged(nameof(SelectedReadStateCount));
             OnPropertyChanged(nameof(HasSelectedReadStateOccurrences));
             MarkSelectionReadCommand.NotifyCanExecuteChanged();
@@ -654,7 +678,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private async Task RefreshReadStateAsync(long generation)
     {
-        if (string.IsNullOrWhiteSpace(_assess.ProjectPath)) return;
+        if (string.IsNullOrWhiteSpace(_assess.ProjectPath) || _assess.Result is null) return;
         var textIds = _allWords.Where(token => token.Occurrence is not null)
             .Select(token => token.Occurrence!.TextId).Distinct().ToArray();
         foreach (var textId in textIds)
@@ -858,8 +882,8 @@ public sealed class ResultsTextViewModel
     public IReadOnlyList<ResultsLineViewModel> Lines { get; }
 }
 
-/// <summary>One line of a Text in the Results In text view.</summary>
-public sealed class ResultsLineViewModel
+/// <summary>One line of a Text in the Results In text view, with the word card opened under it.</summary>
+public sealed class ResultsLineViewModel : ObservableObject
 {
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
         IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null, Guid textId = default)
@@ -878,6 +902,7 @@ public sealed class ResultsLineViewModel
                     ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
                     : null,
             textId: textId)).ToArray();
+        foreach (var token in Tokens) token.PropertyChanged += OnTokenPropertyChanged;
     }
 
     public int Number { get; }
@@ -885,4 +910,33 @@ public sealed class ResultsLineViewModel
     public Guid ParagraphId { get; }
     public Guid SegmentId { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }
+
+    /// <summary>The word on this line whose card is open, which the line shows beneath its words.</summary>
+    public ResultsTokenViewModel? OpenCard => Tokens.FirstOrDefault(token => token.IsCardOpen);
+
+    /// <summary>Whether a word card is open under this line.</summary>
+    public bool HasOpenCard => OpenCard is not null;
+
+    /// <summary>The line as it reads, words and punctuation, above its word strips.</summary>
+    public string Sentence => string.Concat(Tokens.Select((token, index) =>
+        index > 0 && token.IsWord ? " " + token.Text : token.Text));
+
+    /// <summary>How many of the line's words have an action waiting, or nothing when none do.</summary>
+    public string NeedsALookSummary => Tokens.Count(token => token.IsWord && token.Marking.NeedsALook) switch
+    {
+        0 => string.Empty,
+        var count => $"· {count} need{(count == 1 ? "s" : string.Empty)} a look",
+    };
+
+    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ResultsTokenViewModel.Marking))
+        {
+            OnPropertyChanged(nameof(NeedsALookSummary));
+            return;
+        }
+        if (e.PropertyName != nameof(ResultsTokenViewModel.IsCardOpen)) return;
+        OnPropertyChanged(nameof(OpenCard));
+        OnPropertyChanged(nameof(HasOpenCard));
+    }
 }

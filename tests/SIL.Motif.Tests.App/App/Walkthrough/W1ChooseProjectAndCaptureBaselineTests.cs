@@ -27,7 +27,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
                 walkthrough, SeededProject.TextTitle, StepCap.DefaultSteps.ToString(),
                 WalkthroughSteps.Remaining(deadline));
             Assert.False(walkthrough.Workspace.Context.NeedsAssessment);
-            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
             Assert.Equal($"1 text, step cap {StepCap.DefaultSteps:N0}", walkthrough.Workspace.Selection.SummaryText);
 

@@ -20,6 +20,23 @@ public sealed partial class TextsPage : UserControl
         Host("WordListHost").Content = new TextWordsPanel(page.Words);
         Host("ListsHost").Content = new TextsListsPanel(page.TextsLists);
         Host("DifferenceHost").Content = new DifferencePanel(page.Assess.Difference);
+
+        // One prompt, moved between its two places, so the page never holds two buttons of the same name.
+        var prompt = new Border { Classes = { "card" }, Child = new ParsePrompt { DataContext = page.Context } };
+        var above = Host("AnalyzeParsePromptHost");
+        var centred = Host("CentredParsePromptHost");
+        void Place()
+        {
+            var host = page.ShowAnalyzeTexts ? above : centred;
+            if (ReferenceEquals(host.Content, prompt)) return;
+            (host == above ? centred : above).Content = null;
+            host.Content = prompt;
+        }
+        Place();
+        page.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TextsPageModel.ShowAnalyzeTexts)) Place();
+        };
     }
 
     private ContentControl Host(string name) =>

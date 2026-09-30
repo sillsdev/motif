@@ -44,6 +44,8 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/PanGlossLine.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ActionChip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/StagedStrip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordCard.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HoverReveal.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Density.axaml" />
   </Application.Styles>

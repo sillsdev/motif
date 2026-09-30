@@ -15,6 +15,14 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector=":is(Border).unreadMark.dotOnly">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector=":is(Border).unreadMark.dotOnly TextBlock">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
   <Style Selector="StackPanel.unreadMarkContent">
     <Setter Property="Orientation" Value="Horizontal" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />

@@ -32,8 +32,8 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 setupInvocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
 
             FakeParser.BehaveBesideExecutable(parserPath, new { heartbeatPath = heartbeat, processIdPath });
-            Assert.True(walkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
-            walkthrough.Click("Run the Assessment");
+            Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+            walkthrough.Click("Parse all words in the Selection");
             walkthrough.WaitUntil(
                 () => File.Exists(heartbeat) && File.Exists(processIdPath) &&
                     walkthrough.Workspace.Assess.State == RunState.Running,

@@ -99,9 +99,17 @@ public sealed partial class TextsPageModel : PageModel
 
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
 
-    public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts && !Context.NeedsAssessment;
+    /// <summary>Whether Analyze texts shows its text, which it does before the first parse too.</summary>
+    public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts;
 
+    /// <summary>Whether the current tab asks for a parse: the Matrix and Analyze texts need one.</summary>
     public bool ShowParsePrompt => Context.NeedsAssessment && (ShowMatrix || ShowAnalyzeTexts);
+
+    /// <summary>Whether the prompt fills the Matrix, which has nothing to show without a parse.</summary>
+    public bool ShowCentredParsePrompt => Context.NeedsAssessment && ShowMatrix;
+
+    /// <summary>Whether the prompt sits above the text, which still shows the analyses FieldWorks holds.</summary>
+    public bool ShowAnalyzeParsePrompt => Context.NeedsAssessment && ShowAnalyzeTexts;
 
     public bool ShowLists => Tab == TextsTab.Lists;
 
@@ -165,6 +173,8 @@ public sealed partial class TextsPageModel : PageModel
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
         OnPropertyChanged(nameof(ShowParsePrompt));
+        OnPropertyChanged(nameof(ShowCentredParsePrompt));
+        OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         OnPropertyChanged(nameof(ShowAssessStatus));
         OnPropertyChanged(nameof(ShowAssessRefusal));
         if (e.PropertyName == nameof(AssessViewModel.IsActive) && Assess.IsActive) Tab = TextsTab.Matrix;
@@ -175,6 +185,8 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(ShowMatrixContent));
         OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
         OnPropertyChanged(nameof(ShowParsePrompt));
+        OnPropertyChanged(nameof(ShowCentredParsePrompt));
+        OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
     }
 
@@ -190,6 +202,8 @@ public sealed partial class TextsPageModel : PageModel
             OnPropertyChanged(nameof(ShowMatrixContent));
             OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
             OnPropertyChanged(nameof(ShowParsePrompt));
+            OnPropertyChanged(nameof(ShowCentredParsePrompt));
+            OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         }
     }
 }
