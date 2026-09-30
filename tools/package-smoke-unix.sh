@@ -67,11 +67,22 @@ assert_version() {
 
 assert_version "$PRODUCT_VERSION"
 
-fixture_source="$GITHUB_WORKSPACE/tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/deep-optional-affix-nesting"
-project_directory="$work_directory/DeepOptionalAffixNesting"
-mkdir -p "$project_directory"
-cp -R "$fixture_source/." "$project_directory/"
-project_path="$project_directory/DeepOptionalAffixNesting.fwdata"
+sample_builder="$GITHUB_WORKSPACE/bin/Release/SIL.Motif.SampleProjects"
+sample_spec="$GITHUB_WORKSPACE/samples/synthetic-turkic/sample.json"
+sample_output_root="$work_directory/sample-projects"
+sample_build_stderr="$work_directory/sample-project-builder.stderr"
+if sample_build_json=$("$sample_builder" build "$sample_spec" "$sample_output_root" 2>"$sample_build_stderr"); then
+    project_path=$(printf '%s\n' "$sample_build_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["projectPath"])')
+else
+    sample_build_exit=$?
+    printf 'Sample project builder failed with exit code %s:\n' "$sample_build_exit" >&2
+    cat "$sample_build_stderr" >&2
+    exit "$sample_build_exit"
+fi
+if [[ ! -f "$project_path" ]]; then
+    printf 'Sample project builder reported a missing project: %s\n' "$project_path" >&2
+    exit 1
+fi
 "$cli_shim" analyses --project "$project_path" >/dev/null
 
 job_id=$("$cli_shim" baseline-refresh --project "$project_path")

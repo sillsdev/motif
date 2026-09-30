@@ -27,10 +27,9 @@ public sealed class EntryPointStartupTests
     private static readonly AssemblyLoadContext ProductContext = ProductLoadContext();
 
     [Theory]
-    [InlineData("SIL.Motif.App")]
     [InlineData("SIL.Motif.Worker")]
     [InlineData("motif")]
-    public void EveryExecutableSuppressesCrashDialogsAtStartup(string executable)
+    public void NonAppExecutablesSuppressCrashDialogsAtStartup(string executable)
     {
         var assembly = ProductContext.LoadFromAssemblyPath(Path.Combine(BuildOutput.ProductDirectory, executable + ".dll"));
         var entryPoint = assembly.EntryPoint ?? throw new InvalidOperationException(executable + " has no entry point.");
@@ -42,17 +41,65 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
-    public void AppMainRunsVelopackHooksFromThePackagedEntryPoint()
+    public void AppMainHandlesVelopackHooksBeforeNormalStartup()
     {
-        var assembly = ProductContext.LoadFromAssemblyPath(Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.App.dll"));
+        var assembly = LoadAppAssembly();
         var entryPoint = assembly.EntryPoint ?? throw new InvalidOperationException("SIL.Motif.App has no entry point.");
         var calls = CalledMethods(UserCode(entryPoint)).ToArray();
         var build = Array.FindIndex(calls, IsVelopackBuild);
         var run = Array.FindIndex(calls, IsVelopackRun);
+        var fastExit = Array.FindIndex(calls, IsVelopackFastExitHook);
+        var normalStartup = Array.FindIndex(calls, IsAvaloniaStartup);
+        var crashDialogs = Array.FindIndex(calls, IsCrashDialogSuppression);
 
-        Assert.True(build >= 0, "SIL.Motif.App's entry point must call VelopackApp.Build.");
+        Assert.True(build == 0, "SIL.Motif.App must start Velopack before any other startup work.");
         Assert.True(run > build, "SIL.Motif.App's entry point must call VelopackApp.Run after Build.");
+        Assert.True(fastExit > run && fastExit < normalStartup,
+            "SIL.Motif.App must return for Velopack fast-exit hooks before starting Avalonia.");
+        Assert.True(crashDialogs > fastExit,
+            "Crash-dialog setup must not run before Velopack has handled its fast-exit hooks.");
     }
+
+    [Theory]
+    [InlineData("--veloapp-install")]
+    [InlineData("--veloapp-updated")]
+    [InlineData("--veloapp-obsolete")]
+    [InlineData("--veloapp-uninstall")]
+    public void AppRecognizesVelopackFastExitArguments(string hookArgument)
+    {
+        var program = LoadAppAssembly().GetType("SIL.Motif.App.Program", throwOnError: true)!;
+        var method = program.GetMethod("IsVelopackFastExitHook", BindingFlags.Static | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+        Assert.Equal(true, method!.Invoke(null, [new[] { hookArgument, "1.2.3" }]));
+    }
+
+    [Fact]
+    public void AppDoesNotTreatNormalArgumentsAsVelopackHooks()
+    {
+        var program = LoadAppAssembly().GetType("SIL.Motif.App.Program", throwOnError: true)!;
+        var method = program.GetMethod("IsVelopackFastExitHook", BindingFlags.Static | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+        Assert.Equal(false, method!.Invoke(null, [new[] { "--smoke" }]));
+    }
+
+    [Fact]
+    public void PackageSmokeScriptsUseTheSampleProjectBuilderOutput()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        foreach (var relativePath in new[] { "tools/package-smoke.ps1", "tools/package-smoke-unix.sh" })
+        {
+            var script = File.ReadAllText(Path.Combine(repositoryRoot, relativePath));
+
+            Assert.Contains("SIL.Motif.SampleProjects", script, StringComparison.Ordinal);
+            Assert.Contains("projectPath", script, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("deep-optional-affix-nesting", script, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static Assembly LoadAppAssembly() =>
+        ProductContext.LoadFromAssemblyPath(Path.Combine(BuildOutput.ProductDirectory, "SIL.Motif.App.dll"));
 
     private static AssemblyLoadContext ProductLoadContext()
     {
@@ -104,6 +151,15 @@ public sealed class EntryPointStartupTests
 
     private static bool IsVelopackRun(MethodBase method) =>
         method.DeclaringType?.FullName == "Velopack.VelopackApp" && method.Name == "Run";
+
+    private static bool IsVelopackFastExitHook(MethodBase method) =>
+        method.DeclaringType?.FullName == "SIL.Motif.App.Program" && method.Name == "IsVelopackFastExitHook";
+
+    private static bool IsAvaloniaStartup(MethodBase method) =>
+        method.DeclaringType?.FullName == "SIL.Motif.App.Program" && method.Name == "BuildAvaloniaApp";
+
+    private static bool IsCrashDialogSuppression(MethodBase method) =>
+        method.DeclaringType == typeof(CrashDialogs) && method.Name == nameof(CrashDialogs.Suppress);
 
     private static int OperandSize(OpCode code, byte[] il, int offset) => code.OperandType switch
     {

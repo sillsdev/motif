@@ -11,9 +11,12 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        MotifInstallLifecycle.ConfigureForStartup(VelopackApp.Build(), args).Run();
+        if (IsVelopackFastExitHook(args))
+            return 0;
+
         // Motif's own error window reports an escaped error; Windows' dialog must not appear beside it.
         CrashDialogs.Suppress();
-        MotifInstallLifecycle.ConfigureForStartup(VelopackApp.Build(), args).Run();
         MotifInstallLifecycle.CompleteStartup();
         if (args.Length > 0 && args[0] == "--smoke")
             return Smoke();
@@ -21,6 +24,10 @@ internal static class Program
             return RunCli(args[1..]);
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
+
+    private static bool IsVelopackFastExitHook(string[] args) =>
+        args.Length > 0 && args[0] is
+            "--veloapp-install" or "--veloapp-updated" or "--veloapp-obsolete" or "--veloapp-uninstall";
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()

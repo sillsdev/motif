@@ -83,16 +83,22 @@ New-Item -ItemType Directory -Path $env:MOTIF_WORKER_ROOT -Force | Out-Null
 New-Item -ItemType Directory -Path $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH -Force | Out-Null
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$fixtureSource = Join-Path $repoRoot 'tests/SIL.Motif.Tests.Support/TestFixtures/Conformance/deep-optional-affix-nesting'
-$projectDirectory = Join-Path $work 'DeepOptionalAffixNesting'
-New-Item -ItemType Directory -Path $projectDirectory -Force | Out-Null
-Get-ChildItem -LiteralPath $fixtureSource -Force | Copy-Item -Destination $projectDirectory -Recurse -Force
-$projectPath = Join-Path $projectDirectory 'DeepOptionalAffixNesting.fwdata'
-Move-Item -LiteralPath (Join-Path $projectDirectory 'project.fwdata') -Destination $projectPath
+$sampleBuilder = Join-Path $repoRoot 'bin/Release/SIL.Motif.SampleProjects.exe'
+$sampleSpec = Join-Path $repoRoot 'samples/synthetic-turkic/sample.json'
+$sampleOutputRoot = Join-Path $work 'sample-projects'
+$sampleBuildOutput = & $sampleBuilder build $sampleSpec $sampleOutputRoot 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "Sample project builder failed with exit code ${LASTEXITCODE}: $($sampleBuildOutput -join [Environment]::NewLine)"
+}
+$sampleBuild = [string]::Join([Environment]::NewLine, [string[]] $sampleBuildOutput) | ConvertFrom-Json
+$projectPath = [System.IO.Path]::GetFullPath([string] $sampleBuild.projectPath)
+if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
+    throw "Sample project builder reported a missing project: $projectPath"
+}
 
 $readOutput = & $cliPath analyses --project $projectPath
 if ($LASTEXITCODE -ne 0) {
-    throw "The installed CLI could not read the conformance project: $($readOutput -join [Environment]::NewLine)"
+    throw "The installed CLI could not read the sample project: $($readOutput -join [Environment]::NewLine)"
 }
 
 $jobId = (& $cliPath baseline-refresh --project $projectPath | Out-String).Trim()
