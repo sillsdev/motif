@@ -178,6 +178,71 @@ function Get-MotifDiscoveryRegistryState {
     }
 }
 
+function Read-SharedFileText {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    $sharing = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
+    $stream = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $sharing)
+    $reader = [System.IO.StreamReader]::new($stream)
+    try {
+        return $reader.ReadToEnd()
+    }
+    finally {
+        $reader.Dispose()
+    }
+}
+
+function Get-InstallProcesses {
+    $installPrefix = $install.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) +
+        [System.IO.Path]::DirectorySeparatorChar
+    foreach ($process in Get-CimInstance -ClassName Win32_Process) {
+        $executablePath = [string] $process.ExecutablePath
+        if ([string]::IsNullOrWhiteSpace($executablePath)) { continue }
+        $fullExecutablePath = [System.IO.Path]::GetFullPath($executablePath)
+        if ([string]::Equals($fullExecutablePath, $install, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $fullExecutablePath.StartsWith($installPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            [pscustomobject]@{
+                ProcessId = [int] $process.ProcessId
+                Name = [string] $process.Name
+                ExecutablePath = $fullExecutablePath
+            }
+        }
+    }
+}
+
+function Wait-ForInstallProcesses {
+    $maximumProcessLifetime = [TimeSpan]::FromMinutes(5)
+    $maximumWait = [TimeSpan]::FromMinutes(10)
+    $waitStarted = [DateTime]::UtcNow
+    $firstObserved = @{}
+    $quietPolls = 0
+    while ([DateTime]::UtcNow - $waitStarted -lt $maximumWait) {
+        $processes = @(Get-InstallProcesses)
+        if ($processes.Count -eq 0) {
+            $quietPolls++
+            if ($quietPolls -ge 2) { return @() }
+        }
+        else {
+            $quietPolls = 0
+            $now = [DateTime]::UtcNow
+            foreach ($process in $processes) {
+                if (-not $firstObserved.ContainsKey($process.ProcessId)) {
+                    $firstObserved[$process.ProcessId] = $now
+                }
+            }
+            $expiredProcesses = @($processes | Where-Object {
+                $now - $firstObserved[$_.ProcessId] -ge $maximumProcessLifetime
+            })
+            if ($expiredProcesses.Count -gt 0) { return $expiredProcesses }
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    return @(Get-InstallProcesses)
+}
+
 $uninstallTracePath = Join-Path $work 'uninstall-hook.log'
 $velopackUninstallLogPath = Join-Path $work 'velopack-uninstall.log'
 Remove-Item -LiteralPath $uninstallTracePath -Force -ErrorAction SilentlyContinue
@@ -206,7 +271,7 @@ function Get-VelopackLogCandidates {
 $velopackLogsBeforeUninstall = @{}
 foreach ($candidatePath in Get-VelopackLogCandidates) {
     if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
-        $velopackLogsBeforeUninstall[$candidatePath] = [System.IO.File]::ReadAllText($candidatePath)
+        $velopackLogsBeforeUninstall[$candidatePath] = Read-SharedFileText $candidatePath
     }
 }
 $env:MOTIF_PACKAGE_UNINSTALL_TRACE = $uninstallTracePath
@@ -214,8 +279,9 @@ $uninstallOutput = & $updateExecutable --verbose --log $velopackUninstallLogPath
 $uninstallExitCode = $LASTEXITCODE
 $uninstallOutputText = @($uninstallOutput) -join [Environment]::NewLine
 Remove-Item Env:MOTIF_PACKAGE_UNINSTALL_TRACE -ErrorAction SilentlyContinue
+$remainingInstallProcesses = @(Wait-ForInstallProcesses)
 $uninstallTrace = if (Test-Path -LiteralPath $uninstallTracePath -PathType Leaf) {
-    [System.IO.File]::ReadAllText($uninstallTracePath).Trim()
+    (Read-SharedFileText $uninstallTracePath).Trim()
 } else {
     '<no callback trace>'
 }
@@ -230,7 +296,7 @@ foreach ($candidatePath in (Get-VelopackLogCandidates)) {
 foreach ($candidatePath in $velopackLogsBeforeUninstall.Keys | Sort-Object) {
     Write-Host "Velopack log candidate: $candidatePath"
     if (Test-Path -LiteralPath $candidatePath -PathType Leaf) {
-        $logContents = [System.IO.File]::ReadAllText($candidatePath).Trim()
+        $logContents = (Read-SharedFileText $candidatePath).Trim()
     }
     elseif ($null -ne $velopackLogsBeforeUninstall[$candidatePath]) {
         $logContents = '[captured before uninstall; the source file was removed by uninstall]' +
@@ -243,6 +309,12 @@ foreach ($candidatePath in $velopackLogsBeforeUninstall.Keys | Sort-Object) {
 }
 Write-Host "Velopack uninstall hook trace: $uninstallTrace"
 Write-Host "Motif discovery registry state after uninstall: $registryState"
+if ($remainingInstallProcesses.Count -gt 0) {
+    $processSummary = [string]::Join('; ', [string[]] @($remainingInstallProcesses | ForEach-Object {
+        "PID $($_.ProcessId) $($_.Name) at $($_.ExecutablePath)"
+    }))
+    throw "Velopack processes remained after the uninstall wait; verbose logs and hook trace are above: $processSummary"
+}
 if ($uninstallExitCode -ne 0) {
     throw "Velopack uninstall failed with exit code $uninstallExitCode; output: $uninstallOutputText; hook trace: $uninstallTrace"
 }

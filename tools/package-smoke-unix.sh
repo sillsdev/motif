@@ -2,6 +2,7 @@
 set -euo pipefail
 
 : "${RUNTIME_IDENTIFIER:?}"
+: "${STAGE_DIRECTORY:?}"
 : "${PRODUCT_VERSION:?}"
 : "${NEXT_PRODUCT_VERSION:?}"
 : "${FEED_DIRECTORY:?}"
@@ -65,6 +66,28 @@ if [[ "$worker_executable_count" != 1 ]]; then
     exit 1
 fi
 worker_executable=$(printf '%s\n' "$worker_executables" | sed -n '1p')
+worker_runtime_config="$worker_executable.runtimeconfig.json"
+staged_worker_runtime_config="$STAGE_DIRECTORY/SIL.Motif.Worker.runtimeconfig.json"
+if [[ ! -f "$worker_runtime_config" || ! -f "$staged_worker_runtime_config" ]]; then
+    printf 'Worker runtimeconfig is missing from the installed package or staging directory.\n' >&2
+    exit 1
+fi
+python3 - "$worker_runtime_config" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as runtime_config_file:
+    runtime_config = json.load(runtime_config_file)
+included_frameworks = runtime_config.get("runtimeOptions", {}).get("includedFrameworks", [])
+if not included_frameworks:
+    raise SystemExit(f"Packaged Worker runtimeconfig is not self-contained: {sys.argv[1]}")
+PY
+if ! cmp -- "$staged_worker_runtime_config" "$worker_runtime_config"; then
+    printf 'The installed package changed the Worker runtimeconfig from staging. Staged and packaged files follow.\n' >&2
+    cat "$staged_worker_runtime_config" >&2
+    cat "$worker_runtime_config" >&2
+    exit 1
+fi
 
 cli_shim="$HOME/.local/bin/motif"
 if [[ ! -x "$cli_shim" ]]; then

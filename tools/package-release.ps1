@@ -242,13 +242,29 @@ try {
     $stageCreated = $true
     Assert-SafeStagePath $stage $outputParentPath $stageName
 
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage
-    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $stage
-
     $appEntryPointName = "SIL.Motif.App$entryPointSuffix"
     $cliEntryPointName = "motif$entryPointSuffix"
     $workerEntryPointName = "SIL.Motif.Worker$entryPointSuffix"
+    $workerPublishDirectory = Join-Path $intermediateRoot 'worker-publish'
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage
+    Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory
+
+    $workerAssets = @(
+        $workerEntryPointName,
+        'SIL.Motif.Worker.dll',
+        'SIL.Motif.Worker.deps.json',
+        'SIL.Motif.Worker.runtimeconfig.json'
+    )
+    foreach ($workerAsset in $workerAssets) {
+        $workerAssetSource = Join-Path $workerPublishDirectory $workerAsset
+        if (-not (Test-Path -LiteralPath $workerAssetSource -PathType Leaf)) {
+            throw "Self-contained Worker publish is missing: $workerAssetSource"
+        }
+        $workerAssetDestination = Join-Path $stage $workerAsset
+        Copy-Item -LiteralPath $workerAssetSource -Destination $workerAssetDestination -Force
+    }
+
     $appEntryPoint = Join-Path $stage $appEntryPointName
     $cliEntryPoint = Join-Path $stage $cliEntryPointName
     $workerEntryPoint = Join-Path $stage $workerEntryPointName
@@ -272,6 +288,25 @@ try {
     foreach ($workerAsset in @('SIL.Motif.Worker.dll', 'SIL.Motif.Worker.deps.json', 'SIL.Motif.Worker.runtimeconfig.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $workerAsset) -PathType Leaf)) {
             throw "Published Worker asset is missing: $workerAsset"
+        }
+    }
+    $appHostRuntimeConfigs = @(
+        'SIL.Motif.App.runtimeconfig.json',
+        'motif.runtimeconfig.json',
+        'SIL.Motif.Worker.runtimeconfig.json'
+    )
+    foreach ($runtimeConfigName in $appHostRuntimeConfigs) {
+        $runtimeConfigPath = Join-Path $stage $runtimeConfigName
+        $runtimeConfig = Get-Content -LiteralPath $runtimeConfigPath -Raw | ConvertFrom-Json
+        $runtimeOptionsProperty = $runtimeConfig.PSObject.Properties['runtimeOptions']
+        $includedFrameworksProperty = if ($null -eq $runtimeOptionsProperty) {
+            $null
+        }
+        else {
+            $runtimeOptionsProperty.Value.PSObject.Properties['includedFrameworks']
+        }
+        if ($null -eq $includedFrameworksProperty -or @($includedFrameworksProperty.Value).Count -eq 0) {
+            throw "Apphost runtime config is not self-contained: $runtimeConfigName must declare runtimeOptions.includedFrameworks."
         }
     }
 

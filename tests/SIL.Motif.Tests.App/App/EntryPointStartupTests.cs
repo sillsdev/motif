@@ -145,6 +145,47 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
+    public void WindowsPackageSmokeWaitsForVelopackProcessesAndReadsLogsWithSharing()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var smoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke.ps1"));
+        var uninstall = smoke.IndexOf("$uninstallOutput = & $updateExecutable", StringComparison.Ordinal);
+        var wait = smoke.IndexOf("$remainingInstallProcesses = @(Wait-ForInstallProcesses)", uninstall, StringComparison.Ordinal);
+        var diagnostics = smoke.LastIndexOf("foreach ($candidatePath in $velopackLogsBeforeUninstall.Keys", StringComparison.Ordinal);
+
+        Assert.True(uninstall >= 0 && wait > uninstall && diagnostics > wait,
+            "The Windows smoke must wait for Velopack processes before reading uninstall logs.");
+        Assert.Contains("Get-CimInstance -ClassName Win32_Process", smoke, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.FileShare]::ReadWrite", smoke, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.FileShare]::Delete", smoke, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.StreamReader]::new", smoke, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.FileStream]::new", smoke, StringComparison.Ordinal);
+        Assert.Contains("Get-InstallProcesses", smoke, StringComparison.Ordinal);
+        Assert.DoesNotContain("[System.IO.File]::ReadAllText", smoke, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PackageReleaseStagesTheWorkerPublishAndRejectsFrameworkDependentAppHosts()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var release = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-release.ps1"));
+        var appPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.App/SIL.Motif.App.csproj') $stage", StringComparison.Ordinal);
+        var cliPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj') $stage", StringComparison.Ordinal);
+        var workerPublish = release.IndexOf("Publish-MotifProject (Join-Path $repoRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishDirectory", StringComparison.Ordinal);
+        var workerCopy = release.IndexOf("Copy-Item -LiteralPath $workerAssetSource -Destination $workerAssetDestination -Force", StringComparison.Ordinal);
+        var runtimeConfigCheck = release.IndexOf("includedFrameworks", StringComparison.Ordinal);
+
+        Assert.True(appPublish >= 0 && cliPublish > appPublish && workerPublish > cliPublish &&
+                    workerCopy > workerPublish && runtimeConfigCheck > workerCopy,
+            "The self-contained Worker publish must replace front-end copies before runtime configs are validated.");
+        Assert.Contains("SIL.Motif.App.runtimeconfig.json", release, StringComparison.Ordinal);
+        Assert.Contains("motif.runtimeconfig.json", release, StringComparison.Ordinal);
+        Assert.Contains("SIL.Motif.Worker.runtimeconfig.json", release, StringComparison.Ordinal);
+        var unixSmoke = File.ReadAllText(Path.Combine(repositoryRoot, "tools/package-smoke-unix.sh"));
+        Assert.Contains("cmp -- \"$staged_worker_runtime_config\" \"$worker_runtime_config\"", unixSmoke, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void UnixPackageSmokeWaitsForThePackagedWorkerToExitBeforeCheckingItsJob()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
