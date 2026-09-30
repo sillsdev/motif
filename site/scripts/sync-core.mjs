@@ -43,6 +43,7 @@ const guideSections = [
 		pages: [
 			['baseline', 'Baseline'],
 			['assessment', 'Assessment'],
+			['pangloss', 'PanGloss'],
 			['text-coverage', 'Text Coverage'],
 			['default-selection', 'Default Selection'],
 			['drift', 'Drift'],

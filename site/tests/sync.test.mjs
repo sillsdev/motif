@@ -1,9 +1,51 @@
 import assert from 'node:assert/strict';
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { syncSiteContent } from '../scripts/sync-core.mjs';
+
+const execFileAsync = promisify(execFile);
+const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
+
+async function markdownFiles(root) {
+	const files = [];
+	for (const entry of await readdir(root, { withFileTypes: true })) {
+		const fullPath = path.join(root, entry.name);
+		if (entry.isDirectory()) files.push(...await markdownFiles(fullPath));
+		else if (entry.isFile() && entry.name.endsWith('.md')) files.push(fullPath);
+	}
+	return files;
+}
+
+async function builtCliPath() {
+	if (process.env.MOTIF_SITE_CLI_EXE) {
+		const explicitPath = path.resolve(process.env.MOTIF_SITE_CLI_EXE);
+		await access(explicitPath);
+		return explicitPath;
+	}
+	const root = path.join(repositoryRoot, 'bin');
+	const executable = process.platform === 'win32' ? 'motif.exe' : 'motif';
+	const configurations = await readdir(root, { withFileTypes: true }).catch((error) => {
+		if (error.code === 'ENOENT') return [];
+		throw error;
+	});
+	const candidates = configurations.filter((entry) => entry.isDirectory()).map((entry) => path.join(root, entry.name, executable));
+	const available = [];
+	for (const candidate of candidates) {
+		try {
+			await access(candidate);
+			available.push(candidate);
+		} catch (error) {
+			if (error.code !== 'ENOENT') throw error;
+		}
+	}
+	if (available.length > 1) throw new Error('Multiple Motif CLI apphosts found; set MOTIF_SITE_CLI_EXE.');
+	return available[0] ?? null;
+}
 
 test('sync builds help, Walkthrough, API, and Developer pages from their source files', async (t) => {
 	const root = await mkdtemp(path.join(os.tmpdir(), 'motif-site-'));
@@ -214,4 +256,64 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	await readFile(path.join(site, 'src', 'content', 'docs', 'learn', 'index.md'), 'utf8');
 	await assert.rejects(readFile(path.join(site, 'src', 'content', 'docs', 'learn', 'synthetic-turkic-plural-harmony.md'), 'utf8'), { code: 'ENOENT' });
 	await assert.rejects(readFile(path.join(site, 'src', 'data', 'synthetic-turkic-performance.json'), 'utf8'), { code: 'ENOENT' });
+	await writeFile(path.join(help, 'guide', 'unlisted-page.md'), '# Unlisted page\n\nThis page must not be silently dropped.\n');
+	await assert.rejects(
+		syncSiteContent({ repository, site, helpExportPath: path.join(repository, 'help-export.json'), helpRoot: path.join(repository, 'help'), walkthroughRoot: walks, docsRoot: docs, apiXmlPath: apiXml, samplesRoot: samples, samplesOut: sampleBuild }),
+		/Guide page is missing from the published outline: unlisted-page/,
+	);
+});
+
+test('sync publishes every authored Guide page from the built CLI export', async (t) => {
+	const cli = await builtCliPath();
+	if (!cli) {
+		t.skip('Set MOTIF_SITE_CLI_EXE or build one Motif CLI apphost to run the real-source site sync check.');
+		return;
+	}
+	const root = await mkdtemp(path.join(os.tmpdir(), 'motif-site-real-'));
+	t.after(() => rm(root, { recursive: true, force: true }));
+
+	const helpExportPath = path.join(root, 'help-export.json');
+	const { stdout } = await execFileAsync(cli, ['help', '--all', '--json'], {
+		encoding: 'utf8',
+		maxBuffer: 16 * 1024 * 1024,
+		windowsHide: true,
+	});
+	const helpExport = JSON.parse(stdout);
+	assert.equal(helpExport.locale, 'en');
+	assert.ok(Array.isArray(helpExport.entries));
+	assert.ok(helpExport.entries.length > 0);
+	await writeFile(helpExportPath, stdout);
+
+	const site = path.join(root, 'site');
+	const sourceGuideRoot = path.join(repositoryRoot, 'help', 'en', 'guide');
+	const fixtureRoot = path.join(repositoryRoot, 'site', 'fixtures');
+	await syncSiteContent({
+		repository: repositoryRoot,
+		site,
+		helpExportPath,
+		helpRoot: path.join(repositoryRoot, 'help'),
+		walkthroughRoot: path.join(fixtureRoot, 'walkthroughs'),
+		docsRoot: path.join(repositoryRoot, 'docs'),
+		apiXmlPath: path.join(fixtureRoot, 'SIL.Motif.Contract.xml'),
+		samplesRoot: path.join(fixtureRoot, 'samples'),
+		samplesOut: path.join(fixtureRoot, 'samples'),
+	});
+
+	const sourcePages = (await markdownFiles(sourceGuideRoot))
+		.map((file) => path.relative(sourceGuideRoot, file).replaceAll('\\', '/'))
+		.filter((file) => !file.startsWith('learn/'));
+	const publishedGuideRoot = path.join(site, 'src', 'content', 'docs', 'guide');
+	const publishedPages = (await markdownFiles(publishedGuideRoot))
+		.map((file) => path.relative(publishedGuideRoot, file).replaceAll('\\', '/'))
+		.filter((file) => file !== 'index.md')
+		.sort();
+	assert.deepEqual(publishedPages, sourcePages.sort());
+
+	const guideIndex = await readFile(path.join(publishedGuideRoot, 'index.md'), 'utf8');
+	const pangloss = await readFile(path.join(publishedGuideRoot, 'pangloss.md'), 'utf8');
+	const sourcePangloss = await readFile(path.join(sourceGuideRoot, 'pangloss.md'), 'utf8');
+	const sourceTitle = sourcePangloss.match(/^#\s+([^\r\n]+)$/m)?.[1].trim();
+	assert.ok(sourceTitle);
+	assert.ok(guideIndex.includes(`[${sourceTitle}](/guide/pangloss/)`));
+	assert.ok(pangloss.startsWith(`---\ntitle: ${JSON.stringify(sourceTitle)}\n`));
 });
