@@ -77,10 +77,15 @@ internal sealed record WalkthroughHelpContent(
 
 internal sealed record WalkthroughCaptureCallout(string AutomationId, string Caption, Rect Bounds);
 
-internal sealed record WalkthroughCaptionLabel(Rect Bounds, IReadOnlyList<string> Lines);
+internal sealed record WalkthroughCaptionLabel(Rect Bounds, IReadOnlyList<string> Lines,
+    Point MarkerCenter = default, Point TargetPoint = default, string? AutomationId = null,
+    Rect TargetBounds = default);
+
+internal sealed record WalkthroughLeaderPath(string AutomationId, IReadOnlyList<Point> Points);
 
 internal sealed record WalkthroughCapture(
-    string Id, int StartMs, int DurationMs, IReadOnlyList<WalkthroughCaptureCallout> Callouts, byte[] Png);
+    string Id, int StartMs, int DurationMs, IReadOnlyList<WalkthroughCaptureCallout> Callouts, byte[] Png,
+    double Scale = 1, Rect? SourceFrameCropBounds = null);
 
 internal enum WalkthroughClipSegmentKind { Click, Hold, Capture }
 
@@ -94,6 +99,7 @@ internal sealed record WalkthroughManifest(
 
 internal sealed record WalkthroughManifestStep(
     string Id, string Caption, int StartMs, int EndMs, string Screenshot, string Annotated,
+    int Width, int Height, int AnnotatedWidth, int AnnotatedHeight, string CalloutLayout,
     IReadOnlyList<WalkthroughManifestCallout> Callouts);
 
 internal sealed record WalkthroughManifestCallout(double X, double Y, double Width, double Height, string Label)
@@ -120,15 +126,27 @@ internal static class WalkthroughArtifacts
 
     public static WalkthroughCapture Capture(
         string id, int startMs, int durationMs, Window window, IReadOnlyList<WalkthroughCaptureCallout> callouts,
-        int? cropPadding = null)
+        int? cropPadding = null, double scale = 1)
     {
-        var capture = new WalkthroughCapture(id, startMs, durationMs, callouts, CaptureFrame(window));
-        return cropPadding is { } padding ? Crop(capture, padding) : capture;
+        var scaledCallouts = callouts.Select(callout => callout with
+        {
+            Bounds = new Rect(callout.Bounds.X * scale, callout.Bounds.Y * scale,
+                callout.Bounds.Width * scale, callout.Bounds.Height * scale),
+        }).ToArray();
+        var capture = new WalkthroughCapture(id, startMs, durationMs, scaledCallouts,
+            CaptureFrame(window, scale), scale);
+        return cropPadding is { } padding ? Crop(capture, (int)Math.Ceiling(padding * scale)) : capture;
     }
 
-    internal static byte[] CaptureFrame(Window window)
+    internal static Rect PadUnreadHighlightTarget(Rect target) =>
+        new(target.X - 4, target.Y - 4, target.Width + 8, target.Height + 8);
+
+    internal static byte[] CaptureFrame(Window window, double scale = 1)
     {
-        using var bitmap = new RenderTargetBitmap(new PixelSize(Width, Height), new Vector(96, 96));
+        if (scale is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(scale));
+        using var bitmap = new RenderTargetBitmap(
+            new PixelSize((int)Math.Round(Width * scale), (int)Math.Round(Height * scale)),
+            new Vector(96 * scale, 96 * scale));
         bitmap.Render(window);
         using var stream = new MemoryStream();
         bitmap.Save(stream, PngBitmapEncoderOptions.Default);
@@ -145,14 +163,19 @@ internal static class WalkthroughArtifacts
         {
             if (!help.StepCaptions.TryGetValue(capture.Id, out var caption))
                 throw new InvalidDataException($"Help file for '{script.Id}' has no caption for capture '{capture.Id}'.");
-            var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts);
+            var annotated = Annotate(repositoryRoot, capture.Png, capture.Callouts, capture.Scale);
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
                 capture.Callouts, reportBaselineMismatch);
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
                 capture.Callouts, reportBaselineMismatch);
-            return new PreparedCapture(capture, caption, annotated);
+            using var screenshot = SKBitmap.Decode(capture.Png)
+                ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
+            using var annotatedImage = SKBitmap.Decode(annotated)
+                ?? throw new InvalidDataException("Could not read annotated walkthrough PNG.");
+            return new PreparedCapture(capture, caption, annotated, screenshot.Width, screenshot.Height,
+                annotatedImage.Width, annotatedImage.Height);
         }).ToArray();
 
         var configuredOutput = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_OUTPUT");
@@ -166,11 +189,16 @@ internal static class WalkthroughArtifacts
             var annotatedName = $"{index + 1:D2}-{item.Capture.Id}-annotated.png";
             File.WriteAllBytes(Path.Combine(stepsDirectory, imageName), item.Capture.Png);
             File.WriteAllBytes(Path.Combine(stepsDirectory, annotatedName), item.AnnotatedPng);
+            var manifestCallouts = item.Capture.Scale > 1
+                ? OrderCaptionColumnCallouts(item.Capture.Callouts)
+                : item.Capture.Callouts;
             return new WalkthroughManifestStep(
                 item.Capture.Id, item.Caption, item.Capture.StartMs,
                 item.Capture.StartMs + item.Capture.DurationMs,
-                $"steps/{imageName}", $"steps/{annotatedName}",
-                item.Capture.Callouts.Select((callout, calloutIndex) => new WalkthroughManifestCallout(
+                $"steps/{imageName}", $"steps/{annotatedName}", item.Width, item.Height,
+                item.AnnotatedWidth, item.AnnotatedHeight,
+                item.Capture.Scale > 1 ? "side-column" : "target-overlay",
+                manifestCallouts.Select((callout, calloutIndex) => new WalkthroughManifestCallout(
                     callout.Bounds.X, callout.Bounds.Y, callout.Bounds.Width, callout.Bounds.Height,
                     (calloutIndex + 1).ToString(CultureInfo.InvariantCulture)) { Caption = callout.Caption }).ToArray());
         }).ToArray();
@@ -191,8 +219,9 @@ internal static class WalkthroughArtifacts
         JsonSerializer.Serialize(manifest, JsonOptions);
 
     private static byte[] Annotate(
-        string repositoryRoot, byte[] png, IReadOnlyList<WalkthroughCaptureCallout> callouts)
+        string repositoryRoot, byte[] png, IReadOnlyList<WalkthroughCaptureCallout> callouts, double scale)
     {
+        if (scale > 1) return AnnotateBeside(repositoryRoot, png, callouts, scale);
         using var bitmap = SKBitmap.Decode(png) ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
         using var canvas = new SKCanvas(bitmap);
         using var stroke = new SKPaint { Color = new SKColor(198, 55, 49), IsAntialias = true, StrokeWidth = 3, Style = SKPaintStyle.Stroke };
@@ -228,6 +257,213 @@ internal static class WalkthroughArtifacts
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
     }
+
+    private static byte[] AnnotateBeside(
+        string repositoryRoot, byte[] png, IReadOnlyList<WalkthroughCaptureCallout> callouts, double scale)
+    {
+        using var strip = SKBitmap.Decode(png)
+            ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
+        using var typeface = SKTypeface.FromFile(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
+            "Assets", "Fonts", "Andika-Bold.ttf"));
+        using var numberPaint = new SKPaint { Color = SKColors.White, IsAntialias = true };
+        using var captionPaint = new SKPaint { Color = new SKColor(55, 45, 42), IsAntialias = true };
+        using var leaderPaint = new SKPaint
+        {
+            Color = new SKColor(198, 55, 49), IsAntialias = true, StrokeWidth = (float)(2 * scale),
+        };
+        using var targetPaint = new SKPaint
+        {
+            Color = new SKColor(198, 55, 49), IsAntialias = true,
+            StrokeWidth = (float)(2 * scale), Style = SKPaintStyle.Stroke,
+        };
+        using var labelFill = new SKPaint
+        {
+            Color = SKColors.White, IsAntialias = true, Style = SKPaintStyle.Fill,
+        };
+        using var labelBorder = new SKPaint
+        {
+            Color = new SKColor(198, 55, 49), IsAntialias = true,
+            StrokeWidth = (float)(2 * scale), Style = SKPaintStyle.Stroke,
+        };
+        using var markerFill = new SKPaint
+        {
+            Color = new SKColor(198, 55, 49), IsAntialias = true, Style = SKPaintStyle.Fill,
+        };
+        using var numberFont = new SKFont(typeface, (float)(20 * scale));
+        using var captionFont = new SKFont(typeface, (float)(16 * scale));
+
+        const double logicalMargin = 24;
+        const double logicalGap = 32;
+        const double logicalColumnWidth = 340;
+        var margin = logicalMargin * scale;
+        var columnX = margin + strip.Width + logicalGap * scale;
+        var canvasWidth = (int)Math.Ceiling(columnX + logicalColumnWidth * scale + margin);
+        var orderedCallouts = OrderCaptionColumnCallouts(callouts);
+        var labels = ArrangeCaptionColumnLabels(orderedCallouts, canvasWidth, captionFont, scale, columnX);
+        var columnBottom = labels.Count == 0 ? margin : labels.Max(label => label.Bounds.Bottom);
+        var canvasHeight = (int)Math.Ceiling(Math.Max(strip.Height + margin * 2, columnBottom + margin));
+        var stripTop = (canvasHeight - strip.Height) / 2d;
+        var leaderPaths = ArrangeCaptionColumnLeaderPaths(labels, new Point(margin, stripTop),
+            margin + strip.Width, scale);
+        using var output = new SKBitmap(canvasWidth, canvasHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using (var canvas = new SKCanvas(output))
+        {
+            canvas.Clear(SKColors.White);
+            canvas.DrawBitmap(strip, (float)margin, (float)stripTop);
+
+            for (var index = 0; index < orderedCallouts.Count; index++)
+            {
+                var callout = orderedCallouts[index];
+                var target = new SKRect(
+                    (float)(callout.Bounds.Left + margin), (float)(callout.Bounds.Top + stripTop),
+                    (float)(callout.Bounds.Right + margin), (float)(callout.Bounds.Bottom + stripTop));
+                var label = labels[index];
+                var marker = new SKPoint((float)label.MarkerCenter.X, (float)label.MarkerCenter.Y);
+                var leader = leaderPaths[index];
+                for (var pointIndex = 1; pointIndex < leader.Points.Count; pointIndex++)
+                {
+                    var start = leader.Points[pointIndex - 1];
+                    var end = leader.Points[pointIndex];
+                    canvas.DrawLine((float)start.X, (float)start.Y, (float)end.X, (float)end.Y, leaderPaint);
+                }
+                canvas.DrawRoundRect(target, (float)(4 * scale), (float)(4 * scale), targetPaint);
+
+                var group = new SKRect((float)label.Bounds.Left, (float)label.Bounds.Top,
+                    (float)label.Bounds.Right, (float)label.Bounds.Bottom);
+                canvas.DrawRoundRect(group, (float)(8 * scale), (float)(8 * scale), labelFill);
+                canvas.DrawRoundRect(group, (float)(8 * scale), (float)(8 * scale), labelBorder);
+                canvas.DrawCircle(marker, (float)(15 * scale), markerFill);
+                canvas.DrawText((index + 1).ToString(CultureInfo.InvariantCulture),
+                    marker.X, marker.Y + (float)(7 * scale), SKTextAlign.Center, numberFont, numberPaint);
+
+                var textLeft = (float)(label.Bounds.Left + 40 * scale);
+                var lineHeight = (float)(20 * scale);
+                var metrics = captionFont.Metrics;
+                var totalTextHeight = lineHeight * label.Lines.Count;
+                var firstBaseline = (float)(label.Bounds.Top + (label.Bounds.Height - totalTextHeight) / 2 - metrics.Ascent);
+                for (var line = 0; line < label.Lines.Count; line++)
+                {
+                    var baseline = firstBaseline + line * lineHeight;
+                    var captionLine = label.Lines[line];
+                    canvas.DrawText(captionLine, textLeft, baseline, SKTextAlign.Left, captionFont, captionPaint);
+                }
+            }
+        }
+
+        using var image = SKImage.FromBitmap(output);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    internal static IReadOnlyList<WalkthroughCaptionLabel> ArrangeCaptionColumnLabels(
+        IReadOnlyList<WalkthroughCaptureCallout> callouts, int canvasWidth, SKFont captionFont,
+        double scale, double columnX)
+    {
+        var markerDiameter = 30 * scale;
+        var textGap = 12 * scale;
+        var columnWidth = Math.Min(340 * scale, canvasWidth - columnX - 24 * scale);
+        var textWidth = columnWidth - markerDiameter - textGap - 14 * scale;
+        var lineHeight = 20 * scale;
+        var rowGap = 8 * scale;
+        var padding = 12 * scale;
+        var y = 24 * scale;
+        var labels = new List<WalkthroughCaptionLabel>(callouts.Count);
+
+        var orderedCallouts = OrderCaptionColumnCallouts(callouts);
+        var rows = new List<List<WalkthroughCaptureCallout>>();
+        foreach (var callout in orderedCallouts)
+        {
+            if (rows.Count == 0 || Math.Abs(rows[^1][0].Bounds.Center.Y - callout.Bounds.Center.Y) > 0.5)
+                rows.Add([]);
+            rows[^1].Add(callout);
+        }
+        var targetPoints = new Dictionary<string, Point>(StringComparer.Ordinal);
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            foreach (var callout in rows[rowIndex])
+            {
+                var target = callout.Bounds;
+                targetPoints[callout.AutomationId] = new Point(target.Center.X,
+                    rowIndex == 0 ? target.Top : target.Bottom);
+            }
+        }
+
+        foreach (var callout in orderedCallouts)
+        {
+            var lines = WrapCaption(callout.Caption, captionFont, (int)textWidth);
+            var rowHeight = Math.Max(40 * scale, lines.Count * lineHeight + padding * 2);
+            var bounds = new Rect(columnX, y, columnWidth, rowHeight);
+            var markerCenter = new Point(columnX + markerDiameter / 2, y + rowHeight / 2);
+            var target = callout.Bounds;
+            labels.Add(new WalkthroughCaptionLabel(bounds, lines, markerCenter,
+                targetPoints[callout.AutomationId], callout.AutomationId, target));
+            y += rowHeight + rowGap;
+        }
+
+        return labels;
+    }
+
+    internal static IReadOnlyList<WalkthroughLeaderPath> ArrangeCaptionColumnLeaderPaths(
+        IReadOnlyList<WalkthroughCaptionLabel> labels, Point targetOffset, double stripRight, double scale)
+    {
+        var exitX = stripRight + 8 * scale;
+        var rows = new List<List<WalkthroughCaptionLabel>>();
+        foreach (var label in labels)
+        {
+            if (rows.Count == 0 || Math.Abs(rows[^1][0].TargetBounds.Center.Y - label.TargetBounds.Center.Y) > 0.5)
+                rows.Add([]);
+            rows[^1].Add(label);
+        }
+
+        var gutterYs = new Dictionary<string, double>(StringComparer.Ordinal);
+        var stagger = 3 * scale;
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            var row = rows[rowIndex];
+            if (rowIndex == 0)
+            {
+                var rowTop = row.Min(label => label.TargetBounds.Top) + targetOffset.Y;
+                for (var index = 0; index < row.Count; index++)
+                    gutterYs[row[index].AutomationId ?? string.Empty] = rowTop - stagger * (row.Count - index);
+                continue;
+            }
+
+            var rowBottom = row.Max(label => label.TargetBounds.Bottom) + targetOffset.Y;
+            if (rowIndex == rows.Count - 1)
+            {
+                for (var index = 0; index < row.Count; index++)
+                    gutterYs[row[index].AutomationId ?? string.Empty] = rowBottom + stagger * (index + 1);
+                continue;
+            }
+
+            var nextTop = rows[rowIndex + 1].Min(label => label.TargetBounds.Top) + targetOffset.Y;
+            var gutterHeight = nextTop - rowBottom;
+            if (gutterHeight <= 0)
+                throw new InvalidOperationException("Caption target rows need a gutter between them.");
+            for (var index = 0; index < row.Count; index++)
+                gutterYs[row[index].AutomationId ?? string.Empty] =
+                    rowBottom + gutterHeight * (index + 1) / (row.Count + 1);
+        }
+
+        return labels.Select(label =>
+        {
+            var start = new Point(label.TargetPoint.X + targetOffset.X, label.TargetPoint.Y + targetOffset.Y);
+            var gutter = gutterYs[label.AutomationId ?? string.Empty];
+            var verticalLeg = new Point(start.X, gutter);
+            var exit = new Point(exitX, gutter);
+            var entry = new Point(label.Bounds.Left - 2 * scale, label.MarkerCenter.Y);
+            return new WalkthroughLeaderPath(label.AutomationId ?? string.Empty,
+                [start, verticalLeg, exit, entry, label.MarkerCenter]);
+        }).ToArray();
+    }
+
+    private static IReadOnlyList<WalkthroughCaptureCallout> OrderCaptionColumnCallouts(
+        IReadOnlyList<WalkthroughCaptureCallout> callouts) => callouts
+        .OrderBy(callout => callout.Bounds.Center.Y)
+        .ThenBy(callout => callout.Bounds.Left)
+        .ThenBy(callout => callout.Bounds.Right)
+        .ThenBy(callout => callout.AutomationId, StringComparer.Ordinal)
+        .ToArray();
 
     internal static IReadOnlyList<WalkthroughCaptionLabel> ArrangeCaptionLabels(
         IReadOnlyList<WalkthroughCaptureCallout> callouts, int canvasWidth, int canvasHeight, SKFont captionFont)
@@ -341,14 +577,15 @@ internal static class WalkthroughArtifacts
         using var actualBitmap = SKBitmap.Decode(actual);
         Assert.NotNull(expectedBitmap);
         Assert.NotNull(actualBitmap);
-        Assert.Equal((Width, Height), (expectedBitmap!.Width, expectedBitmap.Height));
-        Assert.Equal((Width, Height), (actualBitmap!.Width, actualBitmap.Height));
+        Assert.Equal((expectedBitmap!.Width, expectedBitmap.Height), (actualBitmap!.Width, actualBitmap.Height));
+        var width = actualBitmap.Width;
+        var height = actualBitmap.Height;
         var changed = 0;
         var calloutChanged = 0;
-        using var diffBitmap = new SKBitmap(Width, Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using var diffBitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         diffBitmap.Erase(new SKColor(0, 0, 0, 0));
-        for (var y = 0; y < Height; y++)
-        for (var x = 0; x < Width; x++)
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
         {
             var before = expectedBitmap.GetPixel(x, y);
             var after = actualBitmap.GetPixel(x, y);
@@ -367,7 +604,7 @@ internal static class WalkthroughArtifacts
             }
         }
 
-        var allowed = (int)Math.Ceiling(Width * Height * ChangedPixelTolerance);
+        var allowed = (int)Math.Ceiling(width * height * ChangedPixelTolerance);
         if (calloutChanged > 0 || changed > allowed)
         {
             var actualPath = WriteActualPng(path, actual);
@@ -426,7 +663,9 @@ internal static class WalkthroughArtifacts
         return string.Create(CultureInfo.InvariantCulture, $"{hours:00}:{minutes:00}:{seconds:00}.{remainder:000}");
     }
 
-    private sealed record PreparedCapture(WalkthroughCapture Capture, string Caption, byte[] AnnotatedPng);
+    private sealed record PreparedCapture(
+        WalkthroughCapture Capture, string Caption, byte[] AnnotatedPng, int Width, int Height,
+        int AnnotatedWidth, int AnnotatedHeight);
 
     internal static WalkthroughCapture Crop(WalkthroughCapture capture, int padding)
     {
@@ -438,33 +677,29 @@ internal static class WalkthroughArtifacts
         var top = Math.Max(0, (int)Math.Floor(capture.Callouts.Min(callout => callout.Bounds.Y) - padding));
         var right = Math.Min(source.Width, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Right) + padding));
         var bottom = Math.Min(source.Height, (int)Math.Ceiling(capture.Callouts.Max(callout => callout.Bounds.Bottom) + padding));
+        if (left >= source.Width || top >= source.Height || right <= left || bottom <= top)
+            throw new InvalidDataException($"Walkthrough crop '{capture.Id}' lies outside its {source.Width}x{source.Height} frame: " +
+                $"left={left}, top={top}, right={right}, bottom={bottom}.");
         var cropWidth = Math.Max(1, right - left);
         var cropHeight = Math.Max(1, bottom - top);
         using var cropped = new SKBitmap(cropWidth, cropHeight);
         using (var cropCanvas = new SKCanvas(cropped))
             cropCanvas.DrawBitmap(source, new SKRect(left, top, right, bottom), new SKRect(0, 0, cropWidth, cropHeight));
-
-        var scale = Math.Min((float)Width / cropWidth, (float)Height / cropHeight);
-        var scaledWidth = cropWidth * scale;
-        var scaledHeight = cropHeight * scale;
-        var offsetX = (Width - scaledWidth) / 2;
-        var offsetY = (Height - scaledHeight) / 2;
-        using var output = new SKBitmap(Width, Height);
-        using (var canvas = new SKCanvas(output))
-        {
-            canvas.Clear(source.GetPixel(left, top));
-            canvas.DrawBitmap(cropped, new SKRect(offsetX, offsetY, offsetX + scaledWidth, offsetY + scaledHeight));
-        }
         var transformed = capture.Callouts.Select(callout => new WalkthroughCaptureCallout(
             callout.AutomationId, callout.Caption,
             new Avalonia.Rect(
-                (callout.Bounds.X - left) * scale + offsetX,
-                (callout.Bounds.Y - top) * scale + offsetY,
-                callout.Bounds.Width * scale,
-                callout.Bounds.Height * scale))).ToArray();
-        using var image = SKImage.FromBitmap(output);
+                callout.Bounds.X - left,
+                callout.Bounds.Y - top,
+                callout.Bounds.Width,
+                callout.Bounds.Height))).ToArray();
+        using var image = SKImage.FromBitmap(cropped);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return capture with { Callouts = transformed, Png = data.ToArray() };
+        return capture with
+        {
+            Callouts = transformed,
+            Png = data.ToArray(),
+            SourceFrameCropBounds = new Rect(left, top, cropWidth, cropHeight),
+        };
     }
 }
 

@@ -1,0 +1,71 @@
+{
+  "id": "explained-word-card",
+  "title": "Read the word marks",
+  "description": "A means Approved, U Unknown, D Disapproved, and a dashed mark means no reading is stored. Blue means PanGloss found a new or different reading.",
+  "steps": {
+    "approved-agrees": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed. A, U and D mean Approved, Unknown and Disapproved; dashed means no reading is stored. Blue means PanGloss found a new or different reading.",
+    "unknown-agrees": "U means the reading is stored but not yet approved. PanGloss built the same reading, and Approve changes U to A.",
+    "unknown-staged": "The blue Staged note records the choice until you apply it. Undo removes the staged choice.",
+    "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. Blue shows the new reading PanGloss found.",
+    "disapproved-conflict": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
+    "no-parse": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
+    "capped": "PanGloss stopped before finishing its search. Other readings may still exist."
+  },
+  "callouts": {
+    "approved-agrees": {
+      "motif-word-0-67656c6469-word": "The word as it appears in the text.",
+      "motif-word-0-67656c6469-opinion": "A means FieldWorks approved this reading.",
+      "motif-word-0-67656c6469-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
+      "motif-word-0-67656c6469-pangloss": "PanGloss built the same reading.",
+      "motif-word-0-67656c6469-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-67656c6469-unread": "Unread marks a word whose current reading has not been reviewed."
+    },
+    "unknown-agrees": {
+      "motif-word-0-65766c6572-word": "The word as it appears in the text.",
+      "motif-word-0-65766c6572-opinion": "U means FieldWorks stored this reading but it has not been approved.",
+      "motif-word-0-65766c6572-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
+      "motif-word-0-65766c6572-pangloss": "PanGloss built the same reading.",
+      "motif-word-0-65766c6572-action": "Approve changes this reading from Unknown to Approved.",
+      "motif-word-0-65766c6572-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-65766c6572-unread": "Unread marks a word whose current reading has not been reviewed."
+    },
+    "unknown-staged": {
+      "motif-word-0-65766c6572-word": "The word as it appears in the text.",
+      "motif-word-0-65766c6572-staged": "This blue note waits for Apply and offers Undo."
+    },
+    "no-stored-new-reading": {
+      "motif-word-0-6164616d6c6172c4b16e6461-word": "The word as it appears in the text.",
+      "motif-word-0-6164616d6c6172c4b16e6461-opinion": "Dashed means FieldWorks has no reading stored.",
+      "motif-word-0-6164616d6c6172c4b16e6461-fieldworks": "There is no reading for this word in FieldWorks.",
+      "motif-word-0-6164616d6c6172c4b16e6461-pangloss": "Blue means PanGloss found a new or different reading.",
+      "motif-word-0-6164616d6c6172c4b16e6461-action": "Add stores PanGloss's reading as Unknown.",
+      "motif-word-0-6164616d6c6172c4b16e6461-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-6164616d6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
+    },
+    "disapproved-conflict": {
+      "motif-word-0-6b6564697965-word": "The word as it appears in the text.",
+      "motif-word-0-6b6564697965-opinion": "D means this stored reading was disapproved.",
+      "motif-word-0-6b6564697965-disapproved": "The orange mark warns that PanGloss found a reading FieldWorks has rejected.",
+      "motif-word-0-6b6564697965-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
+      "motif-word-0-6b6564697965-pangloss": "PanGloss builds the reading that FieldWorks marked Disapproved.",
+      "motif-word-0-6b6564697965-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-6b6564697965-unread": "Unread marks a word whose current reading has not been reviewed."
+    },
+    "no-parse": {
+      "motif-word-0-67c3bc6e6c6572-word": "The word as it appears in the text.",
+      "motif-word-0-67c3bc6e6c6572-opinion": "Dashed means FieldWorks has no reading stored.",
+      "motif-word-0-67c3bc6e6c6572-fieldworks": "There is no reading for this word in FieldWorks.",
+      "motif-word-0-67c3bc6e6c6572-pangloss": "PanGloss completed without finding a reading.",
+      "motif-word-0-67c3bc6e6c6572-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-67c3bc6e6c6572-unread": "Unread marks a word whose current reading has not been reviewed."
+    },
+    "capped": {
+      "motif-word-0-6f6b756c6c6172c4b16e6461-word": "The word as it appears in the text.",
+      "motif-word-0-6f6b756c6c6172c4b16e6461-opinion": "A means FieldWorks approved this reading.",
+      "motif-word-0-6f6b756c6c6172c4b16e6461-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
+      "motif-word-0-6f6b756c6c6172c4b16e6461-pangloss": "Brown means PanGloss stopped at a search limit.",
+      "motif-word-0-6f6b756c6c6172c4b16e6461-fix": "Fix opens the other choices for this word.",
+      "motif-word-0-6f6b756c6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
+    }
+  }
+}

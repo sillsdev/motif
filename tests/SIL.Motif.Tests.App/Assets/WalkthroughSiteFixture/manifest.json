@@ -14,6 +14,11 @@
       "endMs": 3000,
       "screenshot": "steps/01-overview.png",
       "annotated": "steps/01-overview-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
       "callouts": [
         { "x": 80, "y": 110, "width": 360, "height": 150, "label": "1" }
       ]

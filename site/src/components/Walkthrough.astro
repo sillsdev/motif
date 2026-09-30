@@ -35,17 +35,28 @@ const captions = `${assetBase}/captions.${manifest.locale}.vtt`;
 			{steps.map((step, index) => (
 				<figure class="fallback-frame" data-frame data-index={index} hidden={index !== 0}>
 					<div class="screenshot">
-						<img src={`${assetBase}/${step.screenshot}`} alt={step.caption} width={manifest.width} height={manifest.height} />
-						<div class="callouts" aria-hidden="true">
-							{step.callouts.map((callout) => (
-								<span
-									class="callout"
-									style={`left:${callout.x / manifest.width * 100}%;top:${callout.y / manifest.height * 100}%;width:${callout.width / manifest.width * 100}%;height:${callout.height / manifest.height * 100}%`}
-								>
-									<b>{callout.label}</b>
-								</span>
-							))}
-						</div>
+						{step.calloutLayout === 'side-column' ? (
+							<img
+								src={`${assetBase}/${step.annotated}`}
+								alt={step.caption}
+								width={step.annotatedWidth}
+								height={step.annotatedHeight}
+							/>
+						) : (
+							<>
+								<img src={`${assetBase}/${step.screenshot}`} alt={step.caption} width={step.width ?? manifest.width} height={step.height ?? manifest.height} />
+								<div class="callouts" aria-hidden="true">
+									{step.callouts.map((callout) => (
+										<span
+										class="callout"
+										style={`left:${callout.x / (step.width ?? manifest.width) * 100}%;top:${callout.y / (step.height ?? manifest.height) * 100}%;width:${callout.width / (step.width ?? manifest.width) * 100}%;height:${callout.height / (step.height ?? manifest.height) * 100}%`}
+										>
+										<b>{callout.label}</b>
+										</span>
+									))}
+								</div>
+							</>
+						)}
 					</div>
 					<figcaption>{step.caption}</figcaption>
 				</figure>
