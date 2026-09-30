@@ -22,10 +22,10 @@
               <TextBlock Text="&#183; Review changes" Foreground="{DynamicResource Intent.Accent}" VerticalAlignment="Center" />
             </StackPanel>
           </Button>
-          <Button DockPanel.Dock="Right" Content="Parse again" Command="{Binding Assess.RunCommand}"
+          <Button DockPanel.Dock="Right" Content="Parse all words" Command="{Binding Assess.RunCommand}"
                 VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                 IsVisible="{Binding !Context.NeedsAssessment}"
-                AutomationProperties.Name="Run the Assessment"
+                AutomationProperties.Name="Parse all words in the Selection"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
             <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"

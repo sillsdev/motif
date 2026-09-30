@@ -61,7 +61,7 @@ public sealed class RestartAndSwitchWalkthroughTests(PristineProjectFixture pris
             Assert.Equal(
                 "Capture a Baseline to choose Texts.",
                 restartedWalkthrough.Workspace.Selection.TextsEmptyMessage);
-            Assert.False(restartedWalkthrough.Find<Button>("Run the Assessment").IsEffectivelyEnabled);
+            Assert.False(restartedWalkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             Assert.False(restartedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", restartedWalkthrough.Workspace.Selection.SummaryText);
 
