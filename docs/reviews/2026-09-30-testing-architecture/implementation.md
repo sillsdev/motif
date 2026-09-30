@@ -70,3 +70,8 @@ The subsequent fresh parent ./test.ps1 passed 3,682 tests, failed none and skipp
 
 Visual review of the existing Overview annotated baseline found an obsolete instruction that Refresh starts measurement. Current source no longer contains that sentence. Fresh authored replay media must replace stale baselines where appropriate and receive visual review before documentation validation.
 The truthful walkthrough commits are integrated as `1ffe5c88` (close/reopen naming and shard identity) and `44580544` (Apply read-back, Refresh source/Baseline/evidence reset, explicit held Batch Parse and changed signature). Their isolated full suite passed 3,654 tests, failed none and skipped 58. New authored typing and multi-step flows remain underway; these test corrections do not complete that work.
+## Worker runtime integration
+
+The front ends now consume the job implementation as a reusable library, while the Worker remains a separately launched executable beside them. This removes inherited executable packaging assets without changing SQLite coordination or project ownership.
+
+The extraction, current architecture diagram and independently reviewed package corrections are integrated as `a474f0bb`, `0703377c` and `d9d46be8`. The owner verified the actual self-contained CLI/Worker package workflow and a fresh Windows full suite: 3,644 passed, zero failed, 64 skipped on its isolated parserless base. Independent Sol review accepted the manifest-based ICU staging and shared Unix process-name correction. A fresh combined parent gate uses the hash-verified PanGloss release; its result is pending. Native Unix package execution still belongs to CI.
