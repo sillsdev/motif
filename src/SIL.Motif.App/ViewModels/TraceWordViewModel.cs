@@ -644,6 +644,11 @@ public sealed class TraceAnalysisViewModel
     public IReadOnlyList<TraceMorphViewModel> Morphs { get; }
     public string Label => Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
     public bool HasProjectionError => ProjectionError is { Length: > 0 };
+
+    /// <summary>
+    /// Why the analysis has no FieldWorks morphemes, in plain words; the parser's own account is the tooltip.
+    /// </summary>
+    public string ProjectionErrorText => "The parser found this analysis, but can't match its morphemes to FieldWorks entries.";
 }
 
 /// <summary>One rich morph record. Missing fields are named as unavailable rather than inferred from another field.</summary>
@@ -673,7 +678,7 @@ public sealed class TraceMorphViewModel
         IdentityQuality = ValueOrUnavailable(morph.IdentityQuality, "Identity quality");
         FormId = ValueOrUnavailable(morph.FormId, "Form ID");
         EntryId = ValueOrUnavailable(morph.EntryId, "Entry ID");
-        MsaId = ValueOrUnavailable(morph.MsaId, "MSA ID");
+        MsaId = ValueOrUnavailable(morph.MsaId, "Grammatical info ID");
         InflTypeId = ValueOrUnavailable(morph.InflTypeId, "Inflection type ID");
         WritingSystems = string.Join("; ", new[] {
             FormatWs("form", morph.FormWritingSystem),
@@ -682,7 +687,7 @@ public sealed class TraceMorphViewModel
         }.Where(value => value is not null)!);
         Details = string.Join(" · ", new[] {
             $"Slot: {Slot}", $"Inflection class: {InflectionClass}", $"Features: {Features}", $"Guessed: {GuessedString}",
-            $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"MSA ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
+            $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"Grammatical info ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
             $"Writing systems: {(WritingSystems.Length == 0 ? "not recorded" : WritingSystems)}",
         });
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
@@ -694,15 +699,15 @@ public sealed class TraceMorphViewModel
 
     private static string FormatMsaDetails(string? rawJson)
     {
-        if (string.IsNullOrWhiteSpace(rawJson)) return "Named MSA details not recorded.";
+        if (string.IsNullOrWhiteSpace(rawJson)) return "Grammatical info not recorded.";
         try
         {
             using var document = JsonDocument.Parse(rawJson);
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object) return "Named MSA details not recorded.";
+            if (root.ValueKind != JsonValueKind.Object) return "Grammatical info not recorded.";
             var fields = new (string Label, string Name)[]
             {
-                ("MSA kind", "kind"),
+                ("Grammatical info", "kind"),
                 ("From category", "fromCategory"),
                 ("To category", "toCategory"),
                 ("From inflection class", "fromInflectionClass"),
@@ -721,11 +726,11 @@ public sealed class TraceMorphViewModel
                     values.Add($"{field.Label}: {value}");
             }
 
-            return values.Count == 0 ? "Named MSA details not recorded." : string.Join(" · ", values);
+            return values.Count == 0 ? "Grammatical info not recorded." : string.Join(" · ", values);
         }
         catch (JsonException)
         {
-            return "Named MSA details unavailable; raw morph details are retained below.";
+            return "Grammatical info unavailable; the raw morph record is kept below.";
         }
     }
 
@@ -811,7 +816,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         Count = count;
         RuleText = rule is { Length: > 0 } named ? named : "no rule";
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
-            : reasonCode is { Length: > 0 } code ? code
+            : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "The attempt stopped without a recorded reason.";
         CountText = count.ToString("N0");
     }
@@ -819,7 +824,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
     /// <summary>The rule as the project names it, or <see langword="null"/> when no rule was to blame.</summary>
     public string? Rule { get; }
 
-    /// <summary>The parser's own reason code, shown after the sentence for anyone matching it to a trace.</summary>
+    /// <summary>The parser's own reason code, kept for matching the group to its attempts.</summary>
     public string? ReasonCode { get; }
 
     public string? Explanation { get; }
@@ -860,7 +865,7 @@ public sealed class TraceCandidateViewModel
     public TraceCandidateViewModel(TraceCandidate candidate, bool allowLiveLinks = false, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
-        Morphs = candidate.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
+        Morphs = candidate.Morphs.Select(ParserReadingMorphViewModel.ForTrace).ToArray();
         RichMorphs = candidate.RichMorphs.Select(morph => new TraceMorphViewModel(morph, allowLiveLinks, directions)).ToArray();
         Succeeded = candidate.Succeeded;
         AttemptId = candidate.AttemptId;
@@ -876,16 +881,21 @@ public sealed class TraceCandidateViewModel
             : "Source identity not recorded";
         Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions)).ToArray();
         Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : candidate.Steps.LastOrDefault()?.Source ?? "Recorded attempt";
-        Gloss = string.Join(" + ", Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+        Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
         Surface = candidate.Surface;
         StoppedByRule = candidate.StoppedByRule;
         StopHeadline = Succeeded ? "Built the word"
             : StoppedByRule is { Length: > 0 } rule ? $"Stopped by {rule}"
             : "Stopped";
-        StopReason = Explanation is { Length: > 0 } explanation
-            ? FailureReason is { Length: > 0 } code ? $"{explanation} ({code})" : explanation
-            : FailureReason ?? string.Empty;
+        StopReason = Explanation is { Length: > 0 } explanation ? explanation
+            : FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
+            : string.Empty;
     }
+
+    /// <summary>The parser's own reason code, kept out of the sentence and shown only among the steps.</summary>
+    public string? ParserCode => FailureReason;
+
+    public bool HasParserCode => FailureReason is { Length: > 0 };
 
     /// <summary>The form the attempt had built when it ended.</summary>
     public string? Surface { get; }
@@ -898,7 +908,7 @@ public sealed class TraceCandidateViewModel
     /// <summary>What ended the attempt, in a few words: which rule, or that the attempt simply stopped.</summary>
     public string StopHeadline { get; }
 
-    /// <summary>Why, in the plain language FieldWorks uses, with the parser's own reason code after it.</summary>
+    /// <summary>Why, in the plain language FieldWorks uses.</summary>
     public string StopReason { get; }
 
     public bool HasMorphs => Morphs.Count > 0;
@@ -921,7 +931,7 @@ public sealed class TraceCandidateViewModel
     public IReadOnlyList<TraceStepViewModel> Steps { get; }
     public string Text { get; }
     public string Gloss { get; }
-    public string StatusText => Succeeded ? "succeeded" : IsFailure ? "failed" : "recorded attempt";
+    public string StatusText => Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
 
     /// <summary>The shared meaning behind this attempt: it built the word, or a rule stopped it.</summary>
     public Verdict Meaning => Succeeded ? Verdict.Agrees : IsFailure ? Verdict.Differs : Verdict.Limit;
@@ -1030,7 +1040,7 @@ public sealed class TraceStepViewModel
         IsDeepest = deepestRule is not null && string.Equals(step.Source, deepestRule, StringComparison.Ordinal);
         Children = step.Children.Select(child => new TraceStepViewModel(child, deepestRule, directions)).ToArray();
         _directions = directions;
-        Label = Source is { Length: > 0 } ? $"{Type}: {Source}" : Type;
+        Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }
 
     private readonly IReadOnlyDictionary<string, TraceWritingSystem>? _directions;
@@ -1068,7 +1078,11 @@ public sealed class TraceStepViewModel
         Type.Contains("successful", StringComparison.OrdinalIgnoreCase) ||
         Type.Contains("success", StringComparison.OrdinalIgnoreCase);
 
-    public string StatusText => IsFailure ? "failed" : IsSuccessful ? "succeeded" : "recorded attempt";
+    /// <summary>What happened at the step, in the words a linguist uses: applied, stopped, or only tried.</summary>
+    public string StatusText => IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
+
+    /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
+    public string KindText => TraceStepKinds.Describe(Type);
 
     public string SubruleText => Subrule is { } subrule ? $"Subrule: {subrule}" : "Subrule not recorded";
 
@@ -1116,7 +1130,7 @@ public sealed class TraceStepViewModel
         IsDeepest = isDeepest;
         ExpandForFilter = expandForFilter;
         Children = children;
-        Label = Source is { Length: > 0 } ? $"{Type}: {Source}" : Type;
+        Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }
 
     public bool IsDeepest { get; }

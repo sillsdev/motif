@@ -20,6 +20,7 @@
                                IsVisible="{Binding HasResult}" />
           </StackPanel>
           <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="{DynamicResource Intent.Type.Section}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}"
+                  IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}"
                   AutomationProperties.Name="Diagnostic tools">
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedRight">
@@ -113,7 +114,8 @@
                              IsVisible="{Binding !HasMorphs}" FontSize="{DynamicResource Intent.Type.Small}" />
                   <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold"
                              TextWrapping="Wrap" AutomationProperties.Name="What stopped the attempt" />
-                  <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}" />
+                  <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}"
+                                           AutomationProperties.Name="Why the attempt stopped" />
                   <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{Binding FailureRequired, StringFormat='Required: {0}'}"
                              IsVisible="{Binding FailureRequired, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{Binding FailureActual, StringFormat='Actual: {0}'}"
@@ -121,6 +123,10 @@
                   <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
                              IsVisible="{Binding FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <Expander Header="Steps on this path" IsExpanded="False" IsVisible="{Binding Steps.Count}">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                    <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" TextWrapping="Wrap"
+                                             Text="{Binding ParserCode, StringFormat='Code from the parser: {0}'}"
+                                             IsVisible="{Binding HasParserCode}" AutomationProperties.Name="The parser's code" />
                     <ItemsControl ItemsSource="{Binding Steps}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:TraceStepViewModel">
@@ -132,6 +138,7 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </StackPanel>
                   </Expander>
                 </StackPanel>
               </Border>
@@ -156,14 +163,13 @@
             <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
               <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                     <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                     <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" />
-                    <views:CopyableTextBlock Grid.Column="2" Text="{Binding Availability}" Classes="muted" />
                   </Grid>
-                  <views:CopyableTextBlock Text="{Binding ProjectionError, StringFormat='Projection: {0}'}"
-                             IsVisible="{Binding HasProjectionError}" Classes="failed" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Parser morphology: {0}'}"
+                  <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
+                             IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Morphemes: {0}'}"
                              IsVisible="{Binding HasLegacyMorphemes}" Classes="muted" TextWrapping="Wrap" />
                   <ItemsControl ItemsSource="{Binding Morphs}">
                     <ItemsControl.ItemsPanel>

@@ -149,10 +149,13 @@ public sealed class PageScreenshots
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
-        workspace.Assess.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value;
         workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
+        // Through the page's own path: a result set directly is wiped when another word is chosen.
+        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
+        workspace.Context.TryWord("matinlu");
+        await workspace.Assess.Trace.TryCommand.ExecutionTask!;
         return (workspace, window);
     }
 

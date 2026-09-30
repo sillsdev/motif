@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -25,7 +26,7 @@ public sealed class TryWordPageTests
     public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
-    public void RegistryBuildsTheTryAWordPageWithNamedLinksAndADeferredReviewAction()
+    public void RegistryBuildsTheTryAWordPageWithNamedLinksAndNoApprovalOutsideTheText()
     {
         _avalonia.Invoke(() =>
         {
@@ -43,12 +44,16 @@ public sealed class TryWordPageTests
                     AutomationProperties.GetName(button) == "Open in Texts");
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "AI Handoff for this word");
-                var review = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Approve expected analysis in Review changes");
-                Assert.False(review.IsEffectivelyEnabled);
-                Assert.Contains(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
-                    AutomationProperties.GetName(block) == "Expected analysis review reason" &&
-                    block.Text == "No expected analysis is available for this word.");
+                // Opinions change only in the text, so the page offers the text rather than an approval.
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    (AutomationProperties.GetName(button) ?? string.Empty).Contains("Approve", StringComparison.Ordinal));
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Open in Analyze texts");
+                // Opening a saved trace is a tool, so it waits behind the menu beside Try it.
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Open a saved diagnostic");
+                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Try a Word tools");
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(), expander =>
                     Equals(expander.Header, "Aggregate parser effort by category"));
             }
@@ -57,52 +62,6 @@ public sealed class TryWordPageTests
                 window.Close();
             }
         });
-    }
-
-    [Fact]
-    public async Task AStoredExpectedCandidateCanBeApprovedByItsStoredIdentity()
-    {
-        var (context, fake) = NewContext();
-        context.ProjectPath = ProjectPath;
-        context.Assess.Words.Load([WordWithExpectedAnalysis("word", "analysis/one", "candidate")]);
-        await context.Changes.OpenProjectAsync(ProjectPath);
-        var page = new TryWordPageModel(context);
-        page.Trace.WordToTry = "word";
-
-        Assert.True(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
-        Assert.Null(page.ExpectedAnalysisReviewReason);
-        await page.AddExpectedAnalysisToReviewCommand.ExecuteAsync(null);
-
-        var change = Assert.Single(fake.PendingPutRequests).Change;
-        Assert.Equal(ChangeKinds.Approve, change.Kind);
-        Assert.Equal("word", change.Word);
-        Assert.Equal("analysis/one", change.StoredAnalysisId);
-        Assert.Null(change.Reading);
-        Assert.Null(change.ReadingIndex);
-    }
-
-    [Fact]
-    public void AnApprovedExpectedAnalysisStaysDisabledWithAnOnScreenReason()
-    {
-        var (context, _) = NewContext();
-        context.Assess.Words.Load([WordWithExpectedAnalysis("word", "analysis/one", "approved")]);
-        var page = new TryWordPageModel(context);
-        page.Trace.WordToTry = "word";
-
-        Assert.False(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
-        Assert.Equal("This analysis is already approved.", page.ExpectedAnalysisReviewReason);
-    }
-
-    [Fact]
-    public void AnExpectedAnalysisWithoutAStoredIdentityStaysDisabledWithAnOnScreenReason()
-    {
-        var (context, _) = NewContext();
-        context.Assess.Words.Load([WordWithExpectedAnalysis("word", null, null)]);
-        var page = new TryWordPageModel(context);
-        page.Trace.WordToTry = "word";
-
-        Assert.False(page.AddExpectedAnalysisToReviewCommand.CanExecute(null));
-        Assert.Equal("This expected analysis is not stored in the project.", page.ExpectedAnalysisReviewReason);
     }
 
     [Fact]
@@ -131,9 +90,11 @@ public sealed class TryWordPageTests
 
             var row = Assert.Single(page.RulesOnBestPath);
             Assert.Equal("Plural", row.Rule);
-            Assert.Equal("Morphological rule", row.Kind);
-            Assert.Equal("succeeded", row.Outcome);
+            Assert.Equal("Affix rule", row.Kind);
+            Assert.Equal("applied", row.Outcome);
+            Assert.Equal("dog → dogs", row.Explanation);
             Assert.Equal("40%", row.Share);
+            Assert.Equal("Open dogs in Analyze texts", page.OpenInTextsText);
             Assert.Contains("dogs", page.RecentWords);
             var request = Assert.Single(fake.TimingRequests);
             Assert.Equal("rule", request.By);
@@ -283,9 +244,57 @@ public sealed class TryWordPageTests
 
             var row = Assert.Single(page.RulesOnBestPath);
             Assert.Equal("Not recorded", row.StoredTime);
+            Assert.Equal("—", row.Share);
             Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
             Assert.Equal("—", row.Attempts);
         });
+    }
+
+    // Parser class names such as MorphologicalRuleSynthesis, its reason codes, and Motif's own placeholders.
+    private static readonly System.Text.RegularExpressions.Regex EngineWords = new(
+        @"^\?$|[A-Z][a-z]+(?:Rule|Stratum|Template)?(?:Analysis|Synthesis)(?:Input|Output)?\b|MorphologicalRule|" +
+        @"NonPartialRule|recorded attempt|Not recorded|not recorded|\bMSA\b|stratum|ordinal|GUID|Projection");
+
+    [Fact]
+    public void TheSeededTraceOfMatinluReadsInPlainWords()
+    {
+        var visible = new List<string>();
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+                Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!);
+            var page = new TryWordPageModel(context);
+            context.TryWord("matinlu");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.True(page.Trace.HasResult);
+
+            var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
+            var window = new Window { Content = view, Width = 1240, Height = 2400 };
+            try
+            {
+                window.Show();
+                for (var pass = 0; pass < 3; pass++)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                }
+                visible.AddRange(view.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(block.Text))
+                    .Select(block => block.Text!.Trim()));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        Assert.Contains("Affix rule", visible);
+        Assert.Contains("unknown morpheme", visible);
+        Assert.Contains("Further derivation is prohibited after a final template.", visible);
+        Assert.DoesNotContain(visible, text => EngineWords.IsMatch(text));
     }
 
     private static void RunOnAvalonia(Func<Task> work) =>
@@ -299,16 +308,6 @@ public sealed class TryWordPageTests
         return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
             new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake)), fake);
     }
-
-    private static AssessmentWordResult WordWithExpectedAnalysis(string word, string? storedAnalysisId,
-        string? storedAnalysisOpinion) => new(word, "analysed", false, "Search completed", 1, null)
-    {
-        ExpectedAnalysis = new ParserReading([new ParserReadingMorph("form", "gloss", "n", null, false, null)])
-        {
-            StoredAnalysisId = storedAnalysisId,
-            StoredAnalysisOpinion = storedAnalysisOpinion,
-        },
-    };
 
     private static WorkspaceContext NewContext(out FakeCommandClient fake)
     {
