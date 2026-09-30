@@ -848,15 +848,18 @@ public sealed class MainWindowSmokeTests
                 Assert.Single(selectionBoxes);
                 var strip = resultsPanel.GetLogicalDescendants().OfType<Border>()
                     .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, selected));
-                var cardPopup = Assert.Single(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
-                Assert.Same(strip, cardPopup.PlacementTarget);
+                Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
                 Dispatcher.UIThread.RunJobs();
-                cardPopup.Child!.UpdateLayout();
-                var cardLinks = cardPopup.Child.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
+                window.UpdateLayout();
+                var card = Assert.Single(resultsPanel.GetVisualDescendants().OfType<Border>(), border =>
+                    border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+                Assert.Same(selected, card.DataContext);
+                Assert.True(card.TranslatePoint(new Point(0, 0), strip)!.Value.Y >= strip.Bounds.Height);
+                var cardLinks = card.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
                 Assert.True(cardLinks.Length > 0,
-                    $"Card context={cardPopup.Child.DataContext?.GetType().Name ?? "null"}; " +
+                    $"Card context={card.DataContext?.GetType().Name ?? "null"}; " +
                     $"reading link={selected.Readings.Single().Morphs.Single().Link}; " +
-                    $"morpheme rows={cardPopup.Child.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
+                    $"morpheme rows={card.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
                     $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
                 var morphLink = Assert.Single(cardLinks,
                     button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks");
@@ -871,7 +874,7 @@ public sealed class MainWindowSmokeTests
                 workspace.CurrentPage = WorkspacePage.Review;
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.False(cardPopup.IsOpen);
+                Assert.False(selected.IsCardOpen);
             }
             finally
             {

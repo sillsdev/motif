@@ -8,6 +8,7 @@
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.TextsPage.ActionButtonMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0_4_0_4" />
+    <StaticResource x:Key="Component.TextsPage.CardIndent" ResourceKey="Primitive.Inset.0_8_0_0" />
     <StaticResource x:Key="Component.TextsPage.WordGap" ResourceKey="Primitive.Inset.0_0_14_10" />
     <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26_0_0_4" />
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />

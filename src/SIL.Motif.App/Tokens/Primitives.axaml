@@ -92,6 +92,8 @@
 
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue650">inset 2 0 0 #215CC7</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue350">inset 2 0 0 #83ADFF</BoxShadows>
+  <BoxShadows x:Key="Primitive.Shadow.Drop3_10.Slate950A10">0 3 10 0 #1A202833</BoxShadows>
+  <BoxShadows x:Key="Primitive.Shadow.Drop4_14.BlackA45">0 4 14 0 #73000000</BoxShadows>
 
   <StaticResource x:Key="Primitive.Space.0" ResourceKey="SemiSpacingNone" />
   <StaticResource x:Key="Primitive.Space.2" ResourceKey="SemiSpacingSuperTight" />

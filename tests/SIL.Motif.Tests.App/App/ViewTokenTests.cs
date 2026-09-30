@@ -154,21 +154,21 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
-    public void WordCardIsAnchoredToTheStripAndStacksItsSectionsInOrder()
+    public void WordCardOpensUnderItsLineAndStacksItsSectionsInOrder()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
-        var start = markup.IndexOf("<Popup", StringComparison.Ordinal);
-        Assert.True(start >= 0, "The word card must be a popup.");
-        var end = markup.IndexOf("</Popup>", start, StringComparison.Ordinal);
-        Assert.True(end > start, "The word popup must have a closing element.");
-        var popup = markup[start..end];
+        Assert.DoesNotContain("<Popup", markup, StringComparison.Ordinal);
+        var start = markup.IndexOf("Content=\"{Binding OpenCard}\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, "The word card must open under its line.");
+        var end = markup.IndexOf("</ContentControl>", start, StringComparison.Ordinal);
+        Assert.True(end > start, "The word card's slot must have a closing element.");
+        var card = markup[start..end];
 
-        Assert.Contains("PlacementTarget=\"{Binding #WordStrip}\"", popup, StringComparison.Ordinal);
-        Assert.Contains("KeyDown=\"OnTokenCardKeyDown\"", popup, StringComparison.Ordinal);
-        Assert.True(popup.IndexOf("FieldWorks", StringComparison.Ordinal) <
-                    popup.IndexOf("PanGloss", StringComparison.Ordinal));
-        Assert.True(popup.IndexOf("PanGloss", StringComparison.Ordinal) <
-                    popup.IndexOf("What to do", StringComparison.Ordinal));
+        Assert.Contains("KeyDown=\"OnTokenCardKeyDown\"", card, StringComparison.Ordinal);
+        Assert.True(card.IndexOf("In FieldWorks", StringComparison.Ordinal) <
+                    card.IndexOf("In PanGloss", StringComparison.Ordinal));
+        Assert.True(card.IndexOf("In PanGloss", StringComparison.Ordinal) <
+                    card.IndexOf("What to do", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -187,7 +187,8 @@ public sealed class ViewTokenTests
     public void StripAndCardOfferFixAndApproveOneReadingAtATime()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
-        Assert.Equal(2, Regex.Matches(markup, "Header=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.Equal(1, Regex.Matches(markup, "Header=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.Equal(1, Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
         Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
             StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,

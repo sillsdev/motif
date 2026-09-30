@@ -858,8 +858,8 @@ public sealed class ResultsTextViewModel
     public IReadOnlyList<ResultsLineViewModel> Lines { get; }
 }
 
-/// <summary>One line of a Text in the Results In text view.</summary>
-public sealed class ResultsLineViewModel
+/// <summary>One line of a Text in the Results In text view, with the word card opened under it.</summary>
+public sealed class ResultsLineViewModel : ObservableObject
 {
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
         IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null, Guid textId = default)
@@ -878,6 +878,7 @@ public sealed class ResultsLineViewModel
                     ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
                     : null,
             textId: textId)).ToArray();
+        foreach (var token in Tokens) token.PropertyChanged += OnTokenPropertyChanged;
     }
 
     public int Number { get; }
@@ -885,4 +886,17 @@ public sealed class ResultsLineViewModel
     public Guid ParagraphId { get; }
     public Guid SegmentId { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }
+
+    /// <summary>The word on this line whose card is open, which the line shows beneath its words.</summary>
+    public ResultsTokenViewModel? OpenCard => Tokens.FirstOrDefault(token => token.IsCardOpen);
+
+    /// <summary>Whether a word card is open under this line.</summary>
+    public bool HasOpenCard => OpenCard is not null;
+
+    private void OnTokenPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ResultsTokenViewModel.IsCardOpen)) return;
+        OnPropertyChanged(nameof(OpenCard));
+        OnPropertyChanged(nameof(HasOpenCard));
+    }
 }

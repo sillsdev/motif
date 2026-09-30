@@ -1,0 +1,53 @@
+<!--
+  The word card Analyze texts opens under a line: a raised surface with an elevation shadow, so the text
+  beneath never shows through it, and a header, the FieldWorks and PanGloss sections, and what to do.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordCard.Radius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.WordCard.HeadPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
+    <StaticResource x:Key="Component.WordCard.SectionPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.WordCard.ActionGap" ResourceKey="Primitive.Inset.0_0_4_4" />
+    <StaticResource x:Key="Component.WordCard.HeadingType" ResourceKey="Primitive.Type.10" />
+  </Styles.Resources>
+  <Style Selector="Border.card.wordCard">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Raised}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Raised}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordCard.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.wordCardHead">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordCard.HeadPadding}" />
+  </Style>
+  <Style Selector="Border.wordCardSection">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordCard.SectionPadding}" />
+  </Style>
+  <Style Selector="Border.wordCardSection.last">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordCardHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordCard.HeadingType}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.wordCardClose">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Button.wordCardAction">
+    <Setter Property="Margin" Value="{DynamicResource Component.WordCard.ActionGap}" />
+  </Style>
+</Styles>

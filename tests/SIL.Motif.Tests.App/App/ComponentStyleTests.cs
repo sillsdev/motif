@@ -382,6 +382,14 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Opinion.Approved.Text");
         yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
             Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("WordCard", "the word card surface", host => Add(host, Box("card", "wordCard")),
+            Border.BackgroundProperty, "Intent.Surface.Raised");
+        yield return new("WordCard", "the word card shadow", host => Add(host, Box("card", "wordCard")),
+            Border.BoxShadowProperty, "Intent.Shadow.Raised");
+        yield return new("WordCard", "the word card edge", host => Add(host, Box("card", "wordCard")),
+            Border.BorderBrushProperty, "Intent.Accent");
+        yield return new("WordCard", "the word card header", host => Add(host, Box("wordCardHead")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("HoverReveal", "a hidden secondary action", RevealControl,
             Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
