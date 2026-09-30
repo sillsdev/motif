@@ -106,6 +106,18 @@ The pitch presents PanGloss and Motif as a continuation of this lineage. Items m
 - Grammars in use or under way: FLExTrans for Ayta Mag-Antsi (SIL blog, 2024-02-21) and Quechua languages in Peru ([ai.sil.org](https://ai.sil.org/projects/flextrans)); a Manila FLEx parser workshop, 2025-08-11 to 22, with 12 participants, and a Nairobi workshop planned for 2026-08 (DLS newsletter, Fall 2025).
 - *Unverified*: "11 language communities receiving Scripture drafts via FLExTrans" came from an untraceable search snippet; confirm with Ron Lockwood before use.
 
+## 14. Diacritics and tone marks
+
+Checked 2026-09-30. Entering a mark, detecting that one is missing, and restoring it are three different capabilities; keep them apart.
+
+- **French.** LanguageTool Premium advertises detecting missing or wrong French accents and suggesting corrections ([LanguageTool](https://languagetool.org/fr/premium), accessed 2026-09-30). Antidote can flag capitals written without their accent: detection, not automatic insertion ([Antidote guide](https://www.antidote.info/fr/documentation/guide-utilisation/les-reglages/reglages-linguistiques/panneau-majuscules), accessed 2026-09-30). Word's `AllowAccentedUppercase` keeps accents when French text is uppercased ([Microsoft](https://learn.microsoft.com/en-us/office/vba/api/word.options.allowaccenteduppercase), updated 2021-09-13). No official source found that LibreOffice or Grammalecte restores omitted accents.
+- **Hunspell.** `REP` supplies replacement candidates for listed error patterns and `MAP` groups similar characters, accented and plain, for suggestion ranking; candidates must still be dictionary words, and there is no sentence-level choice ([Hunspell manual](https://github.com/hunspell/hunspell/blob/master/man/hunspell.5), 2026-04-30).
+- **Keyboards.** Gboard and iOS offer long-press accented letters, an input aid that does not repair unmarked text ([Google](https://support.google.com/gboard/answer/2842292/use-your-keyboard-android); [Apple](https://support.apple.com/en-gb/guide/iphone/iph3c50f96e/ios), accessed 2026-09-30). Keyman's lexical-model guide shows `naiv` suggesting `naïve`, from frequency-based word lists, not grammatical analysis ([Keyman 13 guide](https://help.keyman.com/developer/13.0/guides/lexical-models/intro/)).
+- **Restoration research.** Vietnamese (Pham et al., [PACLIC 2013](https://aclanthology.org/Y13-1044/); Dang and Nguyen, [PACLIC 2020](https://aclanthology.org/2020.paclic-1.9/)); Romanian ([SLTU 2014](https://www.isca-archive.org/sltu_2014/petrica14_sltu.html)); Irish, Kevin Scannell's accentuate.us, e.g. `ta me i mo mhuinteoir` → `tá mé i mo mhúinteoir` ([history page](https://www.cadhan.com/accentuate/index-en.html), 2018-04-15); Yorùbá, Orife's sequence-to-sequence model, under 5% diacritization error on its evaluation data ([Interspeech 2018](https://www.isca-archive.org/interspeech_2018/orife18_interspeech.html); [2020 follow-up](https://arxiv.org/abs/2003.10564)); Igbo ([Ezeani et al., 2017](https://aclanthology.org/W17-1907/)); Māori macrons ([Cocks and Keegan, ALTA 2011](https://aclanthology.org/U11-1.pdf)). These are bounded study results, not product features or general accuracy.
+- **Why it matters.** Text in languages with tonal or orthographic marks is often typed without them, and in Igbo and Yorùbá the marks distinguish pronunciation and meaning (Ezeani et al. 2017; Orife 2018, above).
+- **Unicode is a separate problem.** NFC and NFD make the precomposed and combining encodings of one letter consistent; normalisation cannot restore an absent mark or choose between two genuinely different marked words ([UAX #15](https://www.unicode.org/reports/tr15/tr15-57.html), Unicode 17.0.0, 2025-07-30). Look-alike characters are a third problem, and confusable detection is not normalisation ([UTS #39](https://www.unicode.org/reports/tr39/)).
+- **What a grammar adds, conditionally.** A morphological grammar can limit candidates to marked forms it can build, and apply tone or diacritic rules, only where its lexicon and rules encode them. Some tone contrasts are lexical, not morphological, so context is still needed.
+
 ## Top 12 sourced facts for the pitch
 
 1. FieldWorks reports service to more than 1,300 language communities and impact on more than 855 million people; that is reach, not parser adoption. [FieldWorks](https://software.sil.org/fieldworks/features/how-to-create-a-dictionary-using-fieldworks/). Source date not displayed; accessed 2026-09-29.
@@ -123,6 +135,8 @@ The pitch presents PanGloss and Motif as a continuation of this lineage. Items m
 
 ## Claims to avoid
 
+- “Word, LibreOffice, Grammalecte or phone keyboards restore missing accents.” The sources show input aids and detection, not general restoration; LanguageTool is the documented French corrector.
+- “A grammar restores tone by itself” or “PanGloss/Motif already fixes diacritics.” The benefit depends on what the grammar encodes, and neither project implements it yet.
 - “X thousand languages use HermitCrab/FLEx parser.” No public parser adoption count was found.
 - “FieldWorks has 1,300 users/projects.” The cited figure is language communities served, not users or project databases.
 - “Paratext has 15,000 active translation projects.” Its published figure is users; organizations are a separate count.

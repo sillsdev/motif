@@ -588,12 +588,17 @@ The FST is held to never miss an analysis the full engine would find, so **it ca
 
 ### From detection to correction
 
-Detection says a word is wrong. Correction says what was meant. The plan layers four signals, each cheap enough to run as someone types:
+Detection says a word is wrong. Correction says what was meant. It layers five signals, each cheap enough to run as someone types:
 
 1. **Edit candidates**: a precompiled index maps likely typos straight to real words in one pass
 2. **Keyboard distance**: nearby keys on the actual layout make a slip more likely
 3. **Sound-alikes**: spelling-by-ear errors, matched through the language's own sound rules
-4. **Context**: word pairs and triples from real text rank the candidates
+4. **Diacritics**: missing or misplaced accents and tone marks, restored only to words the grammar can build
+5. **Context**: word pairs and triples from real text rank the candidates
+
+### Restoring diacritics
+
+French checkers such as LanguageTool and Antidote already flag missing accents, and a Keyman keyboard can suggest *naïve* for *naiv*. In many minority languages the marks carry meaning: in Yorùbá and Igbo, tone marks tell apart words otherwise spelled alike, yet people often type without them. A grammar adds what a word list cannot: it proposes only the marked forms it can build, and a tone rule it encodes rules out the rest. Where two marked words are both valid, context decides. Unicode normalisation cannot do this: it matches encodings but never restores a missing mark.
 
 ### Built from lots of text
 
@@ -660,7 +665,7 @@ A Language Pack contains data only, never executable code, so a host can load on
 - **Firefox and LibreOffice** Spell checking that understands how words are built, through the same engine in WebAssembly and as a native library.
 - **Keyman prediction** SIL's keyboard platform, which supports typing in more than 2,500 languages, suggesting whole words built from their parts.
 - **Wikipedia** Editing help across 364 language editions; in a small language, each article is a real share of everything written in it.
-- **Literacy and spelling app** Helps learners practise the standard spelling of their language, and helps publishers apply it consistently.
+- **Literacy and spelling app** Helps learners practise their language's standard spelling, tone marks included, and helps publishers apply it.
 - **Language-analysis websites** Paste a text and see every word analysed, for teachers, researchers and curious speakers.
 - **AI back-translation** Instant, structured back-translations for people and for AI systems working in languages they barely know.
 
