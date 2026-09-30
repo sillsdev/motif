@@ -63,6 +63,10 @@ the rule was broken.
   `MachinePanGlossQueue`'s test slot namespace does, so concurrent test projects never share one.
 - A lock that guards against one rare operation (an update, a reset) is shared by ordinary activities and
   exclusive only for that operation.
+- P/Invoke only fixed-argument C functions. `open`, `fcntl` and `ioctl` are variadic, and Apple arm64
+  passes variadic arguments on the stack, so a fixed-signature import hands them garbage (a lock file
+  created with a random mode). Create files through .NET (`FileStreamOptions.UnixCreateMode`); the
+  `open` import opens existing files only. Symptom: EACCES on macos-15 (arm64) alone, never Intel.
 - Unix checks permissions when a file is opened, so a read-only attribute leaves an already-open SQLite
   connection writable. Force a store failure in a test through a seam (for example
   `MOTIF_TEST_FAIL_RECEIPT_WRITE_FOR`), not through file attributes.
@@ -96,6 +100,15 @@ the rule was broken.
   (`WalkthroughWindow.ClickControl`).
 - Walkthrough pixel baselines match only the machine that captured them. CI reports pixel differences;
   `MOTIF_WALKTHROUGH_STRICT_BASELINES=1` turns them into failures on the reference machine.
+
+### Packaging
+
+- Every project builds into one shared `bin/<Configuration>`, and the App and CLI build the Worker there as
+  a framework-dependent reference. A self-contained publish into that same directory treats the Worker's
+  `runtimeconfig.json` as up to date and keeps it, so the packaged Worker looks for a system .NET. Publish
+  a self-contained apphost with its own `MotifBinRoot`; `package-release.ps1` rejects any apphost whose
+  runtimeconfig lacks `includedFrameworks`. Symptom: exit 150, "No frameworks were found", with the .NET
+  location inside the app.
 
 ### PowerShell scripts
 
