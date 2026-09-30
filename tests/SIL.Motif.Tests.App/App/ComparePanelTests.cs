@@ -89,7 +89,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(5, compare.Columns.Count);
                 Assert.Equal(25, window.GetLogicalDescendants().OfType<MatrixCell>().Count());
                 Assert.Equal(10, window.GetLogicalDescendants().OfType<OpinionMark>().Count());
-                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Conflict");
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
                 var wordCell = window.GetLogicalDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("matrixWordCell"));

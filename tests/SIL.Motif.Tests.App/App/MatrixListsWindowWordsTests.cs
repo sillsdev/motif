@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.App;
 public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture avalonia)
 {
     // Retired by ADR 0049 or by the owner's column words; the window's pages never show them.
-    [GeneratedRegex(@"\b(candidates?|reject(ed)?|violations?|can[’']?t happen|cannot happen|assessment|assessed|capped|agrees|timed[- ]out)\b",
+    [GeneratedRegex(@"\b(candidates?|reject(ed)?|violations?|can[’']?t happen|cannot happen|assessment|assessed|capped|agrees|timed[- ]out|conflicts?|extra)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex RetiredWord();
 
@@ -90,6 +90,17 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Skipped, "Not parsed")]
     public void MatrixCellsSayWhatHappenedInPlainPhrases(WordProjectStatus row, CompareColumnKind column, string expected) =>
         Assert.Equal(expected, CompareViewModel.MeaningOf(row, column).Label);
+
+    [Fact]
+    public void ThePanGlossLegendUsesTheColumnWords() =>
+        Assert.Equal(["Same", "Different", "No parse", "Stopped", "Not parsed"],
+            new CompareViewModel().PanGlossLegend.Select(item => item.Label));
+
+    [Theory]
+    [InlineData(AnalysisMarkingClass.Conflict, "Different")]
+    [InlineData(AnalysisMarkingClass.Extra, "Different, and more")]
+    public void AWordsPanGlossLineUsesTheColumnWords(AnalysisMarkingClass markingClass, string expected) =>
+        Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
 
     [Fact]
     public void TheImpossibleCellShowsADashAndNoLabel()

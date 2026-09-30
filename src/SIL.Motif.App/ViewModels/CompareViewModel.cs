@@ -26,9 +26,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private static readonly IReadOnlyList<PanGlossLegendItem> PanGlossLegendItems =
     [
         new(AnalysisMarkingClass.Same, "Same"),
-        new(AnalysisMarkingClass.Conflict, "Conflict"),
         new(AnalysisMarkingClass.Different, "Different"),
-        new(AnalysisMarkingClass.Extra, "Extra"),
         new(AnalysisMarkingClass.None, "No parse"),
         new(AnalysisMarkingClass.Capped, "Stopped"),
         new(AnalysisMarkingClass.NotAssessed, "Not parsed"),
@@ -571,9 +569,8 @@ public sealed partial class CompareViewModel : ObservableObject
     public static string PanGlossClassLabel(AnalysisMarkingClass markingClass) => markingClass switch
     {
         AnalysisMarkingClass.Same => "Same",
-        AnalysisMarkingClass.Conflict => "Conflict",
-        AnalysisMarkingClass.Different => "Different",
-        AnalysisMarkingClass.Extra => "Extra readings",
+        AnalysisMarkingClass.Conflict or AnalysisMarkingClass.Different => "Different",
+        AnalysisMarkingClass.Extra => "Different, and more",
         AnalysisMarkingClass.None => "No parse",
         AnalysisMarkingClass.Capped => "Stopped",
         _ => "Not parsed",

@@ -186,10 +186,8 @@ public sealed class CompareViewModelTests
 
         Assert.Equal(["Approved", "Unknown", "Disapproved", "Not in FieldWorks"],
             compare.OpinionLegend.Select(item => item.Label));
-        Assert.Equal(["Same", "Conflict", "Different", "Extra", "No parse", "Stopped", "Not parsed"],
+        Assert.Equal(["Same", "Different", "No parse", "Stopped", "Not parsed"],
             compare.PanGlossLegend.Select(item => item.Label));
-        Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsConflict);
-        Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Conflict).IsDifferent);
         Assert.False(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsConflict);
         Assert.True(compare.PanGlossLegend.Single(item => item.Kind == AnalysisMarkingClass.Different).IsDifferent);
     }
@@ -205,9 +203,9 @@ public sealed class CompareViewModelTests
 
     [Theory]
     [InlineData(AnalysisMarkingClass.Same, "Same")]
-    [InlineData(AnalysisMarkingClass.Conflict, "Conflict")]
+    [InlineData(AnalysisMarkingClass.Conflict, "Different")]
     [InlineData(AnalysisMarkingClass.Different, "Different")]
-    [InlineData(AnalysisMarkingClass.Extra, "Extra readings")]
+    [InlineData(AnalysisMarkingClass.Extra, "Different, and more")]
     [InlineData(AnalysisMarkingClass.None, "No parse")]
     [InlineData(AnalysisMarkingClass.Capped, "Stopped")]
     [InlineData(AnalysisMarkingClass.NotAssessed, "Not parsed")]
