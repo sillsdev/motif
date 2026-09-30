@@ -338,6 +338,11 @@ foreach ($pathEntry in @($remainingPath -split ';' | Where-Object { -not [string
 if ($stillRegistered) {
     throw 'The Motif install directory remains in the per-user PATH after uninstall.'
 }
+# Update.exe cannot delete its own folder, so it leaves a delayed cmd rmdir behind as it exits.
+$installRemovalDeadline = [DateTime]::UtcNow.AddMinutes(2)
+while ((Test-Path -LiteralPath $install) -and [DateTime]::UtcNow -lt $installRemovalDeadline) {
+    Start-Sleep -Milliseconds 500
+}
 if (Test-Path -LiteralPath $install) {
     throw "The installed application directory remains after uninstall: $install"
 }
