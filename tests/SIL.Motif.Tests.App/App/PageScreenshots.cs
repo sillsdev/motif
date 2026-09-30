@@ -156,46 +156,7 @@ public sealed class PageScreenshots
         return (workspace, window);
     }
 
-    // Load warnings copied from a real project's grammar load, and health findings in the parser's newer shape.
-    private static IReadOnlyList<GrammarWarning> GrammarFindings()
-    {
-        var lines = new[]
-        {
-            ("", "environment representation failed validation", 7),
-            ("invalid environment \"e2\" (/ _ [C])", "unknown natural class \"C\"; treated as absent", 5),
-            ("allomorph \"kat\"", "cannot segment \"kat\": no character definition matches at position 0; skipped", 3),
-            ("", "MSA has zero loadable allomorphs for this stratum bucket", 2),
-            ("phoneme \"ng'\"", "representation collides with an earlier phoneme/boundary; skipped", 1),
-            ("", "inferred segment \"ŋ\" carries no authored feature values, so it satisfies every feature-based natural class", 2),
-        };
-        var findings = new List<GrammarWarning>();
-        foreach (var (subject, problem, count) in lines)
-        {
-            for (var index = 0; index < count; index++)
-            {
-                var text = "warning: " + (subject.Length == 0 ? problem : $"{subject}: {problem}");
-                findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, string.Empty,
-                    subject.Length == 0 ? [] : [new GrammarWarningPart(subject, GrammarWarningPartRole.Text)],
-                    [new GrammarWarningPart(problem, GrammarWarningPartRole.Text)], text)
-                {
-                    Group = "Parser finding",
-                    Code = "test.parser-finding",
-                });
-            }
-        }
-        foreach (var entry in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
-        {
-            findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, "Partial morpheme",
-                [new GrammarWarningPart(entry, GrammarWarningPartRole.Object, null, "lex_entry", "silfw://localhost/link?tool=lexiconEdit")],
-                [new GrammarWarningPart($"Lexical entry '{entry}' is partially analyzed.", GrammarWarningPartRole.Text)],
-                $"warning: hc-partial-morpheme: Lexical entry '{entry}' is partially analyzed.")
-            {
-                Group = "Partial morpheme analysis",
-                Code = "hc-partial-morpheme",
-            });
-        }
-        return findings;
-    }
+    private static IReadOnlyList<GrammarWarning> GrammarFindings() => SeededGrammarFindings.All();
 
     private static readonly (string Word, string[] Forms, string[] Glosses)[] Vocabulary =
     [

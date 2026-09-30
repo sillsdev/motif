@@ -93,10 +93,11 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
-    public void AKindCarriesTheParsersDescriptionAndGuidance()
+    public void AKindTheTableDoesNotKnowCarriesTheParsersDescriptionAndGuidance()
     {
         var named = EntryWarning with
         {
+            Code = "grammar.future.unresolved-info",
             Group = "Unresolved grammatical info",
             Description = "The entry points at grammatical info it does not own.",
             Guidance = "Choose the entry's grammatical info again in FieldWorks.",
@@ -108,7 +109,8 @@ public sealed class GrammarWarningsViewModelTests
         var group = table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind.Name == "Unresolved grammatical info");
         Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
         Assert.True(group.HasGuidance);
-        Assert.False(table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).HasDescription);
+        Assert.Equal("No form in the lexicon uses this phoneme.",
+            table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).Description);
     }
 
     [Fact]
@@ -123,11 +125,11 @@ public sealed class GrammarWarningsViewModelTests
 
         table.WhereFilter = string.Empty;
         table.WhereFilter = "kuona";
-        Assert.Equal("Unresolved morph type", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
+        Assert.Equal("Morph type couldn't be found", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
 
         table.WhereFilter = string.Empty;
         table.ProblemFilter = "not modelled";
-        Assert.Equal("Unused phoneme", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
+        Assert.Equal("Phoneme never used", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
     }
 
     [Fact]
@@ -154,14 +156,78 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
-    public void ImportOriginIsShownAsTheSource()
+    public void AKnownCodeReadsInMotifsPlainWordsWithTheParsersLineBeneath()
     {
         var table = new GrammarWarningsViewModel();
 
         table.Load([EntryWarning, PhonemeWarning]);
 
-        var imported = Assert.Single(table.Rows.Cast<GrammarWarningRowViewModel>(),
-            row => row.OriginLabel == "From import");
-        Assert.Equal("From import", imported.OriginLabel);
+        var row = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.GroupCode == "hc-unresolved-morph-type");
+        Assert.Equal("Morph type couldn't be found", row.GroupName);
+        Assert.True(row.HasMeaning);
+        Assert.StartsWith("An allomorph's morph type can't be found", row.Meaning, StringComparison.Ordinal);
+        Assert.Equal("msa 0c686afa-8d21-4e3b-bc0e-41812150cf4c does not resolve within this entry", row.Problem);
+        var group = table.WarningGroups.Single(group => group.Code == "hc-unresolved-morph-type");
+        Assert.Equal("Morph type couldn't be found", group.Name);
+        Assert.Equal(row.Meaning, group.Description);
+    }
+
+    [Fact]
+    public void AnUnknownCodeKeepsTheParsersGroupAndSentence()
+    {
+        var future = EntryWarning with
+        {
+            Code = "grammar.future.thing", Group = "Future thing could not be loaded",
+            Description = "The future thing could not be loaded.",
+        };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([future]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal("Future thing could not be loaded", row.GroupName);
+        Assert.False(row.HasMeaning);
+        Assert.Equal("The future thing could not be loaded.", Assert.Single(table.WarningGroups).Description);
+    }
+
+    [Fact]
+    public void EachRowNamesItsObjectsKindOrSaysItIsGrammarWide()
+    {
+        var environment = new GrammarWarning(GrammarDiagnosticLevel.Warning, string.Empty,
+            [new GrammarWarningPart("e2 (/ _ [C])", GrammarWarningPartRole.Object, "g", "PhEnvironment", "silfw://localhost/link?tool=EnvironmentEdit")],
+            [new GrammarWarningPart("unknown natural class \"C\"; treated as absent", GrammarWarningPartRole.Text)],
+            "warning: grammar.environment.invalid: unknown natural class")
+        { Code = "grammar.environment.invalid", Group = "Invalid phonological environment" };
+        var nowhere = environment with { Subject = [], Text = "warning: grammar.environment.invalid: failed validation" };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([environment, nowhere]);
+
+        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToList();
+        Assert.Equal(["Environment", "Grammar-wide"], rows.Select(row => row.KindLabel).Order(StringComparer.Ordinal));
+        Assert.Equal("1×", rows[0].SeenText);
+    }
+
+    [Fact]
+    public void TheLevelColumnIsNeededOnlyWhenTheShownRowsMixLevels()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning, PhonemeWarning]);
+
+        Assert.True(table.AnyShownLevelsDiffer);
+        table.SetBucketCommand.Execute(GrammarFindingBucket.Warnings);
+        Assert.False(table.AnyShownLevelsDiffer);
+    }
+
+    [Fact]
+    public void TheProblemFilterAlsoMatchesThePlainMeaning()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning, PhonemeWarning]);
+
+        table.ProblemFilter = "stem or an affix";
+
+        Assert.Equal("hc-unresolved-morph-type",
+            Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupCode);
     }
 }
