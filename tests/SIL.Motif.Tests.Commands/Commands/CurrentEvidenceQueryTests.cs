@@ -70,6 +70,44 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     }
 
     [Fact]
+    public void RefusesAssessmentWhenStoredTextAnalysesCannotBeRead()
+    {
+        var fwDataPath = Path.Combine(_root, "damaged.fwdata");
+        File.WriteAllText(fwDataPath, "synthetic project marker");
+        var project = new ProjectLocator(fwDataPath, "damaged");
+        var textId = Guid.NewGuid();
+        var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+        using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                   MotifSchema.CurrentSchema, new Version(1, 0)))
+        {
+            var projection = new TextWordsProjection([new TextWordsProjectedText(textId, "Text", [], [])], []);
+            var summary = new ProjectSummarySnapshot(1, 1, 1, 0, 0, ["cat"],
+                [new ProjectTextSummary(textId, "Text", 1, 1,
+                    new Dictionary<string, int>(StringComparer.Ordinal) { ["cat"] = 1 })]);
+            var baselineRoot = Path.Combine(_root, "damaged-baseline");
+            new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+                new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "damaged.fwdata"), token),
+                DateTimeOffset.Parse("2026-09-24T10:30:00Z"), DateTimeOffset.Parse("2026-09-24T10:00:00Z"),
+                projection, summary);
+            new NamedSelectionRepository(database).SetDefault("Default", [textId], []);
+            var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+            new AssessmentRepository(database).Record(Record("assessment", ["cat"],
+                [new AssessedWord("cat", "no-analysis", []) { ProjectStanding = "approved" }],
+                "2026-09-24T11:00:00Z", tokenJson));
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE BaselineTextWords SET TextJson = '{broken' WHERE TextId = $textId;";
+            command.Parameters.AddWithValue("$textId", textId.ToString("D"));
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+
+        var result = CurrentEvidenceQuery.ReadCurrentEvidence(fwDataPath);
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.Refusal);
+    }
+    [Fact]
     public void LaterSubsetAssessmentReplacesOnlyItsWords()
     {
         var baseline = new AssessmentRecord("base", null, null, "pangloss",

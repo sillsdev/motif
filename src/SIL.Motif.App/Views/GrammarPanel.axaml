@@ -8,7 +8,7 @@
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
 
     <views:CopyableTextBlock Classes="muted"
-               Text="Stored for this Baseline. Nothing here depends on which texts you choose."
+               Text="What PanGloss noticed while loading the grammar. None of these stop a parse; each can make some words fail."
                TextWrapping="Wrap" />
 
     <Panel Grid.Row="1">
@@ -40,7 +40,7 @@
       <StackPanel IsVisible="{Binding Grammar.ShowNoFindings}" Spacing="{DynamicResource Intent.Space.Related}" HorizontalAlignment="Center" VerticalAlignment="Center">
         <views:CopyableTextBlock Text="No findings" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <views:CopyableTextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
-        <Button Content="Reload grammar" HorizontalAlignment="Center"
+        <Button Content="Check the grammar again" HorizontalAlignment="Center"
                 Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="Check the grammar again" />
       </StackPanel>
 
@@ -60,11 +60,9 @@
                               IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
                               Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}" />
           </WrapPanel>
-          <Button DockPanel.Dock="Right" Content="Reload grammar"
+          <Button DockPanel.Dock="Right" Content="Check the grammar again"
                   Command="{Binding Grammar.CheckCommand}"
                   AutomationProperties.Name="Check the grammar again" />
-          <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" Margin="{DynamicResource Component.Warnings.GroupMargin}" VerticalAlignment="Center"
-                     Text="Findings never block an Assessment." />
         </DockPanel>
 
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Section}">
@@ -156,7 +154,7 @@
           <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.WhereFilter}"
                    PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
           <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.ProblemFilter}"
-                   PlaceholderText="Problem..." AutomationProperties.Name="Filter grammar warnings by problem" />
+                   PlaceholderText="What it means..." AutomationProperties.Name="Filter grammar warnings by problem" />
         </Grid>
         <DataGrid x:Name="FindingsGrid" Grid.Row="3" ItemsSource="{Binding Grammar.Warnings.Rows}"
                   IsReadOnly="True"
@@ -178,28 +176,42 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Kind" Width="Auto" SortMemberPath="KindLabel"
+                                    ClipboardContentBinding="{ReflectionBinding KindLabel}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <TextBlock Classes="muted warningCell" Text="{Binding KindLabel}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
                                     ClipboardContentBinding="{ReflectionBinding Where}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                   <StackPanel Classes="warningCell" Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" IsVisible="{Binding HasWhere}" />
-                    <views:CopyableTextBlock Classes="muted" Text="Not named by the parser" IsVisible="{Binding !HasWhere}" />
+                    <views:CopyableTextBlock Classes="muted" Text="no single place" IsVisible="{Binding !HasWhere}" />
                   </StackPanel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Problem" Width="2*" SortMemberPath="Problem"
-                                    ClipboardContentBinding="{ReflectionBinding Problem}">
+            <DataGridTemplateColumn Header="What it means" Width="2*" SortMemberPath="GroupName"
+                                    ClipboardContentBinding="{ReflectionBinding Text}">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <StackPanel Classes="warningCell" Spacing="{DynamicResource Intent.Space.Compact}">
-                    <TextBlock Classes="muted" Text="{Binding OriginLabel}"
-                               IsVisible="{Binding HasOrigin}" />
-                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}"
+                  <StackPanel Classes="warningCell" Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Text="{Binding Meaning}" TextWrapping="Wrap" IsVisible="{Binding HasMeaning}" />
+                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" Classes.parserLine="{Binding HasMeaning}"
                                                     ToolTip.Tip="{Binding Text}" />
-                    <views:CopyableTextBlock Classes="muted warningRepeat" Text="{Binding RepeatText}" IsVisible="{Binding IsRepeated}" />
                   </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Seen" Width="Auto" SortMemberPath="RepeatCount"
+                                    ClipboardContentBinding="{ReflectionBinding RepeatCount}">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                  <TextBlock Classes="warningCell warningSeen" Text="{Binding SeenText}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>

@@ -3,6 +3,7 @@ using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Help;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -22,10 +23,15 @@ public enum GrammarFindingBucket
 /// </remarks>
 public sealed partial class GrammarWarningsViewModel : ObservableObject
 {
+    internal static readonly Lazy<WarningMeanings> DefaultMeanings = new(() => WarningMeanings.Load());
     private readonly List<GrammarWarningRowViewModel> _all = [];
+    private readonly WarningMeanings _meanings;
 
-    public GrammarWarningsViewModel()
+    /// <summary>Builds the page's table, reading each warning's plain meaning from <paramref name="meanings"/>.</summary>
+    /// <param name="meanings">The meaning table, or the one for the current UI culture when omitted.</param>
+    public GrammarWarningsViewModel(WarningMeanings? meanings = null)
     {
+        _meanings = meanings ?? DefaultMeanings.Value;
         Rows = new DataGridCollectionView(_all) { Filter = Matches };
         SetBucketCommand = new RelayCommand<GrammarFindingBucket>(bucket => Bucket = bucket);
         // Selecting the active group again clears it, so the same control narrows and widens the table.
@@ -115,8 +121,10 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
                          rows.Key.GroupName,
                          rows.Key.Level,
                          rows.Sum(row => row.RepeatCount),
-                         rows.Select(row => row.Description).FirstOrDefault(text => text.Length > 0),
-                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0)))
+                         rows.Select(row => row.HasMeaning ? row.Meaning : row.Description)
+                             .FirstOrDefault(text => text.Length > 0),
+                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0),
+                         rows.Any(row => row.HasMeaning)))
                      .OrderByDescending(group => group.Count)
                      .ThenBy(group => group.Name, StringComparer.CurrentCulture))
         {
@@ -160,6 +168,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     public bool AnyShownWhere => VisibleFindings().Any(row => row.HasWhere && Matches(row));
 
+    /// <summary>Whether the rows now shown hold more than one level, so the table needs its Level column.</summary>
+    public bool AnyShownLevelsDiffer => VisibleFindings().Where(Matches).Select(row => row.Level).Distinct().Skip(1).Any();
+
     public string CountSummary => ShownCount == TotalCount
         ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
         : SelectedGroup is { } group && ShownCount == group.Count
@@ -174,7 +185,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         {
             _all.AddRange(warnings
             .GroupBy(warning => (warning.Text, warning.Origin, warning.Code, warning.Severity))
-                .Select(rows => new GrammarWarningRowViewModel(rows.First(), rows.Count())));
+                .Select(rows => new GrammarWarningRowViewModel(rows.First(), rows.Count(), _meanings)));
         }
         TotalCount = _all.Sum(row => row.RepeatCount);
         RebuildGroups();
@@ -196,7 +207,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         && (SelectedGroup is not { } group ||
             (group.Code == row.GroupCode && group.Level == row.Level))
         && Contains(row.Where, WhereFilter)
-        && (Contains(row.Problem, ProblemFilter) || Contains(row.Text, ProblemFilter));
+        && (Contains(row.Meaning, ProblemFilter) || Contains(row.Problem, ProblemFilter) ||
+            Contains(row.Text, ProblemFilter));
 
     private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => _all;
 
@@ -212,8 +224,9 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 {
     public GrammarFindingGroupViewModel(
         string code, string name, GrammarDiagnosticLevel level, int count, string? description = null,
-        string? guidance = null)
+        string? guidance = null, bool isKnown = false)
     {
+        IsKnown = isKnown;
         Code = code;
         Name = name;
         Level = level;
@@ -224,6 +237,9 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 
     public string Code { get; }
     public string Name { get; }
+
+    /// <summary>Whether Motif's table has a plain meaning for this code, rather than only the parser's words.</summary>
+    public bool IsKnown { get; }
     /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
@@ -245,11 +261,17 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 }
 
 /// <summary>One diagnostic row with its subjects and text ready for display, search, and sorting.</summary>
+/// <remarks>
+/// The row leads with Motif's plain meaning for the warning's code, and keeps the parser's own sentence to show
+/// small beneath it, since that sentence is what an AI Handoff or a bug report quotes.
+/// </remarks>
 public sealed class GrammarWarningRowViewModel
 {
-    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1)
+    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WarningMeanings? meanings = null)
     {
         ArgumentNullException.ThrowIfNull(warning);
+        var table = meanings ?? GrammarWarningsViewModel.DefaultMeanings.Value;
+        var meaning = table.For(warning.Code, warning.Group);
         RepeatCount = repeatCount;
         Description = warning.Description;
         Guidance = warning.Guidance ?? string.Empty;
@@ -260,31 +282,30 @@ public sealed class GrammarWarningRowViewModel
         Where = PlainText(warning.Subject);
         Problem = PlainText(warning.Problem);
         Text = warning.Text;
-        GroupCode = warning.Code!;
-        GroupName = warning.Group!;
-        OriginLabel = warning.Origin switch
-        {
-            GrammarFindingOrigin.Import => "From import",
-            GrammarFindingOrigin.Check => "From grammar check",
-            _ => string.Empty,
-        };
+        GroupCode = warning.Code ?? string.Empty;
+        GroupName = meaning.Title;
+        Meaning = meaning.Meaning ?? string.Empty;
+        KindLabel = table.KindLabel(warning.Subject.FirstOrDefault(part => part.FieldWorksKind is { Length: > 0 })?.FieldWorksKind
+            ?? (warning.Subject.Count > 0 ? "Unknown" : null));
     }
 
+    /// <summary>The kind's plain title, from Motif's table or, for a code it lacks, the parser's own name.</summary>
     public string GroupName { get; }
     public string GroupCode { get; }
-    public string OriginLabel { get; }
-    public bool HasOrigin => OriginLabel.Length > 0;
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
     public bool IsError => Level == GrammarDiagnosticLevel.Error;
     public int RepeatCount { get; }
-    public string RepeatText => RepeatCount switch
-    {
-        1 => string.Empty,
-        2 => "reported twice",
-        _ => $"reported {RepeatCount} times",
-    };
-    public bool IsRepeated => RepeatCount > 1;
+
+    /// <summary>How often the parser reported this warning, as the Seen column shows it.</summary>
+    public string SeenText => $"{RepeatCount:N0}×";
+
+    /// <summary>What the warning means in plain words, or empty when Motif's table does not know its code.</summary>
+    public string Meaning { get; }
+    public bool HasMeaning => Meaning.Length > 0;
+
+    /// <summary>The FieldWorks name for the kind of object the warning names, or "Grammar-wide" for none.</summary>
+    public string KindLabel { get; }
     public bool HasWhere => SubjectParts.Count > 0;
     public string Description { get; }
     public string Guidance { get; }

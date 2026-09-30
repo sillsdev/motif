@@ -23,7 +23,7 @@ public sealed class GrammarFindingGroupsTests
         var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(warnings.Rows));
         Assert.Equal("error", row.Severity);
         Assert.Equal(1, warnings.ErrorCount);
-        Assert.Equal("No usable entry allomorphs", Assert.Single(warnings.ErrorGroups).Name);
+        Assert.Equal("Entry with no usable allomorph", Assert.Single(warnings.ErrorGroups).Name);
         Assert.False(warnings.HasWarningGroups);
         Assert.Empty(warnings.WarningGroups);
         Assert.Empty(warnings.InformationGroups);

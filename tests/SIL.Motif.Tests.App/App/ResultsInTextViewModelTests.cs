@@ -154,14 +154,35 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public void StoredHereFollowsMorphologyIdentityRatherThanTheDisplayKey()
+    {
+        var stored = Stored(Book, "book");
+        var differentlyKeyed = new ProjectAnalysis("display-key-only", stored.Morphs)
+        {
+            StoredAnalysisId = stored.StoredAnalysisId,
+            StoredAnalysisOpinion = stored.StoredAnalysisOpinion,
+            Identity = stored.Identity,
+        };
+        var token = new TextToken("kitabu", "kitabu", null, "approved")
+        {
+            Analysis = differentlyKeyed,
+            StoredAnalyses = [differentlyKeyed],
+        };
+
+        var card = new ResultsTokenViewModel("Text", 1, token, Result("kitabu", Book));
+
+        Assert.True(Assert.Single(card.Readings).IsStoredHere);
+        Assert.Equal(AnalysisMarkingClass.Same, card.Marking.PanGlossClass);
+    }
+    [Fact]
     public async Task EachOccurrenceIsJudgedAgainstWhatIsStoredThere()
     {
         var (inText, _, _) = await Loaded();
 
         Assert.Null(inText.Message);
         var line = inText.VisibleLines[0].Tokens;
-        Assert.Equal(OccurrenceVerdict.Matches, line[0].Verdict);
-        Assert.Equal("✓ parser agrees, with 1 other reading", line[0].ParserLine);
+        Assert.Equal(OccurrenceVerdict.Differs, line[0].Verdict);
+        Assert.StartsWith("≠ parser:", line[0].ParserLine, StringComparison.Ordinal);
         Assert.Equal(OccurrenceVerdict.Differs, line[1].Verdict);
         Assert.StartsWith("≠ parser:", line[1].ParserLine, StringComparison.Ordinal);
         Assert.Equal(OccurrenceVerdict.New, line[2].Verdict);
@@ -172,8 +193,8 @@ public sealed class ResultsInTextViewModelTests
         Assert.DoesNotContain(line[1].Readings, reading => reading.IsStoredHere);
 
         Assert.Equal(5, inText.AllCount);
-        Assert.Equal(2, inText.MatchesCount);
-        Assert.Equal(1, inText.DiffersCount);
+        Assert.Equal(0, inText.MatchesCount);
+        Assert.Equal(3, inText.DiffersCount);
         Assert.Equal(1, inText.NewCount);
         Assert.Equal(1, inText.NoParseCount);
     }
@@ -195,6 +216,39 @@ public sealed class ResultsInTextViewModelTests
         Assert.Equal(AnalysisMarkingClass.None, tokens[3].Marking.PanGlossClass);
     }
 
+    [Fact]
+    public async Task CardAndStripGiveTheSameAnswerForEveryLoadedWord()
+    {
+        var (inText, _, _) = await Loaded();
+        var tokens = inText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord);
+
+        foreach (var token in tokens)
+        {
+            var expected = token.Marking.PanGlossClass switch
+            {
+                AnalysisMarkingClass.Same => "Agrees with FieldWorks",
+                AnalysisMarkingClass.Conflict => "Conflicts with a FieldWorks opinion",
+                AnalysisMarkingClass.Different => "Different from FieldWorks",
+                AnalysisMarkingClass.Extra => "Has additional readings",
+                AnalysisMarkingClass.None => "No parse",
+                AnalysisMarkingClass.Capped => "Search stopped at a limit",
+                _ => "Not assessed",
+            };
+            Assert.Equal(expected, token.PanGlossSummary);
+            Assert.Equal(expected, token.VerdictLabel);
+        }
+    }
+    [Fact]
+    public async Task OccurrenceFiltersFollowTheSharedMarkingClass()
+    {
+        var (inText, _, _) = await Loaded();
+        var token = inText.VisibleLines[0].Tokens[0];
+
+        Assert.Equal(AnalysisMarkingClass.Extra, token.Marking.PanGlossClass);
+        Assert.Equal(OccurrenceVerdict.Differs, token.Verdict);
+        Assert.Equal(0, inText.MatchesCount);
+        Assert.Equal(3, inText.DiffersCount);
+    }
     [Fact]
     public async Task SavedReadStateLoadsPerOccurrenceWithoutHidingNeedsALook()
     {
@@ -453,11 +507,12 @@ public sealed class ResultsInTextViewModelTests
 
         inText.SetFilterCommand.Execute(ResultsInTextFilter.Differs);
 
-        var line = Assert.Single(inText.VisibleLines);
-        Assert.Equal(1, line.Number);
+        Assert.Equal(2, inText.VisibleLines.Count);
+        var line = inText.VisibleLines[0];
+        Assert.False(line.Tokens[0].IsDimmed);
         Assert.False(line.Tokens[1].IsDimmed);
-        Assert.True(line.Tokens[0].IsDimmed);
         Assert.True(line.Tokens[2].IsDimmed);
+        Assert.False(inText.VisibleLines[1].Tokens[0].IsDimmed);
 
         inText.SetFilterCommand.Execute(ResultsInTextFilter.All);
         Assert.Equal(2, inText.VisibleLines.Count);

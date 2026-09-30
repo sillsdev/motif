@@ -39,11 +39,11 @@ public sealed class DesktopSeamWalkthroughTests
             walkthrough.SkipSetup();
 
             walkthrough.DiagnosticFiles.NextOpenCancels();
-            walkthrough.Click("Open a saved diagnostic");
+            OpenSavedTrace(walkthrough.Window);
             Assert.Empty(walkthrough.Window.OwnedWindows);
 
             walkthrough.DiagnosticFiles.NextOpenReads(DiagnosticJson);
-            walkthrough.Click("Open a saved diagnostic");
+            OpenSavedTrace(walkthrough.Window);
             var diagnostic = Assert.IsType<DiagnosticWindow>(Assert.Single(walkthrough.Window.OwnedWindows));
             mainWindow = walkthrough.Window;
             diagnosticWindow = diagnostic;
@@ -88,7 +88,7 @@ public sealed class DesktopSeamWalkthroughTests
             walkthrough.SkipSetup();
 
             walkthrough.DiagnosticFiles.NextOpenReads("{");
-            walkthrough.Click("Open a saved diagnostic");
+            OpenSavedTrace(walkthrough.Window);
             var diagnostic = Assert.IsType<DiagnosticWindow>(Assert.Single(walkthrough.Window.OwnedWindows));
             try
             {
@@ -136,11 +136,16 @@ public sealed class DesktopSeamWalkthroughTests
         Assert.Equal([starterPrompt, question], clipboard.Copied);
     }
 
+    private static void OpenSavedTrace(Window window) => ClickTool(window, "Try a Word tools", "Open a saved trace");
+
+    private static void ClickTool(DiagnosticWindow window, string accessibleName) =>
+        ClickTool(window, "Diagnostic tools", accessibleName);
+
     // The tools sit in a flyout, which is outside the window's logical tree until it opens.
-    private static void ClickTool(DiagnosticWindow window, string accessibleName)
+    private static void ClickTool(Window window, string menuName, string accessibleName)
     {
         var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == "Diagnostic tools");
+            AutomationProperties.GetName(button) == menuName);
         var flyout = Assert.IsType<Flyout>(tools.Flyout);
         flyout.ShowAt(tools);
         Pump();

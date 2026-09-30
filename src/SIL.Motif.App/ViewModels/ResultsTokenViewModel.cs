@@ -9,8 +9,7 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// One token of a line: punctuation, or a word with the analysis stored at this occurrence and the parser's
-/// verdict on it — whether the parser produced that analysis, something else, or nothing.
+/// One line token and the shared morphology comparison for its word, when it is a word.
 /// </summary>
 public sealed partial class ResultsTokenViewModel : ObservableObject
 {
@@ -44,25 +43,28 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         ProjectStatusVerdict = projectWord?.Verdict ?? global::SIL.Motif.App.ViewModels.Verdict.New;
         ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
-        var storedKey = token.Analysis?.Key;
+        Marking = AnalysisMarkingState.Create(token, result, _isUnread);
+        var storedId = token.Analysis?.StoredAnalysisId;
         var analyses = result?.Morphology?.Analyses ?? [];
-        var keys = analyses.Select(ProjectAnalysisKey.For).ToArray();
         var resolved = result?.Readings;
         var grades = result?.ReadingGrades;
-        Readings = keys.Select((key, index) => new ResultsReadingViewModel(
+        Readings = analyses.Select((analysis, index) => new ResultsReadingViewModel(
                 ReadingText(resolved is not null && index < resolved.Count ? resolved[index] : null),
                 grades is not null && index < grades.Count ? grades[index] : null,
-                storedKey is not null && key == storedKey, analyses[index], index,
+                storedId is not null && Marking.PanGlossReadings[index].MatchingAnalysisIds.Contains(
+                    storedId, StringComparer.Ordinal), analysis, index,
                 resolved is not null && index < resolved.Count ? resolved[index] : null))
             .ToArray();
 
-        Verdict = !IsWord || result is null || result.Outcome == "skipped" ? OccurrenceVerdict.NotAssessed
-            : storedKey is not null && keys.Contains(storedKey) ? OccurrenceVerdict.Matches
-            : result.IsIncomplete ? OccurrenceVerdict.Limit
-            : storedKey is not null ? OccurrenceVerdict.Differs
-            : keys.Length > 0 ? OccurrenceVerdict.New
-            : OccurrenceVerdict.NoParse;
-
+        Verdict = Marking.PanGlossClass switch
+        {
+            AnalysisMarkingClass.Same => OccurrenceVerdict.Matches,
+            AnalysisMarkingClass.Capped => OccurrenceVerdict.Limit,
+            AnalysisMarkingClass.None => OccurrenceVerdict.NoParse,
+            AnalysisMarkingClass.NotAssessed => OccurrenceVerdict.NotAssessed,
+            AnalysisMarkingClass.Different when !Marking.FieldWorksAnalyses.Any() => OccurrenceVerdict.New,
+            _ => OccurrenceVerdict.Differs,
+        };
         var first = Readings.FirstOrDefault()?.Text;
         var others = Readings.Count - 1;
         ParserLine = Verdict switch
@@ -76,18 +78,6 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ when result?.Outcome == "skipped" => "skipped: a character the grammar does not define",
             _ => "not in this Assessment",
         };
-        VerdictLabel = Verdict switch
-        {
-            OccurrenceVerdict.Matches => "Parser agrees with what is stored here",
-            OccurrenceVerdict.Differs when Readings.Count == 0 => "An analysis is stored here, and the parser found no parse",
-            OccurrenceVerdict.Differs => "Parser differs from what is stored here",
-            OccurrenceVerdict.New => "Nothing stored here; the parser proposes an analysis",
-            OccurrenceVerdict.NoParse => "Nothing stored here, and the parser found no parse",
-            OccurrenceVerdict.Limit => "The parser stopped at a time or step limit",
-            _ when result?.Outcome == "skipped" => "The parser skipped this word: it has a character the grammar's character table does not define",
-            _ => "This word was not part of the Assessment",
-        };
-        Marking = AnalysisMarkingState.Create(token, result, _isUnread);
         FieldWorksAnalyses = Marking.FieldWorksAnalyses
             .Select(analysis => new FieldWorksAnalysisDisplayViewModel(analysis)).ToArray();
     }
@@ -226,8 +216,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The short line under the word: the parser's answer against what is stored.</summary>
     public string ParserLine { get; }
 
-    /// <summary>The verdict as a sentence, for the side panel.</summary>
-    public string VerdictLabel { get; }
+    /// <summary>The same PanGloss result label shown in the word strip and side panel.</summary>
+    public string VerdictLabel => PanGlossSummary;
 
     public bool IsMatch => Verdict == OccurrenceVerdict.Matches;
     public bool IsDiffers => Verdict == OccurrenceVerdict.Differs;

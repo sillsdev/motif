@@ -10,18 +10,35 @@ public sealed class CompareViewModelTests
 {
     private static AssessmentWordResult Word(
         string word, string outcome, string standing, IReadOnlyList<string>? grades = null,
-        bool incomplete = false, int missedApproved = 0, int? occurrences = null) =>
-        WithPriority(new AssessmentWordResult(word, outcome, incomplete, "Search completed", 10, null)
+        bool incomplete = false, int missedApproved = 0, int? occurrences = null)
+    {
+        var analyses = grades?.Select((_, index) => new ParseAnalysis(
+            [new ParseMorph($"{word}-{index}", "n", null, null)])).ToArray() ?? [];
+        var stored = grades?.Select((grade, index) => (grade, index))
+            .Where(item => item.grade is ReadingGrade.Approved or ReadingGrade.Candidate or ReadingGrade.Disapproved)
+            .Select(item => StoredFor($"{word}-{item.index}", item.grade)).ToList() ?? [];
+        for (var index = 0; index < missedApproved; index++)
+            stored.Add(StoredFor($"{word}-missing-{index}", ReadingGrade.Approved));
+        return WithPriority(new AssessmentWordResult(word, outcome, incomplete, "Search completed", 10, null)
         {
             Readings = grades?.Select(grade => Reading(grade)).ToArray(),
             ReadingGrades = grades,
+            StoredAnalyses = stored,
             MissedApproved = Enumerable.Range(0, missedApproved).Select(_ => Reading("missed")).ToArray(),
             Morphology = grades is null ? null : new ParseWordEvidence("v1", 0, word, 10,
-                false, false, false, grades.Select(_ => new ParseAnalysis([])).ToArray(), []),
+                false, false, false, analyses, []),
             ProjectStanding = standing,
             OccurrenceCount = occurrences,
         });
+    }
 
+    private static ParserReading StoredFor(string form, string opinion) =>
+        new([new ParserReadingMorph(form, "gloss", "n", null, false, null)])
+        {
+            StoredAnalysisId = "stored-" + form,
+            StoredAnalysisOpinion = opinion,
+            Identity = new ApprovedMorphology([new ApprovedMorph(form, "n", null, ["entry"])]),
+        };
     private static AssessmentWordResult WithPriority(AssessmentWordResult word) => word with
     {
         FixFirst = CompareSemantics.FixFirst(new CompareWordFacts(
@@ -57,15 +74,58 @@ public sealed class CompareViewModelTests
     }
 
     [Theory]
-    [InlineData(ProjectStanding.Candidate, "candidate", CompareColumnKind.Match)]
-    [InlineData(ProjectStanding.Candidate, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.Rejected, "disapproved", CompareColumnKind.Match)]
-    [InlineData(ProjectStanding.Rejected, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.NotPresent, "no-opinion", CompareColumnKind.NoMatch)]
-    [InlineData(ProjectStanding.IncorrectSpelling, "approved", CompareColumnKind.Match)]
-    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(string standing, string grade, CompareColumnKind expected) =>
-        Assert.Equal(expected, PlaceOne(Word("w", "analysed", standing, [grade])).Item2);
+    [InlineData(ProjectStanding.Candidate, "analysed", "candidate", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Candidate, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.Rejected, "analysed", "disapproved", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.Rejected, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.NotPresent, "analysed", "no-opinion", CompareColumnKind.NoMatch)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "analysed", "approved", CompareColumnKind.Match)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "no-analysis", null, CompareColumnKind.NoParse)]
+    [InlineData(ProjectStanding.IncorrectSpelling, "capped", null, CompareColumnKind.Timeout)]
+    public void AParsedWordMatchesWhenTheParserBuiltWhatItsRowHolds(
+        string standing, string outcome, string? grade, CompareColumnKind expected) =>
+        Assert.Equal(expected, PlaceOne(Word("w", outcome, standing, grade is null ? null : [grade])).Item2);
 
+    [Fact]
+    public void MatrixAndRecordedPlacementAgreeAcrossStandingAndOutcomeCases()
+    {
+        var cases = new (string Outcome, string[]? Grades, bool Incomplete, int MissedApproved)[]
+        {
+            ("analysed", null, false, 0),
+            ("analysed", [], false, 0),
+            ("analysed", [ReadingGrade.Approved], false, 0),
+            ("analysed", [ReadingGrade.Candidate], false, 0),
+            ("analysed", [ReadingGrade.Disapproved], false, 0),
+            ("analysed", [ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved, ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved], false, 1),
+            ("analysed", [ReadingGrade.Disapproved, ReadingGrade.NoOpinion], false, 0),
+            ("analysed", [ReadingGrade.Approved], true, 0),
+            ("no-analysis", null, false, 0),
+            ("capped", [ReadingGrade.Approved], true, 0),
+            ("skipped", null, false, 0),
+        };
+        foreach (var standing in new[] { ProjectStanding.Approved, ProjectStanding.Candidate,
+                     ProjectStanding.Rejected, ProjectStanding.NotPresent, ProjectStanding.IncorrectSpelling })
+        foreach (var (outcome, grades, incomplete, missedApproved) in cases)
+        {
+            if (outcome == "analysed" && grades is { Length: > 0 } && (standing switch
+                {
+                    ProjectStanding.Approved => !grades.Contains(ReadingGrade.Approved),
+                    ProjectStanding.Candidate => !grades.Contains(ReadingGrade.Candidate),
+                    ProjectStanding.Rejected => !grades.Contains(ReadingGrade.Disapproved),
+                    ProjectStanding.NotPresent => grades.Any(grade => grade != ReadingGrade.NoOpinion),
+                    _ => false,
+                })) continue;
+            var word = Word("w", outcome, standing, grades, incomplete, missedApproved);
+            var matrix = PlaceOne(word).Item2;
+            var recorded = CompareSemantics.Place(new CompareWordFacts(standing, outcome, incomplete,
+                word.Morphology, grades, missedApproved)).Column;
+            Assert.True(matrix == recorded,
+                $"{standing}/{outcome}/{string.Join(',', grades ?? [])}/{incomplete}/{missedApproved}: " +
+                $"Matrix {matrix}, recorded {recorded}");
+        }
+    }
     [Fact]
     public void EveryCellMeansWhatTheGridSaysAndTimeoutsAreNeverViolations()
     {
@@ -176,6 +236,48 @@ public sealed class CompareViewModelTests
         Assert.Equal(OpinionMarkKind.Approved, word.OpinionMark);
     }
 
+    [Fact]
+    public void MatrixAndListsPlaceAnExtraReadingWithTheStripInsteadOfCallingItKept()
+    {
+        var stored = StoredReading("analysis-1", ReadingGrade.Approved);
+        var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            StoredAnalyses = [stored],
+            ReadingGrades = [ReadingGrade.Approved, ReadingGrade.NoOpinion],
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
+                false, false, false,
+                [new ParseAnalysis([new ParseMorph("kitabu", "n", null, null)]),
+                    new ParseAnalysis([new ParseMorph("other", "n", null, null)])], []),
+        };
+        var row = new AssessWordRowViewModel(result);
+        var compare = new CompareViewModel();
+        compare.Load([row]);
+        var lists = new TextsListsViewModel(compare);
+
+        Assert.Equal(AnalysisMarkingClass.Extra, row.Marking.PanGlossClass);
+        Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
+        Assert.Contains("kitabu", lists.Lists.Single(list => list.Name == "Approved, parsed differently")
+            .Cells.SelectMany(cell => compare.WordsInCells([cell])));
+    }
+    [Fact]
+    public void MatrixTreatsRebuiltDisapprovedMorphologyAsSameDespiteTheOpinionConflict()
+    {
+        var stored = StoredReading("analysis-1", ReadingGrade.Disapproved);
+        var result = new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Rejected,
+            StoredAnalyses = [stored],
+            ReadingGrades = [ReadingGrade.Disapproved],
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
+                false, false, false,
+                [new ParseAnalysis([new ParseMorph("kitabu", "n", null, null)])], []),
+        };
+        var row = new AssessWordRowViewModel(result);
+
+        Assert.Equal(AnalysisMarkingClass.Conflict, row.Marking.PanGlossClass);
+        Assert.Equal((WordProjectStatus.Rejected, CompareColumnKind.Match), CompareViewModel.Place(row));
+    }
     [Fact]
     public void ListedWordShowsEveryStoredOpinionInsteadOfMergingThem()
     {

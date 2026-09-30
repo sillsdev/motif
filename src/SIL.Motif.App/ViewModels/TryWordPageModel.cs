@@ -18,7 +18,6 @@ public sealed class TryWordPageModel : PageModel
     private const int RecentWordLimit = 5;
     private int _timingGeneration;
     private string? _assessmentId;
-    private ParserReadingViewModel? _expectedAnalysis;
 
     public TryWordPageModel(WorkspaceContext context) : base(context)
     {
@@ -33,10 +32,7 @@ public sealed class TryWordPageModel : PageModel
         {
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
         });
-        AddExpectedAnalysisToReviewCommand = new AsyncRelayCommand(AddExpectedAnalysisToReviewAsync,
-            CanAddExpectedAnalysisToReview);
         Context.Assess.Words.PropertyChanged += OnWordsPropertyChanged;
-        Context.PropertyChanged += OnContextPropertyChanged;
         RefreshExpected(Trace.WordToTry);
     }
 
@@ -77,6 +73,10 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Opens Texts on the current word, even when the word is absent from its list.</summary>
     public IRelayCommand OpenInTextsCommand { get; }
 
+    /// <summary>The sidebar's offer to read the current word in its texts, where its analyses are approved.</summary>
+    public string OpenInTextsText => Trace.WordToTry.Trim() is { Length: > 0 } word
+        ? $"Open {word} in Analyze texts" : "Open in Analyze texts";
+
     /// <summary>Opens AI Handoff with only the current word selected.</summary>
     public IRelayCommand HandOffCommand { get; }
 
@@ -86,31 +86,12 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Traces a recent word again.</summary>
     public IRelayCommand<string?> OpenRecentWordCommand { get; }
 
-    /// <summary>Adds this word's one stored expected analysis to Review changes for approval.</summary>
-    public IAsyncRelayCommand AddExpectedAnalysisToReviewCommand { get; }
-
-    /// <summary>Why the expected analysis cannot be collected, or <see langword="null"/> when it can.</summary>
-    public string? ExpectedAnalysisReviewReason => _expectedAnalysis switch
-    {
-        null => "No expected analysis is available for this word.",
-        { StoredAnalysisId: null } => "This expected analysis is not stored in the project.",
-        { StoredAnalysisOpinion: "approved" } => "This analysis is already approved.",
-        _ when Context.ProjectPath is null => "Open a project before adding this analysis.",
-        { StoredAnalysisOpinion: "candidate" or "disapproved" } => null,
-        _ => "The project's approval status is unavailable.",
-    };
-
-    /// <summary>Whether the expected-analysis explanation should be shown.</summary>
-    public bool HasExpectedAnalysisReviewReason => ExpectedAnalysisReviewReason is not null;
-
     protected override void OnProjectCleared()
     {
         _assessmentId = null;
         _timingGeneration++;
         Trace.Reset();
         Trace.WordToTry = string.Empty;
-        _expectedAnalysis = null;
-        NotifyExpectedAnalysisChanged();
         RecentWords.Clear();
         RebuildRules(null);
     }
@@ -130,7 +111,6 @@ public sealed class TryWordPageModel : PageModel
         OpenInTextsCommand.NotifyCanExecuteChanged();
         HandOffCommand.NotifyCanExecuteChanged();
         OpenTimingCommand.NotifyCanExecuteChanged();
-        AddExpectedAnalysisToReviewCommand.NotifyCanExecuteChanged();
         if (!Trace.TryCommand.CanExecute(null)) return;
         TrackRecent(tried.Word);
         _ = Trace.TryCommand.ExecuteAsync(null);
@@ -146,6 +126,7 @@ public sealed class TryWordPageModel : PageModel
         if (e.PropertyName == nameof(TraceWordViewModel.WordToTry))
         {
             RefreshExpected(Trace.WordToTry);
+            OnPropertyChanged(nameof(OpenInTextsText));
             OpenInTextsCommand.NotifyCanExecuteChanged();
             HandOffCommand.NotifyCanExecuteChanged();
             OpenTimingCommand.NotifyCanExecuteChanged();
@@ -165,35 +146,9 @@ public sealed class TryWordPageModel : PageModel
             RefreshExpected(Trace.WordToTry);
     }
 
-    private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(WorkspaceContext.ProjectPath)) NotifyExpectedAnalysisChanged();
-    }
-
     private void RefreshExpected(string word)
     {
-        _expectedAnalysis = Context.Assess.Words.Find(word)?.ExpectedAnalysis;
-        Trace.SetExpected(word, _expectedAnalysis?.Morphs);
-        NotifyExpectedAnalysisChanged();
-    }
-
-    private void NotifyExpectedAnalysisChanged()
-    {
-        OnPropertyChanged(nameof(ExpectedAnalysisReviewReason));
-        OnPropertyChanged(nameof(HasExpectedAnalysisReviewReason));
-        AddExpectedAnalysisToReviewCommand.NotifyCanExecuteChanged();
-    }
-
-    private bool CanAddExpectedAnalysisToReview() =>
-        Context.ProjectPath is not null && _expectedAnalysis is
-        { StoredAnalysisId: not null, StoredAnalysisOpinion: "candidate" or "disapproved" };
-
-    private async Task AddExpectedAnalysisToReviewAsync()
-    {
-        if (!CanAddExpectedAnalysisToReview() || _expectedAnalysis is not { StoredAnalysisId: { } storedId } expected)
-            return;
-        await Context.Changes.ApproveStoredAnalysisAsync(Trace.WordToTry.Trim(), storedId,
-            expected.Text, WorkspacePage.TryAWord).ConfigureAwait(true);
+        Trace.SetExpected(word, Context.Assess.Words.Find(word)?.ExpectedAnalysis?.Morphs);
     }
 
     private void TrackRecent(string word)
@@ -231,9 +186,10 @@ public sealed class TryWordPageModel : PageModel
                 {
                     var steps = rule.ToArray();
                     RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Key,
-                        string.Join(" · ", steps.Select(step => DescribeKind(step.Type)).Distinct(StringComparer.Ordinal)),
-                        string.Join(" · ", steps.Select(step => step.StatusText).Distinct(StringComparer.Ordinal)),
-                        string.Join(" · ", steps.Select(Explain).Where(text => text.Length > 0).Distinct(StringComparer.Ordinal)),
+                        string.Join(" · ", steps.Select(step => step.KindText).Distinct(StringComparer.Ordinal)),
+                        steps.Any(step => step.IsFailure) ? "stopped"
+                            : attempt.Succeeded || steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
+                        Explain(steps, attempt.Steps),
                         () => Context.OpenTiming([result.Word], rule.Key)));
                 }
             }
@@ -243,17 +199,35 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(TimingLinkText));
     }
 
-    private static string Explain(TraceStepViewModel step) =>
-        step.ContextualFailure ?? step.FailureReason ?? step.Output ??
-        (step.Input is { Length: > 0 } input ? $"Started with {input}" : "Outcome detail not recorded");
-
-    private static string DescribeKind(string kind) => kind switch
+    // One plain line per rule: why it stopped the word, else the form it met and the form it left.
+    private static string Explain(IReadOnlyList<TraceStepViewModel> steps, IReadOnlyList<TraceStepViewModel> path)
     {
-        "MorphologicalRule" or "MorphologicalRuleAnalysis" => "Morphological rule",
-        "PhonologicalRule" or "PhonologicalRuleAnalysis" => "Phonological rule",
-        "LexicalLookup" => "Lexical lookup",
-        _ => kind,
-    };
+        if (steps.FirstOrDefault(step => step.IsFailure) is { } failed)
+            return failed.ContextualFailure ??
+                (failed.FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code) : "stopped here");
+        foreach (var step in steps)
+        {
+            if (step.Output is not { Length: > 0 } output) continue;
+            var input = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
+            if (input is not null && !string.Equals(input, output, StringComparison.Ordinal)) return $"{input} → {output}";
+        }
+        return steps.Select(step => step.Output ?? step.Input).FirstOrDefault(text => text is { Length: > 0 }) ?? "—";
+    }
+
+    // A rule step records only the form it left; the form it met is the one the step before it on the path holds.
+    private static string? FormBefore(TraceStepViewModel step, IReadOnlyList<TraceStepViewModel> path)
+    {
+        for (var index = IndexOf(path, step) - 1; index >= 0; index--)
+            if ((path[index].Output ?? path[index].Input) is { Length: > 0 } form) return form;
+        return null;
+    }
+
+    private static int IndexOf(IReadOnlyList<TraceStepViewModel> path, TraceStepViewModel step)
+    {
+        for (var index = 0; index < path.Count; index++)
+            if (ReferenceEquals(path[index], step)) return index;
+        return -1;
+    }
 
     private async Task LoadStoredRuleTimingsAsync()
     {
@@ -309,8 +283,11 @@ public sealed class TryWordRuleRowViewModel(
     /// <summary>The number of stored attempts for this rule, or an em dash when no measurement was recorded.</summary>
     public string Attempts => _timing?.Attempts.ToString("N0") ?? "—";
 
-    /// <summary>The stored share of this word's measured time, or a statement that no measurement was recorded.</summary>
-    public string Share => _timing is { } timing ? $"{timing.ShareOfTotal:P0}" : "Not recorded";
+    /// <summary>The stored share of this word's measured time, or a dash when no measurement was recorded.</summary>
+    public string Share => _timing is { } timing ? $"{timing.ShareOfTotal:P0}" : "—";
+
+    /// <summary>Whether a measured share was stored, so the cell wears the share colour rather than a plain dash.</summary>
+    public bool HasShare => _timing is not null;
 
     /// <summary>Raised when one of the displayed timing values changes.</summary>
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -322,6 +299,7 @@ public sealed class TryWordRuleRowViewModel(
         OnPropertyChanged(nameof(StoredTime));
         OnPropertyChanged(nameof(Attempts));
         OnPropertyChanged(nameof(Share));
+        OnPropertyChanged(nameof(HasShare));
     }
 
     private void OnPropertyChanged(string propertyName) =>

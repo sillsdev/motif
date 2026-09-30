@@ -11,15 +11,36 @@ public sealed class DifferenceViewModelTests
     private const string ProjectPath = @"C:\projects\one.fwdata";
 
     private static AssessmentWordResult Word(string word, string outcome, string standing,
-        string? grade = null, bool incomplete = false, int missed = 0) =>
-        new(word, outcome, incomplete, "Search completed", 10, null)
+        string? grade = null, bool incomplete = false, int missed = 0)
+    {
+        var opinion = standing switch
         {
-            Readings = grade is null ? null : [new ParserReading([new ParserReadingMorph("form", word, "n", null, false, null)])],
+            ProjectStanding.Approved => ReadingGrade.Approved,
+            ProjectStanding.Candidate => ReadingGrade.Candidate,
+            ProjectStanding.Rejected => ReadingGrade.Disapproved,
+            _ => null,
+        };
+        var stored = opinion is null ? [] : new[]
+        {
+            new ParserReading([])
+            {
+                StoredAnalysisId = "stored-" + word,
+                StoredAnalysisOpinion = opinion,
+                Identity = new ApprovedMorphology([new ApprovedMorph(word, "n", null, ["entry"])]),
+            },
+        };
+        var parsedForm = grade == ReadingGrade.NoOpinion ? word + "-other" : word;
+        return new AssessmentWordResult(word, outcome, incomplete, "Search completed", 10, null)
+        {
+            Readings = grade is null ? null : [new ParserReading([new ParserReadingMorph(parsedForm, word, "n", null, false, null)])],
             ReadingGrades = grade is null ? null : [grade],
+            StoredAnalyses = stored,
+            Morphology = grade is null ? null : new ParseWordEvidence("v1", 0, word, 10,
+                false, false, false, [new ParseAnalysis([new ParseMorph(parsedForm, "n", null, null)])], []),
             MissedApproved = Enumerable.Range(0, missed).Select(_ => new ParserReading([new ParserReadingMorph("m", "g", "n", null, false, null)])).ToArray(),
             ProjectStanding = standing,
         };
-
+    }
     private static AssessWordRowViewModel[] Rows(params AssessmentWordResult[] words) =>
         words.Select(word => new AssessWordRowViewModel(word)).ToArray();
 

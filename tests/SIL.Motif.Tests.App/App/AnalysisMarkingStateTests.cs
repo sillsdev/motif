@@ -100,6 +100,18 @@ public sealed class AnalysisMarkingStateTests
         Assert.Null(state.PrimaryAction);
     }
 
+    [Theory]
+    [InlineData(false, AnalysisMarkingClass.None)]
+    [InlineData(true, AnalysisMarkingClass.Capped)]
+    public void AnIncorrectSpellingThePanGlossDidNotParseIsNoConflict(bool capped, AnalysisMarkingClass expected)
+    {
+        var token = Token(Stored(Book, ReadingGrade.Approved, "stored-1")) with { IncorrectSpelling = true };
+
+        var state = AnalysisMarkingState.Create(token, Result("spelling", capped));
+
+        Assert.Equal(expected, state.PanGlossClass);
+    }
+
     public static IEnumerable<object[]> AssessmentWordClassCases =>
     [
         [Assessment("analysed", ProjectStanding.IncorrectSpelling, false, ReadingGrade.Approved),

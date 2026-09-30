@@ -137,7 +137,7 @@ public sealed class DiagnosticPanelBehaviorTests
     }
 
     [Fact]
-    public void HidingThePageSummaryKeepsLiveDiagnosticToolsAvailable()
+    public void HidingThePageSummaryLeavesTheToolsToThePagesOwnMenu()
     {
         _avalonia.Invoke(() =>
         {
@@ -157,7 +157,8 @@ public sealed class DiagnosticPanelBehaviorTests
                     .Single(button => AutomationProperties.GetName(button) == "Diagnostic tools");
                 var summary = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Single(block => AutomationProperties.GetName(block) == "Diagnostic result");
-                Assert.True(tools.IsVisible);
+                // Try a Word hides the summary and holds the tools beside Try it, so no lone menu floats here.
+                Assert.False(tools.IsVisible);
                 Assert.False(summary.IsEffectivelyVisible);
             }
             finally { window.Close(); }

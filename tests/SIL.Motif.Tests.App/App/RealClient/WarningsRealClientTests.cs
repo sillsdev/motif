@@ -1,3 +1,4 @@
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -28,5 +29,22 @@ public sealed class WarningsRealClientTests(PristineProjectFixture pristine)
             stored.Value!.Check!.Findings.Select(finding => (finding.Code, finding.Text)));
         Assert.Equal(checkedGrammar.Value.Findings.Count, overview.Value!.Warnings!.Count);
         Assert.Single(project.Invocations(), invocation => invocation == "grammar-health");
+    }
+
+    // Motif's meaning table and the codes PanGloss really writes are authored apart, so this pins that they meet.
+    [Fact]
+    public async Task EveryKindTheParserReportsHasAPlainMeaningInMotifsTable()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        var grammar = new GrammarViewModel(project.Client);
+
+        await grammar.SetProjectAsync(project.FwDataPath);
+
+        Assert.True(grammar.ShowFindings);
+        var groups = grammar.Warnings.ErrorGroups.Concat(grammar.Warnings.WarningGroups)
+            .Concat(grammar.Warnings.InformationGroups).ToList();
+        Assert.NotEmpty(groups);
+        Assert.All(groups, group => Assert.True(group.IsKnown, $"No plain meaning for '{group.Code}'."));
+        Assert.All(groups, group => Assert.False(string.IsNullOrWhiteSpace(group.Description)));
     }
 }

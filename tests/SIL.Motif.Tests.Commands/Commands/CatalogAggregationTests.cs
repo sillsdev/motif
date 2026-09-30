@@ -86,19 +86,26 @@ public sealed class CatalogAggregationTests
         Assert.Equal(0, result.Accuracy.Violations);
     }
 
+    private static ParseWordEvidence Parsed(int readings) => new("v1", 0, "word", 1, false, false, false,
+        Enumerable.Range(0, readings).Select(index => new ParseAnalysis(
+            [new ParseMorph($"form-{index}", "v", null, null)])).ToArray(), []);
+
     [Fact]
     public void ComparePlacementRequiresEveryApprovedAnalysisAndUsesTimeoutAsUnknown()
     {
         var complete = CompareSemantics.Place(new CompareWordFacts(
-            ProjectStanding.Approved, "analysed", false, null, ["approved"], MissedApprovedCount: 0));
+            ProjectStanding.Approved, "analysed", false, Parsed(1), ["approved"], MissedApprovedCount: 0));
         var partial = CompareSemantics.Place(new CompareWordFacts(
-            ProjectStanding.Approved, "analysed", false, null, ["approved"], MissedApprovedCount: 1));
+            ProjectStanding.Approved, "analysed", false, Parsed(1), ["approved"], MissedApprovedCount: 1));
         var timeout = CompareSemantics.Place(new CompareWordFacts(
             ProjectStanding.Approved, "analysed", true, null, ["approved"], MissedApprovedCount: 1));
+        var extra = CompareSemantics.Place(new CompareWordFacts(
+            ProjectStanding.Approved, "analysed", false, Parsed(2), ["approved", "no-opinion"], MissedApprovedCount: 0));
 
         Assert.Equal(CompareColumnKind.Match, complete.Column);
         Assert.Equal(CompareColumnKind.NoMatch, partial.Column);
         Assert.Equal(CompareColumnKind.Timeout, timeout.Column);
+        Assert.Equal(CompareColumnKind.NoMatch, extra.Column);
         Assert.Equal(CompareFamilyKind.Unknown,
             CompareSemantics.MeaningOf(timeout.Standing, timeout.Column).Family);
     }
@@ -115,9 +122,9 @@ public sealed class CatalogAggregationTests
         {
             (new CompareWordFacts(ProjectStanding.Approved, "no-analysis", false, null, [], 2), twoMissed,
                 FixFirstCategory.ApprovedNoParse, 1, "Approved × No parse", "Expected o- up, not built (2 approved analyses missed)."),
-            (new CompareWordFacts(ProjectStanding.Approved, "analysed", false, null, ["no-opinion"], 1), oneMissed,
+            (new CompareWordFacts(ProjectStanding.Approved, "analysed", false, Parsed(1), ["no-opinion"], 1), oneMissed,
                 FixFirstCategory.ApprovedNoMatch, 2, "Approved × No match", "Expected o- up, not built."),
-            (new CompareWordFacts(ProjectStanding.Rejected, "analysed", false, null, ["disapproved"], 0), Array.Empty<ParserReading>(),
+            (new CompareWordFacts(ProjectStanding.Rejected, "analysed", false, Parsed(1), ["disapproved"], 0), Array.Empty<ParserReading>(),
                 FixFirstCategory.RejectedRebuilt, 3, "Rejected but rebuilt", "The parser rebuilt an analysis the project rejected."),
             (new CompareWordFacts(ProjectStanding.Candidate, "no-analysis", false, null, [], 0), Array.Empty<ParserReading>(),
                 FixFirstCategory.CandidateNoParse, 4, "Candidate × No parse", "The parser could not rebuild this candidate."),
