@@ -19,7 +19,7 @@
       "motif-freshness-detail": "Refresh captured a Baseline; Parse all words is a separate action"
     },
     "parsed": {
-      "motif-overview-assessment-details": "The current Assessment",
+      "motif-overview-speed": "Speed of the current Assessment",
       "motif-overview-text-coverage": "Text Coverage after Parse all words"
     }
   }
