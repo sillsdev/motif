@@ -29,7 +29,7 @@ public sealed class OverviewTimingScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData((fake, assessment) =>
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
             {
                 fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
                 fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));

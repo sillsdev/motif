@@ -101,8 +101,9 @@ public sealed class PageScreenshots
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }
 
+    /// <summary>Opens the window over the sample project; without <paramref name="parse"/> it stops before the first parse.</summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
-        Action<FakeCommandClient, AssessCommandResponse>? configure = null)
+        bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null)
     {
         var fake = new FakeCommandClient();
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
@@ -143,6 +144,7 @@ public sealed class PageScreenshots
         foreach (var text in selection.Texts) text.IsChecked = true;
         await Task.Yield();
         await workspace.PageModel<TextsPageModel>().Words.ReloadAsync();
+        if (!parse) return (workspace, window);
         await workspace.Assess.RunCommand.ExecuteAsync(null);
         workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
