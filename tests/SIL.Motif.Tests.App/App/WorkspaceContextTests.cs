@@ -337,6 +337,77 @@ public sealed class WorkspaceContextTests
     }
 
     [Theory]
+    [InlineData("picked", false)]
+    [InlineData("picked", true)]
+    [InlineData("texts", false)]
+    [InlineData("texts", true)]
+    [InlineData("checked", false)]
+    [InlineData("checked", true)]
+    [InlineData("matrix", false)]
+    [InlineData("matrix", true)]
+    public async Task ExplicitTimingSourceActionsRecordOnceForSuccessAndRefusal(string source, bool refuses)
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) =>
+        {
+            if (refuses && request.By == "kind")
+                return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
+                    "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
+            return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
+                "assessment-1", request.WordSet, request.By, 1, 5, 8, [], [], [])));
+        });
+        await context.OpenProjectAsync(ProjectPath);
+
+        Func<Task> execute;
+        string shape;
+        switch (source)
+        {
+            case "picked":
+                timing.PickedWords = "dogs\ncats";
+                execute = () => timing.UsePickedWordsCommand.ExecuteAsync(null);
+                shape = "words:list(2)";
+                break;
+            case "texts":
+                context.Assess.Compare.Load([
+                    new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
+                    new AssessWordRowViewModel(new AssessmentWordResult("cats", "no-parse", false, "Finished", 8, null)),
+                ]);
+                var list = context.Assess.Compare.Presets.First(preset => preset.Count > 0);
+                timing.SelectedTextsList = list;
+                shape = $"words:list({context.Assess.Compare.WordsInFamily(list.Family).Count})";
+                execute = () => timing.UseTextsListCommand.ExecuteAsync(null);
+                break;
+            case "checked":
+                context.Assess.Compare.Load([
+                    new AssessWordRowViewModel(new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)),
+                ]);
+                context.Assess.Compare.Words.Single(word => word.Word == "dogs").IsChecked = true;
+                execute = () => timing.UseCheckedWordsCommand.ExecuteAsync(null);
+                shape = "words:list(1)";
+                break;
+            case "matrix":
+                timing.SelectedMatrixCell = new CompareCellViewModel(WordProjectStatus.Approved,
+                    CompareColumnKind.NoParse);
+                execute = () => timing.UseMatrixCellCommand.ExecuteAsync(null);
+                shape = "wordSet:text";
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(source));
+        }
+
+        Assert.Empty(fake.UsageEntries);
+        await execute();
+
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("timing", entry.Command);
+        Assert.Equal([shape], entry.ArgumentShape);
+        Assert.Equal(refuses, timing.HasTimingRefusal);
+        Assert.Equal(!refuses, timing.KindTiming is not null);
+        Assert.Contains(fake.TimingRequests, request => request.By == "kind");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ChoosingATimingRuleRecordsOneActionForSuccessAndRefusal(bool refuses)

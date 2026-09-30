@@ -324,13 +324,30 @@ public sealed partial class TimingPageModel : PageModel
         await LoadScopeAsync(projectPath, CurrentAssessmentId, CancellationToken.None);
     }
 
-    private Task UsePickedWordsAsync() => SelectExplicitWordsAsync(
-        PickedWordValues);
+    private async Task UsePickedWordsAsync()
+    {
+        var words = PickedWordValues;
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.List("words", words.Count));
+        await SelectExplicitWordsAsync(words);
+    }
 
-    private Task UseTextsListAsync() => SelectExplicitWordsAsync(SelectedTextsList is { } list
-        ? Context.Assess.Compare.WordsInFamily(list.Family) : []);
+    private async Task UseTextsListAsync()
+    {
+        var words = SelectedTextsList is { } list
+            ? Context.Assess.Compare.WordsInFamily(list.Family) : [];
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.List("words", words.Count));
+        await SelectExplicitWordsAsync(words);
+    }
 
-    private Task UseCheckedWordsAsync() => SelectExplicitWordsAsync(Context.Assess.Compare.CheckedWords);
+    private async Task UseCheckedWordsAsync()
+    {
+        var words = Context.Assess.Compare.CheckedWords;
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.List("words", words.Count));
+        await SelectExplicitWordsAsync(words);
+    }
 
     private IReadOnlyList<string> PickedWordValues => PickedWords.Replace("\r\n", "\n").Split('\n')
         .Select(word => word.Trim()).Where(word => word.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
@@ -374,9 +391,11 @@ public sealed partial class TimingPageModel : PageModel
 
     partial void OnSelectedTextsListChanged(ComparePresetViewModel? value) => NotifySourceAvailability();
 
-    private Task UseMatrixCellAsync()
+    private async Task UseMatrixCellAsync()
     {
-        if (SelectedMatrixCell is not { } cell) return Task.CompletedTask;
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.Text("wordSet"));
+        if (SelectedMatrixCell is not { } cell) return;
         var standing = cell.Row switch
         {
             WordProjectStatus.NotPresent => TimingStanding.NotPresent,
@@ -386,7 +405,7 @@ public sealed partial class TimingPageModel : PageModel
             WordProjectStatus.IncorrectSpelling => TimingStanding.IncorrectSpelling,
             _ => throw new ArgumentOutOfRangeException(nameof(cell)),
         };
-        return SelectTimingWordSetAsync(new TimingWordSet.MatrixCell(standing, cell.Column));
+        await SelectTimingWordSetAsync(new TimingWordSet.MatrixCell(standing, cell.Column));
     }
 
     private async Task SelectExplicitWordsAsync(IReadOnlyList<string> words)
