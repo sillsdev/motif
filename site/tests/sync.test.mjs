@@ -75,6 +75,9 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 			locale: 'en',
 			siteRoot: 'https://motif-docs.pages.dev',
 			entries: [
+				{ kind: 'guide', code: 'agents/start-here', slug: 'agents/start-here', title: 'Agent guide', description: 'Start an agent workflow.', helpPage: null },
+				{ kind: 'guide', code: 'learn/index', slug: 'learn/index', title: 'Learn', description: 'Choose a lesson.', helpPage: null },
+				{ kind: 'guide', code: 'learn/stems-and-the-lexicon', slug: 'learn/stems-and-the-lexicon', title: 'Stems', description: 'Understand the lexicon.', helpPage: null },
 				{
 					kind: 'command',
 					code: 'open project',
@@ -100,7 +103,7 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 	);
 	await writeFile(
 		path.join(help, 'commands', 'open-project.md'),
-		'# Open a project\n\nLearn about [Proposal](term:proposal).\n\n![Project view](shot:open-project/overview)\n',
+		'# Open a project\n\nLearn about [Proposal](term:proposal), [the agent guide](guide:agents/start-here), [lessons](guide:learn/index), and [stems](guide:learn/stems-and-the-lexicon).\n\n![Project view](shot:open-project/overview)\n',
 	);
 	await writeFile(path.join(help, 'terms', 'proposal.md'), '# Proposal\n\nA named set of changes.\n');
 	await writeFile(path.join(help, 'guide', 'what-is-motif.md'), '# What Motif does\n\nMeasure a grammar and try changes safely.\n\n![Picture coming later](shot:not-built/step-one)\n');
@@ -180,6 +183,9 @@ test('sync builds help, Walkthrough, API, and Developer pages from their source 
 
 	assert.match(command, /\/reference\/terms\/proposal\//);
 	assert.match(command, /\/walkthroughs\/open-project\/steps\/01-overview\.png/);
+	assert.ok(command.includes('[the agent guide](/guide/agents/start-here/)'));
+	assert.ok(command.includes('[lessons](/learn/)'));
+	assert.ok(command.includes('[stems](/learn/stems-and-the-lexicon/)'));
 	assert.match(command, /Surface: Released/);
 	assert.match(command, /Usage: motif open project/);
 	assert.doesNotMatch(command, /^# Open a project$/m);

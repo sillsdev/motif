@@ -127,6 +127,10 @@ function commandMetadata(entry) {
 }
 
 function entryKindPath(entry) {
+	if (entry.kind === 'guide') {
+		if (entry.slug === 'learn/index') return 'learn';
+		return entry.slug.startsWith('learn/') ? entry.slug : `guide/${entry.slug}`;
+	}
 	if (entry.kind === 'command') return `reference/commands/${entry.slug}`;
 	if (entry.kind === 'term') return `reference/terms/${entry.slug}`;
 	if (entry.kind === 'ui') return `reference/controls/${entry.slug}`;
@@ -167,7 +171,7 @@ function rewriteHelpLinks(markdown, entries, walkthroughs) {
 		const target = resolveHelpTarget('shot', code, entries, walkthroughs);
 		return target ? `![${alt}](${target})` : alt;
 	});
-	return withScreenshots.replace(/(!?\[[^\]]*\]\()((?:cmd|term|ui):[^)]+)(\))/g, (_, prefix, target, suffix) => {
+	return withScreenshots.replace(/(!?\[[^\]]*\]\()((?:cmd|term|ui|guide):[^)]+)(\))/g, (_, prefix, target, suffix) => {
 		const colon = target.indexOf(':');
 		const destination = resolveHelpTarget(target.slice(0, colon), target.slice(colon + 1), entries, walkthroughs);
 		return `${prefix}${destination}${suffix}`;
@@ -214,6 +218,7 @@ async function writeHelpPages({ helpRoot, outputRoot, locale, entries, walkthrou
 	}
 
 	for (const entry of entries) {
+		if (entry.kind === 'guide') continue;
 		const route = entryKindPath(entry);
 		const sourcePath = `${entry.kind === 'ui' ? 'ui' : `${entry.kind}s`}/${entry.slug}.md`;
 		const body = stripFrontmatterAndComments(sourcePages.get(sourcePath) ?? (typeof entry.helpPage === 'string' ? entry.helpPage : ''));
@@ -538,7 +543,9 @@ export async function syncSiteContent({ repository, site, helpExportPath, helpRo
 	await cleanGeneratedPaths(generatedPaths);
 
 	for (const entry of helpExport.entries) {
-		if (!entry.kind || !entry.code || !entry.title || !entry.description || entry.slug !== slugify(entry.code)) {
+		const expectedSlug = entry.kind === 'guide' ? entry.code : slugify(entry.code);
+		const validGuideCode = entry.kind !== 'guide' || /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(entry.code);
+		if (!entry.kind || !entry.code || !entry.title || !entry.description || !validGuideCode || entry.slug !== expectedSlug) {
 			throw new Error(`Invalid help entry: ${entry.code ?? '(missing code)'}`);
 		}
 	}
