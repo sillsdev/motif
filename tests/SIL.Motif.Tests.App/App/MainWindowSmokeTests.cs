@@ -47,9 +47,9 @@ public sealed class MainWindowSmokeTests
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
-    public void F1OpensHelpForTheCurrentPage()
+    public async Task F1OpensHelpForTheCurrentPage()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             workspace.CurrentPage = WorkspacePage.Timing;
@@ -68,8 +68,16 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Timing shows where recorded parse time went",
                     helpView.FindControl<TextBlock>("HelpDescription")?.Text);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                var renderedTextProjection = markdownRenderer.RenderedTextProjection ??
-                    throw new Xunit.Sdk.XunitException("The help text was not rendered.");
+                var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                markdownRenderer.PropertyChanged += (_, changed) =>
+                {
+                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty)
+                        projectionCommitted.TrySetResult();
+                };
+                if (markdownRenderer.RenderedTextProjection is not null) projectionCommitted.TrySetResult();
+                await projectionCommitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                var renderedTextProjection = Assert.IsType<MarkdownTextProjection>(
+                    markdownRenderer.RenderedTextProjection);
                 Assert.Contains("More time does not fix a search that reached its step limit",
                     string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString())));
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
@@ -80,7 +88,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
