@@ -59,15 +59,20 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             Assert.Equal(beforeCancellation.Select(invocation => invocation.InvocationId),
                 afterCancellation.Select(invocation => invocation.InvocationId));
 
+            // Refresh runs a grammar check through this parser, so it must stop behaving as the endless run.
+            FakeParser.BehaveBesideExecutable(parserPath, new { });
+            // The first Baseline already satisfies HasBaseline, so wait for this Refresh itself to finish.
+            var earlierRefresh = walkthrough.Workspace.RefreshCommand.ExecutionTask;
             walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Baseline.HasBaseline &&
+                () => walkthrough.Workspace.RefreshCommand.ExecutionTask is { IsCompleted: true } refresh &&
+                    !ReferenceEquals(refresh, earlierRefresh) &&
+                    walkthrough.Workspace.Baseline.HasBaseline &&
                     walkthrough.Workspace.Baseline.ShownRefusal is null,
                 WalkthroughSteps.Remaining(deadline), "refreshing after cancellation did not publish a Baseline");
             var baselineToken = Assert.IsType<SIL.Motif.Contract.Baselines.BaselineToken>(
                 walkthrough.Workspace.Baseline.Token);
 
-            FakeParser.BehaveBesideExecutable(parserPath, new { });
             Assert.True(walkthrough.Workspace.Assess.RunCommand.CanExecute(null));
             var rerun = walkthrough.Workspace.Assess.RunCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(
