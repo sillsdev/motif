@@ -12,6 +12,12 @@
     <StaticResource x:Key="Component.TryWord.ToolButtonInset" ResourceKey="Primitive.Inset.9_3_9_3" />
     <StaticResource x:Key="Component.TryWord.SidebarWidth" ResourceKey="Primitive.Size.280" />
   </Styles.Resources>
+  <Style Selector="StackPanel.diagnosticBody">
+    <Setter Property="Margin" Value="{DynamicResource Component.TryWord.PageInset}" />
+  </Style>
+  <Style Selector=":is(UserControl).embedded StackPanel.diagnosticBody">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
   <Style Selector=":is(TextBlock).status">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>

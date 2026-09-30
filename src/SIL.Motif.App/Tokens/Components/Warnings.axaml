@@ -86,13 +86,13 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
   </Style>
   <!-- The parser's own sentence under the plain meaning: small and fixed-width, for quoting in a bug report. -->
-  <Style Selector="WrapPanel.parserLine :is(SelectableTextBlock)">
+  <Style Selector=":is(WrapPanel).parserLine :is(SelectableTextBlock)">
     <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     <Setter Property="FontWeight" Value="Normal" />
   </Style>
-  <Style Selector="WrapPanel.parserLine HyperlinkButton">
+  <Style Selector=":is(WrapPanel).parserLine HyperlinkButton">
     <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>

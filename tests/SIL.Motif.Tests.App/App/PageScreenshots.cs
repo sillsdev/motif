@@ -61,8 +61,14 @@ public sealed class PageScreenshots
                         foreach (var (name, page, tab) in Views())
                         {
                             workspace.PageModel<TextsPageModel>().Tab = tab;
+                            // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
+                            if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
                             workspace.CurrentPage = page;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
+                            if (page != WorkspacePage.TryAWord) continue;
+                            window.Height = 1500;
+                            Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
+                            window.Height = 780;
                         }
                     }
                 }
@@ -88,6 +94,12 @@ public sealed class PageScreenshots
         ("6-review", WorkspacePage.Review, TextsTab.Matrix),
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
     ];
+
+    private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
+    {
+        workspace.Context.TryWord("matinlu");
+        await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+    }
 
     internal static void Save(MainWindow window, string path)
     {
@@ -127,6 +139,8 @@ public sealed class PageScreenshots
             InvocationId = "assessment/one",
         });
 
+        // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
+        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
         configure?.Invoke(fake, Assessment());
 
         var selection = new SelectionViewModel(fake);
@@ -152,10 +166,6 @@ public sealed class PageScreenshots
         workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
-        // Through the page's own path: a result set directly is wiped when another word is chosen.
-        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
-        workspace.Context.TryWord("matinlu");
-        await workspace.Assess.Trace.TryCommand.ExecutionTask!;
         return (workspace, window);
     }
 

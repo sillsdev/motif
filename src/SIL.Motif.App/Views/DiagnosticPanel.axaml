@@ -7,10 +7,9 @@
              x:DataType="vm:TraceWordViewModel"
              SizeChanged="OnPanelSizeChanged">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="{DynamicResource Component.TryWord.PageInset}"
-                Spacing="{DynamicResource Intent.Space.Group}">
+    <StackPanel Classes="diagnosticBody" Spacing="{DynamicResource Intent.Space.Group}">
       <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->
-      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}">
         <DockPanel LastChildFill="False">
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
                       IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}">

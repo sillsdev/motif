@@ -188,7 +188,7 @@ public sealed class TryWordPageModel : PageModel
                     RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Key,
                         string.Join(" · ", steps.Select(step => step.KindText).Distinct(StringComparer.Ordinal)),
                         steps.Any(step => step.IsFailure) ? "stopped"
-                            : steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
+                            : attempt.Succeeded || steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
                         Explain(steps),
                         () => Context.OpenTiming([result.Word], rule.Key)));
                 }

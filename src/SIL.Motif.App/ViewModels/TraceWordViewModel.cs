@@ -281,9 +281,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             var hidden = MatchingAttempts().Count() - ClosestAttempts.Count;
+            var others = hidden == 1 ? "attempt" : $"{hidden:N0} attempts";
             return hidden <= 0 ? string.Empty
-                : SelectedStopGroup is { } group ? $"Show the other {hidden:N0} stopped by {group.RuleText}"
-                : $"Show the other {hidden:N0} attempts";
+                : SelectedStopGroup is { } group ? $"Show the other {others} stopped by {group.RuleText}"
+                : $"Show the other {others}";
         }
     }
 

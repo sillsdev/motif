@@ -270,6 +270,9 @@ public sealed class TryWordPageTests
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;
             Assert.True(page.Trace.HasResult);
+            // The word parsed, so every rule on its best path applied; one attempt is left to show, in the singular.
+            Assert.All(page.RulesOnBestPath, row => Assert.Equal("applied", row.Outcome));
+            Assert.Equal("Show the other attempt", page.Trace.MoreAttemptsText);
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
             var window = new Window { Content = view, Width = 1240, Height = 2400 };

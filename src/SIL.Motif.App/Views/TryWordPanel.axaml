@@ -6,7 +6,8 @@
              x:Class="SIL.Motif.App.Views.TryWordPanel"
              x:DataType="vm:TryWordPageModel">
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+    <!-- The right gap keeps the scroll bar off the result line's links. -->
+    <StackPanel Spacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
       <DockPanel LastChildFill="True">
         <!-- Tools for a trace wait behind one menu beside Try it, so the page itself holds only the answer. -->
         <Button DockPanel.Dock="Right" Content="&#x22ef;" Margin="{DynamicResource Intent.Gap.AfterRelated}"

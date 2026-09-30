@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
@@ -66,6 +67,9 @@ public sealed class WarningsPageWordsTests
                     .ToList();
                 Assert.Equal(SeededGrammarFindings.LinkedSubjectCount, links.Count);
                 Assert.All(links, link => Assert.Equal("silfw", link.NavigateUri!.Scheme));
+                // An environment is written with "_", which a button would otherwise read as its access key.
+                Assert.Contains(links.SelectMany(link => link.GetVisualDescendants().OfType<TextBlock>())
+                    .Where(block => block is not AccessText), block => block.Text == "e2 (/ _ [C])");
             }
             finally
             {

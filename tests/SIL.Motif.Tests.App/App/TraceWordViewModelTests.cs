@@ -134,7 +134,7 @@ public sealed class TraceWordViewModelTests
 
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
         Assert.Equal(3, trace.ClosestAttempts.Count);
-        Assert.Equal("Show the other 1 stopped by -a", trace.MoreAttemptsText);
+        Assert.Equal("Show the other attempt stopped by -a", trace.MoreAttemptsText);
         trace.ShowEveryAttemptCommand.Execute(null);
         Assert.Equal(4, trace.ClosestAttempts.Count);
 
