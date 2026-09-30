@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -157,9 +158,28 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [Fact]
     public void ListsUseNamesThatMatchTheMatrix() =>
         Assert.Equal(
-            ["Approved, not parsed", "Approved, parsed differently", "Unknown the parser confirms",
+            ["Approved, not parsed", "Approved, parsed differently", "Unknown, PanGloss confirms",
                 "Parsed, not in FieldWorks", "Nobody can analyze", "Disapproved but built", "Stopped at a limit"],
             new TextsListsViewModel(Compare(EveryKindOfWord)).Lists.Select(list => list.Name));
+
+    [Fact]
+    public void AListedWordStartsAtTheLeftOfItsRow()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = Compare([Word("nobody", "no-analysis", ProjectStanding.NotPresent)]);
+            var offset = WithWindow(new TextsListsPanel(new TextsListsViewModel(compare)), window =>
+            {
+                var link = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Open nobody in Analyze texts");
+                var tick = window.GetLogicalDescendants().OfType<CheckBox>().Single(box =>
+                    AutomationProperties.GetName(box) == "Tick nobody");
+                return link.TranslatePoint(default, tick)!.Value.X - tick.Bounds.Width;
+            });
+
+            Assert.InRange(offset, 0, 24);
+        });
+    }
 
     [Fact]
     public void ListsOpenOnTheFirstListThatHasWords()

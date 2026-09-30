@@ -221,7 +221,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             {
                 ["Approved, not parsed"] = [SeededProject.AnalysedWordForm],
                 ["Approved, parsed differently"] = [],
-                ["Unknown the parser confirms"] = [],
+                ["Unknown, PanGloss confirms"] = [],
                 ["Parsed, not in FieldWorks"] = [SeededProject.FirstForm],
                 ["Nobody can analyze"] = [SeededProject.SecondForm],
                 ["Disapproved but built"] = [],

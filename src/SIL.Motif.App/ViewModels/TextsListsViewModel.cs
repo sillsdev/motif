@@ -99,7 +99,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
                 "Words you approved where the grammar builds something else. " +
                 "Same as the Matrix cell Approved × Different.",
                 Cell(WordProjectStatus.Approved, CompareColumnKind.NoMatch)),
-            Definition("Unknown the parser confirms",
+            Definition("Unknown, PanGloss confirms",
                 "Words with an Unknown analysis that the grammar builds too. Same as the Matrix cell Unknown × Same.",
                 Cell(WordProjectStatus.Candidate, CompareColumnKind.Match)),
             Definition("Parsed, not in FieldWorks",

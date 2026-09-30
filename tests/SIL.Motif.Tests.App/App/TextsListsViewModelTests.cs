@@ -74,7 +74,7 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded();
 
         Assert.Equal(
-            ["Approved, not parsed", "Approved, parsed differently", "Unknown the parser confirms",
+            ["Approved, not parsed", "Approved, parsed differently", "Unknown, PanGloss confirms",
                 "Parsed, not in FieldWorks", "Nobody can analyze", "Disapproved but built", "Stopped at a limit"],
             lists.Lists.Select(list => list.Name));
 
@@ -128,7 +128,7 @@ public sealed class TextsListsViewModelTests
     [Theory]
     [InlineData("Approved, not parsed", "approved-empty")]
     [InlineData("Approved, parsed differently", "approved-other")]
-    [InlineData("Unknown the parser confirms", "candidate-kept")]
+    [InlineData("Unknown, PanGloss confirms", "candidate-kept")]
     [InlineData("Parsed, not in FieldWorks", "new-parse")]
     [InlineData("Nobody can analyze", "nobody")]
     [InlineData("Disapproved but built", "rejected-rebuilt")]
