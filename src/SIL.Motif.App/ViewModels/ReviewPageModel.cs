@@ -41,6 +41,7 @@ public sealed class ReviewPageModel : PageModel
         ApplyCommand = new AsyncRelayCommand(ApplyAsync, () => CanApply);
         KeepEditingCommand = new RelayCommand(() => Context.OpenPage(
             Changes.Items.FirstOrDefault()?.OriginPage ?? WorkspacePage.Texts));
+        OpenAnalyzeTextsCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.AnalyzeTexts));
     }
 
     public ChangesViewModel Changes => Context.Changes;
@@ -120,7 +121,76 @@ public sealed class ReviewPageModel : PageModel
     /// <summary>Why the last Apply could not finish, in the window's words.</summary>
     public WindowRefusal? ApplyRefusal { get; private set; }
 
-    private bool NeedsReconciliation => ApplyRefusal?.Code == RefusalCodes.ApplyReconciliationNeeded;
+    public bool NeedsReconciliation => ApplyRefusal?.Code == RefusalCodes.ApplyReconciliationNeeded;
+
+
+    /// <summary>
+    /// Every reason Apply is blocked, in <see cref="ApplyBlockerKind"/> order, so the page names them all rather
+    /// than the first one found.
+    /// </summary>
+    public IReadOnlyList<ApplyBlocker> ApplyBlockers
+    {
+        get
+        {
+            var blockers = new List<ApplyBlocker>();
+            if (NeedsReconciliation)
+                blockers.Add(new(ApplyBlockerKind.ReconciliationNeeded, ReconciliationNotice, "Refresh", RefreshCommand));
+            if (!Changes.HasItems) return blockers;
+            var noLongerFits = Changes.Items.Count(item => item.IsNoLongerFits);
+            if (noLongerFits > 0)
+                blockers.Add(new(ApplyBlockerKind.NoLongerFits, NoLongerFitsSentence(noLongerFits),
+                    "Remove the ones that no longer fit", RemoveNonFittingCommand));
+            if (HasUncertainChanges)
+                blockers.Add(new(ApplyBlockerKind.Uncertain, UncertainSentence(UncertainChanges.Count)));
+            if (Context.Baseline?.FieldWorksHeldProject == true)
+                blockers.Add(new(ApplyBlockerKind.FieldWorksHoldsProject,
+                    "FieldWorks has this project open. Close it before applying changes."));
+            if (Context.Evidence.IsStale)
+                blockers.Add(new(ApplyBlockerKind.FieldWorksSavedSince,
+                    "FieldWorks saved since these numbers were measured. Refresh before applying.",
+                    "Refresh", RefreshCommand));
+            if (WordsLosingApprovedAnalysis.Count > 0)
+                blockers.Add(new(ApplyBlockerKind.LosesApprovedAnalysis,
+                    LostAnalysisSentence(WordsLosingApprovedAnalysis)));
+            if (!EvidenceComplete && !IsMeasuring)
+                blockers.Add(new(ApplyBlockerKind.NotMeasured,
+                    "See what applying does to the numbers before applying.", "Check these changes", MeasureCommand));
+            return blockers;
+        }
+    }
+
+    public bool IsApplyBlocked => ApplyBlockers.Count > 0;
+
+    /// <summary>How many things block Apply, named at the top of the page.</summary>
+    public string ApplyBlockedTitle => ApplyBlockers.Count switch
+    {
+        0 => string.Empty,
+        1 => "Apply is blocked by 1 thing",
+        var count => $"Apply is blocked by {count} things",
+    };
+
+    /// <summary>
+    /// The page's count of pending changes, which after an unconfirmed Apply cannot honestly say they are unapplied.
+    /// </summary>
+    public string CountText => !NeedsReconciliation ? Changes.CountText
+        : Changes.Count == 1 ? "1 change may already be applied"
+        : Changes.Count > 1 ? $"{Changes.Count:N0} changes may already be applied"
+        : "Changes may already be applied";
+
+    /// <summary>What the page leads with after an Apply whose result could not be confirmed.</summary>
+    public string ReconciliationNotice => "FieldWorks may already have these changes. Refresh to check.";
+
+    /// <summary>The shell's Refresh, which settles an unconfirmed Apply and renews stale numbers.</summary>
+    public IAsyncRelayCommand? RefreshCommand => Context.RefreshProjectCommand;
+
+    /// <summary>The last Apply's refusal, unless it is the unconfirmed Apply the page already leads with.</summary>
+    public WindowRefusal? ShownApplyRefusal => NeedsReconciliation ? null : ApplyRefusal;
+
+    /// <summary>Whether the numbers and Apply cards have anything to act on or report.</summary>
+    public bool ShowsSideCards => Changes.HasItems || HasReceipt || ApplyRefusal is not null;
+
+    /// <summary>Opens Analyze texts, where most changes are made, from an empty Review.</summary>
+    public IRelayCommand OpenAnalyzeTextsCommand { get; }
 
     /// <summary>The words on the action that writes the measured changes.</summary>
     public string ApplyButtonText => "Apply to FieldWorks project";
@@ -132,27 +202,13 @@ public sealed class ReviewPageModel : PageModel
     public WindowRefusal? MeasurementRefusal { get; private set; }
 
     /// <summary>Whether the measured changes can be applied to the FieldWorks project.</summary>
-    public bool CanApply => Changes.HasItems && !HasUncertainChanges && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
-        Context.Baseline?.FieldWorksHeldProject != true &&
-        !NeedsReconciliation &&
-        !Context.Evidence.IsStale &&
-        EvidenceComplete && WordsLosingApprovedAnalysis.Count == 0 && !IsMeasuring && !IsApplying;
+    public bool CanApply => Changes.HasItems && Changes.Items.All(item => item.Fit is { StillFits: true }) &&
+        ApplyBlockers.Count == 0 && !IsMeasuring && !IsApplying;
 
-    /// <summary>What prevents Apply, in words shown beside the action.</summary>
+    /// <summary>Every blocker's sentence in order, or what Apply is doing, for a reader of one line.</summary>
     public string ApplyBlockReason => IsApplying ? "Applying changes to FieldWorks..." :
-        NeedsReconciliation ? ApplyRefusal!.Sentence :
-        !Changes.HasItems ? "Choose a change in Texts to begin." :
-        HasUncertainChanges ? UncertainSentence(UncertainChanges.Count)
-        : Changes.Items.Any(item => item.IsNoLongerFits)
-            ? "No longer fits: remove the changes that no longer fit before applying."
-            : Changes.Items.Any(item => item.IsUncertain)
-                ? "Uncertain: check the source sentence before applying."
-            : Context.Evidence.IsStale
-                ? "FieldWorks saved since these numbers were measured. Refresh before applying."
-            : Context.Baseline?.FieldWorksHeldProject == true
-                ? "FieldWorks has this project open. Close it before applying changes."
-            : WordsLosingApprovedAnalysis.Count > 0 ? LostAnalysisSentence(WordsLosingApprovedAnalysis)
-                : !EvidenceComplete ? "See what applying does to the numbers before applying." : string.Empty;
+        !Changes.HasItems && !NeedsReconciliation ? "Choose a change in Texts to begin." :
+        string.Join(" ", ApplyBlockers.Select(blocker => blocker.Sentence));
 
     /// <summary>Shows that a saved project change could not be matched to its recorded Receipt.</summary>
     internal void ShowReconciliationNeeded()
@@ -180,6 +236,10 @@ public sealed class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(ApplyRefusal));
         RaiseApplyState();
     }
+
+    private static string NoLongerFitsSentence(int count) =>
+        $"{count} {(count == 1 ? "change no longer fits: FieldWorks changed its word"
+            : "changes no longer fit: FieldWorks changed their words")} since you decided.";
 
     private static string UncertainSentence(int count) =>
         $"{count} {(count == 1 ? "change needs" : "changes need")} another look because " +
@@ -344,6 +404,8 @@ public sealed class ReviewPageModel : PageModel
         if (e.PropertyName == nameof(ChangesViewModel.Count))
         {
             Badge = Changes.Count > 0 ? Changes.Count.ToString(CultureInfo.CurrentCulture) : string.Empty;
+            OnPropertyChanged(nameof(CountText));
+            OnPropertyChanged(nameof(ShowsSideCards));
             EvidenceComplete = false;
             WordsLosingApprovedAnalysis = [];
             OnPropertyChanged(nameof(CanApply));
@@ -407,6 +469,32 @@ public sealed class ReviewPageModel : PageModel
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ProjectEvidence.IsStale)) RaiseApplyState();
+    }
+
+    // Many paths announce CanApply or ApplyBlockReason; everything derived from the blockers follows those two.
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        switch (e.PropertyName)
+        {
+            case nameof(CanApply):
+                OnPropertyChanged(nameof(ApplyBlockReason));
+                break;
+            case nameof(ApplyBlockReason):
+                OnPropertyChanged(nameof(ApplyBlockers));
+                OnPropertyChanged(nameof(IsApplyBlocked));
+                OnPropertyChanged(nameof(ApplyBlockedTitle));
+                break;
+            case nameof(ApplyRefusal):
+                OnPropertyChanged(nameof(NeedsReconciliation));
+                OnPropertyChanged(nameof(ShownApplyRefusal));
+                OnPropertyChanged(nameof(CountText));
+                OnPropertyChanged(nameof(ShowsSideCards));
+                break;
+            case nameof(HasReceipt):
+                OnPropertyChanged(nameof(ShowsSideCards));
+                break;
+        }
     }
 
     private void RaiseApplyState()

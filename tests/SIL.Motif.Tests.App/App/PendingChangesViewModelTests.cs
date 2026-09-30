@@ -260,7 +260,7 @@ public sealed class PendingChangesViewModelTests
 
         Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
         Assert.False(review.CanApply);
-        Assert.Contains("No longer fits", review.ApplyBlockReason);
+        Assert.Contains("no longer fits", review.ApplyBlockReason);
         Assert.False(review.ApplyCommand.CanExecute(null));
         Assert.Equal("No longer fits the current project. Remove this change before review.",
             Assert.Single(changes.Items).FitStatus);

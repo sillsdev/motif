@@ -67,10 +67,21 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
             Assert.Equal("apply.reconciliation-needed", review.ApplyRefusal?.Code);
             Assert.Equal("Applying may have completed, but its result could not be confirmed. " +
                 "Check the project before retrying.", review.ApplyRefusal?.Sentence);
-            Assert.Equal(review.ApplyRefusal?.Sentence, review.ApplyBlockReason);
+            Assert.Null(review.ShownApplyRefusal);
+            Assert.Equal(ApplyBlockerKind.ReconciliationNeeded, review.ApplyBlockers[0].Kind);
+            Assert.Equal("FieldWorks may already have these changes. Refresh to check.", review.ApplyBlockReason);
+            Assert.Equal("Changes may already be applied", review.CountText);
+            Assert.True(review.ShowsSideCards);
             Assert.False(review.CanApply);
             Assert.False(review.ApplyCommand.CanExecute(null));
-            Assert.True(ProjectReconciliationMarker.Clear(project.FwDataPath));
+
+            Assert.Same(workspace.RefreshCommand, review.RefreshCommand);
+            await review.RefreshCommand!.ExecuteAsync(null);
+
+            Assert.False(ProjectReconciliationMarker.Exists(project.FwDataPath));
+            Assert.False(review.NeedsReconciliation);
+            Assert.DoesNotContain(review.ApplyBlockers, blocker => blocker.Kind == ApplyBlockerKind.ReconciliationNeeded);
+            Assert.DoesNotContain("may already be applied", review.CountText);
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
     }

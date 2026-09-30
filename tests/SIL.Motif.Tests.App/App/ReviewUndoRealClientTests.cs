@@ -162,7 +162,7 @@ public sealed class ReviewUndoRealClientTests(PristineProjectFixture pristine)
         Assert.True(Assert.Single(changes.Items).IsUncertain);
         Assert.False(review.CanApply);
         Assert.False(review.ApplyCommand.CanExecute(null));
-        Assert.Equal("1 change needs another look because its sentence changed. Check it again or undo it.",
+        Assert.StartsWith("1 change needs another look because its sentence changed. Check it again or undo it.",
             review.ApplyBlockReason);
     }
 
