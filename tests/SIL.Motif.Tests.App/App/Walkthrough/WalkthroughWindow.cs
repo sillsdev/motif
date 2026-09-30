@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
@@ -17,6 +18,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using AvaloniaEllipse = Avalonia.Controls.Shapes.Ellipse;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -243,28 +245,9 @@ public sealed class WalkthroughWindow : IDisposable
     internal void ScrollIntoView(string automationId)
     {
         var target = FindByAutomationId(automationId);
-        var viewer = target.GetVisualAncestors().OfType<ScrollViewer>().FirstOrDefault();
-        if (viewer is null) return;
-
-        Window.UpdateLayout();
-        var origin = target.TranslatePoint(new Point(), viewer);
-        if (origin is null) return;
-        var deltaX = origin.Value.X < 0 ? origin.Value.X
-            : origin.Value.X + target.Bounds.Width > viewer.Viewport.Width
-                ? origin.Value.X + target.Bounds.Width - viewer.Viewport.Width
-                : 0;
-        var deltaY = origin.Value.Y < 0 ? origin.Value.Y
-            : origin.Value.Y + target.Bounds.Height > viewer.Viewport.Height
-                ? origin.Value.Y + target.Bounds.Height - viewer.Viewport.Height
-                : 0;
-        if (deltaX == 0 && deltaY == 0) return;
-
-        var maxX = Math.Max(0, viewer.Extent.Width - viewer.Viewport.Width);
-        var maxY = Math.Max(0, viewer.Extent.Height - viewer.Viewport.Height);
-        viewer.Offset = new Vector(Math.Clamp(viewer.Offset.X + deltaX, 0, maxX),
-            Math.Clamp(viewer.Offset.Y + deltaY, 0, maxY));
-        Window.UpdateLayout();
+        target.BringIntoView();
         Pump();
+        Window.UpdateLayout();
     }
 
     internal void ClickAutomationId(string automationId)
@@ -298,6 +281,21 @@ public sealed class WalkthroughWindow : IDisposable
         _ => null,
     };
 
+    internal IReadOnlyList<string> VisibleTextUnderAutomationId(string automationId) =>
+        FindByAutomationId(automationId).GetLogicalDescendants().OfType<TextBlock>()
+            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text))
+            .Select(text => text.Text!).ToArray();
+
+    internal bool HasVisibleTextOrMark(string automationId)
+    {
+        var target = FindByAutomationId(automationId);
+        if (!target.IsEffectivelyVisible) return false;
+        var controls = target.GetVisualDescendants().OfType<Control>().Prepend(target)
+            .Where(control => control.IsEffectivelyVisible).ToArray();
+        return controls.OfType<TextBlock>().Any(text => !string.IsNullOrWhiteSpace(text.Text)) ||
+            controls.Any(control => control is OpinionMark { Kind: not null } or UnreadMark or AvaloniaEllipse);
+    }
+
     internal Rect BoundsByAutomationId(string automationId)
     {
         var control = FindByAutomationId(automationId);
@@ -310,10 +308,28 @@ public sealed class WalkthroughWindow : IDisposable
                 : string.Empty;
             throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.{state}");
         }
+        var clippedBy = control.GetVisualAncestors().OfType<ScrollViewer>()
+            .FirstOrDefault(viewer =>
+            {
+                var viewportOrigin = control.TranslatePoint(new Point(), viewer);
+                return viewportOrigin is not { } point ||
+                    !FitsViewport(new Rect(point, control.Bounds.Size), viewer.Viewport);
+            });
+        if (clippedBy is not null)
+        {
+            var viewportOrigin = control.TranslatePoint(new Point(), clippedBy);
+            var targetBounds = viewportOrigin is { } point ? new Rect(point, control.Bounds.Size) : default;
+            throw new InvalidOperationException(
+                $"AutomationId '{automationId}' bounds {targetBounds} are outside its " +
+                $"ScrollViewer viewport {clippedBy.Viewport.Width}x{clippedBy.Viewport.Height}.");
+        }
         var origin = control.TranslatePoint(new Point(), Window)
             ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");
         return new Rect(origin, control.Bounds.Size);
     }
+
+    internal static bool FitsViewport(Rect target, Size viewport) =>
+        target.X >= 0 && target.Y >= 0 && target.Right <= viewport.Width && target.Bottom <= viewport.Height;
 
     internal IReadOnlyList<(string AutomationId, Rect Bounds)> VisibleWordStripBounds()
     {

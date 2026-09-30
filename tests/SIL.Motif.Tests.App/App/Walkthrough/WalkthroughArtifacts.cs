@@ -83,6 +83,10 @@ internal sealed record WalkthroughCaptionLabel(Rect Bounds, IReadOnlyList<string
 
 internal sealed record WalkthroughLeaderPath(string AutomationId, IReadOnlyList<Point> Points);
 
+internal sealed record WalkthroughCaptionColumnLayout(
+    IReadOnlyList<WalkthroughCaptureCallout> Callouts, IReadOnlyList<WalkthroughCaptionLabel> Labels,
+    IReadOnlyList<WalkthroughLeaderPath> Leaders, Point StripOffset, int Width, int Height);
+
 internal sealed record WalkthroughCapture(
     string Id, int StartMs, int DurationMs, IReadOnlyList<WalkthroughCaptureCallout> Callouts, byte[] Png,
     double Scale = 1, Rect? SourceFrameCropBounds = null);
@@ -141,11 +145,15 @@ internal static class WalkthroughArtifacts
     internal static Rect PadUnreadHighlightTarget(Rect target) =>
         new(target.X - 4, target.Y - 4, target.Width + 8, target.Height + 8);
 
+    internal static Rect PadSmallHighlightTarget(Rect target) =>
+        target.Width < 64 && target.Height < 32 ? PadUnreadHighlightTarget(target) : target;
+
     internal static byte[] CaptureFrame(Window window, double scale = 1)
     {
         if (scale is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(scale));
+        var size = window.Bounds.Size;
         using var bitmap = new RenderTargetBitmap(
-            new PixelSize((int)Math.Round(Width * scale), (int)Math.Round(Height * scale)),
+            new PixelSize((int)Math.Round(size.Width * scale), (int)Math.Round(size.Height * scale)),
             new Vector(96 * scale, 96 * scale));
         bitmap.Render(window);
         using var stream = new MemoryStream();
@@ -190,7 +198,7 @@ internal static class WalkthroughArtifacts
             File.WriteAllBytes(Path.Combine(stepsDirectory, imageName), item.Capture.Png);
             File.WriteAllBytes(Path.Combine(stepsDirectory, annotatedName), item.AnnotatedPng);
             var manifestCallouts = item.Capture.Scale > 1
-                ? OrderCaptionColumnCallouts(item.Capture.Callouts)
+                ? OrderCaptionColumnCallouts(item.Capture.Callouts, item.Capture.Scale)
                 : item.Capture.Callouts;
             return new WalkthroughManifestStep(
                 item.Capture.Id, item.Caption, item.Capture.StartMs,
@@ -291,35 +299,24 @@ internal static class WalkthroughArtifacts
         };
         using var numberFont = new SKFont(typeface, (float)(20 * scale));
         using var captionFont = new SKFont(typeface, (float)(16 * scale));
-
-        const double logicalMargin = 24;
-        const double logicalGap = 32;
-        const double logicalColumnWidth = 340;
-        var margin = logicalMargin * scale;
-        var columnX = margin + strip.Width + logicalGap * scale;
-        var canvasWidth = (int)Math.Ceiling(columnX + logicalColumnWidth * scale + margin);
-        var orderedCallouts = OrderCaptionColumnCallouts(callouts);
-        var labels = ArrangeCaptionColumnLabels(orderedCallouts, canvasWidth, captionFont, scale, columnX);
-        var columnBottom = labels.Count == 0 ? margin : labels.Max(label => label.Bounds.Bottom);
-        var canvasHeight = (int)Math.Ceiling(Math.Max(strip.Height + margin * 2, columnBottom + margin));
-        var stripTop = (canvasHeight - strip.Height) / 2d;
-        var leaderPaths = ArrangeCaptionColumnLeaderPaths(labels, new Point(margin, stripTop),
-            margin + strip.Width, scale);
-        using var output = new SKBitmap(canvasWidth, canvasHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        var layout = ArrangeCaptionColumnLayout(callouts, strip.Width, strip.Height, captionFont, scale);
+        using var output = new SKBitmap(layout.Width, layout.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         using (var canvas = new SKCanvas(output))
         {
             canvas.Clear(SKColors.White);
-            canvas.DrawBitmap(strip, (float)margin, (float)stripTop);
+            canvas.DrawBitmap(strip, (float)layout.StripOffset.X, (float)layout.StripOffset.Y);
 
-            for (var index = 0; index < orderedCallouts.Count; index++)
+            for (var index = 0; index < layout.Callouts.Count; index++)
             {
-                var callout = orderedCallouts[index];
+                var callout = layout.Callouts[index];
                 var target = new SKRect(
-                    (float)(callout.Bounds.Left + margin), (float)(callout.Bounds.Top + stripTop),
-                    (float)(callout.Bounds.Right + margin), (float)(callout.Bounds.Bottom + stripTop));
-                var label = labels[index];
+                    (float)(callout.Bounds.Left + layout.StripOffset.X),
+                    (float)(callout.Bounds.Top + layout.StripOffset.Y),
+                    (float)(callout.Bounds.Right + layout.StripOffset.X),
+                    (float)(callout.Bounds.Bottom + layout.StripOffset.Y));
+                var label = layout.Labels[index];
                 var marker = new SKPoint((float)label.MarkerCenter.X, (float)label.MarkerCenter.Y);
-                var leader = leaderPaths[index];
+                var leader = layout.Leaders[index];
                 for (var pointIndex = 1; pointIndex < leader.Points.Count; pointIndex++)
                 {
                     var start = leader.Points[pointIndex - 1];
@@ -355,6 +352,82 @@ internal static class WalkthroughArtifacts
         return data.ToArray();
     }
 
+    internal static void ValidateCaptionColumnLayout(string repositoryRoot, WalkthroughCapture capture)
+    {
+        using var strip = SKBitmap.Decode(capture.Png)
+            ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
+        using var typeface = SKTypeface.FromFile(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
+            "Assets", "Fonts", "Andika-Bold.ttf"));
+        using var captionFont = new SKFont(typeface, (float)(16 * capture.Scale));
+        var layout = ArrangeCaptionColumnLayout(capture.Callouts, strip.Width, strip.Height, captionFont, capture.Scale);
+        var repeatedCaption = layout.Callouts.GroupBy(callout => callout.Caption, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (repeatedCaption is not null)
+            throw new InvalidOperationException(
+                $"Capture '{capture.Id}' repeats caption '{repeatedCaption.Key}'.");
+
+        var targets = layout.Callouts.ToDictionary(callout => callout.AutomationId, callout =>
+            new Rect(callout.Bounds.X + layout.StripOffset.X, callout.Bounds.Y + layout.StripOffset.Y,
+                callout.Bounds.Width, callout.Bounds.Height), StringComparer.Ordinal);
+        for (var index = 0; index < layout.Labels.Count; index++)
+        {
+            var label = layout.Labels[index];
+            if (label.Bounds.X < 0 || label.Bounds.Y < 0 || label.Bounds.Right > layout.Width ||
+                label.Bounds.Bottom > layout.Height)
+                throw new InvalidOperationException(
+                    $"Capture '{capture.Id}' caption '{label.AutomationId}' lies outside the annotated frame.");
+            foreach (var target in targets.Where(target => target.Key != label.AutomationId))
+                if (label.Bounds.Intersects(target.Value))
+                    throw new InvalidOperationException(
+                        $"Capture '{capture.Id}' caption '{label.AutomationId}' covers target '{target.Key}'.");
+            for (var other = index + 1; other < layout.Labels.Count; other++)
+                if (label.Bounds.Intersects(layout.Labels[other].Bounds))
+                    throw new InvalidOperationException(
+                        $"Capture '{capture.Id}' captions '{label.AutomationId}' and " +
+                        $"'{layout.Labels[other].AutomationId}' overlap.");
+        }
+
+        for (var index = 0; index < layout.Leaders.Count; index++)
+        {
+            var leader = layout.Leaders[index];
+            foreach (var target in targets.Where(target => target.Key != leader.AutomationId))
+                if (LeaderIntersectsRect(leader, target.Value))
+                    throw new InvalidOperationException(
+                        $"Capture '{capture.Id}' leader '{leader.AutomationId}' passes through target '{target.Key}'.");
+            foreach (var label in layout.Labels.Where(label => label.AutomationId != leader.AutomationId))
+                if (LeaderIntersectsRect(leader, label.Bounds))
+                    throw new InvalidOperationException(
+                        $"Capture '{capture.Id}' leader '{leader.AutomationId}' passes through caption " +
+                        $"'{label.AutomationId}'.");
+            for (var other = index + 1; other < layout.Leaders.Count; other++)
+                if (LeaderPathsIntersect(leader, layout.Leaders[other]))
+                    throw new InvalidOperationException(
+                        $"Capture '{capture.Id}' leaders '{leader.AutomationId}' and " +
+                        $"'{layout.Leaders[other].AutomationId}' intersect: " +
+                        $"{FormatLeader(leader)}; {FormatLeader(layout.Leaders[other])}.");
+        }
+    }
+
+    private static WalkthroughCaptionColumnLayout ArrangeCaptionColumnLayout(
+        IReadOnlyList<WalkthroughCaptureCallout> callouts, int stripWidth, int stripHeight,
+        SKFont captionFont, double scale)
+    {
+        const double logicalMargin = 24;
+        const double logicalGap = 32;
+        const double logicalColumnWidth = 340;
+        var margin = logicalMargin * scale;
+        var columnX = margin + stripWidth + logicalGap * scale;
+        var canvasWidth = (int)Math.Ceiling(columnX + logicalColumnWidth * scale + margin);
+        var orderedCallouts = OrderCaptionColumnCallouts(callouts, scale);
+        var labels = ArrangeCaptionColumnLabels(orderedCallouts, canvasWidth, captionFont, scale, columnX);
+        var columnBottom = labels.Count == 0 ? margin : labels.Max(label => label.Bounds.Bottom);
+        var canvasHeight = (int)Math.Ceiling(Math.Max(stripHeight + margin * 2, columnBottom + margin));
+        var stripOffset = new Point(margin, (canvasHeight - stripHeight) / 2d);
+        var leaders = ArrangeCaptionColumnLeaderPaths(labels, stripOffset, margin + stripWidth, scale);
+        return new WalkthroughCaptionColumnLayout(orderedCallouts, labels, leaders, stripOffset,
+            canvasWidth, canvasHeight);
+    }
+
     internal static IReadOnlyList<WalkthroughCaptionLabel> ArrangeCaptionColumnLabels(
         IReadOnlyList<WalkthroughCaptureCallout> callouts, int canvasWidth, SKFont captionFont,
         double scale, double columnX)
@@ -369,14 +442,8 @@ internal static class WalkthroughArtifacts
         var y = 24 * scale;
         var labels = new List<WalkthroughCaptionLabel>(callouts.Count);
 
-        var orderedCallouts = OrderCaptionColumnCallouts(callouts);
-        var rows = new List<List<WalkthroughCaptureCallout>>();
-        foreach (var callout in orderedCallouts)
-        {
-            if (rows.Count == 0 || Math.Abs(rows[^1][0].Bounds.Center.Y - callout.Bounds.Center.Y) > 0.5)
-                rows.Add([]);
-            rows[^1].Add(callout);
-        }
+        var orderedCallouts = OrderCaptionColumnCallouts(callouts, scale);
+        var rows = GroupCaptionRows(orderedCallouts, callout => callout.Bounds, 12 * scale);
         var targetPoints = new Dictionary<string, Point>(StringComparer.Ordinal);
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
@@ -407,31 +474,25 @@ internal static class WalkthroughArtifacts
         IReadOnlyList<WalkthroughCaptionLabel> labels, Point targetOffset, double stripRight, double scale)
     {
         var exitX = stripRight + 8 * scale;
-        var rows = new List<List<WalkthroughCaptionLabel>>();
-        foreach (var label in labels)
-        {
-            if (rows.Count == 0 || Math.Abs(rows[^1][0].TargetBounds.Center.Y - label.TargetBounds.Center.Y) > 0.5)
-                rows.Add([]);
-            rows[^1].Add(label);
-        }
+        var rows = GroupCaptionRows(labels, label => label.TargetBounds, 12 * scale);
 
         var gutterYs = new Dictionary<string, double>(StringComparer.Ordinal);
         var stagger = 3 * scale;
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            var row = rows[rowIndex];
+            var row = rows[rowIndex].OrderBy(label => label.TargetBounds.Left).ToArray();
             if (rowIndex == 0)
             {
                 var rowTop = row.Min(label => label.TargetBounds.Top) + targetOffset.Y;
-                for (var index = 0; index < row.Count; index++)
-                    gutterYs[row[index].AutomationId ?? string.Empty] = rowTop - stagger * (row.Count - index);
+                for (var index = 0; index < row.Length; index++)
+                    gutterYs[row[index].AutomationId ?? string.Empty] = rowTop - stagger * (row.Length - index);
                 continue;
             }
 
             var rowBottom = row.Max(label => label.TargetBounds.Bottom) + targetOffset.Y;
             if (rowIndex == rows.Count - 1)
             {
-                for (var index = 0; index < row.Count; index++)
+                for (var index = 0; index < row.Length; index++)
                     gutterYs[row[index].AutomationId ?? string.Empty] = rowBottom + stagger * (index + 1);
                 continue;
             }
@@ -439,10 +500,13 @@ internal static class WalkthroughArtifacts
             var nextTop = rows[rowIndex + 1].Min(label => label.TargetBounds.Top) + targetOffset.Y;
             var gutterHeight = nextTop - rowBottom;
             if (gutterHeight <= 0)
-                throw new InvalidOperationException("Caption target rows need a gutter between them.");
-            for (var index = 0; index < row.Count; index++)
+                throw new InvalidOperationException(
+                    $"Caption target rows need a gutter between '{string.Join(",", row.Select(label => label.AutomationId))}' " +
+                    $"at {rowBottom:0.##} and '{string.Join(",", rows[rowIndex + 1].Select(label => label.AutomationId))}' " +
+                    $"at {nextTop:0.##}.");
+            for (var index = 0; index < row.Length; index++)
                 gutterYs[row[index].AutomationId ?? string.Empty] =
-                    rowBottom + gutterHeight * (index + 1) / (row.Count + 1);
+                    rowBottom + gutterHeight * (index + 1) / (row.Length + 1);
         }
 
         return labels.Select(label =>
@@ -457,13 +521,80 @@ internal static class WalkthroughArtifacts
         }).ToArray();
     }
 
-    private static IReadOnlyList<WalkthroughCaptureCallout> OrderCaptionColumnCallouts(
-        IReadOnlyList<WalkthroughCaptureCallout> callouts) => callouts
-        .OrderBy(callout => callout.Bounds.Center.Y)
-        .ThenBy(callout => callout.Bounds.Left)
-        .ThenBy(callout => callout.Bounds.Right)
-        .ThenBy(callout => callout.AutomationId, StringComparer.Ordinal)
+    private static IReadOnlyList<T> OrderCaptionColumnCallouts<T>(IReadOnlyList<T> callouts,
+        Func<T, Rect> bounds, double rowTolerance) => GroupCaptionRows(callouts, bounds, rowTolerance)
+        .SelectMany(row => row.OrderBy(callout => bounds(callout).Left)
+            .ThenBy(callout => bounds(callout).Right))
         .ToArray();
+
+    private static IReadOnlyList<WalkthroughCaptureCallout> OrderCaptionColumnCallouts(
+        IReadOnlyList<WalkthroughCaptureCallout> callouts, double scale) => OrderCaptionColumnCallouts(callouts,
+        callout => callout.Bounds, 12 * scale);
+
+    private static List<List<T>> GroupCaptionRows<T>(
+        IReadOnlyList<T> items, Func<T, Rect> bounds, double rowTolerance)
+    {
+        var rows = new List<List<T>>();
+        foreach (var item in items.OrderBy(item => bounds(item).Center.Y).ThenBy(item => bounds(item).Left))
+        {
+            if (rows.Count == 0 ||
+                Math.Abs(bounds(item).Center.Y - bounds(rows[^1][0]).Center.Y) > rowTolerance)
+                rows.Add([]);
+            rows[^1].Add(item);
+        }
+        return rows;
+    }
+
+    private static bool LeaderIntersectsRect(WalkthroughLeaderPath leader, Rect target)
+    {
+        for (var index = 1; index < leader.Points.Count; index++)
+            if (SegmentIntersectsRect(leader.Points[index - 1], leader.Points[index], target)) return true;
+        return false;
+    }
+
+    private static string FormatLeader(WalkthroughLeaderPath leader) =>
+        string.Join(" -> ", leader.Points.Select(point => $"({point.X:0.##},{point.Y:0.##})"));
+
+    private static bool SegmentIntersectsRect(Point start, Point end, Rect rect)
+    {
+        if (rect.Contains(start) || rect.Contains(end)) return true;
+        var topLeft = new Point(rect.Left, rect.Top);
+        var topRight = new Point(rect.Right, rect.Top);
+        var bottomLeft = new Point(rect.Left, rect.Bottom);
+        var bottomRight = new Point(rect.Right, rect.Bottom);
+        return SegmentsIntersect(start, end, topLeft, topRight) ||
+            SegmentsIntersect(start, end, topRight, bottomRight) ||
+            SegmentsIntersect(start, end, bottomRight, bottomLeft) ||
+            SegmentsIntersect(start, end, bottomLeft, topLeft);
+    }
+
+    private static bool LeaderPathsIntersect(WalkthroughLeaderPath first, WalkthroughLeaderPath second)
+    {
+        for (var firstIndex = 1; firstIndex < first.Points.Count; firstIndex++)
+        for (var secondIndex = 1; secondIndex < second.Points.Count; secondIndex++)
+            if (SegmentsIntersect(first.Points[firstIndex - 1], first.Points[firstIndex],
+                    second.Points[secondIndex - 1], second.Points[secondIndex])) return true;
+        return false;
+    }
+
+    private static bool SegmentsIntersect(Point firstStart, Point firstEnd, Point secondStart, Point secondEnd)
+    {
+        static double Orientation(Point a, Point b, Point c) =>
+            (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+        static bool OnSegment(Point a, Point b, Point c) =>
+            Math.Min(a.X, c.X) <= b.X && b.X <= Math.Max(a.X, c.X) &&
+            Math.Min(a.Y, c.Y) <= b.Y && b.Y <= Math.Max(a.Y, c.Y);
+
+        var first = Orientation(firstStart, firstEnd, secondStart);
+        var second = Orientation(firstStart, firstEnd, secondEnd);
+        var third = Orientation(secondStart, secondEnd, firstStart);
+        var fourth = Orientation(secondStart, secondEnd, firstEnd);
+        if (first == 0 && OnSegment(firstStart, secondStart, firstEnd)) return true;
+        if (second == 0 && OnSegment(firstStart, secondEnd, firstEnd)) return true;
+        if (third == 0 && OnSegment(secondStart, firstStart, secondEnd)) return true;
+        if (fourth == 0 && OnSegment(secondStart, firstEnd, secondEnd)) return true;
+        return (first > 0) != (second > 0) && (third > 0) != (fourth > 0);
+    }
 
     internal static IReadOnlyList<WalkthroughCaptionLabel> ArrangeCaptionLabels(
         IReadOnlyList<WalkthroughCaptureCallout> callouts, int canvasWidth, int canvasHeight, SKFont captionFont)

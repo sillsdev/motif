@@ -242,13 +242,48 @@ public sealed class WalkthroughArtifactTests
     }
 
     [Fact]
-    public void UnreadHighlightTargetHasPaddingAroundItsText()
+    public void ExplainedWordCardCaptionsUseDistinctWindowTerms()
     {
-        var target = new Rect(12, 20, 48, 26);
+        var root = FindRepositoryRoot();
+        var help = WalkthroughHelpContent.Load(root, "explained-word-card", "en");
+        var disapproved = help.CalloutCaptions["disapproved-conflict"]
+            .Single(pair => pair.Key.EndsWith("-disapproved", StringComparison.Ordinal)).Value;
+        var staged = help.CalloutCaptions["unknown-staged"]
+            .Single(pair => pair.Key.EndsWith("-staged", StringComparison.Ordinal)).Value;
 
-        var padded = WalkthroughArtifacts.PadUnreadHighlightTarget(target);
+        Assert.Equal("Disapproved", disapproved);
+        Assert.Contains("Staged", help.Description, StringComparison.Ordinal);
+        Assert.Contains("Apply to FieldWorks project", staged, StringComparison.Ordinal);
+        foreach (var step in help.CalloutCaptions.Values)
+            Assert.Equal(step.Count, step.Values.Distinct(StringComparer.Ordinal).Count());
+        foreach (var stepId in new[] { "no-stored-new-reading", "no-parse" })
+        {
+            var fieldworks = help.CalloutCaptions[stepId]
+                .Single(pair => pair.Key.EndsWith("-fieldworks", StringComparison.Ordinal)).Value;
+            Assert.Equal("FieldWorks analyses appear here.", fieldworks);
+        }
 
-        Assert.Equal(new Rect(8, 16, 56, 34), padded);
+        var guide = File.ReadAllText(Path.Combine(root, "help", "en", "guide", "pangloss.md"));
+        Assert.Contains("PanGloss parses XAmple and HermitCrab grammars fast. Fully compatible.", guide,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SmallCalloutTargetsHavePaddingAndLargeTargetsKeepTheirBounds()
+    {
+        var smallTargets = new[]
+        {
+            new Rect(12, 20, 12, 12),
+            new Rect(12, 20, 48, 26),
+            new Rect(12, 20, 14, 24),
+        };
+        var largeTargets = new[] { new Rect(12, 20, 80, 40), new Rect(12, 20, 100, 20) };
+
+        Assert.Equal(
+            [new Rect(8, 16, 20, 20), new Rect(8, 16, 56, 34), new Rect(8, 16, 22, 32)],
+            smallTargets.Select(WalkthroughArtifacts.PadSmallHighlightTarget));
+        Assert.Equal(largeTargets, largeTargets.Select(WalkthroughArtifacts.PadSmallHighlightTarget));
+
     }
 
     [Fact]

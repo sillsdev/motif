@@ -1,11 +1,11 @@
 {
   "id": "explained-word-card",
   "title": "Read the word marks",
-  "description": "A means Approved, U Unknown, D Disapproved, and a dashed mark means no reading is stored. Blue means PanGloss found a new or different reading.",
+  "description": "A means Approved, U Unknown, D Disapproved, and a dashed mark means no reading is stored. Blue means PanGloss found a new or different reading. Staged means a choice is waiting for Apply to FieldWorks project.",
   "steps": {
     "approved-agrees": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed. A, U and D mean Approved, Unknown and Disapproved; dashed means no reading is stored. Blue means PanGloss found a new or different reading.",
     "unknown-agrees": "U means the reading is stored but not yet approved. PanGloss built the same reading, and Approve changes U to A.",
-    "unknown-staged": "The blue Staged note records the choice until you apply it. Undo removes the staged choice.",
+    "unknown-staged": "The Staged note records a choice waiting for Apply to FieldWorks project. Undo removes it.",
     "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. Blue shows the new reading PanGloss found.",
     "disapproved-conflict": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
     "no-parse": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
@@ -31,12 +31,12 @@
     },
     "unknown-staged": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged": "This blue note waits for Apply and offers Undo."
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged": "This Staged note waits for Apply to FieldWorks project and offers Undo."
     },
     "no-stored-new-reading": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-word": "The word as it appears in the text.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-opinion": "Dashed means FieldWorks has no reading stored.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fieldworks": "There is no reading for this word in FieldWorks.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fieldworks": "FieldWorks analyses appear here.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-pangloss": "Blue means PanGloss found a new or different reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action": "Add stores PanGloss's reading as Unknown.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fix": "Fix opens the other choices for this word.",
@@ -45,7 +45,7 @@
     "disapproved-conflict": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-word": "The word as it appears in the text.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion": "D means this stored reading was disapproved.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved": "The orange mark warns that PanGloss found a reading FieldWorks has rejected.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved": "Disapproved",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-pangloss": "PanGloss builds the reading that FieldWorks marked Disapproved.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix": "Fix opens the other choices for this word.",
@@ -54,7 +54,7 @@
     "no-parse": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-word": "The word as it appears in the text.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-opinion": "Dashed means FieldWorks has no reading stored.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fieldworks": "There is no reading for this word in FieldWorks.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fieldworks": "FieldWorks analyses appear here.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss": "PanGloss completed without finding a reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fix": "Fix opens the other choices for this word.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-unread": "Unread marks a word whose current reading has not been reviewed."

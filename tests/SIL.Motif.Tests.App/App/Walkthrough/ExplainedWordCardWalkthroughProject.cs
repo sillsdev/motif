@@ -21,7 +21,7 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
         TextId = textId;
         ManagedRoot = Path.Combine(root, "managed");
         Directory.CreateDirectory(ManagedRoot);
-        ParserPath = FakeParser.Copy(Path.Combine(ManagedRoot, "fake-pangloss"));
+        ParserPath = FakeParser.CopyRecordingInvocations(Path.Combine(ManagedRoot, "fake-pangloss"));
     }
 
     public string FwDataPath { get; }

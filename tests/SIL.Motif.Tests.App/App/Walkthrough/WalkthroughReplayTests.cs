@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
+using SkiaSharp;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -27,6 +28,22 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
 
     public static IEnumerable<object[]> Scripts => WalkthroughScriptLoader.Discover(FindRepositoryRoot())
         .Select(path => new object[] { path });
+
+    [Theory]
+    [InlineData(-30, 10, 20, 20, false)]
+    [InlineData(-5, 10, 20, 20, false)]
+    [InlineData(780, 10, 20, 20, true)]
+    [InlineData(790, 10, 20, 20, false)]
+    [InlineData(810, 10, 20, 20, false)]
+    [InlineData(10, -5, 20, 20, false)]
+    [InlineData(10, 280, 20, 20, true)]
+    [InlineData(10, 290, 20, 20, false)]
+    public void BoundsMustFitInsideTheScrollViewerViewport(
+        double x, double y, double width, double height, bool expected)
+    {
+        Assert.Equal(expected, WalkthroughWindow.FitsViewport(
+            new Rect(x, y, width, height), new Size(800, 300)));
+    }
 
     [Fact]
     public void LookingUpAProjectMenuItemDoesNotOpenItsFlyout()
@@ -84,11 +101,19 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
                     using var walkthrough = new WalkthroughWindow(
                         project.ManagedRoot, project.FwDataPath, parserPath: project.ParserPath, timeProvider: clock);
                     walkthrough.Window.Width = WalkthroughArtifacts.Width;
-                    walkthrough.Window.Height = WalkthroughArtifacts.Height;
+                    walkthrough.Window.Height = script.Id == "explained-word-card"
+                        ? 800
+                        : WalkthroughArtifacts.Height;
                     walkthrough.Window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
                     walkthrough.Show();
                     Assert.Equal(1d, walkthrough.Window.RenderScaling);
-                    WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments, deadline);
+                    if (script.Id == "explained-word-card")
+                    {
+                        using var frame = SKBitmap.Decode(WalkthroughArtifacts.CaptureFrame(walkthrough.Window, 2.5));
+                        Assert.NotNull(frame);
+                        Assert.Equal((3200, 2000), (frame!.Width, frame.Height));
+                    }
+                    WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments, deadline, root);
                     if (script.Id == "explained-word-card") AssertExplainedWordCard(walkthrough);
                     return Task.CompletedTask;
                 }
@@ -100,6 +125,8 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
                 }
             }, WalkthroughSteps.Remaining(deadline));
 
+            if (script.Id == "explained-word-card")
+                Assert.Equal(["batch"], FakeParser.Invocations(project.ParserPath!));
             Assert.NotEmpty(captures);
             Assert.NotEmpty(clipSegments);
             Assert.Equal(0, clipSegments[0].StartMs);
@@ -159,7 +186,10 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         foreach (var form in new[] { "geldi", "evler", "kediye", "adamlarında", "okullarında" })
         {
             Assert.NotEmpty(byForm[form].Readings);
-            Assert.All(byForm[form].Readings, reading => Assert.NotEqual("?", reading.Text));
+            Assert.All(byForm[form].Readings, reading => Assert.False(
+                reading.Text.Contains("?", StringComparison.Ordinal),
+                $"{form} reading {reading.Index}: {string.Join("-", reading.Morphs.Select(morph =>
+                    $"{morph.Form}/{morph.Gloss}/{morph.Category}"))}"));
         }
 
         Assert.Equal(AnalysisMarkingClass.Same, byForm["geldi"].Marking.PanGlossClass);
@@ -182,6 +212,9 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         Assert.Equal(AnalysisMarkingClass.None, byForm["günler"].Marking.PanGlossClass);
         Assert.Empty(byForm["günler"].Marking.FieldWorksAnalyses);
         Assert.Equal(OccurrenceVerdict.NoParse, byForm["günler"].Verdict);
+        Assert.Contains("No parse", walkthrough.VisibleTextUnderAutomationId(byForm["günler"].PanGlossAutomationId));
+        Assert.Contains("Nothing in FieldWorks",
+            walkthrough.VisibleTextUnderAutomationId(byForm["günler"].FieldWorksAutomationId));
 
         Assert.Equal(AnalysisMarkingClass.Capped, byForm["okullarında"].Marking.PanGlossClass);
         Assert.Equal(ReadingGrade.Approved,
@@ -221,7 +254,8 @@ internal static class WalkthroughReplay
 
     public static void Run(
         WalkthroughWindow window, WalkthroughScript script, WalkthroughHelpContent help, FixedClock clock,
-        List<WalkthroughCapture> captures, List<WalkthroughClipSegment> clipSegments, long deadline)
+        List<WalkthroughCapture> captures, List<WalkthroughClipSegment> clipSegments, long deadline,
+        string repositoryRoot)
     {
         var highlighted = new HashSet<string>(StringComparer.Ordinal);
         var elapsedMs = 0;
@@ -265,12 +299,24 @@ internal static class WalkthroughReplay
                     elapsedMs += step.DurationMs.Value;
                     break;
                 case WalkthroughStepKind.Capture:
+                    if (script.Id == "explained-word-card")
+                    {
+                        var wordId = step.Callouts!.Single(callout =>
+                            callout.AutomationId.EndsWith("-word", StringComparison.Ordinal)).AutomationId;
+                        window.ScrollIntoView(wordId[..^5] + "-strip");
+                    }
+                    if (script.Id == "explained-word-card")
+                    {
+                        var calloutIds = step.Callouts!.Select(callout => callout.AutomationId).ToArray();
+                        window.WaitUntil(() => calloutIds.All(window.HasVisibleTextOrMark),
+                            TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout target content did not appear",
+                            () => string.Join(", ", calloutIds.Where(id => !window.HasVisibleTextOrMark(id))));
+                    }
                     var callouts = step.Callouts!.Select(callout =>
                     {
                         Assert.Contains(callout.AutomationId, highlighted);
-                        var bounds = window.BoundsByAutomationId(callout.AutomationId);
-                        if (callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal))
-                            bounds = WalkthroughArtifacts.PadUnreadHighlightTarget(bounds);
+                        var bounds = WalkthroughArtifacts.PadSmallHighlightTarget(
+                            window.BoundsByAutomationId(callout.AutomationId));
                         return new WalkthroughCaptureCallout(
                             callout.AutomationId, help.CalloutCaption(step.Id, callout.AutomationId),
                             bounds);
@@ -279,8 +325,14 @@ internal static class WalkthroughReplay
                         window.Window, callouts, step.CropPadding, step.Scale);
                     if (script.Id == "explained-word-card")
                     {
+                        WalkthroughArtifacts.ValidateCaptionColumnLayout(repositoryRoot, capture);
                         Assert.True(capture.Scale >= 2);
                         Assert.NotNull(capture.SourceFrameCropBounds);
+                        var captureBounds = new Size(capture.SourceFrameCropBounds.Value.Width,
+                            capture.SourceFrameCropBounds.Value.Height);
+                        Assert.All(capture.Callouts, callout => Assert.True(
+                            WalkthroughWindow.FitsViewport(callout.Bounds, captureBounds),
+                            $"Capture '{step.Id}' crops callout target '{callout.AutomationId}'."));
                         var selectedWordId = callouts.Single(callout =>
                             callout.AutomationId.EndsWith("-word", StringComparison.Ordinal)).AutomationId;
                         var selectedWordStrip = selectedWordId[..^5] + "-strip";
