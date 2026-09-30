@@ -64,7 +64,8 @@ try {
     if ([Version] $nodeVersionText -lt [Version] '22.12.0') {
         throw "Documentation site requires Node 22.12 or newer; found $nodeVersionText."
     }
-    & npm ci --prefix (Join-Path $repoRoot 'site') --no-audit --no-fund
+    $npmCommand = (Get-Command npm -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    & $npmCommand ci --prefix (Join-Path $repoRoot 'site') --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the documentation site dependencies.' }
 
     $helpProjectDirectory = Join-Path $repoRoot 'src/SIL.Motif.Help'
@@ -121,13 +122,13 @@ try {
     $env:MOTIF_DOCS_ROOT = Join-Path $repoRoot 'docs'
     $env:MOTIF_BUILD_CONFIGURATION = $Configuration
 
-    & npm run build --prefix (Join-Path $repoRoot 'site')
+    & $npmCommand run build --prefix (Join-Path $repoRoot 'site')
     if ($LASTEXITCODE -ne 0) { throw 'Production documentation sync or site build failed.' }
 
     $syncMode = $env:MOTIF_SITE_SYNC_MODE
     try {
         $env:MOTIF_SITE_SYNC_MODE = ''
-        & npm test --prefix (Join-Path $repoRoot 'site')
+        & $npmCommand test --prefix (Join-Path $repoRoot 'site')
         if ($LASTEXITCODE -ne 0) { throw 'Documentation site tests failed.' }
     }
     finally {
