@@ -103,6 +103,7 @@ public sealed class WorkspaceContextTests
         Assert.Contains(fake.TimingRequests, request => request.AssessmentId == "assessment-parse" &&
             request.WordSet == "all" && request.By == "kind");
         Assert.Empty(fake.AssessRequests);
+        Assert.Empty(fake.UsageEntries);
     }
 
     [Fact]
@@ -306,6 +307,66 @@ public sealed class WorkspaceContextTests
         Assert.Empty(fake.StatsRequests);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SelectingATimingWordSetRecordsOneActionForSuccessAndRefusal(bool refuses)
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) =>
+        {
+            if (refuses && request.WordSet == "step-limit" && request.By == "kind")
+                return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
+                    "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
+            IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
+                ? [new TimingAggregateRow("Verb template", 1, 1, 1, 1)] : [];
+            return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
+                "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.Empty(fake.UsageEntries);
+        await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("timing", entry.Command);
+        Assert.Equal(["wordSet:text"], entry.ArgumentShape);
+        Assert.Equal(refuses, timing.HasTimingRefusal);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChoosingATimingRuleRecordsOneActionForSuccessAndRefusal(bool refuses)
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        var refuseChosenRule = false;
+        fake.OnTiming((request, _) =>
+        {
+            if (refuseChosenRule && request.Rule == "Verb template")
+                return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
+                    "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
+            IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
+                ? [new TimingAggregateRow("Verb template", 1, 1, 1, 1)] : [];
+            return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
+                "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.Empty(fake.UsageEntries);
+        refuseChosenRule = refuses;
+        await timing.ChooseRuleCommand.ExecuteAsync(Assert.Single(timing.RuleTiming!.Aggregates));
+
+        var entry = Assert.Single(fake.UsageEntries);
+        Assert.Equal("timing", entry.Command);
+        Assert.Equal(["rule:text"], entry.ArgumentShape);
+        Assert.Equal(refuses, timing.HasTimingRefusal);
+    }
+
     [Fact]
     public async Task TimingPageShowsTheCommandsKindAndRuleAggregatesUnchanged()
     {
@@ -474,6 +535,7 @@ public sealed class WorkspaceContextTests
         await timing.UsePickedWordsCommand.ExecuteAsync(null);
         timing.RerunSeconds = 45;
         timing.RerunSteps = 1000000;
+        var usageCountBeforeRerun = fake.UsageEntries.Count;
         var progress = new List<string>();
         timing.PropertyChanged += (_, changed) =>
         {
@@ -487,11 +549,39 @@ public sealed class WorkspaceContextTests
         Assert.Equal(2, timing.RerunCompleted);
         Assert.Equal("Re-run complete.", timing.RerunMessage);
         Assert.Equal(["dogs", "cats"], fake.AssessRequests.Select(request => Assert.Single(request.Selection!.Words)));
+        var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
+        Assert.Equal("assess", rerunEntry.Command);
+        Assert.Equal(["fwDataPath:text", "words:list(2)", "perWordLimitMs:number", "perWordStepLimit:number"], rerunEntry.ArgumentShape);
         Assert.All(fake.AssessRequests, request =>
         {
             Assert.Equal(45000, request.PerWordLimitMs);
             Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(1000000), request.Selection!.PerWordStepLimit);
         });
+    }
+
+    [Fact]
+    public async Task InvalidTimingRerunRecordsOneRefusedAction()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], [])
+        {
+            Words = [new TimingWordRow("dogs", 5, 2, "Finished")],
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        context.Assess.ProjectPath = ProjectPath;
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        timing.PickedWords = "dogs";
+        await timing.UsePickedWordsCommand.ExecuteAsync(null);
+        var usageCountBeforeRerun = fake.UsageEntries.Count;
+        timing.RerunSeconds = 0;
+
+        await timing.RerunWordsCommand.ExecuteAsync(null);
+
+        Assert.Equal("Enter a positive per-word time and a positive whole-number step limit.", timing.RerunMessage);
+        Assert.Empty(fake.AssessRequests);
+        var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
+        Assert.Equal("assess", rerunEntry.Command);
     }
 
     [Fact]
@@ -511,6 +601,7 @@ public sealed class WorkspaceContextTests
         timing.PickedWords = "dogs\ncats";
         await timing.UsePickedWordsCommand.ExecuteAsync(null);
 
+        var usageCountBeforeRerun = fake.UsageEntries.Count;
         var running = timing.RerunWordsCommand.ExecuteAsync(null);
         Assert.Equal("dogs", timing.RerunWord);
         timing.CancelRerunCommand.Execute(null);
@@ -520,6 +611,8 @@ public sealed class WorkspaceContextTests
         Assert.Equal(0, timing.RerunCompleted);
         Assert.Single(fake.AssessRequests);
         Assert.Equal(RunState.Cancelled, context.Assess.State);
+        var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
+        Assert.Equal("assess", rerunEntry.Command);
     }
 
     [Fact]

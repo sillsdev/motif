@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -305,6 +306,8 @@ public sealed partial class TimingPageModel : PageModel
 
     private async Task SelectWordSetAsync(string? wordSet)
     {
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.Text("wordSet"));
         var selection = TimingWordSet.Parse(wordSet);
         if (selection is null) return;
         await SelectTimingWordSetAsync(selection);
@@ -436,6 +439,8 @@ public sealed partial class TimingPageModel : PageModel
 
     private async Task ChooseRuleAsync(TimingAggregateRow? row)
     {
+        using var usageAction = Context.Commands.BeginUsageAction("timing",
+            UsageArgumentShape.Text("rule"));
         if (row is null || Context.ProjectPath is not { } projectPath) return;
         SelectedRule = row.Name;
         RuleDetail = null;
@@ -460,6 +465,15 @@ public sealed partial class TimingPageModel : PageModel
     private async Task RerunWordsAsync()
     {
         var words = SelectedWords;
+        var shapes = new List<string>
+        {
+            UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("words", words.Count),
+            UsageArgumentShape.Number("perWordLimitMs"),
+        };
+        if (RerunSteps is not null)
+            shapes.Add(UsageArgumentShape.Number("perWordStepLimit"));
+        using var usageAction = Context.Commands.BeginUsageAction("assess", [.. shapes]);
         if (words.Count == 0) return;
         if (RerunSeconds <= 0 || RerunSeconds > int.MaxValue / 1000m ||
             RerunSteps is <= 0 || RerunSteps is > long.MaxValue ||
