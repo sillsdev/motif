@@ -7,6 +7,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.LcmUtils;
@@ -179,10 +180,10 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal("disapproved", Assert.Single(word.Analyses,
             analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.DisapprovedAnalysisId).Value)
             .StoredAnalysisOpinion);
-        Assert.Equal("unknown", Assert.Single(word.Analyses,
+        Assert.Equal(ReadingGrade.Candidate, Assert.Single(word.Analyses,
             analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.UnknownSameAnalysisId).Value)
             .StoredAnalysisOpinion);
-        Assert.Equal("unknown", Assert.Single(word.Analyses,
+        Assert.Equal(ReadingGrade.Candidate, Assert.Single(word.Analyses,
             analysis => analysis.StoredAnalysisId == CanonicalId.FromGuid(scenario.UnknownDifferentAnalysisId).Value)
             .StoredAnalysisOpinion);
         Assert.All(word.Analyses, analysis => Assert.NotNull(analysis.Identity));

@@ -20,7 +20,8 @@ public static class OverviewCommand
     public static CommandOutcome<OverviewResponse> Overview(OverviewRequest request) =>
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
+            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
+                includeResolvedReadings: false);
             if (!current.Succeeded)
                 return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
             var evidence = current.Value!;

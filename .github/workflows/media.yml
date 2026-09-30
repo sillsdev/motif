@@ -1,0 +1,51 @@
+name: Build media artifacts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-media:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download and verify the pinned PanGloss parser
+        shell: pwsh
+        run: |
+          $release = Get-Content pangloss-release.json -Raw | ConvertFrom-Json
+          $asset = $release.assets.'win-x64'
+          if ($null -eq $asset -or $asset.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+            throw 'pangloss-release.json has no valid win-x64 asset checksum.'
+          }
+          $destination = Join-Path $env:RUNNER_TEMP "pangloss/$($release.version)/pangloss.exe"
+          New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+          Invoke-WebRequest -Uri $asset.url -OutFile $destination
+          $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $asset.sha256.ToLowerInvariant()) {
+            throw "PanGloss checksum mismatch: expected $($asset.sha256), got $actual."
+          }
+          "MOTIF_PANGLOSS_EXE=$destination" >> $env:GITHUB_ENV
+
+      - name: Build media artifacts
+        shell: pwsh
+        run: ./tools/Build-Media.ps1 -Configuration Release -Only build,icons,samples,screenshots,walkthroughs,help,media-test
+
+      - name: Upload media artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: media-release
+          path: bin/Release/media/
+          if-no-files-found: error

@@ -10,6 +10,8 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
@@ -33,6 +35,10 @@ public sealed record CurrentEvidenceSnapshot(
 {
     /// <summary>The later subset runs applied to words of the current default Selection.</summary>
     public IReadOnlyList<AssessmentRecord> RerunAssessments { get; init; } = [];
+
+    /// <summary>Readable parser results for the stored Assessment's morph identifiers, keyed by word.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolvedReadingsByWord { get; init; } =
+        new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
     /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingCorrectnessAssessmentId { get; init; }
@@ -80,7 +86,8 @@ public static class CurrentEvidenceQuery
             (database, project) => ReadCurrentEvidence(database, project));
 
     internal static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentEvidence(
-        MotifDatabase database, ProjectLocator project, bool includeDefaultSelection = true)
+        MotifDatabase database, ProjectLocator project, bool includeDefaultSelection = true,
+        bool includeResolvedReadings = true)
     {
         var storeCreated = ReadStoreCreatedUtc(database);
         DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
@@ -137,6 +144,10 @@ public static class CurrentEvidenceQuery
             selection = resolvedSelection;
         }
 
+        var effectiveWords = assessment is null ? [] : AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns);
+        var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current
+            ? ResolveReadings(project, effectiveWords)
+            : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
@@ -144,7 +155,22 @@ public static class CurrentEvidenceQuery
             RerunAssessments = reruns,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
+            ResolvedReadingsByWord = resolvedReadings,
         });
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolveReadings(
+        ProjectLocator project, IReadOnlyList<AssessedWord> words)
+    {
+        var resolvable = words.Where(word => word.Morphology is { Analyses.Count: > 0 }).ToArray();
+        if (resolvable.Length == 0 || !File.Exists(project.FullFwDataPath))
+            return new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+        return resolvable.ToDictionary(word => word.Word,
+            word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
+            StringComparer.Ordinal);
     }
 
     /// <summary>Resolves one saved Selection from the project inventory captured with its Baseline.</summary>

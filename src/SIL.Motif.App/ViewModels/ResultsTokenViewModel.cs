@@ -16,13 +16,15 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 {
     private readonly TextToken _source;
     private readonly AssessmentWordResult? _assessment;
+    private readonly Guid _textId;
     private bool _isUnread = true;
 
     [ObservableProperty]
     private bool _isCardOpen;
 
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
-        TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null)
+        TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null,
+        Guid textId = default)
     {
         ArgumentNullException.ThrowIfNull(token);
         _source = token;
@@ -32,6 +34,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         IsWord = token.Form is not null;
         Location = location ?? $"{title}, line {line}";
         Occurrence = occurrence;
+        _textId = textId != Guid.Empty ? textId : occurrence?.TextId ?? Guid.Empty;
         WordformId = token.WordformId;
         OccurrenceIndex = token.OccurrenceIndex;
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
@@ -97,6 +100,26 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The word's form as the Assessment names it, for finding it in the Words view.</summary>
     public string Form { get; }
 
+    public string WordAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "word");
+
+    public string StripAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "strip");
+
+    public string OpinionMarkAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "opinion");
+
+    public string DisapprovedAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "disapproved");
+
+    public string FieldWorksAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "fieldworks");
+
+    public string PanGlossAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "pangloss");
+
+    public string PrimaryActionAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "action");
+
+    public string FixAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "fix");
+
+    public string StagedAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "staged");
+
+    public string UnreadAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "unread");
+
     public bool IsWord { get; }
 
     public AnalysisMarkingState Marking { get; private set; }
@@ -146,7 +169,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     private string FieldWorksSummary => FieldWorksAnalyses.Count == 0
         ? "No analysis in FieldWorks"
-        : string.Join(", ", FieldWorksAnalyses.Select(analysis => analysis.Opinion));
+        : string.Join(", ", FieldWorksAnalyses.Select(analysis =>
+            analysis.Opinion == ReadingGrade.Candidate ? "Unknown" : analysis.Opinion));
     public string Location { get; }
     public Uri? WordLink { get; }
     public OccurrenceAnchor? Occurrence { get; }

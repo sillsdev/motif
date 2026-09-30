@@ -232,6 +232,14 @@ sibling folders, so never hard-code English text where a Title or Description wo
 The site in `site/` is built from those files (see `README.md`, "Documentation"); `cd site; npm test` covers its
 sync script. It is not yet part of `./build.ps1` or CI.
 
+## Media assets
+
+Run ./tools/Build-Media.ps1 to rebuild media outputs and the documentation site. Every committed image,
+video, and diagram belongs in media.json as generated, source, or record; regenerate generated assets
+from their source with the named Build-Media step. The walkthroughs step replays the App walkthrough tests
+into bin/<Configuration>/media/walkthroughs, which the site sync consumes. The media workflow skips the
+site step and uploads bin/Release/media.
+
 ## Non-negotiable design rules
 
 1. The canonical input is semantic CRUD+ intent, never a low-level property script or reflection

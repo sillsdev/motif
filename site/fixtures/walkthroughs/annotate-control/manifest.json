@@ -1,0 +1,35 @@
+{
+  "id": "annotate-control",
+  "locale": "en",
+  "title": "Find your way around Motif",
+  "description": "The Pages list gives a quick route to each part of the project.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "pages",
+      "caption": "Choose the part of the project you want to work in.",
+      "startMs": 0,
+      "endMs": 1200,
+      "screenshot": "steps/01-pages.png",
+      "annotated": "steps/01-pages-annotated.png",
+      "width": 251,
+      "height": 652,
+      "annotatedWidth": 251,
+      "annotatedHeight": 652,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 0,
+          "y": 48,
+          "width": 203,
+          "height": 556,
+          "label": "1",
+          "caption": "Project pages"
+        }
+      ]
+    }
+  ],
+  "clip": null
+}

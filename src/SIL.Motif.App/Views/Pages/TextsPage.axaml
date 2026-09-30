@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsPage"
@@ -24,14 +25,16 @@
           <Button DockPanel.Dock="Right" Content="Run assessment" Command="{Binding Assess.RunCommand}"
                 VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                 IsVisible="{Binding !Context.NeedsAssessment}"
-                AutomationProperties.Name="Run the Assessment" />
+                AutomationProperties.Name="Run the Assessment"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.RunAssessment}" />
           <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
             <Button Content="Matrix" Classes="tab" Classes.active="{Binding ShowMatrix}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="Matrix tab" />
             <Button Content="Analyze texts" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="Analyze texts tab" />
+                  CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="Analyze texts tab"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeTextsTab}" />
             <Button Content="Lists" Classes="tab" Classes.active="{Binding ShowLists}"
                   Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="Lists tab" />
@@ -49,7 +52,8 @@
             <ProgressBar IsVisible="{Binding Assess.IsActive}"
                          IsIndeterminate="{Binding Assess.IsIndeterminate}"
                          Minimum="0" Maximum="1" Value="{Binding Assess.ProgressFraction}"
-                         AutomationProperties.Name="Assessment progress" />
+                         AutomationProperties.Name="Assessment progress"
+                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssessmentProgress}" />
             <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
           </StackPanel>
           <Button Grid.Column="1" Content="Cancel" Command="{Binding Assess.CancelCommand}"
