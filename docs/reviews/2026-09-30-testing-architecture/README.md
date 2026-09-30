@@ -78,3 +78,5 @@ The overall structure is sound, but several seams need stronger ownership or pro
 | GUI should communicate through CLI JSON | Rejected; shared typed Commands are the current deliberate contract |
 | Missing local parser should fail the ordinary test suite | Rejected; release-required Motif integration uses a pinned parser release. PanGloss owns grammar conformance |
 
+
+- [Measured parser capture and materialization](parser-capture-measurements.md)

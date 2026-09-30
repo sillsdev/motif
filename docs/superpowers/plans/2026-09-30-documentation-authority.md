@@ -21,10 +21,10 @@ The website must accept the actual pages that Motif ships. Fixture success canno
 
 **Files:** `site/scripts/sync-core.mjs`, its tests, and the documentation validation script added below.
 
-- [ ] Reproduce `motif help --all --json` export followed by `sync.mjs --help-export <export>` failing on Guide `pangloss`.
-- [ ] Include PanGloss in the current Guide outline as the immediate repair. Keep failure on unknown pages so omissions remain visible.
-- [ ] Add a regression using actual authored content and a supplied real export in an isolated output directory; do not write test artifacts into generated production content.
-- [ ] Run `npm test --prefix site`, then repeat synchronization with a freshly built CLI. Assert expected PanGloss page and links exist.
+- [x] Reproduce `motif help --all --json` export followed by `sync.mjs --help-export <export>` failing on Guide `pangloss`.
+- [x] Include PanGloss in the current Guide outline as the immediate repair. Keep failure on unknown pages so omissions remain visible.
+- [x] Add a regression using actual authored content and a supplied real export in an isolated output directory; do not write test artifacts into generated production content.
+- [x] Run `npm test --prefix site`, then repeat synchronization with a freshly built CLI. Assert expected PanGloss page and links exist.
 
 ## Task 2: deepen the Help catalog
 
@@ -32,12 +32,12 @@ Readers should ask Help for a page instead of implementing their own resource lo
 
 **Files:** `src/SIL.Motif.Help/HelpCatalog.cs`, Help catalog tests, and Help project resource configuration.
 
-- [ ] Add Guide as a catalog entry kind. Enumerate embedded Guide resources, including `agents/` and `learn/`; preserve hierarchical codes instead of passing them through the flat command slug algorithm.
-- [ ] Derive title and summary using one Markdown metadata implementation. Preserve original full Markdown separately; display truncation is a reader choice.
-- [ ] Apply existing per-field English fallback to translated Guide metadata/content. Test partial locale availability, missing pages, nested paths and duplicate codes.
-- [ ] Centralize routes for commands, terms, controls, Guides and Learn. Resolve the current UI route mismatch (`/reference/ui` versus the site's `/reference/controls`).
-- [ ] Extend cross-link validation/resolution to `guide:` alongside `cmd:`, `term:` and `ui:`. Test escaped multiword codes and unknown targets.
-- [ ] Preserve released command title limits and catalog completeness tests. Amend ADR 0047's implementation description to match the actual descriptor/catalog join rather than inventing redundant descriptor fields.
+- [x] Add Guide as a catalog entry kind. Enumerate embedded Guide resources, including `agents/` and `learn/`; preserve hierarchical codes instead of passing them through the flat command slug algorithm.
+- [x] Derive title and summary using one Markdown metadata implementation. Preserve original full Markdown separately; display truncation is a reader choice.
+- [x] Apply existing per-field English fallback to translated Guide metadata/content. Test partial locale availability, missing pages, nested paths and duplicate codes.
+- [x] Centralize routes for commands, terms, controls, Guides and Learn. Resolve the current UI route mismatch (`/reference/ui` versus the site's `/reference/controls`).
+- [x] Extend cross-link validation/resolution to `guide:` alongside `cmd:`, `term:` and `ui:`. Test escaped multiword codes and unknown targets.
+- [x] Preserve released command title limits and catalog completeness tests. Amend ADR 0047's implementation description to match the actual descriptor/catalog join rather than inventing redundant descriptor fields.
 
 ## Task 3: adapt all three readers
 
@@ -45,8 +45,8 @@ The same exported page and metadata should appear in all readers, with their exi
 
 **Files:** CLI Help handlers/export records, `HelpPopupViewModel`, App Help link handling, site sync core and site landing-page source.
 
-- [ ] Support `motif help guide:overview --full` and nested Guide codes. Include Guides in `help --all --json`, with stable kinds/codes/routes and full content.
-- [ ] Replace App's private Guide resource reader and metadata parser with catalog calls, including the PanGloss page. Preserve localized control overrides and existing popup behavior.
+- [x] Support `motif help guide:overview --full` and nested Guide codes. Include Guides in `help --all --json`, with stable kinds/codes/routes and full content.
+- [x] Replace App's private Guide resource reader and metadata parser with catalog calls, including the PanGloss page. Preserve localized control overrides and existing popup behavior.
 - [ ] Have site synchronization render exported pages and metadata. Do not replace exported content by rereading a different physical Help tree.
 - [ ] Reference exported codes in Guide navigation and home cards; derive human labels/summaries from the catalog. Keep site-specific layout and ordering, validating missing, duplicate and nonexistent entries.
 - [ ] Preserve the authored Learn index rather than overwriting its body with an independently generated substitute.
@@ -60,10 +60,10 @@ Locating shared content with Help makes its owner obvious. Moving files must pre
 
 - [ ] Integrate vocabulary edits before moving their content files. Inventory references with `rg` before the move, including translation configuration and site fixtures.
 - [ ] Change physical paths and resource includes together while preserving `help/...` logical names. Update site/tool/test inputs explicitly; add no old-path compatibility reader.
-- [ ] Write one current architecture overview with the actual dependency graph, typed front-end seam, parser process boundary, SQLite coordination and lifecycle ownership. Link normative contracts instead of restating them.
-- [ ] Remove current-facing claims about retired net48/netstandard targets, CLI-only GUI communication, obsolete parser flags and retired store topology.
-- [ ] Mark superseded plans as historical, linking their replacement. Keep ADR history and rationale intact unless recording an explicit new decision.
-- [ ] Make CLI API prose point to shared agent Guides and generated reference. Keep developer XML API documentation with code; user guides must not expose implementation details unnecessarily.
+- [x] Write one current architecture overview with the actual dependency graph, typed front-end seam, parser process boundary, SQLite coordination and lifecycle ownership. Link normative contracts instead of restating them.
+- [x] Remove current-facing claims about retired net48/netstandard targets, CLI-only GUI communication, obsolete parser flags and retired store topology.
+- [x] Mark superseded plans as historical, linking their replacement. Keep ADR history and rationale intact unless recording an explicit new decision.
+- [x] Make CLI API prose point to shared agent Guides and generated reference. Keep developer XML API documentation with code; user guides must not expose implementation details unnecessarily.
 
 ## Task 5: validate documentation as an output pipeline
 

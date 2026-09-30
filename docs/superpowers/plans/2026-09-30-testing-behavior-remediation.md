@@ -16,18 +16,18 @@ The gate test must actually run in its child process and explain a child failure
 
 Files: modify `tests/SIL.Motif.Tests.LibLcm/Installation/MotifUpdateGateTests.cs`; retain `tests/SIL.Motif.Tests.Support/TestFixtures/ShardedTestFramework.cs` behavior and recorded shard weights.
 
-- [ ] Preserve baseline red evidence: ActivitiesCanShareTheGateAcrossProcesses fails in shard three because filtered discovery assigns its only class to zero.
-- [ ] Clear shard selection immediately before Process.Start:
+- [x] Preserve baseline red evidence: ActivitiesCanShareTheGateAcrossProcesses fails in shard three because filtered discovery assigns its only class to zero.
+- [x] Clear shard selection immediately before Process.Start:
 
 ```csharp
 childStart.Environment.Remove("MOTIF_TEST_SHARD");
 childStart.Environment.Remove("MOTIF_TEST_SHARD_WEIGHTS");
 ```
 
-- [ ] Replace readiness-only polling with a bounded wait that observes `child.HasExited`. On early exit, report exit code and concurrently captured stdout/stderr. Capture-task reads also have a deadline; a descendant holding a pipe must not hang the diagnostic path.
-- [ ] Keep release signaling in finally, bound shutdown, kill the whole child tree on timeout, await exit, and remove the private scratch root.
-- [ ] Run ./test.ps1. Confirm the cross-process method ran in its child and passed under the parent’s nonzero shard; do not accept zero selected tests as success.
-- [ ] Commit this independent harness correction.
+- [x] Replace readiness-only polling with a bounded wait that observes `child.HasExited`. On early exit, report exit code and concurrently captured stdout/stderr. Capture-task reads also have a deadline; a descendant holding a pipe must not hang the diagnostic path.
+- [x] Keep release signaling in finally, bound shutdown, kill the whole child tree on timeout, await exit, and remove the private scratch root.
+- [x] Run ./test.ps1. Confirm the cross-process method ran in its child and passed under the parent’s nonzero shard; do not accept zero selected tests as success.
+- [x] Commit this independent harness correction.
 
 ## Task 2: bulk staging preserves failure
 
@@ -35,9 +35,9 @@ A collection action must stop when a request is refused and retain an explanatio
 
 Files: modify `src/SIL.Motif.App/ViewModels/ResultsInTextViewModel.Scopes.cs`, `src/SIL.Motif.App/ViewModels/ChangesViewModel.cs`; extend `tests/SIL.Motif.Tests.App/App/AnalysisOperationScopesTests.cs` and consuming-state tests using `FakeCommandClient.PendingChanges.cs`.
 
-- [ ] Add scripted success/conflict/success cases for add parser readings, Incorrect spelling and checked-word Accept New Set. Assert only two requests, first change retained after reload, typed refusal still visible, and the third item unstaged. Include a project-generation change so stale results cannot resume the loop.
-- [ ] Run ./test.ps1 and capture each new assertion's red failure.
-- [ ] Make AddFromTextAsync return Task<bool> and return the existing PutAsync result. In each iterative caller, return immediately on false. The add-reading loop uses:
+- [x] Add scripted success/conflict/success cases for add parser readings, Incorrect spelling and checked-word Accept New Set. Assert only two requests, first change retained after reload, typed refusal still visible, and the third item unstaged. Include a project-generation change so stale results cannot resume the loop.
+- [x] Run ./test.ps1 and capture each new assertion's red failure.
+- [x] Make AddFromTextAsync return Task<bool> and return the existing PutAsync result. In each iterative caller, return immediately on false. The add-reading loop uses:
 
 ```csharp
 if (!await _changes.AddFromMarkingAsync(new AnalysisMarkingAction(
@@ -56,8 +56,8 @@ foreach (var token in DistinctWords(tokens))
 
 The checked-word Accept New Set loop likewise checks its existing Task<bool> result. Keep cancellation/project-generation protections in ChangesViewModel; do not clear the refusal in the caller.
 
-- [ ] Show that earlier changes remain in Review changes when interrupted. Do not claim rollback or all-or-nothing staging.
-- [ ] Run ./test.ps1 and commit the reviewed correction.
+- [x] Show that earlier changes remain in Review changes when interrupted. Do not claim rollback or all-or-nothing staging.
+- [x] Run ./test.ps1 and commit the reviewed correction.
 
 ## Task 3: truthful coverage inventory
 
@@ -65,12 +65,12 @@ Removing a weak or retired test should not remove an unaccounted-for product gua
 
 Files: modify `tests/SIL.Motif.Tests.App/App/DesktopServiceBoundaryTests.cs`; map existing adapter/view-model/walkthrough tests; inspect and then retire `tests/SIL.Motif.Tests.LibLcm/Parser/FakeParserSeamTests.cs`, `ParserSeamIntegrationTests.cs`, `GrammarCoverageFigureIntegrationTests.cs` and the dormant `src/SIL.Motif.Host/Parser/PanGlossAssessmentProcess.cs` dependency closure.
 
-- [ ] Map baseline response/refusal to Baseline/view-model and real-client tests; Assessment response/progress/refusal/cancel to Assess/CommandRun/adapter and cancellation walkthroughs; Stats response/refusal to its consuming view model; Handoff progress/cancel to real adapter and HandoffWriter tests.
-- [ ] Remove fake-only response/refusal/progress/cancellation assertions after that mapping. Keep meaningful unconfigured-fake fail-fast behavior only if test-support consumers rely on it. Keep actual desktop adapter/interface policy checks.
-- [ ] Map old missing-parser, malformed/nonzero output, cancellation, provenance and identities assertions to current invoker, morphology evidence and RealParserBatch tests. Remove obsolete pipeline-name/report-shape assertions and the empty fallback-engine test.
-- [ ] Add the universal identity-resolution assertion to current real Batch output if the existing GUID tests only sample identities. Resolve every emitted allomorph/MSA/entity identity against the originating seeded cache and require nonzero checked identities.
-- [ ] Remove the old assess launcher and unused report/interface types only when rg finds no remaining product or active-test callers. Do not reconnect the nonexistent assess command.
-- [ ] Run ./test.ps1. Report the expected test/skip count reduction and the preserved assertions; do not present fewer permanent skips as more real-parser execution.
+- [x] Map baseline response/refusal to Baseline/view-model and real-client tests; Assessment response/progress/refusal/cancel to Assess/CommandRun/adapter and cancellation walkthroughs; Stats response/refusal to its consuming view model; Handoff progress/cancel to real adapter and HandoffWriter tests.
+- [x] Remove fake-only response/refusal/progress/cancellation assertions after that mapping. Keep meaningful unconfigured-fake fail-fast behavior only if test-support consumers rely on it. Keep actual desktop adapter/interface policy checks.
+- [x] Map old missing-parser, malformed/nonzero output, cancellation, provenance and identities assertions to current invoker, morphology evidence and RealParserBatch tests. Remove obsolete pipeline-name/report-shape assertions and the empty fallback-engine test.
+- [x] Add the universal identity-resolution assertion to current real Batch output if the existing GUID tests only sample identities. Resolve every emitted allomorph/MSA/entity identity against the originating seeded cache and require nonzero checked identities.
+- [x] Remove the old assess launcher and unused report/interface types only when rg finds no remaining product or active-test callers. Do not reconnect the nonexistent assess command.
+- [x] Run ./test.ps1. Report the expected test/skip count reduction and the preserved assertions; do not present fewer permanent skips as more real-parser execution.
 
 ## Task 4: deterministic process retry and Handoff cleanup
 
@@ -78,10 +78,10 @@ The tests need evidence that the raced or cancelled work entered the relevant st
 
 Files: `tests/SIL.Motif.Tests.Cli/Integration/RunnerKickRaceTests.cs`, the existing ownership/retry diagnostic seam in Worker/launcher, `tests/SIL.Motif.Tests.Commands/Handoff/HandoffWriterTests.cs`, and `tests/SIL.Motif.Tests.App/App/Walkthrough/CancelHandoffWalkthroughTests.cs`.
 
-- [ ] Replace Thread.Sleep(500) with an observable failed ownership acquisition before releasing the mutex. Use the existing diagnostic/state seam where possible; retain real enqueue/kick/process behavior. Require bounded readiness and child diagnostics.
-- [ ] Strengthen HandoffWriter cancellation using a held fake import: wait until staging exists, cancel the actual token, release the held importer, assert typed cancellation, absent staging, unchanged existing destination and retry success.
-- [ ] Name the current App scenario as queued cancellation. Add one App Cancel interaction that reaches the in-flight writer/import seam rather than multiplying every cleanup case through the UI.
-- [ ] Run ./test.ps1; confirm the retry test would fail if retry were disabled and the cleanup test would fail if staging cleanup were removed.
+- [x] Replace Thread.Sleep(500) with an observable failed ownership acquisition before releasing the mutex. Use the existing diagnostic/state seam where possible; retain real enqueue/kick/process behavior. Require bounded readiness and child diagnostics.
+- [x] Strengthen HandoffWriter cancellation using a held fake import: wait until staging exists, cancel the actual token, release the held importer, assert typed cancellation, absent staging, unchanged existing destination and retry success.
+- [x] Replace the formerly queued-only App Handoff scenario with a held in-flight Import Cancel interaction. Command-level tests own the full staging cleanup/refusal/retry matrix.
+- [x] Run ./test.ps1; confirm the retry test would fail if retry were disabled and the cleanup test would fail if staging cleanup were removed.
 
 ## Task 5: walkthrough claims and authored replay
 

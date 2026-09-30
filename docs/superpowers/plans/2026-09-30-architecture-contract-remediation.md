@@ -31,15 +31,15 @@ A child memory limit does not cover Motif's own captured strings and repeated fi
 
 **Files:** Windows/Unix CPU-job capture implementations, containment outcome mapping and parser invocation tests.
 
-- [ ] Withdraw the arbitrary 64/8 MiB stream quotas. Distinguish Batch file artifacts, Trace/Stats/Grammar Health structured stdout and diagnostic stderr in the capture inventory.
-- [ ] Measure representative Motif integration outputs and document the number of materializations, separating measured evidence from hypothetical runaway logging.
-- [ ] Replace digest calculation through full byte arrays with streaming hashes where it preserves existing evidence/race checks. Avoid redundant string reads when comparing retained morphology artifacts.
-- [ ] Read growing TSV progress incrementally, buffering incomplete trailing rows instead of rereading the entire file every 100 ms. Preserve progress ordering and cancellation; test partial-row writes and absence of duplicate progress.
-- [ ] Evaluate file-backed/streaming consumption at the actual parsing seam. Preserve complete structured results, concurrent stdout/stderr draining, cancellation, admission release and cleanup; do not merely spool and then allocate the same entire content several times.
+- [x] Withdraw the arbitrary 64/8 MiB stream quotas. Distinguish Batch file artifacts, Trace/Stats/Grammar Health structured stdout and diagnostic stderr in the capture inventory.
+- [x] Measure representative Motif integration outputs and document the number of materializations, separating measured evidence from hypothetical runaway logging.
+- [x] Replace digest calculation through full byte arrays with streaming hashes where it preserves existing evidence/race checks. Avoid redundant string reads when comparing retained morphology artifacts.
+- [x] Read growing TSV progress incrementally, buffering incomplete trailing rows instead of rereading the entire file every 100 ms. Preserve progress ordering and cancellation; test partial-row writes and absence of duplicate progress.
+- [x] Evaluate file-backed/streaming consumption at the actual parsing seam. Preserve complete structured results, concurrent stdout/stderr draining, cancellation, admission release and cleanup; do not merely spool and then allocate the same entire content several times.
 - [x] Retain the existing 10 GiB child-process memory ceiling as selected by the owner; add no output quotas.
-- [ ] Preserve valid per-word capped results and their incomplete-evidence semantics; these differ from malformed or truncated protocol output.
+- [x] Preserve valid per-word capped results and their incomplete-evidence semantics; these differ from malformed or truncated protocol output.
 - [ ] Create Unix capture files with `FileStreamOptions.UnixCreateMode` restricted to user read/write. Test permissions while capture files exist, then cleanup.
-- [ ] Verify simultaneous stream draining, cancellation, complete representative large output, admission reuse, digest/provenance refusal and absence of leaked files/processes. Do not claim constant memory while downstream consumers still materialize full results.
+- [x] Verify simultaneous stream draining, cancellation, complete representative large output, admission reuse, digest/provenance refusal and absence of leaked files/processes. Do not claim constant memory while downstream consumers still materialize full results.
 
 ## Task 3: resolve Batch runtime policy explicitly
 
@@ -48,8 +48,8 @@ An uncapped Batch currently remains cancellable without a wall-clock deadline. T
 **Files:** ADR 0044, invoker resource-limit documentation, existing infinite-limit regression and any newly selected finite-limit test.
 
 - [x] Record the owner's choice: uncapped Batch stays cancellable without a default overall deadline. Align ADR 0044 and the glossary with that choice.
-- [ ] Preserve the infinite-default regression and cancellation/process-tree cleanup tests. Retain applicable deadlines for other requests and explicit caller overrides.
-- [ ] Preserve explicit per-word limit behavior and provenance. No unrelated parser flags or legacy aliases are introduced.
+- [x] Preserve the infinite-default regression and cancellation/process-tree cleanup tests. Retain applicable deadlines for other requests and explicit caller overrides.
+- [x] Preserve explicit per-word limit behavior and provenance. No unrelated parser flags or legacy aliases are introduced.
 
 ## Task 4: define the unit of usage recording
 
@@ -71,10 +71,10 @@ Parserless developer machines should remain usable, while release confidence req
 
 - [ ] Use the version/RID/SHA-256 authority in `pangloss-release.json` and the existing packaging downloader. Require a released artifact, not a sibling development build, in release validation.
 - [ ] Require that artifact in release integration validation and fail when required Motif integration tests skip because the parser is absent. Cover Batch/Trace/import request compatibility, evidence ingestion, entity identities and front-end workflows.
-- [ ] Remove the imported deep-nesting grammar benchmark and exact 924-analysis expectations from Motif's scope. Replace lifecycle/result-transfer uses with Motif-owned seeded fixtures, preserving cancellation and saved-project invariants.
+- [x] Remove the imported deep-nesting grammar benchmark and exact 924-analysis expectations from Motif's scope. Replace lifecycle/result-transfer uses with Motif-owned seeded fixtures, preserving cancellation and saved-project invariants.
 - [ ] Regenerate and validate website Help/screenshots for every documentation validation, and videos for releases, using the integration build's outputs.
-- [ ] Preserve ordinary local `RealParserFactAttribute` skips. Remove obsolete assess-protocol permanent skips only after their invariant owners are accounted for.
-- [ ] Report native desktop acceptance separately from headless control/process proof; do not claim the latter exercises native dialogs or a real FieldWorks save boundary.
+- [x] Preserve ordinary local `RealParserFactAttribute` skips. Remove obsolete assess-protocol permanent skips only after their invariant owners are accounted for.
+- [x] Report native desktop acceptance separately from headless control/process proof; do not claim the latter exercises native dialogs or a real FieldWorks save boundary.
 
 ## Task 6: separate reusable Worker implementation from its executable
 

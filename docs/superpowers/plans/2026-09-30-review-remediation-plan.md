@@ -33,8 +33,8 @@ Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md
 
 The same source should supply short explanations, full pages and stable links for every reader. Current-facing overviews should point to that authority rather than carry competing specifications.
 
-- [ ] Make SIL.Motif.Help own Guide inventory, metadata derivation, locale fallback, stable codes and routes, including nested agent and Learn pages.
-- [ ] Add explicit Guide lookup/export to CLI and consume the catalog from the App. Preserve command/glossary lookup and control overrides.
+- [x] Make SIL.Motif.Help own Guide inventory, metadata derivation, locale fallback, stable codes and routes, including nested agent and Learn pages.
+- [x] Add explicit Guide lookup/export to CLI and consume the catalog from the App. Preserve command/glossary lookup and control overrides.
 - [ ] Render site Guide pages, outline labels and home-card summaries from exported metadata and pages. Keep presentation ordering separate, with missing/duplicate/nonexistent-entry checks.
 - [ ] Locate shared authored user content under `src/SIL.Motif.Help/Content`, following the owner's near-code preference; move it once and update every consumer, translation input and test path. Embedded logical names and public routes are contracts to preserve. Add no dual-reader fallback.
 - [x] Make README orientation/setup links, replace stale current architecture prose with one maintained implementation-oriented overview, and turn CLI API prose into links to shared agent guides/generated reference.
@@ -46,12 +46,12 @@ Detailed work: [documentation authority](2026-09-30-documentation-authority.md).
 
 Tests should accurately say whether they cover a control, a window lifetime, a process lifetime or a native desktop interaction. Documentation media should come from the same validated run that produced its Help export.
 
-- [ ] Remove fake-self-tests after mapping their intended assertions to production consumers or adapters. Retain architecture-policy guards; do not mistake source scans for behavioral proof.
-- [ ] Replace the runner race's fixed sleep with evidence of a failed ownership attempt before release; retain the real-process integration assertion.
+- [x] Remove fake-self-tests after mapping their intended assertions to production consumers or adapters. Retain architecture-policy guards; do not mistake source scans for behavioral proof.
+- [x] Replace the runner race's fixed sleep with evidence of a failed ownership attempt before release; retain the real-process integration assertion.
 - [ ] Rename same-process restart and queued Handoff cancellation claims. Strengthen existing Handoff staging cancellation coverage with a held import, actual cancellation, staging cleanup and preserved existing destination.
 - [ ] Correct Apply/Refresh walkthrough proof: assert persisted model change, changed Baseline after Refresh, then explicitly Parse and assert changed measurement. Preserve existing no-parse-on-Refresh coverage.
 - [ ] Add a real-control authored typing scenario, then first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry scripts using AutomationIds. Keep deeper C# switch/reopen scenarios.
-- [ ] Remove permanently skipped retired assess-protocol tests only after a coverage map identifies current owners. Preserve or port universal emitted-identity resolution where required; do not resurrect the obsolete parser command.
+- [x] Remove permanently skipped retired assess-protocol tests only after a coverage map identifies current owners. Preserve or port universal emitted-identity resolution where required; do not resurrect the obsolete parser command.
 - [ ] Add a documentation CI/build gate generating Help export and screenshots in fresh isolated output, requiring expected manifests/assets, then syncing/building the site with those exact paths. Release validation additionally requires videos. Upload review artifacts; no site deployment is requested.
 
 Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md).
@@ -62,8 +62,8 @@ Every parser request should verify the capabilities it actually needs, and Motif
 
 - [ ] Validate actual typed request flags/positionals for Batch analyses, Import and Trace; cache a parsed capability description rather than only a path-wide Boolean. Preserve schema/version and hidden-command checks.
 - [ ] Create Unix capture files with owner-only permissions; assert live-file mode on Linux/macOS.
-- [ ] Eliminate avoidable repeated whole-file materialization and investigate streaming capture while preserving complete output, concurrent draining, evidence validation and cleanup. The arbitrary proposed output-size quotas are withdrawn; do not kill valid runs for exceeding them.
-- [ ] Preserve cancellable uncapped Batch behavior and align its ADR and code/test documentation. Keep the existing child memory containment.
+- [x] Eliminate avoidable repeated whole-file materialization and investigate streaming capture while preserving complete output, concurrent draining, evidence validation and cleanup. The arbitrary proposed output-size quotas are withdrawn; do not kill valid runs for exceeding them.
+- [x] Preserve cancellable uncapped Batch behavior and align its ADR and code/test documentation. Keep the existing child memory containment.
 - [ ] Implement exactly-once usage recording for explicit outer user actions across CLI and GUI. Record argument shapes, not values; exclude automatic queries and nested helpers. Test success, refusal and nested workflows.
 - [ ] Require a real pinned PanGloss release for Motif release integration validation, retaining parserless local skips. Move grammar conformance/engine benchmarks out of Motif's scope; use Motif-owned integration fixtures and regenerate the website.
 

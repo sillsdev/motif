@@ -14,9 +14,9 @@ People should receive consistent behavior and documentation across Motif's reade
 - Make test names and walkthrough claims accurately distinguish prepared fixtures, window reopen, process restart and native desktop acceptance.
 - Keep parserless local skips; account for retired-protocol invariants before deleting obsolete tests.
 
-## Open product policies
+## Product policies
 
-The owner needs to choose policies whose behavior cannot be determined from source inspection alone. Recommendations are proposals, not recorded answers.
+The owner selected policies whose behavior could not be determined from source inspection alone. All five choices are accepted and guide the implementation.
 
 | Decision | Evidence | Recommendation | Status |
 | --- | --- | --- | --- |

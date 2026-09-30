@@ -22,7 +22,7 @@ Each worker has a separate source scope to prevent competing changes. A dispatch
 | fix-bulk | review/fix-bulk | Analyze Texts bulk staging failure handling and tests | Reviewed and integrated: `20216741` |
 | fix-site | review/fix-site | Real-content website Guide inventory regression | Reviewed and integrated: `d7820da9` |
 | fix-vocabulary | review/fix-vocabulary | Visible analysis actions, shared summaries, user Guide wording | Reviewed and integrated: `bce211da` |
-| fix-test-ownership | review/fix-test-ownership | Imported grammar benchmark ownership and fake-self-test accounting | Running |
+| fix-test-ownership | review/fix-test-ownership | Imported grammar benchmark ownership and fake-self-test accounting | Integrated: `a20701f4`; independent failure-cleanup correction pending |
 | fix-doc-orientation | review/fix-doc-orientation | Current architecture authority, README/API orientation and historical plans | Reviewed and integrated: `06518a01` |
 
 ## Following waves
@@ -44,4 +44,16 @@ A completed change needs evidence from the actual owning boundary. Fixture-only 
 
 Use `./build.ps1` and `./test.ps1`, with shared MSBuild/compiler reuse disabled and Avalonia telemetry opted out. Preserve ordinary parserless local skips; final real-parser validation selects the hash-verified release in `pangloss-release.json`. Site checks use real CLI export and newly generated required media, then build the website. Linux/macOS checks remain CI evidence when no local Unix environment is available.
 
-The vocabulary and orientation workers have been reused as `fix-usage` and `fix-release-docs`. The first three integrated fixes received an independent Sol xhigh review with no actionable findings. The capture review identified loss of morphology payload-to-artifact binding; that change is being corrected before integration. Parent-owned retired-protocol cleanup preserves a current Batch identity integration test and its explicit coverage map.
+The vocabulary and orientation workers have been reused as `fix-usage` and `fix-release-docs`. The first three integrated fixes received an independent Sol xhigh review with no actionable findings. The capture review identified loss of morphology payload-to-artifact binding; worker correction `920c5ec1` restored both payload bindings and independent re-review accepted it. It is integrated as `03220485`. Parent-owned retired-protocol cleanup preserves a current Batch identity integration test and its explicit coverage map.
+
+The process-test wave is integrated as `870b2773` (deterministic ownership retry and real CLI kick) and `f410b263` (held Import cancellation/cleanup/retry). Its isolated full gate passed 3,644 tests, failed none and skipped 61 on a parserless worktree. The worker is reused as `fix-worker-runtime` from that reviewed base; library extraction remains pending.
+
+## Combined real-release verification
+
+The integrated repairs now pass Motif's own workflows against the pinned PanGloss release. This establishes current Windows integration behavior, while later project and documentation changes still need their own combined gate.
+
+Parent ./test.ps1 against hash-verified v0.5.1 passed 3,680 tests, failed none and skipped 22. Comment and token gates, compilation and offline restore passed; NuGet emitted 12 vulnerability-feed availability warnings. The current Batch identity test executed and recorded small output sizes in [capture measurements](parser-capture-measurements.md). Borrowed grammar conformance was removed before the run. Remaining skips are five opt-in artifact harnesses, eight other-platform checks, eight Windows link-privilege checks and one recorded parser capability gap.
+
+Shared Guide catalog/CLI/App consumption is integrated as `57df7a2c`; physical content movement and site adaptation remain underway. Ownership commit `a20701f4` preserves seeded lifecycle, real-parser cap and identity transfer proof. Its independent review found one failure-cleanup gap in the disposal test, assigned for correction.
+
+The completed capture and ownership worktrees are reused by fresh Luna xhigh workers: `fix-parser-admission` checks actual typed requests and private Unix capture creation; `fix-walkthrough-truth` separates close/reopen, Refresh and Parse proof. Runtime extraction, usage, Help/site movement and release documentation validation continue in the other four worktrees.
