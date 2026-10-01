@@ -128,6 +128,7 @@ public sealed class CommandCatalogParityTests
         "timing.no-assessment", "timing.no-baseline", "timing.override-not-found",
         "timing.wrong-kind", "timing.word-set-not-found",
         "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
+        "inspect.invalid-request",
         "uses.invalid-request", "uses.no-assessment",
         "store.inconsistent", "store.other-version", "store.unsupported",
         "texts.words-cancelled",

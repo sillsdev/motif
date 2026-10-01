@@ -68,6 +68,7 @@ public static class CommandTextRenderer
             WarningsResponse r => RenderWarnings(r),
             TimingResponse r => RenderTiming(r),
             ObjectUsesResponse r => RenderUses(r),
+            InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
@@ -455,6 +456,45 @@ public static class CommandTextRenderer
         if (response.UnknownWords.Count > 0)
             text.AppendLine("  Not in this Assessment: " + string.Join(", ", response.UnknownWords));
         return text.ToString();
+    }
+
+    private static string RenderInspect(InspectResponse response)
+    {
+        var text = new StringBuilder();
+        var subject = response.Subject;
+        var name = subject.Label ?? subject.TimingKey?.Key ?? subject.AllomorphId ?? subject.GrammaticalInfoId ??
+            subject.ObjectId ?? subject.WarningCode;
+        var kind = subject.Kind.ToString().ToLowerInvariant();
+        text.AppendLine($"Inspect {kind} {name}" + response.Resolution switch
+        {
+            InspectorResolution.Resolved => "",
+            InspectorResolution.NotInBaseline => ": not in the Baseline",
+            InspectorResolution.Contradictory => ": the names given belong to different FieldWorks objects",
+            InspectorResolution.NotAuthored => ": no FieldWorks identity",
+            InspectorResolution.NoBaseline => ": no Baseline yet",
+            _ => "",
+        });
+        if (response.IsStale)
+            text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
+        if (Section(text, "In FieldWorks", response.Facts) is { } facts) AppendFacts(text, facts);
+        if (Section(text, "Your words that use it", response.Uses) is { } uses) AppendUseWords(text, "Your words that use it", uses);
+        if (Section(text, "Words it ran in", response.RanIn) is { } ranIn) AppendUseWords(text, "Words it ran in", ranIn);
+        if (Section(text, "Warnings that name it", response.Warnings) is { } warnings)
+        {
+            text.AppendLine($"  Warnings that name it: {warnings.Count:N0}");
+            foreach (var finding in warnings)
+                text.AppendLine($"    {finding.Group ?? finding.CodeLabel}: {(finding.Description.Length > 0 ? finding.Description : finding.Text)}");
+        }
+        return text.ToString();
+    }
+
+    // A section not requested prints nothing; one that could not be read says so, with its reason.
+    private static T? Section<T>(StringBuilder text, string heading, InspectorSection<T> section) where T : class
+    {
+        if (section.Status == InspectorSectionStatus.Available) return section.Value;
+        if (section.Status != InspectorSectionStatus.NotRequested)
+            text.AppendLine($"  {heading}: {(section.Status == InspectorSectionStatus.Absent ? "absent" : "not read for this kind")} ({section.Reason})");
+        return null;
     }
 
     private static void AppendFacts(StringBuilder text, ObjectFacts facts)

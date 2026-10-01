@@ -19,7 +19,7 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
 /// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
-/// <see cref="Queries.WordTraceQuery"/>, and <see cref="Queries.ObjectUsesQuery"/>.
+/// <see cref="Queries.WordTraceQuery"/>, <see cref="Queries.ObjectUsesQuery"/>, and <see cref="Queries.InspectQuery"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
@@ -129,6 +129,9 @@ public static class CommandCatalog
 
         // ObjectUsesQuery: the words that use an object, the words it ran in, and what a set of words shares
         new CommandDescriptor("uses", typeof(ObjectUsesRequest), typeof(ObjectUsesResponse), CommandSurface.Developer),
+
+        // InspectQuery: one subject's facts, uses, timings and warnings, each section from its own source
+        new CommandDescriptor("inspect", typeof(InspectRequest), typeof(InspectResponse), CommandSurface.Developer),
 
         // WordTraceQuery: one word's trace, live or from a saved file, as Try a Word reads it
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Developer),

@@ -254,6 +254,16 @@ public static class CliVerbCatalog
                 "Name an object, some words, or both; objects and morphemes are matched by identity, never by spelling.",
                 "An object also gets what the Baseline's FieldWorks project says about it, and its timing key when none is given.",
             }),
+        new CliVerbDescriptor(
+            "Project", "inspect", "inspect",
+            new[]
+            {
+                "inspect --project <fwdata> (--allomorph <guid> [--grammatical-info <guid>] | --grammatical-info <guid> | " +
+                "--rule <kind>:<key> [--structural] | --slot <guid> | --environment <guid> | --feature <guid> | " +
+                "--warning <code>[:<guid>]) [--json]",
+                "One subject, by identity: FieldWorks' facts from the Baseline, its words and times from the stored Parse all words,",
+                "and the stored grammar check's findings that name it. Each section says whether it was read, and why not.",
+            }),
 
         new CliVerbDescriptor(
             "Trace", "trace", "trace",
