@@ -8,7 +8,7 @@ return TokenHygiene.Run(args);
 #endif
 
 /// <summary>
-/// Fails the build when the App's views or token files style anything with a raw value instead of a design token.
+/// Fails the build when the App styles with raw values, declares unused tokens, or references a missing token.
 /// Run it as <c>dotnet run --file tools/TokenHygiene/token-hygiene.cs -- [-Advisory]</c>.
 /// </summary>
 /// <remarks>
@@ -98,6 +98,8 @@ internal static class TokenHygiene
     private static readonly Regex CodeResourceLookup = new(
         @"\b(?:TryGetResource|TryFindResource|FindResource|GetResourceObservable|DynamicResourceExtension|StaticResourceExtension)" +
         "\\s*\\(\\s*\"([^\"]*)\"");
+    private static readonly Regex MarkupResourceReference = new(
+        @"\{\s*(?:StaticResource|DynamicResource)\s+(?:ResourceKey\s*=\s*)?(?<key>(?:Primitive|Intent|Component)\.[^,\s}]+)");
 
     /// <summary>Scans the repository this command runs in and returns the process exit code.</summary>
     public static int Run(string[] args)
@@ -125,7 +127,7 @@ internal static class TokenHygiene
             }
         }
 
-        var files = CollectScopedFiles(repoRoot);
+        var files = CollectAppFiles(repoRoot);
         if (!files.Any(file => file.Path.StartsWith(ViewsRoot, StringComparison.Ordinal)))
         {
             output.WriteLine($"token-hygiene: no views found under '{repoRoot}'. Refusing to report a clean tree from an empty scan.");
@@ -148,7 +150,7 @@ internal static class TokenHygiene
         output.WriteLine();
         output.WriteLine(advisory
             ? $"token-hygiene: {violations.Count} violation(s), reported only (-Advisory)."
-            : $"token-hygiene: {violations.Count} violation(s). Name an Intent or Component key; raw values live in Tokens/Primitives.axaml.");
+            : $"token-hygiene: {violations.Count} violation(s). Fix raw styling values, unresolved token references, or unused token declarations.");
         return advisory ? 0 : 1;
     }
 
@@ -158,9 +160,10 @@ internal static class TokenHygiene
     /// </summary>
     internal static List<Violation> Check(IEnumerable<SourceFile> files, IReadOnlyList<Allowance> allowlist)
     {
+        var sourceFiles = files.ToList();
         var used = new bool[allowlist.Count];
         var kept = new List<Violation>();
-        foreach (var file in files)
+        foreach (var file in sourceFiles)
         {
             var lines = file.Text.Split('\n');
             foreach (var violation in ScanFile(file.Path, file.Text))
@@ -176,6 +179,7 @@ internal static class TokenHygiene
                 if (!excused) kept.Add(violation);
             }
         }
+        kept.AddRange(AuditResources(sourceFiles));
         for (var i = 0; i < allowlist.Count; i++)
         {
             if (!used[i])
@@ -183,6 +187,102 @@ internal static class TokenHygiene
         }
         return kept;
     }
+
+    private static List<Violation> AuditResources(IReadOnlyList<SourceFile> files)
+    {
+        var declarations = new Dictionary<string, (string File, int Line)>(StringComparer.Ordinal);
+        var dependencies = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var references = new List<ResourceReference>();
+        var findings = new List<Violation>();
+
+        foreach (var file in files.Where(file => file.Path.EndsWith(".axaml", StringComparison.Ordinal)))
+        {
+            XDocument document;
+            try
+            {
+                document = XDocument.Parse(file.Text, LoadOptions.SetLineInfo);
+            }
+            catch (XmlException ex)
+            {
+                findings.Add(new(file.Path, ex.LineNumber, "unreadable-resource-inventory", ex.Message));
+                continue;
+            }
+
+            foreach (var element in document.Descendants())
+            {
+                var key = (string?)element.Attribute(Xaml + "Key");
+                if (IsAppTokenKey(key))
+                {
+                    declarations.TryAdd(key!, (file.Path, LineOf(element.Attribute(Xaml + "Key")!)));
+                    dependencies.TryAdd(key!, new HashSet<string>(StringComparer.Ordinal));
+                }
+
+                var owner = element.AncestorsAndSelf()
+                    .Select(ancestor => (string?)ancestor.Attribute(Xaml + "Key"))
+                    .FirstOrDefault(IsAppTokenKey);
+                foreach (var attribute in element.Attributes())
+                {
+                    if (attribute.Name == Xaml + "Key") continue;
+                    if (attribute.Name.LocalName == "ResourceKey" && IsAppTokenKey(attribute.Value))
+                        references.Add(new(file.Path, LineOf(attribute), owner, attribute.Value));
+                    foreach (Match match in MarkupResourceReference.Matches(attribute.Value))
+                        references.Add(new(file.Path, LineOf(attribute), owner, match.Groups["key"].Value));
+                }
+                if (!element.HasElements)
+                {
+                    foreach (Match match in MarkupResourceReference.Matches(element.Value))
+                        references.Add(new(file.Path, LineOf(element), owner, match.Groups["key"].Value));
+                }
+            }
+        }
+
+        foreach (var file in files.Where(file => file.Path.EndsWith(".cs", StringComparison.Ordinal)))
+        {
+            var code = StripComments(file.Text);
+            foreach (Match match in CodeResourceLookup.Matches(code))
+            {
+                var key = match.Groups[1].Value;
+                if (!IsAppTokenKey(key)) continue;
+                var line = 1 + code[..match.Index].Count(character => character == '\n');
+                references.Add(new(file.Path, line, null, key));
+            }
+        }
+
+        var unresolved = new HashSet<(string File, int Line, string Key)>();
+        var roots = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var reference in references)
+        {
+            if (!declarations.ContainsKey(reference.Key))
+            {
+                unresolved.Add((reference.File, reference.Line, reference.Key));
+                continue;
+            }
+            if (reference.Owner is null) roots.Add(reference.Key);
+            else if (dependencies.TryGetValue(reference.Owner, out var keys)) keys.Add(reference.Key);
+        }
+        foreach (var reference in unresolved)
+            findings.Add(new(reference.File, reference.Line, "unresolved-resource", $"references missing token '{reference.Key}'"));
+
+        var reachable = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Queue<string>(roots);
+        while (pending.TryDequeue(out var key))
+        {
+            if (!reachable.Add(key)) continue;
+            if (dependencies.TryGetValue(key, out var keys))
+                foreach (var dependency in keys) pending.Enqueue(dependency);
+        }
+
+        foreach (var (key, location) in declarations.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            if (!reachable.Contains(key))
+                findings.Add(new(location.File, location.Line, "unreferenced-resource", $"token '{key}' has no reachable consumer"));
+        }
+        return findings;
+    }
+
+    private static bool IsAppTokenKey(string? key) => key is not null &&
+        (key.StartsWith("Primitive.", StringComparison.Ordinal) || key.StartsWith("Intent.", StringComparison.Ordinal) ||
+            key.StartsWith("Component.", StringComparison.Ordinal));
 
     /// <summary>Returns the violations in one file, chosen by the layer its path puts it in; unscoped paths have none.</summary>
     internal static List<Violation> ScanFile(string path, string text)
@@ -506,13 +606,14 @@ internal static class TokenHygiene
         return result.ToString();
     }
 
-    private static List<SourceFile> CollectScopedFiles(string repoRoot)
+    private static List<SourceFile> CollectAppFiles(string repoRoot)
     {
         var app = Path.Combine(repoRoot, "src", "SIL.Motif.App");
         if (!Directory.Exists(app)) return [];
         return Directory.EnumerateFiles(app, "*.*", SearchOption.AllDirectories)
             .Select(full => Path.GetRelativePath(repoRoot, full).Replace('\\', '/'))
-            .Where(relative => LayerOf(relative) is not null)
+            .Where(relative => (relative.EndsWith(".axaml", StringComparison.Ordinal) || relative.EndsWith(".cs", StringComparison.Ordinal))
+                && !relative.Contains("/bin/", StringComparison.Ordinal) && !relative.Contains("/obj/", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal)
             .Select(relative => new SourceFile(relative, File.ReadAllText(Path.Combine(repoRoot, relative)).Replace("\r\n", "\n")))
             .ToList();
@@ -527,6 +628,9 @@ internal static class TokenHygiene
         return null;
     }
 }
+
+/// <summary>A token reference, with the resource that owns it when the reference is an alias.</summary>
+internal sealed record ResourceReference(string File, int Line, string? Owner, string Key);
 
 /// <summary>One file to scan: its repository-relative path with forward slashes, and its text.</summary>
 internal sealed record SourceFile(string Path, string Text);

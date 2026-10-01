@@ -4,18 +4,14 @@
     <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Primitive.Inset.0_12_8_12" />
     <StaticResource x:Key="Component.TextsPage.DenseRowPadding" ResourceKey="Primitive.Inset.4_3_4_3" />
-    <StaticResource x:Key="Component.TextsPage.ListQuestionPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
     <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.TextsPage.ActionButtonMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0_4_0_4" />
     <StaticResource x:Key="Component.TextsPage.CardIndent" ResourceKey="Primitive.Inset.66_6_0_2" />
-    <StaticResource x:Key="Component.TextsPage.WordGap" ResourceKey="Primitive.Inset.0_0_14_10" />
     <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26_0_0_4" />
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
-    <StaticResource x:Key="Component.TextsPage.MorphMargin" ResourceKey="Primitive.Inset.0_0_10_0" />
-    <StaticResource x:Key="Component.TextsPage.ListQuestionWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
     <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.TextsPage.CompareSortMinWidth" ResourceKey="Primitive.Size.150" />
@@ -23,9 +19,6 @@
     <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.TextsPage.WordCheckWidth" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.TextsPage.WordOccurrencesWidth" ResourceKey="Primitive.Size.60" />
-    <StaticResource x:Key="Component.TextsPage.WordProjectWidth" ResourceKey="Primitive.Size.150" />
-    <StaticResource x:Key="Component.TextsPage.WordParserWidth" ResourceKey="Primitive.Size.100" />
-    <StaticResource x:Key="Component.TextsPage.WordMeaningWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TextsPage.WordOpenWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.ListProjectWidth" ResourceKey="Primitive.Size.160" />
     <StaticResource x:Key="Component.TextsPage.ListParserWidth" ResourceKey="Primitive.Size.160" />
@@ -36,11 +29,8 @@
     <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />
     <StaticResource x:Key="Component.TextsPage.TextPickerGap" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.TextsPage.ActionMenuWidth" ResourceKey="Primitive.Size.420" />
-    <StaticResource x:Key="Component.TextsPage.TextInspectorWidth" ResourceKey="Primitive.Size.300" />
-    <StaticResource x:Key="Component.TextsPage.ReaderTextWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.TextsPage.SelectionListHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.TextsPage.AddedWordsHeight" ResourceKey="Primitive.Size.90" />
-    <StaticResource x:Key="Component.TextsPage.ReaderLineNumberWidth" ResourceKey="Primitive.Size.28" />
   </Styles.Resources>
   <!-- The last results stay readable, set back, while a newer parse runs. -->
   <Style Selector=":is(Panel).waiting, ContentControl.waiting">

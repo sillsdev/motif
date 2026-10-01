@@ -277,7 +277,73 @@ public sealed class TokenHygieneTests
     {
         using var repo = new ScratchRepo();
         repo.Write(View, Element("Margin=\"{DynamicResource Intent.Gap.AfterGroup}\""));
+        repo.Write(Intent, Dictionary(
+            "<StaticResource x:Key=\"Intent.Gap.AfterGroup\" ResourceKey=\"Primitive.Space.4\" />"));
+        repo.Write(Primitives, Dictionary("<x:Double x:Key=\"Primitive.Space.4\">4</x:Double>"));
         Assert.Equal(0, TokenHygiene.Run([], repo.Root, [], new StringWriter()));
+    }
+
+    [Fact]
+    public void TheGateRejectsAnUnreferencedTokenBehindAUsedAlias()
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Element("Margin=\"{DynamicResource Intent.Gap.AfterGroup}\""));
+        repo.Write(Intent, Dictionary(
+            "<StaticResource x:Key=\"Intent.Gap.AfterGroup\" ResourceKey=\"Primitive.Space.4\" />"));
+        repo.Write(Primitives, Dictionary(
+            "<x:Double x:Key=\"Primitive.Space.4\">4</x:Double>"
+            + "<x:Double x:Key=\"Primitive.Space.8\">8</x:Double>"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("Primitive.Space.8", output.ToString());
+        Assert.Contains("unreferenced-resource", output.ToString());
+        Assert.DoesNotContain("Intent.Gap.AfterGroup", output.ToString());
+        Assert.DoesNotContain("Primitive.Space.4", output.ToString());
+    }
+
+    [Fact]
+    public void TheGateCountsCodeBuiltResourceLookupsAsConsumers()
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document("<Border />"));
+        repo.Write(ViewCode, "this.FindResource(\"Intent.Gap.AfterGroup\");");
+        repo.Write(Intent, Dictionary(
+            "<StaticResource x:Key=\"Intent.Gap.AfterGroup\" ResourceKey=\"Primitive.Space.4\" />"));
+        repo.Write(Primitives, Dictionary(
+            "<x:Double x:Key=\"Primitive.Space.4\">4</x:Double>"
+            + "<x:Double x:Key=\"Primitive.Space.8\">8</x:Double>"));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("Primitive.Space.8", output.ToString());
+        Assert.DoesNotContain("Intent.Gap.AfterGroup", output.ToString());
+        Assert.DoesNotContain("Primitive.Space.4", output.ToString());
+    }
+
+    [Fact]
+    public void TheGateRejectsAnUnresolvedTokenReference()
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Element("Margin=\"{DynamicResource Intent.Gap.Missing}\""));
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("Intent.Gap.Missing", output.ToString());
+        Assert.Contains("unresolved-resource", output.ToString());
+    }
+
+    [Fact]
+    public void TheGateRejectsAnUnresolvedCodeBuiltResourceLookup()
+    {
+        using var repo = new ScratchRepo();
+        repo.Write(View, Document("<Border />"));
+        repo.Write(ViewCode, "this.FindResource(\"Component.Missing\");");
+
+        var output = new StringWriter();
+        Assert.Equal(1, TokenHygiene.Run([], repo.Root, [], output));
+        Assert.Contains("Component.Missing", output.ToString());
+        Assert.Contains("unresolved-resource", output.ToString());
     }
 
     [Fact]
