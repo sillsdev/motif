@@ -321,23 +321,56 @@ public sealed class ResultsInTextViewModelTests
     {
         var pendingRead = new TaskCompletionSource<CommandOutcome<WordReadStateResponse>>(
             TaskCreationOptions.RunContinuationsAsynchronously);
+        var alphaLine = new TextLine(1, [Word("kitabu", Stored(Book, "book"))])
+            { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true };
+        var betaLine = new TextLine(1, [Word("kitabu", Stored(Book, "book"))])
+            { ParagraphId = OtherParagraphId, SegmentId = OtherSegmentId, ParseIsCurrent = true };
         var (inText, _, _) = await Loaded(
-            readStateHandler: (request, _) => request.IsRead is null
+            sourceTexts: [new TextLines(TextId, "Alpha", [alphaLine]), new TextLines(OtherTextId, "Beta", [betaLine])],
+            readStateHandler: (request, _) => request.IsRead is null && request.TextId == OtherTextId
                 ? pendingRead.Task
-                : Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse([], true))),
+                : Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(
+                    request.Occurrences ?? [], true))),
             waitForReadState: false);
-        var tokens = inText.VisibleLines.SelectMany(line => line.Tokens)
-            .Where(token => token.Occurrence is not null).Take(2).ToArray();
-        Assert.Equal(2, tokens.Length);
-        var secondOccurrence = tokens[1].Occurrence!;
+        var words = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Where(token => token.Occurrence is not null).ToArray();
+        var alpha = words.Single(token => token.Occurrence!.TextId == TextId);
+        var beta = words.Single(token => token.Occurrence!.TextId == OtherTextId);
         var refresh = inText.ReadStateRefresh;
 
-        await inText.MarkReadAsync(tokens[0]);
+        await inText.MarkReadAsync(alpha);
         pendingRead.SetResult(CommandOutcome<WordReadStateResponse>.Success(
-            new WordReadStateResponse([secondOccurrence], true)));
+            new WordReadStateResponse([beta.Occurrence!], true)));
         await refresh;
 
-        Assert.False(tokens[1].Marking.IsUnread);
+        Assert.False(alpha.Marking.IsUnread);
+        Assert.False(beta.Marking.IsUnread);
+    }
+
+    [Fact]
+    public async Task AReadStateLoadThatFinishesAfterMarkReadDoesNotMakeTheWordUnreadAgain()
+    {
+        var stored = new HashSet<OccurrenceAnchor>();
+        var heldLoad = new TaskCompletionSource<CommandOutcome<WordReadStateResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var (inText, _, _) = await Loaded(
+            readStateHandler: (request, _) =>
+            {
+                if (request.IsRead is null) return heldLoad.Task;
+                foreach (var occurrence in request.Occurrences!) stored.Add(occurrence);
+                return Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(
+                    new WordReadStateResponse(stored.ToArray(), true)));
+            },
+            waitForReadState: false);
+        var token = inText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.Occurrence is not null);
+        var load = inText.ReadStateRefresh;
+
+        await inText.MarkReadAsync(token);
+        Assert.False(token.Marking.IsUnread);
+        heldLoad.SetResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse([], true)));
+        await load;
+
+        Assert.False(token.Marking.IsUnread, "The load that began before Mark read put back its older Unread.");
     }
 
     [Fact]
