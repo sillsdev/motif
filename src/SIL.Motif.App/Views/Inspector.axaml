@@ -69,6 +69,24 @@
           <views:CopyableTextBlock Classes="muted" Text="Reading…" IsVisible="{Binding IsLoading}" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding HasMessage}" />
 
+          <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasTrace}" AutomationProperties.Name="In this trace">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="{Binding TraceTitle}" />
+              <views:CopyableTextBlock Classes="inspectorSource" Text="From this trace" />
+              <ItemsControl ItemsSource="{Binding TraceDetails}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:InspectorDetail">
+                    <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
+                      <views:CopyableTextBlock Classes="inspectorFactLabel" Text="{Binding Label}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <views:CopyableTextBlock Classes="muted" Text="{Binding TraceNote}" TextWrapping="Wrap" IsVisible="{Binding HasTraceNote}" />
+            </StackPanel>
+          </Border>
+
           <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasWhatItIs}" AutomationProperties.Name="What it is">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="What it is" />

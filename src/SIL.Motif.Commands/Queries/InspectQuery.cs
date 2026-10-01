@@ -54,6 +54,7 @@ public static class InspectQuery
             var response = new InspectResponse(subject, resolution)
             {
                 IsStale = snapshot.Freshness == EvidenceFreshness.Stale,
+                BaselineDigest = snapshot.Baseline?.Token.BundleDigest,
                 AssessmentId = snapshot.MatchingAssessment?.AssessmentId,
                 TimingKey = timingKey,
                 Facts = facts is not null ? InspectorSection<ObjectFacts>.Of(facts)

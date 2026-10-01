@@ -377,6 +377,10 @@ public sealed class TryWordRuleRowViewModel(
     /// </summary>
     public InspectorSubject? InspectSubject { get; init; }
 
+    /// <summary>What the trace recorded about the rule on this path, for the inspector to show apart from the Baseline.</summary>
+    public IReadOnlyList<InspectorDetail> Captured =>
+        InspectorDetail.Recorded(("Kind", Kind), ("Outcome", Outcome), ("Explanation", Explanation));
+
     public bool CanInspect => InspectSubject is not null;
     public bool CannotInspect => InspectSubject is null;
 }

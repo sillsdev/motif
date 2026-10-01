@@ -414,6 +414,63 @@ public sealed class InspectorTests
         }, Deadline);
     }
 
+    [Theory]
+    [InlineData("before-refresh", true)]
+    [InlineData("after-refresh", false)]
+    public void FromATraceAfterARefreshWithNoParseTheTracesDetailsStayApartFromTheBaselinesFacts(string tracedOn, bool refreshedSince)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, configure: (fake, _) =>
+            {
+                fake.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities() with
+                {
+                    HostCapture = new TraceHostCapture(null, null, null, tracedOn, null, null, []),
+                });
+                fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(
+                    new InspectResponse(request.Subject, InspectorResolution.Resolved)
+                    {
+                        BaselineDigest = "after-refresh",
+                        Facts = InspectorSection<ObjectFacts>.Of(new ObjectFacts
+                        {
+                            Rule = new ObjectFactsRule(request.Subject.TimingKey!.Key, "affixRule", "ma")
+                                { FieldWorks = Tool("lexiconEdit", "Lexicon Edit", "ma") },
+                        }),
+                        Uses = InspectorSection<ObjectUseWords>.Not(InspectorSectionStatus.Unsupported, "Only a morpheme is used by words."),
+                        RanIn = InspectorSection<ObjectUseWords>.Not(InspectorSectionStatus.Absent, "Parse all words to see your words."),
+                    })));
+            });
+            try
+            {
+                window.Width = 1240;
+                window.Height = 1500;
+                workspace.Context.TryWord("matinlu");
+                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                Settle(window);
+                Click(window, RuleLinkIn(window, "Best path rules"));
+                await workspace.Inspector.Loading;
+                Settle(window);
+
+                var inspector = workspace.Inspector;
+                Assert.Equal("In this trace of matinlu", inspector.TraceTitle);
+                Assert.Contains(inspector.TraceDetails, detail => detail.Label == "Outcome");
+                Assert.Equal(refreshedSince, inspector.HasTraceNote);
+                Assert.Equal("ma", Assert.Single(inspector.Facts).Value);
+                Assert.Null(inspector.RanIn);
+                Assert.Equal("Parse all words to see your words.", inspector.RanInNote);
+                Assert.False(inspector.HasUses);
+                var sections = InspectorPanel(window).GetVisualDescendants().OfType<Border>()
+                    .Where(border => border.Classes.Contains("inspectorSection") && border.IsEffectivelyVisible)
+                    .Select(AutomationProperties.GetName).ToArray();
+                Assert.Equal(["In this trace", "What it is", "Words it ran in", "In FieldWorks"], sections);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
     [Fact]
     public void ContradictoryNamesShowNoFactsAndSayWhy()
     {

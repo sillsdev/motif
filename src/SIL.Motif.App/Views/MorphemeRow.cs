@@ -117,13 +117,13 @@ public sealed class MorphemeRow : WrapPanel
                 source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
                 return;
             block.Focus(NavigationMethod.Pointer);
-            InspectLink.Request(block, reference);
+            InspectLink.Request(block, reference, morph.Captured);
             e.Handled = true;
         };
         block.KeyDown += (_, e) =>
         {
             if (e.Key is not (Key.Enter or Key.Space)) return;
-            InspectLink.Request(block, reference);
+            InspectLink.Request(block, reference, morph.Captured);
             e.Handled = true;
         };
         return block;

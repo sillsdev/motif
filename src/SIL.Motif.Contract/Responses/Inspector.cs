@@ -164,6 +164,13 @@ public sealed record InspectResponse(InspectorSubject Subject, InspectorResoluti
     /// <summary>Whether FieldWorks has been saved since the Baseline the facts were read from.</summary>
     public bool IsStale { get; init; }
 
+    /// <summary>
+    /// The bundle digest of the Baseline the facts were read from, as a trace's host capture records it, so a caller
+    /// holding a trace can tell whether the trace and these facts read the same Baseline; <see langword="null"/>
+    /// without a Baseline.
+    /// </summary>
+    public string? BaselineDigest { get; init; }
+
     /// <summary>The stored Assessment the words and timings come from, or <see langword="null"/> when none matches.</summary>
     public string? AssessmentId { get; init; }
 

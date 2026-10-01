@@ -424,6 +424,8 @@ public sealed class AssessCommandTests : IDisposable
         var response = inspected.Value!;
         Assert.Equal(InspectorResolution.Resolved, response.Resolution);
         Assert.Null(response.AssessmentId);
+        Assert.Equal(CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath).Value!.Baseline!.Token.BundleDigest,
+            response.BaselineDigest);
         Assert.Equal(InspectorSectionStatus.Available, response.Facts.Status);
         Assert.Equal(SeededProject.FirstForm, response.Facts.Value!.Entry!.Headword);
         Assert.Equal(new TraceTimingKey("lex_entry", entryKey), response.TimingKey);

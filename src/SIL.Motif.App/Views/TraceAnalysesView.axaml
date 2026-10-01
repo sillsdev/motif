@@ -33,7 +33,7 @@
                   <DataTemplate x:DataType="vm:TraceMorphViewModel">
                     <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:InspectLink Subject="{Binding InspectSubject}" IsVisible="{Binding CanInspect}"
+                        <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
                                            FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}">
                           <TextBlock Text="{Binding Form}" FontWeight="SemiBold" />
                         </views:InspectLink>

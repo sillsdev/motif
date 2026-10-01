@@ -106,7 +106,7 @@ public sealed partial class MainWindow : Window
             return;
         }
         _inspectedFrom = e.Origin;
-        workspace.Context.OpenInspector(e.Subject, InspectLink.GetFrom(e.Origin));
+        workspace.Context.OpenInspector(e.Subject, InspectLink.GetFrom(e.Origin), InspectLink.GetTrace(e.Origin), e.Captured);
     }
 
     private void ReturnFocusFromInspector()

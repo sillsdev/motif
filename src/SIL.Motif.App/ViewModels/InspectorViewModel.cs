@@ -88,6 +88,19 @@ public sealed partial class InspectorViewModel : ObservableObject
     /// <summary>Whether <see cref="WhatItIs"/> was read from the Baseline, so it carries the freshness mark.</summary>
     public bool WhatItIsFromBaseline { get; private set; }
 
+    /// <summary>"In this trace of matinlu" when the inspector opened from a trace; otherwise empty.</summary>
+    public string TraceTitle { get; private set; } = string.Empty;
+
+    /// <summary>What the trace itself recorded about the object, kept apart from the Baseline's facts.</summary>
+    public IReadOnlyList<InspectorDetail> TraceDetails { get; private set; } = [];
+
+    public bool HasTrace => TraceTitle.Length > 0;
+
+    /// <summary>Said when the trace read another Baseline than the facts, as after a Refresh; otherwise empty.</summary>
+    public string TraceNote { get; private set; } = string.Empty;
+
+    public bool HasTraceNote => TraceNote.Length > 0;
+
     /// <summary>The lines that say what the object is: its gloss and kind first, then where it belongs.</summary>
     public IReadOnlyList<string> WhatItIs { get; private set; } = [];
 
@@ -205,7 +218,11 @@ public sealed partial class InspectorViewModel : ObservableObject
         _openedOn = _pageTitle(_context.CurrentPage);
         Crumbs.Clear();
         Crumbs.Add(new InspectorCrumbViewModel(request.From ?? _openedOn, null));
-        Crumbs.Add(new InspectorCrumbViewModel(CrumbLabel(request.Subject), request.Subject));
+        Crumbs.Add(new InspectorCrumbViewModel(CrumbLabel(request.Subject), request.Subject)
+        {
+            Trace = request.Trace,
+            Captured = request.Captured,
+        });
         IsOpen = true;
         Load(request.Subject);
     }
@@ -242,6 +259,12 @@ public sealed partial class InspectorViewModel : ObservableObject
     private void Show(InspectorSubject subject, InspectResponse? response, string message, bool loading)
     {
         var facts = response?.Facts.Value;
+        var crumb = Crumbs.Count > 0 ? Crumbs[^1] : null;
+        TraceDetails = crumb?.Trace is null ? [] : crumb.Captured;
+        TraceTitle = crumb?.Trace is { } trace ? $"In this trace of {trace.Word}" : string.Empty;
+        TraceNote = crumb?.Trace is { } traced && response?.BaselineDigest is { } read && traced.BaselineDigest != read
+            ? "Traced before your last Refresh. The facts and times below are from the current Baseline, not this trace."
+            : string.Empty;
         IsLoading = loading;
         Message = message;
         IsStale = response?.IsStale == true;
@@ -340,6 +363,12 @@ public sealed record InspectorCrumbViewModel(string Label, InspectorSubject? Sub
     public bool IsOrigin => Subject is null;
 
     public string AutomationName => IsOrigin ? $"Back to {Label}" : Label;
+
+    /// <summary>The trace the object was named in, for the crumb the inspector opened on; <see langword="null"/> otherwise.</summary>
+    public InspectorTrace? Trace { get; init; }
+
+    /// <summary>What that trace recorded about the object.</summary>
+    public IReadOnlyList<InspectorDetail> Captured { get; init; } = [];
 }
 
 /// <summary>Some words in an inspector section: a heading that counts them, the few shown, and the rest on request.</summary>

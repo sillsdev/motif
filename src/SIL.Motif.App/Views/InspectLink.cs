@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Views;
@@ -23,6 +24,16 @@ public sealed class InspectLink : HyperlinkButton
     public static readonly AttachedProperty<string?> FromProperty =
         AvaloniaProperty.RegisterAttached<InspectLink, Control, string?>("From", inherits: true);
 
+    /// <summary>
+    /// The trace the names inside this element were recorded in, such as Try a Word's. Inherited, so one setting on
+    /// the page covers every name; unset means the names are not from a trace.
+    /// </summary>
+    public static readonly AttachedProperty<InspectorTrace?> TraceProperty =
+        AvaloniaProperty.RegisterAttached<InspectLink, Control, InspectorTrace?>("Trace", inherits: true);
+
+    public static readonly StyledProperty<IReadOnlyList<InspectorDetail>?> CapturedProperty =
+        AvaloniaProperty.Register<InspectLink, IReadOnlyList<InspectorDetail>?>(nameof(Captured));
+
     public static readonly StyledProperty<InspectorSubject?> SubjectProperty =
         AvaloniaProperty.Register<InspectLink, InspectorSubject?>(nameof(Subject));
 
@@ -41,24 +52,35 @@ public sealed class InspectLink : HyperlinkButton
         set => SetValue(SubjectProperty, value);
     }
 
+    /// <summary>What the trace recorded about the name, which the inspector shows apart from the Baseline's facts.</summary>
+    public IReadOnlyList<InspectorDetail>? Captured
+    {
+        get => GetValue(CapturedProperty);
+        set => SetValue(CapturedProperty, value);
+    }
+
     protected override Type StyleKeyOverride => typeof(HyperlinkButton);
+
+    public static InspectorTrace? GetTrace(Control control) => control.GetValue(TraceProperty);
+
+    public static void SetTrace(Control control, InspectorTrace? value) => control.SetValue(TraceProperty, value);
 
     public static string? GetFrom(Control control) => control.GetValue(FromProperty);
 
     public static void SetFrom(Control control, string? value) => control.SetValue(FromProperty, value);
 
     /// <summary>Asks the window to show <paramref name="subject"/> in the inspector, on behalf of <paramref name="source"/>.</summary>
-    public static void Request(Control source, InspectorSubject subject)
+    public static void Request(Control source, InspectorSubject subject, IReadOnlyList<InspectorDetail>? captured = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(subject);
-        source.RaiseEvent(new InspectRequestedEventArgs(subject, source));
+        source.RaiseEvent(new InspectRequestedEventArgs(subject, source) { Captured = captured ?? [] });
     }
 
     protected override void OnClick()
     {
         base.OnClick();
-        if (Subject is { } subject) Request(this, subject);
+        if (Subject is { } subject) Request(this, subject, Captured);
     }
 
     private void NameForReaders()
@@ -74,6 +96,9 @@ public sealed class InspectRequestedEventArgs(InspectorSubject subject, Control 
 {
     /// <summary>The object to show.</summary>
     public InspectorSubject Subject { get; } = subject;
+
+    /// <summary>What a trace recorded about the name, when it was named in one.</summary>
+    public IReadOnlyList<InspectorDetail> Captured { get; init; } = [];
 
     /// <summary>The control that asked, which takes the keyboard back when the inspector closes.</summary>
     public Control Origin { get; } = origin;
