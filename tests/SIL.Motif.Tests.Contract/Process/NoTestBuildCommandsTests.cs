@@ -42,14 +42,15 @@ public sealed class NoTestBuildCommandsTests
     {
         var testScript = File.ReadAllText(Path.Combine(RepositoryRoot(), "test.ps1"));
         var gate = Regex.Match(testScript,
-            @"if\s*\(\s*\$All\s*\)\s*\{(?<body>[\s\S]*?)\r?\n\}",
-            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+            @"^if\s*\(\s*\$All\s*\)\s*\{(?<body>[\s\S]*?)^\}",
+            RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.CultureInvariant);
 
         Assert.True(gate.Success, "test.ps1 must gate artifact preparation on -All.");
         Assert.Contains("Prepare-TestArtifacts.ps1", gate.Groups["body"].Value, StringComparison.Ordinal);
         Assert.Contains("Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf", gate.Groups["body"].Value,
             StringComparison.Ordinal);
-        Assert.Contains("& $prepareTestArtifacts", gate.Groups["body"].Value, StringComparison.Ordinal);
+        Assert.Contains("& $prepareTestArtifacts -Configuration $Configuration", gate.Groups["body"].Value,
+            StringComparison.Ordinal);
         Assert.Contains("[switch] $All", testScript, StringComparison.Ordinal);
         Assert.DoesNotContain("if ([string]::IsNullOrWhiteSpace($levels))", testScript, StringComparison.Ordinal);
     }

@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Integration;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 [Trait("MotifTestLevel", "System")]
-public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, ITestOutputHelper output)
+public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
 {
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ProcessCleanupBound = TimeSpan.FromSeconds(10);
