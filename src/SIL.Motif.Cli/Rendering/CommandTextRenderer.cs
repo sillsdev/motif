@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
@@ -511,16 +510,7 @@ public static class CommandTextRenderer
 
     private static string ShortHash(string? value) => value is null ? "unknown" : value[..Math.Min(8, value.Length)] + "…";
 
-    // The tree, attempts and analyses are the reading's own objects; printing them twice only doubles the output.
-    private static string TraceJson(WordTraceResponse response)
-    {
-        var json = JsonNode.Parse(ProjectionJson.Serialize(response))!.AsObject();
-        if (response.Reading is not { } reading) return ProjectionJson.Serialize(response);
-        if (ReferenceEquals(response.Root, reading.Root)) json.Remove("root");
-        if (ReferenceEquals(response.Candidates, reading.Attempts)) json.Remove("candidates");
-        if (ReferenceEquals(response.Analyses, reading.Analyses)) json.Remove("analyses");
-        return json.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-    }
+    private static string TraceJson(WordTraceResponse response) => ProjectionJson.Serialize(response);
 
     // The reading the window shows, in the same order: the answer, why attempts stopped, the path, then every name.
     private static string RenderTrace(WordTraceResponse response)
