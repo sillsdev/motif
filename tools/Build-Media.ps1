@@ -48,6 +48,15 @@ function Invoke-Native {
     }
 }
 
+function Invoke-MediaTest {
+    param([string] $Project, [string] $Filter)
+
+    Invoke-Native 'pwsh' @(
+        '-NoProfile', '-File', (Join-Path $repositoryRoot 'test.ps1'), `
+        '-Configuration', $Configuration, '-SkipBuild', '-All', '-Project', $Project, '-Filter', $Filter
+    )
+}
+
 function Remove-GeneratedDirectory {
     param([string] $Path)
 
@@ -140,13 +149,8 @@ function Invoke-MediaStep {
             try {
                 $env:MOTIF_SCREENSHOTS = $screenshotsRoot
                 Remove-Item Env:MOTIF_SCREENSHOT_PROJECTS -ErrorAction SilentlyContinue
-                Invoke-Native 'dotnet' @(
-                    'test',
-                    (Join-Path $repositoryRoot 'tests/SIL.Motif.Tests.App/SIL.Motif.Tests.App.csproj'),
-                    '--configuration', $Configuration,
-                    '--no-build', '--no-restore', '--nologo',
-                    '--filter', 'FullyQualifiedName~PageScreenshots.CaptureEveryPage|FullyQualifiedName~CrashWindowTests.CaptureTheErrorWindow'
-                )
+                Invoke-MediaTest 'SIL.Motif.Tests.App' `
+                    'FullyQualifiedName~PageScreenshots.CaptureEveryPage|FullyQualifiedName~CrashWindowTests.CaptureTheErrorWindow'
             }
             finally {
                 $env:MOTIF_SCREENSHOTS = $previousScreenshots
@@ -160,13 +164,7 @@ function Invoke-MediaStep {
             try {
                 $env:MOTIF_WALKTHROUGH_OUTPUT = $walkthroughOutput
                 $env:MOTIF_WALKTHROUGH_CLIPS = '1'
-                Invoke-Native 'dotnet' @(
-                    'test',
-                    (Join-Path $repositoryRoot 'tests/SIL.Motif.Tests.App/SIL.Motif.Tests.App.csproj'),
-                    '--configuration', $Configuration,
-                    '--no-build', '--no-restore', '--nologo',
-                    '--filter', 'FullyQualifiedName~WalkthroughReplayTests'
-                )
+                Invoke-MediaTest 'SIL.Motif.Tests.App' 'FullyQualifiedName~WalkthroughReplayTests'
             }
             finally {
                 $env:MOTIF_WALKTHROUGH_OUTPUT = $previousWalkthroughOutput
@@ -186,13 +184,7 @@ function Invoke-MediaStep {
             [System.IO.File]::WriteAllText($helpExport, ($json -join "`n"), [System.Text.UTF8Encoding]::new($false))
         }
         'media-test' {
-            Invoke-Native 'dotnet' @(
-                'test',
-                (Join-Path $repositoryRoot 'tests/SIL.Motif.Tests.Contract/SIL.Motif.Tests.Contract.csproj'),
-                '--configuration', $Configuration,
-                '--no-build', '--no-restore', '--nologo',
-                '--filter', 'FullyQualifiedName~MediaManifestTests'
-            )
+            Invoke-MediaTest 'SIL.Motif.Tests.Contract' 'FullyQualifiedName~MediaManifestTests'
         }
         'site' {
             Invoke-Native 'npm' @('ci', '--prefix', $siteRoot)

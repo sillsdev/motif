@@ -167,7 +167,11 @@ jobs:
 
       - name: Test (full suite)
         shell: pwsh
-        run: ./test.ps1 -Configuration Release -SkipBuild
+        run: ./test.ps1 -Configuration Release -SkipBuild -All
+
+      - name: Verify PanGloss pin mode handling
+        shell: pwsh
+        run: ./tools/Test-PanGlossRelease.ps1 -RepositoryRoot (Get-Location).Path -ProbeRoot (Join-Path $env:RUNNER_TEMP 'motif-pangloss-pin-probe')
 
       # A console summary names failing tests but not why; the per-project logs and TRX files do.
       - name: Upload test results

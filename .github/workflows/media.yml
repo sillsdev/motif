@@ -41,7 +41,11 @@ jobs:
 
       - name: Build media artifacts
         shell: pwsh
-        run: ./tools/Build-Media.ps1 -Configuration Release -Only build,icons,samples,screenshots,walkthroughs,help,media-test
+        run: ./tools/Build-Media.ps1 -Configuration Release -Only build,icons,samples,screenshots,walkthroughs,help
+
+      - name: Test media manifest
+        shell: pwsh
+        run: ./test.ps1 -Configuration Release -SkipBuild -All -Project SIL.Motif.Tests.Contract -Filter FullyQualifiedName~MediaManifestTests
 
       - name: Upload media artifacts
         uses: actions/upload-artifact@v4

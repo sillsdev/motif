@@ -54,7 +54,7 @@ try {
     }
     $env:MOTIF_SITE_CLI_EXE = $cliPath
 
-    & (Join-Path $repoRoot 'test.ps1') -Configuration $Configuration -SkipBuild
+    & (Join-Path $repoRoot 'test.ps1') -Configuration $Configuration -SkipBuild -All
     if ($LASTEXITCODE -ne 0) { throw 'The repository test wrapper failed.' }
     if ($ReleaseValidation) {
         & (Join-Path $repoRoot 'tools/Assert-RequiredPanGloss.ps1') -ResultsDirectory (Join-Path $repoRoot "bin/$Configuration/test-results")
