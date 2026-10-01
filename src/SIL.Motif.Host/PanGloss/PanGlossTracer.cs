@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Assess;
+
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>Traces one word and preserves the parser diagnostic document.</summary>
@@ -6,8 +8,15 @@ public sealed class PanGlossTracer : IPanGlossTracer
     public static readonly TimeSpan DefaultTimeout = Timeout.InfiniteTimeSpan;
 
     private readonly IPanGlossInvoker _invoker;
+    private readonly StepCap? _stepLimit;
 
-    public PanGlossTracer(IPanGlossInvoker invoker) => _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
+    /// <summary>Traces through <paramref name="invoker"/>; <paramref name="stepLimit"/> is passed to the parser
+    /// when given, and otherwise PanGloss's own runaway guard applies.</summary>
+    public PanGlossTracer(IPanGlossInvoker invoker, StepCap? stepLimit = null)
+    {
+        _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
+        _stepLimit = stepLimit;
+    }
 
     public async Task<PanGlossTraceOutcome> TraceAsync(
         string grammarPath, string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
@@ -19,7 +28,7 @@ public sealed class PanGlossTracer : IPanGlossTracer
             throw new ArgumentOutOfRangeException(nameof(timeout), "A trace timeout must be positive or infinite.");
 
         var outcome = await _invoker.RunAsync(
-            new PanGlossRequest.Trace(grammarPath, word), "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
+            new PanGlossRequest.Trace(grammarPath, word) { StepLimit = _stepLimit }, "trace:" + word, cancellationToken, cap).ConfigureAwait(false);
 
         return outcome switch
         {

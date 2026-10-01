@@ -44,4 +44,19 @@ public sealed class TryWordRealClientTests(PristineProjectFixture pristine)
         Assert.NotEqual(capped.Value.StopReason, timedOut.Value.StopReason);
         Assert.Equal(3, project.Invocations().Count(invocation => invocation == "parse"));
     }
+
+    [Fact]
+    public async Task AStoppedSearchReportedWithAFailingExitIsIncompleteNotRefused()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        project.Behave(new { traceSignature = "-", traceCapped = true, exitCode = 1 });
+
+        var capped = await project.Client.TraceWordAsync(
+            new WordTraceRequest(project.FwDataPath, SeededProject.FirstForm), CancellationToken.None);
+
+        Assert.True(capped.Succeeded, capped.Refusal?.Message);
+        Assert.False(capped.Value!.Complete);
+        Assert.Equal("incomplete", capped.Value.SearchStatus);
+        Assert.Contains("step cap", capped.Value.StopReason, StringComparison.Ordinal);
+    }
 }
