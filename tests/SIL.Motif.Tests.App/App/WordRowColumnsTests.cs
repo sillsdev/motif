@@ -88,6 +88,41 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void AListSharingOneMeaningHidesItsColumn_OnlyWhereThePageCanShowIt()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (header, row, window) = Show(new WordRow { Row = new WordRowViewModel(Alikula()), ShowsMeaning = false },
+                WordRowColumns.All);
+            header.ShowsMeaning = false;
+            window.UpdateLayout();
+            try
+            {
+                Assert.False(Part(row, "wordRowMeaning").IsEffectivelyVisible);
+                Assert.DoesNotContain("MEANING", VisibleTexts(header));
+                // The hidden meaning gives up its column gap as well as its width.
+                var panGloss = BoundsIn(Part(row, "wordRowPanGloss"), row);
+                Assert.InRange(BoundsIn(Part(row, "wordRowWarnings"), row).X - panGloss.Right, 0, 8.5);
+
+                row.ShowsMeaning = header.ShowsMeaning = true;
+                window.UpdateLayout();
+                Assert.True(Part(row, "wordRowMeaning").IsEffectivelyVisible);
+                Assert.Contains("MEANING", VisibleTexts(header));
+
+                // A page whose columns leave the meaning out keeps it hidden whatever the list's words share.
+                row.Columns = header.Columns = WordRowColumns.All & ~WordRowColumns.Meaning;
+                window.UpdateLayout();
+                Assert.False(Part(row, "wordRowMeaning").IsEffectivelyVisible);
+                Assert.DoesNotContain("MEANING", VisibleTexts(header));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void APagesOwnTimeTakesTheTimeCell_AndTheCellWidensToHoldIt()
     {
         avalonia.Invoke(() =>
