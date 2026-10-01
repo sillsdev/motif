@@ -16,6 +16,25 @@ public enum GrammarFindingBucket
     Information,
 }
 
+/// <summary>
+/// The mark each grammar finding level wears on the Warnings page, on its filter chip and beside each kind's count
+/// alike. None of them is a verdict glyph: a grammar warning is not a parse that differs.
+/// </summary>
+public static class GrammarLevelMarks
+{
+    public const string Error = "×";
+    public const string Warning = "!";
+    public const string Information = "i";
+
+    /// <summary>The mark for <paramref name="level"/>.</summary>
+    public static string Of(GrammarDiagnosticLevel level) => level switch
+    {
+        GrammarDiagnosticLevel.Error => Error,
+        GrammarDiagnosticLevel.Warning => Warning,
+        _ => Information,
+    };
+}
+
 /// <summary>The Warnings page groups diagnostics by report level and shows the selected group's rows.</summary>
 /// <remarks>
 /// <see cref="Rows"/> is the grid's own collection view, so a header sort survives filtering.
@@ -260,8 +279,11 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     public bool HasDescription => Description is not null;
     public bool HasGuidance => Guidance is not null;
     public bool HasDetails => HasDescription || HasGuidance;
-    /// <summary>Whether a finding signals a difference or an informational limit.</summary>
+    /// <summary>Whether a finding signals a difference or an informational limit, which chooses its colour.</summary>
     public Verdict Meaning => IsWarning || IsError ? Verdict.Differs : Verdict.Limit;
+
+    /// <summary>The level's own mark, the one its filter chip wears.</summary>
+    public string Mark => GrammarLevelMarks.Of(Level);
 
     [ObservableProperty]
     private bool _isSelected;

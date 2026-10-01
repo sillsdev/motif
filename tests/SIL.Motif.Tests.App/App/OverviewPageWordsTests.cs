@@ -83,16 +83,19 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("118 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("83% of the words in your Selection · 88% of their 611 occurrences", page.TextCoverageWords);
-        Assert.Equal("17 no parse · 5 stopped (step or time limit) · 2 skipped", page.TextCoverageBreakdown);
+        Assert.Equal(["118 parsed", "17 no parse", "5 stopped (step or time limit)", "2 skipped"],
+            page.TextCoverageSegments.Select(segment => $"{segment.CountText} {segment.Label}"));
         Assert.Equal("71 of 84 rebuilt", page.AccuracyMain);
         Assert.Equal("The grammar still builds 71 of the 84 words you approved in FieldWorks.", page.AccuracyCaption);
-        Assert.Equal("11 approved words lost · 2 not finished · 1 disapproved analysis still built · " +
-            "PanGloss confirms 9 of 14 words marked Unknown", page.AccuracyBreakdown);
+        Assert.Equal(["71 rebuilt", "3 built another reading", "8 no parse", "2 stopped"],
+            page.AccuracySegments.Select(segment => $"{segment.CountText} {segment.Label}"));
+        Assert.Equal("1 disapproved analysis still built · PanGloss confirms 9 of 14 words marked Unknown",
+            page.AccuracyBreakdown);
         Assert.Equal("24 warnings · 0 errors", page.WarningsCount);
         Assert.Equal("4 worth a look", page.WarningsDetails);
         foreach (var text in new[]
                  {
-                     page.TextCoverageMain, page.TextCoverageWords, page.TextCoverageBreakdown, page.AccuracyMain,
+                     page.TextCoverageMain, page.TextCoverageWords, page.AccuracyMain,
                      page.AccuracyCaption, page.AccuracyBreakdown, page.SpeedMain, page.SpeedMedian,
                      page.SpeedDetails, page.WarningsCount, page.WarningsDetails,
                  })
@@ -143,6 +146,57 @@ public sealed class OverviewPageWordsTests
                     foreach (var bar in tile.GetLogicalDescendants().OfType<OutcomeBar>())
                         Assert.Contains(title, Avalonia.Automation.AutomationProperties.GetName(bar),
                             StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void EachTilesBarHasAKeyNamingEveryColourWithItsCount()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            fake.OverviewCompletesWith(Populated());
+            await context.OpenProjectAsync(ProjectPath);
+
+            var window = Show(page);
+            try
+            {
+                var bars = window.GetLogicalDescendants().OfType<OutcomeBar>().ToArray();
+                Assert.Equal(2, bars.Length);
+                var detail = window.GetLogicalDescendants().OfType<TextBlock>()
+                    .First(text => text.Classes.Contains("overviewTileDetail"));
+                foreach (var bar in bars)
+                {
+                    var parts = bar.GetLogicalDescendants().OfType<Border>()
+                        .Where(part => part.Classes.Contains("outcomeSegment") && !part.Classes.Contains("swatch")).ToArray();
+                    var entries = bar.GetLogicalDescendants().OfType<StackPanel>()
+                        .Where(entry => entry.Classes.Contains("outcomeLegendEntry")).ToArray();
+                    Assert.Equal(bar.Segments!.Count, parts.Length);
+                    // Parts that share a colour share one swatch, so the key shows each colour once.
+                    var colours = bar.Segments.Select((segment, index) => (segment, index)).GroupBy(item => item.segment.Meaning).ToArray();
+                    Assert.Equal(colours.Length, entries.Length);
+                    for (var index = 0; index < entries.Length; index++)
+                    {
+                        var swatch = entries[index].Children.OfType<Border>().Single();
+                        var colour = parts[colours[index].First().index].Classes.Where(name => name != "outcomeSegment").Order();
+                        Assert.Equal(colour, swatch.Classes.Where(name => name is not ("outcomeSegment" or "swatch")).Order());
+                        var words = entries[index].Children.OfType<TextBlock>().Select(text => text.Text ?? string.Empty);
+                        Assert.Equal(string.Join(", ", colours[index].Select(item => $"{item.segment.CountText} {item.segment.Label}")),
+                            string.Join(" ", words));
+                        Assert.All(entries[index].Children.OfType<TextBlock>(), text =>
+                        {
+                            Assert.IsNotAssignableFrom<SelectableTextBlock>(text);
+                            Assert.Equal(detail.FontSize, text.FontSize);
+                        });
+                        Assert.Equal(detail.FontWeight, entries[index].Children.OfType<TextBlock>().Last().FontWeight);
+                    }
                 }
             }
             finally

@@ -95,9 +95,8 @@
             <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewTextCoverage}" />
             <TextBlock Classes="overviewMuted" Text="{Binding TextCoverageWords}" TextWrapping="Wrap" />
-            <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowLegend="False"
+            <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowShares="False"
                               AutomationProperties.Name="Text coverage outcomes" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding TextCoverageBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
         </Button>
 
@@ -111,7 +110,7 @@
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
-            <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding AccuracySegments}" ShowLegend="False"
+            <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding AccuracySegments}" ShowShares="False"
                               AutomationProperties.Name="Approved analyses kept outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding AccuracyBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
