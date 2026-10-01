@@ -79,11 +79,12 @@ public sealed class OverviewTimingScreenshots
     private static TimingResponse MatinluTiming() =>
         new("assessment/one", "all", "rule", 1, 1, 1, [new SlowWordTiming("matinlu", 1)],
             [
-                new TimingAggregateRow("lu", "lu", 0.4, 0.4 / 0.7, 1) { Kind = "morph_rule" },
-                new TimingAggregateRow("ma", "ma", 0.3, 0.3 / 0.7, 1) { Kind = "morph_rule" },
+                new TimingAggregateRow("lu", "lu", 0.4, 0.4, 1) { Kind = "morph_rule" },
+                new TimingAggregateRow("ma", "ma", 0.3, 0.3, 1) { Kind = "morph_rule" },
             ], [])
         {
             Words = [new TimingWordRow("matinlu", 1, TimingCompletion.Finished)],
+            Attribution = new WordTimeAttribution(1, 1, 0.7, 0.3, 0.3, 0, false),
         };
 
     private static TimingResponse Timing(string by) =>
@@ -93,10 +94,10 @@ public sealed class OverviewTimingScreenshots
             by == "kind"
                 ?
                 [
-                    new TimingAggregateRow("morph_rule", "morph_rule", 448, 448d / 680, 9) { Kind = "morph_rule" },
-                    new TimingAggregateRow("phon_rule", "phon_rule", 160, 160d / 680, 7) { Kind = "phon_rule" },
-                    new TimingAggregateRow("lex_entry", "lex_entry", 40, 40d / 680, 9) { Kind = "lex_entry" },
-                    new TimingAggregateRow("root_index", "root_index", 32, 32d / 680, 9) { Kind = "root_index" },
+                    new TimingAggregateRow("morph_rule", "morph_rule", 448, 448d / 800, 9) { Kind = "morph_rule" },
+                    new TimingAggregateRow("phon_rule", "phon_rule", 160, 160d / 800, 7) { Kind = "phon_rule" },
+                    new TimingAggregateRow("lex_entry", "lex_entry", 40, 40d / 800, 9) { Kind = "lex_entry" },
+                    new TimingAggregateRow("root_index", "root_index", 32, 32d / 800, 9) { Kind = "root_index" },
                 ]
                 :
                 [
@@ -107,5 +108,6 @@ public sealed class OverviewTimingScreenshots
             by == "kind" ? [] : [new WordRuleTiming("mwalimu", 180, 900), new WordRuleTiming("hawajafika", 34, 200)])
         {
             Words = Words.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion)).ToArray(),
+            Attribution = new WordTimeAttribution(Words.Length, 800, 680, 120, 0.15, 0, false),
         };
 }
