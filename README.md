@@ -60,6 +60,10 @@ Pop-Location
 
 The site reads the exported Help rather than maintaining a second authored copy. Refresh the export after Help changes, and provide current Walkthrough media through `MOTIF_WALKTHROUGH_OUTPUT`; otherwise site sync uses the checked-in fixtures for those inputs. `npm test` covers the sync script, and `npm run build` runs the sync before building. This site workflow is separate from `./build.ps1` and `./test.ps1`.
 
+To generate the publishable website, manually run the **CI** workflow with **publish_website** enabled (or use `gh workflow run ci.yml -f publish_website=true`). Ordinary pushes, pull requests and manual runs with the flag disabled skip the documentation job. An opted-in run validates the pinned PanGloss release, integration tests, current Help, images and release videos before building and uploading the `documentation-site` artifact. Any validation, site build or artifact upload failure fails that job. This prepares the website artifact; it does not deploy it to a hosting service.
+
+`./tools/Build-Media.ps1` generates media without building the site by default. The `site` step remains available through an explicit `-Only` selection for local site development.
+
 ## Read next
 
 - [Current architecture](docs/current-architecture.md) — project references, command sharing, process coordination, cache ownership and Help content location.

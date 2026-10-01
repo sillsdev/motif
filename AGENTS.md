@@ -232,12 +232,13 @@ pages, the CLI's on command and agent pages. English is the source; other langua
 sibling folders, so never hard-code English text where a Title or Description would do.
 
 The site in `site/` is built from those files (see `README.md`, "Documentation"); `cd site; npm test` covers its
-sync script. It is not yet part of `./build.ps1` or CI.
+sync script. Website validation runs in CI only when `publish_website` is enabled.
 
 ## Media assets
 
-Run ./tools/Build-Media.ps1 to rebuild media outputs and the documentation site. Every committed image,
-video, and diagram belongs in media.json as generated, source, or record; regenerate generated assets
+Run ./tools/Build-Media.ps1 to rebuild media outputs. Website generation is excluded by default;
+the CI workflow's explicit `publish_website` flag enables release documentation validation and site upload.
+Every committed image, video, and diagram belongs in media.json as generated, source, or record; regenerate generated assets
 from their source with the named Build-Media step. The walkthroughs step replays the App walkthrough tests
 into bin/<Configuration>/media/walkthroughs, which the site sync consumes. The media workflow skips the
 site step and uploads bin/Release/media.
