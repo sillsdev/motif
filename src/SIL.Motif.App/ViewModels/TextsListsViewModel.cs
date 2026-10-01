@@ -133,14 +133,6 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
-    /// <summary>Whether the selected list includes more than one FieldWorks standing.</summary>
-    public bool ShowsRowStatus => SelectedList is { } list &&
-        list.Cells.Select(cell => cell.Row).Distinct().Skip(1).Any();
-
-    /// <summary>Whether the selected list includes more than one PanGloss result.</summary>
-    public bool ShowsColumnStatus => SelectedList is { } list &&
-        list.Cells.Select(cell => cell.Column).Distinct().Skip(1).Any();
-
     public string HandOffListDisabledReason => SelectedList is null
         ? "Choose a word list first."
         : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
@@ -189,8 +181,6 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedList))]
-    [NotifyPropertyChangedFor(nameof(ShowsRowStatus))]
-    [NotifyPropertyChangedFor(nameof(ShowsColumnStatus))]
     [NotifyPropertyChangedFor(nameof(HandOffListDisabledReason))]
     [NotifyPropertyChangedFor(nameof(HandOffListUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]

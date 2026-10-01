@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Styling;
 using Avalonia.Automation;
 using SIL.Motif.Commands.Queries;
@@ -8,6 +9,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using Xunit;
+using WordRow = SIL.Motif.App.Views.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -88,7 +90,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(5, compare.Rows.Count);
                 Assert.Equal(5, compare.Columns.Count);
                 Assert.Equal(25, window.GetLogicalDescendants().OfType<MatrixCell>().Count());
-                Assert.Equal(6, window.GetLogicalDescendants().OfType<OpinionMark>().Count());
+                Assert.Equal(5, window.GetVisualDescendants().OfType<OpinionMark>().Count(mark => mark.IsEffectivelyVisible));
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
@@ -102,13 +104,11 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     var line = Assert.Single(heading.GetLogicalDescendants().OfType<Border>());
                     Assert.DoesNotContain(statusClass, line.Classes);
                 }
-                var wordCell = window.GetLogicalDescendants().OfType<Border>()
-                    .Single(border => border.Classes.Contains("matrixWordCell"));
-                Assert.Equal("kitabu: Approved in FieldWorks, PanGloss found no parse.",
-                    AutomationProperties.GetName(wordCell));
-                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == compare.Words.Single().Meaning);
-                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    text.Text == compare.Words.Single().Meaning && text.Classes.Contains("error"));
+                var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
+                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
+                Assert.Equal("kitabu · Approved · PanGloss: No parse · Lost", AutomationProperties.GetName(body));
+                var meaning = row.GetVisualDescendants().OfType<MarkChip>().Single(chip => chip.Text == compare.Words.Single().Meaning);
+                Assert.Contains("problem", meaning.Classes);
                 var incorrectRow = window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Choose the Incorrect spelling row");
                 Assert.All(incorrectRow.GetLogicalDescendants().OfType<OpinionMark>(), mark => Assert.False(mark.IsVisible));
@@ -123,7 +123,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void CompactWordCellKeepsOneOpinionMarkPerStoredAnalysis()
+    public void ARowShowsItsAnalysisOpinion_AndItsCardNamesEveryStoredOpinion()
     {
         avalonia.Invoke(() =>
         {
@@ -134,7 +134,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 "kitabu", "analysed", false, "Search completed", 10, null)
             {
                 ProjectStanding = ProjectStanding.Approved,
-                    Readings = [new ParserReading([]), new ParserReading([])],
+                Readings = [new ParserReading([]), new ParserReading([])],
                 StoredAnalyses = [approved, disapproved],
                 ReadingGrades = [ReadingGrade.Approved, ReadingGrade.Disapproved],
                 Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10,
@@ -154,11 +154,17 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 window.UpdateLayout();
 
-                var wordCell = window.GetLogicalDescendants().OfType<Border>()
-                    .Single(border => border.Classes.Contains("matrixWordCell"));
-                Assert.Equal(["Approved", "Disapproved"], wordCell.GetLogicalDescendants()
-                    .OfType<OpinionMark>().Select(AutomationProperties.GetName));
-                Assert.Contains("Approved, Disapproved in FieldWorks", AutomationProperties.GetName(wordCell));
+                var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
+                Assert.Equal(["Approved"], row.GetVisualDescendants().OfType<OpinionMark>()
+                    .Where(mark => mark.IsEffectivelyVisible).Select(AutomationProperties.GetName));
+
+                compare.Words.Single().IsExpanded = true;
+                window.UpdateLayout();
+
+                var card = Assert.Single(row.GetVisualDescendants().OfType<WordRowCard>());
+                Assert.True(card.IsEffectivelyVisible);
+                Assert.Equal(["Approved", "Disapproved"], card.GetVisualDescendants().OfType<MarkChip>()
+                    .Where(chip => chip.Mark?.Kind == MarkKind.Opinion).Select(chip => chip.Text));
             }
             finally
             {

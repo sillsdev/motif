@@ -450,6 +450,8 @@ public sealed class ParserReadingMorphViewModel
     public string LinkName => _entry is { Length: > 0 } entry
         ? $"Open {entry} in {_toolName}"
         : $"Open the entry for {Form} in {_toolName}";
+    /// <summary>The tip of a morph whose form is itself its link: which form opens, and in which FieldWorks tool.</summary>
+    public string FormLinkTip => $"Open {Form} in {_toolName}";
     public string Category { get; }
     public bool Guessed { get; }
     public Uri? Link { get; }

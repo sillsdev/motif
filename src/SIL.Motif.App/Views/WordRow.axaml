@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.WordRow"
+             x:DataType="views:WordRow"
+             x:Name="Self">
+  <Border x:Name="Root" Classes="wordRowFrame" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
+    <Border Classes="wordRowEdge">
+      <StackPanel>
+        <Border x:Name="Body" Classes="wordRowBody" Focusable="True" IsTabStop="True"
+                ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
+        <Grid Classes="wordRowLine">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowNext" />
+          </Grid.ColumnDefinitions>
+          <Panel Classes="wordRowTick" VerticalAlignment="Center">
+            <CheckBox x:Name="Tick" IsVisible="{Binding #Self.ShowsTick}" IsChecked="{Binding #Self.IsChecked, Mode=TwoWay}"
+                      HorizontalAlignment="Center"
+                      AutomationProperties.Name="{Binding Word, StringFormat='Tick {0}'}" />
+          </Panel>
+
+            <Grid Grid.Column="1" Classes="wordRowCells">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowMeaning" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWarnings" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPlaces" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTime" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowRead" />
+              </Grid.ColumnDefinitions>
+
+              <StackPanel Classes="wordRowWord" VerticalAlignment="Center">
+                <views:CopyableTextBlock Classes="wordRowForm" Text="{Binding Word}" TextTrimming="CharacterEllipsis" />
+                <views:CopyableTextBlock Classes="wordRowGloss" Text="{Binding Gloss}" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding Gloss, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <views:CopyableTextBlock Classes="wordRowStaged" Text="{Binding #Self.StagedText}" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding #Self.StagedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+
+              <DockPanel Grid.Column="1" Classes="wordRowFieldWorks" VerticalAlignment="Center">
+                <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
+                                      VerticalAlignment="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                                      AutomationProperties.Name="{Binding OpinionLabel}" />
+                <ItemsControl ItemsSource="{Binding FieldWorksMorphemes}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                      <Border Classes="wordRowMorph">
+                        <StackPanel>
+                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Form}" />
+                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding GlossOrPlaceholder}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DockPanel>
+
+              <DockPanel Grid.Column="2" Classes="wordRowPanGloss" VerticalAlignment="Center">
+                <views:MarkChip DockPanel.Dock="Left" Mark="{Binding OutcomeMark}" Text="{Binding OutcomeLabel}"
+                                Compact="True" Classes="wordRowOutcome" VerticalAlignment="Top"
+                                HorizontalAlignment="Left" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WordRowMorphemeViewModel">
+                      <Border Classes="wordRowMorph" Classes.different="{Binding IsDifferent}">
+                        <StackPanel>
+                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Morph.Form}" />
+                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding Morph.GlossOrPlaceholder}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DockPanel>
+
+              <Panel Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center">
+                <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
+                                HorizontalAlignment="Left" />
+              </Panel>
+
+              <Panel Grid.Column="4" Classes="wordRowWarnings" VerticalAlignment="Center">
+                <views:MarkChip Mark="{Binding WarningMark}" Text="{Binding WarningsText}" Compact="True"
+                                IsVisible="{Binding HasWarningsNamed}" HorizontalAlignment="Left" />
+              </Panel>
+
+              <views:CopyableTextBlock Grid.Column="5" Classes="wordRowPlaces wordRowNumber" Text="{Binding PlacesText}"
+                         TextAlignment="Right" />
+              <views:CopyableTextBlock Grid.Column="6" Classes="wordRowTime wordRowNumber muted" Text="{Binding ElapsedText}"
+                         TextAlignment="Right" />
+              <Panel Grid.Column="7" Classes="wordRowRead" VerticalAlignment="Center">
+                <Ellipse Classes="unreadMarkDot" IsVisible="{Binding ShowUnread}" HorizontalAlignment="Center"
+                         ToolTip.Tip="{Binding UnreadText}" AutomationProperties.Name="{Binding UnreadText}" />
+              </Panel>
+            </Grid>
+
+          <StackPanel Grid.Column="2" Classes="wordRowNext" Orientation="Horizontal" VerticalAlignment="Center">
+            <HyperlinkButton x:Name="OpenInText" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
+                             AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
+            <HyperlinkButton x:Name="TryWord" Content="{Binding TryWordLabel}" Command="{Binding TryWordCommand}"
+                             AutomationProperties.Name="{Binding Word, StringFormat='Try {0} in Try a Word'}" />
+            <HyperlinkButton x:Name="WordAnalyses" Content="{Binding WordAnalysesLabel}"
+                             NavigateUri="{Binding WordAnalysesLink}" IsEnabled="{Binding HasWordAnalysesLink}"
+                             AutomationProperties.Name="{Binding WordAnalysesName}"
+                             ToolTip.Tip="{Binding WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
+          </StackPanel>
+        </Grid>
+        </Border>
+
+        <views:CopyableTextBlock Classes="wordRowNote" Text="{Binding #Self.Note}" TextTrimming="CharacterEllipsis"
+                   Margin="{DynamicResource Component.WordRow.CardPadding}"
+                   IsVisible="{Binding #Self.Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <Border x:Name="CardHost" Classes="wordRowCard" IsVisible="{Binding #Self.IsOpen}">
+          <ContentControl Content="{Binding #Self.Card}" DataContext="{Binding #Self.DataContext}" />
+        </Border>
+      </StackPanel>
+    </Border>
+  </Border>
+</UserControl>

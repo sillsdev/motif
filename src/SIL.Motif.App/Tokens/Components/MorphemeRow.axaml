@@ -27,6 +27,17 @@
   <Style Selector="HyperlinkButton.morphForm">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
   </Style>
+  <Style Selector="HyperlinkButton.morphFormLink">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="StackPanel.morphFormLinkWords">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphLinkMark">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
   <Style Selector=":is(TextBlock).morphGloss">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>

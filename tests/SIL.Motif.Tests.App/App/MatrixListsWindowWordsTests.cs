@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.ViewModels;
@@ -191,11 +192,11 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             var compare = Compare([Word("nobody", "no-analysis", ProjectStanding.NotPresent)]);
             var offset = WithWindow(new TextsListsPanel(new TextsListsViewModel(compare)), window =>
             {
-                var link = window.GetLogicalDescendants().OfType<Button>().Single(button =>
-                    AutomationProperties.GetName(button) == "Open nobody in Analyze texts");
-                var tick = window.GetLogicalDescendants().OfType<CheckBox>().Single(box =>
+                var word = window.GetVisualDescendants().OfType<TextBlock>().Single(text =>
+                    text.Classes.Contains("wordRowForm") && text.Text == "nobody");
+                var tick = window.GetVisualDescendants().OfType<CheckBox>().Single(box =>
                     AutomationProperties.GetName(box) == "Tick nobody");
-                return link.TranslatePoint(default, tick)!.Value.X - tick.Bounds.Width;
+                return word.TranslatePoint(default, tick)!.Value.X - tick.Bounds.Width;
             });
 
             Assert.InRange(offset, 0, 24);
