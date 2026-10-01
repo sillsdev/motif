@@ -220,16 +220,17 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
 
             var expectedWords = new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
-                ["Approved, not parsed"] = [SeededProject.AnalysedWordForm],
-                ["Approved, parsed differently"] = [],
-                ["Unknown, PanGloss confirms"] = [],
-                ["Parsed, not in FieldWorks"] = [SeededProject.FirstForm],
+                ["Lost"] = [SeededProject.AnalysedWordForm],
+                ["Built something else"] = [],
+                ["Built anyway"] = [],
+                ["Have a look"] = [],
+                ["New"] = [SeededProject.FirstForm],
                 ["Nobody can analyze"] = [SeededProject.SecondForm],
-                ["Disapproved but built"] = [],
-                ["Stopped at a limit"] = ["motifextra"],
+                ["Stopped"] = ["motifextra"],
+                ["Not parsed"] = [],
             };
             var lists = page.TextsLists;
-            Assert.Equal(7, lists.Lists.Count);
+            Assert.Equal(8, lists.Lists.Count);
             Assert.Equal(4, lists.Lists.Count(list => list.HasWords));
 
             foreach (var list in lists.Lists)
@@ -241,7 +242,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
                 Assert.Equal(expected.Length, list.WordCount);
             }
 
-            lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Approved, not parsed"));
+            lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Lost"));
             var approvedNoParse = Assert.Single(compare.Words);
             Assert.Equal(AnalysisMarkingClass.None, approvedNoParse.Marking.PanGlossClass);
             Assert.Equal([OpinionMarkKind.Approved], approvedNoParse.OpinionMarks.Select(mark => mark.Kind));
@@ -274,7 +275,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
 
             var lists = page.TextsLists;
             Assert.False(lists.Lists[0].HasWords);
-            Assert.Equal("Parsed, not in FieldWorks", lists.SelectedList?.Name);
+            Assert.Equal("New", lists.SelectedList?.Name);
             Assert.Equal([SeededProject.FirstForm], page.Assess.Compare.Words.Select(word => word.Word));
         }, TimeSpan.FromMinutes(1));
     }

@@ -10,7 +10,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
     <ItemsControl ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="Word lists">
       <ItemsControl.ItemsPanel>
@@ -34,53 +34,63 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <Border Grid.Row="1" Classes="card">
-      <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
-            RowSpacing="{DynamicResource Intent.Space.Compact}">
-        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Classes="section-title" Text="{Binding Lists.SelectedList.Name}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.SelectedList.Question}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.Compare.CheckedWordText}" />
-        </StackPanel>
-        <Button Grid.Column="1" Content="{Binding Lists.HandOffCheckedWordsLabel}"
-                Command="{Binding Lists.HandOffCheckedWordsCommand}" VerticalAlignment="Top"
+    <DockPanel Grid.Row="1" x:Name="ListHeader" IsVisible="{Binding Lists.HasSelectedList}">
+      <views:CopyableTextBlock DockPanel.Dock="Left" Classes="section-title" Text="{Binding Lists.SelectedList.Name}"
+                               VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+      <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" Text="{Binding Lists.SelectedList.CountText}"
+                               VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+      <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.SelectedList.Sentence}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Lists.SelectedList.Sentence}" />
+    </DockPanel>
+
+    <DockPanel Grid.Row="2" x:Name="ListControls" IsVisible="{Binding Lists.HasSelectedList}">
+      <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding Lists.Compare.SortChoices}"
+                SelectedItem="{Binding Lists.Compare.Sort}"
+                MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
+                AutomationProperties.Name="Order the words in the selected list">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareSort">
+            <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+        <Button Content="{Binding Lists.ParseAgainLabel}" Command="{Binding Lists.ParseAgainCommand}"
+                IsVisible="{Binding Lists.CanParseAgain}"
+                AutomationProperties.Name="Parse the selected list's stopped and unparsed words again"
+                AutomationProperties.HelpText="{Binding Lists.ParseAgainHelpText}"
+                ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
+        <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
+                Command="{Binding Lists.HandOffCheckedWordsCommand}"
                 AutomationProperties.Name="AI Handoff for ticked words in the selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
-                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" ToolTip.ShowOnDisabled="True" />
-        <Button Grid.Column="2" Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
-                VerticalAlignment="Top"
+                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
+        <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 AutomationProperties.Name="AI Handoff for the whole selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" ToolTip.ShowOnDisabled="True" />
-        <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffListDisabledReason}"
-                                   IsVisible="{Binding Lists.HandOffListUnavailable}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffCheckedWordsDisabledReason}"
-                                   IsVisible="{Binding Lists.HandOffCheckedWordsUnavailable}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="Opinions change one analysis at a time, in the text." />
-        </StackPanel>
-      </Grid>
-    </Border>
+                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
+      </StackPanel>
+    </DockPanel>
 
-    <Grid Grid.Row="2" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True" IsVisible="{Binding Lists.HasSelectedList}">
-      <views:WordRowHeader />
+    <Grid Grid.Row="3" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True" IsVisible="{Binding Lists.HasSelectedList}">
+      <views:WordRowHeader ShowsMeaning="{Binding Lists.ShowsMeaning}" />
       <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
                KeyboardNavigation.TabNavigation="Continue"
                AutomationProperties.Name="Words in the selected list">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
             <views:WordRow Row="{Binding WordRow}" List="lists" IsChecked="{Binding IsChecked}"
+                           ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
                            IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
               <views:WordRow.Card>
-                <views:WordRowCard />
+                <views:ListWordCard />
               </views:WordRow.Card>
             </views:WordRow>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
     </Grid>
-    <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="Choose a question above to see its words."
+    <views:CopyableTextBlock Grid.Row="3" Classes="muted" Text="Choose a list above to see its words."
                              IsVisible="{Binding !Lists.HasSelectedList}"
                              VerticalAlignment="Center" HorizontalAlignment="Center" />
   </Grid>

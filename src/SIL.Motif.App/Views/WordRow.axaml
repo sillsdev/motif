@@ -89,7 +89,7 @@
                 </ItemsControl>
               </DockPanel>
 
-              <Panel Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center">
+              <Panel Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center" IsVisible="{Binding #Self.ShowsMeaning}">
                 <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
                                 HorizontalAlignment="Left" />
               </Panel>

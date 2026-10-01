@@ -79,8 +79,34 @@ public static class WordRowProjection
     {
         ArgumentNullException.ThrowIfNull(fieldWorks);
         ArgumentNullException.ThrowIfNull(panGloss);
-        var shared = SharedPositions(fieldWorks, panGloss);
+        var shared = SharedPairs(fieldWorks, panGloss).Select(pair => pair.PanGloss).ToHashSet();
         return Enumerable.Range(1, panGloss.Count).Where(position => !shared.Contains(position - 1)).ToArray();
+    }
+
+    /// <summary>
+    /// The two analyses lined up morpheme by morpheme, in order: each morpheme the two share, by allomorph and
+    /// grammatical info, is a shared segment of its own, and whatever lies between two shared morphemes, on either
+    /// side, is one parted segment. The parted segments' PanGloss positions are exactly
+    /// <see cref="DifferingPositions"/>, so the alignment never contradicts the row's marks.
+    /// </summary>
+    public static IReadOnlyList<WordRowSegment> Align(
+        IReadOnlyList<ParserReadingMorph> fieldWorks, IReadOnlyList<ParserReadingMorph> panGloss)
+    {
+        ArgumentNullException.ThrowIfNull(fieldWorks);
+        ArgumentNullException.ThrowIfNull(panGloss);
+        var segments = new List<WordRowSegment>();
+        int nextFieldWorks = 0, nextPanGloss = 0;
+        foreach (var pair in SharedPairs(fieldWorks, panGloss).Append((FieldWorks: fieldWorks.Count, PanGloss: panGloss.Count)))
+        {
+            var partedFieldWorks = Enumerable.Range(nextFieldWorks, pair.FieldWorks - nextFieldWorks).ToArray();
+            var partedPanGloss = Enumerable.Range(nextPanGloss, pair.PanGloss - nextPanGloss).ToArray();
+            if (partedFieldWorks.Length > 0 || partedPanGloss.Length > 0)
+                segments.Add(new WordRowSegment(partedFieldWorks, partedPanGloss, Shared: false));
+            if (pair.FieldWorks < fieldWorks.Count)
+                segments.Add(new WordRowSegment([pair.FieldWorks], [pair.PanGloss], Shared: true));
+            (nextFieldWorks, nextPanGloss) = (pair.FieldWorks + 1, pair.PanGloss + 1);
+        }
+        return segments;
     }
 
     // The approved analysis, else the only one FieldWorks holds, the same choice the run makes for its expectation.
@@ -92,12 +118,12 @@ public static class WordRowProjection
     // The reading sharing most morphemes with FieldWorks' analysis, the parser's first on a tie.
     private static ParserReading? ClosestReading(IReadOnlyList<ParserReadingMorph> fieldWorks,
         IReadOnlyList<ParserReading> readings) =>
-        readings.Select((reading, index) => (reading, index, shared: SharedPositions(fieldWorks, reading.Morphs).Count))
+        readings.Select((reading, index) => (reading, index, shared: SharedPairs(fieldWorks, reading.Morphs).Count))
             .OrderByDescending(item => item.shared).ThenBy(item => item.index)
             .Select(item => item.reading).FirstOrDefault();
 
-    // The positions in panGloss of a longest common subsequence with fieldWorks, compared by identity.
-    private static HashSet<int> SharedPositions(
+    // The position pairs of a longest common subsequence of the two, compared by identity, in order.
+    private static List<(int FieldWorks, int PanGloss)> SharedPairs(
         IReadOnlyList<ParserReadingMorph> fieldWorks, IReadOnlyList<ParserReadingMorph> panGloss)
     {
         var lengths = new int[fieldWorks.Count + 1, panGloss.Count + 1];
@@ -105,10 +131,10 @@ public static class WordRowProjection
             for (var j = panGloss.Count - 1; j >= 0; j--)
                 lengths[i, j] = SameMorpheme(fieldWorks[i], panGloss[j])
                     ? lengths[i + 1, j + 1] + 1 : Math.Max(lengths[i + 1, j], lengths[i, j + 1]);
-        var shared = new HashSet<int>();
+        var shared = new List<(int FieldWorks, int PanGloss)>();
         for (int i = 0, j = 0; i < fieldWorks.Count && j < panGloss.Count;)
         {
-            if (SameMorpheme(fieldWorks[i], panGloss[j])) { shared.Add(j); i++; j++; }
+            if (SameMorpheme(fieldWorks[i], panGloss[j])) { shared.Add((i, j)); i++; j++; }
             else if (lengths[i + 1, j] >= lengths[i, j + 1]) i++;
             else j++;
         }
@@ -120,3 +146,12 @@ public static class WordRowProjection
         StringComparer.OrdinalIgnoreCase.Equals(allomorph, right.AllomorphId) &&
         StringComparer.OrdinalIgnoreCase.Equals(grammaticalInfo, right.GrammaticalInfoId);
 }
+
+/// <summary>
+/// One segment of two analyses lined up by <see cref="WordRowProjection.Align"/>: the positions, counting from zero, of
+/// the FieldWorks morphemes and the PanGloss morphemes it holds.
+/// </summary>
+/// <param name="FieldWorks">The FieldWorks morphemes in this segment; empty where only PanGloss has one.</param>
+/// <param name="PanGloss">The PanGloss morphemes in this segment; empty where only FieldWorks has one.</param>
+/// <param name="Shared">Whether the segment is one morpheme the two share by identity, rather than where they part.</param>
+public sealed record WordRowSegment(IReadOnlyList<int> FieldWorks, IReadOnlyList<int> PanGloss, bool Shared);

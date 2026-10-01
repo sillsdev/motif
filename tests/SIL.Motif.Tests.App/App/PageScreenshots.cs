@@ -239,6 +239,21 @@ public sealed class PageScreenshots
                 "silfw://localhost/link?tool=lexiconEdit"))]);
     }
 
+    // FieldWorks' kul against PanGloss's ku- + l: the sample's one word whose two analyses part inside a morpheme.
+    private static ParserReading AlikulaApproved() =>
+        new([Piece("a-", "3SG"), Piece("li-", "PST"), Piece("kul", "eat"), Piece("-a", "FV")])
+        {
+            StoredAnalysisId = Id("alikula", 90),
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+        };
+
+    private static ParserReadingMorph Piece(string form, string gloss) =>
+        new(form, gloss, "", null, false, "silfw://localhost/link?tool=lexiconEdit")
+        {
+            AllomorphId = Id(form, 70),
+            GrammaticalInfoId = Id(form, 71),
+        };
+
     private static ProjectAnalysis Stored(string word, int variant = 0)
     {
         var reading = Reading(word, variant);
@@ -298,7 +313,13 @@ public sealed class PageScreenshots
             Words =
             [
                 Word("Sungura", "analysed", ["approved"], 3, Reading("Sungura")),
-                Word("alikula", "analysed", ["approved", "no-opinion"], 11, Reading("alikula"), Reading("alikula", 2)),
+                Word("alikula", "analysed", ["approved", "no-opinion"], 11, Reading("alikula"), Reading("alikula", 2)) with
+                {
+                    ExpectedAnalysis = AlikulaApproved(),
+                    StoredAnalyses = [AlikulaApproved()],
+                    Readings = [new ParserReading([Piece("a-", "3SG"), Piece("li-", "PST"), Piece("ku-", "INF"), Piece("l", "eat"),
+                        Piece("-a", "FV")]), Resolved("alikula")],
+                },
                 Word("chakula", "analysed", ["no-opinion"], 6, Reading("chakula")),
                 Word("hawajafika", "no-analysis", [], 48),
                 Word("watoto", "analysed", ["approved"], 4, Reading("watoto")),

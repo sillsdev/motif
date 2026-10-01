@@ -273,6 +273,18 @@ internal static class ComponentStateContractCases
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Border.wordRowFrame.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
+
+        const string nextHover = "Border.wordRowFrame:pointerover StackPanel.wordRowNext HyperlinkButton";
+        yield return new(nextHover, "a next step at rest, before the row is hovered", () => NextStep(), StateStimulus.None,
+            StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextSecondary");
+        yield return new(nextHover, "a next step on row hover", () => NextStep(), StateStimulus.Pointer,
+            StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("Border.wordRowFrame:focus-within StackPanel.wordRowNext HyperlinkButton", "a next step with focus in the row",
+            () => NextStep(), StateStimulus.KeyboardFocus, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("Border.wordRowFrame.open StackPanel.wordRowNext HyperlinkButton", "a next step on an opened row",
+            () => NextStep("open"), StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("StackPanel.wordRowNext HyperlinkButton:disabled", "a next step that cannot open, on an opened row",
+            () => NextStep("open"), StateStimulus.Disabled, StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextFaint");
     }
 
     // A press lands under the pointer, so each face style is reached once by hovering and once by pressing.
@@ -318,6 +330,18 @@ internal static class ComponentStateContractCases
     {
         var body = new Border { Classes = { "wordRowBody" }, Focusable = true, Child = new TextBlock { Text = "kitabu" } };
         return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = body }, body);
+    }
+
+    private static (Control, Control) NextStep(params string[] classes)
+    {
+        var link = new HyperlinkButton { Content = "Try a Word" };
+        var frame = new Border
+        {
+            Classes = { "wordRowFrame" }, Width = 300, Height = 40,
+            Child = new StackPanel { Classes = { "wordRowNext" }, Children = { link } },
+        };
+        frame.Classes.AddRange(classes);
+        return (frame, link);
     }
 
     private static (Control, Control) OpenRowEdge()
@@ -467,16 +491,27 @@ internal static class TooltipOwners
         new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
         new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,
-            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink"))
+            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink") &&
+                !control.Classes.Contains("listCardFormLink"))
         {
             Pending = "no tooltip scene opens a word row's card",
         },
         new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
         new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
-            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null)
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null),
+        new("the list's sentence", "Views/TextsListsPanel.axaml", "{Binding Lists.SelectedList.Sentence}", TooltipScene.Lists,
+            control => control is TextBlock && ToolTip.GetTip(control) is not null &&
+                control.GetVisualAncestors().OfType<DockPanel>().Any(panel => panel.Name == "ListHeader")),
+        new("Parse again on a list", "Views/TextsListsPanel.axaml", "{Binding Lists.ParseAgainHelpText}", TooltipScene.Lists,
+            control => control is Button && Name(control) == "Parse the selected list's stopped and unparsed words again")
         {
-            Pending = "the staged change moves chakula to Unknown and built something else, a cell no word list holds",
+            Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
+        },
+        new("morpheme form in a list card", "Views/ListWordCard.axaml.cs", "morph.FormLinkTip", TooltipScene.Lists,
+            control => control is HyperlinkButton && control.Classes.Contains("listCardFormLink"))
+        {
+            Pending = "no tooltip scene opens a list row's card",
         },
         new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
             TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in the selected list"),

@@ -712,6 +712,25 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Accent");
         yield return new("WordCard", "the word card header", host => Add(host, Box("wordCardHead")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("WordCard", "the list card's gaps", host => Add(host, Stack("listCard")),
+            StackPanel.SpacingProperty, "Intent.Space.Related");
+        yield return new("WordCard", "the list card's columns", host => Add(host, With(new Grid(), ["listCardAlignment"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Compact");
+        yield return new("WordCard", "a list card segment at rest", host => Add(host, Box("listCardSpan")),
+            Border.BorderBrushProperty, "Intent.Clear");
+        yield return new("WordCard", "where the two analyses part", host => Add(host, Box("listCardSpan", "parted")),
+            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("WordCard", "the segment's edge", host => Add(host, Box("listCardSpan", "parted")),
+            Border.BorderThicknessProperty, "Intent.Stroke.Box");
+        yield return new("WordCard", "a linked form in the list card", host => Within(host, Box("listCardMorph"), "listCardFormText"),
+            TextBlock.ForegroundProperty, "Intent.Text");
+        yield return new("WordCard", "a differing linked form in the list card",
+            host => Within(host, Box("listCardMorph", "different"), "listCardFormText"),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
+        yield return new("WordCard", "the where-they-part sentence", host => Add(host, Text("listCardSentence")),
+            TextBlock.FontSizeProperty, "Intent.Type.Small");
+        yield return new("WordCard", "the closest-reading note", host => Add(host, Text("listCardNote")),
+            TextBlock.MarginProperty, "Component.WordCard.NoteGap");
         yield return new("WordStrip", "a resting word strip edge", host => Add(host, Box("wordStrip")),
             Border.BorderBrushProperty, "Intent.Clear");
         yield return new("WordStrip", "an open word strip edge", host => Add(host, Box("wordStrip", "open")),

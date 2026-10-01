@@ -1,6 +1,9 @@
 <!--
   The word card Analyze texts opens under a line: a raised surface with an elevation shadow, so the text
   beneath never shows through it, and a header, the FieldWorks and PanGloss sections, and what to do.
+  The list card an opened Lists row shows lines FieldWorks' analysis up over PanGloss's, a column per
+  segment: where the two part, FieldWorks' morpheme takes an edge as wide as the pieces PanGloss reads it as.
+  A morpheme's form keeps the text colour though it links into FieldWorks, so blue marks only the differing pieces.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -11,7 +14,49 @@
     <StaticResource x:Key="Component.WordCard.SectionPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.WordCard.ActionGap" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.WordCard.HeadingType" ResourceKey="Primitive.Type.10" />
+    <StaticResource x:Key="Component.WordCard.NoteGap" ResourceKey="Primitive.Inset.10_0_0_0" />
   </Styles.Resources>
+  <Style Selector="StackPanel.listCard">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Grid.listCardAlignment">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+    <Setter Property="RowSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="StackPanel.listCardChips">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="Border.listCardSpan">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordCard.Radius}" />
+  </Style>
+  <Style Selector="Border.listCardSpan.parted">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <Style Selector="HyperlinkButton.listCardFormLink">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.listCardMorph :is(TextBlock).listCardFormText">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="Border.listCardMorph.different :is(TextBlock).listCardFormText">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
+  </Style>
+  <Style Selector="Border.listCardMorph :is(TextBlock).morphLinkMark">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).listCardSentence">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector=":is(TextBlock).listCardNote">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="{DynamicResource Component.WordCard.NoteGap}" />
+  </Style>
+  <Style Selector=":is(TextBlock).listCardAbsent">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
   <Style Selector="Border.card.wordCard">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Raised}" />
     <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Raised}" />

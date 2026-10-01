@@ -814,7 +814,7 @@ public sealed class WorkspaceContextTests
             Words = [ApprovedUnparsed("dogs"), ApprovedUnparsed("cats")],
         };
         texts.TextsLists.SelectListCommand.Execute(texts.TextsLists.Lists.Single(list =>
-            list.Name == "Approved, not parsed"));
+            list.Name == "Lost"));
 
         Assert.True(texts.TextsLists.HandOffListCommand.CanExecute(null));
         texts.TextsLists.HandOffListCommand.Execute(null);
@@ -833,7 +833,7 @@ public sealed class WorkspaceContextTests
             Words = [ApprovedUnparsed("dogs"), ApprovedUnparsed("cats")],
         };
         texts.TextsLists.SelectListCommand.Execute(texts.TextsLists.Lists.Single(list =>
-            list.Name == "Approved, not parsed"));
+            list.Name == "Lost"));
         texts.Assess.Compare.Words.Single(word => word.Word == "cats").IsChecked = true;
 
         Assert.True(texts.TextsLists.HandOffCheckedWordsCommand.CanExecute(null));

@@ -49,7 +49,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                     if (list == ListsList)
                     {
                         var lists = workspace.PageModel<TextsPageModel>().TextsLists;
-                        lists.SelectListCommand.Execute(lists.Lists.Single(item => item.Name == "Approved, not parsed"));
+                        lists.SelectListCommand.Execute(lists.Lists.Single(item => item.Name == "Lost"));
                     }
                     window.UpdateLayout();
 
