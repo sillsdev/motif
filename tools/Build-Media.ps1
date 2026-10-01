@@ -219,7 +219,7 @@ function Invoke-MediaStep {
 }
 
 $failure = $null
-$steps = if ($selectedSteps.Count -eq 0) { $stepNames } else { $selectedSteps.ToArray() }
+$steps = if ($selectedSteps.Count -eq 0) { @($stepNames | Where-Object { $_ -ne 'site' }) } else { $selectedSteps.ToArray() }
 try {
     foreach ($step in $steps) {
         Invoke-MediaStep $step

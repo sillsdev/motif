@@ -6,6 +6,11 @@ on:
     branches: ['**', '!mac-debug/**', '!linux-debug/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_website:
+        description: 'Validate release documentation and upload the generated website'
+        type: boolean
+        default: false
 
 jobs:
   build-and-test:
@@ -193,6 +198,7 @@ jobs:
           retention-days: 14
 
   documentation-release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_website
     runs-on: windows-latest
     timeout-minutes: 180
     env:
