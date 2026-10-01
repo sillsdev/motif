@@ -1,0 +1,166 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Projection.Grammar;
+using SIL.Motif.Tests.TestFixtures;
+using Xunit;
+
+namespace SIL.Motif.Tests.Commands;
+
+/// <summary>Pins reverse references in a SYNTHETIC EXAMPLE noun grammar, without parser inference.</summary>
+[Collection(LcmCacheParallelCollections.Group2)]
+public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
+{
+    [Theory]
+    [InlineData("template", "membership", "msa")]
+    [InlineData("slot", "membership", "msa")]
+    [InlineData("feature", "through_feature_owners", "msa")]
+    [InlineData("value", "through_feature_owners", "msa")]
+    [InlineData("specification", "through_feature_owners", "msa")]
+    [InlineData("stem-name", "through_allomorphs", "form")]
+    [InlineData("inflection-class", "through_grammatical_info", "stem-msa")]
+    [InlineData("entry-type", "membership", "form")]
+    [InlineData("allomorph-prohibition", "membership", "form")]
+    [InlineData("morpheme-prohibition", "membership", "msa")]
+    [InlineData("boundary", "through_environments_and_rules", "rule")]
+    [InlineData("phoneme-set", "project_wide", "none")]
+    [InlineData("feature-system", "project_wide", "none")]
+    public void ReverseRouteReachesOnlyItsReferencedOwner(string name, string path, string target)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var objects = Author(cache);
+        var item = objects[name];
+        var reach = WarningReachReader.Reach(Subject(item), () => cache)!;
+
+        Assert.Equal(path, WirePath(reach));
+        var expected = objects[target].Guid.ToString("D");
+        if (target is "msa" or "stem-msa") Assert.Contains(expected, reach.GrammaticalInfoIds);
+        if (target == "form") Assert.Contains(expected, reach.AllomorphIds);
+        if (target == "rule") Assert.Contains(new TraceTimingKey("phon_rule", expected), reach.TimingKeys);
+        Assert.DoesNotContain(pristine.Seed.SecondLexemeFormId.ToString("D"), reach.AllomorphIds);
+    }
+
+    [Theory]
+    [InlineData("MoForm")]
+    [InlineData("MoStemMsa")]
+    [InlineData("PhRegularRule")]
+    [InlineData("PhPhoneme")]
+    [InlineData("MoInflAffixTemplate")]
+    public void MissingAndWrongClassGuidsAreDistinctEvenOnDirectRoutes(string kind)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var missing = new GrammarWarningPart("missing", GrammarWarningPartRole.Object, "id", kind)
+            { SubjectGuid = Guid.NewGuid().ToString("D"), Title = "u" };
+        var wrong = missing with { SubjectGuid = pristine.Seed.FirstSenseId.ToString("D") };
+        Assert.Equal("stale_guid", WireReason(WarningReachReader.Reach(missing, () => cache)!));
+        Assert.Equal("wrong_class", WireReason(WarningReachReader.Reach(wrong, () => cache)!));
+    }
+
+    [Fact]
+    public void NamedWithoutProjectGuidDoesNotBecomeNoSubject()
+    {
+        var part = new GrammarWarningPart("Plural", GrammarWarningPartRole.Text, FieldWorksKind: "MoInflAffixSlot");
+        var reach = WarningReachReader.Reach(part, () => throw new InvalidOperationException())!;
+        Assert.NotNull(reach);
+        Assert.Equal("named_without_project_guid", WireReason(reach));
+    }
+
+    private static GrammarWarningPart Subject(ICmObject item) =>
+        new(item.ClassName, GrammarWarningPartRole.Object, item.Guid.ToString("D"), item.ClassName)
+            { SubjectGuid = item.Guid.ToString("D") };
+
+    private static string? WirePath(WarningReach reach) =>
+        JsonSerializer.SerializeToElement(reach, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .GetProperty("path").GetString();
+
+    private static string? WireReason(WarningReach reach) =>
+        JsonSerializer.SerializeToElement(reach, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            .GetProperty("reason").GetString();
+
+    private Dictionary<string, ICmObject> Author(LcmCache cache)
+    {
+        var s = cache.ServiceLocator;
+        var entry = s.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+        var form = (IMoStemAllomorph)entry.LexemeFormOA;
+        var msa = (IMoStemMsa)entry.MorphoSyntaxAnalysesOC.First();
+        var objects = new Dictionary<string, ICmObject> { ["form"] = form, ["msa"] = msa, ["stem-msa"] = msa, ["none"] = entry };
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var pos = s.GetInstance<IPartOfSpeechFactory>().Create();
+            cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(pos);
+            msa.PartOfSpeechRA = pos;
+            var slot = s.GetInstance<IMoInflAffixSlotFactory>().Create();
+            pos.AffixSlotsOC.Add(slot);
+            var template = s.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            pos.AffixTemplatesOS.Add(template);
+            template.SuffixSlotsRS.Add(slot);
+            var infl = s.GetInstance<IMoInflAffMsaFactory>().Create();
+            entry.MorphoSyntaxAnalysesOC.Add(infl);
+            infl.PartOfSpeechRA = pos;
+            infl.SlotsRC.Add(slot);
+            objects["template"] = template;
+            objects["slot"] = slot;
+            objects["msa"] = infl;
+
+            var feature = s.GetInstance<IFsClosedFeatureFactory>().Create();
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(feature);
+            var value = s.GetInstance<IFsSymFeatValFactory>().Create();
+            feature.ValuesOC.Add(value);
+            var fs = s.GetInstance<IFsFeatStrucFactory>().Create();
+            infl.InflFeatsOA = fs;
+            var spec = s.GetInstance<IFsClosedValueFactory>().Create();
+            fs.FeatureSpecsOC.Add(spec);
+            spec.FeatureRA = feature;
+            spec.ValueRA = value;
+            objects["feature"] = feature;
+            objects["value"] = value;
+            objects["specification"] = spec;
+            objects["feature-system"] = cache.LangProject.MsFeatureSystemOA;
+
+            var stemName = s.GetInstance<IMoStemNameFactory>().Create();
+            pos.StemNamesOC.Add(stemName);
+            stemName.RegionsOC.Add(s.GetInstance<IFsFeatStrucFactory>().Create());
+            form.StemNameRA = stemName;
+            objects["stem-name"] = stemName;
+            var inflClass = s.GetInstance<IMoInflClassFactory>().Create();
+            pos.InflectionClassesOC.Add(inflClass);
+            msa.InflectionClassRA = inflClass;
+            objects["inflection-class"] = inflClass;
+
+            var type = s.GetInstance<ILexEntryInflTypeFactory>().Create();
+            cache.LangProject.LexDbOA.VariantEntryTypesOA.PossibilitiesOS.Add(type);
+            var reference = s.GetInstance<ILexEntryRefFactory>().Create();
+            entry.EntryRefsOS.Add(reference);
+            reference.VariantEntryTypesRS.Add(type);
+            reference.ComponentLexemesRS.Add(s.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.SecondEntryId));
+            objects["entry-type"] = type;
+            var allos = s.GetInstance<IMoAlloAdhocProhibFactory>().Create();
+            cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(allos);
+            allos.FirstAllomorphRA = form;
+            objects["allomorph-prohibition"] = allos;
+            var morphs = s.GetInstance<IMoMorphAdhocProhibFactory>().Create();
+            cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC.Add(morphs);
+            morphs.FirstMorphemeRA = infl;
+            objects["morpheme-prohibition"] = morphs;
+
+            var set = s.GetInstance<IPhPhonemeSetFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            var boundary = s.GetInstance<IPhBdryMarkerFactory>().Create();
+            set.BoundaryMarkersOC.Add(boundary);
+            var rule = s.GetInstance<IPhRegularRuleFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.PhonRulesOS.Add(rule);
+            var context = s.GetInstance<IPhSimpleContextBdryFactory>().Create();
+            rule.StrucDescOS.Add(context);
+            context.FeatureStructureRA = boundary;
+            objects["boundary"] = boundary;
+            objects["rule"] = rule;
+            objects["phoneme-set"] = set;
+        });
+        return objects;
+    }
+}

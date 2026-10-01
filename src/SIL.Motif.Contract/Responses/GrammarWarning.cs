@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Responses;
@@ -37,6 +38,22 @@ public sealed record GrammarWarning(
     /// Selection, or when the finding was stored without what its subjects reach.
     /// </summary>
     public WarningWords? YourWords { get; init; }
+
+    /// <summary>
+    /// Attribution even without stored word evidence. A resolvable route without an Assessment means evidence
+    /// unavailable, never zero words; missing subjects and identities remain explicit.
+    /// </summary>
+    public WarningAttributionState AttributionState => YourWords?.State ??
+        (Subject.Count == 0 ? WarningAttributionState.UnresolvedIdentity :
+            Subject.Any(part => part.Reach?.Path == WarningWordsPath.MissingObject) ? WarningAttributionState.MissingObject :
+            Subject.All(part => part.Reach?.Path == WarningWordsPath.ProjectWide) ? WarningAttributionState.ProjectWide :
+            Subject.All(part => part.Reach?.Path == WarningWordsPath.UnresolvedIdentity) ? WarningAttributionState.UnresolvedIdentity :
+            WarningAttributionState.EvidenceUnavailable);
+
+    /// <summary>The specific identity or attribution limit, when there is one.</summary>
+    public WarningAttributionReason? AttributionReason => YourWords?.Reason ??
+        (Subject.Count == 0 ? WarningAttributionReason.NoSubject :
+            Subject.Select(part => part.Reach?.Reason).FirstOrDefault(reason => reason is not null));
 }
 
 /// <summary>One summary row grouping diagnostics by their stable code.</summary>
@@ -101,6 +118,26 @@ public sealed record GrammarWarningPart(
 [JsonConverter(typeof(JsonStringEnumConverter<WarningWordsPath>))]
 public enum WarningWordsPath
 {
+    /// <summary>Words use members of the resource; this does not prove a parse selected that resource.</summary>
+    [JsonStringEnumMemberName("membership")]
+    Membership,
+
+    /// <summary>Feature specifications lead to their lexical or rule owners by references and ownership.</summary>
+    [JsonStringEnumMemberName("through_feature_owners")]
+    ThroughFeatureOwners,
+
+    /// <summary>A project resource with no word attribution.</summary>
+    [JsonStringEnumMemberName("project_wide")]
+    ProjectWide,
+
+    /// <summary>The GUID is absent or identifies a different class; Reason distinguishes these cases.</summary>
+    [JsonStringEnumMemberName("missing_object")]
+    MissingObject,
+
+    /// <summary>A named subject has no usable project identity or supported word route.</summary>
+    [JsonStringEnumMemberName("unresolved_identity")]
+    UnresolvedIdentity,
+
     /// <summary>An allomorph or grammatical info: the stored analyses that use it.</summary>
     [JsonStringEnumMemberName("uses")]
     Uses,
@@ -157,6 +194,9 @@ public enum WarningCantTell
 /// <param name="Path">How the subject reaches words.</param>
 public sealed record WarningReach(WarningWordsPath Path)
 {
+    /// <summary>The specific identity or attribution limit, independent of any Selection.</summary>
+    public WarningAttributionReason? Reason { get; init; }
+
     /// <summary>Why the subject reaches no words, when <see cref="Path"/> is <see cref="WarningWordsPath.CantTell"/>.</summary>
     public WarningCantTell? CantTell { get; init; }
 
@@ -171,12 +211,73 @@ public sealed record WarningReach(WarningWordsPath Path)
 
     /// <summary>The letters that match a word spelled with them, as FieldWorks writes the phoneme's codes.</summary>
     public IReadOnlyList<string> Spellings { get; init; } = [];
+
+    /// <summary>Allomorph members of a resource, separate from exact lexical use routes.</summary>
+    public IReadOnlyList<string> MembershipAllomorphIds { get; init; } = [];
+
+    /// <summary>Grammatical info members, without evidence that a parse selected the resource.</summary>
+    public IReadOnlyList<string> MembershipGrammaticalInfoIds { get; init; } = [];
+
+    /// <summary>Rule members; recorded calls establish member activity, not use of the resource.</summary>
+    public IReadOnlyList<TraceTimingKey> MembershipTimingKeys { get; init; } = [];
+}
+
+/// <summary>The strength of word attribution, independent of severity or cause.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WarningAttributionState>))]
+public enum WarningAttributionState
+{
+    /// <summary>Stored analyses or rule calls match an exact lexical or rule route.</summary>
+    [JsonStringEnumMemberName("exact_uses")] ExactUses,
+    /// <summary>Words use members; selection of the resource is unproven.</summary>
+    [JsonStringEnumMemberName("membership_candidates")] MembershipCandidates,
+    /// <summary>Spelling contains a representation, without confirmed phoneme use.</summary>
+    [JsonStringEnumMemberName("spelling_candidates")] SpellingCandidates,
+    /// <summary>A supported route matches no word in this Selection.</summary>
+    [JsonStringEnumMemberName("none_in_selection")] NoneInSelection,
+    /// <summary>A project resource has no word attribution.</summary>
+    [JsonStringEnumMemberName("project_wide")] ProjectWide,
+    /// <summary>The subject GUID is missing or resolves to the wrong class.</summary>
+    [JsonStringEnumMemberName("missing_object")] MissingObject,
+    /// <summary>No subject, usable project GUID, or supported class route is supplied.</summary>
+    [JsonStringEnumMemberName("unresolved_identity")] UnresolvedIdentity,
+    /// <summary>No usable stored word evidence is available for a supported route.</summary>
+    [JsonStringEnumMemberName("evidence_unavailable")] EvidenceUnavailable,
+}
+
+/// <summary>Why word attribution is unavailable, distinguishing absent GUIDs from wrong classes.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WarningAttributionReason>))]
+public enum WarningAttributionReason
+{
+    /// <summary>PanGloss supplied no subject.</summary>
+    [JsonStringEnumMemberName("no_subject")] NoSubject,
+    /// <summary>A subject is named without a valid project GUID.</summary>
+    [JsonStringEnumMemberName("named_without_project_guid")] NamedWithoutProjectGuid,
+    /// <summary>The checked Baseline contains no object with this GUID.</summary>
+    [JsonStringEnumMemberName("stale_guid")] StaleGuid,
+    /// <summary>The GUID belongs to a different FieldWorks class.</summary>
+    [JsonStringEnumMemberName("wrong_class")] WrongClass,
+    /// <summary>The project resource has no lexical or rule owner to attribute.</summary>
+    [JsonStringEnumMemberName("no_word_attribution")] NoWordAttribution,
+    /// <summary>The named class has no supported route to stored word evidence.</summary>
+    [JsonStringEnumMemberName("unsupported_kind")] UnsupportedKind,
 }
 
 /// <summary>How the words a finding touches were matched.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<WarningWordsMatch>))]
 public enum WarningWordsMatch
 {
+    /// <summary>By membership in a resource, excluded from exact-use counts.</summary>
+    [JsonStringEnumMemberName("membership")]
+    Membership,
+    /// <summary>A project resource without word attribution.</summary>
+    [JsonStringEnumMemberName("project_wide")]
+    ProjectWide,
+    /// <summary>A missing GUID or wrong class, distinguished by Reason.</summary>
+    [JsonStringEnumMemberName("missing_object")]
+    MissingObject,
+    /// <summary>No subject, usable GUID, or supported class route, distinguished by Reason.</summary>
+    [JsonStringEnumMemberName("unresolved_identity")]
+    UnresolvedIdentity,
     /// <summary>By exact FieldWorks identity, through stored analyses or stored rule times.</summary>
     [JsonStringEnumMemberName("identity")]
     Identity,
@@ -203,6 +304,26 @@ public enum WarningWordsMatch
 public sealed record WarningWords(
     WarningWordsMatch Match, IReadOnlyList<ObjectUseWord> Words, IReadOnlyList<ObjectUseMeaning> ByMeaning)
 {
+    /// <summary>The explicit state; an empty supported route means none in this Selection.</summary>
+    public WarningAttributionState State => Match switch
+    {
+        WarningWordsMatch.Identity => Words.Count > 0 ? WarningAttributionState.ExactUses : WarningAttributionState.NoneInSelection,
+        WarningWordsMatch.Membership => Words.Count > 0 ? WarningAttributionState.MembershipCandidates : WarningAttributionState.NoneInSelection,
+        WarningWordsMatch.Spelling => Words.Count > 0 ? WarningAttributionState.SpellingCandidates : WarningAttributionState.NoneInSelection,
+        WarningWordsMatch.ProjectWide => WarningAttributionState.ProjectWide,
+        WarningWordsMatch.MissingObject => WarningAttributionState.MissingObject,
+        _ => WarningAttributionState.UnresolvedIdentity,
+    };
+
+    /// <summary>The specific identity or attribution limit, when no supported route exists.</summary>
+    public WarningAttributionReason? Reason { get; init; }
+
+    /// <summary>Words using members of the resource, retained alongside exact matches.</summary>
+    public IReadOnlyList<ObjectUseWord> MembershipCandidates { get; init; } = [];
+
+    /// <summary>Spelling candidates alongside exact matches, without confirmed phoneme use.</summary>
+    public IReadOnlyList<ObjectUseWord> SpellingCandidates { get; init; } = [];
+
     /// <summary>Why no words could be found, when <see cref="Match"/> is <see cref="WarningWordsMatch.CantTell"/>.</summary>
     public WarningCantTell? CantTell { get; init; }
 
@@ -216,6 +337,9 @@ public sealed record WarningWords(
 /// <param name="ByMeaning">The words counted by meaning, most words first.</param>
 public sealed record WarningWordsTouched(int Words, int NoParse, IReadOnlyList<ObjectUseMeaning> ByMeaning)
 {
-    /// <summary>How many of the words were matched only by spelling.</summary>
+    /// <summary>Distinct spelling candidates without exact or membership evidence, excluded from Words.</summary>
     public int BySpellingOnly { get; init; }
+
+    /// <summary>Distinct membership candidates without exact evidence, excluded from Words.</summary>
+    public int ByMembershipOnly { get; init; }
 }
