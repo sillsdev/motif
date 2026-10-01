@@ -343,6 +343,28 @@ public sealed class CompareViewModelTests
         Assert.Equal(label, mark.Label);
     }
 
+    // Lists draws each reading as the interlinear morpheme row used elsewhere, not as "a- + li- = 3SG + PST".
+    [Fact]
+    public void AListedWordOffersEachParserReadingAsMorphemes()
+    {
+        var result = new AssessmentWordResult("alikula", "analysed", false, "Search completed", 10, null)
+        {
+            Readings =
+            [
+                new ParserReading([
+                    new ParserReadingMorph("a-", "3SG", null, null, false, null),
+                    new ParserReadingMorph("kul", "eat", "v", null, false, null),
+                ]),
+            ],
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.Approved, CompareColumnKind.NoMatch));
+
+        var reading = Assert.Single(word.Readings);
+        Assert.Equal(["a-", "kul"], reading.Morphs.Select(morph => morph.Form));
+        Assert.Equal(["3SG", "eat"], reading.Morphs.Select(morph => morph.Gloss));
+    }
+
     private static ParserReading StoredReading(string id, string opinion) =>
         new([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
         {

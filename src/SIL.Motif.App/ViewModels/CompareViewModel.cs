@@ -799,6 +799,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         RowVerdict = WordProjectStatuses.VerdictOf(Row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
+        Readings = word.Readings;
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         MissedApproved = word.MissedApproved;
         FixFirst = word.FixFirst;
@@ -838,6 +839,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public Verdict RowVerdict { get; }
     public string ColumnLabel { get; }
     public Verdict ColumnVerdict { get; }
+
+    /// <summary>Every parser reading of the word, morpheme by morpheme, for a list row opened to show them.</summary>
+    public IReadOnlyList<ParserReadingViewModel> Readings { get; }
 
     /// <summary>The parser's first reading, so a listed word shows what was just calculated for it.</summary>
     public string FirstReading { get; }

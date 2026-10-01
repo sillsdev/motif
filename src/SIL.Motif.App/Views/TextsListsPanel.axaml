@@ -78,9 +78,10 @@
             <Expander.Header>
               <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                 <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
-                          Grid.Column="0" IsChecked="{Binding IsChecked}"
+                          Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
                           AutomationProperties.Name="{Binding Word, StringFormat='Tick {0}'}" />
                 <Button Grid.Column="1" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
+                        VerticalAlignment="Center"
                         HorizontalAlignment="Left" HorizontalContentAlignment="Left" Content="{Binding Word}"
                         Command="{Binding $parent[views:TextsListsPanel].Lists.Compare.OpenWordCommand}"
                         CommandParameter="{Binding}"
@@ -104,15 +105,15 @@
               <ItemsControl ItemsSource="{Binding MissedApproved}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ParserReadingViewModel">
-                    <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <views:CopyableTextBlock Classes="muted" Text="Parser readings" IsVisible="{Binding ReadingChoices.Count}" />
-              <ItemsControl ItemsSource="{Binding ReadingChoices}">
+              <views:CopyableTextBlock Classes="muted" Text="Parser readings" IsVisible="{Binding Readings.Count}" />
+              <ItemsControl ItemsSource="{Binding Readings}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CompareReadingChoice">
-                    <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
