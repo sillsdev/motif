@@ -179,7 +179,7 @@ public static class ObjectUsesQuery
         .Where(analysis => analysis.StoredAnalysisOpinion != ReadingGrade.Disapproved)
         .SelectMany(analysis => analysis.Morphs);
 
-    private static ObjectUseWords Split(IReadOnlyList<ObjectUseWord> words) => new(words, words
+    internal static ObjectUseWords Split(IReadOnlyList<ObjectUseWord> words) => new(words, words
         .GroupBy(word => (word.Row.Meaning, word.Row.Tone))
         .Select(group => new ObjectUseMeaning(group.Key.Meaning, group.Key.Tone, group.Count()))
         .OrderByDescending(meaning => meaning.Words).ToArray());
