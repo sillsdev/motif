@@ -25,6 +25,7 @@
     Intent.Surface.Raised         a card lifted above the page, such as an open word card
     Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
     Intent.Shadow.Pressed         the inset shadow of a button held down
+    Intent.Shadow.Selected        a ring in Intent.Accent drawn outside a chosen cell, leaving its own edge seen
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
@@ -223,6 +224,7 @@
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey0}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
       <StaticResource x:Key="Intent.Shadow.Pressed" ResourceKey="Primitive.Shadow.Inset0_1_3.Slate950A30" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.Ring2.Blue700" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
@@ -309,6 +311,7 @@
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey800}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
       <StaticResource x:Key="Intent.Shadow.Pressed" ResourceKey="Primitive.Shadow.Inset0_1_3.BlackA70" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.Ring2.Blue200" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />

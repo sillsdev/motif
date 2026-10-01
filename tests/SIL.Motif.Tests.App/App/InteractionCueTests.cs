@@ -127,6 +127,46 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
+    [Fact]
+    public void AWarningCellKeepsItsWarningEdgeUnderThePointerAndWhenChosen()
+    {
+        var failures = new List<string>();
+        avalonia.Invoke(() =>
+        {
+            foreach (var variant in Themes)
+            {
+                var cell = new Border { Classes = { "matrixCell", "violation" }, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
+                var window = new Window { Content = cell, RequestedThemeVariant = variant, Width = 300, Height = 120 };
+                try
+                {
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var warning = Resource("Intent.Danger", variant);
+                    var resting = cell.BorderThickness;
+                    var centre = cell.TranslatePoint(new Point(80, 30), window)!.Value;
+                    window.MouseMove(centre);
+                    Dispatcher.UIThread.RunJobs();
+                    if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} hover: edge is {cell.BorderBrush}, not the warning");
+                    if (!Equals(Resource("Intent.Shadow.Raised", variant), cell.BoxShadow))
+                        failures.Add($"{variant} hover: no raised cue ('{cell.BoxShadow}')");
+                    window.MouseMove(new Point(290, 110));
+                    cell.Classes.Add("selected");
+                    Dispatcher.UIThread.RunJobs();
+                    if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} selected: edge is {cell.BorderBrush}, not the warning");
+                    if (cell.BorderThickness != resting) failures.Add($"{variant} selected: edge became {cell.BorderThickness}");
+                    if (!Equals(Resource("Intent.Shadow.Selected", variant), cell.BoxShadow))
+                        failures.Add($"{variant} selected: no ring round the cell ('{cell.BoxShadow}')");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
     private static Avalonia.Controls.Presenters.ContentPresenter Face(Button button) =>
         button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
             .First(part => part.Name == "PART_ContentPresenter");
