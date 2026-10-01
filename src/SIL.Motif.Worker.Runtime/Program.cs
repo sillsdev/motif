@@ -73,7 +73,9 @@ internal static class WorkerRuntime
         var runtimes = host.CreateRuntimeRegistry(catalog,
             (jobs, key) => new WorkerRecoveryCoordinator(
                 new WorkerRecovery(jobs, ownerId: ownerId), new WorkspaceCleaner(ownership)));
-        if (!await TryAcquireOwnershipWithRetryAsync(host).ConfigureAwait(false))
+        if (!await TryAcquireOwnershipWithRetryAsync(host, wakeProjectPath: options.WakeProjectPath,
+            extraWaitLimit: options.Lease, reportWarning: Console.Error.WriteLine)
+            .ConfigureAwait(false))
         {
             Console.WriteLine("existing runner: " + host.OwnerName);
             return 0;
@@ -106,19 +108,61 @@ internal static class WorkerRuntime
     }
 
     /// <summary>
-    /// Retries a bounded window rather than giving up on the first failed attempt: closes the race where
-    /// the currently-owning runner is inside its final idle tick and about to release the mutex, not gone.
+    /// Retries the initial handover window, then admits one bounded waiter while the wake project has queued work.
+    /// The queue stays in the database; the waiter mutex only limits competing successors to one.
     /// </summary>
     internal static async Task<bool> TryAcquireOwnershipWithRetryAsync(
-        JobRunnerHost host, TimeProvider? timeProvider = null)
+        JobRunnerHost host, TimeProvider? timeProvider = null, string? wakeProjectPath = null,
+        TimeSpan? extraWaitLimit = null, Action<string>? reportWarning = null,
+        Func<string, bool>? queuedWorkProbe = null)
     {
         timeProvider ??= TimeProvider.System;
-        var deadline = timeProvider.GetUtcNow() + OwnershipRetryWindow;
-        while (true)
+        var extraLimit = extraWaitLimit ?? TimeSpan.FromMinutes(5);
+        if (extraLimit <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(extraWaitLimit));
+        var started = timeProvider.GetTimestamp();
+        WorkerMutexOwner? waiter = null;
+        try
         {
-            if (host.TryAcquireOwnership()) return true;
-            if (timeProvider.GetUtcNow() >= deadline) return false;
-            await Task.Delay(OwnershipRetryPoll, timeProvider).ConfigureAwait(false);
+            while (true)
+            {
+                if (host.TryAcquireOwnership()) return true;
+                if (timeProvider.GetElapsedTime(started) >= OwnershipRetryWindow)
+                {
+                    if (wakeProjectPath is null) return false;
+                    if (waiter is null)
+                    {
+                        waiter = new WorkerMutexOwner(host.OwnerName + ".WakeWaiter");
+                        if (!waiter.TryAcquire()) return false;
+                    }
+                    if (timeProvider.GetElapsedTime(started) >= OwnershipRetryWindow + extraLimit)
+                    {
+                        reportWarning?.Invoke("warning: runner wake gave up waiting for ownership while queued work " +
+                            "remained for '" + wakeProjectPath + "' after " + extraLimit + ".");
+                        return false;
+                    }
+                    if (!HasQueuedWakeWork(wakeProjectPath, queuedWorkProbe)) return false;
+                }
+                await Task.Delay(OwnershipRetryPoll, timeProvider).ConfigureAwait(false);
+            }
+        }
+        finally { waiter?.Dispose(); }
+    }
+
+    private static bool HasQueuedWakeWork(string wakeProjectPath, Func<string, bool>? queuedWorkProbe)
+    {
+        try
+        {
+            if (queuedWorkProbe is not null) return queuedWorkProbe(wakeProjectPath);
+            if (!File.Exists(wakeProjectPath)) return false;
+            var project = new ProjectLocator(wakeProjectPath, Path.GetFileNameWithoutExtension(wakeProjectPath));
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
+            using var database = catalog.OpenOwned(project, TimeSpan.FromMilliseconds(100));
+            return new JobRepository(database).ListActive().Any(job => job.Status == JobStatus.Queued);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            MotifStoreLockException)
+        {
+            return true;
         }
     }
 
