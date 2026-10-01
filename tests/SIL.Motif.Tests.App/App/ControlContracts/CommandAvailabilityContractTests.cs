@@ -1,3 +1,7 @@
+using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using Xunit;
 
@@ -53,4 +57,56 @@ public sealed class CommandAvailabilityContractTests
             Assert.Equal(1, notifications);
         }
     }
+
+    [Theory]
+    [InlineData("completed")]
+    [InlineData("refused")]
+    [InlineData("cancelled")]
+    public async Task ACompletedRefusedOrCancelledActionReleasesItsAvailability(string outcomeKind)
+    {
+        var (fake, workspace) = CommandContractCases.CreateWorkspace();
+        await using (workspace)
+        {
+            var assess = workspace.Context.Assess;
+            workspace.Context.Selection.AllWordforms = true;
+            assess.ProjectPath = ProjectPath;
+            var completion = new TaskCompletionSource<CommandOutcome<AssessCommandResponse>>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            if (outcomeKind == "cancelled")
+            {
+                fake.AssessBlocksUntilCancelled(
+                    new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));
+            }
+            else
+            {
+                fake.OnAssess((_, _, _) => completion.Task);
+            }
+
+            var running = assess.RunCommand.ExecuteAsync(null);
+
+            Assert.Equal(RunState.Running, assess.State);
+            Assert.False(assess.RunCommand.CanExecute(null));
+            if (outcomeKind == "cancelled")
+                assess.CancelCommand.Execute(null);
+            else if (outcomeKind == "completed")
+                completion.SetResult(CommandOutcome<AssessCommandResponse>.Success(NewAssessmentResponse()));
+            else
+                completion.SetResult(CommandOutcome<AssessCommandResponse>.Refused(
+                    new Refusal("assess.parser-unavailable", FailureReason.Refused, "Parser unavailable.")));
+
+            await running;
+
+            Assert.True(assess.RunCommand.CanExecute(null));
+        }
+    }
+
+    private const string ProjectPath = @"C:\projects\one.fwdata";
+
+    private static AssessCommandResponse NewAssessmentResponse() => new(
+        new BaselineCaptureResponse(
+            new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
+                "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
+            ProjectPath, new DateTimeOffset(2026, 9, 5, 10, 58, 0, TimeSpan.Zero),
+            FieldWorksHeldProject: false, ReusedExistingBytes: true),
+        new SelectionProjection([], []), [], "(summary)");
 }
