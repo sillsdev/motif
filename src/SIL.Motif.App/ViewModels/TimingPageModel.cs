@@ -174,6 +174,10 @@ public sealed partial class TimingPageModel : PageModel
         $"Median {KindTiming.MedianMs:N1} ms · 95th percentile {KindTiming.Percentile95Ms:N1} ms";
     public string? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => row.Name == SelectedRule);
+
+    /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
+    public IReadOnlyList<TimingRuleRow> RuleRows =>
+        RuleTiming?.Aggregates.Select(row => new TimingRuleRow(row, row.Name == SelectedRule)).ToArray() ?? [];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
     public string RuleSummary => SelectedRuleRow is not { } row ? string.Empty :
         $"{row.ShareOfTotal:P0} of these words' time · {row.Attempts:N0} attempts · {row.WordsTouched:N0} words touched";
@@ -610,7 +614,7 @@ public sealed partial class TimingPageModel : PageModel
         {
             nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingRefusal),
             nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
-            nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(CostliestRuleWords),
+            nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(SelectedWords),
             nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
@@ -664,3 +668,8 @@ public sealed partial class TimingPageModel : PageModel
 
 /// <summary>A slow word's recorded time and completion shown together.</summary>
 public sealed record TimingSlowWord(string Word, int ElapsedMs, string Completion);
+
+/// <summary>One row of the Timing page's by-rule table, and whether it is the chosen rule.</summary>
+/// <param name="Row">The rule's timing, as the command reported it.</param>
+/// <param name="IsChosen">Whether the side card describes this rule.</param>
+public sealed record TimingRuleRow(TimingAggregateRow Row, bool IsChosen);

@@ -461,6 +461,29 @@ public sealed class WorkspaceContextTests
         Assert.Equal("83% of these words' time · 26 attempts · 2 words touched", timing.RuleSummary);
     }
 
+    // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.
+    [Fact]
+    public async Task ChoosingATimingRuleMarksOnlyThatRowChosen()
+    {
+        var (fake, context) = NewContextWithFake();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) =>
+        {
+            IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
+                ? [new TimingAggregateRow("Subject agreement", 3, 0.6, 9, 2), new TimingAggregateRow("Past tense li-", 2, 0.4, 5, 1)]
+                : [];
+            return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
+                "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        Assert.Equal([true, false], timing.RuleRows.Select(row => row.IsChosen));
+
+        await timing.ChooseRuleCommand.ExecuteAsync(timing.RuleRows[1].Row);
+
+        Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
+    }
+
     [Theory]
     [InlineData("morph_rule", "Morphological rules")]
     [InlineData("phon_rule", "Phonological rules")]

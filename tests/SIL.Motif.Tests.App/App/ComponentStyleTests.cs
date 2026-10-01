@@ -356,6 +356,10 @@ public sealed class ComponentStyleTests
             "Component.Timing.PagePadding");
         yield return new("Timing", "the table header", host => Add(host, Box("timingTableHeader")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Timing", "the chosen rule row", host => Add(host, Press("timingRuleRow", "chosen")),
+            Button.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Timing", "the table's columns", host => Add(host, With(new Grid(), ["timingColumns"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Group");
         yield return new("Timing", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
             "Component.Timing.RowPadding");
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),

@@ -159,28 +159,28 @@
 
             <Border Classes="card">
               <StackPanel>
-                <Grid Classes="timingTableHeader" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
-                  <views:CopyableTextBlock Grid.Column="0" Text="RULE" />
-                  <views:CopyableTextBlock Grid.Column="1" Text="KIND" />
-                  <views:CopyableTextBlock Grid.Column="2" Text="SHARE OF TIME" />
-                  <views:CopyableTextBlock Grid.Column="3" Text="ATTEMPTS" />
-                  <views:CopyableTextBlock Grid.Column="4" Text="WORDS" />
+                <Grid Classes="timingTableHeader timingColumns" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
+                  <views:CopyableTextBlock Grid.Column="0" Text="RULE" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="1" Text="KIND" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="2" Text="SHARE OF TIME" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="3" Text="ATTEMPTS" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="4" Text="WORDS" TextWrapping="Wrap" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding RuleTiming.Aggregates}"
+                <ItemsControl ItemsSource="{Binding RuleRows}"
                               AutomationProperties.Name="Timing by rule">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="responses:TimingAggregateRow">
-                      <Button Classes="timingRuleRow" HorizontalAlignment="Stretch"
+                    <DataTemplate x:DataType="vm:TimingRuleRow">
+                      <Button Classes="timingRuleRow" Classes.chosen="{Binding IsChosen}" HorizontalAlignment="Stretch"
                               HorizontalContentAlignment="Stretch"
                               Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
-                              CommandParameter="{Binding}">
-                        <Grid ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
-                          <views:CopyableTextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" />
+                              CommandParameter="{Binding Row}">
+                        <Grid Classes="timingColumns" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
+                          <views:CopyableTextBlock Grid.Column="0" Text="{Binding Row.Name}" FontWeight="SemiBold" />
                           <views:CopyableTextBlock Grid.Column="1" Classes="muted"
-                                                   Text="{Binding Kind, Converter={StaticResource KindLabel}}" />
-                          <views:CopyableTextBlock Grid.Column="2" Text="{Binding ShareOfTotal, StringFormat='{}{0:P0}'}" />
-                          <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="{Binding Attempts, StringFormat='{}{0:N0}'}" />
-                          <views:CopyableTextBlock Grid.Column="4" Text="{Binding WordsTouched, StringFormat='{}{0:N0}'}" />
+                                                   Text="{Binding Row.Kind, Converter={StaticResource KindLabel}}" />
+                          <views:CopyableTextBlock Grid.Column="2" Text="{Binding Row.ShareOfTotal, StringFormat='{}{0:P0}'}" />
+                          <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="{Binding Row.Attempts, StringFormat='{}{0:N0}'}" />
+                          <views:CopyableTextBlock Grid.Column="4" Text="{Binding Row.WordsTouched, StringFormat='{}{0:N0}'}" />
                         </Grid>
                       </Button>
                     </DataTemplate>
