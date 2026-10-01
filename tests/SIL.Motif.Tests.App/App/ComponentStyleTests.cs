@@ -215,6 +215,18 @@ public sealed class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Approved.Text");
         yield return new("VerdictChip", "a candidate chip's text", host => Inside(host, Box("verdictChip", "candidate")),
             TextBlock.ForegroundProperty, "Intent.Candidate.Text");
+        yield return new("VerdictChip", "an agreeing chip's text", host => Inside(host, Box("verdictChip", "agrees")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Same");
+        yield return new("VerdictChip", "an agreeing chip", host => Add(host, Box("verdictChip", "agrees")),
+            Border.BackgroundProperty, "Intent.Surface.Neutral");
+        yield return new("VerdictChip", "a differing chip", host => Add(host, Box("verdictChip", "differs")),
+            Border.BackgroundProperty, "Intent.Consequence.Problem.Fill");
+        yield return new("VerdictChip", "a differing chip's text", host => Inside(host, Box("verdictChip", "differs")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Problem");
+        yield return new("VerdictChip", "a no-parse chip's text", host => Inside(host, Box("verdictChip", "noresult")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.NoParse");
+        yield return new("VerdictChip", "a stopped chip's text", host => Inside(host, Box("verdictChip", "limit")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Stopped");
         yield return new("VerdictChip", "a chip", host => Add(host, Box("verdictChip")), Border.PaddingProperty, "Component.VerdictChip.Padding");
         yield return new("VerdictChip", "a chip", host => Add(host, Box("verdictChip")), Border.CornerRadiusProperty, "Component.VerdictChip.Radius");
 
@@ -222,9 +234,27 @@ public sealed class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Candidate.Accent");
         yield return new("OutcomeBar", "an unknown segment", host => Add(host, Box("outcomeSegment")),
             Border.BackgroundProperty, "Intent.TextFaint");
+        yield return new("OutcomeBar", "a parsed segment", host => Add(host, Box("outcomeSegment", "agrees")),
+            Border.BackgroundProperty, "Intent.Outcome.Same");
+        yield return new("OutcomeBar", "a built-something-else segment", host => Add(host, Box("outcomeSegment", "differs")),
+            Border.BackgroundProperty, "Intent.Consequence.Problem.Edge");
+        yield return new("OutcomeBar", "a no-parse segment", host => Add(host, Box("outcomeSegment", "noresult")),
+            Border.BackgroundProperty, "Intent.Outcome.NoParse");
+        yield return new("OutcomeBar", "a stopped segment", host => Add(host, Box("outcomeSegment", "limit")),
+            Border.BackgroundProperty, "Intent.Outcome.Stopped");
+        yield return new("OutcomeBar", "a skipped segment", host => Add(host, Box("outcomeSegment", "several")),
+            Border.BackgroundProperty, "Intent.Outcome.NotParsed");
 
         yield return new("WordVerdict", "an approved word", host => Add(host, Box("wordVerdict", "approved")),
             Border.BorderBrushProperty, "Intent.Approved.Accent");
+        yield return new("WordVerdict", "an agreeing word", host => Add(host, Box("wordVerdict", "agrees")),
+            Border.BorderBrushProperty, "Intent.Outcome.Same");
+        yield return new("WordVerdict", "a differing word", host => Add(host, Box("wordVerdict", "differs")),
+            Border.BorderBrushProperty, "Intent.Consequence.Problem");
+        yield return new("WordVerdict", "a no-parse word", host => Add(host, Box("wordVerdict", "noresult")),
+            Border.BorderBrushProperty, "Intent.Outcome.NoParse");
+        yield return new("WordVerdict", "a stopped word", host => Add(host, Box("wordVerdict", "limit")),
+            Border.BorderBrushProperty, "Intent.Outcome.Stopped");
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.BackgroundProperty, "Intent.Clear");
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.PaddingProperty, "Component.WordVerdict.Padding");
         yield return new("WordVerdict", "a dimmed word", host => Add(host, Box("wordVerdict", "dimmed")),
@@ -248,8 +278,30 @@ public sealed class ComponentStyleTests
             Border.PaddingProperty, "Component.MatrixCell.WordPadding");
         yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
             Border.BorderBrushProperty, "Intent.Border");
+        yield return new("MatrixCell", "a cell's words", host => Inside(host, Box("matrixCell")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Neutral");
+        yield return new("MatrixCell", "a kept cell", host => Add(host, Box("matrixCell", "good")),
+            Border.BackgroundProperty, "Intent.Surface");
+        yield return new("MatrixCell", "a kept cell's words", host => Inside(host, Box("matrixCell", "good")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Fine");
+        yield return new("MatrixCell", "a fine cell's words", host => Inside(host, Box("matrixCell", "fine")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Fine");
         yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
-            Border.BackgroundProperty, "Intent.Danger.Fill");
+            Border.BackgroundProperty, "Intent.Consequence.Problem.Fill");
+        yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
+            Border.BorderBrushProperty, "Intent.Consequence.Problem.Edge");
+        yield return new("MatrixCell", "a violation cell's words", host => Inside(host, Box("matrixCell", "violation")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Problem");
+        yield return new("MatrixCell", "a have-a-look cell", host => Add(host, Box("matrixCell", "review")),
+            Border.BackgroundProperty, "Intent.Consequence.Look.Fill");
+        yield return new("MatrixCell", "a have-a-look cell", host => Add(host, Box("matrixCell", "review")),
+            Border.BorderBrushProperty, "Intent.Consequence.Look.Edge");
+        yield return new("MatrixCell", "a have-a-look cell's words", host => Inside(host, Box("matrixCell", "review")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Look");
+        yield return new("MatrixCell", "a new cell", host => Add(host, Box("matrixCell", "new")),
+            Border.BackgroundProperty, "Intent.Consequence.Look.Fill");
+        yield return new("MatrixCell", "a new cell's words", host => Inside(host, Box("matrixCell", "new")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Look");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
             Border.WidthProperty, "Component.MatrixCell.CompactWidth");
         yield return new("MorphemeRow", "a morpheme edge", host => Add(host, Box("morphEdge")), Border.BorderBrushProperty, "Intent.Border");
@@ -360,6 +412,16 @@ public sealed class ComponentStyleTests
             Button.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("Timing", "the table's columns", host => Add(host, With(new Grid(), ["timingColumns"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Group");
+        yield return new("Timing", "the kind bar's morphological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.MorphRuleBrushProperty, "Intent.Timing.MorphRule");
+        yield return new("Timing", "the kind bar's phonological rules", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.PhonRuleBrushProperty, "Intent.Timing.PhonRule");
+        yield return new("Timing", "the kind bar's lexical entries", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.LexiconBrushProperty, "Intent.Timing.Lexicon");
+        yield return new("Timing", "the kind bar's root lookup", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.RootLookupBrushProperty, "Intent.Timing.RootLookup");
+        yield return new("Timing", "the kind bar's time no rule accounts for", host => Add(host, new SIL.Motif.App.Views.TimingKindBar()),
+            SIL.Motif.App.Views.TimingKindBar.UnattributedBrushProperty, "Intent.Timing.Unattributed");
         yield return new("Timing", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
             "Component.Timing.RowPadding");
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),
@@ -400,24 +462,62 @@ public sealed class ComponentStyleTests
         yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
             "Intent.Space.Snug");
 
+        yield return new("PanGlossLine", "a same reading label", host => Inside(host, Box("panGlossLine", "same")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Same");
         yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
             Border.BackgroundProperty, "Intent.Surface");
         yield return new("PanGlossLine", "a different reading edge", host => Add(host, Box("panGlossLine", "different")),
-            Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
+            Border.BorderBrushProperty, "Intent.Outcome.Different");
         yield return new("PanGlossLine", "a different reading label", host => Inside(host, Box("panGlossLine", "different")),
-            TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
         yield return new("PanGlossLine", "a conflicting reading", host => Add(host, Box("panGlossLine", "conflict")),
-            Border.BackgroundProperty, "Intent.Agreement.Conflict.Fill");
+            Border.BackgroundProperty, "Intent.Outcome.Different.Fill");
         yield return new("PanGlossLine", "a conflicting reading edge", host => Add(host, Box("panGlossLine", "conflict")),
-            Border.BorderBrushProperty, "Intent.Agreement.Conflict.Edge");
+            Border.BorderBrushProperty, "Intent.Outcome.Different");
         yield return new("PanGlossLine", "a conflicting inset edge", host => Add(host, Box("panGlossLine", "conflict")),
-            Border.BoxShadowProperty, "Intent.Agreement.Conflict.Shadow");
+            Border.BoxShadowProperty, "Intent.Outcome.Different.Marker");
         yield return new("PanGlossLine", "a conflicting reading label", host => Inside(host, Box("panGlossLine", "conflict")),
-            TextBlock.ForegroundProperty, "Intent.Agreement.Conflict");
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
+        yield return new("PanGlossLine", "a no-parse label", host => Inside(host, Box("panGlossLine", "none")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.NoParse");
+        yield return new("PanGlossLine", "a stopped label", host => Inside(host, Box("panGlossLine", "capped")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Stopped");
+        yield return new("PanGlossLine", "a not-parsed label", host => Inside(host, Box("panGlossLine", "notAssessed")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.NotParsed");
         yield return new("PanGlossLine", "an extra reading count", host => Add(host, Box("panGlossExtra")),
-            Border.BorderBrushProperty, "Intent.Agreement.Suggestion.Edge");
+            Border.BorderBrushProperty, "Intent.Outcome.Different");
         yield return new("PanGlossLine", "a suggested reading count", host => Inside(host, Box("panGlossExtra")),
-            TextBlock.ForegroundProperty, "Intent.Agreement.Suggestion");
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
+
+        foreach (var (outcome, key) in new[]
+        {
+            ("same", "Same"), ("different", "Different"), ("noParse", "NoParse"), ("stopped", "Stopped"), ("notParsed", "NotParsed"),
+        })
+            yield return new("Mark", $"a {outcome} outcome", host => Add(host, Text("outcomeMark", outcome)),
+                TextBlock.ForegroundProperty, $"Intent.Outcome.{key}");
+        yield return new("Mark", "an outcome, which never fills", host => Add(host, Text("outcomeMark", "noParse")),
+            TextBlock.BackgroundProperty, "Intent.Clear");
+        foreach (var (meaning, key) in new[] { ("fine", "Fine"), ("look", "Look"), ("problem", "Problem"), ("neutral", "Neutral") })
+            yield return new("Mark", $"a {meaning} meaning's words", host => Inside(host, Box("meaningMark", meaning)),
+                TextBlock.ForegroundProperty, $"Intent.Consequence.{key}");
+        foreach (var (meaning, key) in new[] { ("look", "Look"), ("problem", "Problem") })
+        {
+            yield return new("Mark", $"a {meaning} meaning", host => Add(host, Box("meaningMark", meaning)),
+                Border.BackgroundProperty, $"Intent.Consequence.{key}.Fill");
+            yield return new("Mark", $"a {meaning} meaning", host => Add(host, Box("meaningMark", meaning)),
+                Border.BorderBrushProperty, $"Intent.Consequence.{key}.Edge");
+        }
+        yield return new("Mark", "a fine meaning", host => Add(host, Box("meaningMark", "fine")),
+            Border.BackgroundProperty, "Intent.Clear");
+        yield return new("Mark", "a meaning", host => Add(host, Box("meaningMark")), Border.PaddingProperty, "Component.Mark.Padding");
+        yield return new("Mark", "a meaning", host => Add(host, Box("meaningMark")), Border.CornerRadiusProperty, "Component.Mark.Radius");
+        foreach (var (severity, key) in new[] { ("warning", "Warning"), ("error", "Error"), ("info", "Info") })
+            yield return new("Mark", $"a {severity} mark's words", host => Inside(host, Box("severityMark", severity)),
+                TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
+        yield return new("Mark", "a warning mark", host => Add(host, Box("severityMark", "warning")),
+            Border.BackgroundProperty, "Intent.Severity.Warning.Fill");
+        yield return new("Mark", "an error mark", host => Add(host, Box("severityMark", "error")),
+            Border.BackgroundProperty, "Intent.Clear");
         yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
             Button.HeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),

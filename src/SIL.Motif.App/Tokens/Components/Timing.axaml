@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views">
   <Styles.Resources>
     <StaticResource x:Key="Component.Timing.PagePadding" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Timing.SideWidth" ResourceKey="Primitive.Size.280" />
@@ -10,6 +11,13 @@
     <StaticResource x:Key="Component.Timing.HeaderPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
     <StaticResource x:Key="Component.Timing.HeadlineGap" ResourceKey="Primitive.Space.28" />
   </Styles.Resources>
+  <Style Selector="views|TimingKindBar">
+    <Setter Property="MorphRuleBrush" Value="{DynamicResource Intent.Timing.MorphRule}" />
+    <Setter Property="PhonRuleBrush" Value="{DynamicResource Intent.Timing.PhonRule}" />
+    <Setter Property="LexiconBrush" Value="{DynamicResource Intent.Timing.Lexicon}" />
+    <Setter Property="RootLookupBrush" Value="{DynamicResource Intent.Timing.RootLookup}" />
+    <Setter Property="UnattributedBrush" Value="{DynamicResource Intent.Timing.Unattributed}" />
+  </Style>
   <Style Selector="Border.timingPage">
     <Setter Property="Padding" Value="{DynamicResource Component.Timing.PagePadding}" />
   </Style>

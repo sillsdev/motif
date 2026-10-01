@@ -127,22 +127,25 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
-    [Fact]
-    public void AWarningCellKeepsItsWarningEdgeUnderThePointerAndWhenChosen()
+    [Theory]
+    [InlineData("violation", "Intent.Consequence.Problem.Edge")]
+    [InlineData("review", "Intent.Consequence.Look.Edge")]
+    [InlineData("new", "Intent.Consequence.Look.Edge")]
+    public void AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen(string family, string edge)
     {
         var failures = new List<string>();
         avalonia.Invoke(() =>
         {
             foreach (var variant in Themes)
             {
-                var cell = new Border { Classes = { "matrixCell", "violation" }, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
+                var cell = new Border { Classes = { "matrixCell", family }, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
                 var window = new Window { Content = cell, RequestedThemeVariant = variant, Width = 300, Height = 120 };
                 try
                 {
                     window.Show();
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
-                    var warning = Resource("Intent.Danger", variant);
+                    var warning = Resource(edge, variant);
                     var resting = cell.BorderThickness;
                     var centre = cell.TranslatePoint(new Point(80, 30), window)!.Value;
                     window.MouseMove(centre);

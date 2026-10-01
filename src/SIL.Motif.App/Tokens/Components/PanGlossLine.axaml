@@ -20,34 +20,37 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
   </Style>
   <Style Selector="Border.panGlossLine.same :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Agreeing}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Same}" />
   </Style>
   <Style Selector="Border.panGlossLine.different">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Suggestion.Edge}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Outcome.Different}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
   </Style>
   <Style Selector="Border.panGlossLine.different :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Suggestion}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
   </Style>
   <Style Selector="Border.panGlossLine.conflict">
-    <Setter Property="Background" Value="{DynamicResource Intent.Agreement.Conflict.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Conflict.Edge}" />
-    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Agreement.Conflict.Shadow}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Different.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Outcome.Different}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Outcome.Different.Marker}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.DifferentPadding}" />
   </Style>
   <Style Selector="Border.panGlossLine.conflict :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Conflict}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
   </Style>
   <Style Selector="Border.panGlossLine.conflict TextBlock.f">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="Border.panGlossLine.none :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Parser.NoReading}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.NoParse}" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector="Border.panGlossLine.capped :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Parser.SearchCapped}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Stopped}" />
+  </Style>
+  <Style Selector="Border.panGlossLine.notAssessed :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.NotParsed}" />
   </Style>
   <Style Selector="Rectangle.panGlossDivider">
     <Setter Property="Height" Value="{DynamicResource Component.PanGlossLine.DividerHeight}" />
@@ -61,12 +64,12 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Component.PanGlossLine.ExtraStroke}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.PanGlossLine.ExtraRadius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.PanGlossLine.ExtraPadding}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Agreement.Suggestion.Edge}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Outcome.Different}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector="Border.panGlossExtra :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.ExtraType}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Agreement.Suggestion}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
 </Styles>

@@ -44,19 +44,24 @@
     <Setter Property="Background" Value="{DynamicResource Intent.TextFaint}" />
   </Style>
   <Style Selector="Border.outcomeSegment.agrees">
-    <Setter Property="Background" Value="{DynamicResource Intent.Success}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Same}" />
   </Style>
+  <!-- A bar's differing part is a built-something-else problem, in a shade apart from a no-parse beside it. -->
   <Style Selector="Border.outcomeSegment.differs">
-    <Setter Property="Background" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
   </Style>
   <Style Selector="Border.outcomeSegment.new">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary}" />
   </Style>
   <Style Selector="Border.outcomeSegment.noresult">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.NoParse}" />
   </Style>
+  <Style Selector="Border.outcomeSegment.limit">
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Stopped}" />
+  </Style>
+  <!-- In a bar, several stands for words left out of the parse, so it draws as Not parsed. -->
   <Style Selector="Border.outcomeSegment.several">
-    <Setter Property="Background" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.NotParsed}" />
   </Style>
   <Style Selector="Border.outcomeSegment.approved">
     <Setter Property="Background" Value="{DynamicResource Intent.Approved.Accent}" />

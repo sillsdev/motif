@@ -1,4 +1,7 @@
-<!-- Matrix cells express project and parser outcomes with one shared set of semantic colours. -->
+<!--
+  A Matrix cell wears its meaning: Fine in text, Have a look and Problem filled and edged, Unknown yet in text.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
@@ -28,7 +31,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Neutral}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellCount">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
@@ -52,36 +55,22 @@
   <Style Selector="Border.matrixCell.compact :is(TextBlock).matrixCellLabel, Border.matrixCell.compact Ellipse.matrixPending">
     <Setter Property="IsVisible" Value="False" />
   </Style>
-  <Style Selector="Border.matrixCell.good">
-    <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
-  </Style>
   <Style Selector="Border.matrixCell.good :is(TextBlock), Border.matrixCell.fine :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Fine}" />
   </Style>
   <Style Selector="Border.matrixCell.violation">
-    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
   </Style>
   <Style Selector="Border.matrixCell.violation :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
   </Style>
-  <Style Selector="Border.matrixCell.review">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+  <Style Selector="Border.matrixCell.review, Border.matrixCell.new">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Look.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Look.Edge}" />
   </Style>
-  <Style Selector="Border.matrixCell.review :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <Style Selector="Border.matrixCell.new">
-    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
-  </Style>
-  <Style Selector="Border.matrixCell.new :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
-  </Style>
-  <Style Selector="Border.matrixCell.nobody">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
-  </Style>
-  <Style Selector="Border.matrixCell.nobody :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+  <Style Selector="Border.matrixCell.review :is(TextBlock), Border.matrixCell.new :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Look}" />
   </Style>
   <Style Selector="Border.matrixCell.none">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
@@ -100,13 +89,16 @@
   <Style Selector="Border.matrixCell.empty :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <!-- Hover and choosing ring the inside of the cell, never taking its warning edge away; a row clips outside. -->
+  <!-- Hover and choosing ring the inside of the cell, never taking its meaning's edge away; a row clips outside. -->
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
     <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
   </Style>
   <Style Selector="Border.matrixCell.violation:pointerover">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
+  </Style>
+  <Style Selector="Border.matrixCell.review:pointerover, Border.matrixCell.new:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Look.Edge}" />
   </Style>
   <Style Selector="Border.matrixCell.selected">
     <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Selected}" />
