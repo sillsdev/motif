@@ -28,7 +28,7 @@ internal static class PanglossProcesses
         Process[] processes;
         try
         {
-            processes = Process.GetProcesses();
+            processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(executablePath));
         }
         catch (Win32Exception)
         {
@@ -48,9 +48,7 @@ internal static class PanglossProcesses
             try
             {
                 var modulePath = process.MainModule?.FileName;
-                if (modulePath is not null && string.Equals(
-                        Path.GetFullPath(modulePath), Path.GetFullPath(executablePath),
-                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                if (modulePath is not null && PathsMatch(modulePath, executablePath))
                     ids.Add(process.Id);
             }
             catch (Win32Exception)
@@ -83,24 +81,22 @@ internal static class PanglossProcesses
     internal static bool AnyAlive(string executablePath, IEnumerable<int> ids) =>
         Snapshot(executablePath).Intersect(ids).Any();
 
-    internal static string DescribeCandidates(string executablePath)
+    internal static bool PathsMatch(string first, string second) =>
+        string.Equals(CanonicalPath(first), CanonicalPath(second),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    private static string CanonicalPath(string path)
     {
-        var candidates = new List<string>();
-        foreach (var process in Process.GetProcesses())
+        var fullPath = Path.GetFullPath(path);
+        if (OperatingSystem.IsWindows()) return fullPath;
+        var parent = Path.GetDirectoryName(fullPath)!;
+        var root = Path.GetPathRoot(parent)!;
+        var resolved = root;
+        foreach (var segment in Path.GetRelativePath(root, parent).Split(Path.DirectorySeparatorChar))
         {
-            using (process)
-            {
-                try
-                {
-                    if (process.ProcessName.Contains("pangloss", StringComparison.OrdinalIgnoreCase))
-                        candidates.Add($"{process.Id}: {process.ProcessName} at {process.MainModule?.FileName}");
-                }
-                catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or NotSupportedException)
-                {
-                    candidates.Add($"{process.Id}: {process.ProcessName}: {exception.Message}");
-                }
-            }
+            resolved = Path.Combine(resolved, segment);
+            resolved = new DirectoryInfo(resolved).ResolveLinkTarget(true)?.FullName ?? resolved;
         }
-        return $"Expected {Path.GetFullPath(executablePath)}; candidates: {string.Join("; ", candidates)}";
+        return Path.Combine(resolved, Path.GetFileName(fullPath));
     }
 }

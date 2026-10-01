@@ -72,8 +72,7 @@ public sealed class ConcurrentWalkthroughTests
                             firstWalkthrough.Workspace.Assess.State == RunState.Running &&
                             secondWalkthrough.Workspace.Assess.State == RunState.Running,
                         WalkthroughSteps.Remaining(deadline), "both fake Assessments did not start");
-                    Assert.True(PanglossProcesses.Snapshot(firstParserPath).Count > 0,
-                        PanglossProcesses.DescribeCandidates(firstParserPath));
+                    Assert.NotEmpty(PanglossProcesses.Snapshot(firstParserPath));
                     Assert.NotEmpty(PanglossProcesses.Snapshot(secondParserPath));
 
                     File.WriteAllText(firstRelease, string.Empty);
