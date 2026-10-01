@@ -160,8 +160,9 @@ public static class CurrentEvidenceQuery
         }
 
         var effectiveWords = assessment is null ? [] : AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns);
-        var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current
-            ? ResolveReadings(project, effectiveWords)
+        var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current && current is not null
+            ? ResolveReadings(current.Baseline.FwDataPath,
+                Path.GetFileNameWithoutExtension(project.FullFwDataPath), effectiveWords)
             : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         var storedAnalyses = new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         var wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -199,14 +200,13 @@ public static class CurrentEvidenceQuery
     }
 
     private static IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolveReadings(
-        ProjectLocator project, IReadOnlyList<AssessedWord> words)
+        string baselinePath, string projectName, IReadOnlyList<AssessedWord> words)
     {
         var resolvable = words.Where(word => word.Morphology is { Analyses.Count: > 0 }).ToArray();
-        if (resolvable.Length == 0 || !File.Exists(project.FullFwDataPath))
+        if (resolvable.Length == 0 || !File.Exists(baselinePath))
             return new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(baselinePath);
         return resolvable.ToDictionary(word => word.Word,
             word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
             StringComparer.Ordinal);
