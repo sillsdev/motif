@@ -28,7 +28,7 @@ internal static class PanglossProcesses
         Process[] processes;
         try
         {
-            processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(executablePath));
+            processes = Process.GetProcesses();
         }
         catch (Win32Exception)
         {

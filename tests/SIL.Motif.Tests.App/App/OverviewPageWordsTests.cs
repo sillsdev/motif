@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewPageWordsTests
 {
-    private const string ProjectPath = @"C:\projects\sample.fwdata";
+    private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "sample.fwdata");
 
     private static readonly string[] EngineWords =
         ["violation", "rejected", "candidate", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
