@@ -145,7 +145,7 @@
       </Expander>
     </Border>
 
-    <Border Grid.Row="3" Classes="card">
+    <Border Grid.Row="3" Classes="card matrixChosen">
       <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
         <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
           <Button DockPanel.Dock="Right" VerticalAlignment="Top" Content="{Binding Compare.HandOffLabel}"
@@ -157,20 +157,21 @@
                         IsVisible="{Binding $parent[views:ComparePanel].Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNotNull}}">
               <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}"
                                     VerticalAlignment="Center" />
-              <TextBlock Text="{Binding RowLabel}" FontWeight="SemiBold" />
-              <TextBlock Classes="muted" Text="×" />
-              <TextBlock Classes="markGlyph outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
+              <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="SemiBold" />
+              <TextBlock Classes="matrixChosenWord muted" Text="×" />
+              <TextBlock Classes="matrixChosenWord markGlyph outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
                          Text="{Binding OutcomeMark.Glyph}" />
-              <TextBlock Classes="outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}" Text="{Binding ColumnLabel}" />
+              <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
+                         Text="{Binding ColumnLabel}" />
               <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Label}" Compact="True" />
             </StackPanel>
-            <TextBlock Text="{Binding Compare.ListHeading}" FontWeight="SemiBold"
+            <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold"
                        IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}" />
           </StackPanel>
           <DockPanel VerticalAlignment="Center">
             <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
                                      Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}" TextTrimming="CharacterEllipsis" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}" TextWrapping="Wrap" />
           </DockPanel>
         </DockPanel>
 
@@ -206,7 +207,8 @@
         </Border>
 
         <DockPanel Grid.Row="2">
-          <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding Compare.SortChoices}" SelectedItem="{Binding Compare.Sort}"
+          <ComboBox DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
+                    SelectedItem="{Binding Compare.Sort}"
                     MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
                     Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                     AutomationProperties.Name="Order the listed words">
@@ -216,12 +218,12 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <TextBox DockPanel.Dock="Left" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+          <TextBox DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
                    Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                    Text="{Binding Compare.SearchText}" PlaceholderText="Search these words..."
                    AutomationProperties.Name="Search the listed words" />
           <WrapPanel HorizontalAlignment="Right">
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.CheckedWordText}"
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.CheckedWordText}" IsVisible="{Binding Compare.HasCheckedWords}"
                                      Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
             <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
                     Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
@@ -229,16 +231,20 @@
             <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
                     Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                     AutomationProperties.Name="Mark checked words as incorrect spelling" />
-            <views:CopyableTextBlock Classes="muted" Text="Seconds per word" IsVisible="{Binding Compare.CanRerun}"
-                                     Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
-            <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
-                           Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
-                           Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                           IsVisible="{Binding Compare.CanRerun}"
-                           AutomationProperties.Name="Seconds each word gets when run again" />
-            <Button Content="Parse stopped words again" Command="{Binding Compare.RerunCommand}"
-                    IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                    AutomationProperties.Name="Parse the stopped and unparsed words again" />
+            <SplitButton Content="Parse stopped words again" Command="{Binding Compare.RerunCommand}"
+                         IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                         AutomationProperties.Name="Parse the stopped and unparsed words again">
+              <SplitButton.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                    <views:CopyableTextBlock Classes="muted" Text="Seconds per word" VerticalAlignment="Center" />
+                    <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
+                                   Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
+                                   AutomationProperties.Name="Seconds each word gets when run again" />
+                  </StackPanel>
+                </Flyout>
+              </SplitButton.Flyout>
+            </SplitButton>
           </WrapPanel>
         </DockPanel>
 

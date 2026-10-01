@@ -135,6 +135,7 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(CheckedWordCount));
             OnPropertyChanged(nameof(CheckedWordText));
+            OnPropertyChanged(nameof(HasCheckedWords));
             CheckedWordsChanged?.Invoke(this, EventArgs.Empty);
         }
         if (e.PropertyName == nameof(CompareWordViewModel.IsChecked)) ProposeCommand.NotifyCanExecuteChanged();
@@ -361,6 +362,9 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public int CheckedWordCount => Words.Count(word => word.IsChecked);
 
+    /// <summary>Whether any listed word is ticked, so the list's controls say how many.</summary>
+    public bool HasCheckedWords => CheckedWordCount > 0;
+
     public string CheckedWordText => CheckedWordCount switch
     {
         0 => "No words ticked",
@@ -534,6 +538,7 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(HandOffLabel));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(CheckedWordText));
+        OnPropertyChanged(nameof(HasCheckedWords));
         HandOffCommand.NotifyCanExecuteChanged();
         ProposeCommand.NotifyCanExecuteChanged();
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);

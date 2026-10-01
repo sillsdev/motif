@@ -12,7 +12,7 @@
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
-    <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.220" />
+    <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TextsPage.CompareSortMinWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.RerunTimeWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.170" />

@@ -219,7 +219,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var compare = CompareViewModelTests.LostWords();
+            var compare = CompareViewModelTests.LostWords(new AssessmentWordResult("polepole", "timed-out", true,
+                "Search stopped at its time limit", 10, null) { ProjectStanding = ProjectStanding.NotPresent });
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
             WithPanel(compare, 1000, window =>
@@ -250,12 +251,38 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 {
                     Named("Order the listed words"), Named("Search the listed words"),
                     Named("Add checked words as Unknown"), Named("Mark checked words as incorrect spelling"),
+                    Named("Parse the stopped and unparsed words again"),
                 };
                 var line = controls.Select(control => control.TranslatePoint(new Point(0, control.Bounds.Height / 2), window)!.Value.Y)
                     .ToArray();
                 Assert.True(line.Max() - line.Min() < 4, "The list's controls share one row: " + string.Join(", ", line));
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text is "Approve one analysis at a time, in the text.");
+            });
+        });
+    }
+
+    [Fact]
+    public void AtTheNarrowWindowTheChosenCellsColumnHeadsStayApart()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = CompareViewModelTests.LostWords();
+            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                cell.Column == CompareColumnKind.NoParse), additive: false);
+            // A 1040 px window leaves the Matrix about this wide beside the collapsed sidebar.
+            WithPanel(compare, 988, window =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var header = Assert.Single(window.GetVisualDescendants().OfType<WordRowHeader>());
+                var heads = header.GetVisualDescendants().OfType<TextBlock>().Where(text => !string.IsNullOrEmpty(text.Text))
+                    .OrderBy(text => text.TranslatePoint(default, window)!.Value.X).ToArray();
+                foreach (var (left, right) in heads.Zip(heads.Skip(1)))
+                {
+                    var end = left.TranslatePoint(default, window)!.Value.X + left.TextLayout.WidthIncludingTrailingWhitespace;
+                    Assert.True(end + 4 <= right.TranslatePoint(default, window)!.Value.X, $"'{left.Text}' runs into '{right.Text}'.");
+                }
             });
         });
     }

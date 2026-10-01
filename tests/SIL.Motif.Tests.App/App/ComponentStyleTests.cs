@@ -403,6 +403,8 @@ public sealed partial class ComponentStyleTests
             TextBlock.MarginProperty, "Component.MatrixCell.PlacesMargin");
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
+            Border.PaddingProperty, "Component.MatrixCell.ChosenPadding");
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
             Border.PaddingProperty, "Component.MatrixCell.SharedPadding");
         yield return new("MatrixCell", "how many share a morpheme", host => Within(host, Box("matrixShared"), "matrixSharedCount"),

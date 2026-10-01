@@ -613,10 +613,11 @@ public sealed class CompareViewModelTests
     }
 
     // Four approved words PanGloss could not parse, and one it kept that shares nothing with them by identity.
-    internal static CompareViewModel LostWords()
+    internal static CompareViewModel LostWords(params AssessmentWordResult[] more)
     {
         var table = new AssessWordsViewModel();
         table.Load([
+            .. more,
             Lost("walikata", 2, IdMorph("wa-", "3PL"), IdMorph("li-", "PST"), IdMorph("kat", "cut"), IdMorph("-a", "FV")),
             Lost("anakata", 1, IdMorph("a-", "3SG"), IdMorph("na-", "PRS"), IdMorph("kat", "cut"), IdMorph("-a", "FV")),
             Lost("hawajafika", 3, IdMorph("ha-", "NEG"), IdMorph("wa-", "3PL"), IdMorph("ja-", "NEG.PERF"),
@@ -706,6 +707,7 @@ public sealed class CompareViewModelTests
         word.IsChecked = true;
 
         Assert.Equal("1 word ticked", compare.CheckedWordText);
+        Assert.True(compare.HasCheckedWords);
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));
