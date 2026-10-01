@@ -17,6 +17,7 @@ public sealed class CancelDuringProgressTests
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-cancel-command-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        var writer = Task.CompletedTask;
         try
         {
             var path = Path.Combine(root, "project.fwdata");
@@ -34,7 +35,7 @@ public sealed class CancelDuringProgressTests
                     "2026-09-25T00:00:00Z"));
                 jobs.Transition(queued.JobId, JobStatus.Running);
                 var firstWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                var writer = Task.Run(() =>
+                writer = Task.Run(() =>
                 {
                     using var writerDatabase = MotifDatabase.OpenOwned(databasePath, project,
                         MotifSchema.CurrentSchema, new Version(1, 0));
@@ -51,7 +52,13 @@ public sealed class CancelDuringProgressTests
                         Thread.Yield();
                     }
                 });
-                await firstWrite.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                // Bounded by the writer's own life: a loaded runner can take seconds to start it.
+                await Task.WhenAny(firstWrite.Task, writer);
+                if (!firstWrite.Task.IsCompleted)
+                {
+                    await writer;
+                    Assert.Fail($"The writer finished without recording progress for {jobId}.");
+                }
                 var cancelled = JobCommands.Cancel(new CancelJobRequest(path, jobId, "1.0"));
                 Assert.True(cancelled.Succeeded, cancelled.Refusal?.Message);
                 Assert.True(cancelled.Value!.CancellationRequested);
@@ -61,6 +68,8 @@ public sealed class CancelDuringProgressTests
         }
         finally
         {
+            // A writer still holding the database would turn the real failure into a cleanup IOException.
+            await writer.ContinueWith(_ => { }, TaskScheduler.Default);
             Directory.Delete(root, true);
         }
     }
