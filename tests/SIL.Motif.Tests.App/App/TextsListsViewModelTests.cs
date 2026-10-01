@@ -69,14 +69,22 @@ public sealed class TextsListsViewModelTests
     }
 
     [Fact]
-    public void EachNamedListSelectsOnlyItsDefinedMatrixCells()
+    public void TheListsAreTheMatrixShortcuts_ByNameAndByCell()
     {
         var (compare, lists) = Loaded();
 
-        Assert.Equal(
-            ["Approved, not parsed", "Approved, parsed differently", "Unknown, PanGloss confirms",
-                "Parsed, not in FieldWorks", "Nobody can analyze", "Disapproved but built", "Stopped at a limit"],
-            lists.Lists.Select(list => list.Name));
+        Assert.Equal(compare.Presets.Select(preset => preset.Label), lists.Lists.Select(list => list.Name));
+        Assert.Equal(["Lost", "Built something else", "Built anyway", "Have a look", "New", "Nobody can analyze",
+            "Stopped", "Not parsed"], lists.Lists.Select(list => list.Name));
+        foreach (var (list, preset) in lists.Lists.Zip(compare.Presets))
+            Assert.Equal(preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet(),
+                list.Cells.ToHashSet());
+    }
+
+    [Fact]
+    public void EachNamedListSelectsOnlyItsDefinedMatrixCells()
+    {
+        var (compare, lists) = Loaded();
 
         foreach (var list in lists.Lists)
         {
@@ -87,11 +95,51 @@ public sealed class TextsListsViewModelTests
     }
 
     [Fact]
+    public void EachListSaysWhatItHoldsInOneSentence_AndCountsItsWordsAndPlaces()
+    {
+        var (_, lists) = Loaded(withSecondApprovedNoParse: true);
+
+        Assert.All(lists.Lists, list =>
+        {
+            Assert.EndsWith(".", list.Sentence, StringComparison.Ordinal);
+            Assert.Equal(1, list.Sentence.Count(character => character == '.'));
+            Assert.DoesNotContain("Matrix", list.Sentence, StringComparison.Ordinal);
+        });
+        var lost = lists.Lists.Single(list => list.Name == "Lost");
+        Assert.Equal("You approved these, and the grammar can no longer build them.", lost.Sentence);
+        Assert.Equal("2 words · 2 places", lost.CountText);
+        Assert.Equal("1 word · 1 place", lists.Lists.Single(list => list.Name == "Built anyway").CountText);
+    }
+
+    [Fact]
+    public void ParseAgainIsOfferedOnlyForAListWithStoppedOrUnparsedWords_AndParsesJustThose()
+    {
+        var (compare, lists) = Loaded();
+        IReadOnlyList<string>? parsed = null;
+        compare.Rerun = (words, _) => { parsed = words; return Task.CompletedTask; };
+
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Lost"));
+        Assert.False(lists.CanParseAgain);
+        Assert.False(lists.ParseAgainCommand.CanExecute(null));
+
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped"));
+        Assert.True(lists.CanParseAgain);
+        Assert.Equal("Parse again", lists.ParseAgainLabel);
+        Assert.Equal("Parse these 2 words again, with 30 seconds for each.", lists.ParseAgainHelpText);
+        lists.ParseAgainCommand.Execute(null);
+        Assert.Equal(["timeout-one", "timeout-two"], parsed!.Order());
+
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Not parsed"));
+        Assert.True(lists.CanParseAgain);
+        Assert.Equal("Parse this 1 word again, with 30 seconds.", lists.ParseAgainHelpText);
+    }
+
+    [Fact]
     public void ListsOpensWithTheFirstListWithWordsAndItsMatchingWords()
     {
         var (compare, lists) = Loaded();
 
-        Assert.Equal("Approved, not parsed", lists.SelectedList?.Name);
+        Assert.Equal("Lost", lists.SelectedList?.Name);
         Assert.Equal([new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse)],
             compare.Cells.Where(cell => cell.IsSelected)
                 .Select(cell => new TextsListCell(cell.Row, cell.Column)));
@@ -104,7 +152,7 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded();
         compare.FocusFixFirstCommand.Execute(compare.FixFirstRows.Single(item => item.Word.Word == "approved-empty"));
 
-        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Approved, parsed differently"));
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Built something else"));
 
         Assert.Equal(string.Empty, compare.SearchText);
         Assert.Equal(["approved-other"], compare.Words.Select(word => word.Word));
@@ -126,12 +174,12 @@ public sealed class TextsListsViewModelTests
     }
 
     [Theory]
-    [InlineData("Approved, not parsed", "approved-empty")]
-    [InlineData("Approved, parsed differently", "approved-other")]
-    [InlineData("Unknown, PanGloss confirms", "candidate-kept")]
-    [InlineData("Parsed, not in FieldWorks", "new-parse")]
+    [InlineData("Lost", "approved-empty")]
+    [InlineData("Built something else", "approved-other")]
+    [InlineData("New", "new-parse")]
     [InlineData("Nobody can analyze", "nobody")]
-    [InlineData("Disapproved but built", "rejected-rebuilt")]
+    [InlineData("Built anyway", "rejected-rebuilt")]
+    [InlineData("Not parsed", "skipped")]
     public void SelectingOneQuestionMakesItsWordsTheMatrixWordList(string name, string word)
     {
         var (compare, lists) = Loaded();
@@ -145,7 +193,7 @@ public sealed class TextsListsViewModelTests
     public void TimedOutListUnionsTimeoutCellsAndDoesNotIncludeSkippedWords()
     {
         var (compare, lists) = Loaded();
-        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped at a limit"));
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped"));
 
         Assert.Equal(["timeout-one", "timeout-two"], compare.Words.Select(item => item.Word).Order());
     }
@@ -156,7 +204,7 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded();
         var changes = new ChangesViewModel(new FakeCommandClient());
         compare.Changes = changes;
-        var list = lists.Lists.Single(item => item.Name == "Approved, not parsed");
+        var list = lists.Lists.Single(item => item.Name == "Lost");
 
         changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "approved-empty", ""));
         lists.SelectListCommand.Execute(list);

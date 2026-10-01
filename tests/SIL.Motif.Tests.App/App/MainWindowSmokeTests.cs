@@ -1149,7 +1149,7 @@ public sealed class MainWindowSmokeTests
                 };
                 var page = workspace.PageModel<TextsPageModel>();
                 page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.Single(list =>
-                    list.Name == "Approved, parsed differently"));
+                    list.Name == "Built something else"));
                 workspace.Context.OpenTexts(TextsTab.Lists);
                 window.Show();
                 window.ApplyTemplate();
@@ -1160,11 +1160,11 @@ public sealed class MainWindowSmokeTests
                     .Where(button => AutomationProperties.GetName(button)?.StartsWith(
                         "Open the ", StringComparison.Ordinal) == true)
                     .ToArray();
-                Assert.Equal(7, namedLists.Length);
+                Assert.Equal(8, namedLists.Length);
                 var parsedDifferently = Assert.Single(namedLists, button =>
-                    AutomationProperties.GetName(button) == "Open the Approved, parsed differently word list");
+                    AutomationProperties.GetName(button) == "Open the Built something else word list");
                 ClickButton(window, parsedDifferently);
-                Assert.Equal("Approved, parsed differently", page.TextsLists.SelectedList?.Name);
+                Assert.Equal("Built something else", page.TextsLists.SelectedList?.Name);
                 Assert.True(Assert.Single(panel.GetLogicalDescendants().OfType<ListBox>(), list =>
                     AutomationProperties.GetName(list) == "Words in the selected list").IsEffectivelyVisible);
 

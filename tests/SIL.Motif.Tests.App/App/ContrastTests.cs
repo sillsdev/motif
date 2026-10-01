@@ -431,7 +431,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 Application.Current.RequestedThemeVariant = ThemeVariant.Light;
                 reviewWindow.Show();
                 listsWindow.Show();
-                foreach (var (state, list) in new[] { ("ticked none", "Approved, not parsed"), ("empty list", "Nobody can analyze") })
+                foreach (var (state, list) in new[] { ("ticked none", "Lost"), ("empty list", "Nobody can analyze") })
                 {
                     lists.SelectListCommand.Execute(lists.Lists.Single(candidate => candidate.Name == list));
                     foreach (var theme in Themes)

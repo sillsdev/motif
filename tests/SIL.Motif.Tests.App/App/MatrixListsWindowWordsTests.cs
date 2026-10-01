@@ -178,11 +178,12 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     }
 
     [Fact]
-    public void ListsUseNamesThatMatchTheMatrix() =>
-        Assert.Equal(
-            ["Approved, not parsed", "Approved, parsed differently", "Unknown, PanGloss confirms",
-                "Parsed, not in FieldWorks", "Nobody can analyze", "Disapproved but built", "Stopped at a limit"],
-            new TextsListsViewModel(Compare(EveryKindOfWord)).Lists.Select(list => list.Name));
+    public void ListsUseNamesThatMatchTheMatrix()
+    {
+        var compare = Compare(EveryKindOfWord);
+        Assert.Equal(compare.Presets.Select(preset => preset.Label),
+            new TextsListsViewModel(compare).Lists.Select(list => list.Name));
+    }
 
     [Fact]
     public void AListedWordStartsAtTheLeftOfItsRow()
@@ -213,7 +214,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
         var lists = new TextsListsViewModel(compare);
 
-        Assert.Equal("Parsed, not in FieldWorks", lists.SelectedList?.Name);
+        Assert.Equal("New", lists.SelectedList?.Name);
         Assert.Equal(["new-parse"], compare.Words.Select(word => word.Word));
     }
 
@@ -329,13 +330,12 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             foreach (var list in lists.Lists)
             {
                 lists.SelectListCommand.Execute(list);
-                shown.AddRange([list.Name, list.Question, lists.HandOffListDisabledReason,
+                shown.AddRange([list.Name, list.Sentence, list.CountText, lists.HandOffListDisabledReason, lists.ParseAgainHelpText,
                     lists.HandOffCheckedWordsHelpText, lists.HandOffListLabel, lists.HandOffCheckedWordsLabel]);
                 shown.AddRange(Rendered(new TextsListsPanel(lists)));
             }
 
             AssertWindowWords(shown);
-            Assert.Contains("Opinions change one analysis at a time, in the text.", shown);
         });
     }
 

@@ -7,14 +7,14 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>One exact cell of the Compare matrix.</summary>
 public sealed record TextsListCell(WordProjectStatus Row, CompareColumnKind Column);
 
-/// <summary>A named question whose words are the union of its explicit Compare cells.</summary>
+/// <summary>One of the Matrix's named shortcuts as a word list: its words are the union of the shortcut's cells.</summary>
 public sealed partial class TextsListDefinitionViewModel : ObservableObject
 {
     internal TextsListDefinitionViewModel(
-        string name, string question, IReadOnlyList<TextsListCell> cells, CompareViewModel compare)
+        string name, string sentence, IReadOnlyList<TextsListCell> cells, CompareViewModel compare)
     {
         Name = name;
-        Question = question;
+        Sentence = sentence;
         Cells = cells;
         Compare = compare;
         foreach (var cell in Compare.Cells) cell.PropertyChanged += OnCellPropertyChanged;
@@ -24,7 +24,8 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     public string Name { get; }
 
-    public string Question { get; }
+    /// <summary>What the list holds, in one sentence; the rest of the explanation is in Help.</summary>
+    public string Sentence { get; }
 
     public IReadOnlyList<TextsListCell> Cells { get; }
 
@@ -50,7 +51,10 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     public string? PendingChangeStatus => PendingChangeStates.Label(PendingState);
 
-    public string CountText => WordCount == 1 ? "1 word" : $"{WordCount:N0} words";
+    /// <summary>The list's words and places together, such as <c>5 words · 8 places</c>.</summary>
+    public string CountText => $"{Counted(WordCount, "word")} · {Counted(OccurrenceCount, "place")}";
+
+    private static string Counted(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count:N0} {noun}s";
 
     [ObservableProperty]
     private bool _isSelected;
@@ -67,7 +71,10 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
             OnPropertyChanged(nameof(CountText));
         }
         if (e.PropertyName is nameof(CompareCellViewModel.OccurrenceCount) or nameof(CompareCellViewModel.Count))
+        {
             OnPropertyChanged(nameof(OccurrenceCount));
+            OnPropertyChanged(nameof(CountText));
+        }
         if (e.PropertyName == nameof(CompareCellViewModel.HasPendingChanges))
         {
             OnPropertyChanged(nameof(HasPendingChanges));
@@ -82,44 +89,38 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
     }
 }
 
-/// <summary>The fixed question lists on the Texts page; each one selects cells from the page's shared Compare model.</summary>
+/// <summary>
+/// The word lists on the Texts page: the Matrix's named shortcuts, by the same names and cells, each selecting its
+/// cells in the page's shared Compare model.
+/// </summary>
 public sealed partial class TextsListsViewModel : ObservableObject
 {
+    private static readonly IReadOnlyDictionary<string, string> Sentences = new Dictionary<string, string>
+    {
+        ["Lost"] = "You approved these, and the grammar can no longer build them.",
+        ["Built something else"] = "You approved these, and the grammar builds another analysis.",
+        ["Built anyway"] = "You disapproved these analyses, and the grammar still builds them.",
+        ["Have a look"] = "Unknown analyses the grammar builds differently or cannot build, and misspellings it builds.",
+        ["New"] = "FieldWorks holds no analysis of these, and the grammar proposes one.",
+        ["Nobody can analyze"] = "Neither FieldWorks nor the grammar can analyze these.",
+        ["Stopped"] = "PanGloss stopped at a limit on these before it finished.",
+        ["Not parsed"] = "PanGloss has not parsed these yet.",
+    };
+
     public TextsListsViewModel(CompareViewModel compare)
     {
         ArgumentNullException.ThrowIfNull(compare);
         Compare = compare;
-        Lists =
-        [
-            Definition("Approved, not parsed",
-                "Words you approved in FieldWorks that the grammar can no longer build. " +
-                "Same as the Matrix cell Approved × No parse.",
-                Cell(WordProjectStatus.Approved, CompareColumnKind.NoParse)),
-            Definition("Approved, parsed differently",
-                "Words you approved where the grammar builds something else. " +
-                "Same as the Matrix cell Approved × Different.",
-                Cell(WordProjectStatus.Approved, CompareColumnKind.NoMatch)),
-            Definition("Unknown, PanGloss confirms",
-                "Words with an Unknown analysis that the grammar builds too. Same as the Matrix cell Unknown × Same.",
-                Cell(WordProjectStatus.Candidate, CompareColumnKind.Match)),
-            Definition("Parsed, not in FieldWorks",
-                "Words the grammar parses that FieldWorks has no analysis for. " +
-                "Same as the Matrix cell Not in FieldWorks × Different.",
-                Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch)),
-            Definition("Nobody can analyze",
-                "Words neither FieldWorks nor the grammar can analyze. " +
-                "Same as the Matrix cell Not in FieldWorks × No parse.",
-                Cell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)),
-            Definition("Disapproved but built",
-                "Words whose disapproved analysis the grammar still builds. Same as the Matrix cell Disapproved × Same.",
-                Cell(WordProjectStatus.Rejected, CompareColumnKind.Match)),
-            Definition("Stopped at a limit",
-                "Words PanGloss stopped on at a time or step limit. Same as the Matrix column Stopped.",
-                Enum.GetValues<WordProjectStatus>().Select(row => new TextsListCell(row, CompareColumnKind.Timeout)).ToArray()),
-        ];
+        Lists = compare.Presets.Select(preset => new TextsListDefinitionViewModel(preset.Label,
+                Sentences.TryGetValue(preset.Label, out var sentence) ? sentence
+                    : throw new InvalidOperationException($"The Matrix shortcut {preset.Label} has no list sentence."),
+                preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToArray(), compare))
+            .ToArray();
         SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
         HandOffListCommand = new RelayCommand(HandOffList, CanHandOffList);
         HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
+        ParseAgainCommand = new AsyncRelayCommand(() => Compare.RerunCommand.ExecuteAsync(null), () => CanParseAgain);
+        compare.PropertyChanged += OnComparePropertyChanged;
         foreach (var list in Lists) list.PropertyChanged += OnListPropertyChanged;
         compare.ChosenCellsChanged += OnChosenCellsChanged;
         compare.CheckedWordsChanged += OnCheckedWordsChanged;
@@ -195,6 +196,28 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public IRelayCommand HandOffCheckedWordsCommand { get; }
 
+    /// <summary>Whether the chosen list holds stopped or unparsed words, the only ones worth parsing again.</summary>
+    public bool CanParseAgain => SelectedList is { } list && Compare.Rerun is not null &&
+        list.Cells.Any(cell => cell.Column is CompareColumnKind.Timeout or CompareColumnKind.Skipped) &&
+        Compare.RerunWords.Count > 0;
+
+    public string ParseAgainLabel => "Parse again";
+
+    /// <summary>Which words Parse again sends, and how long each one gets.</summary>
+    public string ParseAgainHelpText
+    {
+        get
+        {
+            var seconds = Compare.RerunSeconds == 1 ? "1 second" : $"{Compare.RerunSeconds:0} seconds";
+            return Compare.RerunWords.Count == 1
+                ? $"Parse this 1 word again, with {seconds}."
+                : $"Parse these {Compare.RerunWords.Count:N0} words again, with {seconds} for each.";
+        }
+    }
+
+    /// <summary>Parses the chosen list's stopped and unparsed words again, with the Matrix's time for each.</summary>
+    public IAsyncRelayCommand ParseAgainCommand { get; }
+
     /// <summary>Selects the first list with words when the chosen matrix cells do not match a named list.</summary>
     public void SelectFirstIfNeeded()
     {
@@ -204,13 +227,8 @@ public sealed partial class TextsListsViewModel : ObservableObject
             SelectList(SelectedList);
     }
 
-    private TextsListDefinitionViewModel Definition(string name, string question, params TextsListCell[] cells) =>
-        new(name, question, cells, Compare);
-
     private TextsListDefinitionViewModel? FirstWithWords() =>
         Lists.FirstOrDefault(list => list.HasWords) ?? Lists.FirstOrDefault();
-
-    private static TextsListCell[] Cell(WordProjectStatus row, CompareColumnKind column) => [new(row, column)];
 
     private void SelectList(TextsListDefinitionViewModel? list)
     {
@@ -235,9 +253,24 @@ public sealed partial class TextsListsViewModel : ObservableObject
         if (SelectedList is { } list) HandOff?.Invoke(Compare.CheckedWordsInCells(list.Cells));
     }
 
+    private void OnComparePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(CompareViewModel.RerunWords) or nameof(CompareViewModel.RerunSeconds)
+            or nameof(CompareViewModel.RerunText))) return;
+        NotifyParseAgain();
+    }
+
+    private void NotifyParseAgain()
+    {
+        OnPropertyChanged(nameof(CanParseAgain));
+        OnPropertyChanged(nameof(ParseAgainHelpText));
+        ParseAgainCommand.NotifyCanExecuteChanged();
+    }
+
     private void OnChosenCellsChanged(object? sender, EventArgs e)
     {
         RefreshSelection();
+        NotifyParseAgain();
         HandOffListCommand.NotifyCanExecuteChanged();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }
@@ -266,6 +299,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     partial void OnSelectedListChanged(TextsListDefinitionViewModel? value)
     {
+        NotifyParseAgain();
         HandOffListCommand.NotifyCanExecuteChanged();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }

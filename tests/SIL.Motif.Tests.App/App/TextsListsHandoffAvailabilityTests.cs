@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsListsHandoffAvailabilityTests
 {
     [Fact]
-    public void EmptyAndUntickedListsShowOnlyTheirRelevantHandoffReason()
+    public void EmptyAndUntickedListsGiveTheirHandoffReasonOnTheButton_NotAsANoteBesideIt()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -42,7 +42,9 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.Equal(emptyListReason, lists.HandOffListDisabledReason);
                 Assert.Equal("This word list has no words to tick.",
                     AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal([emptyListReason], VisibleReasons(window));
+                Assert.Equal(emptyListReason, ToolTip.GetTip(wholeListButton));
+                Assert.Equal(emptyListReason, AutomationProperties.GetHelpText(wholeListButton));
+                Assert.Empty(VisibleReasons(window));
 
                 var words = workspace.Context.Assess.Words;
                 words.Load([new AssessmentWordResult(
@@ -61,7 +63,8 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.Empty(lists.HandOffListDisabledReason);
                 Assert.Equal(untickedWordsReason, lists.HandOffCheckedWordsDisabledReason);
                 Assert.Equal(untickedWordsReason, AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal([untickedWordsReason], VisibleReasons(window));
+                Assert.Equal(untickedWordsReason, ToolTip.GetTip(checkedWordsButton));
+                Assert.Empty(VisibleReasons(window));
             }
             finally
             {

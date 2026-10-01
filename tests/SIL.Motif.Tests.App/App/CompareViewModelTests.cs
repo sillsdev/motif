@@ -254,7 +254,7 @@ public sealed class CompareViewModelTests
 
         Assert.Equal(AnalysisMarkingClass.Extra, row.Marking.PanGlossClass);
         Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
-        Assert.Contains("kitabu", lists.Lists.Single(list => list.Name == "Approved, parsed differently")
+        Assert.Contains("kitabu", lists.Lists.Single(list => list.Name == "Built something else")
             .Cells.SelectMany(cell => compare.WordsInCells([cell])));
     }
     [Fact]

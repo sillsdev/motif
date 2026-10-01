@@ -151,7 +151,7 @@ public sealed class WorkspacePageTests
         var texts = workspace.PageModel<TextsPageModel>();
         texts.ShowTabCommand.Execute(TextsTab.Lists);
 
-        Assert.Equal("Approved, not parsed", texts.TextsLists.SelectedList?.Name);
+        Assert.Equal("Lost", texts.TextsLists.SelectedList?.Name);
         Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
     }
 
