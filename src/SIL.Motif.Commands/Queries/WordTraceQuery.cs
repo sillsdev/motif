@@ -2,6 +2,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Contract.Responses;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
@@ -17,6 +18,25 @@ public static class WordTraceQuery
 {
     public static CommandOutcome<WordTraceResponse> LoadDiagnostic(string json, int elapsedMs = 0, TraceHostCapture? current = null) =>
         WordTraceDiagnosticReader.Read(json, elapsedMs, current);
+
+    /// <summary>Reads a saved trace file into the same response a live trace gives, with no project and no parser.</summary>
+    public static CommandOutcome<WordTraceResponse> Load(WordTraceLoadRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string json;
+        try
+        {
+            json = File.ReadAllText(request.DiagnosticPath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException
+                                              or NotSupportedException)
+        {
+            return CommandOutcome<WordTraceResponse>.Refused(new Refusal(
+                "wordtrace.diagnostic-unreadable", FailureReason.NotFound,
+                $"Motif could not read the saved trace '{request.DiagnosticPath}': {exception.Message}"));
+        }
+        return LoadDiagnostic(json);
+    }
 
     public static CommandOutcome<WordTraceResponse> Query(
         WordTraceRequest request, CancellationToken cancellationToken = default) =>
@@ -121,7 +141,10 @@ public static class WordTraceQuery
             SearchStatus = complete ? "complete" : "incomplete",
             InvalidShape = details?.InvalidShape ?? false,
         };
-        return CommandOutcome<WordTraceResponse>.Success(response);
+        return CommandOutcome<WordTraceResponse>.Success(response with
+        {
+            Reading = TraceReadingBuilder.Summarize(response.Word, response.Root, response.Candidates, response.Analyses),
+        });
     }
 
     private static TraceStep ConvertTree(PanGlossTraceNode node) =>
@@ -136,6 +159,8 @@ public static class WordTraceQuery
             FailureActual = node.FailureActual,
             FailureEnvironment = node.FailureEnvironment,
             AttemptedMorphs = node.AttemptedMorphs.Select(TraceReadingBuilder.ToMorph).ToArray(),
+            SourceIdentityKind = node.SourceIdentityKind,
             SourceIdentityId = node.SourceIdentityId,
+            SourceIdentityQuality = node.SourceIdentityQuality,
         };
 }
