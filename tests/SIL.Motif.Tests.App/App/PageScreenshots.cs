@@ -107,6 +107,15 @@ public sealed class PageScreenshots
         });
     }
 
+    [Fact]
+    public void ScreenshotTextWordsCountTheirOccurrences()
+    {
+        var words = TextWords();
+
+        Assert.True(words.OccurrenceCount > 0);
+        Assert.Equal(words.Words.Sum(word => word.Occurrences.Count), words.OccurrenceCount);
+    }
+
     private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
         workspace.Context.TryWord("matinlu");
@@ -254,7 +263,7 @@ public sealed class PageScreenshots
         var words = Vocabulary.Select(item => new TextWord(item.Word, null,
             [new WordOccurrence(Story, "Hadithi ya sungura", 1, "Sungura alikula chakula.", "approved", Stored(item.Word))],
             [Stored(item.Word)], [])).ToArray();
-        return new TextWordsResponse(words, [lines], HasBaseline: true);
+        return new TextWordsResponse(words, [lines], HasBaseline: true, words.Sum(word => word.Occurrences.Count));
     }
 
     private static AssessCommandResponse Assessment()
