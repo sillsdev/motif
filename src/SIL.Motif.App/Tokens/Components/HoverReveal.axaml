@@ -35,12 +35,12 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
-  <Style Selector="Border.hoverReveal :is(Button).revealControl, Border.stagedStrip :is(Button).revealControl">
+  <Style Selector="Border.hoverReveal :is(Button).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.HiddenOpacity}" />
     <!-- Opacity-hidden actions cannot receive pointer hits until this region reveals them. -->
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
-  <Style Selector="Border.hoverReveal:pointerover :is(Button).revealControl, Border.hoverReveal:focus-within :is(Button).revealControl, Border.stagedStrip:pointerover :is(Button).revealControl, Border.stagedStrip:focus-within :is(Button).revealControl">
+  <Style Selector="Border.hoverReveal:pointerover :is(Button).revealOnHover, Border.hoverReveal:focus-within :is(Button).revealOnHover, Border.hoverReveal.open :is(Button).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
     <Setter Property="IsHitTestVisible" Value="True" />
   </Style>

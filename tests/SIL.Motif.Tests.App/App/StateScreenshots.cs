@@ -242,6 +242,12 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.OpenRow(null, null, ListWords);
         })
         { Teardown = stage => stage.CloseRows() };
+        yield return new("lists", "row-hover", async stage =>
+        {
+            await stage.ChooseList();
+            return await stage.Hover(null, () => stage.RowBody("Words in the selected list"), "the first Lists word row");
+        })
+        { Height = 1100 };
         yield return new("lists", "disabled-hover", async stage =>
         {
             await stage.ChooseList();
@@ -306,6 +312,22 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return "Timing with a rule chosen: its costliest words and the slowest words as word rows.";
         })
         { Height = 1700 };
+        yield return new("timing", "costliest-word-row-hover", async stage =>
+        {
+            await stage.ShowTimingWords();
+            var row = stage.WordRows("timing-rule-words").First();
+            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
+                .First(border => border.Classes.Contains("wordRowBody")), "a costliest word row");
+        })
+        { Height = 1700 };
+        yield return new("timing", "slowest-word-row-hover", async stage =>
+        {
+            await stage.ShowTimingWords();
+            var row = stage.WordRows("timing-words").First();
+            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
+                .First(border => border.Classes.Contains("wordRowBody")), "a slowest word row");
+        })
+        { Height = 1700 };
         yield return new("timing", "word-row-opened", async stage =>
         {
             await stage.ShowTimingWords();
@@ -325,6 +347,15 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return "Review changes with chakula staged, as a word row with its staged arrow and Undo.";
         })
         { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
+        yield return new("review", "word-row-hover", async stage =>
+        {
+            stage.Open(WorkspacePage.Review);
+            await stage.Until(() => stage.WordRows("review").Any(), "the staged change's row");
+            var row = stage.WordRows("review").First();
+            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
+                .First(border => border.Classes.Contains("wordRowBody")), "the staged change's row");
+        })
+        { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
         yield return new("review", "word-row-opened", async stage =>
         {
             stage.Open(WorkspacePage.Review);
@@ -352,6 +383,15 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             stage.Open(WorkspacePage.Texts, TextsTab.WhatChanged);
             await stage.Until(() => stage.WordRows("what-changed").Any(), "the chosen move's words");
             return "What changed after a second run in which kitabu lost its analysis, with that move chosen.";
+        })
+        { Height = 1100, Setup = stage => stage.ParseWithKitabuLost(), Teardown = stage => stage.ParseAgain() };
+        yield return new("what-changed", "word-row-hover", async stage =>
+        {
+            stage.Open(WorkspacePage.Texts, TextsTab.WhatChanged);
+            await stage.Until(() => stage.WordRows("what-changed").Any(), "the chosen move's words");
+            var row = stage.WordRows("what-changed").First();
+            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
+                .First(border => border.Classes.Contains("wordRowBody")), "a What changed word row");
         })
         { Height = 1100, Setup = stage => stage.ParseWithKitabuLost(), Teardown = stage => stage.ParseAgain() };
 

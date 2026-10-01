@@ -259,7 +259,7 @@
                                       CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
                                       AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Button Classes="actionChip fix" Content="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
+                              <Button Classes="actionChip fix revealOnHover" Content="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
                                       VerticalAlignment="Center"
                                       AutomationProperties.AutomationId="{Binding FixAutomationId}">
                                 <Button.Flyout>
@@ -296,11 +296,11 @@
                                         AutomationProperties.AutomationId="{Binding StagedAutomationId}">
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
-                                <Border Classes="stagedStrip" ToolTip.Tip="{Binding FitStatus}">
+                                <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}">
                                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
                                     <TextBlock Classes="stagedLabel" Text="Staged" />
                                     <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
-                                    <Button Classes="revealControl revealButton" Content="Undo"
+                                    <Button Classes="revealControl revealButton revealOnHover" Content="Undo"
                                             Command="{Binding $parent[views:ResultsInTextPanel].InText.Changes.RemoveCommand}"
                                             CommandParameter="{Binding Change}"
                                             AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
@@ -319,7 +319,7 @@
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>
                   <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                    <Border Classes="card wordCard" Focusable="True" KeyDown="OnTokenCardKeyDown"
+                    <Border Classes="card wordCard hoverReveal open" Focusable="True" KeyDown="OnTokenCardKeyDown"
                             AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
                       <StackPanel>
                         <Border Classes="wordCardHead hoverReveal">
@@ -336,7 +336,7 @@
                             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" VerticalAlignment="Center"
                                                      Text="Esc closes · ← → next word"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink" Content="{Binding WordLinkText}"
+                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover" Content="{Binding WordLinkText}"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
                                              VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}" />
                           </DockPanel>
@@ -371,7 +371,7 @@
                               <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                                 <DockPanel LastChildFill="False">
                                   <views:CopyableTextBlock Classes="f" Text="{Binding PanGlossSummary}" />
-                                  <Button DockPanel.Dock="Right" Classes="revealControl revealLink" Content="PanGloss help"
+                                  <Button DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover" Content="PanGloss help"
                                           Command="{Binding Actions.OpenPanGlossGuideCommand}"
                                           AutomationProperties.Name="About PanGloss" />
                                 </DockPanel>
@@ -397,7 +397,7 @@
                                       Command="{Binding Actions.StagePrimaryMarkingActionForTokenCommand}" CommandParameter="{Binding}"
                                       IsVisible="{Binding HasPrimaryAction}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Button Classes="wordCardAction" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
+                              <Button Classes="wordCardAction revealOnHover" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
                                 <Button.Flyout>
                                   <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel Classes="menu">
