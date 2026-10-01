@@ -225,9 +225,6 @@
                                   <TextBlock Text="{Binding MoreFieldWorksLabel}" />
                                 </Border>
                                 <TextBlock Classes="stripNothing" Text="Nothing in FieldWorks" IsVisible="{Binding HasNothingStored}" />
-                                <HyperlinkButton Classes="revealControl revealLink" Content="{Binding WordLinkText}" VerticalAlignment="Top"
-                                                 NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                                                 AutomationProperties.Name="{Binding WordLinkName}" />
                               </StackPanel>
                             </Border>
                             <Border Classes="stripRow panGlossLine analysisRow" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"

@@ -92,7 +92,7 @@ public sealed class ViewTokenTests
             {
                 RevealLinks = true,
                 Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph(
-                    "form", "gloss", "n", null, false, "silfw://entry"))],
+                    "form", "gloss", "n", null, false, "silfw://localhost/link?tool=lexiconEdit"))],
             };
             var form = Assert.Single(row.GetLogicalDescendants().OfType<CopyableTextBlock>(),
                 block => block.Classes.Contains("morphForm"));
@@ -104,7 +104,7 @@ public sealed class ViewTokenTests
             Assert.Equal(2, links.Length);
             Assert.All(links, link =>
             {
-                Assert.Equal("FW ↗", link.Content);
+                Assert.Equal("Lexicon Edit ↗", link.Content);
                 Assert.Contains("revealControl", link.Classes);
                 Assert.True(link.Focusable);
             });
@@ -121,9 +121,9 @@ public sealed class ViewTokenTests
                     Assert.Equal(0, link.Opacity);
                     Assert.False(link.IsHitTestVisible);
                 });
-                var formCenter = form.TranslatePoint(
-                    new Point(form.Bounds.Width / 2, form.Bounds.Height / 2), window)!.Value;
-                window.MouseMove(formCenter);
+                // The column is as wide as its link's tool name, so aim at the form's first letters, not its middle.
+                var formStart = form.TranslatePoint(new Point(4, form.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(formStart);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 Assert.True(host.IsPointerOver);
