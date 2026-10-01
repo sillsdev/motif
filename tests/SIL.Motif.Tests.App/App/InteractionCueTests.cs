@@ -167,6 +167,31 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
+    [Fact]
+    public void ALinkUnderlinesUnderThePointer()
+    {
+        avalonia.Invoke(() =>
+        {
+            var link = new HyperlinkButton { Content = "Open in text" };
+            var window = new Window { Content = link, Width = 200, Height = 80 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var label = link.GetVisualDescendants().OfType<TextBlock>().Single();
+                Assert.True(label.TextDecorations is null || label.TextDecorations.Count == 0, "a resting link is not underlined");
+                window.MouseMove(link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static Avalonia.Controls.Presenters.ContentPresenter Face(Button button) =>
         button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
             .First(part => part.Name == "PART_ContentPresenter");
