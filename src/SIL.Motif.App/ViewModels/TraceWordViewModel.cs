@@ -872,7 +872,9 @@ public sealed class TraceCandidateViewModel
     public TraceCandidateViewModel(TraceCandidate candidate, bool allowLiveLinks = false, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
-        Morphs = candidate.Morphs.Select(ParserReadingMorphViewModel.ForTrace).ToArray();
+        Morphs = candidate.Morphs
+            .Where(morph => !string.IsNullOrWhiteSpace(morph.Form) && morph.Form.Trim() != "?")
+            .Select(ParserReadingMorphViewModel.ForTrace).ToArray();
         RichMorphs = candidate.RichMorphs.Select(morph => new TraceMorphViewModel(morph, allowLiveLinks, directions)).ToArray();
         Succeeded = candidate.Succeeded;
         AttemptId = candidate.AttemptId;

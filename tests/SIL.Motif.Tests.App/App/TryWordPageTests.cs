@@ -205,12 +205,13 @@ public sealed class TryWordPageTests
                 var ruleTable = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
                     AutomationProperties.GetName(border) == "Rules on this word's best path");
                 var headers = ruleTable.GetLogicalDescendants().OfType<TextBlock>()
+                    .Where(block => block.IsVisible)
                     .Select(block => block.Text)
                     .OfType<string>()
                     .Select(value => value.Trim())
                     .Where(value => value is "Rule" or "Kind" or "Outcome" or "Explanation" or
                         "Stored time" or "Attempts" or "Word share").ToArray();
-                Assert.Equal(new[] { "Rule", "Kind", "Outcome", "Explanation", "Word share" }, headers);
+                Assert.Equal(new[] { "Rule", "Kind", "Outcome", "Explanation" }, headers);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "See Verb template in Timing");
 
@@ -304,7 +305,7 @@ public sealed class TryWordPageTests
         });
 
         Assert.Contains("Affix rule", visible);
-        Assert.Contains("unknown morpheme", visible);
+        Assert.DoesNotContain("unknown morpheme", visible);
         Assert.Contains("Further derivation is prohibited after a final template.", visible);
         // The parser's own morpheme names are its detail, kept for the tooltip.
         Assert.DoesNotContain(visible, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));
