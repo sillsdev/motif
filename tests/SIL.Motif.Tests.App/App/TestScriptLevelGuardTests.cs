@@ -16,6 +16,19 @@ public sealed class TestScriptLevelGuardTests
         Assert.Contains("--no-build", script, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AllRunsOptionalArtifactPreparationBeforeStartingTests()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
+
+        Assert.Contains("if ($All)", script, StringComparison.Ordinal);
+        Assert.Contains("tools/Prepare-TestArtifacts.ps1", script, StringComparison.Ordinal);
+        Assert.Contains("Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf", script, StringComparison.Ordinal);
+        Assert.Contains("& $prepareTestArtifacts", script, StringComparison.Ordinal);
+        Assert.True(script.IndexOf("Prepare-TestArtifacts.ps1", StringComparison.Ordinal) <
+                    script.IndexOf("dotnet test (", StringComparison.Ordinal));
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

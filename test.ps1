@@ -192,6 +192,17 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
+if ($All) {
+    $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
+    if (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf) {
+        Write-Step 'prepare all-level test artifacts'
+        & $prepareTestArtifacts
+        if ($LASTEXITCODE -ne 0) {
+            throw "Prepare-TestArtifacts.ps1 failed with exit code $LASTEXITCODE."
+        }
+    }
+}
+
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
     "up to $projectConcurrency at a time; $availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()

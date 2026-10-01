@@ -78,10 +78,12 @@ public sealed class TestLevelGuardTests
                         .Any(attribute => attribute.GetType().Name == "RealParserFactAttribute");
                     var walkthroughNamespace = testClass.Namespace?.Split('.')
                         .Any(segment => segment is "Walkthrough" or "Smoke") == true;
+                    var namedSystemClass = testClass.Name is "PortableWorkerPackageTests" or
+                        "ExplainedWordCardWalkthroughReplayTests";
                     var resolvedLevel = TestLevelClassifier.ResolveLevel(
                         testClass.FullName!, defaultLevel, declarations, parserClass);
                     Assert.Contains(resolvedLevel, ValidLevels);
-                    if (parserClass || walkthroughNamespace || defaultLevel == "System")
+                    if (parserClass || walkthroughNamespace || namedSystemClass || defaultLevel == "System")
                         Assert.Equal("System", resolvedLevel);
                 }
             }
