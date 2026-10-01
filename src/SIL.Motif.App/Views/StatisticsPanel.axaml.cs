@@ -26,12 +26,14 @@ public sealed partial class StatisticsPanel : UserControl
         if (e.PropertyName is nameof(StatisticsViewModel.SelectedGroup) or nameof(StatisticsViewModel.AnyPasses)) ShowColumnsForGroup();
     }
 
-    // Each grouping shows only its own columns, and Passes only once some row needed one.
+    // Each grouping shows only its own columns, named by its own units, and Passes only once some row needed one.
     private void ShowColumnsForGroup()
     {
         var words = Statistics.SelectedGroup == "word";
         foreach (var column in this.FindControl<DataGrid>("Grid")!.Columns)
         {
+            if (column.Tag is "attempts") column.Header = Statistics.CountHeader;
+            if (column.Tag is "elapsedMs") column.Header = Statistics.TimeHeader;
             column.IsVisible = column.Tag switch
             {
                 "kind" or "object" => !words,

@@ -67,7 +67,7 @@
 
     <views:RefusalBlock DataContext="{Binding Statistics.ShownRefusal}" DockPanel.Dock="Top" />
     <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" TextWrapping="Wrap"
-               Text="Shading: darker is larger, against the largest in its column. Attempts and time come from the parser's statistics pass; whether a word finished comes from the last parse." />
+               Text="{Binding Statistics.ShadingNote}" />
     <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."
                IsVisible="{Binding Statistics.IsStale}"
                FontStyle="Italic"
