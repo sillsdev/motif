@@ -592,9 +592,6 @@ public sealed class WorkflowShellTests
                     mark => mark.IsEffectivelyVisible);
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Not in FieldWorks → Unknown");
-                Assert.DoesNotContain(review.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("hoverReveal"));
-
                 var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
                 var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
                 Assert.True(undo.IsEffectivelyVisible);
@@ -606,8 +603,14 @@ public sealed class WorkflowShellTests
                 Assert.DoesNotContain(buttons, button =>
                     AutomationProperties.GetName(button) == "Go to text in Added");
                 var goToText = buttons.Single(button => AutomationProperties.GetName(button) == "Open kitabu in Analyze texts");
-                Assert.True(goToText.IsHitTestVisible);
+                // Undo stays in sight; the row's next steps rest hidden but stay on the Tab path.
+                Assert.Equal(0d, goToText.Opacity);
+                Assert.True(goToText.IsTabStop);
+                Assert.True(goToText.Focus(NavigationMethod.Tab));
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Assert.Equal(1d, goToText.Opacity);
+                Assert.True(goToText.IsHitTestVisible);
+                Assert.Equal(1d, undo.Opacity);
             }
             finally
             {

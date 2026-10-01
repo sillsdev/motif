@@ -138,15 +138,18 @@ internal static class ComponentStateContractCases
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
         yield return new(revealFocus, "keyboard focus on a FieldWorks link", () => Alone(Press("revealControl", "revealLink")),
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
-        foreach (var (owner, how, stimulus) in new[]
-        {
-            ("hoverReveal", "pointerover", StateStimulus.Pointer),
-            ("hoverReveal", "focus-within", StateStimulus.KeyboardFocusInside),
-            ("stagedStrip", "pointerover", StateStimulus.Pointer),
-            ("stagedStrip", "focus-within", StateStimulus.KeyboardFocusInside),
-        })
-            yield return new($"Border.{owner}:{how} :is(Button).revealControl", $"revealed by {how}", () => RevealOwner(owner),
-                stimulus, StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+        const string revealAtRest = "Border.hoverReveal :is(Button).revealOnHover";
+        const string revealOnPointer = "Border.hoverReveal:pointerover :is(Button).revealOnHover";
+        const string revealOnFocus = "Border.hoverReveal:focus-within :is(Button).revealOnHover";
+        const string revealWhenOpen = "Border.hoverReveal.open :is(Button).revealOnHover";
+        yield return new(revealAtRest, "at rest", () => RevealOwner(), StateStimulus.None,
+            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+        yield return new(revealOnPointer, "revealed by pointer hover", () => RevealOwner(), StateStimulus.Pointer,
+            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+        yield return new(revealOnFocus, "revealed by keyboard focus", () => RevealOwner(), StateStimulus.KeyboardFocusInside,
+            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+        yield return new(revealWhenOpen, "revealed when the row is open", () => RevealOwner(open: true), StateStimulus.None,
+            StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
 
         yield return new("Button:pressed /template/ ContentPresenter#PART_ContentPresenter", "pressed",
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
@@ -382,11 +385,12 @@ internal static class ComponentStateContractCases
     }
 
     // The revealed button is the target read; the owner border is where the pointer or the keyboard goes.
-    private static (Control, Control) RevealOwner(string ownerClass)
+    private static (Control, Control) RevealOwner(bool open = false)
     {
-        var button = Press("revealControl", "revealButton");
+        var button = Press("revealControl", "revealButton", "revealOnHover");
         // Every owner in the window paints a fill, which is what makes the gap around its button take the pointer.
-        var owner = new Border { Classes = { ownerClass }, Background = Brushes.Transparent, Child = button, Width = 200, Height = 40 };
+        var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button, Width = 200, Height = 40 };
+        if (open) owner.Classes.Add("open");
         return (owner, button);
     }
 

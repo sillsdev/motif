@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
@@ -87,6 +88,38 @@ public sealed partial class ComponentStyleTests
                 var face = Assert.IsType<Avalonia.Controls.Presenters.ContentPresenter>(
                     ComponentStateContractCases.PartOf(chip, StatePart.Face));
                 Assert.Equal(expected, face.Background);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AHiddenRevealStaysVisibleToKeyboardAndAutomation()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var button = Press("revealControl", "revealButton", "revealOnHover");
+            AutomationProperties.SetName(button, "Open the word");
+            var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button };
+            var window = new Window { Content = owner, Width = 200, Height = 40 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.Equal(0, button.Opacity);
+                Assert.True(button.IsVisible);
+                Assert.True(button.IsTabStop);
+                Assert.Equal("Open the word", AutomationProperties.GetName(button));
+                Assert.True(button.Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.True(owner.IsKeyboardFocusWithin);
+                Assert.Equal(1, button.Opacity);
             }
             finally
             {
@@ -215,6 +248,7 @@ public sealed partial class ComponentStyleTests
             .ToHashSet(StringComparer.Ordinal);
         var authored = ComponentStateContractCases.All().Select(item => item.Selector)
             .Concat(ComponentStateContractCases.Pinned.Select(item => item.Selector))
+            .Where(selector => InteractionState().IsMatch(selector))
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.NotEmpty(declared);
@@ -815,7 +849,7 @@ public sealed partial class ComponentStyleTests
 
     private static Button RevealControl(Panel host)
     {
-        var button = Press("revealControl", "revealButton");
+        var button = Press("revealControl", "revealButton", "revealOnHover");
         Add(host, new Border { Classes = { "hoverReveal" }, Child = button });
         return button;
     }

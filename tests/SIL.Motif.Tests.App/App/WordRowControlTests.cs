@@ -32,6 +32,85 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     private const string ListsList = "Words in the selected list";
 
     [Fact]
+    public void RestingNextStepsRemainVisibleToKeyboardAndAutomation()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (row, window) = Show(new WordRowViewModel(Alikula()));
+            try
+            {
+                var nextSteps = NextSteps(row);
+                Assert.Equal([0d, 0d, 0d], nextSteps.Select(button => button.Opacity));
+                Assert.All(nextSteps, button => Assert.True(button.IsVisible));
+                Assert.All(nextSteps, button => Assert.True(button.IsTabStop));
+                Assert.All(nextSteps, button => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(button))));
+                Assert.True(nextSteps[0].Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal(1, nextSteps[0].Opacity);
+            }
+            finally
+            {
+                window.Close();
+            }
+            return Task.CompletedTask;
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public void NextStepsShowWhileThePointerIsOverTheRowAndWhileItIsOpen()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (row, window) = Show(new WordRowViewModel(Alikula()));
+            try
+            {
+                var body = Part(row, "wordRowBody");
+                window.MouseMove(body.TranslatePoint(new Point(4, body.Bounds.Height / 2), window)!.Value);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal([1d, 1d, 1d], NextSteps(row).Select(button => button.Opacity));
+                Assert.All(NextSteps(row), button => Assert.True(button.IsHitTestVisible));
+
+                window.MouseMove(new Point(window.Width - 1, window.Height - 1));
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal([0d, 0d, 0d], NextSteps(row).Select(button => button.Opacity));
+
+                row.IsOpen = true;
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal([1d, 1d, 1d], NextSteps(row).Select(button => button.Opacity));
+            }
+            finally
+            {
+                window.Close();
+            }
+            return Task.CompletedTask;
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public void AnOpenRowLeavesItsCardsOwnHiddenLinksHidden()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var link = new HyperlinkButton { Content = "FW ↗", Classes = { "revealControl", "revealLink", "revealOnHover" } };
+            var card = new Border { Classes = { "hoverReveal" }, Child = link };
+            var (row, window) = Show(new WordRowViewModel(Alikula()), card);
+            try
+            {
+                row.IsOpen = true;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal([1d, 1d, 1d], NextSteps(row).Select(button => button.Opacity));
+                Assert.Equal(0d, link.Opacity);
+            }
+            finally
+            {
+                window.Close();
+            }
+            return Task.CompletedTask;
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
     public void EachListsRowsOfferOpenInTextTryAWordAndWordAnalyses_AndTryAWordOpensOnThatWord()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
@@ -178,7 +257,9 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(row.IsOpen);
                 Assert.True(card.IsEffectivelyVisible);
                 Assert.Same(row, card.FindAncestorOfType<WordRow>());
+                Assert.Contains("open", body.Classes);
                 Assert.Contains("open", Part(row, "wordRowFrame").Classes);
+                Assert.DoesNotContain("hoverReveal", Part(row, "wordRowFrame").Classes);
                 Assert.True(row.Bounds.Height > closedHeight + card.Bounds.Height - 1, "The opened row does not grow to hold its card.");
 
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);

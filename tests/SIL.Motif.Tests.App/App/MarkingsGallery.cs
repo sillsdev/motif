@@ -39,12 +39,12 @@ internal sealed class MarkingsGallery : StackPanel
         StagedUndo = new Button
         {
             Content = "Undo",
-            Classes = { "revealControl", "revealButton", "stagedUndo" },
+            Classes = { "revealControl", "revealButton", "revealOnHover", "stagedUndo" },
         };
         AutomationProperties.SetName(StagedUndo, "Undo staged approval");
         StagedStrip = new Border
         {
-            Classes = { "stagedStrip" },
+            Classes = { "stagedStrip", "hoverReveal" },
             Child = new StackPanel
             {
                 Children =
@@ -61,7 +61,7 @@ internal sealed class MarkingsGallery : StackPanel
         FieldWorksLink = new Button
         {
             Content = "FW ↗",
-            Classes = { "revealControl", "revealLink" },
+            Classes = { "revealControl", "revealLink", "revealOnHover" },
         };
         AutomationProperties.SetName(FieldWorksLink, "Open in FieldWorks");
         HoverRegion = new Border

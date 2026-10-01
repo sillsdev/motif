@@ -9,7 +9,7 @@
   <Border x:Name="Root" Classes="wordRowFrame" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
     <Border Classes="wordRowEdge">
       <StackPanel>
-        <Border x:Name="Body" Classes="wordRowBody" Focusable="True" IsTabStop="True"
+        <Border x:Name="Body" Classes="wordRowBody hoverReveal" Classes.open="{Binding #Self.IsOpen}" Focusable="True" IsTabStop="True"
                 ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
         <Grid x:Name="Line" Classes="wordRowLine">
           <Grid.ColumnDefinitions>
@@ -119,11 +119,11 @@
             </Grid>
 
           <StackPanel x:Name="NextCell" Grid.Column="2" Classes="wordRowNext" Orientation="Horizontal" VerticalAlignment="Center">
-            <HyperlinkButton x:Name="OpenInText" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
+            <HyperlinkButton x:Name="OpenInText" Classes="revealOnHover" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
-            <HyperlinkButton x:Name="TryWord" Content="{Binding TryWordLabel}" Command="{Binding TryWordCommand}"
+            <HyperlinkButton x:Name="TryWord" Classes="revealOnHover" Content="{Binding TryWordLabel}" Command="{Binding TryWordCommand}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Try {0} in Try a Word'}" />
-            <HyperlinkButton x:Name="WordAnalyses" Content="{Binding WordAnalysesLabel}"
+            <HyperlinkButton x:Name="WordAnalyses" Classes="revealOnHover" Content="{Binding WordAnalysesLabel}"
                              NavigateUri="{Binding WordAnalysesLink}" IsEnabled="{Binding HasWordAnalysesLink}"
                              AutomationProperties.Name="{Binding WordAnalysesName}"
                              ToolTip.Tip="{Binding WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
