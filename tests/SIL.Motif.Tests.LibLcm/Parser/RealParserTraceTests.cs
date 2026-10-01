@@ -89,6 +89,29 @@ public sealed class RealParserTraceTests
     }
 
     [RealParserFact]
+    public async Task AWordThatHitsTheStepCapIsStoppedWithItsPartialTreeNotDeclined()
+    {
+        var grammarPath = Path.Combine(Path.GetTempPath(), "motif-real-trace-cap-" + Guid.NewGuid().ToString("N") + ".xml");
+        File.WriteAllText(grammarPath, GoldenGrammar);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker, stepLimit: 1);
+        try
+        {
+            var outcome = await tracer.TraceAsync(grammarPath, "sagd", CancellationToken.None, TimeSpan.FromSeconds(30));
+
+            var stopped = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
+            Assert.True(stopped.Details!.Capped, stopped.Reason);
+            Assert.False(stopped.Summary!.Completed);
+            Assert.Equal("WordAnalysis", stopped.Tree!.Type);
+            Assert.Contains("step cap", stopped.Reason, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(grammarPath);
+        }
+    }
+
+    [RealParserFact]
     public async Task AGrammarTheParserCannotLoadIsDeclined()
     {
         var grammarPath = Path.Combine(Path.GetTempPath(), "motif-real-trace-bad-" + Guid.NewGuid().ToString("N") + ".xml");

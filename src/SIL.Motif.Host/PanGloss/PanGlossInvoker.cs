@@ -233,7 +233,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
 
                 var standardError = await stdErrTask.ConfigureAwait(false);
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
-                if (process.ExitCode != 0 && !request.AcceptsNonzeroExit)
+                if (process.ExitCode != 0 && !request.AcceptsNonzeroExit(standardOutput))
                 {
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,

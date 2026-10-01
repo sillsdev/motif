@@ -19,7 +19,8 @@ public abstract record PanGlossRequest
     /// <summary>The subcommand this request runs, as the binary spells it.</summary>
     public abstract string Subcommand { get; }
 
-    internal virtual bool AcceptsNonzeroExit => false;
+    /// <summary>Whether a nonzero exit that wrote <paramref name="standardOutput"/> still produced a usable result.</summary>
+    internal virtual bool AcceptsNonzeroExit(string standardOutput) => false;
 
     /// <summary>Throws for a request a caller has built wrongly; this is programmer error, not an outcome.</summary>
     internal abstract void Validate();
@@ -175,9 +176,21 @@ public abstract record PanGlossRequest
     /// <c>--trace</c> flag, and tracing runs unmerged deliberately, so this must stay a single-word request
     /// rather than growing a word list. Needs PanGloss 0.3.3 or later.
     /// </summary>
+    /// <remarks>PanGloss signals a search stopped at its step cap or time limit with a nonzero exit after writing its
+    /// output, as an ordinary trace does from 0.5.2. A nonzero exit is accepted only when standard output holds a
+    /// well-formed document reporting that stop, so the word shows as stopped; any other nonzero exit is refused.
+    /// </remarks>
     public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
     {
+        /// <summary>The parser's step cap for this word; <see langword="null"/> passes none and keeps PanGloss's own
+        /// runaway guard.</summary>
+        public StepCap? StepLimit { get; init; }
+
         public override string Subcommand => "parse";
+
+        internal override bool AcceptsNonzeroExit(string standardOutput) =>
+            PanGlossTraceOutput.TryRead(standardOutput, out var document, out _) &&
+            document!.Details is { Capped: true } or { TimedOut: true };
 
         internal override void Validate()
         {
@@ -197,6 +210,9 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--trace-format");
             startInfo.ArgumentList.Add("json");
             startInfo.ArgumentList.Add("--trace-details");
+            if (StepLimit is null) return;
+            startInfo.ArgumentList.Add("--step-cap");
+            startInfo.ArgumentList.Add(StepLimit.ToArgument());
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
@@ -217,7 +233,7 @@ public abstract record PanGlossRequest
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName) : PanGlossRequest
     {
         public override string Subcommand => "grammar-health";
-        internal override bool AcceptsNonzeroExit => true;
+        internal override bool AcceptsNonzeroExit(string standardOutput) => true;
 
         internal override void Validate()
         {

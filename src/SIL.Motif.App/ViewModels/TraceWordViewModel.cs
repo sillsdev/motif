@@ -441,7 +441,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             var status = result.InvalidShape
                 ? "Nothing to parse: the word has a character the grammar's character table does not define"
                 : incomplete
-                    ? $"Search incomplete: {result.StopReason ?? "the parser stopped before completion"}"
+                    ? $"Stopped: taking too long. {result.StopReason ?? "The parser stopped before it finished, so this trace is not the whole search."}"
                     : "Search complete";
             return HiddenStepCount > 0 ? $"{status}  ·  {HiddenStepCount:N0} hidden by filters" : status;
         }

@@ -57,7 +57,8 @@ internal static class Program
         new("stats", ["project-or-grammar"],
             [new("--cache", true), new("--group", true), new("--format", true)], RunStats),
         new("parse", ["grammar", "word"],
-            [new("--trace", true), new("--trace-format", true), new("--trace-details", false)], RunParse),
+            [new("--trace", true), new("--trace-format", true), new("--trace-details", false),
+                new("--step-cap", true)], RunParse),
         new("grammar-health", ["grammar", "out.json?"], [new("--fw-project", true)], RunGrammarHealth),
     ];
 

@@ -340,6 +340,69 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task ATraceWithAStepLimitPassesItAfterTheTraceFlags()
+    {
+        var grammar = Project("trace-step-limit");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa") { StepLimit = 7 },
+            "test:trace-step-limit", CancellationToken.None);
+
+        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.Equal(["parse", grammar, "motifa", "--trace", "--trace-format", "json", "--trace-details",
+            "--step-cap", "7"], Argv(grammar));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task ATraceWhoseSearchStoppedKeepsItsDocumentWhenPanGlossExitsNonzero(bool capped, bool timedOut)
+    {
+        var grammar = Project("trace-stopped-nonzero");
+        FakeParser.Behave(_root, new
+        {
+            ExitCode = 1, TraceCapped = capped, TraceTimedOut = timedOut,
+            TraceJson = "{\"type\":\"WordAnalysis\",\"inputShape\":\"motifa\",\"children\":[]}",
+        });
+        using var invoker = Invoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        var outcome = await tracer.TraceAsync(grammar, "motifa", CancellationToken.None);
+
+        var stopped = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
+        Assert.NotNull(stopped.Tree);
+        Assert.Equal(capped, stopped.Details!.Capped);
+        Assert.Equal(timedOut, stopped.Details.TimedOut);
+    }
+
+    [Fact]
+    public async Task ATraceWhoseSearchCompletedIsRefusedWhenPanGlossExitsNonzero()
+    {
+        var grammar = Project("trace-complete-nonzero");
+        FakeParser.Behave(_root, new { ExitCode = 1 });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"),
+            "test:trace-complete-nonzero", CancellationToken.None);
+
+        Assert.Equal(1, Assert.IsType<PanGlossOutcome.Refused>(outcome).ExitCode);
+    }
+
+    [Fact]
+    public async Task ATraceWithNoDocumentIsRefusedWhenPanGlossExitsNonzero()
+    {
+        var grammar = Project("trace-no-document");
+        FakeParser.Behave(_root, new { Mode = "fail", ExitCode = 1, StandardError = "pangloss parse: load failed" });
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Trace(grammar, "motifa"),
+            "test:trace-no-document", CancellationToken.None);
+
+        var refused = Assert.IsType<PanGlossOutcome.Refused>(outcome);
+        Assert.Contains("load failed", refused.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task StatsChecksTheCallersForwardedFlagsBeforeLaunchingStats()
     {
         var grammar = Project("stats-capability");
