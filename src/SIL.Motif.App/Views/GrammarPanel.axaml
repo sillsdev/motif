@@ -164,7 +164,7 @@
           <!-- A chosen finding opens on PanGloss's advice for it and the steps that show whether the fix worked. -->
           <DataGrid.RowDetailsTemplate>
             <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-              <Grid Classes="warningRowDetail" ColumnDefinitions="3*,2*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+              <Grid Classes="warningRowDetail" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
                 <Border Classes="card warningRowCard">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Text="What to do in FieldWorks" FontWeight="SemiBold" />

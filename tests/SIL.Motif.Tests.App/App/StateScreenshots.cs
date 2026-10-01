@@ -278,6 +278,11 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("warnings", "part-link-hover", stage => stage.Hover(WorkspacePage.Warnings,
             () => stage.Visible<Button>(button => ToolTip.GetTip(button) is string tip && tip.StartsWith("Open this")).First(),
             "a FieldWorks link in a finding"));
+        yield return new("warnings", "row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
+        { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
+        yield return new("warnings", "unnamed-row-opened",
+            stage => stage.OpenWarningRow("grammar.msa.no-rule-form-allomorphs", named: false))
+        { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
 
         // Review changes with one change staged and not yet checked, so Apply is disabled.
         yield return new("review", "disabled-apply-hover", async stage =>
@@ -484,6 +489,25 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await InText.OpenTokenCardAsync(Token(form));
             PageScreenshots.Settle(Window);
             return $"Opened the word card for {form}.";
+        }
+
+        public async Task<string> OpenWarningRow(string code, bool named)
+        {
+            Open(WorkspacePage.Warnings);
+            var grid = Named<DataGrid>("Grammar warnings");
+            var row = grid.ItemsSource!.OfType<GrammarWarningRowViewModel>()
+                .First(candidate => candidate.GroupCode == code && candidate.NamesNoItem != named);
+            grid.SelectedItem = row;
+            grid.ScrollIntoView(row, null);
+            await Until(() => Visible<TextBlock>(block => block.Text == "What to do in FieldWorks").Any(), "the row's advice");
+            return $"Opened the {row.GroupName} row{(named ? $" for {row.Where}" : ", which names no item")}.";
+        }
+
+        public Task CloseWarningRow()
+        {
+            Named<DataGrid>("Grammar warnings").SelectedItem = null;
+            PageScreenshots.Settle(Window);
+            return Task.CompletedTask;
         }
 
         public async Task ChooseList()

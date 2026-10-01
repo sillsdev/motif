@@ -72,6 +72,7 @@
   </Style>
   <Style Selector="Border.warningRowCard">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
     <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
   </Style>
   <Style Selector="Border.warningUnnamed">
