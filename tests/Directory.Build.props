@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(MotifTestProject)' == 'true'">
+    <AssemblyMetadata Include="MotifTestDefaultLevel" Value="$(MotifTestDefaultLevel)" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\LcmCacheTestCollection.cs" Link="LcmCacheTestCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessPanGlossQueueInitializer.cs" Link="ProcessPanGlossQueueInitializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessRunnerEnvironmentInitializer.cs" Link="ProcessRunnerEnvironmentInitializer.cs" />

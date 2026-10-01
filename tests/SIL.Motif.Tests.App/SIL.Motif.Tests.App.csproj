@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <MotifTestDefaultLevel>Unit</MotifTestDefaultLevel>
     <!-- test.ps1 runs this project as this many processes, split by test class; see test.ps1's help. -->
     <MotifTestShards>4</MotifTestShards>
     <TargetFramework>net10.0</TargetFramework>
