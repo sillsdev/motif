@@ -222,8 +222,13 @@ internal sealed class WindowsPanGlossChildProcess(Process process) : IPanGlossCh
     public int Id => process.Id;
     public int ExitCode => process.ExitCode;
     public Task WaitForExitAsync(CancellationToken cancellationToken) => process.WaitForExitAsync(cancellationToken);
-    public Task<string> ReadStandardOutputAsync() => process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-    public Task<string> ReadStandardErrorAsync() => process.StandardError.ReadToEndAsync(CancellationToken.None);
+    public Task<string> ReadStandardOutputAsync() => ReadToEndOnOwnThread(process.StandardOutput);
+    public Task<string> ReadStandardErrorAsync() => ReadToEndOnOwnThread(process.StandardError);
+
+    // The pipes are synchronous here, so ReadToEndAsync would hold a pool thread for the parser's whole run.
+    private static Task<string> ReadToEndOnOwnThread(StreamReader reader) =>
+        Task.Factory.StartNew(reader.ReadToEnd, CancellationToken.None, TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
 
     public void KillProcessTree()
     {
