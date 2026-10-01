@@ -24,13 +24,13 @@ public sealed class PanGlossPinTests
         var pin = ReadPin();
         var expected = new Dictionary<string, (string Asset, string Sha256)>
         {
-            ["win-x64"] = ("pangloss-win-x64.exe", "f2713f6f96e1ed4275e89b1124c9a7e023b2f72bddf15172ce9197210316375a"),
-            ["linux-x64"] = ("pangloss-linux-x64", "de6a18dacaeeb0ecd2fc5fb52945276a87db4e79713f1891f9d3bf8037b65e15"),
-            ["osx-arm64"] = ("pangloss-osx-arm64", "78c02c11a7705f23aeaa0cc47ad7184acc5b85ece862fe63a8b69c1342ac4cee"),
-            ["osx-x64"] = ("pangloss-osx-x64", "078652f5d09465eaae2b40a84c8a203c80bed6aa912bd7c41ec3e8747d6c449c"),
+            ["win-x64"] = ("pangloss-win-x64.exe", "825534136a70a245e970170ee1f41d08917e45e6ad86bd5161011c9d39f4e805"),
+            ["linux-x64"] = ("pangloss-linux-x64", "59bd98b0b701377aa38357bdf3872c63776bb1c3aadcc3ead42a17effa08cd6e"),
+            ["osx-arm64"] = ("pangloss-osx-arm64", "024d2c4f70c41cc5ca21b8b1ecdbee65d97024eaa071e411d395c4405dfad87f"),
+            ["osx-x64"] = ("pangloss-osx-x64", "7eceb2e4bf3abb4d4d34b08b4ca045b98d87f62b8f28ffec53150040625f2753"),
         };
 
-        Assert.Equal("0.5.1", pin.Version);
+        Assert.Equal("0.5.2", pin.Version);
         Assert.Matches(@"^\d+\.\d+\.\d+$", pin.Version);
         Assert.Equal($"v{pin.Version}", pin.Tag);
         Assert.Equal(new[] { "linux-x64", "osx-arm64", "osx-x64", "win-x64" },
