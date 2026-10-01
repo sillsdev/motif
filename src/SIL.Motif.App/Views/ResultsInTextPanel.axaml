@@ -189,7 +189,7 @@
                               Classes.open="{Binding IsCardOpen}" Classes.uncertainChanged="{Binding IsUncertainChanged}"
                               Classes.dimmed="{Binding IsDimmed}" Focusable="True" Tag="{Binding}"
                               AutomationProperties.AutomationId="{Binding StripAutomationId}"
-                              KeyDown="OnTokenKeyDown" ToolTip.Tip="{Binding HoverSummary}">
+                              KeyDown="OnTokenKeyDown" ToolTip.Tip="{Binding HoverSummary}" views:ClearTipPlacement.IsEnabled="True">
                         <StackPanel Orientation="Horizontal">
                           <StackPanel Classes="stripStack stripRows" Tag="{Binding}" PointerPressed="OnTokenPressed">
                             <StackPanel Classes="stripWordRow wordRow" Orientation="Horizontal">
@@ -205,6 +205,7 @@
                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
                               <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
                                               IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
+                                              views:ClearTipPlacement.IsEnabled="True"
                                               AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
                             </StackPanel>
                             <Border Classes="stripRow stripFieldWorks analysisRow"

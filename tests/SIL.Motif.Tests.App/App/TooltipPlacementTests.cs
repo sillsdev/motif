@@ -29,15 +29,11 @@ public sealed class TooltipPlacementTests
         "completion in detailed statistics",
     ];
 
-    // Reported placement gaps: each owner's tip still covers what is named, and must until its placement is fixed.
+    // Reported gaps: no side of these reader owners is clear, so each tip takes the side that covers fewest.
     private static readonly Dictionary<string, string> Gaps = new()
     {
-        ["Apply to FieldWorks project"] = "opening to the left, it covers Check what applying does to the numbers",
-        ["collapsed sidebar entry"] = "it opens over the next page's entry",
-        ["disapproved mark on a strip"] = "it opens over the next word strips and the strip's Fix action",
-        ["pending change in a Matrix cell"] = "it opens over the Matrix cells below the cell",
-        ["word strip"] = "it opens over the next words in the text",
-        ["WORDS column"] = "it opens over the rule rows and AI Handoff below the header",
+        ["disapproved mark on a strip"] = "at 1040 it sits at the reader's foot, and every side inside the window meets another word strip",
+        ["word strip"] = "the filter chips are above, the texts list to the left, and other word strips on every other side",
     };
 
     [Fact]
