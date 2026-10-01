@@ -241,9 +241,12 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var process = Process.Start(apply)!;
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        using var worker = StartWorker(runner.Options with { IdleTimeout = TimeSpan.FromMinutes(5) });
+        Process? worker = null;
         try
         {
+            // Started as the CLI's own kick would be, so a runner still retiring from Measure hands the job over.
+            await WaitForDryRunJobAsync(path, process, errorTask);
+            worker = StartWorker(runner.Options with { IdleTimeout = TimeSpan.FromMinutes(5) }, path);
             await WaitForPendingProposalAnchorAsync(path, added.Value.DraftId!, process, errorTask);
             try
             {
@@ -281,22 +284,52 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         }
         finally
         {
-            try
+            if (worker is not null)
             {
-                if (!worker.HasExited) worker.Kill(entireProcessTree: true);
+                try
+                {
+                    if (!worker.HasExited) worker.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) { }
+                catch (Win32Exception) { }
+                await worker.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                worker.Dispose();
             }
-            catch (InvalidOperationException) { }
-            catch (Win32Exception) { }
-            await worker.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
         }
     }
 
-    private static Process StartWorker(JobRunnerLaunchOptions options)
+    private static Process StartWorker(JobRunnerLaunchOptions options, string wakeProjectPath)
     {
         var start = new ProcessStartInfo(options.WorkerExecutable!) { UseShellExecute = false };
         foreach (var argument in ProcessRunnerLauncher.LaunchArguments(options))
             start.ArgumentList.Add(argument);
+        start.ArgumentList.Add(RunnerOptions.WakeProjectArgument);
+        start.ArgumentList.Add(wakeProjectPath);
         return Process.Start(start)!;
+    }
+
+    // Any state counts: a runner still alive from an earlier job may already have taken it.
+    private static async Task WaitForDryRunJobAsync(string projectPath, Process process, Task<string> errorTask)
+    {
+        while (!HasDryRunJob(projectPath))
+        {
+            if (process.HasExited)
+            {
+                if (HasDryRunJob(projectPath)) return;
+                throw new InvalidOperationException(
+                    $"The CLI exited with code {process.ExitCode} before queueing its Dry Run. stderr: {await errorTask}");
+            }
+            await Task.Delay(100);
+        }
+    }
+
+    private static bool HasDryRunJob(string projectPath)
+    {
+        using var database = ProjectMotifDatabase.Open(projectPath);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM Jobs WHERE Kind = 'dry-run';";
+        return (long)command.ExecuteScalar()! > 0;
     }
 
     private static async Task WaitForPendingProposalAnchorAsync(
