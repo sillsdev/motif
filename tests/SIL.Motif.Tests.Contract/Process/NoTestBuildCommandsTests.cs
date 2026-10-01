@@ -7,10 +7,10 @@ namespace SIL.Motif.Tests.Contract.Process;
 public sealed class NoTestBuildCommandsTests
 {
     private static readonly Regex DotnetStart = new(
-        "(?:new\\s+ProcessStartInfo\\s*\\(\\s*@?\"dotnet(?:\\.exe)?\"\\s*\\)|Process\\.Start\\s*\\(\\s*@?\"dotnet(?:\\.exe)?\"\\s*,)",
+        "(?:new\\s+ProcessStartInfo\\s*\\(\\s*@?\"dotnet(?:\\.exe)?\"\\s*[,)]|Process\\.Start\\s*\\(\\s*@?\"dotnet(?:\\.exe)?\"\\s*,)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex CommandToken = new(
-        "[@?\"'](?<verb>build|publish|run)[\"']",
+        "[@?\"'](?<verb>build|publish|run)(?=[\\s\"'])",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     [Fact]
@@ -30,13 +30,11 @@ public sealed class NoTestBuildCommandsTests
     }
 
     [Theory]
-    [InlineData("build")]
-    [InlineData("publish")]
-    [InlineData("run")]
-    public void GuardFindsEachForbiddenVerb(string verb)
+    [InlineData("build", "new ProcessStartInfo(\"dotnet\"); start.ArgumentList.Add(\"build\");")]
+    [InlineData("publish", "new ProcessStartInfo(\"dotnet\", \"publish app.csproj\");")]
+    [InlineData("run", "Process.Start(\"dotnet\", \"run --project app.csproj\");")]
+    public void GuardFindsEachForbiddenVerb(string verb, string source)
     {
-        var source = "new ProcessStartInfo(\"dotnet\"); start.ArgumentList.Add(\"" + verb + "\");";
-
         Assert.Equal(new[] { verb }, FindForbiddenCommands(source));
     }
 
