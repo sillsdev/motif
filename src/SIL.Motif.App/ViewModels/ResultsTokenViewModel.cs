@@ -211,7 +211,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private string FieldWorksSummary => FieldWorksAnalyses.Count == 0
         ? "No analysis in FieldWorks"
         : string.Join(", ", FieldWorksAnalyses.Select(analysis =>
-            analysis.Opinion == ReadingGrade.Candidate ? "Unknown" : analysis.Opinion));
+            ReadingGradeLabels.Of(analysis.Opinion) is { Length: > 0 } label ? label : analysis.Opinion));
     public string Location { get; }
     public Uri? WordLink { get; }
     public OccurrenceAnchor? Occurrence { get; }
