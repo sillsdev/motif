@@ -461,7 +461,11 @@ public sealed class ComponentStyleTests
             Control.HeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
-        yield return new("HoverReveal", "a neutral staged button", host => Add(host, Press("revealControl", "revealButton")),
+        yield return new("ToolTip", "a staged strip's tooltip words", TipInStagedStrip,
+            TextBlock.ForegroundProperty, "Intent.Tooltip.Text");
+        yield return new("ToolTip", "a staged strip's tooltip size", TipInStagedStrip,
+            TextBlock.FontSizeProperty, "Intent.Type.Small");
+        yield return new("HoverReveal", "a neutral staged button",host => Add(host, Press("revealControl", "revealButton")),
             Button.FontSizeProperty, "Component.HoverReveal.ButtonType");
         yield return new("HoverReveal", "the staged button radius", host => Add(host, Press("revealControl", "revealButton")),
             Button.CornerRadiusProperty, "Component.HoverReveal.ButtonRadius");
@@ -529,6 +533,16 @@ public sealed class ComponentStyleTests
         root.Children.Add(mark);
         host.Children.Add(root);
         return mark;
+    }
+
+    // The staged strip restyles every TextBlock beneath it, so its tooltip's words show whether the tip wins.
+    private static TextBlock TipInStagedStrip(Panel host)
+    {
+        var words = new TextBlock { Text = "Still fits the project." };
+        var tip = new ToolTip { Content = words };
+        ((IPseudoClasses)tip.Classes).Set(":open", true);
+        host.Children.Add(new Border { Classes = { "stagedStrip" }, Child = tip });
+        return words;
     }
 
     private static Border CompactWordStrip(Panel host)

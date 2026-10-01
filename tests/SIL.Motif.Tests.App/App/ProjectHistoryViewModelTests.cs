@@ -39,6 +39,23 @@ public sealed class ProjectHistoryViewModelTests
         Assert.Equal(ProjectPath, Assert.Single(fake.ProjectHistoryRequests).ProjectPath);
     }
 
+    [Theory]
+    [InlineData(ProjectHistoryKind.Baseline, "Baseline")]
+    [InlineData(ProjectHistoryKind.Assessment, "Parse all words")]
+    [InlineData(ProjectHistoryKind.Handoff, "AI Handoff")]
+    public async Task EachEntryIsTitledInTheWindowsWords(ProjectHistoryKind kind, string title)
+    {
+        var fake = new FakeCommandClient();
+        fake.ProjectHistoryIs(new ProjectHistoryResponse([new ProjectHistoryEntry(DateTimeOffset.UtcNow, kind, "142 words")]));
+        var history = new ProjectHistoryViewModel(fake);
+
+        await history.SetProjectAsync(ProjectPath);
+
+        var entry = Assert.Single(history.Entries);
+        Assert.Equal(title, entry.Title);
+        Assert.Equal("142 words", entry.Summary);
+    }
+
     [Fact]
     public async Task ARefusalShowsItsMessageAndLeavesTheListEmpty()
     {

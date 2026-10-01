@@ -82,6 +82,7 @@
                     Click="OnAllFilesClick"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="{DynamicResource Component.Handoff.DragHeight}"
                     ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
+                    ToolTip.Placement="Top" ToolTip.VerticalOffset="0"
                     AutomationProperties.Name="Drag all AI Handoff files" />
 
             <ItemsControl ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"

@@ -6,7 +6,7 @@ using SIL.Motif.Commands.Queries;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Shows what Motif has done with a project — Baselines captured, Assessments run, Handoffs written —
+/// Shows what Motif has done with a project — Baselines captured, words parsed, AI Handoffs written —
 /// loaded when a project is chosen and again after every successful Baseline refresh.
 /// </summary>
 public sealed partial class ProjectHistoryViewModel : ObservableObject
@@ -22,7 +22,7 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
     }
 
     /// <summary>The project's history, newest first.</summary>
-    public ObservableCollection<ProjectHistoryEntry> Entries { get; } = [];
+    public ObservableCollection<ProjectHistoryRow> Entries { get; } = [];
 
     [ObservableProperty]
     private bool _isLoading;
@@ -65,7 +65,24 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
 
         ShownRefusal = null;
         Entries.Clear();
-        foreach (var entry in outcome.Value!.Entries) Entries.Add(entry);
+        foreach (var entry in outcome.Value!.Entries) Entries.Add(ProjectHistoryRow.From(entry));
         OnPropertyChanged(nameof(HasEntries));
     }
+}
+
+/// <summary>One event in a project's history as the window shows it, titled in the window's words.</summary>
+/// <param name="At">When it happened.</param>
+/// <param name="Title">What happened: a Baseline, a Parse all words, or an AI Handoff.</param>
+/// <param name="Summary">The event's one-line summary, as the store wrote it.</param>
+public sealed record ProjectHistoryRow(DateTimeOffset At, string Title, string Summary)
+{
+    /// <summary>The row for a stored history entry.</summary>
+    public static ProjectHistoryRow From(ProjectHistoryEntry entry) =>
+        new(entry.At, entry.Kind switch
+        {
+            ProjectHistoryKind.Assessment => "Parse all words",
+            ProjectHistoryKind.Handoff => "AI Handoff",
+            ProjectHistoryKind.Baseline => "Baseline",
+            _ => entry.Kind.ToString(),
+        }, entry.Summary);
 }

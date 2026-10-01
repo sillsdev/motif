@@ -52,7 +52,10 @@
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>
+  <!-- A row's tip opens above it, over rows already read, never over the rows still to come. -->
   <Style Selector="Button.ruleRow">
+    <Setter Property="ToolTip.Placement" Value="Top" />
+    <Setter Property="ToolTip.VerticalOffset" Value="0" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
     <Setter Property="Padding" Value="{DynamicResource Component.TryWord.SmallInset}" />

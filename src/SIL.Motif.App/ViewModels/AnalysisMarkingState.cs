@@ -408,9 +408,12 @@ public sealed record AnalysisMarkingState(
         IReadOnlyList<FieldWorksAnalysisMarking> stored)
     {
         foreach (var analysis in stored)
+        {
+            var opinion = ReadingGradeLabels.Of(analysis.Opinion) is { Length: > 0 } label ? label : analysis.Opinion;
             choices.Add(Choice(AnalysisMarkingActionKind.RemoveAnalysis, "Remove analysis",
-                $"{analysis.Opinion} → Removed", analysis.StoredAnalysisId, null, null,
-                analysis.Opinion, "Removed", ChangeKinds.RemoveAnalysis));
+                $"{opinion} → Removed", analysis.StoredAnalysisId, null, null,
+                opinion, "Removed", ChangeKinds.RemoveAnalysis));
+        }
     }
 
     private static void AddAcceptNewSetChoice(List<AnalysisMarkingChoice> choices) =>

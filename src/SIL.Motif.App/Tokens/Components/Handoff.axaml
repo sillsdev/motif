@@ -60,6 +60,8 @@
 
   <!-- A suggested question reads as a link: one click copies it for the chat. -->
   <Style Selector="Button.handoffQuestion">
+    <Setter Property="ToolTip.Placement" Value="Top" />
+    <Setter Property="ToolTip.VerticalOffset" Value="0" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Handoff.QuestionInset}" />
     <Setter Property="Margin" Value="{DynamicResource Component.Handoff.QuestionInset}" />

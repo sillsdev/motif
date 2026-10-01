@@ -66,11 +66,12 @@
           </Button.Flyout>
         </Button>
 
-        <StackPanel Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel x:Name="TopBarActions" Classes="topBarGroup" DockPanel.Dock="Right" Orientation="Horizontal"
+                    VerticalAlignment="Center">
           <Button x:Name="HelpButton" Content="Help" Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   AutomationProperties.Name="Help for the current page">
             <Button.Flyout>
-              <Flyout Placement="BottomEdgeAlignedRight" Opened="OnHelpFlyoutOpened">
+              <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterClasses="help" Opened="OnHelpFlyoutOpened">
                 <views:HelpPopupView x:Name="HelpPopupView" />
               </Flyout>
             </Button.Flyout>

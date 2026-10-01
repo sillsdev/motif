@@ -1,0 +1,15 @@
+<!--
+  A tooltip's words, in the tooltip's own colour and size.
+  A tooltip's text is a logical descendant of the control that owns it, so a selector such as
+  "Border.stagedStrip TextBlock" reaches it too. A selector with a class or pseudo-class outranks one without, so
+  this one names ":open" to stand level with those, and the file comes after every other component to win.
+  Colours come from Intent keys only; sizes from Intent keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="ToolTip:open :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Tooltip.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+</Styles>

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
@@ -25,6 +26,15 @@ public sealed partial class WindowWordsTests
     [GeneratedRegex(@"\b(assess\w*|candidates?|reject(s|ed)?|violations?|cannot happen|can[’']?t happen)\b",
         RegexOptions.IgnoreCase)]
     private static partial Regex RetiredWord();
+
+    // An opinion standing alone, after a separator or before an arrow, is a label and so capitalised.
+    [GeneratedRegex(@"(^|[·→(]\s*)(approved|disapproved|candidate)\b|·\s*unknown\b|\b(approved|disapproved|unknown)\s*→")]
+    private static partial Regex LowerCaseOpinion();
+
+    // A FieldWorks class name such as PhEnvironment, in any casing; the window names the kind instead.
+    [GeneratedRegex(@"\b(?:lex|mo|ph|fs|cm)(?:entry|sense|form|stem|infl|deriv|unclassified|compound|adhoc|phoneme|bdry" +
+        @"|natural|environment|regular|metathesis|feature|complex|closed|sym)\w*", RegexOptions.IgnoreCase)]
+    private static partial Regex FieldWorksClassName();
 
     // A file name the CLI writes, and a refusal's code shown to say where a sentence came from, are not prose.
     [GeneratedRegex(@"[\w.-]+\.(json|py|md)\b|⟨[^⟩]*⟩")]
@@ -54,6 +64,7 @@ public sealed partial class WindowWordsTests
                     workspace.CurrentPage = page;
                     PageScreenshots.Settle(window);
                     shown.AddRange(Rendered(window).Select(text => $"{page}/{tab}: {text}"));
+                    shown.AddRange(Opened(window).Select(text => $"{page}/{tab} opened: {text}"));
                 }
             }
             finally
@@ -203,17 +214,52 @@ public sealed partial class WindowWordsTests
 
     private static void AssertWindowWords(IEnumerable<string> shown)
     {
-        var retired = shown.Where(text => RetiredWord().IsMatch(FileName().Replace(text, string.Empty)))
+        var retired = shown.Where(text => FileName().Replace(text, string.Empty) is var prose &&
+                (RetiredWord().IsMatch(prose) || LowerCaseOpinion().IsMatch(prose) || FieldWorksClassName().IsMatch(prose)))
             .Distinct().ToArray();
         Assert.True(retired.Length == 0, "Retired words in the window:" + Environment.NewLine +
             string.Join(Environment.NewLine, retired));
     }
 
-    // Hidden text is scanned too: every page holds states the sample data does not reach.
-    private static IEnumerable<string> Rendered(Window window)
+    // Collapsed sections only build their rows when opened, and a menu's entries only exist while it is open.
+    private static IEnumerable<string> Opened(MainWindow window)
+    {
+        var shown = new List<string>();
+        var opened = new List<Expander>();
+        for (var round = 0; round < 4; round++)
+        {
+            var closed = window.GetVisualDescendants().OfType<Expander>()
+                .Where(expander => expander.IsEffectivelyVisible && !expander.IsExpanded).ToList();
+            if (closed.Count == 0) break;
+            foreach (var expander in closed) expander.IsExpanded = true;
+            opened.AddRange(closed);
+            PageScreenshots.Settle(window);
+        }
+        shown.AddRange(Rendered(window));
+        var menus = window.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.IsEffectivelyVisible && button.IsEffectivelyEnabled && button.Flyout is not null).ToList();
+        foreach (var button in menus)
+        {
+            button.Flyout!.ShowAt(button);
+            PageScreenshots.Settle(window);
+            foreach (var presenter in window.GetVisualDescendants().OfType<ContentControl>()
+                .Where(control => control is FlyoutPresenter || (Control)control is MenuFlyoutPresenter))
+                shown.AddRange(Rendered(presenter));
+            button.Flyout.Hide();
+            PageScreenshots.Settle(window);
+        }
+        foreach (var expander in opened) expander.IsExpanded = false;
+        PageScreenshots.Settle(window);
+        return shown;
+    }
+
+    // Hidden text too, as the sample reaches few states; both trees, as a DataGrid's cells are only visual.
+    private static IEnumerable<string> Rendered(Control root)
     {
         var texts = new List<string?>();
-        foreach (var control in window.GetLogicalDescendants().OfType<Control>())
+        var controls = root.GetSelfAndLogicalDescendants().OfType<Control>()
+            .Union(root.GetSelfAndVisualDescendants().OfType<Control>());
+        foreach (var control in controls)
         {
             texts.Add(AutomationProperties.GetName(control));
             texts.Add(AutomationProperties.GetHelpText(control));

@@ -184,6 +184,30 @@ public sealed class AnalysisMarkingStateTests
         Assert.DoesNotContain("candidate", token.HoverSummary, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData(ReadingGrade.Approved, "Approved")]
+    [InlineData(ReadingGrade.Disapproved, "Disapproved")]
+    [InlineData(ReadingGrade.Candidate, "Unknown")]
+    public void HoverSummaryNamesEveryOpinionInTheWindowsWords(string grade, string label)
+    {
+        var token = new ResultsTokenViewModel("Text", 1, Token(Stored(Book, grade, "stored-1")), null);
+
+        Assert.Contains($" · {label} · ", token.HoverSummary, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(ReadingGrade.Approved, "Approved")]
+    [InlineData(ReadingGrade.Disapproved, "Disapproved")]
+    [InlineData(ReadingGrade.Candidate, "Unknown")]
+    public void RemovingAnAnalysisNamesItsOpinionInTheWindowsWords(string grade, string label)
+    {
+        var state = AnalysisMarkingState.Create(Token(Stored(Book, grade, "stored-1")), Result("book", Book));
+
+        var remove = Assert.Single(state.FixChoices, choice => choice.Label == "Remove analysis");
+        Assert.Equal($"{label} → Removed", remove.Subtitle);
+        Assert.Equal(label, remove.Now);
+    }
+
     [Fact]
     public void AgreementRemovalAndKeepChoicesDoNotNeedALook()
     {

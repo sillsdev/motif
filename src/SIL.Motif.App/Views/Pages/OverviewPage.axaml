@@ -151,11 +151,11 @@
                                    IsVisible="{Binding !History.HasEntries}" />
           <ItemsControl ItemsSource="{Binding History.Entries}" AutomationProperties.Name="Project history entries">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="queries:ProjectHistoryEntry">
+              <DataTemplate x:DataType="vm:ProjectHistoryRow">
                 <Border Classes="overviewHistoryEntry">
                   <StackPanel Classes="overviewHistoryRow">
                     <DockPanel LastChildFill="False">
-                      <views:CopyableTextBlock DockPanel.Dock="Left" Classes="overviewHistoryKind" Text="{Binding Kind}" />
+                      <views:CopyableTextBlock DockPanel.Dock="Left" Classes="overviewHistoryKind" Text="{Binding Title}" />
                       <views:CopyableTextBlock DockPanel.Dock="Right" Classes="overviewMuted"
                                                Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
                     </DockPanel>

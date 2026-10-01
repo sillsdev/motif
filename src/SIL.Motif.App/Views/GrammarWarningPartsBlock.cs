@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Views;
@@ -85,7 +86,10 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
             NavigateUri = new Uri(link),
         };
         button.Classes.Add("warningObjectLink");
-        ToolTip.SetTip(button, $"Open this {part.FieldWorksKind?.ToLowerInvariant() ?? "object"} in FieldWorks");
+        var kind = part.FieldWorksKind is { Length: > 0 } fieldWorksKind
+            ? GrammarWarningsViewModel.DefaultMeanings.Value.KindLabel(fieldWorksKind)
+            : "Item";
+        ToolTip.SetTip(button, $"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in FieldWorks");
         return button;
     }
 }

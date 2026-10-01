@@ -639,6 +639,27 @@ public sealed class MainWindowSmokeTests
         });
     }
 
+    [Theory]
+    [InlineData("PhEnvironment", "Open this environment in FieldWorks")]
+    [InlineData("MoForm", "Open this allomorph in FieldWorks")]
+    [InlineData("PhRegularRule", "Open this phonological rule in FieldWorks")]
+    [InlineData(null, "Open this item in FieldWorks")]
+    public void AGrammarWarningLinkNamesItsKindInTheWindowsWords(string? kind, string tip)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var block = new GrammarWarningPartsBlock
+            {
+                Parts =
+                [
+                    new GrammarWarningPart("e2", GrammarWarningPartRole.Object, "id", kind, "silfw://localhost/link"),
+                ],
+            };
+
+            Assert.Equal(tip, ToolTip.GetTip(Assert.Single(block.Children.OfType<HyperlinkButton>())));
+        });
+    }
+
     [Fact]
     public void UnavailableGrammarWarningLinksExplainWhyFieldWorksCannotOpenTheSubject()
     {
