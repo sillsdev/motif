@@ -16,6 +16,26 @@ namespace SIL.Motif.Tests.App;
 public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public async Task ConfigurationSelectionPersistsThroughTheRealClientWithoutAWindow()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var client = RealCommandClient.Create(project.ManagedRoot);
+        var baseline = await client.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath),
+            CancellationToken.None);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+
+        var saved = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
+            project.FwDataPath, Path.GetFileNameWithoutExtension(project.FwDataPath), [project.Text.TextId], [],
+            PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(3_100)), CancellationToken.None);
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+
+        var readBack = await client.ReadDefaultSelectionAsync(new(project.FwDataPath), CancellationToken.None);
+        Assert.True(readBack.Succeeded, readBack.Refusal?.Message);
+        Assert.Equal([project.Text.TextId], readBack.Value!.Selection!.TextIds);
+        Assert.Equal(3_100, readBack.Value.Selection.PerWordStepLimit!.Steps);
+    }
+
+    [Fact]
     public async Task ScopedActionsPassTheChosenScopeAcrossTheRealClient()
     {
         using var project = new WalkthroughProject(pristine);
