@@ -1,2 +1,2 @@
 # <test project name> | <dotnet test --filter expression>; empty filter runs the whole project.
-SIL.Motif.Tests.App |
+SIL.Motif.Tests.App | FullyQualifiedName~AnalyzeTextsLayoutTests.EachLineHasAWordFieldWorksPanGlossGutterAlignedWithItsStrips
