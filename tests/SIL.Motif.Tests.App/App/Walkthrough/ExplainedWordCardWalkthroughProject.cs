@@ -34,7 +34,8 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
         WalkthroughTestFiles.DeleteDirectory(root);
         try
         {
-            var fixture = BuildOutput.ExplainedWordCardFixtureDirectory;
+            var fixture = BuildOutput.RequirePreparedDirectory(BuildOutput.ExplainedWordCardFixtureDirectory,
+                "The Explained Word Card walkthrough fixture");
             using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(fixture, "fixture.json")));
             var relativeProjectPath = manifest.RootElement.GetProperty("projectPath").GetString()
                 ?? throw new InvalidDataException("The prepared walkthrough fixture has no project path.");

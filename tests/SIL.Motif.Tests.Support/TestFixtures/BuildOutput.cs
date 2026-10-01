@@ -32,6 +32,29 @@ internal static class BuildOutput
     internal static string ExplainedWordCardFixtureDirectory { get; } =
         Path.Combine(ProductDirectory, "tests", "prepared", "walkthrough-fixtures", "explained-word-card");
 
+    /// <summary>Returns a prepared test directory or explains which step creates it.</summary>
+    internal static string RequirePreparedDirectory(string path, string description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        if (!Directory.Exists(path))
+            throw new DirectoryNotFoundException(PreparedArtifactMessage(path, description));
+        return path;
+    }
+
+    /// <summary>Returns a prepared test file or explains which step creates it.</summary>
+    internal static string RequirePreparedFile(string path, string description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        if (!File.Exists(path))
+            throw new FileNotFoundException(PreparedArtifactMessage(path, description), path);
+        return path;
+    }
+
     private static string InProductDirectory(string name) =>
         Path.Combine(ProductDirectory, OperatingSystem.IsWindows() ? name + ".exe" : name);
+
+    private static string PreparedArtifactMessage(string path, string description) =>
+        $"{description} is missing at {path}. Run ./tools/Prepare-TestArtifacts.ps1, or run ./test.ps1 -All.";
 }

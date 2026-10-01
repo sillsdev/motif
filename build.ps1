@@ -1,6 +1,6 @@
 <#
   .SYNOPSIS
-  The build gate: hygiene, solution compile, then prepared test runtime artifacts. Stops at the first failure.
+  The build gate: hygiene, then solution compile. Stops at the first failure.
 
   .DESCRIPTION
   Use this instead of a bare `dotnet build`. The difference is the hygiene gate, and the reason it is
@@ -116,14 +116,5 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ''
-Write-Step 'prepare test runtime artifacts'
-& (Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1') -Configuration $Configuration
-if ($LASTEXITCODE -ne 0) {
-    Write-Host ''
-    Write-Host 'Test runtime artifact preparation failed.' -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ''
-Write-Host 'Build OK: comments clean, solution compiles, test runtime artifacts are ready.' -ForegroundColor Green
+Write-Host 'Build OK: comments clean, solution compiles.' -ForegroundColor Green
 exit 0

@@ -16,7 +16,7 @@ public sealed class NoTestBuildCommandsTests
     [Fact]
     public void TestSourcesDoNotStartDotnetBuildPublishOrRun()
     {
-        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var repositoryRoot = RepositoryRoot();
         var testsRoot = Path.Combine(repositoryRoot, "tests");
         var violations = Directory.EnumerateFiles(testsRoot, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.EndsWith("NoTestBuildCommandsTests.cs", StringComparison.Ordinal))
@@ -27,6 +27,57 @@ public sealed class NoTestBuildCommandsTests
             .ToArray();
 
         Assert.Empty(violations);
+    }
+
+    [Fact]
+    public void BuildGateDoesNotPrepareTestArtifacts()
+    {
+        var buildScript = File.ReadAllText(Path.Combine(RepositoryRoot(), "build.ps1"));
+
+        Assert.DoesNotContain("Prepare-TestArtifacts.ps1", buildScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AllLevelTestGatePreparesArtifacts()
+    {
+        var testScript = File.ReadAllText(Path.Combine(RepositoryRoot(), "test.ps1"));
+        var gate = Regex.Match(testScript,
+            @"if\s*\(\s*\$All\s*\)\s*\{(?<body>[\s\S]*?)\r?\n\}",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+        Assert.True(gate.Success, "test.ps1 must gate artifact preparation on -All.");
+        Assert.Contains("Prepare-TestArtifacts.ps1", gate.Groups["body"].Value, StringComparison.Ordinal);
+        Assert.Contains("Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf", gate.Groups["body"].Value,
+            StringComparison.Ordinal);
+        Assert.Contains("& $prepareTestArtifacts", gate.Groups["body"].Value, StringComparison.Ordinal);
+        Assert.Contains("[switch] $All", testScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("if ([string]::IsNullOrWhiteSpace($levels))", testScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ArtifactDependentTestsAreSystemLevel()
+    {
+        var repositoryRoot = RepositoryRoot();
+        var portablePackage = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli",
+            "Integration", "PortableWorkerPackageTests.cs"));
+        var explainedWordCard = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
+            "App", "Walkthrough", "WalkthroughReplayTests.cs"));
+
+        Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", portablePackage, StringComparison.Ordinal);
+        Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", explainedWordCard, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MissingPreparedArtifactGuidanceNamesPreparationStep()
+    {
+        var missingPath = Path.Combine(Path.GetTempPath(), "motif-missing-prepared-" + Guid.NewGuid().ToString("N"));
+        var directoryFailure = Assert.Throws<DirectoryNotFoundException>(() =>
+            BuildOutput.RequirePreparedDirectory(missingPath, "Test directory"));
+        var fileFailure = Assert.Throws<FileNotFoundException>(() =>
+            BuildOutput.RequirePreparedFile(missingPath, "Test file"));
+
+        Assert.Contains("Run ./tools/Prepare-TestArtifacts.ps1", directoryFailure.Message, StringComparison.Ordinal);
+        Assert.Contains("Run ./tools/Prepare-TestArtifacts.ps1", fileFailure.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -66,4 +117,7 @@ public sealed class NoTestBuildCommandsTests
         }
         return violations.ToArray();
     }
+
+    private static string RepositoryRoot() =>
+        Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
 }

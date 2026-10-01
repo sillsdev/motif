@@ -37,8 +37,11 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
         try
         {
             Directory.CreateDirectory(workspacePath);
-            CopyDirectory(BuildOutput.PortableWorkerPackageDirectory, package);
-            AssertPortablePackageValidation(BuildOutput.PortableWorkerPackageValidation);
+            CopyDirectory(BuildOutput.RequirePreparedDirectory(BuildOutput.PortableWorkerPackageDirectory,
+                "The portable Worker package"), package);
+            var validationPath = BuildOutput.RequirePreparedFile(BuildOutput.PortableWorkerPackageValidation,
+                "Portable Worker package validation");
+            AssertPortablePackageValidation(validationPath);
             foreach (var asset in workerAssets)
                 Assert.True(File.Exists(Path.Combine(package, asset)), "The portable package is missing " + asset + ".");
             var repoRoot = FindRepoRoot();
@@ -302,7 +305,6 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
 
     private static void AssertPortablePackageValidation(string validationPath)
     {
-        Assert.True(File.Exists(validationPath), "The build gate did not record portable package validation.");
         using var document = JsonDocument.Parse(File.ReadAllText(validationPath));
         var root = document.RootElement;
         Assert.Equal(RuntimeIdentifier(), root.GetProperty("runtimeIdentifier").GetString());
@@ -334,7 +336,6 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
 
     private static void CopyDirectory(string source, string destination)
     {
-        Assert.True(Directory.Exists(source), "The build gate did not prepare " + source + ".");
         Directory.CreateDirectory(destination);
         foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
