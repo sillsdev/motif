@@ -207,6 +207,34 @@ public sealed class AssessmentRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ObjectTimingsKeepIdentityDirectionAndNullableMeasurementsAcrossReadBack()
+    {
+        var repository = NewRepository("object-timing-identity.fwdata", out var database);
+        using var ownedDatabase = database;
+        var timings = new AssessmentObjectTiming[]
+        {
+            new("lex_entry", "entry-a", "authored", "analysis", "Shared label", "word", 4, null, 180_000),
+            new("lex_entry", "entry-b", "authored", "analysis", "Shared label", "word", 5, null, 220_000),
+            new("lex_entry", "entry-a", "authored", "synthesis", "Shared label", "word", 6, null, null),
+        };
+        repository.Record(NewAssessment("object-timing-identity", null, null, "ParseTime",
+            [new AssessedWord("word", "analysed", []) { ElapsedNs = 725_001 }]) with
+        {
+            ObjectTimings = timings,
+        });
+
+        var stored = repository.Get("object-timing-identity");
+
+        Assert.Equal(725_001L, Assert.Single(stored.Words!).ElapsedNs);
+        Assert.Equal(3, stored.ObjectTimings.Count);
+        Assert.Equal(2, stored.ObjectTimings.Select(row => row.Key).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(stored.ObjectTimings, row => Assert.Equal("Shared label", row.Object));
+        var unsupported = Assert.Single(stored.ObjectTimings, row => row.Direction == "synthesis");
+        Assert.Null(unsupported.Passes);
+        Assert.Null(unsupported.ElapsedNs);
+    }
+
+    [Fact]
     public void MissingRawSignaturesRemainAbsentAlongsideAuthoritativeAnalyses()
     {
         var repository = NewRepository("absent-signature.fwdata", out var database);

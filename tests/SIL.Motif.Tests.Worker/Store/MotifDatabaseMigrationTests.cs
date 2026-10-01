@@ -268,14 +268,15 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "ScopeDigest|TEXT|1|0|", "TokeniserName|TEXT|1|0|", "TokeniserVersion|TEXT|1|0|",
                 "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|", "InvocationId|TEXT|0|0|"],
             ["AssessedWords"] = ["AssessedWordId|INTEGER|0|1|", "AssessmentId|TEXT|1|0|", "OrdinalIndex|INTEGER|1|0|",
-                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "RawSignature|TEXT|0|0|",
+                "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "ElapsedNs|INTEGER|0|0|",
+                "RawSignature|TEXT|0|0|",
                 "MorphologyJson|TEXT|0|0|", "CorrectnessJson|TEXT|0|0|", "ProjectStanding|TEXT|0|0|",
                 "OccurrenceCount|INTEGER|0|0|", "ReadingGradesJson|TEXT|0|0|", "MissedApprovedCount|INTEGER|0|0|",
                 "MissedApprovedJson|TEXT|0|0|",
                 "IsIncomplete|INTEGER|1|0|0"],
             ["AssessmentObjectTimings"] = ["AssessmentId|TEXT|1|1|", "OrdinalIndex|INTEGER|1|2|", "Kind|TEXT|1|0|",
-                "Object|TEXT|1|0|", "Word|TEXT|1|0|", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|",
-                "ElapsedMs|REAL|1|0|"],
+                "Key|TEXT|1|0|", "IdentityQuality|TEXT|1|0|", "Direction|TEXT|1|0|", "Object|TEXT|1|0|",
+                "Word|TEXT|1|0|", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|", "ElapsedNs|INTEGER|0|0|"],
             ["ParsedAnalyses"] = ["AssessedWordId|INTEGER|1|0|", "OrdinalIndex|INTEGER|1|0|", "CategoryGuid|TEXT|0|0|",
                 "MorphemeGuidsJson|TEXT|1|0|", "RootIndex|INTEGER|1|0|", "IdentityDigest|TEXT|1|0|"],
             ["AssessmentPins"] = ["AssessmentId|TEXT|1|1|", "PinnedBy|TEXT|1|2|", "PinnedUtc|TEXT|1|0|"],
@@ -503,17 +504,17 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Fact]
     public void PreviousSchemaIsRefusedWithoutMigration()
     {
-        const int previousSchema = 27;
-        var path = DatabasePath("schema-27.fwdata");
+        const int previousSchema = 28;
+        var path = DatabasePath("schema-28.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(28, MotifSchema.CurrentSchema);
+        Assert.Equal(29, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
-            path, Locator("schema-27.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+            path, Locator("schema-28.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
-        Assert.Contains("schema 27", refusal.Message);
         Assert.Contains("schema 28", refusal.Message);
+        Assert.Contains("schema 29", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));
         Assert.Equal(MotifSchema.ApplicationId, PragmaInt(check, "application_id"));

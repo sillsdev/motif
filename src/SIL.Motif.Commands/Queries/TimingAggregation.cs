@@ -38,15 +38,20 @@ public static class TimingAggregation
         if (by is not ("kind" or "rule")) throw new ArgumentException("Grouping must be 'kind' or 'rule'.", nameof(by));
         if (top <= 0) throw new ArgumentOutOfRangeException(nameof(top));
         Func<AssessmentObjectTiming, string> key = by == "kind" ? row => row.Kind : row => row.Object;
-        var total = rows.Sum(row => row.ElapsedMs);
+        var timedRows = rows.Where(row => row.ElapsedNs is not null).ToArray();
+        var total = timedRows.Sum(row => row.ElapsedMs!.Value);
         var aggregates = rows.GroupBy(key, StringComparer.Ordinal)
+            .Select(group => (Name: group.Key, Rows: group.ToArray(),
+                TimedRows: group.Where(row => row.ElapsedNs is not null).ToArray()))
+            .Where(group => group.TimedRows.Length != 0)
             .Select(group =>
             {
-                var elapsed = group.Sum(row => row.ElapsedMs);
-                return new TimingAggregateRow(group.Key, elapsed, total == 0 ? 0 : elapsed / total,
-                    group.Sum(row => row.Attempts ?? 0), group.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
+                var elapsed = group.TimedRows.Sum(row => row.ElapsedMs!.Value);
+                return new TimingAggregateRow(group.Name, elapsed, total == 0 ? 0 : elapsed / total,
+                    group.Rows.Sum(row => row.Attempts ?? 0),
+                    group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
                 {
-                    Kind = by == "kind" ? group.Key : group.First().Kind,
+                    Kind = by == "kind" ? group.Name : group.Rows[0].Kind,
                 };
             })
             .OrderByDescending(row => row.ElapsedMs).ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
@@ -54,8 +59,11 @@ public static class TimingAggregation
             ? Array.Empty<WordRuleTiming>()
             : rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule))
                 .GroupBy(row => row.Word, StringComparer.Ordinal)
-                .Select(group => new WordRuleTiming(group.Key, group.Sum(row => row.ElapsedMs),
-                    group.Sum(row => row.Attempts ?? 0)))
+                .Select(group => (Word: group.Key, Rows: group.ToArray()))
+                .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
+                .Select(group => new WordRuleTiming(group.Word,
+                    group.Rows.Where(row => row.ElapsedNs is not null).Sum(row => row.ElapsedMs!.Value),
+                    group.Rows.Sum(row => row.Attempts ?? 0)))
                 .OrderByDescending(row => row.ElapsedMs).ThenBy(row => row.Word, StringComparer.Ordinal)
                 .Take(top).ToArray();
         return (aggregates, costliest);
