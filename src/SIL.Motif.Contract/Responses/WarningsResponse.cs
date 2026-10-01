@@ -13,9 +13,10 @@ public sealed record WarningsResponse(
     public int ErrorCount { get; init; }
 
     /// <summary>
-    /// Exact lexical-use and recorded rule-call words, counted once. Membership and spelling candidates are
-    /// separate counts on the same value and are excluded from Words, NoParse and ByMeaning. Null means no
-    /// usable stored Parse all words evidence is available; a supported route with zero matches is not null.
+    /// The Selection's words that exactly use something these findings name, through a stored analysis or a recorded
+    /// rule call, each counted once. Membership and spelling candidates are separate counts on the same value and are
+    /// excluded from its exact counts. <see langword="null"/> when no stored Parse all words matches the current
+    /// Baseline and Selection; a route that matches no word gives zero, not <see langword="null"/>.
     /// </summary>
     public WarningWordsTouched? YourWords { get; init; }
 

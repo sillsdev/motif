@@ -134,9 +134,10 @@ public static partial class WarningReachReader
                 .Where(text => !string.IsNullOrEmpty(text) && text != "***").Select(text => text!).ToArray()
             : [];
         var spellings = codes.Length > 0 ? codes : part.Title is { Length: > 0 } title ? [title] : [];
-        return spellings.Length == 0
-            ? CantTell(WarningCantTell.NothingNamed)
-            : new WarningReach(WarningWordsPath.Spelling) { Spellings = spellings };
+        if (spellings.Length > 0) return new WarningReach(WarningWordsPath.Spelling) { Spellings = spellings };
+        return cache is null
+            ? Unavailable(WarningWordsPath.UnresolvedIdentity, WarningAttributionReason.NamedWithoutProjectGuid)
+            : Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution);
     }
 
     private static WarningReach Follow<T>(LcmCache cache, Guid guid, Func<T, WarningReach> follow) where T : class, ICmObject =>
@@ -160,9 +161,6 @@ public static partial class WarningReachReader
 
     private static WarningReach Unavailable(WarningWordsPath path, WarningAttributionReason reason) =>
         new(path) { Reason = reason };
-
-    private static WarningReach CantTell(WarningCantTell reason) =>
-        new(WarningWordsPath.CantTell) { CantTell = reason };
 
     private static string Id(ICmObject item) => item.Guid.ToString("D");
 }

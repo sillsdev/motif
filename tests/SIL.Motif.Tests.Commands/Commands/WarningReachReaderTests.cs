@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Projection.Grammar;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -28,8 +30,8 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
     [InlineData("allomorph-prohibition", "membership", "form")]
     [InlineData("morpheme-prohibition", "membership", "msa")]
     [InlineData("boundary", "through_environments_and_rules", "rule")]
-    [InlineData("phoneme-set", "project_wide", "none")]
-    [InlineData("feature-system", "project_wide", "none")]
+    [InlineData("phoneme-set", "membership", "rule")]
+    [InlineData("feature-system", "membership", "msa")]
     public void ReverseRouteReachesOnlyItsReferencedOwner(string name, string path, string target)
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
@@ -43,6 +45,77 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
         if (target == "form") Assert.Contains(expected, reach.AllomorphIds);
         if (target == "rule") Assert.Contains(new TraceTimingKey("phon_rule", expected), reach.TimingKeys);
         Assert.DoesNotContain(pristine.Seed.SecondLexemeFormId.ToString("D"), reach.AllomorphIds);
+
+        var morph = new ParserReadingMorph("synthetic", "plural", "noun", null, false, null)
+        {
+            AllomorphId = objects["form"].Guid.ToString("D"),
+            GrammaticalInfoId = objects[target is "msa" or "stem-msa" ? target : "msa"].Guid.ToString("D"),
+        };
+        var word = new AssessmentWordResult("synthetic", "no-analysis", false, "Search completed", 1, null)
+        {
+            StoredAnalyses = [new ParserReading([morph]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
+        };
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, name,
+            [Subject(item) with { Reach = reach }], [], name);
+        var timings = target == "rule"
+            ? new[] { new AssessmentObjectTiming("phon_rule", expected, "authored", "analysis", "Boundary", "synthetic", 1, null, 10) }
+            : Array.Empty<AssessmentObjectTiming>();
+        var matched = WarningWordsQuery.YourWordsOf(finding, [word], timings)!;
+        Assert.Equal(path == "membership" ? WarningAttributionState.MembershipCandidates : WarningAttributionState.ExactUses,
+            matched.State);
+        Assert.Equal("synthetic", Assert.Single(matched.Words).Row.Word);
+        Assert.Equal(WarningAttributionState.NoneInSelection, WarningWordsQuery.YourWordsOf(finding, [], [])!.State);
+    }
+
+    [Fact]
+    public void EmptyProjectResourcesHaveNoWordAttribution()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        IPhPhonemeSet set = null!;
+        IFsFeatureSystem system = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            set = cache.ServiceLocator.GetInstance<IPhPhonemeSetFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.Add(set);
+            system = cache.ServiceLocator.GetInstance<IFsFeatureSystemFactory>().Create();
+            cache.LangProject.PhFeatureSystemOA = system;
+        });
+        Assert.Equal("project_wide", WirePath(WarningReachReader.Reach(Subject(set), () => cache)!));
+        Assert.Equal("project_wide", WirePath(WarningReachReader.Reach(Subject(system), () => cache)!));
+    }
+
+    [Fact]
+    public void NestedComplexAndSharedSpecificationsReachTheirLexicalOwners()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var objects = Author(cache);
+        IFsComplexFeature complex = null!;
+        IMoStemMsa other = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            complex = cache.ServiceLocator.GetInstance<IFsComplexFeatureFactory>().Create();
+            cache.LangProject.MsFeatureSystemOA.FeaturesOC.Add(complex);
+            var outer = ((IMoInflAffMsa)objects["msa"]).InflFeatsOA;
+            var nested = cache.ServiceLocator.GetInstance<IFsComplexValueFactory>().Create();
+            outer.FeatureSpecsOC.Add(nested);
+            nested.FeatureRA = complex;
+            nested.ValueOA = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
+            var nestedFs = (IFsFeatStruc)nested.ValueOA;
+            var closed = cache.ServiceLocator.GetInstance<IFsClosedValueFactory>().Create();
+            nestedFs.FeatureSpecsOC.Add(closed);
+            closed.FeatureRA = (IFsClosedFeature)objects["feature"];
+            closed.ValueRA = (IFsSymFeatVal)objects["value"];
+            other = (IMoStemMsa)cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                .GetObject(pristine.Seed.SecondEntryId).MorphoSyntaxAnalysesOC.First();
+            other.MsFeaturesOA = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
+            var shared = cache.ServiceLocator.GetInstance<IFsSharedValueFactory>().Create();
+            other.MsFeaturesOA.FeatureSpecsOC.Add(shared);
+            shared.ValueRA = closed;
+        });
+        var complexReach = WarningReachReader.Reach(Subject(complex), () => cache)!;
+        Assert.Contains(objects["msa"].Guid.ToString("D"), complexReach.GrammaticalInfoIds);
+        var valueReach = WarningReachReader.Reach(Subject(objects["value"]), () => cache)!;
+        Assert.Contains(other.Guid.ToString("D"), valueReach.GrammaticalInfoIds);
     }
 
     [Theory]

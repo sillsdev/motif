@@ -26,8 +26,11 @@ public static partial class WarningReachReader
                 .Concat(prohibition.FirstMorphemeRA is { } first ? [first] : []).Distinct().Select(Id).ToArray(),
         },
         IPhBdryMarker boundary => Boundary(boundary),
-        IPhPhonemeSet => Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution),
-        IFsFeatureSystem => Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution),
+        IPhPhonemeSet set => Members(set.BoundaryMarkersOC.Select(Boundary)
+            .Concat(set.PhonemesOC.Select(phoneme => ContextOwners(phoneme.Cache.ServiceLocator
+                .GetInstance<IPhSimpleContextSegRepository>().AllInstances()
+                .Where(context => context.FeatureStructureRA == phoneme))))),
+        IFsFeatureSystem system => Members(system.FeaturesOC.Select(Features)),
         _ => Unavailable(WarningWordsPath.UnresolvedIdentity, WarningAttributionReason.UnsupportedKind),
     };
 
@@ -73,13 +76,30 @@ public static partial class WarningReachReader
             .OfType<ILexEntry>().SelectMany(entry => entry.AllAllomorphs).Distinct().Select(Id).ToArray(),
     };
 
-    private static WarningReach Boundary(IPhBdryMarker boundary)
+    private static WarningReach Boundary(IPhBdryMarker boundary) => ContextOwners(boundary.Cache.ServiceLocator
+        .GetInstance<IPhSimpleContextBdryRepository>().AllInstances()
+        .Where(context => context.FeatureStructureRA == boundary));
+
+    private static WarningReach ContextOwners(IEnumerable<IPhSimpleContext> contexts)
     {
-        var owners = boundary.Cache.ServiceLocator.GetInstance<IPhSimpleContextBdryRepository>().AllInstances()
-            .Where(context => context.FeatureStructureRA == boundary).Select(NearestOwner).OfType<ICmObject>().ToArray();
+        var owners = contexts.Select(NearestOwner).OfType<ICmObject>().ToArray();
         return owners.Length == 0
             ? Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution)
             : Merge(WarningWordsPath.ThroughEnvironmentsAndRules, owners.Select(OwnerReach));
+    }
+
+    // A set's phonemes are left unspelled: nearly every word is spelled with some phoneme of the set.
+    private static WarningReach Members(IEnumerable<WarningReach> members)
+    {
+        var routes = members.Where(member => member.IsRoute).ToArray();
+        if (routes.Length == 0) return Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution);
+        var merged = Merge(WarningWordsPath.Membership, routes);
+        return new(WarningWordsPath.Membership)
+        {
+            AllomorphIds = merged.AllomorphIds.Concat(merged.MembershipAllomorphIds).Distinct().ToArray(),
+            GrammaticalInfoIds = merged.GrammaticalInfoIds.Concat(merged.MembershipGrammaticalInfoIds).Distinct().ToArray(),
+            TimingKeys = merged.TimingKeys.Concat(merged.MembershipTimingKeys).Distinct().ToArray(),
+        };
     }
 
     private static WarningReach Features(ICmObject subject)
