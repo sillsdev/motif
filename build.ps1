@@ -57,6 +57,10 @@ if ([string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
 }
 New-Item -ItemType Directory -Force -Path $env:NUGET_PACKAGES | Out-Null
 
+# Every per-user tool cache except the shared packages folder lives under bin/.cache in this checkout.
+Import-Module (Join-Path $repoRoot 'tools/MotifToolEnvironment.psm1') -Force
+Initialize-MotifToolEnvironment -RepoRoot $repoRoot
+
 function Write-Step {
     param([string] $Text)
     Write-Host ''
@@ -76,7 +80,7 @@ if ($SkipHygiene) {
 else {
     Write-Step 'comment hygiene'
     Push-Location $repoRoot
-    try { & dotnet run --file tools/CommentHygiene/comment-hygiene.cs }
+    try { & dotnet run --file tools/CommentHygiene/comment-hygiene.cs --artifacts-path (Get-MotifToolArtifactsPath $repoRoot 'comment-hygiene') }
     finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''
@@ -86,7 +90,7 @@ else {
 
     Write-Step 'design-token hygiene'
     Push-Location $repoRoot
-    try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs }
+    try { & dotnet run --file tools/TokenHygiene/token-hygiene.cs --artifacts-path (Get-MotifToolArtifactsPath $repoRoot 'token-hygiene') }
     finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) {
         Write-Host ''
@@ -113,6 +117,16 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host ''
     Write-Host 'Build failed.' -ForegroundColor Red
     exit 1
+}
+
+if (-not $IsWindows) {
+    Write-Step 'SIL ICU beside the product and test hosts'
+    if ($env:MOTIF_SIL_ICU_STAGE -and -not (Copy-MotifStagedIcu -RepoRoot $repoRoot -Configuration $Configuration)) {
+        Write-Host ''
+        Write-Host 'Staging SIL ICU failed.' -ForegroundColor Red
+        exit 1
+    }
+    elseif (-not $env:MOTIF_SIL_ICU_STAGE) { [void](Copy-MotifStagedIcu -RepoRoot $repoRoot -Configuration $Configuration) }
 }
 
 Write-Host ''

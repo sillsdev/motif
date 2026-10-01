@@ -53,32 +53,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          payload=tools/icu-payload.json
-          root="$RUNNER_TEMP/sil-icu/linux-x64"
-          mkdir -p "$root/debs" "$root/extracted"
-          repository=$(jq -r '.rids["linux-x64"].sources[0].repository' "$payload")
-          while IFS=$'\t' read -r path checksum ships size; do
-            deb="$root/debs/$(basename "$path")"
-            curl --fail --location --retry 3 "$repository/$path" --output "$deb"
-            printf '%s  %s\n' "$checksum" "$deb" | sha256sum --check --status
-            if [[ -n "$size" && "$(stat -c '%s' "$deb")" != "$size" ]]; then
-              echo "Unexpected size for $deb" >&2
-              exit 1
-            fi
-            if [[ "$ships" == true ]]; then
-              dpkg-deb --extract "$deb" "$root/extracted"
-            fi
-          done < <(jq -r '.rids["linux-x64"].sources[] | [.path, .sha256, .ships, (.size // "")] | @tsv' "$payload")
-          sudo apt-get update
-          sudo apt-get install --yes patchelf
-          find "$root/extracted" \( -type f -o -type l \) -name 'libicu*.so*' -print0 |
-            while IFS= read -r -d '' library; do
-              cp --archive "$library" "$root/"
-            done
-          find "$root" -maxdepth 1 -type f -name 'libicu*.so.*' -print0 |
-            while IFS= read -r -d '' library; do
-              patchelf --set-rpath '$ORIGIN' "$library"
-            done
+          root=$(bash tools/stage-sil-icu.sh "$RUNNER_TEMP/sil-icu/linux-x64" | tail -1)
           printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$root" >> "$GITHUB_ENV"
 
       - name: Cache SIL ICU source build (macOS)
@@ -138,32 +113,10 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Configuration Release
 
-      - name: Stage SIL ICU beside Motif and test hosts
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          payload=tools/icu-payload.json
-          destination=$(jq -r --arg rid "$ICU_RID" '.rids[$rid].nativeOutputDirectory' "$payload")
-          product="bin/Release/$destination"
-          tests="bin/Release/tests/$destination"
-          mkdir -p "$product" "$tests"
-          if [[ "$RUNNER_OS" == Linux ]]; then
-            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.so*; do
-              [[ -e "$library" || -L "$library" ]] || continue
-              cp -a "$library" "$product/"
-              cp -a "$library" "$tests/"
-            done
-          else
-            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.dylib; do
-              [[ -e "$library" || -L "$library" ]] || continue
-              cp -a "$library" "$product/"
-              cp -a "$library" "$tests/"
-            done
-          fi
-          while IFS= read -r library; do
-            [[ -e "$product/$library" ]] || { echo "Missing staged ICU library: $product/$library" >&2; exit 1; }
-            [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
-          done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
+      - name: Hermetic check (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: ./tools/Test-HermeticBuild.ps1
 
       - name: Test (full suite)
         shell: pwsh
