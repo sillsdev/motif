@@ -24,7 +24,7 @@ public sealed class RunnerKickRaceTests : IDisposable
     }
 
     [Fact]
-    public async Task ARealCliKickRunsTheJobQueuedWhileAnotherOwnerHoldsTheRunnerLock()
+    public async Task ARealCliKickRunsTheJobAfterTheOtherOwnerOutlastsTheInitialRetry()
     {
         var project = _projects.CopyProjectFile();
         using var occupying = JobRunnerHost.ForNamespace(_ownerNamespace);
@@ -36,6 +36,7 @@ public sealed class RunnerKickRaceTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(jobId));
         Assert.Equal(JobStatus.Queued, JobProgress.Read(project, jobId).Status);
 
+        await Task.Delay(TimeSpan.FromSeconds(3));
         occupying.Dispose();
 
         var completed = JobProgress.WaitUntilFinished(project, jobId, "The kicked runner's Baseline refresh");

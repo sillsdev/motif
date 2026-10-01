@@ -29,6 +29,9 @@ public sealed record RunnerOptions
     /// <summary>Isolates a launched process's owner mutex, as <see cref="NamespaceVariable"/> does.</summary>
     public const string NamespaceArgument = "--namespace";
 
+    /// <summary>The project whose durable enqueue caused this runner launch.</summary>
+    public const string WakeProjectArgument = "--wake-project";
+
     /// <summary>A launched process's idle timeout, in milliseconds.</summary>
     public const string IdleArgument = "--idle-ms";
 
@@ -69,6 +72,8 @@ public sealed record RunnerOptions
 
     public string? OwnerNamespace { get; init; }
 
+    public string? WakeProjectPath { get; init; }
+
     public TimeSpan IdleTimeout { get; init; } = TimeSpan.FromMinutes(5);
 
     /// <summary>Reads explicit launch arguments first, then the runner's environment defaults.</summary>
@@ -83,6 +88,7 @@ public sealed record RunnerOptions
         Lease = Milliseconds(ArgumentValue(args, LeaseArgument)) ?? Seconds(Value(LeaseVariable)) ??
             TimeSpan.FromMinutes(5),
         OwnerNamespace = ArgumentValue(args, NamespaceArgument) ?? Value(NamespaceVariable),
+        WakeProjectPath = ArgumentValue(args, WakeProjectArgument),
         IdleTimeout = Milliseconds(ArgumentValue(args, IdleArgument)) ?? Seconds(Value(IdleVariable)) ??
             TimeSpan.FromMinutes(5),
     };

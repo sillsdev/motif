@@ -73,7 +73,8 @@ internal static class WorkerRuntime
         var runtimes = host.CreateRuntimeRegistry(catalog,
             (jobs, key) => new WorkerRecoveryCoordinator(
                 new WorkerRecovery(jobs, ownerId: ownerId), new WorkspaceCleaner(ownership)));
-        if (!await TryAcquireOwnershipWithRetryAsync(host).ConfigureAwait(false))
+        if (!await TryAcquireOwnershipWithRetryAsync(host, wakeProjectPath: options.WakeProjectPath)
+            .ConfigureAwait(false))
         {
             Console.WriteLine("existing runner: " + host.OwnerName);
             return 0;
@@ -106,19 +107,36 @@ internal static class WorkerRuntime
     }
 
     /// <summary>
-    /// Retries a bounded window rather than giving up on the first failed attempt: closes the race where
-    /// the currently-owning runner is inside its final idle tick and about to release the mutex, not gone.
+    /// Retries the initial handover window, then stays while the wake project's database still has queued work.
+    /// The queued row keeps a retiring owner's teardown from leaving its successor absent.
     /// </summary>
     internal static async Task<bool> TryAcquireOwnershipWithRetryAsync(
-        JobRunnerHost host, TimeProvider? timeProvider = null)
+        JobRunnerHost host, TimeProvider? timeProvider = null, string? wakeProjectPath = null)
     {
         timeProvider ??= TimeProvider.System;
         var deadline = timeProvider.GetUtcNow() + OwnershipRetryWindow;
         while (true)
         {
             if (host.TryAcquireOwnership()) return true;
-            if (timeProvider.GetUtcNow() >= deadline) return false;
+            if (timeProvider.GetUtcNow() >= deadline && !HasQueuedWakeWork(wakeProjectPath)) return false;
             await Task.Delay(OwnershipRetryPoll, timeProvider).ConfigureAwait(false);
+        }
+    }
+
+    private static bool HasQueuedWakeWork(string? wakeProjectPath)
+    {
+        if (wakeProjectPath is null || !File.Exists(wakeProjectPath)) return false;
+        try
+        {
+            var project = new ProjectLocator(wakeProjectPath, Path.GetFileNameWithoutExtension(wakeProjectPath));
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current);
+            using var database = catalog.OpenOwned(project, TimeSpan.FromMilliseconds(100));
+            return new JobRepository(database).ListActive().Any(job => job.Status == JobStatus.Queued);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            MotifStoreLockException)
+        {
+            return true;
         }
     }
 

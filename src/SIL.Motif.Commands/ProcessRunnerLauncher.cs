@@ -89,6 +89,8 @@ public sealed class ProcessRunnerLauncher : IJobRunnerLauncher
             }
             foreach (var argument in LaunchArguments(Options))
                 start.ArgumentList.Add(argument);
+            start.ArgumentList.Add(WorkerRunnerOptions.WakeProjectArgument);
+            start.ArgumentList.Add(projectPath);
             var process = Process.Start(start);
             if (process is null) return;
             if (isWindows)

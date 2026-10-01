@@ -69,7 +69,7 @@ public sealed class JobRunnerHostOwnershipTests
     }
 
     [Fact]
-    public async Task AnExpiredOwnershipRetryLeavesALateQueuedJobAfterTheRetiringOwnerReleases()
+    public async Task ALateQueuedJobKeepsTheKickedRunnerWaitingForTheRetiringOwner()
     {
         var root = Path.Combine(Path.GetTempPath(), "motif-retiring-owner-" + Guid.NewGuid().ToString("N"));
         var ns = "kick-late-release-" + Guid.NewGuid().ToString("N");
@@ -126,18 +126,22 @@ public sealed class JobRunnerHostOwnershipTests
                     Assert.Equal(JobStatus.Queued, jobs.Get(jobId)!.Status);
                 }
 
-                retrying = WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked, clock);
+                retrying = WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked, clock,
+                    wakeProjectPath: path);
                 await clock.WaitForTimerAsync();
                 clock.Advance(TimeSpan.FromSeconds(3));
+                await clock.WaitForSecondTimerAsync();
 
-                // Observe the expired result before release to distinguish a missed wake from a later acquisition.
-                Assert.False(await retrying.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.False(retrying.IsCompleted);
                 Assert.False(kicked.IsOwner);
                 Assert.False(releaseDisposal.Task.IsCompleted);
                 Assert.False(disposing.IsCompleted);
 
                 releaseDisposal.TrySetResult();
                 await disposing.WaitAsync(TimeSpan.FromSeconds(10));
+                clock.Advance(TimeSpan.FromMilliseconds(50));
+                Assert.True(await retrying.WaitAsync(TimeSpan.FromSeconds(10)));
+                Assert.True(kicked.IsOwner);
                 using var reopened = catalog.OpenOwned(project, TimeSpan.FromSeconds(10));
                 Assert.Equal(JobStatus.Queued, new JobRepository(reopened).Get(jobId)!.Status);
             }
@@ -166,6 +170,9 @@ public sealed class JobRunnerHostOwnershipTests
         private readonly object _gate = new();
         private readonly TaskCompletionSource _timerCreated =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _secondTimerCreated =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _timerCount;
         private DateTimeOffset _now = now;
         private RetryTimer? _timer;
 
@@ -182,6 +189,9 @@ public sealed class JobRunnerHostOwnershipTests
         }
 
         public async Task WaitForTimerAsync() => await _timerCreated.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        public async Task WaitForSecondTimerAsync() =>
+            await _secondTimerCreated.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         public void Advance(TimeSpan elapsed)
         {
@@ -210,6 +220,7 @@ public sealed class JobRunnerHostOwnershipTests
                 _timer = timer;
             }
             _timerCreated.TrySetResult();
+            if (Interlocked.Increment(ref _timerCount) >= 2) _secondTimerCreated.TrySetResult();
             return timer;
         }
 
