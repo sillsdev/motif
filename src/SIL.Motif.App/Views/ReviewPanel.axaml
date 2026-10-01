@@ -6,6 +6,11 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewPanel"
              x:DataType="vm:ReviewPageModel">
+  <UserControl.Styles>
+    <Style Selector="Button.measureAction">
+      <Setter Property="AutomationProperties.AutomationId" Value="{x:Static app:AutomationIds.MeasureChanges}" />
+    </Style>
+  </UserControl.Styles>
   <Grid Classes="reviewLayout" ColumnDefinitions="*,Auto">
     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
       <StackPanel Classes="reviewStack">
@@ -30,7 +35,6 @@
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                    Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
           <HyperlinkButton Classes="reviewLink" Content="Go to Analyze texts" Command="{Binding OpenAnalyzeTextsCommand}" />
-          <views:ParsePrompt DataContext="{Binding Context}" IsVisible="{Binding NeedsAssessment}" />
         </StackPanel>
         <ItemsControl x:Name="ReviewGroups" ItemsSource="{Binding ReviewGroups}"
                       AutomationProperties.Name="Changes grouped for review">
@@ -193,23 +197,19 @@
         </ItemsControl>
       </StackPanel>
     </ScrollViewer>
-    <StackPanel Grid.Column="1" Classes="reviewStack reviewRight" IsVisible="{Binding ShowsSideCards}">
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ShowsSideCards}">
+    <StackPanel Classes="reviewStack reviewRight">
       <Border Classes="card">
         <StackPanel Classes="reviewRelated">
           <views:CopyableTextBlock Classes="section-title" Text="What applying does to the numbers"
                                    TextWrapping="Wrap" />
-          <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}" TextWrapping="Wrap"
-                                   IsVisible="{Binding !Context.NeedsAssessment}" />
+          <views:CopyableTextBlock x:Name="ReviewNumbersText" Classes="muted" Text="{Binding NumbersText}"
+                                   TextWrapping="Wrap" />
           <views:CopyableTextBlock x:Name="ReviewMeasurementProgress" Classes="reviewSmall" Text="{Binding MeasurementProgressText}"
                                    IsVisible="{Binding IsMeasuring}" TextWrapping="Wrap" />
           <views:RefusalBlock DataContext="{Binding MeasurementRefusal}" />
-          <Button Content="Check these changes" Command="{Binding MeasureCommand}"
-                  AutomationProperties.Name="Check what applying does to the numbers"
-                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.MeasureChanges}" />
           <Button Content="Cancel" Command="{Binding CancelMeasureCommand}"
                   IsVisible="{Binding IsMeasuring}" />
-          <views:ParsePrompt DataContext="{Binding Context}"
-                             IsVisible="{Binding NeedsAssessment}" />
         </StackPanel>
       </Border>
       <Border Classes="card">
@@ -227,7 +227,10 @@
                 <StackPanel Classes="reviewCompact">
                   <views:CopyableTextBlock Classes="reviewBlocker" Text="{Binding Sentence}" TextWrapping="Wrap" />
                   <Button Classes="reviewAction" Content="{Binding ActionText}" Command="{Binding Action}"
-                          IsVisible="{Binding HasAction}" />
+                          IsVisible="{Binding HasAction}"
+                          Classes.measureAction="{Binding IsMeasureAction}"
+                          AutomationProperties.Name="{Binding ActionAccessibleName}"
+                          />
                 </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -253,5 +256,6 @@
         </StackPanel>
       </Border>
     </StackPanel>
+    </ScrollViewer>
   </Grid>
 </UserControl>

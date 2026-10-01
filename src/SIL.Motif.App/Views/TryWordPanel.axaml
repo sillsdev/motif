@@ -105,7 +105,8 @@
             <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
             <TextBlock Grid.Column="2" Classes="muted" Text="Outcome" FontWeight="SemiBold" />
             <TextBlock Grid.Column="3" Classes="muted" Text="Explanation" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="4" Classes="muted" Text="Word share" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="4" Classes="muted" Text="Word share" FontWeight="SemiBold"
+                       IsVisible="{Binding HasWordShare}" />
           </Grid>
           <ItemsControl ItemsSource="{Binding RulesOnBestPath}" AutomationProperties.Name="Best path rules">
             <ItemsControl.ItemTemplate>
@@ -122,7 +123,7 @@
                       <TextBlock Grid.Column="2" Text="{Binding Outcome}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="3" Text="{Binding Explanation}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="4" Classes.share="{Binding HasShare}" Classes.muted="{Binding !HasShare}"
-                                 Text="{Binding Share}" TextAlignment="Right" />
+                                 Text="{Binding Share}" TextAlignment="Right" IsVisible="{Binding HasShare}" />
                     </Grid>
                   </Button>
                 </Border>

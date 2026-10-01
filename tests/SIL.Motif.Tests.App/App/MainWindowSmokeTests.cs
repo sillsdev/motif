@@ -1427,7 +1427,8 @@ public sealed class MainWindowSmokeTests
     private static bool IsWithinInteractiveControl(Visual visual) =>
         visual.FindAncestorOfType<Button>(includeSelf: false) is not null
         || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
-        || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null;
+        || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null
+        || visual.FindAncestorOfType<ComboBox>(includeSelf: false) is not null;
 
     // A page nobody has opened has no template applied, so its controls join the tree only once it is shown.
     private static void ShowEveryStage(MainWindow window, WorkspaceShellViewModel workspace)

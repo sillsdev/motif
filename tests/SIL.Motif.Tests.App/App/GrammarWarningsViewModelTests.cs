@@ -44,6 +44,27 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
+    public void SeverityFiltersRemainAvailableWhenOtherBucketsAreSelected()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning, PhonemeWarning]);
+
+        Assert.False(table.HasReportedErrors);
+        Assert.True(table.HasReportedWarnings);
+        Assert.True(table.HasReportedInformation);
+
+        table.SetBucketCommand.Execute(GrammarFindingBucket.Warnings);
+
+        Assert.True(table.HasReportedInformation);
+        Assert.Equal(1, table.InformationCount);
+
+        table.Load([EntryWarning]);
+
+        Assert.True(table.HasReportedWarnings);
+        Assert.False(table.HasReportedInformation);
+    }
+
+    [Fact]
     public void ErrorFindingsHaveTheirOwnBucketAndSeverity()
     {
         var error = EntryWarning with

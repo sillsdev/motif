@@ -1,9 +1,12 @@
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -41,9 +44,31 @@ public sealed class ReviewScreenshots
             {
                 var review = workspace.PageModel<ReviewPageModel>();
                 workspace.CurrentPage = WorkspacePage.Review;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(3, review.ApplyBlockers.Count);
+                Assert.Equal($"Apply is blocked by {review.ApplyBlockers.Count} things", review.ApplyBlockedTitle);
+                var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
+                Assert.All(review.ApplyBlockers, blocker => Assert.Contains(blocker.Sentence, visibleTexts));
+                AssertSidePanelCardsHaveVisibleBody(window);
+                var visibleButtons = window.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible).ToArray();
+                var measureButton = Assert.Single(visibleButtons,
+                    button => button.Content?.ToString() == "Check these changes");
+                Assert.Equal("Check what applying does to the numbers", AutomationProperties.GetName(measureButton));
+                Assert.Equal("motif-measure-changes", AutomationProperties.GetAutomationId(measureButton));
+                var measurementActions = window.GetVisualDescendants().OfType<Button>()
+                    .Where(button => AutomationProperties.GetAutomationId(button) == "motif-measure-changes")
+                    .ToArray();
+                Assert.Single(measurementActions);
+                Assert.True(measurementActions[0].IsEffectivelyVisible);
+                Assert.Single(visibleButtons, button => AutomationProperties.GetName(button) == "Choose what to parse");
                 SaveAll(window, folder, "review-blocked");
 
                 review.ShowReconciliationNeeded();
+                window.UpdateLayout();
+                AssertSidePanelCardsHaveVisibleBody(window);
                 SaveAll(window, folder, "review-unconfirmed-apply");
                 review.ClearReconciliationNeeded();
 
@@ -57,6 +82,23 @@ public sealed class ReviewScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void AssertSidePanelCardsHaveVisibleBody(MainWindow window)
+    {
+        var sidePanel = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
+            panel => panel.Classes.Contains("reviewRight") && panel.IsEffectivelyVisible);
+        var cards = sidePanel.Children.OfType<Border>()
+            .Where(card => card.Classes.Contains("card") && card.IsEffectivelyVisible).ToArray();
+        Assert.NotEmpty(cards);
+        Assert.All(cards, card =>
+        {
+            var hasBody = card.GetVisualDescendants().Any(control => control.IsEffectivelyVisible &&
+                (control is Button || control is ItemsControl ||
+                 control is CopyableTextBlock text && !text.Classes.Contains("section-title") &&
+                 !string.IsNullOrWhiteSpace(text.Text)));
+            Assert.True(hasBody, "A visible Review side-panel card has only its title.");
+        });
     }
 
     private static void SaveAll(MainWindow window, string folder, string name)

@@ -66,6 +66,9 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Whether the current trace has named rules on its successful or furthest attempt.</summary>
     public bool HasRulesOnBestPath => RulesOnBestPath.Count > 0;
 
+    /// <summary>Whether any best-path rule has a stored share of this word's measured time.</summary>
+    public bool HasWordShare => RulesOnBestPath.Any(row => row.HasShare);
+
     /// <summary>The sidebar link to the first named rule on the current trace, or its general Timing link.</summary>
     public string TimingLinkText => RulesOnBestPath.FirstOrDefault() is { } rule
         ? $"See {rule.Rule} in Timing" : "Timing for this word";
@@ -196,6 +199,7 @@ public sealed class TryWordPageModel : PageModel
         }
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
+        OnPropertyChanged(nameof(HasWordShare));
         OnPropertyChanged(nameof(TimingLinkText));
     }
 
@@ -248,6 +252,7 @@ public sealed class TryWordPageModel : PageModel
                 ? outcome.Value!.Aggregates.SingleOrDefault(aggregate =>
                     string.Equals(aggregate.Name, row.Rule, StringComparison.Ordinal))
                 : null);
+        OnPropertyChanged(nameof(HasWordShare));
     }
 }
 

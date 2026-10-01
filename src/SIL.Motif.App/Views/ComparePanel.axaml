@@ -80,9 +80,7 @@
               <Button Classes="header" Theme="{DynamicResource BorderlessButton}"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding AccessibleName}">
-                <Border Classes="panGlossLine" Classes.same="{Binding IsSame}"
-                        Classes.different="{Binding IsDifferent}" Classes.none="{Binding IsNoParse}"
-                        Classes.capped="{Binding IsCapped}" Classes.notAssessed="{Binding IsNotAssessed}">
+                <Border Classes="panGlossLine">
                   <StackPanel>
                     <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
@@ -130,48 +128,6 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-          <TextBlock Text="FieldWorks" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <ItemsControl ItemsSource="{Binding Compare.OpinionLegend}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:OpinionLegendItem">
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <controls:OpinionMark Kind="{Binding Kind}" />
-                  <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-          <TextBlock Text="PanGloss" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <ItemsControl ItemsSource="{Binding Compare.PanGlossLegend}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:PanGlossLegendItem">
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <Border Classes="panGlossLine" Classes.same="{Binding IsSame}"
-                          Classes.different="{Binding IsDifferent}" Classes.conflict="{Binding IsConflict}" Classes.none="{Binding IsNoParse}"
-                          Classes.capped="{Binding IsCapped}" Classes.notAssessed="{Binding IsNotAssessed}"
-                          Classes.panGlossExtra="{Binding IsExtra}">
-                    <TextBlock Text="{Binding Label}" />
-                  </Border>
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </StackPanel>
-      </StackPanel>
     </StackPanel>
 
     <Border Grid.Row="2" Classes="card" IsVisible="{Binding Compare.HasFixFirst}">
@@ -194,11 +150,13 @@
                 <Expander.Header>
                   <Button Classes="fixFirstWord" Classes.focused="{Binding Word.IsFocused}"
                           Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
-                          HorizontalContentAlignment="Stretch"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                           Command="{Binding $parent[views:ComparePanel].Compare.FocusFixFirstCommand}"
                           CommandParameter="{Binding}">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+                          HorizontalAlignment="Stretch">
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}"
+                                  HorizontalAlignment="Left">
                         <TextBlock Text="{Binding Word.Word}" FontWeight="SemiBold" />
                         <TextBlock Classes="muted" Text="{Binding OccurrenceText}" />
                       </StackPanel>

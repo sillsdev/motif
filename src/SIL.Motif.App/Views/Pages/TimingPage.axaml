@@ -32,63 +32,63 @@
         </Border>
 
         <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Snug}"
-                   LineSpacing="{DynamicResource Intent.Space.Snug}">
-          <views:CopyableTextBlock Classes="muted" Text="Look at" VerticalAlignment="Center" />
-          <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
-                  Content="Step limit" Command="{Binding SelectWordSetCommand}"
-                  CommandParameter="step-limit" />
-          <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
-                  Content="Slowest" Command="{Binding SelectWordSetCommand}"
-                  CommandParameter="slowest" />
-          <NumericUpDown Value="{Binding SlowestCount}" Minimum="1" Increment="1"
-                         AutomationProperties.Name="Number of slowest words" />
-          <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
-                  Content="All" Command="{Binding SelectWordSetCommand}"
-                  CommandParameter="all" />
-          <StackPanel>
+                   LineSpacing="{DynamicResource Intent.Space.Snug}"
+                   AutomationProperties.Name="Timing word picker row">
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+            <views:CopyableTextBlock Classes="muted" Text="Look at" VerticalAlignment="Center" />
+            <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
+                    Content="Step limit" Command="{Binding SelectWordSetCommand}"
+                    CommandParameter="step-limit" />
+            <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
+                    Content="Slowest" Command="{Binding SelectWordSetCommand}"
+                    CommandParameter="slowest" />
+            <NumericUpDown Value="{Binding SlowestCount}" Minimum="1" Increment="1"
+                           AutomationProperties.Name="Number of slowest words" />
+            <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
+                    Content="All" Command="{Binding SelectWordSetCommand}"
+                    CommandParameter="all" />
             <Button Classes="filterChip" Content="Chosen in Texts" Command="{Binding UseCheckedWordsCommand}"
                     AutomationProperties.Name="Chosen in Texts"
                     AutomationProperties.HelpText="{Binding UseCheckedWordsDisabledReason}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding UseCheckedWordsDisabledReason}"
-                                     IsVisible="{Binding UseCheckedWordsUnavailable}" />
           </StackPanel>
-        </WrapPanel>
-
-        <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
-                   LineSpacing="{DynamicResource Intent.Space.Snug}">
-          <views:CopyableTextBlock Classes="muted" Text="Matrix cell" VerticalAlignment="Center" />
-          <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
-                    AutomationProperties.Name="Matrix cell from Texts">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:CompareCellViewModel">
-                <TextBlock Text="{Binding AccessibleName}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+            <views:CopyableTextBlock Classes="muted" Text="Matrix cell" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
+                      Width="{DynamicResource Component.Timing.SourcePickerWidth}"
+                      PlaceholderText="Choose a cell"
+                      AutomationProperties.Name="Matrix cell from Texts">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareCellViewModel">
+                  <TextBlock Text="{Binding AccessibleName}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
             <Button Content="Use cell" Command="{Binding UseMatrixCellCommand}"
                     AutomationProperties.Name="Use cell"
                     AutomationProperties.HelpText="{Binding UseMatrixCellDisabledReason}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding UseMatrixCellDisabledReason}"
-                                     IsVisible="{Binding UseMatrixCellUnavailable}" />
           </StackPanel>
-          <views:CopyableTextBlock Classes="muted" Text="List from Texts" VerticalAlignment="Center" />
-          <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
-                    AutomationProperties.Name="List from Texts">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:ComparePresetViewModel">
-                <TextBlock Text="{Binding Label}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+            <views:CopyableTextBlock Classes="muted" Text="List from Texts" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
+                      Width="{DynamicResource Component.Timing.SourcePickerWidth}"
+                      PlaceholderText="Choose a list"
+                      AutomationProperties.Name="List from Texts">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ComparePresetViewModel">
+                  <TextBlock Text="{Binding Label}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
             <Button Content="Use list" Command="{Binding UseTextsListCommand}"
                     AutomationProperties.Name="Use list"
                     AutomationProperties.HelpText="{Binding UseTextsListDisabledReason}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding UseTextsListDisabledReason}"
-                                     IsVisible="{Binding UseTextsListUnavailable}" />
           </StackPanel>
         </WrapPanel>
+
+        <views:CopyableTextBlock Classes="muted"
+                                 Text="Choose a preset, a cell, a Texts list, or words entered below."
+                                 AutomationProperties.Name="Timing word picker hint"
+                                 TextWrapping="Wrap" />
 
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
           <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
@@ -99,8 +99,6 @@
             <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}"
                     AutomationProperties.Name="Pick words"
                     AutomationProperties.HelpText="{Binding UsePickedWordsDisabledReason}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding UsePickedWordsDisabledReason}"
-                                     IsVisible="{Binding UsePickedWordsUnavailable}" />
           </StackPanel>
         </StackPanel>
 

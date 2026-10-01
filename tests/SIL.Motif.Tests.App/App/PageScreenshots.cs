@@ -95,6 +95,18 @@ public sealed class PageScreenshots
         ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
     ];
 
+    [Fact]
+    public void ScreenshotAssessmentHasProjectStandingsAndTextOccurrences()
+    {
+        var assessment = Assessment();
+
+        Assert.All(assessment.Words, word =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(word.ProjectStanding));
+            Assert.True(word.OccurrenceCount > 0);
+        });
+    }
+
     private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
         workspace.Context.TryWord("matinlu");
@@ -255,6 +267,10 @@ public sealed class PageScreenshots
                 ReadingGrades = grades,
                 Attempts = elapsed * 7,
                 Passes = elapsed,
+                ProjectStanding = grades.Contains("approved") ? "approved" :
+                    grades.Contains("disapproved") ? "rejected" :
+                    outcome == "no-analysis" ? "not-present" : "candidate",
+                OccurrenceCount = 1,
                 TryWordLink = "silfw://localhost/link?tool=Analyses",
             };
         return new AssessCommandResponse(Capture(), new SelectionProjection([], []), ["assessment/one"], "## 142 words\n\n118 parsed, 24 did not.")

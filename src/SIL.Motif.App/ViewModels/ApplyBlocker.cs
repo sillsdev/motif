@@ -38,4 +38,9 @@ public sealed record ApplyBlocker(ApplyBlockerKind Kind, string Sentence, string
     ICommand? Action = null)
 {
     public bool HasAction => ActionText is not null && Action is not null;
+
+    public string? ActionAccessibleName => Kind == ApplyBlockerKind.NotMeasured
+        ? "Check what applying does to the numbers" : ActionText;
+
+    public bool IsMeasureAction => Kind == ApplyBlockerKind.NotMeasured;
 }

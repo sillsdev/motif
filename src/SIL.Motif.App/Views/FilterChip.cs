@@ -22,6 +22,9 @@ public sealed class FilterChip : Button
     public static readonly StyledProperty<Verdict?> VerdictProperty =
         AvaloniaProperty.Register<FilterChip, Verdict?>(nameof(Verdict));
 
+    public static readonly StyledProperty<string?> GlyphTextProperty =
+        AvaloniaProperty.Register<FilterChip, string?>(nameof(GlyphText));
+
     public static readonly StyledProperty<bool> IsActiveProperty =
         AvaloniaProperty.Register<FilterChip, bool>(nameof(IsActive));
 
@@ -30,6 +33,7 @@ public sealed class FilterChip : Button
         LabelProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         CountProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         VerdictProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
+        GlyphTextProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         IsActiveProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
     }
 
@@ -63,6 +67,13 @@ public sealed class FilterChip : Button
         set => SetValue(VerdictProperty, value);
     }
 
+    /// <summary>The symbol before the label when this chip does not name a verdict.</summary>
+    public string? GlyphText
+    {
+        get => GetValue(GlyphTextProperty);
+        set => SetValue(GlyphTextProperty, value);
+    }
+
     /// <summary>Whether this chip is the one in force.</summary>
     public bool IsActive
     {
@@ -74,7 +85,13 @@ public sealed class FilterChip : Button
     {
         Classes.Set("active", IsActive);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
-        if (Verdict is { } verdict)
+        if (GlyphText is { } glyphText)
+        {
+            var glyph = new TextBlock { Text = glyphText, FontWeight = FontWeight.Bold };
+            glyph.Classes.Add("severityGlyph");
+            row.Children.Add(glyph);
+        }
+        else if (Verdict is { } verdict)
         {
             var glyph = new TextBlock { Text = Verdicts.GlyphOf(verdict), FontWeight = FontWeight.Bold };
             glyph.Classes.Add("verdictGlyph");

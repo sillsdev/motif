@@ -50,6 +50,10 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public bool HasErrorGroups => ErrorGroups.Count > 0 &&
         Bucket is not (GrammarFindingBucket.Information or GrammarFindingBucket.Warnings);
 
+    public bool HasReportedErrors => _all.Any(row => row.Level == GrammarDiagnosticLevel.Error);
+    public bool HasReportedWarnings => _all.Any(row => row.Level == GrammarDiagnosticLevel.Warning);
+    public bool HasReportedInformation => _all.Any(row => row.Level == GrammarDiagnosticLevel.Information);
+
     public int ErrorCount => VisibleFindings()
         .Where(row => row.Level == GrammarDiagnosticLevel.Error).Sum(row => row.RepeatCount);
     public int WarningCount => VisibleFindings()
@@ -140,6 +144,9 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         OnPropertyChanged(nameof(HasErrorGroups));
         OnPropertyChanged(nameof(HasWarningGroups));
         OnPropertyChanged(nameof(HasInformationGroups));
+        OnPropertyChanged(nameof(HasReportedErrors));
+        OnPropertyChanged(nameof(HasReportedWarnings));
+        OnPropertyChanged(nameof(HasReportedInformation));
         OnPropertyChanged(nameof(ErrorCount));
         OnPropertyChanged(nameof(WarningCount));
         OnPropertyChanged(nameof(InformationCount));

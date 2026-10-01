@@ -183,7 +183,7 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void AMorphemeTheParserCouldNotNameReadsAsUnknownNeverAsAQuestionMark()
+    public void AParserMorphemeWithNoNameIsOmittedFromTheDisplayedAttempt()
     {
         var candidate = new TraceCandidateViewModel(new TraceCandidate(
             [new ParserReadingMorph("?", "", "", null, false, null), new ParserReadingMorph("tin", "", "", null, false, null)],
@@ -192,10 +192,11 @@ public sealed class TraceWordViewModelTests
             OutcomeStatus = "failed",
         });
 
-        Assert.Equal("unknown morpheme", candidate.Morphs[0].Form);
-        Assert.Equal("tin", candidate.Morphs[1].Form);
-        Assert.All(candidate.Morphs, morph => Assert.Equal("—", morph.GlossOrPlaceholder));
+        var namedMorph = Assert.Single(candidate.Morphs);
+        Assert.Equal("tin", namedMorph.Form);
+        Assert.Equal("—", namedMorph.GlossOrPlaceholder);
         Assert.DoesNotContain("?", candidate.Gloss);
+        Assert.DoesNotContain("unknown morpheme", candidate.Gloss);
     }
 
     [Theory]
