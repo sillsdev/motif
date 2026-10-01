@@ -496,6 +496,8 @@ public static class CommandTextRenderer
                 (word.ElapsedNs is { } ns ? (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
             text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
         }
+        if (words.NotCountingDisapproved > 0)
+            text.AppendLine($"    Not counting {words.NotCountingDisapproved:N0} disapproved");
     }
 
     private static string CountLabel(int? count, string singular, string plural) => count is { } value

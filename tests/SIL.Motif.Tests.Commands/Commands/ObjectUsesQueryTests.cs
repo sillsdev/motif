@@ -123,6 +123,26 @@ public sealed class ObjectUsesQueryTests
     }
 
     [Fact]
+    public void TheWordsLeftOutForADisapprovedAnalysisAreCountedSoTheWindowCanSaySo()
+    {
+        var words = new[]
+        {
+            Word("anakata", ProjectStanding.Rejected, "no-analysis", Stored(ReadingGrade.Disapproved, A, Na, Kat, Fv)),
+            Word("wamekata", ProjectStanding.Rejected, "no-analysis", Stored(ReadingGrade.Disapproved, Wa, Me, Kat, Fv),
+                Stored(ReadingGrade.Disapproved, Wa, Me, Kat)),
+            Word("walikata", ProjectStanding.Approved, "no-analysis", Stored(ReadingGrade.Approved, Wa, Li, Kat, Fv),
+                Stored(ReadingGrade.Disapproved, Wa, Li, Kat)),
+            Lost("hawajafika", Ha, Wa, Ja, Fik, Fv),
+        };
+
+        var uses = ObjectUsesQuery.UsesOf(words, ObjectUseRef.ForMorpheme(Kat));
+
+        Assert.Equal(["walikata"], uses.Words.Select(word => word.Row.Word));
+        Assert.Equal(2, uses.NotCountingDisapproved);
+        Assert.Equal(0, ObjectUsesQuery.UsesOf(words, ObjectUseRef.ForMorpheme(Ja)).NotCountingDisapproved);
+    }
+
+    [Fact]
     public void ARefNamingOnlyTheGrammaticalInfoMatchesEveryAllomorphOfIt()
     {
         var kata = Kat with { Form = "kata", AllomorphId = "form-kata" };

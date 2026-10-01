@@ -76,16 +76,26 @@ public static class ObjectUsesQuery
         };
     }
 
-    /// <summary>The words with a stored analysis, other than a disapproved one, whose morphs use the ref's ids.</summary>
+    /// <summary>
+    /// The words with a stored analysis, other than a disapproved one, whose morphs use the ref's ids, and how many
+    /// words use them only in a disapproved analysis.
+    /// </summary>
     public static ObjectUseWords UsesOf(IReadOnlyList<AssessmentWordResult> words, ObjectUseRef reference)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(reference);
         if (reference.AllomorphId is null && reference.GrammaticalInfoId is null) return new ObjectUseWords([], []);
-        return Split(words.Where(word => MorphsUsedBy(word).Any(morph =>
-                (reference.AllomorphId is null || SameId(reference.AllomorphId, morph.AllomorphId)) &&
-                (reference.GrammaticalInfoId is null || SameId(reference.GrammaticalInfoId, morph.GrammaticalInfoId))))
-            .Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray());
+        bool Uses(ParserReadingMorph morph) =>
+            (reference.AllomorphId is null || SameId(reference.AllomorphId, morph.AllomorphId)) &&
+            (reference.GrammaticalInfoId is null || SameId(reference.GrammaticalInfoId, morph.GrammaticalInfoId));
+        var used = words.Where(word => MorphsUsedBy(word).Any(Uses)).ToArray();
+        var disapprovedOnly = words.Except(used).Count(word => word.StoredAnalyses
+            .Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved)
+            .SelectMany(analysis => analysis.Morphs).Any(Uses));
+        return Split(used.Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray()) with
+        {
+            NotCountingDisapproved = disapprovedOnly,
+        };
     }
 
     /// <summary>

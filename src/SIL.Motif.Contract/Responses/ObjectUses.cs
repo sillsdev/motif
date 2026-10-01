@@ -272,7 +272,14 @@ public sealed record ObjectFactsRule(string Id, string Kind, string Name)
 /// <summary>Some of the Selection's words, in Selection order, and how many of them each meaning holds.</summary>
 /// <param name="Words">The words, each with the row every page shows for it.</param>
 /// <param name="ByMeaning">The words counted by meaning, most words first.</param>
-public sealed record ObjectUseWords(IReadOnlyList<ObjectUseWord> Words, IReadOnlyList<ObjectUseMeaning> ByMeaning);
+public sealed record ObjectUseWords(IReadOnlyList<ObjectUseWord> Words, IReadOnlyList<ObjectUseMeaning> ByMeaning)
+{
+    /// <summary>
+    /// How many more of the Selection's words use the object only in an analysis the linguist disapproved, and so
+    /// are left out of <see cref="Words"/>; zero for the words an object ran in.
+    /// </summary>
+    public int NotCountingDisapproved { get; init; }
+}
 
 /// <summary>One word that uses an object, or that the object ran in.</summary>
 /// <param name="Row">The word's row, as every page shows it.</param>

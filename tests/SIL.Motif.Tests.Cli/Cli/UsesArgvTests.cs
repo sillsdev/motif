@@ -62,7 +62,12 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             ProjectStanding = ProjectStanding.Approved,
             StoredAnalyses = [new ParserReading([Morph("wa-", "3PL"), kat]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
         };
-        var response = SIL.Motif.Commands.Queries.ObjectUsesQuery.Read([Lost("walikata"), Lost("wamekata")],
+        var disapproved = Lost("anakata") with
+        {
+            ProjectStanding = ProjectStanding.Rejected,
+            StoredAnalyses = [new ParserReading([Morph("a-", "3SG"), kat]) { StoredAnalysisOpinion = ReadingGrade.Disapproved }],
+        };
+        var response = SIL.Motif.Commands.Queries.ObjectUsesQuery.Read([Lost("walikata"), Lost("wamekata"), disapproved],
             [new("morph_rule", "msa-kat", "authored", "analysis", "kat", "walikata", 3, null, 1_500_000)],
             ObjectUseRef.ForMorpheme(kat) with { TimingKind = "morph_rule", TimingKey = "msa-kat" },
             ["walikata", "wamekata", "mtoto"]) with { AssessmentId = "assessment-1" };
@@ -75,6 +80,7 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             "  Your words that use it: 2 words (Lost 2)",
             "    walikata: Lost",
             "    wamekata: Lost",
+            "    Not counting 1 disapproved",
             "  Words it ran in: 1 word (Lost 1)",
             $"    walikata: Lost, 3 calls, {1.5.ToString("N3", System.Globalization.CultureInfo.CurrentCulture)} ms",
             "  What these words share:",
