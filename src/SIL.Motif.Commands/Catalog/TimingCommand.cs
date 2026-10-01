@@ -31,7 +31,7 @@ public static class TimingCommand
             var assessments = new AssessmentRepository(database);
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(
                 database, project, includeDefaultSelection: request.AssessmentId is null,
-                includeResolvedReadings: false);
+                includeResolvedReadings: false, includeWordContext: false);
             if (!current.Succeeded)
                 return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
             var currentEvidence = current.Value!;

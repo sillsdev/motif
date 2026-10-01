@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -29,7 +30,8 @@ public static class WordContextQuery
             if (!File.Exists(baseline.FwDataPath))
                 return Refused("word-context.baseline-unavailable", FailureReason.StoreInconsistent,
                     "The exact Baseline file is unavailable. Capture a new Baseline to read its analyses.");
-            using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            var cache = reader.Cache;
             var context = BaselineWordContext.Read(cache, Path.GetFileNameWithoutExtension(project.FullFwDataPath), [word]);
             var analyses = context.Analyses[word];
             var link = context.WordLinks.GetValueOrDefault(word);
@@ -41,7 +43,7 @@ public static class WordContextQuery
                 SourceLastWriteUtc = baseline.SourceLastWriteUtc,
                 PublishedUtc = baseline.PublishedUtc,
                 IsStale = liveSave > baseline.SourceLastWriteUtc,
-                IsInFieldWorks = link is not null,
+                IsInFieldWorks = context.PresentWords.Contains(word),
                 Analyses = analyses,
                 ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(analyses),
                 WordAnalysesLink = link,

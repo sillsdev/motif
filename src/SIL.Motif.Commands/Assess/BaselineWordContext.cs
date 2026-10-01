@@ -8,7 +8,8 @@ namespace SIL.Motif.Commands.Assess;
 /// <summary>The complete analysis context of selected forms in one already loaded Baseline.</summary>
 internal sealed record BaselineWordContext(
     IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> Analyses,
-    IReadOnlyDictionary<string, string> WordLinks)
+    IReadOnlyDictionary<string, string> WordLinks,
+    IReadOnlySet<string> PresentWords)
 {
     /// <summary>Projects all opinions and links before the caller disposes its Baseline cache.</summary>
     internal static BaselineWordContext Read(LcmCache cache, string projectName, IReadOnlyList<string> words)
@@ -19,10 +20,21 @@ internal sealed record BaselineWordContext(
         var analyses = words.ToDictionary(word => word, word => ReadAnalyses(cache, projectName,
             approved.GetValueOrDefault(word) ?? [], rejected.GetValueOrDefault(word) ?? [],
             candidates.GetValueOrDefault(word) ?? []), StringComparer.Ordinal);
+        var forms = new Dictionary<string, HashSet<Guid>>(StringComparer.Ordinal);
+        foreach (var wordform in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
+            foreach (var ws in wordform.Form.AvailableWritingSystemIds)
+            {
+                var form = wordform.Form.get_String(ws)?.Text?.Normalize(System.Text.NormalizationForm.FormD);
+                if (string.IsNullOrEmpty(form)) continue;
+                if (!forms.TryGetValue(form, out var identities)) forms[form] = identities = [];
+                identities.Add(wordform.Guid);
+            }
         var links = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var word in words)
-            if (FieldWorksLinks.ForWordform(cache, projectName, word) is { } link) links[word] = link;
-        return new(analyses, links);
+            if (forms.TryGetValue(word, out var identities) && identities.Count == 1)
+                links[word] = FieldWorksLinks.ForTarget(projectName, new("Analyses", identities.Single()))!;
+        var present = forms.Keys.ToHashSet(StringComparer.Ordinal);
+        return new(analyses, links, present);
     }
 
     /// <summary>Names the stored opinions in the same order for fresh and reopened rows.</summary>

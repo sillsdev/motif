@@ -21,7 +21,8 @@ public static class WarningWordsQuery
     {
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
         if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
-            current.Value.Assessment is not { } assessment) return check;
+            current.Value.Assessment is not { } assessment)
+            return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
         return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings);
     }
 

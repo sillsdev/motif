@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
@@ -125,11 +126,11 @@ public static class GrammarCheckQuery
             if (parserExitedNonzero && !findings.Any(finding => finding.Severity == GrammarDiagnosticLevel.Error))
                 return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
-            LcmCache? cache = null;
+            BaselineReadCache? reader = null;
             GrammarCheckResponse response;
             try
             {
-                LcmCache Cache() => cache ??= new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                LcmCache Cache() => (reader ??= BaselineReadCache.Open(baseline.FwDataPath)).Cache;
                 response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
                     .ToArray(), HasBaseline: true)
                 {
@@ -141,7 +142,7 @@ public static class GrammarCheckQuery
             }
             finally
             {
-                cache?.Dispose();
+                reader?.Dispose();
             }
             return CommandOutcome<GrammarCheckResponse>.Success(
                 WarningWordsQuery.WithYourWords(database, project, response, baseline.Token));

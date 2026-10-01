@@ -48,9 +48,11 @@ public sealed class StoredAssessmentRowsTests : IDisposable
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void StoredRowsEqualTheRunRows(bool mixedSelection)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StoredRowsEqualTheRunRows(bool mixedSelection, bool secondaryForm)
     {
         using var cache = _pristine.NewScratch();
         var text = SeededProject.SeedText(cache, _pristine.Seed);
@@ -58,6 +60,11 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         {
             var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
                 .Single(word => word.Form.VernacularDefaultWritingSystem.Text == SeededProject.AnalysedWordForm);
+            if (secondaryForm)
+            {
+                cache.ServiceLocator.WritingSystemManager.GetOrSet("es", out var writingSystem);
+                wordform.Form.set_String(writingSystem.Handle, "beta");
+            }
             var approvedAnalysis = wordform.HumanApprovedAnalyses.Single();
             foreach (var opinion in new[] { Opinions.disapproves, Opinions.noopinion })
             {
@@ -83,6 +90,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         var approved = Assert.Single(approvedReadings);
         string[] words =
             [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm, "motifa", "motifb", "motifc", "motifd"];
+        if (secondaryForm) words = [.. words, "beta"];
         var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default",
             mixedSelection ? [text.TextId] : [], words));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
@@ -107,6 +115,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
                 new(4, "motifc", 0, WordOutcome.Skipped, "-"),
                 new(5, "motifd", 30, WordOutcome.Analysed, "sig")
                     { Morphology = resolvable },
+                .. (secondaryForm ? new[] { new WordAnalysis(6, "beta", 5, WordOutcome.NoAnalysis, "-") } : []),
             ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
@@ -131,6 +140,18 @@ public sealed class StoredAssessmentRowsTests : IDisposable
             ObjectUsesQuery.UsesOf(stored.Words,
                 new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }).Words
             .Select(word => JsonSerializer.Serialize(word.Row)));
+        if (secondaryForm)
+        {
+            var freshSecondary = run.Value.Words.Single(word => word.Word == "beta");
+            var reopenedSecondary = stored.Words.Single(word => word.Word == "beta");
+            Assert.Equal([ReadingGrade.Approved, ReadingGrade.Disapproved, ReadingGrade.Candidate],
+                freshSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisOpinion));
+            Assert.All(freshSecondary.StoredAnalyses, analysis => Assert.Equal("es", analysis.Identity!.WritingSystem));
+            Assert.Equal(freshSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId),
+                reopenedSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId));
+            Assert.NotNull(freshSecondary.TryWordLink);
+            Assert.Equal(freshSecondary.TryWordLink, reopenedSecondary.TryWordLink);
+        }
         Assert.Equal(run.Value.CompletionSummary, stored.CompletionSummary);
         Assert.Equal(run.Value.InvocationId, stored.InvocationId);
         Assert.Equal(run.Value.Measurements.OrderBy(item => item.Kind),

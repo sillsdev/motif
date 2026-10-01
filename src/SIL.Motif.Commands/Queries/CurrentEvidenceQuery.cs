@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -105,7 +106,7 @@ public static class CurrentEvidenceQuery
 
     internal static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentEvidence(
         MotifDatabase database, ProjectLocator project, bool includeDefaultSelection = true,
-        bool includeResolvedReadings = true)
+        bool includeResolvedReadings = true, bool includeWordContext = true)
     {
         var storeCreated = ReadStoreCreatedUtc(database);
         DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
@@ -163,18 +164,18 @@ public static class CurrentEvidenceQuery
         IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
             new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         IReadOnlyDictionary<string, string> wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (assessment is not null && current is not null)
+        if (includeWordContext && assessment is not null && current is not null)
         {
             if (!File.Exists(current.Baseline.FwDataPath))
             {
-                if (includeResolvedReadings)
-                    return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
-                        "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
-                        "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
+                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
+                    "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
+                    "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
             }
             else
             {
-                using var cache = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
+                using var reader = BaselineReadCache.Open(current.Baseline.FwDataPath);
+                var cache = reader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
                 var context = BaselineWordContext.Read(cache, projectName, effectiveWords.Select(word => word.Word).ToArray());
                 storedAnalyses = context.Analyses;

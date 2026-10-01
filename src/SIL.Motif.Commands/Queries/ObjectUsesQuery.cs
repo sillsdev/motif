@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -167,7 +168,8 @@ public static class ObjectUsesQuery
     // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
     private static ObjectFacts? FactsOf(ObjectUseRef reference, BaselineRecord baseline, ProjectLocator project)
     {
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+        var cache = reader.Cache;
         var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
         return ObjectFactsReader.Read(cache, reference, found =>
             FieldWorksLinks.TargetFor(cache, found) is { } target

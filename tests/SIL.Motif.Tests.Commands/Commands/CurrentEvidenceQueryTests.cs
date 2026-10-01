@@ -190,7 +190,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         repository.Record(Record("rerun", ["cat"], [new AssessedWord("cat", "analysed", [])],
             "2026-09-24T11:05:00Z", tokenJson));
 
-        var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
+        var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false, includeWordContext: false);
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal("base", result.Value!.MatchingAssessment?.AssessmentId);
@@ -237,7 +237,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         repository.Record(Record("exploratory", ["dog"], [new AssessedWord("dog", "timed-out", [], 100)],
             "2026-09-24T11:10:00Z", tokenJson) with { ObjectTimings = [Row("dog", 100_000_000)] });
 
-        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false, includeWordContext: false);
         var timing = TimingCommand.Timing(new TimingRequest(fwDataPath));
         var history = TimingCommand.Timing(new TimingRequest(fwDataPath, AssessmentId: "base"));
         var overview = OverviewCommand.Overview(new OverviewRequest(fwDataPath));

@@ -138,7 +138,11 @@ public class ScratchCacheFactory
     {
         System.IO.Directory.CreateDirectory(destDir);
         foreach (var file in System.IO.Directory.GetFiles(sourceDir))
+        {
+            // Ownership belongs to the source reader, never to its independent copy.
+            if (file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase)) continue;
             System.IO.File.Copy(file, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(file)), overwrite: true);
+        }
 
         foreach (var subDir in System.IO.Directory.GetDirectories(sourceDir))
             CopyDirectory(subDir, System.IO.Path.Combine(destDir, System.IO.Path.GetFileName(subDir)));

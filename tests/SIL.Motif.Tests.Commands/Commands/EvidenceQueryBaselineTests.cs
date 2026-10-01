@@ -246,7 +246,110 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Equal("word-context.baseline-unavailable", missing.Refusal!.Code);
     }
 
-    private CapturedProject Capture(bool analysedWordOutsideText = false, bool includeOtherOpinions = false)
+    [Fact]
+    public async Task BaselineReadersAndNumericQueriesRemainIndependentAcrossProcesses()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm]);
+        using var held = new FwDataProjectLoader().LoadScratchCache(project.Baseline.FwDataPath);
+        var heldPath = held.ProjectId.Path;
+        var reading = Task.Run(() => WordContextQuery.Query(new WordContextRequest(
+            project.Path, SeededProject.AnalysedWordForm)));
+        var numeric = SIL.Motif.Commands.Catalog.TimingCommand.Timing(new TimingRequest(project.Path));
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        var child = await CliProcess.RunAsync(Path.Combine(_root, "worker"), null, true,
+            "uses", "--project", project.Path, "--allomorph", _pristine.Seed.FirstLexemeFormId.ToString("D"), "--json");
+        var context = await reading;
+        Assert.True(numeric.Succeeded, numeric.Refusal?.Message);
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.True(context.Value!.IsInFieldWorks);
+        Assert.True(child.ExitCode == 0, child.Error + child.Output);
+        var uses = ProjectionJson.Deserialize<ObjectUsesResponse>(child.Output)!;
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(uses.Uses!.Words).Row.Word);
+        Assert.Equal(1, numeric.Value!.WordCount);
+        Assert.Equal("assessment", Assert.Single(numeric.Value.Words).Origin!.AssessmentId);
+        Assert.Single(overview.Value!.WordOrigins);
+        Assert.Equal(heldPath, held.ProjectId.Path);
+    }
+
+    [Fact]
+    public void NumericQueriesDoNotOpenAnUnusedBaselineCache()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm]);
+        File.WriteAllText(project.Baseline.FwDataPath, "A numeric query must not parse this file.");
+        var timing = SIL.Motif.Commands.Catalog.TimingCommand.Timing(new TimingRequest(project.Path));
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(1, timing.Value!.WordCount);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryCapturedWritingSystemFormKeepsItsAnalysisIdentitiesAndMembership(bool addedOnly)
+    {
+        var project = Capture(includeOtherOpinions: true, secondaryForm: "beta");
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(project.Path, "Default",
+            addedOnly ? [] : [project.TextId], addedOnly ? ["beta"] : [])).Succeeded);
+        var forms = addedOnly ? new[] { "beta" } : new[]
+            { SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm, "beta" };
+        RecordAssessment(project, forms, parsed: false);
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(project.Path);
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        var secondary = evidence.Value!.Assessment!.Words.Single(word => word.Word == "beta");
+        Assert.Equal(new[] { ReadingGrade.Approved, ReadingGrade.Disapproved, ReadingGrade.Candidate },
+            secondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisOpinion));
+        var context = WordContextQuery.Query(new WordContextRequest(project.Path, "beta"));
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.True(context.Value!.IsInFieldWorks);
+        Assert.Equal(secondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId),
+            context.Value.Analyses.Select(analysis => analysis.StoredAnalysisId));
+        Assert.All(context.Value.Analyses, analysis => Assert.Equal("es", analysis.Identity!.WritingSystem));
+        Assert.NotNull(context.Value.WordAnalysesLink);
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(project.Path,
+            new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }));
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        Assert.Contains(uses.Value!.Uses!.Words, word => word.Row.Word == "beta");
+        if (!addedOnly)
+        {
+            var primary = evidence.Value.Assessment.Words.Single(word => word.Word == SeededProject.AnalysedWordForm);
+            Assert.Equal(primary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId),
+                secondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId));
+        }
+    }
+
+    [Fact]
+    public void MissingWarningContextLeavesStoredAndOverviewAffectedWordsUnknown()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm], parsed: false);
+        var check = GrammarCheckQuery.Query(new GrammarCheckRequest(project.Path), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GrammarHealthReports.With(
+                ("allomorph", [new("MoForm", "motifa", _pristine.Seed.FirstLexemeFormId)])),
+                string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(check.Succeeded, check.Refusal?.Message);
+        Assert.Single(Assert.Single(check.Value!.Findings).YourWords!.Words);
+        File.Delete(project.Baseline.FwDataPath);
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(project.Path));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Null(Assert.Single(stored.Value!.Check!.Findings).YourWords);
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Null(overview.Value!.Warnings!.YourWords);
+    }
+
+    private CapturedProject Capture(bool analysedWordOutsideText = false, bool includeOtherOpinions = false, string? secondaryForm = null)
     {
         string path;
         Guid textId;
@@ -280,6 +383,14 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
                 NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                     cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(text.TextId)
                         .ContentsOA.ParagraphsOS.RemoveAt(0));
+            if (secondaryForm is not null)
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    cache.ServiceLocator.WritingSystemManager.GetOrSet("es", out var writingSystem);
+                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                        .Single(word => word.Form.VernacularDefaultWritingSystem.Text == SeededProject.AnalysedWordForm);
+                    wordform.Form.set_String(writingSystem.Handle, secondaryForm);
+                });
             var approved = Assert.Single(ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm]);
             morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 1,
                 false, false, false, [new ParseAnalysis(approved.Morphs.Select(morph =>
