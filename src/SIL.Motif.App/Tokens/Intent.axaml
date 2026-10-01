@@ -74,7 +74,6 @@
     Intent.Change.Action          the action colour for staged analysis work
     Intent.Change.Text            readable text for staged analysis work
     Intent.Change.Fill            the background of staged analysis work
-    Intent.Change.Edge            the edge of a staged analysis control
     Intent.Tooltip.Text           a tooltip's words, whatever control owns the tooltip, on Semi's tooltip fill
 
   Marks: each kind answers one question, and only a meaning fills or edges a box.
@@ -115,7 +114,6 @@
     Intent.Space.Related          8, between related controls
     Intent.Space.Group            12, between groups
     Intent.Space.Section          16, between sections
-    Intent.Space.Page             20, around a page's content
 
   Insets (Thickness, for Padding):
     Intent.Inset.None             no padding
@@ -194,7 +192,6 @@
   <StaticResource x:Key="Intent.Space.Related" ResourceKey="Primitive.Space.8" />
   <StaticResource x:Key="Intent.Space.Group" ResourceKey="Primitive.Space.12" />
   <StaticResource x:Key="Intent.Space.Section" ResourceKey="Primitive.Space.16" />
-  <StaticResource x:Key="Intent.Space.Page" ResourceKey="Primitive.Space.20" />
 
   <StaticResource x:Key="Intent.Inset.None" ResourceKey="Primitive.Inset.0_0_0_0" />
 
@@ -297,7 +294,6 @@
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue750}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
-      <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Outcome.Same" Color="{StaticResource Primitive.Color.Green800}" />
       <SolidColorBrush x:Key="Intent.Outcome.Different" Color="{StaticResource Primitive.Color.Blue700}" />
       <SolidColorBrush x:Key="Intent.Outcome.Different.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
@@ -388,7 +384,6 @@
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue250}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
-      <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Outcome.Same" Color="{StaticResource Primitive.Color.Green300}" />
       <SolidColorBrush x:Key="Intent.Outcome.Different" Color="{StaticResource Primitive.Color.Blue250}" />
       <SolidColorBrush x:Key="Intent.Outcome.Different.Fill" Color="{StaticResource Primitive.Color.Blue950}" />

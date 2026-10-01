@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TryWord.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
-    <StaticResource x:Key="Component.TryWord.InputMaxWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.TryWord.InputMinWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.TryWord.ProgressWidth" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.TryWord.SmallInset" ResourceKey="Primitive.Inset.7_1_7_1" />
