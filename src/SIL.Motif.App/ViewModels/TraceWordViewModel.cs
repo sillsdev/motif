@@ -772,7 +772,8 @@ public sealed class TraceMorphViewModel
             $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"Grammatical info ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
             $"Writing systems: {(WritingSystems.Length == 0 ? "not recorded" : WritingSystems)}",
         });
-        InspectSubject = InspectorSubject.Morpheme(morph.FormId, morph.MsaId, morph.Form ?? morph.Headword, morph.Gloss);
+        var subject = InspectorSubject.Morpheme(morph.FormId, morph.MsaId, morph.Form ?? morph.Headword, morph.Gloss);
+        InspectSubject = subject is null ? null : subject with { IdentityQuality = morph.IdentityQuality ?? "unknown" };
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
                string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
         var toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);

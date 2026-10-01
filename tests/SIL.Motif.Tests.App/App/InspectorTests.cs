@@ -6,9 +6,11 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -203,7 +205,7 @@ public sealed class InspectorTests
                     .Where(border => border.Classes.Contains("inspectorSection") && border.IsEffectivelyVisible)
                     .ToArray();
                 Assert.Equal(
-                    ["What it is", "Your words that use it", "Rules that ran on it", "Grammar warnings about it", "In FieldWorks"],
+                    ["What it is", "Your words that use it", "Time in your words", "Grammar warnings about it", "In FieldWorks"],
                     sections.Select(AutomationProperties.GetName));
                 Assert.All(sections, section => Assert.Contains(section.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Classes.Contains("inspectorSource") && text.Text is { Length: > 0 }));
@@ -401,7 +403,9 @@ public sealed class InspectorTests
                 Assert.Equal("Parse all words to see your words.", inspector.UsesNote);
                 Assert.True(inspector.HasUses);
                 Assert.Equal("Parse all words to see your words.", inspector.RanInNote);
-                Assert.False(inspector.HasWarnings);
+                Assert.True(inspector.HasWarnings);
+                Assert.Contains(InspectorPanel(window).GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Not checked." && text.IsEffectivelyVisible);
                 Assert.True(inspector.HasFacts);
                 Assert.NotEmpty(inspector.Facts);
                 Assert.Contains(InspectorPanel(window).GetVisualDescendants().OfType<TextBlock>(),
@@ -417,7 +421,8 @@ public sealed class InspectorTests
     [Theory]
     [InlineData("before-refresh", true)]
     [InlineData("after-refresh", false)]
-    public void FromATraceAfterARefreshWithNoParseTheTracesDetailsStayApartFromTheBaselinesFacts(string tracedOn, bool refreshedSince)
+    [InlineData(null, false)]
+    public void FromATraceAfterARefreshWithNoParseTheTracesDetailsStayApartFromTheBaselinesFacts(string? tracedOn, bool refreshedSince)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -425,7 +430,7 @@ public sealed class InspectorTests
             {
                 fake.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities() with
                 {
-                    HostCapture = new TraceHostCapture(null, null, null, tracedOn, null, null, []),
+                    HostCapture = tracedOn is null ? null : new TraceHostCapture(null, null, null, tracedOn, null, null, []),
                 });
                 fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(
                     new InspectResponse(request.Subject, InspectorResolution.Resolved)
@@ -492,6 +497,8 @@ public sealed class InspectorTests
                 Assert.Equal("The names given belong to different FieldWorks objects, so Motif shows neither.",
                     workspace.Inspector.FactsNote);
                 Assert.False(workspace.Inspector.WhatItIsFromBaseline);
+                Assert.DoesNotContain(InspectorPanel(window).GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Ellipse>(),
+                    dot => dot.Classes.Contains("freshDot") && dot.IsEffectivelyVisible);
             }
             finally
             {
@@ -514,4 +521,153 @@ public sealed class InspectorTests
 
     private static string SampleAllomorph(string form) =>
         PageScreenshots.SampleMorph(form).AllomorphId!;
+
+    [Theory]
+    [InlineData(InspectorResolution.NoBaseline)]
+    [InlineData(InspectorResolution.NotInBaseline)]
+    public void AbsentFactsNeverWearACurrentFreshnessMark(InspectorResolution resolution)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await AnalyzeTexts(configure: (fake, _) => fake.OnInspect((request, _) =>
+                Task.FromResult(CommandOutcome<InspectResponse>.Success(new InspectResponse(request.Subject, resolution)
+                {
+                    Facts = InspectorSection<ObjectFacts>.Not(InspectorSectionStatus.Absent, "No facts to read."),
+                }))));
+            try
+            {
+                Click(window, CardChip(window, "a-"));
+                await workspace.Inspector.Loading;
+                Settle(window);
+
+                Assert.DoesNotContain(InspectorPanel(window).GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Ellipse>(),
+                    dot => dot.Classes.Contains("freshDot") && dot.IsEffectivelyVisible);
+            }
+            finally { window.Close(); }
+        }, Deadline);
+    }
+
+    [Theory]
+    [InlineData("lex_entry", false, "Lexical entry")]
+    [InlineData("morph_rule", false, "Inflectional affix")]
+    [InlineData(null, false, "Inflectional affix")]
+    [InlineData(null, true, "Inflectional affix")]
+    public void WhatItIsNamesALexicalEntryAndClaimsAnAllomorphOnlyWhenOneWasAskedFor(
+        string? timingKind, bool asksAllomorph, string kind)
+    {
+        var fake = new FakeCommandClient();
+        fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(Busy(request.Subject) with
+        {
+            Facts = InspectorSection<ObjectFacts>.Of(Busy(request.Subject).Facts.Value! with
+            {
+                Entry = new ObjectFactsEntry("entry-a", "headword") { MorphType = "prefix" },
+                Allomorphs = [new ObjectFactsAllomorph("a-form", "a-") { IsAsked = asksAllomorph }],
+            }),
+        })));
+        var context = ContextFor(fake);
+        var inspector = new InspectorViewModel(context, _ => "Timing");
+        var subject = timingKind is null ? InspectorSubject.Morpheme(asksAllomorph ? "a-form" : null, "msa-a", "a-")!
+            : InspectorSubject.Rule(new TraceTimingKey(timingKind, "entry-a"), "a-", "authored");
+
+        context.OpenInspector(subject);
+        Assert.True(inspector.Loading.IsCompletedSuccessfully);
+
+        Assert.Contains(kind, inspector.Subtitle, StringComparison.Ordinal);
+        Assert.Equal(asksAllomorph, inspector.WhatItIs.Contains("An allomorph of headword"));
+    }
+
+    [Fact]
+    public async Task NavigationCancelsSupersededReadsAndTheirLateAnswersNeverReplaceTheCurrentCrumb()
+    {
+        var fake = new FakeCommandClient();
+        var reads = new List<(InspectorSubject Subject, CancellationToken Token, TaskCompletionSource<CommandOutcome<InspectResponse>> Answer)>();
+        fake.OnInspect((request, token) =>
+        {
+            var answer = new TaskCompletionSource<CommandOutcome<InspectResponse>>(TaskCreationOptions.RunContinuationsAsynchronously);
+            reads.Add((request.Subject, token, answer));
+            return answer.Task;
+        });
+        var context = ContextFor(fake);
+        var inspector = new InspectorViewModel(context, _ => "Texts");
+        var first = InspectorSubject.Morpheme("a-form", "msa-a", "a-")!;
+        var second = first with { AllomorphId = "yu-form", Label = "yu-" };
+        var tasks = new List<Task>();
+        void Track() => tasks.Add(inspector.Loading);
+
+        context.OpenInspector(first);
+        Track();
+        inspector.Push(second);
+        Track();
+        Assert.True(reads[0].Token.IsCancellationRequested);
+        inspector.Back();
+        Track();
+        Assert.True(reads[1].Token.IsCancellationRequested);
+        inspector.Push(second);
+        Track();
+        Assert.True(reads[2].Token.IsCancellationRequested);
+        inspector.GoToCommand.Execute(inspector.Crumbs[1]);
+        Track();
+        Assert.True(reads[3].Token.IsCancellationRequested);
+
+        reads[4].Answer.SetResult(CommandOutcome<InspectResponse>.Success(Busy(first)));
+        await tasks[4];
+        reads[0].Answer.SetException(new OperationCanceledException(reads[0].Token));
+        reads[1].Answer.SetResult(CommandOutcome<InspectResponse>.Success(Busy(second)));
+        reads[2].Answer.SetException(new OperationCanceledException(reads[2].Token));
+        reads[3].Answer.SetResult(CommandOutcome<InspectResponse>.Success(Busy(second)));
+        await Task.WhenAll(tasks);
+        Assert.Equal("a-", inspector.Title);
+
+        inspector.Push(second);
+        var closedLoad = inspector.Loading;
+        inspector.Close();
+        Assert.True(reads[5].Token.IsCancellationRequested);
+        reads[5].Answer.SetException(new OperationCanceledException(reads[5].Token));
+        await closedLoad;
+        Assert.False(inspector.IsOpen);
+        Assert.False(inspector.IsLoading);
+        Assert.Empty(inspector.Crumbs);
+    }
+
+    [Theory]
+    [InlineData(null, "unknown")]
+    [InlineData("structural", "structural")]
+    [InlineData("synthetic", "synthetic")]
+    [InlineData("authored", "authored")]
+    public void ATraceMorphCarriesItsRecordedIdentityQualityIntoTheInspector(string? recorded, string expected)
+    {
+        var morph = new TraceMorph(null, "a-", null, null, null, null, null, null, null, null)
+        {
+            FormId = "form-id",
+            IdentityQuality = recorded,
+        };
+
+        Assert.Equal(expected, new TraceMorphViewModel(morph, allowLiveLink: false).InspectSubject!.IdentityQuality);
+    }
+
+    [Fact]
+    public void AnInspectorIdentityIsUnknownUntilItsSourceSaysOtherwise()
+    {
+        Assert.Equal("unknown", new InspectorSubject(InspectorSubjectKind.Feature).IdentityQuality);
+        Assert.Equal("unknown", InspectorSubject.Morpheme("form-id", null)!.IdentityQuality);
+        Assert.Equal("unknown", InspectorSubject.Rule(new TraceTimingKey("phon_rule", "rule-id")).IdentityQuality);
+    }
+
+    private static WorkspaceContext ContextFor(FakeCommandClient fake)
+    {
+        var selection = new SelectionViewModel(fake);
+        return new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
+            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake)) { ProjectPath = "sample.fwdata" };
+    }
+
+    private sealed class NoFolderPicker : IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+    }
+
+    private sealed class NoDragSource : IFileDragSource
+    {
+        public Task<DragDropEffects> StartDragAsync(PointerPressedEventArgs trigger,
+            IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) => Task.FromResult(DragDropEffects.None);
+    }
 }

@@ -10,7 +10,7 @@ namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
 /// The inspector beside the page: one object, by identity, in the sections a linguist asks about in turn. What it
-/// is, the words in the Selection that use it, the rules that ran on it, the grammar warnings that name it, and
+/// is, the words in the Selection that use it, its time in those words, the grammar warnings that name it, and
 /// what FieldWorks says about it. Each section names where its facts come from and stays short until asked for all.
 /// </summary>
 /// <remarks>
@@ -27,6 +27,7 @@ public sealed partial class InspectorViewModel : ObservableObject
     private readonly Func<WorkspacePage, string> _pageTitle;
     private string _openedOn = string.Empty;
     private int _generation;
+    private CancellationTokenSource? _loadCancellation;
 
     public InspectorViewModel(WorkspaceContext context, Func<WorkspacePage, string> pageTitle)
     {
@@ -129,13 +130,18 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     public bool HasRanInNote => RanInNote.Length > 0;
 
-    /// <summary>"Rules that ran on it" for a morpheme, "Words it ran in" for a rule.</summary>
+    /// <summary>"Time in your words" for a morpheme, "Words it ran in" for a timed rule or entry.</summary>
     public string RanInTitle { get; private set; } = string.Empty;
 
     /// <summary>The stored grammar check's findings that name the object or reach it.</summary>
     public IReadOnlyList<InspectorWarningViewModel> Warnings { get; private set; } = [];
 
-    public bool HasWarnings => Warnings.Count > 0;
+    public bool HasWarnings => Warnings.Count > 0 || WarningsNote.Length > 0;
+
+    /// <summary>Why warnings couldn't be read, such as no grammar check since the last Refresh.</summary>
+    public string WarningsNote { get; private set; } = string.Empty;
+
+    public bool HasWarningsNote => WarningsNote.Length > 0;
 
     public bool ShowsAllWarnings { get; private set; }
 
@@ -230,30 +236,52 @@ public sealed partial class InspectorViewModel : ObservableObject
     private void Shut()
     {
         _generation++;
+        CancelLoad();
         Crumbs.Clear();
         IsOpen = false;
+        IsLoading = false;
+        OnPropertyChanged(nameof(IsLoading));
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
     private void Load(InspectorSubject subject)
     {
         var generation = ++_generation;
+        CancelLoad();
+        var cancellation = new CancellationTokenSource();
+        _loadCancellation = cancellation;
         Show(subject, null, string.Empty, loading: true);
-        Loading = LoadAsync(subject, generation);
+        Loading = LoadAsync(subject, generation, cancellation);
     }
 
-    private async Task LoadAsync(InspectorSubject subject, int generation)
+    private void CancelLoad()
     {
-        if (_context.ProjectPath is not { } projectPath)
+        _loadCancellation?.Cancel();
+        _loadCancellation = null;
+    }
+
+    private async Task LoadAsync(InspectorSubject subject, int generation, CancellationTokenSource cancellation)
+    {
+        var token = cancellation.Token;
+        try
         {
-            Show(subject, null, "Open a project to see where it is used.", loading: false);
-            return;
+            if (_context.ProjectPath is not { } projectPath)
+            {
+                Show(subject, null, "Open a project to see where it is used.", loading: false);
+                return;
+            }
+            var inspected = await _context.Commands.InspectAsync(new InspectRequest(projectPath, subject),
+                token).ConfigureAwait(true);
+            if (generation != _generation || token.IsCancellationRequested) return;
+            Show(subject, inspected.Value, inspected.Value is null ? inspected.Refusal?.Message ?? "Motif couldn't read this." : string.Empty,
+                loading: false);
         }
-        var inspected = await _context.Commands.InspectAsync(new InspectRequest(projectPath, subject),
-            CancellationToken.None).ConfigureAwait(true);
-        if (generation != _generation) return;
-        Show(subject, inspected.Value, inspected.Value is null ? inspected.Refusal?.Message ?? "Motif couldn't read this." : string.Empty,
-            loading: false);
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        finally
+        {
+            if (ReferenceEquals(_loadCancellation, cancellation)) _loadCancellation = null;
+            cancellation.Dispose();
+        }
     }
 
     private void Show(InspectorSubject subject, InspectResponse? response, string message, bool loading)
@@ -262,7 +290,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         var crumb = Crumbs.Count > 0 ? Crumbs[^1] : null;
         TraceDetails = crumb?.Trace is null ? [] : crumb.Captured;
         TraceTitle = crumb?.Trace is { } trace ? $"In this trace of {trace.Word}" : string.Empty;
-        TraceNote = crumb?.Trace is { } traced && response?.BaselineDigest is { } read && traced.BaselineDigest != read
+        TraceNote = crumb?.Trace?.BaselineDigest is { } traced && response?.BaselineDigest is { } read && traced != read
             ? "Traced before your last Refresh. The facts and times below are from the current Baseline, not this trace."
             : string.Empty;
         IsLoading = loading;
@@ -277,8 +305,9 @@ public sealed partial class InspectorViewModel : ObservableObject
         UsesNote = Note(response?.Uses);
         RanIn = response?.RanIn.Value is { } ranIn ? InspectorWordsViewModel.ForRanIn(ranIn, _context.TryWord) : null;
         RanInNote = Note(response?.RanIn);
-        RanInTitle = subject.Kind == InspectorSubjectKind.Morpheme ? "Rules that ran on it" : "Words it ran in";
+        RanInTitle = subject.Kind == InspectorSubjectKind.Morpheme ? "Time in your words" : "Words it ran in";
         Warnings = [.. (response?.Warnings.Value ?? []).Select(InspectorWarningViewModel.Of)];
+        WarningsNote = Note(response?.Warnings);
         ShowsAllWarnings = false;
         Facts = facts is null ? [] : InspectorFactViewModel.Rows(facts);
         FactsNote = Note(response?.Facts);
@@ -307,7 +336,7 @@ public sealed partial class InspectorViewModel : ObservableObject
     private static IReadOnlyList<string> WhatItIsOf(InspectorSubject subject, ObjectFacts? facts)
     {
         var lines = new List<string>();
-        if (facts?.Entry is { } entry && entry.Headword != subject.Label)
+        if (facts?.Entry is { } entry && facts.Allomorphs.Any(allomorph => allomorph.IsAsked))
             lines.Add($"An allomorph of {entry.Headword}");
         if (facts?.GrammaticalInfo?.Category is { } category)
             lines.Add(facts.GrammaticalInfo.Kind == "stem" ? $"A {category.Name} stem" : $"Attaches to {category.Name}");
@@ -317,7 +346,8 @@ public sealed partial class InspectorViewModel : ObservableObject
 
     // What the object is, in FieldWorks' words for its kind.
     private static string KindOf(InspectorSubject subject, ObjectFacts? facts) =>
-        facts?.GrammaticalInfo is { } info ? GrammaticalInfoKind(info.Kind)
+        subject is { Kind: InspectorSubjectKind.Rule, TimingKey.Kind: "lex_entry" } ? "Lexical entry"
+        : facts?.GrammaticalInfo is { } info ? GrammaticalInfoKind(info.Kind)
         : facts?.Rule is { } rule ? RuleKind(rule.Kind)
         : facts?.Entry?.MorphType is { Length: > 0 } type ? type
         : subject.Kind switch

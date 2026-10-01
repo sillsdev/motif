@@ -130,6 +130,8 @@
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
               <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="Grammar warnings about it" />
               <views:CopyableTextBlock Classes="inspectorSource" Text="From the last grammar check" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding WarningsNote}" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasWarningsNote}" />
               <ItemsControl ItemsSource="{Binding ShownWarnings}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:InspectorWarningViewModel">
@@ -155,6 +157,7 @@
               <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="In FieldWorks" />
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
                 <Ellipse Classes="freshDot" Classes.current="{Binding IsCurrent}" Classes.stale="{Binding IsStale}"
+                         IsVisible="{Binding WhatItIsFromBaseline}"
                          VerticalAlignment="Center" ToolTip.Tip="{Binding FreshnessTip}"
                          AutomationProperties.Name="{Binding FreshnessTip}" />
                 <views:CopyableTextBlock Classes="inspectorSource" Text="From the Baseline" />
