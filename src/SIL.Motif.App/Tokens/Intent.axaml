@@ -24,8 +24,8 @@
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
     Intent.Surface.Raised         a card lifted above the page, such as an open word card
     Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
-    Intent.Shadow.Pressed         the inset shadow of a button held down
-    Intent.Shadow.Selected        a ring in Intent.Accent drawn outside a chosen cell, leaving its own edge seen
+    Intent.Shadow.Hover           a thin ring drawn just inside a cell's own edge under the pointer
+    Intent.Shadow.Selected        a ring in Intent.Accent drawn just inside a chosen cell's own edge
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
@@ -142,6 +142,9 @@
     Intent.Type.Label             badges, compact chips, the sidebar footer, disclosure marks
     Intent.Type.Micro             a badge on the collapsed sidebar
 
+  Transforms:
+    Intent.Transform.Pressed      a button held down, drawn a little smaller so it reads as pushed in
+
   Opacity (double):
     Intent.Opacity.Dimmed         something shown but set aside
     Intent.Opacity.Waiting        results kept on screen from before while a newer parse runs
@@ -213,6 +216,7 @@
 
 
   <StaticResource x:Key="Intent.Opacity.Dimmed" ResourceKey="Primitive.Opacity.35" />
+  <StaticResource x:Key="Intent.Transform.Pressed" ResourceKey="Primitive.Transform.Scale96" />
   <StaticResource x:Key="Intent.Opacity.Waiting" ResourceKey="Primitive.Opacity.60" />
 
   <ResourceDictionary.ThemeDictionaries>
@@ -225,8 +229,8 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey0}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
-      <StaticResource x:Key="Intent.Shadow.Pressed" ResourceKey="Primitive.Shadow.Inset0_1_3.Slate950A30" />
-      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.Ring2.Blue700" />
+      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue500" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue700" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
@@ -312,8 +316,8 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey800}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
-      <StaticResource x:Key="Intent.Shadow.Pressed" ResourceKey="Primitive.Shadow.Inset0_1_3.BlackA70" />
-      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.Ring2.Blue200" />
+      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue350" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue200" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />

@@ -1,7 +1,8 @@
 <!--
   The cues every control shares. The keyboard focus ring: one look for every control, in the focus colour and stroke,
   following the control's own corners; Avalonia draws it only for Tab and arrow-key focus, so a pointer click never
-  leaves a ring behind. A link underlines under the pointer. The pressed cue: a button held down sinks in, which hover's lighter fill never does.
+  leaves a ring behind. A link underlines under the pointer. The pressed cue: a button held down shrinks a little, as if pushed in, which hover never does;
+  an inset shadow would not paint on Semi's translucent button fills.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -21,6 +22,6 @@
     <Setter Property="TextBlock.TextDecorations" Value="Underline" />
   </Style>
   <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Pressed}" />
+    <Setter Property="RenderTransform" Value="{DynamicResource Intent.Transform.Pressed}" />
   </Style>
 </Styles>

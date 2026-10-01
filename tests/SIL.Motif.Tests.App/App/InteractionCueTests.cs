@@ -109,13 +109,13 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                     var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
                     window.MouseMove(centre);
                     Dispatcher.UIThread.RunJobs();
-                    var hovered = face.BoxShadow;
+                    var hovered = face.RenderTransform;
                     window.MouseDown(centre, MouseButton.Left);
                     Dispatcher.UIThread.RunJobs();
                     if (!button.IsPressed) failures.Add($"{variant} {theme}: the press did not land");
-                    if (!Equals(Resource("Intent.Shadow.Pressed", variant), face.BoxShadow))
-                        failures.Add($"{variant} {theme}: pressed shadow is '{face.BoxShadow}', not Intent.Shadow.Pressed");
-                    if (Equals(hovered, face.BoxShadow)) failures.Add($"{variant} {theme}: pressed looks like hover");
+                    if (!ReferenceEquals(Resource("Intent.Transform.Pressed", variant), face.RenderTransform))
+                        failures.Add($"{variant} {theme}: pressed transform is '{face.RenderTransform}', not Intent.Transform.Pressed");
+                    if (ReferenceEquals(hovered, face.RenderTransform)) failures.Add($"{variant} {theme}: pressed looks like hover");
                     window.MouseUp(centre, MouseButton.Left);
                 }
                 finally
@@ -148,7 +148,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                     window.MouseMove(centre);
                     Dispatcher.UIThread.RunJobs();
                     if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} hover: edge is {cell.BorderBrush}, not the warning");
-                    if (!Equals(Resource("Intent.Shadow.Raised", variant), cell.BoxShadow))
+                    if (!Equals(Resource("Intent.Shadow.Hover", variant), cell.BoxShadow))
                         failures.Add($"{variant} hover: no raised cue ('{cell.BoxShadow}')");
                     window.MouseMove(new Point(290, 110));
                     cell.Classes.Add("selected");

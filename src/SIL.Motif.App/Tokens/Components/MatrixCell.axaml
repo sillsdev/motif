@@ -100,10 +100,10 @@
   <Style Selector="Border.matrixCell.empty :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <!-- Hover and choosing add a cue around the cell and never take its warning edge away. -->
+  <!-- Hover and choosing ring the inside of the cell, never taking its warning edge away; a row clips outside. -->
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
-    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Raised}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
   </Style>
   <Style Selector="Border.matrixCell.violation:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
