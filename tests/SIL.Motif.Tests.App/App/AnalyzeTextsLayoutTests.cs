@@ -296,6 +296,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "Different from FieldWorks");
 
+                var rowsMinWidth = (double)Application.Current!.FindResource("Component.WordStrip.RowsMinWidth")!;
                 foreach (var strip in Strips(panel))
                 {
                     var form = ((ResultsTokenViewModel)strip.Tag!).Form;
@@ -311,11 +312,11 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
                     Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
 
-                    var links = strip.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
-                    var link = Assert.Single(links);
-                    Assert.Equal($"Open {form} in FieldWorks", Avalonia.Automation.AutomationProperties.GetName(link));
-                    Assert.Equal(0, link.Opacity);
-                    Assert.True(link.Focusable && link.IsTabStop, $"The FieldWorks link of {form} leaves the tab order.");
+                    Assert.Empty(strip.GetVisualDescendants().OfType<HyperlinkButton>());
+                    var rows = Assert.Single(strip.GetVisualDescendants().OfType<StackPanel>(),
+                        panel => panel.Classes.Contains("stripStack"));
+                    Assert.True(rows.Bounds.Width >= rowsMinWidth,
+                        $"{form}'s rows are {rows.Bounds.Width} wide, under {rowsMinWidth}.");
                 }
 
                 var alikula = StripOf(panel, "alikula");
@@ -323,10 +324,16 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.True(BoundsIn(unread, panel).Right <= BoundsIn(Part(alikula, "word"), panel).Left,
                     "The Unread dot comes before the word.");
                 Assert.DoesNotContain(unread.GetVisualDescendants().OfType<TextBlock>(), text => text.IsEffectivelyVisible);
-                var alikulaLink = Assert.Single(alikula.GetVisualDescendants().OfType<HyperlinkButton>());
-                Assert.True(alikulaLink.Focus(NavigationMethod.Tab));
+                await workspace.PageModel<TextsPageModel>().ResultsInText.OpenTokenCardAsync(
+                    (ResultsTokenViewModel)alikula.Tag!);
                 Settle(window);
-                Assert.Equal(1, alikulaLink.Opacity);
+                var wordLink = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<HyperlinkButton>(),
+                    link => link.Content as string == "Word Analyses ↗");
+                Assert.Equal("Open alikula in Word Analyses", Avalonia.Automation.AutomationProperties.GetName(wordLink));
+                Assert.Equal(0, wordLink.Opacity);
+                Assert.True(wordLink.Focus(NavigationMethod.Tab));
+                Settle(window);
+                Assert.Equal(1, wordLink.Opacity);
             }
             finally
             {

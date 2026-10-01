@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -382,6 +383,8 @@ public sealed class ParserReadingMorphViewModel
 {
     private const string UnknownForm = "unknown morpheme";
     private readonly string _glossPlaceholder = "?";
+    private readonly string? _entry;
+    private readonly string _toolName;
 
     public ParserReadingMorphViewModel(ParserReadingMorph morph)
     {
@@ -393,6 +396,8 @@ public sealed class ParserReadingMorphViewModel
             : morph.Category;
         Guessed = morph.Guessed;
         Link = morph.FieldWorksLink is { } link ? new Uri(link) : null;
+        _entry = morph.Entry;
+        _toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
     }
 
     private ParserReadingMorphViewModel(ParserReadingMorph morph, string form, string glossPlaceholder) : this(morph)
@@ -418,8 +423,13 @@ public sealed class ParserReadingMorphViewModel
     /// <summary>The gloss, or a placeholder a reader can still see and click when the project gives none.</summary>
     public string GlossOrPlaceholder => Gloss.Length == 0 ? _glossPlaceholder : Gloss;
 
-    /// <summary>The accessible name of this morph's link into FieldWorks.</summary>
-    public string LinkName => $"Open the entry for {Form} in FieldWorks";
+    /// <summary>The text of this morph's link into FieldWorks, naming the FieldWorks tool it opens.</summary>
+    public string LinkText => $"{_toolName} ↗";
+
+    /// <summary>The accessible name and tip of this morph's link: what opens, and in which FieldWorks tool.</summary>
+    public string LinkName => _entry is { Length: > 0 } entry
+        ? $"Open {entry} in {_toolName}"
+        : $"Open the entry for {Form} in {_toolName}";
     public string Category { get; }
     public bool Guessed { get; }
     public Uri? Link { get; }

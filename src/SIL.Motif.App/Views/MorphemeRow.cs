@@ -132,7 +132,7 @@ public sealed class MorphemeRow : WrapPanel
     {
         var button = new HyperlinkButton
         {
-            Content = "FW ↗",
+            Content = morph.LinkText,
             NavigateUri = morph.Link,
             Padding = new Thickness(0),
             Classes = { "morphLink" },
@@ -143,6 +143,7 @@ public sealed class MorphemeRow : WrapPanel
             button.Classes.Add("revealLink");
         }
         AutomationProperties.SetName(button, morph.LinkName);
+        ToolTip.SetTip(button, morph.LinkName);
         return button;
     }
 }

@@ -647,11 +647,12 @@ public sealed class MainWindowSmokeTests
     }
 
     [Theory]
-    [InlineData("PhEnvironment", "Open this environment in FieldWorks")]
-    [InlineData("MoForm", "Open this allomorph in FieldWorks")]
-    [InlineData("PhRegularRule", "Open this phonological rule in FieldWorks")]
-    [InlineData(null, "Open this item in FieldWorks")]
-    public void AGrammarWarningLinkNamesItsKindInTheWindowsWords(string? kind, string tip)
+    [InlineData("PhEnvironment", "EnvironmentEdit", "Open this environment in Environments")]
+    [InlineData("MoForm", "lexiconEdit", "Open this allomorph in Lexicon Edit")]
+    [InlineData("PhRegularRule", "PhonologicalRuleEdit", "Open this phonological rule in Phonological Rules")]
+    [InlineData("MoInflAffixSlot", "posEdit", "Open this template slot in Category Edit")]
+    [InlineData(null, null, "Open this item in FieldWorks")]
+    public void AGrammarWarningLinkNamesItsKindAndTheToolItOpens(string? kind, string? tool, string tip)
     {
         _avalonia.Invoke(() =>
         {
@@ -659,7 +660,8 @@ public sealed class MainWindowSmokeTests
             {
                 Parts =
                 [
-                    new GrammarWarningPart("e2", GrammarWarningPartRole.Object, "id", kind, "silfw://localhost/link"),
+                    new GrammarWarningPart("e2", GrammarWarningPartRole.Object, "id", kind, "silfw://localhost/link")
+                        { FieldWorksTool = tool },
                 ],
             };
 
@@ -890,8 +892,8 @@ public sealed class MainWindowSmokeTests
                     $"morpheme rows={card.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
                     $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
                 var morphLink = Assert.Single(cardLinks,
-                    button => AutomationProperties.GetName(button) == "Open the entry for motif- in FieldWorks");
-                Assert.Equal("FW ↗", morphLink.Content);
+                    button => AutomationProperties.GetName(button) == "Open the entry for motif- in Lexicon Edit");
+                Assert.Equal("Lexicon Edit ↗", morphLink.Content);
                 Assert.True(morphLink.Focus(NavigationMethod.Tab));
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();

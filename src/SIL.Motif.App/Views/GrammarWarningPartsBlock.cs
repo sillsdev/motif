@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.Views;
 
@@ -89,7 +90,8 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         var kind = part.FieldWorksKind is { Length: > 0 } fieldWorksKind
             ? GrammarWarningsViewModel.DefaultMeanings.Value.KindLabel(fieldWorksKind)
             : "Item";
-        ToolTip.SetTip(button, $"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in FieldWorks");
+        var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link));
+        ToolTip.SetTip(button, $"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in {tool}");
         return button;
     }
 }
