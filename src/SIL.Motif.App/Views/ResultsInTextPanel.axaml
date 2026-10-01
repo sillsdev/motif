@@ -122,7 +122,9 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <WrapPanel VerticalAlignment="Center" IsVisible="{Binding InText.HasResults}">
+        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled" IsVisible="{Binding InText.HasResults}">
+          <StackPanel Orientation="Horizontal">
           <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
@@ -145,7 +147,8 @@
                             IsVisible="{Binding InText.HasNotAssessed}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
-        </WrapPanel>
+          </StackPanel>
+        </ScrollViewer>
       </DockPanel>
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
