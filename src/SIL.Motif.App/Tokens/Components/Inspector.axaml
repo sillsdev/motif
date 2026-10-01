@@ -1,0 +1,102 @@
+<!--
+  The inspector beside the page: a raised panel with a breadcrumb strip, a name, and short sections that each
+  say where their facts come from. Also the name-link that opens it from any page, and a morpheme that does.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Inspector.Width" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Inspector.CrumbPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
+    <StaticResource x:Key="Component.Inspector.BodyPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
+    <StaticResource x:Key="Component.Inspector.SectionPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
+    <StaticResource x:Key="Component.Inspector.WarningPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.Inspector.LabelWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.Inspector.Edge" ResourceKey="Primitive.Inset.1_0_0_0" />
+  </Styles.Resources>
+
+  <Style Selector="Border.inspector">
+    <Setter Property="Width" Value="{DynamicResource Component.Inspector.Width}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Raised}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Inspector.Edge}" />
+  </Style>
+  <Style Selector="Border.inspectorCrumbs">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Inspector.CrumbPadding}" />
+  </Style>
+  <Style Selector="StackPanel.inspectorBody">
+    <Setter Property="Margin" Value="{DynamicResource Component.Inspector.BodyPadding}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.inspectorSection">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Inspector.SectionPadding}" />
+  </Style>
+  <Style Selector="Border.inspectorSection.last">
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorSectionTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorSource">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Grid.inspectorFact">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Snug}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorFactLabel">
+    <Setter Property="Width" Value="{DynamicResource Component.Inspector.LabelWidth}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector="Border.inspectorWarning">
+    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Inspector.WarningPadding}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorMeaning.fine">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Fine}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorMeaning.look">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Look}" />
+  </Style>
+  <Style Selector=":is(TextBlock).inspectorMeaning.problem">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
+  </Style>
+
+  <!-- A name that opens the inspector is a link, so it underlines under the pointer as every link does. -->
+  <Style Selector="HyperlinkButton.inspectLink, HyperlinkButton.inspectorAction">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector="HyperlinkButton.crumb">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+  </Style>
+  <Style Selector="Button.inspectorClose">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+
+  <!-- A morpheme with identity is itself a name: the pointer says so, and a hover tints it. -->
+  <Style Selector="Border.morph.inspectable">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.morph.inspectable:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+</Styles>

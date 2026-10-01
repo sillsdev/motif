@@ -757,6 +757,20 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Opinion.Approved.Text");
         yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
             Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("Inspector", "the inspector's surface", host => Add(host, Box("inspector")),
+            Border.BackgroundProperty, "Intent.Surface.Raised");
+        yield return new("Inspector", "the inspector's width", host => Add(host, Box("inspector")),
+            Control.WidthProperty, "Component.Inspector.Width");
+        yield return new("Inspector", "the breadcrumb strip", host => Add(host, Box("inspectorCrumbs")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Inspector", "a section's source", host => Add(host, Text("inspectorSource")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("Inspector", "a warning that names it", host => Add(host, Box("inspectorWarning")),
+            Border.BackgroundProperty, "Intent.Warning.Fill");
+        yield return new("Inspector", "a name that opens it", host => Add(host, new SIL.Motif.App.Views.InspectLink { Content = "kat" }),
+            Button.ForegroundProperty, "Intent.Link");
+        yield return new("Inspector", "a Lost word", host => Add(host, Text("inspectorMeaning", "problem")),
+            TextBlock.ForegroundProperty, "Intent.Consequence.Problem");
         yield return new("WordCard", "the word card surface", host => Add(host, Box("card", "wordCard")),
             Border.BackgroundProperty, "Intent.Surface.Raised");
         yield return new("WordCard", "the word card shadow", host => Add(host, Box("card", "wordCard")),

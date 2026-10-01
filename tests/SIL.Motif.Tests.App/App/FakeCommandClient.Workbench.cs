@@ -35,11 +35,11 @@ public sealed partial class FakeCommandClient
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
 
-    private Func<ObjectUsesRequest, CancellationToken, Task<CommandOutcome<ObjectUsesResponse>>>
-        _objectUses = (_, _) => Refused<ObjectUsesResponse>(
-            new Refusal("uses.not-configured", FailureReason.Refused, "No object uses configured."));
+    private Func<InspectRequest, CancellationToken, Task<CommandOutcome<InspectResponse>>>
+        _inspect = (_, _) => Refused<InspectResponse>(
+            new Refusal("inspect.not-configured", FailureReason.Refused, "No inspection configured."));
 
-    public List<ObjectUsesRequest> ObjectUsesRequests { get; } = [];
+    public List<InspectRequest> InspectRequests { get; } = [];
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<OverviewRequest> OverviewRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
@@ -102,15 +102,13 @@ public sealed partial class FakeCommandClient
 
     public void TraceWordCompletesWith(WordTraceResponse response) => OnTraceWord((_, _) => Completed(response));
 
-    public void OnObjectUses(
-        Func<ObjectUsesRequest, CancellationToken, Task<CommandOutcome<ObjectUsesResponse>>> behavior) =>
-        _objectUses = behavior;
+    public void OnInspect(Func<InspectRequest, CancellationToken, Task<CommandOutcome<InspectResponse>>> behavior) =>
+        _inspect = behavior;
 
-    public Task<CommandOutcome<ObjectUsesResponse>> ObjectUsesAsync(
-        ObjectUsesRequest request, CancellationToken cancellationToken)
+    public Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken)
     {
-        ObjectUsesRequests.Add(request);
-        return _objectUses(request, cancellationToken);
+        InspectRequests.Add(request);
+        return _inspect(request, cancellationToken);
     }
 
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(

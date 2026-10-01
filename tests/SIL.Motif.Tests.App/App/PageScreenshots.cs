@@ -10,6 +10,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -189,6 +190,7 @@ public sealed class PageScreenshots
 
         // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
         fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
+        fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(SampleInspection(request.Subject))));
         configure?.Invoke(fake, Assessment());
 
         var selection = new SelectionViewModel(fake);
@@ -258,6 +260,143 @@ public sealed class PageScreenshots
                 AllomorphId = Id("allomorph " + form + item.Glosses[index], 0),
                 GrammaticalInfoId = Id("grammatical info " + item.Glosses[index], 0),
             })]);
+    }
+
+    /// <summary>The first sample morpheme spelled <paramref name="form"/>, with the ids every word that uses it shares.</summary>
+    internal static ParserReadingMorph SampleMorph(string form) =>
+        Vocabulary.Select(item => item.Word).SelectMany(word => Resolved(word).Morphs).First(morph => morph.Form == form);
+
+    /// <summary>
+    /// What the inspector reads for the sample: the words whose analyses use a morpheme, by identity, with the
+    /// sample's own FieldWorks facts; or, for a rule, its words from the sample timings.
+    /// </summary>
+    internal static InspectResponse SampleInspection(InspectorSubject subject)
+    {
+        var asked = new ObjectUseRef
+        {
+            AllomorphId = subject.AllomorphId, GrammaticalInfoId = subject.GrammaticalInfoId,
+            TimingKind = subject.TimingKey?.Kind, TimingKey = subject.TimingKey?.Key, Label = subject.Label, Gloss = subject.Gloss,
+        };
+        var assessment = Assessment();
+        var words = assessment.Words.Select(word => word with
+        {
+            StoredAnalyses = word.Word == "hawajafika" || word.ReadingGrades is { Count: > 0 }
+                ? [Resolved(word.Word) with
+                {
+                    StoredAnalysisOpinion = word.ReadingGrades is [ReadingGrade.Disapproved] ? ReadingGrade.Disapproved : ReadingGrade.Approved,
+                }]
+                : [],
+        }).ToArray();
+        var facts = SampleFacts(asked);
+        asked = ObjectUsesQuery.WithTimingKey(asked, facts)!;
+        var timings = asked.TimingKind is null ? [] : words.Take(4).Select((word, index) => new SIL.Motif.Worker.Store.AssessmentObjectTiming(
+            asked.TimingKind, asked.TimingKey!, "authored", "synthesis", asked.Label ?? asked.TimingKey!, word.Word,
+            3 + index, null, (index + 1) * 1_400_000L)).ToArray();
+        var morpheme = subject.Kind == InspectorSubjectKind.Morpheme;
+        return new InspectResponse(subject, InspectorResolution.Resolved)
+        {
+            AssessmentId = "assessment/one",
+            TimingKey = asked.TimingKind is null ? null : new TraceTimingKey(asked.TimingKind, asked.TimingKey!),
+            Facts = InspectorSection<ObjectFacts>.Of(facts),
+            Uses = morpheme ? InspectorSection<ObjectUseWords>.Of(ObjectUsesQuery.UsesOf(words, asked))
+                : InspectorSection<ObjectUseWords>.Not(InspectorSectionStatus.Unsupported, "Only a morpheme is used by words."),
+            RanIn = InspectorSection<ObjectUseWords>.Of(ObjectUsesQuery.RanIn(words, timings, asked)),
+            Warnings = InspectorSection<IReadOnlyList<GrammarWarning>>.Of(
+                InspectQuery.WarningsNaming(GrammarFindings(), subject, asked.TimingKind is null ? null
+                    : new TraceTimingKey(asked.TimingKind, asked.TimingKey!))),
+        };
+    }
+
+    private static ObjectFacts SampleFacts(ObjectUseRef asked)
+    {
+        TraceFieldWorksTarget Tool(string tool, string name, string id) =>
+            new(tool, name, id, $"silfw://localhost/link?tool={tool}&guid={id}");
+        if (asked.AllomorphId is null)
+            return new ObjectFacts
+            {
+                Rule = new ObjectFactsRule(asked.TimingKey!, asked.TimingKind == "phon_rule" ? "phonologicalRule" : "affixRule",
+                    asked.Label ?? asked.TimingKey!)
+                {
+                    FieldWorks = asked.TimingKind == "phon_rule"
+                        ? Tool("PhonologicalRuleEdit", "Phonological Rules", asked.TimingKey!)
+                        : Tool("lexiconEdit", "Lexicon Edit", asked.TimingKey!),
+                },
+            };
+        var form = asked.Label ?? "?";
+        var affix = form.StartsWith('-') || form.EndsWith('-');
+        var headword = form == "w-" ? "wa-" : form;
+        var entry = Id(headword + "|entry", 3);
+        return new ObjectFacts
+        {
+            Entry = new ObjectFactsEntry(entry, headword)
+            {
+                MorphType = form.EndsWith('-') ? "prefix" : form.StartsWith('-') ? "suffix" : "root",
+                FieldWorks = Tool("lexiconEdit", "Lexicon Edit", entry),
+            },
+            Senses = [new ObjectFactsSense(Id(form + "|sense", 4), "1") { Gloss = asked.Gloss, FieldWorks = Tool("lexiconEdit", "Lexicon Edit", entry) }],
+            GrammaticalInfo = new ObjectFactsGrammaticalInfo(asked.GrammaticalInfoId ?? entry, affix ? "inflectionalAffix" : "stem")
+            {
+                Category = new ObjectFactsNamed(Id("verb", 5), affix || form == "kul" || form == "fik" ? "Verb" : "Noun")
+                {
+                    FieldWorks = Tool("posEdit", "Category Edit", Id("verb", 5)),
+                },
+                Slots = affix && form.EndsWith('-')
+                    ? [new ObjectFactsSlot(Id("slot", 6), "Subject") { Templates = [new ObjectFactsNamed(Id("template", 7), "Finite verb")],
+                        FieldWorks = Tool("posEdit", "Category Edit", Id("verb", 5)) }]
+                    : [],
+            },
+            // Swahili's wa- loses its vowel before a vowel, which gives the breadcrumb a second allomorph to step to.
+            TimingKey = affix ? new TraceTimingKey("morph_rule", asked.GrammaticalInfoId ?? entry) : new TraceTimingKey("lex_entry", entry),
+            Allomorphs = form is "wa-" or "w-"
+                ?
+                [
+                    new ObjectFactsAllomorph(SampleMorph("wa-").AllomorphId!, "wa-") { IsAsked = form == "wa-" },
+                    new ObjectFactsAllomorph(Id("w-|allomorph", 9), "w-")
+                    {
+                        IsAsked = form == "w-",
+                        Environments = [new ObjectFactsEnvironment(Id("env-v", 9), "/ _ [V]")
+                            { FieldWorks = Tool("EnvironmentEdit", "Environments", Id("env-v", 9)) }],
+                    },
+                ]
+                : [new ObjectFactsAllomorph(asked.AllomorphId, form) { IsAsked = true }],
+        };
+    }
+
+    // The sample trace records no forms; a real one names matinlu's morphemes as FieldWorks spells them.
+    private static readonly (string Form, string Gloss)[] TraceMorphemes = [("tin", "see"), ("ma-", "PST"), ("-lu", "3SG")];
+
+    /// <summary>
+    /// The sample trace with the FieldWorks identities a real project's trace records: its morphs by allomorph and
+    /// grammatical info, and its rules by the key Timing records them under.
+    /// </summary>
+    internal static WordTraceResponse TraceWithIdentities()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(TraceFixture())!;
+        void Walk(System.Text.Json.Nodes.JsonNode? node)
+        {
+            if (node is System.Text.Json.Nodes.JsonArray array)
+                foreach (var item in array) Walk(item);
+            if (node is not System.Text.Json.Nodes.JsonObject element) return;
+            if (element["identity"] is System.Text.Json.Nodes.JsonObject identity && identity.ContainsKey("formId"))
+            {
+                var morpheme = int.Parse(identity["morphemeId"]?.ToString() ?? "0", System.Globalization.CultureInfo.InvariantCulture);
+                identity["formId"] = Id("trace-allomorph", 10 + morpheme);
+                identity["msaId"] = Id("trace-msa", 10 + morpheme);
+                identity["quality"] = "authored";
+                var (form, gloss) = TraceMorphemes[morpheme % TraceMorphemes.Length];
+                element["form"] ??= form;
+                element["gloss"] ??= gloss;
+            }
+            if (element["type"]?.ToString() is { } type && type.StartsWith("MorphologicalRule", StringComparison.Ordinal) &&
+                element["source"]?.ToString() is { } source)
+                element["sourceIdentity"] = new System.Text.Json.Nodes.JsonObject
+                {
+                    ["kind"] = "morphRule", ["id"] = Id(source, 8), ["quality"] = "authored",
+                };
+            foreach (var (_, child) in element.ToArray()) Walk(child);
+        }
+        Walk(document);
+        return WordTraceQuery.LoadDiagnostic(document.ToJsonString()).Value!;
     }
 
     // Morphemes named by identity, so the Matrix can say what words share; another stem keeps each word's cell.
@@ -378,6 +517,9 @@ public sealed class PageScreenshots
             $"\"elapsed_ns\":{(index == 3 ? 48_000_000 : (index + 1) * 1_300_000)},\"capped\":{(index == 6 ? "true" : "false")},\"timed_out\":false}}")
             .RootElement.Clone()),
     ];
+
+    /// <summary>The sample trace's document, as PanGloss wrote it.</summary>
+    internal static string SampleTrace() => TraceFixture();
 
     private static string TraceFixture() =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"));

@@ -63,8 +63,15 @@ public abstract record PageRequest(WorkspacePage Page);
 /// A request to show one object in the inspector beside the page: a morpheme, rule or other name, by identity.
 /// Unlike a <see cref="PageRequest"/> it leaves the page where it is.
 /// </summary>
-/// <param name="Ref">The object to show.</param>
-public sealed record OpenInspectorRequest(ObjectUseRef Ref);
+/// <param name="Subject">The object to show.</param>
+public sealed record OpenInspectorRequest(InspectorSubject Subject)
+{
+    /// <summary>
+    /// What the inspector's first breadcrumb names, such as the word whose card it opened from; <see langword="null"/>
+    /// names the page.
+    /// </summary>
+    public string? From { get; init; }
+}
 
 /// <summary>
 /// The project and evidence published to the window's pages, their shared Assessment and Selection, pending
@@ -523,9 +530,17 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));
 
-    /// <summary>Opens the inspector on <paramref name="reference"/>, beside the page the window is showing.</summary>
-    public void OpenInspector(ObjectUseRef reference) =>
-        Inspector = new OpenInspectorRequest(reference ?? throw new ArgumentNullException(nameof(reference)));
+    /// <summary>
+    /// Opens the inspector on <paramref name="subject"/>, beside the page the window is showing, with its first
+    /// breadcrumb naming <paramref name="from"/>, or the page when that is <see langword="null"/>.
+    /// </summary>
+    public void OpenInspector(InspectorSubject subject, string? from = null)
+    {
+        var request = new OpenInspectorRequest(subject ?? throw new ArgumentNullException(nameof(subject))) { From = from };
+        // Asking again for the object already open starts its breadcrumb afresh, as a new request would.
+        if (Equals(Inspector, request)) OnPropertyChanged(nameof(Inspector));
+        else Inspector = request;
+    }
 
     /// <summary>Closes the inspector.</summary>
     public void CloseInspector() => Inspector = null;

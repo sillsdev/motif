@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Inspector"
+             x:DataType="vm:InspectorViewModel"
+             IsVisible="{Binding IsOpen}"
+             AutomationProperties.Name="Inspector">
+  <UserControl.Resources>
+    <DataTemplate x:Key="InspectorWords" x:DataType="vm:InspectorWordsViewModel">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+        <views:CopyableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" IsVisible="{Binding HasHeading}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding Meanings}" TextWrapping="Wrap" IsVisible="{Binding HasMeanings}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding NotCountingText}" TextWrapping="Wrap" IsVisible="{Binding HasNotCounting}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding EmptyText}" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}" />
+        <ItemsControl ItemsSource="{Binding Shown}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:InspectorWordViewModel">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
+                <views:CopyableTextBlock Text="{Binding Word}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="inspectorMeaning" Classes.fine="{Binding IsFine}"
+                                         Classes.look="{Binding IsLook}" Classes.problem="{Binding IsProblem}"
+                                         Text="{Binding Meaning}" IsVisible="{Binding !HasDetail}" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
+                <HyperlinkButton Grid.Column="2" Classes="inspectorAction revealControl revealLink" Content="Try a Word" Command="{Binding TryWordCommand}"
+                        AutomationProperties.Name="{Binding TryWordName}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <HyperlinkButton Classes="inspectorAction" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
+                IsVisible="{Binding CanShowAll}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Classes="inspector">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Classes="inspectorCrumbs">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="inspectorClose" Content="✕" Command="{Binding CloseCommand}"
+                  AutomationProperties.Name="Close the inspector" ToolTip.Tip="Close (Esc steps back)" />
+          <ItemsControl ItemsSource="{Binding Crumbs}" AutomationProperties.Name="Breadcrumb">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:InspectorCrumbViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}">
+                  <TextBlock Classes="muted" Text="←" IsVisible="{Binding IsOrigin}" VerticalAlignment="Center" />
+                  <TextBlock Classes="muted" Text="›" IsVisible="{Binding !IsOrigin}" VerticalAlignment="Center" />
+                  <HyperlinkButton Classes="crumb" Content="{Binding Label}"
+                          Command="{Binding $parent[views:Inspector].((vm:InspectorViewModel)DataContext).GoToCommand}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.Name="{Binding AutomationName}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Classes="inspectorBody">
+          <views:CopyableTextBlock Classes="inspectorTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="Reading…" IsVisible="{Binding IsLoading}" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding HasMessage}" />
+
+          <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasWhatItIs}" AutomationProperties.Name="What it is">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="What it is" />
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                <Ellipse Classes="freshDot" Classes.current="{Binding IsCurrent}" Classes.stale="{Binding IsStale}"
+                         VerticalAlignment="Center" ToolTip.Tip="{Binding FreshnessTip}"
+                         AutomationProperties.Name="{Binding FreshnessTip}" IsVisible="{Binding WhatItIsFromBaseline}" />
+                <views:CopyableTextBlock Classes="inspectorSource" Text="{Binding WhatItIsSource}" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding WhatItIs}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasUses}" AutomationProperties.Name="Your words that use it">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="Your words that use it" />
+              <views:CopyableTextBlock Classes="inspectorSource" Text="From the last Parse all words" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding UsesNote}" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasUsesNote}" />
+              <ContentControl Content="{Binding Uses}" ContentTemplate="{StaticResource InspectorWords}" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasRanIn}" AutomationProperties.Name="{Binding RanInTitle}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="{Binding RanInTitle}" />
+              <views:CopyableTextBlock Classes="inspectorSource" Text="From the last Parse all words" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding RanInNote}" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasRanInNote}" />
+              <ContentControl Content="{Binding RanIn}" ContentTemplate="{StaticResource InspectorWords}" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="inspectorSection hoverReveal" IsVisible="{Binding HasWarnings}" AutomationProperties.Name="Grammar warnings about it">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="Grammar warnings about it" />
+              <views:CopyableTextBlock Classes="inspectorSource" Text="From the last grammar check" />
+              <ItemsControl ItemsSource="{Binding ShownWarnings}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:InspectorWarningViewModel">
+                    <Border Classes="inspectorWarning" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" IsVisible="{Binding HasText}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                <HyperlinkButton Classes="inspectorAction" Content="{Binding ShowAllWarningsText}" Command="{Binding ShowAllWarningsCommand}"
+                        IsVisible="{Binding CanShowAllWarnings}" />
+                <HyperlinkButton Classes="inspectorAction revealControl revealLink" Content="Open Warnings" Command="{Binding OpenWarningsCommand}" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="inspectorSection hoverReveal last" IsVisible="{Binding HasFacts}" AutomationProperties.Name="In FieldWorks">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="In FieldWorks" />
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                <Ellipse Classes="freshDot" Classes.current="{Binding IsCurrent}" Classes.stale="{Binding IsStale}"
+                         VerticalAlignment="Center" ToolTip.Tip="{Binding FreshnessTip}"
+                         AutomationProperties.Name="{Binding FreshnessTip}" />
+                <views:CopyableTextBlock Classes="inspectorSource" Text="From the Baseline" />
+              </StackPanel>
+              <views:CopyableTextBlock Classes="muted" Text="{Binding FactsNote}" TextWrapping="Wrap"
+                                       IsVisible="{Binding HasFactsNote}" />
+              <ItemsControl ItemsSource="{Binding Facts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:InspectorFactViewModel">
+                    <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                      <views:CopyableTextBlock Classes="inspectorFactLabel" Text="{Binding Label}" TextWrapping="Wrap" />
+                      <StackPanel Grid.Column="1">
+                        <views:InspectLink Subject="{Binding InspectSubject}" IsVisible="{Binding CanInspect}" HorizontalAlignment="Left">
+                          <TextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="Normal" />
+                        </views:InspectLink>
+                        <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding CannotInspect}" />
+                        <HyperlinkButton Classes="revealControl revealLink" Content="{Binding LinkText}"
+                                         NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                         AutomationProperties.Name="{Binding LinkName}" ToolTip.Tip="{Binding LinkName}" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+
+</UserControl>

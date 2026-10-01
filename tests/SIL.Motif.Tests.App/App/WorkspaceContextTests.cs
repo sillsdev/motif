@@ -1105,10 +1105,10 @@ public sealed class WorkspaceContextTests
         var context = NewContext();
         await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Timing);
-        var kat = ObjectUseRef.ForMorpheme(new ParserReadingMorph("kat", "cut", "v", null, false, null)
+        var kat = InspectorSubject.Morpheme(new ParserReadingMorph("kat", "cut", "v", null, false, null)
         {
             AllomorphId = "form-kat", GrammaticalInfoId = "msa-kat",
-        });
+        })!;
         var changed = new List<string?>();
         context.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 

@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
@@ -22,6 +23,7 @@ public sealed partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Motif", "window-bounds.json");
     private readonly IUriLauncher _uriLauncher;
     private string? _helpAutomationId;
+    private Control? _inspectedFrom;
     private HelpPopupView? HelpPopup =>
         this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
 
@@ -81,6 +83,9 @@ public sealed partial class MainWindow : Window
             host.Children.Add(view);
         }
 
+        AddHandler(InspectLink.RequestedEvent, (_, e) => OnInspectRequested(workspace, e));
+        workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();
+
         workspace.UpdateWindowWidth(Width);
         SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
         if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
@@ -89,6 +94,26 @@ public sealed partial class MainWindow : Window
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
         RebuildRecentProjects(workspace);
+    }
+
+    // A name inside the inspector adds a crumb; one on a page opens the inspector afresh beside that page.
+    private void OnInspectRequested(WorkspaceShellViewModel workspace, InspectRequestedEventArgs e)
+    {
+        e.Handled = true;
+        if (e.Origin.FindAncestorOfType<Inspector>() is not null)
+        {
+            workspace.Inspector.Push(e.Subject);
+            return;
+        }
+        _inspectedFrom = e.Origin;
+        workspace.Context.OpenInspector(e.Subject, InspectLink.GetFrom(e.Origin));
+    }
+
+    private void ReturnFocusFromInspector()
+    {
+        if (_inspectedFrom is { } origin && TopLevel.GetTopLevel(origin) is not null && origin.IsEffectivelyVisible)
+            origin.Focus(NavigationMethod.Tab);
+        _inspectedFrom = null;
     }
 
     private void OpenPanGlossGuide()
@@ -127,6 +152,14 @@ public sealed partial class MainWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None &&
+            DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true } shell)
+        {
+            e.Handled = true;
+            shell.Inspector.Back();
+            return;
+        }
         if (e.Key != Key.F1) return;
         e.Handled = true;
         _helpAutomationId = e.Source is Control control

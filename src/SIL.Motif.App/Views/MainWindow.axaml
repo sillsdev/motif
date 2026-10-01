@@ -168,7 +168,7 @@
       </Border>
     </Grid>
 
-    <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
 
       <Border x:Name="Sidebar" Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}">
         <DockPanel LastChildFill="True">
@@ -216,6 +216,9 @@
 
       <!-- Every page's own view, built from the page registry; only the current one shows. -->
       <Panel x:Name="PageHost" Grid.Column="1" />
+
+      <!-- The inspector sits beside the page rather than over it, so the page stays where it is. -->
+      <views:Inspector x:Name="Inspector" Grid.Column="2" DataContext="{Binding Inspector}" />
     </Grid>
 
     <views:SetupDialog Grid.RowSpan="3" DataContext="{Binding Context.Setup}" />

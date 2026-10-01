@@ -155,6 +155,8 @@ internal static class ComponentStateContractCases
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
             "Intent.Transform.Pressed");
 
+        yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(Morpheme()), StateStimulus.Pointer,
+            StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Primary");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
@@ -361,6 +363,9 @@ internal static class ComponentStateContractCases
         button.Classes.AddRange(classes);
         return button;
     }
+
+    private static Border Morpheme() =>
+        new() { Classes = { "morph", "inspectable" }, Focusable = true, Width = 80, Height = 40, Child = new TextBlock { Text = "kat" } };
 
     private static Border Cell(params string[] classes)
     {

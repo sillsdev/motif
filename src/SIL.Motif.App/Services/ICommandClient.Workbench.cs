@@ -40,10 +40,9 @@ public partial interface ICommandClient
         WordTraceRequest request, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Reads, from the stored Parse all words and the Baseline, the words that use an object, the words it ran in,
-    /// and what FieldWorks says about it.
+    /// Reads what Motif knows about one inspector subject, each section from its own source: the Baseline's facts,
+    /// the stored Parse all words' words and times, and the stored grammar check's findings.
     /// </summary>
-    Task<CommandOutcome<ObjectUsesResponse>> ObjectUsesAsync(
-        ObjectUsesRequest request, CancellationToken cancellationToken);
+    Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken);
 
 }

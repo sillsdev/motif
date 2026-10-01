@@ -825,4 +825,8 @@ public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
 {
     /// <summary>The rule's timing, as the command reported it.</summary>
     public TimingAggregateRow Row => Share.Source!;
+
+    /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
+    public InspectorSubject InspectSubject => InspectorSubject.Rule(new TraceTimingKey(Row.Kind, Row.Key), Row.Name,
+        Row.IdentityQuality is { Length: > 0 } quality ? quality : "unknown");
 }

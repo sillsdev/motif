@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -13,7 +12,8 @@ namespace SIL.Motif.App.Views;
 /// <summary>
 /// An interlinear row of morphemes: each one its form over its gloss over its category, with the form and
 /// gloss linking into FieldWorks when the project names the entry. Texts, Results and Try a Word all show a
-/// word's parts this way, so they show them through this one control.
+/// word's parts this way, so they show them through this one control. A morpheme the reading names by identity
+/// opens the inspector when clicked, through <see cref="InspectLink.RequestedEvent"/>.
 /// </summary>
 public sealed class MorphemeRow : WrapPanel
 {
@@ -101,46 +101,32 @@ public sealed class MorphemeRow : WrapPanel
             column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
         if (morph.HasLink && !formIsLink) column.Children.Add(Link(morph, RevealLinks));
 
-        var block = new Border { Child = column, Classes = { "morph" }, Focusable = true };
+        var block = new Border { Child = column, Classes = { "morph" }, Tag = morph };
         if (last) block.Classes.Add("last");
         else if (Separators) block.Classes.Add("morphEdge");
-        var popup = new Popup
+        if (morph.InspectSubject is not { } reference) return block;
+
+        // The inspector opens on a click or a key, never on hover, and the page stays where it is.
+        block.Focusable = true;
+        block.Classes.Add("inspectable");
+        AutomationProperties.SetName(block, $"Inspect {morph.Form}");
+        ToolTip.SetTip(block, $"Show {morph.Form} in the inspector");
+        block.PointerReleased += (_, e) =>
         {
-            PlacementTarget = block,
-            IsLightDismissEnabled = true,
-            Child = MorphemeCard(morph),
-        };
-        block.PointerPressed += (_, e) =>
-        {
-            if (e.Source is Visual source && source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
+            if (e.InitialPressMouseButton != MouseButton.Left || e.Source is Visual source &&
+                source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
                 return;
-            popup.IsOpen = true;
+            block.Focus(NavigationMethod.Pointer);
+            InspectLink.Request(block, reference);
             e.Handled = true;
         };
         block.KeyDown += (_, e) =>
         {
-            if (e.Key == Key.Escape) popup.IsOpen = false;
-            else if (e.Key is Key.Enter or Key.Space) popup.IsOpen = true;
-            else return;
+            if (e.Key is not (Key.Enter or Key.Space)) return;
+            InspectLink.Request(block, reference);
             e.Handled = true;
         };
-        var container = new Panel();
-        container.Children.Add(block);
-        container.Children.Add(popup);
-        return container;
-    }
-
-    private static Border MorphemeCard(ParserReadingMorphViewModel morph)
-    {
-        var content = new StackPanel();
-        content.Children.Add(new CopyableTextBlock { Text = "Morpheme details", Classes = { "section-title" } });
-        content.Children.Add(new CopyableTextBlock { Text = morph.Form, FontWeight = FontWeight.SemiBold });
-        content.Children.Add(new CopyableTextBlock { Text = morph.GlossOrPlaceholder });
-        if (morph.Category is { Length: > 0 })
-            content.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "muted" } });
-        if (morph.HasLink)
-            content.Children.Add(Link(morph, reveal: true));
-        return new Border { Classes = { "card", "hoverReveal" }, Child = content };
+        return block;
     }
 
     private static HyperlinkButton FormLink(ParserReadingMorphViewModel morph)

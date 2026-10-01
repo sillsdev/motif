@@ -277,6 +277,48 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         })
         { Height = 2600, Setup = stage => stage.TryTheSampleWord() };
 
+        // The inspector, beside each page that opens it, and one step down its breadcrumb.
+        yield return new("inspector", "from-analyze", async stage =>
+        {
+            await stage.OpenCard("hawajafika");
+            return await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
+                border.Tag is ParserReadingMorphViewModel { Form: "fik" }).First(), "fik on the word card");
+        })
+        { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
+        yield return new("inspector", "breadcrumb-step", async stage =>
+        {
+            await stage.OpenCard("hawajafika");
+            await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
+                border.Tag is ParserReadingMorphViewModel { Form: "wa-" }).First(), "wa- on the word card");
+            return await stage.Inspect(() => stage.Named<InspectLink>("Inspect w-"), "its allomorph w-");
+        })
+        { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
+        yield return new("inspector", "from-try-a-word", async stage =>
+        {
+            stage.Open(WorkspacePage.TryAWord);
+            return await stage.Inspect(() => stage.Visible<InspectLink>(link =>
+                link.FindAncestorOfType<ItemsControl>() is { } list && AutomationProperties.GetName(list) == "Best path rules").First(),
+                "the first rule on the best path");
+        })
+        {
+            Setup = stage =>
+            {
+                stage.Client.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities());
+                return stage.TryTheSampleWord();
+            },
+            Teardown = stage =>
+            {
+                stage.Client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value!);
+                return stage.TryTheSampleWord();
+            },
+        };
+        yield return new("inspector", "from-timing", stage => stage.Inspect(() =>
+        {
+            stage.Open(WorkspacePage.Timing);
+            return stage.Visible<InspectLink>(link =>
+                link.FindAncestorOfType<ItemsControl>() is { } list && AutomationProperties.GetName(list) == "Timing by rule").First();
+        }, "the costliest rule"));
+
         // Timing.
         yield return new("timing", "rule-hover", stage => stage.Hover(WorkspacePage.Timing,
             () => stage.Visible<Button>(button => button.Classes.Contains("timingRuleRow")).First(), "the first rule row"));
@@ -674,6 +716,22 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         }
 
         // Choosing a word on Texts primes Try a Word afresh, so its trace is run again before it is shown.
+        /// <summary>Clicks the name <paramref name="target"/> finds, and waits for the inspector to read it.</summary>
+        public async Task<string> Inspect(Func<Control> target, string what)
+        {
+            var name = target();
+            var centre = CentreOf(name);
+            Window.MouseDown(centre, MouseButton.Left);
+            Window.MouseUp(centre, MouseButton.Left);
+            Window.MouseMove(new Point(4, Window.Bounds.Height - 4));
+            PageScreenshots.Settle(Window);
+            await Workspace.Inspector.Loading;
+            PageScreenshots.Settle(Window);
+            if (!Workspace.Inspector.IsOpen) throw new InvalidOperationException($"Clicking {what} opened no inspector.");
+            return $"Clicked {what}; the inspector shows {Workspace.Inspector.Title}, " +
+                $"breadcrumb {string.Join(" › ", Workspace.Inspector.Crumbs.Select(crumb => crumb.Label))}.";
+        }
+
         public Task TryTheSampleWord()
         {
             Workspace.Context.TryWord("matinlu");
@@ -760,6 +818,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         /// <summary>Closes what a state opened and moves the pointer and focus away, so the next state starts clean.</summary>
         public void Reset()
         {
+            Workspace.Context.CloseInspector();
             foreach (var menu in _menus) menu.Hide();
             _menus.Clear();
             foreach (var owner in _tips)

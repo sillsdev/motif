@@ -767,6 +767,7 @@ public sealed class TraceMorphViewModel
             $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"Grammatical info ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
             $"Writing systems: {(WritingSystems.Length == 0 ? "not recorded" : WritingSystems)}",
         });
+        InspectSubject = InspectorSubject.Morpheme(morph.FormId, morph.MsaId, morph.Form ?? morph.Headword, morph.Gloss);
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
                string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
         var toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
@@ -875,6 +876,11 @@ public sealed class TraceMorphViewModel
     public string EntryId { get; }
     public string MsaId { get; }
     public string InflTypeId { get; }
+
+    /// <summary>The morph as the inspector looks it up, by identity; <see langword="null"/> when the trace names no id.</summary>
+    public InspectorSubject? InspectSubject { get; }
+    public bool CanInspect => InspectSubject is not null;
+    public bool CannotInspect => InspectSubject is null;
     public string Details { get; }
     public string WritingSystems { get; }
     public Uri? Link { get; }
