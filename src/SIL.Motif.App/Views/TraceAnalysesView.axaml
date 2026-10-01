@@ -45,7 +45,7 @@
                               <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
                             </Expander>
                             <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
-                            <HyperlinkButton Content="Open compatible FieldWorks entry"
+                            <HyperlinkButton Content="{Binding LinkText}"
                                              NavigateUri="{Binding Link}"
                                              IsVisible="{Binding HasLink}"
                                              Padding="{DynamicResource Intent.Inset.None}"

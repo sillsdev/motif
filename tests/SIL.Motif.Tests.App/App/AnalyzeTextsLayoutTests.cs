@@ -313,7 +313,8 @@ public sealed class AnalyzeTextsLayoutTests
 
                     var links = strip.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
                     var link = Assert.Single(links);
-                    Assert.Equal($"Open {form} in FieldWorks", Avalonia.Automation.AutomationProperties.GetName(link));
+                    Assert.Equal($"Open {form} in Word Analyses", Avalonia.Automation.AutomationProperties.GetName(link));
+                    Assert.Equal("Word Analyses ↗", link.Content);
                     Assert.Equal(0, link.Opacity);
                     Assert.True(link.Focusable && link.IsTabStop, $"The FieldWorks link of {form} leaves the tab order.");
                 }

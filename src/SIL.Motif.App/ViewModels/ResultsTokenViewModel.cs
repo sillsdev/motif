@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -221,7 +222,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public int OccurrenceIndex { get; }
     public bool HasWordLink => WordLink is not null;
     public bool HasNoWordLink => IsWord && WordLink is null;
-    public string WordLinkName => $"Open {Text} in FieldWorks";
+    public string WordLinkName => $"Open {Text} in {FieldWorksLinks.ToolNameOf(WordLink?.OriginalString)}";
+
+    /// <summary>The text of the word's link into FieldWorks, naming the FieldWorks tool it opens.</summary>
+    public string WordLinkText => $"{FieldWorksLinks.ToolNameOf(WordLink?.OriginalString)} ↗";
 
     /// <summary>The Analyze texts actions available to this word card.</summary>
     public ResultsInTextViewModel? Actions { get; internal set; }

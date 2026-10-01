@@ -225,7 +225,7 @@
                                   <TextBlock Text="{Binding MoreFieldWorksLabel}" />
                                 </Border>
                                 <TextBlock Classes="stripNothing" Text="Nothing in FieldWorks" IsVisible="{Binding HasNothingStored}" />
-                                <HyperlinkButton Classes="revealControl revealLink" Content="FW ↗" VerticalAlignment="Top"
+                                <HyperlinkButton Classes="revealControl revealLink" Content="{Binding WordLinkText}" VerticalAlignment="Top"
                                                  NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
                                                  AutomationProperties.Name="{Binding WordLinkName}" />
                               </StackPanel>
@@ -338,7 +338,7 @@
                             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" VerticalAlignment="Center"
                                                      Text="Esc closes · ← → next word"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink" Content="Open in FieldWorks ↗"
+                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink" Content="{Binding WordLinkText}"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
                                              VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}" />
                           </DockPanel>

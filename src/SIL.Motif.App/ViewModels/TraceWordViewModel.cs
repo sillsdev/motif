@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Projection.Usage;
 
 namespace SIL.Motif.App.ViewModels;
@@ -789,6 +790,10 @@ public sealed class TraceMorphViewModel
         });
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
                string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
+        var toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
+        LinkName = string.IsNullOrWhiteSpace(morph.Headword)
+            ? $"Open the entry for {Form} in {toolName}"
+            : $"Open {morph.Headword} in {toolName}";
     }
 
     private static string ValueOrUnavailable(string? value, string label) =>
@@ -896,7 +901,10 @@ public sealed class TraceMorphViewModel
     public Uri? Link { get; }
     public bool HasLink => Link is not null;
     public bool HasNoLink => Link is null;
-    public string LinkName => $"Open the compatible FieldWorks entry for {Form}";
+    public string LinkName { get; }
+
+    /// <summary>The link's own text: what opens, and the FieldWorks tool it opens in.</summary>
+    public string LinkText => $"{LinkName} ↗";
 }
 
 /// <summary>
