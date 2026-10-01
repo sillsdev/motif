@@ -1016,8 +1016,14 @@ public sealed partial class CompareWordViewModel : ObservableObject
     /// <summary>Why the word has no analyses from PanGloss, in the window's words.</summary>
     public string NoReadingsText { get; }
 
-    // The row already shows one approved analysis; the card repeats a missed one only when there is more to see.
-    public bool ShowsMissedApproved => MissedApproved.Count > (HasFieldWorksAnalysis ? 1 : 0);
+    /// <summary>
+    /// The approved analyses PanGloss did not build, for the card: every one except the analysis the row already
+    /// shows, matched by its FieldWorks identity, never by how many there are.
+    /// </summary>
+    public IReadOnlyList<ParserReadingViewModel> NotBuiltAnalyses => [.. MissedApproved.Where(
+        reading => reading.StoredAnalysisId is not { } id || id != WordRow.Row.FieldWorksAnalysisId)];
+
+    public bool ShowsMissedApproved => NotBuiltAnalyses.Count > 0;
 
     public int ReadingCount { get; }
 

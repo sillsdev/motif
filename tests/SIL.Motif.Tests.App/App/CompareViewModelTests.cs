@@ -596,6 +596,55 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
+    public void TheCardNamesEveryApprovedAnalysisPanGlossMissed_ExceptTheOneTheRowShows()
+    {
+        var a = Approved("a", "kit", "abu");
+        var b = Approved("b", "ki", "tabu");
+
+        var missesB = CardWord(stored: [a, b], built: [a], missed: [b]);
+        Assert.True(missesB.ShowsMissedApproved);
+        Assert.Equal(["b"], missesB.NotBuiltAnalyses.Select(reading => reading.StoredAnalysisId));
+
+        var missesTheShownOne = CardWord(stored: [a], built: [], missed: [a]);
+        Assert.False(missesTheShownOne.ShowsMissedApproved);
+        Assert.Empty(missesTheShownOne.NotBuiltAnalyses);
+
+        var missesBoth = CardWord(stored: [a, b], built: [], missed: [a, b]);
+        Assert.True(missesBoth.ShowsMissedApproved);
+        Assert.Equal(["b"], missesBoth.NotBuiltAnalyses.Select(reading => reading.StoredAnalysisId));
+    }
+
+    internal static ParserReading Approved(string id, params string[] forms) =>
+        new([.. forms.Select(form => new ParserReadingMorph(form, form + "-gloss", "n", null, false, null)
+        {
+            AllomorphId = IdOf("allomorph " + form),
+            GrammaticalInfoId = IdOf("grammatical info " + form),
+        })])
+        {
+            StoredAnalysisId = id,
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+        };
+
+    // A word FieldWorks approved as each of stored, in order, for which PanGloss built built and missed missed.
+    internal static CompareWordViewModel CardWord(ParserReading[] stored, ParserReading[] built, ParserReading[] missed)
+    {
+        var compare = new CompareViewModel();
+        compare.Load([new AssessWordRowViewModel(new AssessmentWordResult(
+            "kitabu", built.Length > 0 ? "analysed" : "no-analysis", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            ExpectedAnalysis = stored[0],
+            StoredAnalyses = stored,
+            Readings = built,
+            ReadingGrades = [.. built.Select(_ => ReadingGrade.Approved)],
+            MissedApproved = missed,
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10, false, false, false,
+                [.. built.Select(_ => new ParseAnalysis([]))], []),
+        })]);
+        return compare.Words.Single();
+    }
+
+    [Fact]
     public void TheMeaningColumnShowsOnlyWhenTheListedCellsMixMeanings()
     {
         var compare = LostWords(

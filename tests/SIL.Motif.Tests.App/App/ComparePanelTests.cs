@@ -168,6 +168,29 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void AnOpenedCardShowsTheApprovedAnalysisPanGlossMissed_WhenItBuiltAnotherApprovedOne()
+    {
+        avalonia.Invoke(() =>
+        {
+            var a = CompareViewModelTests.Approved("a", "kit", "abu");
+            var b = CompareViewModelTests.Approved("b", "ki", "tabu");
+            var word = CompareViewModelTests.CardWord(stored: [a, b], built: [a], missed: [b]);
+            var compare = new CompareViewModel();
+            compare.Load([new AssessWordRowViewModel(word.Source)]);
+            WithPanel(compare, 1400, window =>
+            {
+                compare.Words.Single().IsExpanded = true;
+                window.UpdateLayout();
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
+                Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "NOT BUILT");
+                var notBuilt = card.GetVisualDescendants().OfType<MorphemeRow>().Last(row => row.IsEffectivelyVisible);
+                Assert.Equal(["ki", "tabu"], notBuilt.Morphs!.Select(morph => morph.Form));
+            });
+        });
+    }
+
+    [Fact]
     public void ColumnHeadsCarryTheOutcomeMarks_RowHeadsTheOpinionMarks_AndNoCountToggleIsLeft()
     {
         avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1000, window =>
