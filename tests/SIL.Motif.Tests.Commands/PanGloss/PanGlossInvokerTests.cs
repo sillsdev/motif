@@ -124,18 +124,28 @@ public sealed class PanGlossInvokerTests : IDisposable
     public async Task BatchReportsTheCurrentWordBeforeTheNextOneCompletes()
     {
         var project = Project("batch-progress");
-        FakeParser.Behave(_root, new { streamProgress = true, delayMilliseconds = 250 });
+        var release = Path.Combine(_root, "release-word");
+        FakeParser.Behave(_root, new { streamProgress = true, holdEachWordUntil = release });
         using var invoker = Invoker();
         var seen = new ConcurrentQueue<TrialWordProgress>();
 
         var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(project,
-            ["one", "two"], TimeSpan.FromSeconds(1)) { OnProgress = seen.Enqueue },
-            "test:batch-progress", CancellationToken.None);
+            ["one", "two"], TimeSpan.FromSeconds(1))
+        {
+            OnProgress = progress =>
+            {
+                seen.Enqueue(progress);
+                // The fake finishes a word only once Motif has reported that the parser is on it.
+                if (progress.CurrentWord is not null)
+                    File.WriteAllText(release + "." + progress.Completed, string.Empty);
+            },
+        }, "test:batch-progress", CancellationToken.None);
 
-        Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
         var updates = seen.ToArray();
+        Assert.Contains(new TrialWordProgress(0, 2, "one"), updates);
         Assert.Contains(new TrialWordProgress(1, 2, "two"), updates);
-        Assert.Contains(new TrialWordProgress(2, 2, null), updates);
+        Assert.Equal(new TrialWordProgress(2, 2, null), updates[^1]);
         Assert.Equal(updates.Distinct(), updates);
         Assert.All(updates.Zip(updates.Skip(1)), pair => Assert.True(pair.First.Completed <= pair.Second.Completed));
     }
