@@ -113,7 +113,7 @@ public sealed class CompareActionsTests
     {
         var (table, compare) = Loaded();
 
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
 
         Assert.Equal(["mwalimu"], table.Rows.Select(row => row.Word));
 
@@ -345,7 +345,7 @@ public sealed class CompareActionsTests
         await compare.Changes.OpenProjectAsync("project.fwdata");
         await compare.Changes.ReloadAsync();
         compare.Load(table.AllRows);
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
         compare.ClearSelectionCommand.Execute(null);
         compare.Changes.Reset();
 

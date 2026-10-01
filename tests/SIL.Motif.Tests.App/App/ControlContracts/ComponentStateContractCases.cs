@@ -463,6 +463,8 @@ internal static class TooltipOwners
                 list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
             control => control is MenuItem),
+        new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
+            control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is null),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,

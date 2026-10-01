@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using Avalonia;
 using Avalonia.Styling;
 using Avalonia.Automation;
 using SIL.Motif.Commands.Queries;
@@ -90,20 +91,12 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(5, compare.Rows.Count);
                 Assert.Equal(5, compare.Columns.Count);
                 Assert.Equal(25, window.GetLogicalDescendants().OfType<MatrixCell>().Count());
-                Assert.Equal(5, window.GetVisualDescendants().OfType<OpinionMark>().Count(mark => mark.IsEffectivelyVisible));
+                Assert.Equal(4, window.GetVisualDescendants().OfType<OpinionMark>().Count(mark => mark.IsEffectivelyVisible &&
+                    mark.FindAncestorOfType<Button>()?.DataContext is CompareRowViewModel));
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
                     text.Text is "FieldWorks" or "PanGloss");
-                foreach (var (label, statusClass) in new[]
-                         { ("Stopped", "capped"), ("Not parsed", "notAssessed") })
-                {
-                    var heading = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                        button.Classes.Contains("header") && button.GetLogicalDescendants().OfType<TextBlock>()
-                            .Any(text => text.Text == label));
-                    var line = Assert.Single(heading.GetLogicalDescendants().OfType<Border>());
-                    Assert.DoesNotContain(statusClass, line.Classes);
-                }
                 var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
                 var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
                 Assert.Equal("kitabu · Approved · PanGloss: No parse · Lost", AutomationProperties.GetName(body));
@@ -171,6 +164,121 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 window.Close();
             }
         });
+    }
+
+    [Fact]
+    public void ColumnHeadsCarryTheOutcomeMarks_RowHeadsTheOpinionMarks_AndNoCountToggleIsLeft()
+    {
+        avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1000, window =>
+        {
+            Assert.Empty(window.GetLogicalDescendants().OfType<RadioButton>());
+            var heads = window.GetLogicalDescendants().OfType<Button>()
+                .Where(button => button.DataContext is CompareColumnViewModel).ToArray();
+            Assert.Equal(5, heads.Length);
+            foreach (var head in heads)
+            {
+                var column = (CompareColumnViewModel)head.DataContext!;
+                var glyph = Assert.Single(head.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Classes.Contains("markGlyph"));
+                Assert.Equal(column.OutcomeMark.Glyph, glyph.Text);
+                Assert.Contains("outcomeMark", glyph.Classes);
+                Assert.Contains(column.OutcomeMark.Value, glyph.Classes);
+                Assert.Contains(head.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == column.Label);
+            }
+            var approvedRow = window.GetLogicalDescendants().OfType<Button>()
+                .Single(button => button.DataContext is CompareRowViewModel { Row: WordProjectStatus.Approved });
+            Assert.Equal(OpinionMarkKind.Approved, Assert.Single(approvedRow.GetVisualDescendants().OfType<OpinionMark>()).Kind);
+        }));
+    }
+
+    [Fact]
+    public void ACellShowsItsWordsBigAndItsPlacesSmall_AndItsTooltipIsOneLine()
+    {
+        avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1000, window =>
+        {
+            var lost = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
+                cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
+            var texts = lost.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible).ToArray();
+            var count = Assert.Single(texts, text => text.Classes.Contains("matrixCellCount"));
+            var places = Assert.Single(texts, text => text.Classes.Contains("matrixCellPlaces"));
+            Assert.Equal("4", count.Text);
+            Assert.Equal("7 places", places.Text);
+            Assert.True(places.FontSize < count.FontSize);
+            Assert.Contains(texts, text => text.Text == "Lost");
+            Assert.Equal("You approved these in FieldWorks; the grammar builds nothing for them.", ToolTip.GetTip(lost));
+
+            var empty = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
+                cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Rejected, Column: CompareColumnKind.Match });
+            Assert.DoesNotContain(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Classes.Contains("matrixCellPlaces") && text.IsEffectivelyVisible);
+        }));
+    }
+
+    [Fact]
+    public void TheChosenCellsPanelShowsWhatItsWordsShare_AboveOneRowOfControls()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = CompareViewModelTests.LostWords();
+            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                cell.Column == CompareColumnKind.NoParse), additive: false);
+            WithPanel(compare, 1000, window =>
+            {
+                var strip = Assert.Single(window.GetVisualDescendants().OfType<Border>(), border =>
+                    border.Classes.Contains("matrixShared"));
+                Assert.True(strip.IsEffectivelyVisible);
+                var stripTexts = strip.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).ToArray();
+                Assert.Contains("What these words share", stripTexts);
+                Assert.Contains("kat", stripTexts);
+                Assert.Contains("cut", stripTexts);
+                Assert.Contains("in 2", stripTexts);
+                Assert.Contains(strip.GetVisualDescendants().OfType<Control>(), control =>
+                    AutomationProperties.GetName(control) == "kat cut: 2 of these words use it");
+
+                var heading = Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
+                    control.Classes.Contains("matrixChosenHeading"));
+                Assert.Contains(heading.GetVisualDescendants().OfType<OpinionMark>(), mark => mark.Kind == OpinionMarkKind.Approved);
+                Assert.Contains(heading.GetVisualDescendants().OfType<MarkChip>(), chip => chip.Text == "Lost");
+                Assert.Contains(heading.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "4 words · 7 places");
+                Assert.Contains(heading.GetVisualDescendants().OfType<Button>(), button =>
+                    Equals(button.Content, "AI Handoff for these 4 words"));
+                Assert.True(strip.Bounds.Top >= heading.Bounds.Bottom - 1);
+
+                Control Named(string name) => Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
+                    AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
+                var controls = new[]
+                {
+                    Named("Order the listed words"), Named("Search the listed words"),
+                    Named("Add checked words as Unknown"), Named("Mark checked words as incorrect spelling"),
+                };
+                var line = controls.Select(control => control.TranslatePoint(new Point(0, control.Bounds.Height / 2), window)!.Value.Y)
+                    .ToArray();
+                Assert.True(line.Max() - line.Min() < 4, "The list's controls share one row: " + string.Join(", ", line));
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text is "Approve one analysis at a time, in the text.");
+            });
+        });
+    }
+
+    private static void WithPanel(CompareViewModel compare, double width, Action<Window> check)
+    {
+        var window = new Window
+        {
+            Content = new ComparePanel(compare),
+            RequestedThemeVariant = ThemeVariant.Light,
+            Width = width,
+            Height = 900,
+        };
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            check(window);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     private static ParserReading StoredReading(string id, string opinion) =>

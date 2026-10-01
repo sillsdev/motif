@@ -125,14 +125,18 @@ public static class ObjectUsesQuery
         ArgumentNullException.ThrowIfNull(wordSet);
         var asked = wordSet.Select(Normalize).ToHashSet(StringComparer.Ordinal);
         var morphemes = new List<(string Key, ParserReadingMorph Morph, List<string> Words)>();
+        var indexOf = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var word in words.Where(word => asked.Contains(word.Word)))
             foreach (var morph in MorphsUsedBy(word))
             {
                 if (morph.AllomorphId is not { } allomorph || morph.GrammaticalInfoId is not { } grammaticalInfo) continue;
                 var key = IdKey(allomorph) + "/" + IdKey(grammaticalInfo);
-                var index = morphemes.FindIndex(item => item.Key == key);
-                if (index < 0) morphemes.Add((key, morph, [word.Word]));
-                else if (!morphemes[index].Words.Contains(word.Word)) morphemes[index].Words.Add(word.Word);
+                if (!indexOf.TryGetValue(key, out var index))
+                {
+                    indexOf.Add(key, morphemes.Count);
+                    morphemes.Add((key, morph, [word.Word]));
+                }
+                else if (morphemes[index].Words[^1] != word.Word) morphemes[index].Words.Add(word.Word);
             }
         return morphemes.Where(item => item.Words.Count >= 2)
             .Select((item, order) => (item, order)).OrderByDescending(pair => pair.item.Words.Count)

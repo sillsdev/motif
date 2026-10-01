@@ -1,5 +1,7 @@
 <!--
   A Matrix cell wears its meaning: Fine in text, Have a look and Problem filled and edged, Unknown yet in text.
+  It shows its words big and their places small beside them. The chosen cells' list sits in a panel under the
+  Matrix, headed by the cell's marks, with a strip of the morphemes its words share.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -12,7 +14,9 @@
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
-    <StaticResource x:Key="Component.MatrixCell.WordPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
+    <StaticResource x:Key="Component.MatrixCell.PlacesMargin" ResourceKey="Primitive.Inset.0_0_0_3" />
+    <StaticResource x:Key="Component.MatrixCell.SharedPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.MatrixCell.SharedRadius" ResourceKey="Primitive.Radius.6" />
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />
@@ -23,19 +27,21 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
   </Style>
-  <Style Selector="Border.matrixWordCell">
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.WordPadding}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
-  </Style>
   <Style Selector="Border.matrixCell :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Neutral}" />
+  </Style>
+  <Style Selector="Border.matrixCell StackPanel.matrixCellCounts">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellCount">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- The places sit on the count's baseline, small, so the words stay the number the eye reads first. -->
+  <Style Selector="Border.matrixCell :is(TextBlock).matrixCellPlaces">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Margin" Value="{DynamicResource Component.MatrixCell.PlacesMargin}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellLabel">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
@@ -52,7 +58,7 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="Border.matrixCell.compact :is(TextBlock).matrixCellLabel, Border.matrixCell.compact Ellipse.matrixPending">
+  <Style Selector="Border.matrixCell.compact :is(TextBlock).matrixCellLabel, Border.matrixCell.compact :is(TextBlock).matrixCellPlaces, Border.matrixCell.compact Ellipse.matrixPending">
     <Setter Property="IsVisible" Value="False" />
   </Style>
   <Style Selector="Border.matrixCell.good :is(TextBlock), Border.matrixCell.fine :is(TextBlock)">
@@ -107,5 +113,32 @@
     <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.MarkerSize}" />
     <Setter Property="Height" Value="{DynamicResource Component.MatrixCell.MarkerSize}" />
     <Setter Property="Fill" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
+
+  <Style Selector="StackPanel.matrixChosenMarks">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="StackPanel.matrixChosenMarks :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.matrixShared">
+    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.SharedPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.SharedRadius}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+  <Style Selector="Border.matrixShared :is(TextBlock).matrixSharedHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.matrixShared StackPanel.matrixSharedItem">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterRelated}" />
+  </Style>
+  <Style Selector="Border.matrixShared :is(TextBlock).matrixSharedCount">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 </Styles>
