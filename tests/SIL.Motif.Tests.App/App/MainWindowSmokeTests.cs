@@ -25,6 +25,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
+using WordRow = SIL.Motif.App.Views.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -856,8 +857,9 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
 
-                var open = panel.GetLogicalDescendants().OfType<HyperlinkButton>().Single(button =>
-                    AutomationProperties.GetName(button) == "Analyze motifa in its texts");
+                var open = panel.GetVisualDescendants().OfType<HyperlinkButton>().Single(button =>
+                    AutomationProperties.GetName(button) == "Open motifa in Analyze texts" &&
+                    button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the chosen cells");
                 Assert.True(open.Command?.CanExecute(open.CommandParameter));
                 open.Command!.Execute(open.CommandParameter);
                 var selected = workspace.PageModel<TextsPageModel>().ResultsInText.SelectedToken;
@@ -954,7 +956,7 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
                     candidate.CommandParameter is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
                 var open = Assert.Single(panel.GetLogicalDescendants().OfType<HyperlinkButton>(), candidate =>
-                    AutomationProperties.GetName(candidate) == "Analyze pasted-word in its texts");
+                    AutomationProperties.GetName(candidate) == "Open pasted-word in Analyze texts");
                 Assert.Equal("Open in text", open.Content);
             }
             finally
@@ -965,7 +967,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void FixFirstCollapsesToItsCountAndHighlightsTheFocusedWordWithItsReasonVisible()
+    public void FixFirstCollapsesToItsCountAndOpensTheChosenWordWithItsReasonVisible()
     {
         _avalonia.Invoke(() =>
         {
@@ -1000,8 +1002,7 @@ public sealed class MainWindowSmokeTests
                 var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
                 var list = panel.GetLogicalDescendants().OfType<ListBox>()
                     .Single(control => AutomationProperties.GetName(control) == "Words to check first");
-                var disclosure = panel.GetLogicalDescendants().OfType<Expander>()
-                    .Single(control => ReferenceEquals(control.Content, list));
+                var disclosure = list.GetLogicalAncestors().OfType<Expander>().First();
                 disclosure.IsExpanded = false;
                 window.UpdateLayout();
 
@@ -1013,19 +1014,23 @@ public sealed class MainWindowSmokeTests
 
                 disclosure.IsExpanded = true;
                 window.UpdateLayout();
-                var rowButton = panel.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => button.Classes.Contains("fixFirstWord"));
-                var explanation = panel.GetVisualDescendants().OfType<TextBlock>()
+                var row = list.GetVisualDescendants().OfType<WordRow>().Single();
+                Assert.False(row.ShowsTick);
+                var explanation = row.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Text == priority.Explanation);
-                Assert.Equal(TextWrapping.NoWrap,
-                    panel.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == priority.Explanation).TextWrapping);
+                Assert.True(explanation.IsEffectivelyVisible);
+                Assert.Equal(TextWrapping.NoWrap, explanation.TextWrapping);
 
-                rowButton.Command!.Execute(rowButton.CommandParameter);
+                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
+                HeadlessClick.Click(window, body, "motifa in Fix these first");
                 window.UpdateLayout();
 
-                Assert.Contains("focused", rowButton.Classes);
+                Assert.True(row.IsOpen);
+                var line = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRow"));
+                Assert.Contains("open", line.Classes);
                 Assert.True(Application.Current!.TryGetResource("Intent.Selected.Fill", ThemeVariant.Light, out var selectedFill));
-                Assert.Equal(selectedFill, rowButton.Background);
+                Assert.Equal(selectedFill, line.Background);
+                Assert.Equal("motifa", workspace.Assess.Compare.SearchText);
             }
             finally
             {

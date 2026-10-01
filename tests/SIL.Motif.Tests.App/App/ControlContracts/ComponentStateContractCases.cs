@@ -257,6 +257,22 @@ internal static class ComponentStateContractCases
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
         yield return new("Border.wordStrip.open", "open and keyboard focus", () => Alone(Strip("open")), StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+
+        const string rowsFace = " /template/ ContentPresenter#PART_ContentPresenter";
+        yield return new("ListBox.wordRows ListBoxItem:pointerover" + rowsFace, "hover", () => WordRowsEntry(selected: false),
+            StateStimulus.Pointer, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
+        yield return new("ListBox.wordRows ListBoxItem:selected" + rowsFace, "selected", () => WordRowsEntry(selected: true),
+            StateStimulus.None, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
+        yield return new("Border.wordRow:pointerover", "hover", () => Alone(WordRowLine()), StateStimulus.Pointer,
+            StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new("Border.wordRow.open", "opened", () => Alone(WordRowLine("open")), StateStimulus.None,
+            StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Border.wordRow.open", "opened under the pointer", () => Alone(WordRowLine("open")),
+            StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Border.wordRow.open", "opened and keyboard focus", OpenRowBody, StateStimulus.KeyboardFocus,
+            StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Border.wordRow.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
+            StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
     }
 
     // A press lands under the pointer, so each face style is reached once by hovering and once by pressing.
@@ -280,6 +296,34 @@ internal static class ComponentStateContractCases
             .Where(adorner => ReferenceEquals(AdornerLayer.GetAdornedElement(adorner), target))
             .Select(adorner => adorner as Border ?? adorner.GetVisualDescendants().OfType<Border>().FirstOrDefault())
             .FirstOrDefault(ring => ring is not null);
+    }
+
+    private static (Control, Control) WordRowsEntry(bool selected)
+    {
+        var list = new ListBox { Classes = { "wordRows" } };
+        var item = new ListBoxItem { Content = "kitabu" };
+        list.Items.Add(item);
+        if (selected) list.SelectedIndex = 0;
+        return (list, item);
+    }
+
+    private static Border WordRowLine(params string[] classes)
+    {
+        var line = new Border { Classes = { "wordRow" }, Width = 300, Height = 40, Child = new TextBlock { Text = "kitabu" } };
+        line.Classes.AddRange(classes);
+        return line;
+    }
+
+    private static (Control, Control) OpenRowBody()
+    {
+        var body = new Border { Classes = { "wordRowBody" }, Focusable = true, Child = new TextBlock { Text = "kitabu" } };
+        return (new Border { Classes = { "wordRow", "open" }, Width = 300, Height = 40, Child = body }, body);
+    }
+
+    private static (Control, Control) OpenRowEdge()
+    {
+        var edge = new Border { Classes = { "wordRowEdge" }, Child = new TextBlock { Text = "kitabu" } };
+        return (new Border { Classes = { "wordRow", "open" }, Width = 300, Height = 40, Child = edge }, edge);
     }
 
     private static (Control, Control) Alone(Control control) => (control, control);
@@ -397,11 +441,16 @@ internal static class TooltipOwners
             control => control is MenuItem),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
-        new("pending change on a fix-first word", "Views/ComparePanel.axaml", "{Binding Word.PendingChangeStatus}",
-            TooltipScene.MatrixStaged, control => control is Ellipse && control.DataContext is CompareFixFirstViewModel)
+        new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
+            control => control is Border && control.Classes.Contains("wordRowBody")),
+        new("unread word in a row", "Views/WordRow.axaml", "{Binding UnreadText}", TooltipScene.Matrix,
+            control => control is Ellipse && control.FindAncestorOfType<WordRow>() is not null)
         {
-            Pending = "the sample's words have no fix-first entry",
+            Pending = "the sample's Matrix words carry no read state until Analyze texts loads it",
         },
+        new("Word Analyses on a row", "Views/WordRow.axaml", "{Binding WordAnalysesTip}", TooltipScene.Matrix,
+            control => control is HyperlinkButton && control.FindAncestorOfType<WordRow>() is not null &&
+                control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Classes.Contains("wordRowNext"))),
         new("compact Matrix cell", "Views/MiniMatrix.axaml", "{Binding AccessibleName}", TooltipScene.Matrix,
             control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is not null)
         {

@@ -1,0 +1,186 @@
+<!--
+  The one word row every word list shows: a dense row of the word, its morphemes as chips, its marks, where and how
+  long, and the three next steps, with the word's card opening inside it. Hover lifts the row; an opened row takes
+  the selected fill and an accent edge; keyboard focus draws the window's own ring. A PanGloss morpheme FieldWorks
+  lacks is blue, as a Different outcome is. A list that hosts rows drops its own selection and hover so the row's
+  states are the only ones. Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own
+  Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordRow.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.WordRow.MinHeight" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.WordRow.CardPadding" ResourceKey="Primitive.Inset.36_4_8_8" />
+    <StaticResource x:Key="Component.WordRow.MorphPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
+    <StaticResource x:Key="Component.WordRow.MorphRadius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.WordRow.TickWidth" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.WordRow.WordWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordRow.PanGlossWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordRow.MeaningWidth" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.WordRow.WarningsWidth" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.WordRow.PlacesWidth" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.WordRow.TimeWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.WordRow.ReadWidth" ResourceKey="Primitive.Size.14" />
+    <StaticResource x:Key="Component.WordRow.CardLabelWidth" ResourceKey="Primitive.Size.90" />
+  </Styles.Resources>
+
+  <Style Selector="ListBox.wordRows ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Focusable" Value="False" />
+  </Style>
+  <Style Selector="ListBox.wordRows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="ListBox.wordRows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="ListBox.wordRows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+
+  <!-- The row's words stay selectable for copying, but Tab goes from the row to its next steps, not word by word. -->
+  <Style Selector="Border.wordRow SelectableTextBlock, Border.wordRowHeader SelectableTextBlock">
+    <Setter Property="IsTabStop" Value="False" />
+  </Style>
+  <Style Selector="Border.wordRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.wordRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector="Border.wordRow.open">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Border.wordRowEdge">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.MarkerStart}" />
+  </Style>
+  <Style Selector="Border.wordRow.open Border.wordRowEdge">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector="Grid.wordRowLine">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordRow.MinHeight}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Grid.wordRowCells">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Border.wordRowBody">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordRow.Padding}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Border.wordRowCard">
+    <Setter Property="Padding" Value="{DynamicResource Component.WordRow.CardPadding}" />
+  </Style>
+
+  <Style Selector=":is(Control).wordRowTick">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.TickWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowWord">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.WordWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowPanGloss">
+    <Setter Property="MinWidth" Value="{DynamicResource Component.WordRow.PanGlossWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowMeaning">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.MeaningWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowWarnings">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.WarningsWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowPlaces">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.PlacesWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowTime">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.TimeWidth}" />
+  </Style>
+  <Style Selector=":is(Control).wordRowRead">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.ReadWidth}" />
+  </Style>
+  <Style Selector="StackPanel.wordRowNext">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="StackPanel.wordRowNext HyperlinkButton">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+
+  <Style Selector=":is(TextBlock).wordRowForm">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowGloss">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowStaged">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowNumber">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowNumber.muted">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowNote">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+
+  <Style Selector="Border.wordRowMorph">
+    <Setter Property="Padding" Value="{DynamicResource Component.WordRow.MorphPadding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordRow.MorphRadius}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.wordRowMorph :is(TextBlock).wordRowMorphForm">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.wordRowMorph :is(TextBlock).wordRowMorphGloss">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Micro}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Border.wordRowMorph.different">
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Different.Fill}" />
+  </Style>
+  <Style Selector="Border.wordRowMorph.different :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
+  </Style>
+
+  <Style Selector="Border.wordRowHeader">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Grid.wordRowHeadLine">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Border.wordRowHeadCells">
+    <Setter Property="Padding" Value="{DynamicResource Component.WordRow.Padding}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+
+  <Style Selector="Grid.wordRowCardGrid">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="RowSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="StackPanel.wordRowCardSection">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowCardLabel">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.CardLabelWidth}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+</Styles>

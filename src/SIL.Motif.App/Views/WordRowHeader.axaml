@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.WordRowHeader"
+             x:DataType="views:WordRowHeader"
+             x:Name="Self">
+  <Border Classes="wordRowHeader">
+    <Border Classes="wordRowEdge">
+      <Grid Classes="wordRowHeadLine">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowNext" />
+        </Grid.ColumnDefinitions>
+        <Panel Classes="wordRowTick" />
+        <Border Grid.Column="1" Classes="wordRowHeadCells">
+          <Grid Classes="wordRowCells">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPanGloss" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowMeaning" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWarnings" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPlaces" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTime" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowRead" />
+            </Grid.ColumnDefinitions>
+            <views:CopyableTextBlock Classes="wordRowWord wordRowHeading" Text="WORD" />
+            <views:CopyableTextBlock Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS ANALYSIS" />
+            <views:CopyableTextBlock Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS" />
+            <views:CopyableTextBlock Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING" />
+            <views:CopyableTextBlock Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
+                       AutomationProperties.Name="Warnings" />
+            <views:CopyableTextBlock Grid.Column="5" Classes="wordRowPlaces wordRowHeading" Text="PLACES" TextAlignment="Right" />
+            <views:CopyableTextBlock Grid.Column="6" Classes="wordRowTime wordRowHeading" Text="TIME" TextAlignment="Right" />
+            <Panel Grid.Column="7" Classes="wordRowRead" />
+          </Grid>
+        </Border>
+        <views:CopyableTextBlock Grid.Column="2" Classes="wordRowHeading" Text="NEXT" HorizontalAlignment="Right" />
+      </Grid>
+    </Border>
+  </Border>
+</UserControl>

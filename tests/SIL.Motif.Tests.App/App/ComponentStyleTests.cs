@@ -585,6 +585,32 @@ public sealed partial class ComponentStyleTests
         yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
             "Intent.Space.Snug");
 
+        yield return new("WordRow", "a row's divider", host => Add(host, Box("wordRow")),
+            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("WordRow", "an opened row", host => Add(host, Box("wordRow", "open")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("WordRow", "an opened row's accent edge", OpenRowEdge, Border.BorderBrushProperty, "Intent.Accent");
+        yield return new("WordRow", "a row's body", host => Add(host, Box("wordRowBody")),
+            Border.PaddingProperty, "Component.WordRow.Padding");
+        yield return new("WordRow", "a row's height", host => Add(host, With(new Grid(), ["wordRowLine"])),
+            Control.MinHeightProperty, "Component.WordRow.MinHeight");
+        yield return new("WordRow", "the word", host => Add(host, Text("wordRowForm")),
+            TextBlock.FontSizeProperty, "Intent.Type.Navigation");
+        yield return new("WordRow", "the gloss", host => Add(host, Text("wordRowGloss")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("WordRow", "a staged change", host => Add(host, Text("wordRowStaged")),
+            TextBlock.ForegroundProperty, "Intent.Change.Text");
+        yield return new("WordRow", "a morpheme PanGloss built differently",
+            host => Add(host, Box("wordRowMorph", "different")), Border.BackgroundProperty, "Intent.Outcome.Different.Fill");
+        yield return new("WordRow", "a differing morpheme's form", host => Inside(host, Box("wordRowMorph", "different")),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
+        yield return new("WordRow", "the opened card", host => Add(host, Box("wordRowCard")),
+            Border.PaddingProperty, "Component.WordRow.CardPadding");
+        yield return new("WordRow", "the meaning column", host => Add(host, Box("wordRowMeaning")),
+            Control.WidthProperty, "Component.WordRow.MeaningWidth");
+        yield return new("WordRow", "a column head", host => Add(host, Text("wordRowHeading")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+
         yield return new("PanGlossLine", "a same reading label", host => Inside(host, Box("panGlossLine", "same")),
             TextBlock.ForegroundProperty, "Intent.Outcome.Same");
         yield return new("PanGlossLine", "a different reading", host => Add(host, Box("panGlossLine", "different")),
@@ -854,6 +880,13 @@ public sealed partial class ComponentStyleTests
         list.Items.Add(new ListBoxItem { Content = inner });
         host.Children.Add(list);
         return inner;
+    }
+
+    private static Border OpenRowEdge(Panel host)
+    {
+        var edge = Box("wordRowEdge");
+        host.Children.Add(new Border { Classes = { "wordRow", "open" }, Child = edge });
+        return edge;
     }
 
     private static ListBoxItem DenseListRow(Panel host)

@@ -107,8 +107,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.Click("Open Text coverage in Texts");
             var comparedWord = walkthrough.Workspace.Assess.Compare.Words.First().Word;
             walkthrough.ShowTextsTab(TextsTab.Matrix);
-            var tick = walkthrough.Find<CheckBox>($"Tick {comparedWord} for a change");
-            HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord} for a change");
+            var tick = walkthrough.Find<CheckBox>($"Tick {comparedWord}");
+            HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord}");
             Assert.True(tick.IsChecked);
             walkthrough.ShowPage(WorkspacePage.Timing);
             Assert.True(SourceButton("Chosen in Texts").IsEffectivelyEnabled);

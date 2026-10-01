@@ -1,5 +1,7 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 
@@ -60,6 +62,11 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>What FieldWorks holds, in its own words.</summary>
     public string OpinionLabel { get; }
 
+    /// <summary>The opinion mark's letter box, or <see langword="null"/> for an incorrect spelling, which has none.</summary>
+    public OpinionMarkKind? OpinionKind => OpinionMark?.Opinion;
+
+    public bool HasOpinionMark => OpinionMark is not null;
+
     /// <summary>The morphemes of the analysis FieldWorks holds, each a way into its entry.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> FieldWorksMorphemes { get; }
 
@@ -75,6 +82,9 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public string OutcomeWord => WindowWords.Of(Outcome);
 
+    /// <summary>The outcome's word beside its sign; PanGloss's own morphemes take the word's place when shown.</summary>
+    public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
+
     /// <summary>What the opinion and the outcome mean together, in the Matrix's words.</summary>
     public string Meaning => _row.Meaning;
 
@@ -86,6 +96,12 @@ public sealed partial class WordRowViewModel : ObservableObject
     public int? WarningsNamed => _row.WarningsNamed;
 
     public bool HasWarningsNamed => WarningsNamed is > 0;
+
+    /// <summary>The warning mark beside the count of warnings that name something the word uses.</summary>
+    public Mark WarningMark => Mark.Warning;
+
+    public string WarningsText =>
+        WarningsNamed is { } count and > 0 ? count.ToString(CultureInfo.CurrentCulture) : string.Empty;
 
     /// <summary>How many places the word occurs, such as <c>×3</c>, or empty when not known.</summary>
     public string PlacesText => _row.Places is { } places ? $"×{places}" : string.Empty;
@@ -104,6 +120,11 @@ public sealed partial class WordRowViewModel : ObservableObject
     public bool ShowUnread => IsUnread == true;
 
     public string UnreadText => "Unread";
+
+    /// <summary>The stable automation id of one part of this word's row in <paramref name="list"/>.</summary>
+    /// <param name="list">The list the row sits in, such as <c>matrix</c>, <c>fix-first</c> or <c>lists</c>.</param>
+    /// <param name="part">One of row, tick, open-in-text, try-a-word, word-analyses or card.</param>
+    public string AutomationIdOf(string list, string part) => AutomationIds.ForWordRowPart(list, Word, part);
 
     /// <summary>The one-line summary a hover or focus shows, in window words.</summary>
     public string Summary => $"{Word} · {OpinionLabel} · PanGloss: {OutcomeWord} · {Meaning}";
@@ -125,6 +146,9 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The accessible name and tip of the Word Analyses link.</summary>
     public string WordAnalysesName => $"Open {Word} in {FieldWorksLinks.ToolName(WordAnalysesTool)}";
+
+    /// <summary>The Word Analyses step's tip: where it opens, or why it cannot.</summary>
+    public string WordAnalysesTip => HasWordAnalysesLink ? WordAnalysesName : WordAnalysesDisabledReason;
 
     /// <summary>Why the Word Analyses step cannot open, or empty when it can.</summary>
     public string WordAnalysesDisabledReason => HasWordAnalysesLink ? string.Empty

@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
+using WordRow = SIL.Motif.App.Views.WordRow;
 using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App;
@@ -102,6 +103,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public int Height { get; init; } = 780;
     }
 
+    private const string MatrixWords = "Words in the chosen cells";
+    private const string ListWords = "Words in the selected list";
+
     private static IEnumerable<State> States()
     {
         // The shell: menus and buttons in the top bar and the sidebar, on whichever page is behind them.
@@ -172,6 +176,18 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             TextsTab.Matrix))
         { Height = 1100 };
 
+        yield return new("matrix", "row-hover", stage => stage.Hover(WorkspacePage.Texts,
+            () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix))
+        { Height = 1100 };
+        yield return new("matrix", "row-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
+            () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix))
+        { Height = 1100 };
+        yield return new("matrix", "row-opened", stage => stage.OpenRow(WorkspacePage.Texts, TextsTab.Matrix, MatrixWords))
+        {
+            Height = 1100,
+            Teardown = stage => stage.CloseRows(),
+        };
+
         // Texts, Analyze texts.
         yield return new("analyze", "word-hover", stage => stage.Hover(WorkspacePage.Texts,
             () => stage.Strip("hawajafika"), "the hawajafika word strip", TextsTab.AnalyzeTexts));
@@ -223,20 +239,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("lists", "row-expanded", async stage =>
         {
             await stage.ChooseList();
-            var row = stage.Visible<Expander>(expander => expander.FindAncestorOfType<ListBox>() is { } list &&
-                AutomationProperties.GetName(list) == "Words in the selected list").First();
-            row.IsExpanded = true;
-            await stage.Until(() => row.IsExpanded, "the expanded list row");
-            return $"Expanded '{(row.DataContext as CompareWordViewModel)?.Word}' in {stage.Lists.SelectedList?.Name}.";
+            return await stage.OpenRow(null, null, ListWords);
         })
-        {
-            Teardown = stage =>
-            {
-                foreach (var row in stage.Visible<Expander>(expander => expander.IsExpanded &&
-                    expander.FindAncestorOfType<ListBox>() is not null)) row.IsExpanded = false;
-                return Task.CompletedTask;
-            },
-        };
+        { Teardown = stage => stage.CloseRows() };
         yield return new("lists", "disabled-hover", async stage =>
         {
             await stage.ChooseList();
@@ -480,6 +485,30 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             expander.IsExpanded = true;
             await Until(() => expander.IsExpanded, what);
             return $"Expanded {what}.";
+        }
+
+        /// <summary>The first row of the named word list: the part a pointer or Tab reaches.</summary>
+        public Border RowBody(string list) => Visible<ListBox>(box => AutomationProperties.GetName(box) == list).Single()
+            .GetVisualDescendants().OfType<WordRow>().First()
+            .GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowBody"));
+
+        /// <summary>Opens the first row of the named list from the keyboard, as Enter on a focused row does.</summary>
+        public async Task<string> OpenRow(WorkspacePage? page, TextsTab? tab, string list)
+        {
+            if (page is { } shown) Open(shown, tab);
+            var body = RowBody(list);
+            var row = body.FindAncestorOfType<WordRow>()!;
+            body.BringIntoView();
+            body.Focus(NavigationMethod.Tab);
+            Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            await Until(() => row.IsOpen, "the opened word row");
+            return $"Pressed Enter on '{row.Row?.Word}' in {list}; its card is open inside the row.";
+        }
+
+        public Task CloseRows()
+        {
+            foreach (var word in Workspace.Assess.Compare.Words) word.IsExpanded = false;
+            return Task.CompletedTask;
         }
 
         public async Task<string> OpenCard(string form)

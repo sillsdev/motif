@@ -47,6 +47,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/StagedStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordCard.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordStrip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordRow.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HoverReveal.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Density.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Interaction.axaml" />

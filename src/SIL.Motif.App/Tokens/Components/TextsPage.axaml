@@ -18,12 +18,7 @@
     <StaticResource x:Key="Component.TextsPage.RerunTimeWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.TextsPage.WordCheckWidth" ResourceKey="Primitive.Size.28" />
-    <StaticResource x:Key="Component.TextsPage.WordOccurrencesWidth" ResourceKey="Primitive.Size.60" />
-    <StaticResource x:Key="Component.TextsPage.WordOpenWidth" ResourceKey="Primitive.Size.110" />
-    <StaticResource x:Key="Component.TextsPage.ListProjectWidth" ResourceKey="Primitive.Size.160" />
-    <StaticResource x:Key="Component.TextsPage.ListParserWidth" ResourceKey="Primitive.Size.160" />
     <StaticResource x:Key="Component.TextsPage.MiniMatrixRowLabelWidth" ResourceKey="Primitive.Size.92" />
-    <StaticResource x:Key="Component.TextsPage.DenseRowMinHeight" ResourceKey="Primitive.Size.0" />
     <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.TextsPage.TextPickerWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />

@@ -778,6 +778,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         MissedApproved = word.MissedApproved;
         FixFirst = word.FixFirst;
+        NoReadingsText = word.NoReadingsText;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
             new CompareReadingChoice(index, reading,
@@ -836,6 +837,26 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     public IReadOnlyList<CompareReadingChoice> ReadingChoices { get; }
 
+    /// <summary>Whether FieldWorks holds more than one analysis of the word, so the card names each opinion.</summary>
+    public bool HasSeveralOpinions => OpinionMarks.Count > 1;
+
+    /// <summary>Whether the row has a FieldWorks analysis to show, morpheme by morpheme.</summary>
+    public bool HasFieldWorksAnalysis => WordRow.FieldWorksMorphemes.Count > 0;
+
+    /// <summary>What PanGloss built, with how many analyses, for the card.</summary>
+    public string ReadingsSummary => Readings.Count switch
+    {
+        0 => WordRow.OutcomeWord,
+        1 => $"{WordRow.OutcomeWord} · 1 analysis",
+        var count => $"{WordRow.OutcomeWord} · {count} analyses",
+    };
+
+    /// <summary>Why the word has no analyses from PanGloss, in the window's words.</summary>
+    public string NoReadingsText { get; }
+
+    // The row already shows one approved analysis; the card repeats a missed one only when there is more to see.
+    public bool ShowsMissedApproved => MissedApproved.Count > (HasFieldWorksAnalysis ? 1 : 0);
+
     public int ReadingCount { get; }
 
     /// <summary>Whether the word is ticked, to receive the next change chosen for ticked words.</summary>
@@ -860,7 +881,10 @@ public sealed partial class CompareWordViewModel : ObservableObject
 }
 
 /// <summary>One stored analysis opinion shown in a compact word cell.</summary>
-public sealed record CompareOpinionMarkViewModel(OpinionMarkKind Kind, string Label);
+public sealed record CompareOpinionMarkViewModel(OpinionMarkKind Kind, string Label)
+{
+    public Mark Mark => Mark.Of(Kind);
+}
 
 /// <summary>A parser reading chosen by its position in one recorded Assessment word.</summary>
 public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, string Label);

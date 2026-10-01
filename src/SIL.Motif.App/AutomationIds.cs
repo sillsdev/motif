@@ -69,4 +69,25 @@ public static class AutomationIds
             .ToLowerInvariant();
         return $"motif-word-{textId:N}-{occurrenceIndex}-{formCode}-{part}";
     }
+
+    /// <summary>Creates a repeatable identifier for one part of a word row in one of the window's word lists.</summary>
+    /// <param name="list">The list the row sits in, such as <c>matrix</c>, <c>fix-first</c> or <c>lists</c>.</param>
+    /// <param name="form">The word, normalized so canonically equivalent Unicode has one identifier.</param>
+    /// <param name="part">One of row, tick, open-in-text, try-a-word, word-analyses or card.</param>
+    /// <returns>
+    /// An ASCII identifier such as <c>motif-word-row-matrix-kitabu-row</c>. A form of lowercase ASCII letters keeps
+    /// its spelling; any other form is written as the hexadecimal of its UTF-8 bytes, prefixed <c>x</c>.
+    /// </returns>
+    public static string ForWordRowPart(string list, string form, string part)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(list);
+        ArgumentException.ThrowIfNullOrWhiteSpace(form);
+        if (part is not ("row" or "tick" or "open-in-text" or "try-a-word" or "word-analyses" or "card"))
+            throw new ArgumentException("Unknown word row part.", nameof(part));
+
+        var normal = form.Normalize(NormalizationForm.FormC);
+        var formCode = normal.All(letter => letter is >= 'a' and <= 'z') ? normal
+            : "x" + Convert.ToHexString(Encoding.UTF8.GetBytes(normal)).ToLowerInvariant();
+        return $"motif-word-row-{list}-{formCode}-{part}";
+    }
 }

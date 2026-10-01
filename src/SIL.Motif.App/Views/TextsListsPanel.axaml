@@ -8,12 +8,6 @@
     <Style Selector="Button.filterChip.empty">
       <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     </Style>
-    <Style Selector="ListBox.listWords ListBoxItem">
-      <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-      <Setter Property="MinHeight" Value="{DynamicResource Component.TextsPage.DenseRowMinHeight}" />
-      <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
@@ -69,59 +63,23 @@
       </Grid>
     </Border>
 
-    <ListBox Grid.Row="2" Classes="listWords" ItemsSource="{Binding Lists.Compare.Words}"
-             IsVisible="{Binding Lists.HasSelectedList}"
-             AutomationProperties.Name="Words in the selected list">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:CompareWordViewModel">
-          <Expander>
-            <Expander.Header>
-              <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                <CheckBox Width="{DynamicResource Component.TextsPage.WordCheckWidth}"
-                          Grid.Column="0" IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
-                          AutomationProperties.Name="{Binding Word, StringFormat='Tick {0}'}" />
-                <Button Grid.Column="1" Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Left" HorizontalContentAlignment="Left" Content="{Binding Word}"
-                        Command="{Binding $parent[views:TextsListsPanel].Lists.Compare.OpenWordCommand}"
-                        CommandParameter="{Binding}"
-                        AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
-                <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
-                                         Classes="muted" Text="{Binding OccurrenceText}" />
-                <views:MarkChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"
-                                   Mark="{Binding RowMark}" Text="{Binding RowLabel}"
-                                   Compact="True" HorizontalAlignment="Left"
-                                   IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsRowStatus}" />
-                <views:MarkChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.ListParserWidth}"
-                                   Mark="{Binding ColumnMark}" Text="{Binding ColumnLabel}"
-                                   Compact="True" HorizontalAlignment="Left"
-                                   IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsColumnStatus}" />
-                <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding PendingChangeStatus}"
-                                         IsVisible="{Binding HasPendingChange}" />
-              </Grid>
-            </Expander.Header>
-            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Intent.Inset.None}">
-              <views:CopyableTextBlock Classes="muted" Text="Approved analyses the parser missed" IsVisible="{Binding MissedApproved.Count}" />
-              <ItemsControl ItemsSource="{Binding MissedApproved}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
-                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="muted" Text="Parser readings" IsVisible="{Binding Readings.Count}" />
-              <ItemsControl ItemsSource="{Binding Readings}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ParserReadingViewModel">
-                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </Expander>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <Grid Grid.Row="2" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True" IsVisible="{Binding Lists.HasSelectedList}">
+      <views:WordRowHeader />
+      <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
+               KeyboardNavigation.TabNavigation="Continue"
+               AutomationProperties.Name="Words in the selected list">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CompareWordViewModel">
+            <views:WordRow Row="{Binding WordRow}" List="lists" IsChecked="{Binding IsChecked}"
+                           IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
+              <views:WordRow.Card>
+                <views:WordRowCard />
+              </views:WordRow.Card>
+            </views:WordRow>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
     <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="Choose a question above to see its words."
                              IsVisible="{Binding !Lists.HasSelectedList}"
                              VerticalAlignment="Center" HorizontalAlignment="Center" />
