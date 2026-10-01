@@ -18,13 +18,15 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
-/// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, and <see cref="ReadStateCommands"/>.
+/// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>, and
+/// <see cref="Queries.WordTraceQuery"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
 /// <see cref="JobCommands.WaitForDryRun"/>, waited Trials reach <see cref="JobCommands.WaitForJob"/>,
 /// pending Trials reach <see cref="PendingChangesWorkflow.Measure"/>, and pending Apply reaches
-/// <see cref="PendingChangesWorkflow.Apply"/>. Each has its own entry. Every other name is the literal CLI
+/// <see cref="PendingChangesWorkflow.Apply"/>, and a saved trace reaches <see cref="Queries.WordTraceQuery.Load"/>.
+/// Each has its own entry. Every other name is the literal CLI
 /// verb (or its complete space-separated nested form, such as <c>"jobs show"</c>) that reaches its one named
 /// handler, pinned equal to <c>CliVerbCatalog.All</c> by
 /// <c>CommandCatalogParityTests.EveryCataloguedCommandHasExactlyOneCliVerb</c>.
@@ -124,6 +126,10 @@ public static class CommandCatalog
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released),
+
+        // WordTraceQuery: one word's trace, live or from a saved file, as Try a Word reads it
+        new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Developer),
+        new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Developer),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released),
