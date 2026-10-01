@@ -55,6 +55,45 @@ public sealed class WordRowProjectionTests
     }
 
     [Fact]
+    public void ForAlikula_TheAlignmentPairsKulWithKuAndL_AndMatchesTheDifferingPositions()
+    {
+        IReadOnlyList<ParserReadingMorph> fieldWorks = [A, Li, Kul, Fv];
+        IReadOnlyList<ParserReadingMorph> panGloss = [A, Li, Ku, L, Fv];
+
+        var segments = WordRowProjection.Align(fieldWorks, panGloss);
+
+        Assert.Equal(["a-|a-|shared", "li-|li-|shared", "kul|ku- l|parted", "-a|-a|shared"], segments.Select(segment =>
+            $"{Forms(fieldWorks, segment.FieldWorks)}|{Forms(panGloss, segment.PanGloss)}|{(segment.Shared ? "shared" : "parted")}"));
+        Assert.Equal(WordRowProjection.DifferingPositions(fieldWorks, panGloss),
+            segments.Where(segment => !segment.Shared).SelectMany(segment => segment.PanGloss).Select(index => index + 1));
+    }
+
+    [Fact]
+    public void TheAlignmentKeepsAMorphemeOnlyOneSideHas_AsItsOwnPartedSegment()
+    {
+        IReadOnlyList<ParserReadingMorph> fieldWorks = [A, Kul, Fv];
+        IReadOnlyList<ParserReadingMorph> panGloss = [A, Li, Kul];
+
+        var segments = WordRowProjection.Align(fieldWorks, panGloss);
+
+        Assert.Equal(["a-|a-|shared", "|li-|parted", "kul|kul|shared", "-a||parted"], segments.Select(segment =>
+            $"{Forms(fieldWorks, segment.FieldWorks)}|{Forms(panGloss, segment.PanGloss)}|{(segment.Shared ? "shared" : "parted")}"));
+    }
+
+    [Fact]
+    public void WithOneSideEmpty_TheAlignmentIsOnePartedSegment_OrNothing()
+    {
+        Assert.Empty(WordRowProjection.Align([], []));
+        var segment = Assert.Single(WordRowProjection.Align([], [Ku, L]));
+        Assert.Empty(segment.FieldWorks);
+        Assert.Equal([0, 1], segment.PanGloss);
+        Assert.False(segment.Shared);
+    }
+
+    private static string Forms(IReadOnlyList<ParserReadingMorph> morphs, IReadOnlyList<int> indices) =>
+        string.Join(" ", indices.Select(index => morphs[index].Form));
+
+    [Fact]
     public void TheRowCarriesTheWordsFormGlossOpinionPlacesTimeAndWordAnalysesLink()
     {
         var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])), CompareColumnKind.NoMatch);
