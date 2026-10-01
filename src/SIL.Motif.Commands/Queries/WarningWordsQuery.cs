@@ -45,8 +45,8 @@ public static class WarningWordsQuery
         ArgumentNullException.ThrowIfNull(finding);
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(timings);
-        var named = finding.Subject.Where(part => part.ObjectId is not null).ToArray();
-        if (named.Any(part => part.Reach is null)) return null;
+        if (finding.Subject.Any(part => part.ObjectId is not null && part.Reach is null)) return null;
+        var named = finding.Subject.Where(part => part.Reach is not null).ToArray();
         var reaches = named.Select(part => part.Reach!).ToArray();
 
         var byIdentity = reaches.Where(reach => reach.Path is not (WarningWordsPath.Spelling or WarningWordsPath.CantTell))

@@ -18,7 +18,8 @@ namespace SIL.Motif.Commands.Queries;
 public sealed record StoredGrammarCheckResponse(GrammarCheckResponse? Check);
 
 /// <summary>
-/// Reads grammar findings from the Motif store without starting PanGloss.
+/// Reads grammar findings from the Motif store without starting PanGloss, each with the Selection's words it
+/// touches in the stored Parse all words.
 /// </summary>
 public static class StoredGrammarCheckQuery
 {
@@ -33,8 +34,9 @@ public static class StoredGrammarCheckQuery
                 return CommandOutcome<StoredGrammarCheckResponse>.Success(
                     new(new GrammarCheckResponse([], HasBaseline: false)));
             var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+            var check = new GrammarCheckRepository(database).GetLatest(token);
             return CommandOutcome<StoredGrammarCheckResponse>.Success(
-                new(new GrammarCheckRepository(database).GetLatest(token)));
+                new(check is null ? null : WarningWordsQuery.WithYourWords(database, project, check)));
         });
     }
 }

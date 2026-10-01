@@ -370,6 +370,62 @@ public sealed class GrammarCheckQueryTests : IDisposable
         },
     });
 
+    [Fact]
+    public void EachSubjectReachesWhatItLeadsToInTheCheckedProject_AndTheStoredCheckKeepsIt()
+    {
+        var grammar = WarningGrammar.Author(_pristine);
+        var seed = _pristine.Seed;
+        Capture(grammar.FwDataPath);
+        var report = GrammarHealthReports.With(
+            ("allomorph", [new("MoForm", "motifa", seed.FirstLexemeFormId)]),
+            ("grammatical-info", [new("MoStemMsa", "motifa", grammar.FirstMsa)]),
+            ("entry", [new("LexEntry", "motifa", seed.FirstEntryId)]),
+            ("sense", [new("LexSense", "first seeded gloss", seed.FirstSenseId)]),
+            ("environment", [new("PhEnvironment", "/ _ [V]", grammar.VowelsBefore)]),
+            ("natural-class", [new("PhNaturalClass", "V", grammar.Vowels)]),
+            ("rule", [new("PhRegularRule", "Vowel harmony", grammar.Harmony)]),
+            ("phoneme", [new("PhPhoneme", "u", grammar.U)]),
+            ("letter", [new("PhPhoneme", "ng")]),
+            ("template", [new("MoInflAffixTemplate", "Verb template", Guid.NewGuid())]),
+            ("gone", [new("LexEntry", "kata", Guid.NewGuid())]),
+            ("nothing", []));
+
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(grammar.FwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var reach = outcome.Value!.Findings.ToDictionary(finding => finding.Code!,
+            finding => finding.Subject.SingleOrDefault()?.Reach);
+        string Id(Guid guid) => guid.ToString("D");
+        Assert.Equal((WarningWordsPath.Uses, Id(seed.FirstLexemeFormId)),
+            (reach["allomorph"]!.Path, Assert.Single(reach["allomorph"]!.AllomorphIds)));
+        Assert.Equal((WarningWordsPath.Uses, Id(grammar.FirstMsa)),
+            (reach["grammatical-info"]!.Path, Assert.Single(reach["grammatical-info"]!.GrammaticalInfoIds)));
+        Assert.Equal((WarningWordsPath.ThroughAllomorphs, Id(seed.FirstLexemeFormId)),
+            (reach["entry"]!.Path, Assert.Single(reach["entry"]!.AllomorphIds)));
+        Assert.Equal((WarningWordsPath.ThroughGrammaticalInfo, Id(grammar.FirstMsa)),
+            (reach["sense"]!.Path, Assert.Single(reach["sense"]!.GrammaticalInfoIds)));
+        Assert.Equal((WarningWordsPath.ThroughAllomorphs, Id(seed.SecondLexemeFormId)),
+            (reach["environment"]!.Path, Assert.Single(reach["environment"]!.AllomorphIds)));
+        Assert.Equal(WarningWordsPath.ThroughEnvironmentsAndRules, reach["natural-class"]!.Path);
+        Assert.Equal([Id(seed.SecondLexemeFormId)], reach["natural-class"]!.AllomorphIds);
+        Assert.Equal([new TraceTimingKey("phon_rule", Id(grammar.Harmony))], reach["natural-class"]!.TimingKeys);
+        Assert.Equal([new TraceTimingKey("phon_rule", Id(grammar.Harmony))], reach["rule"]!.TimingKeys);
+        Assert.Equal(WarningWordsPath.RuleTimes, reach["rule"]!.Path);
+        Assert.Equal((WarningWordsPath.Spelling, "u"), (reach["phoneme"]!.Path, Assert.Single(reach["phoneme"]!.Spellings)));
+        Assert.Equal((WarningWordsPath.Spelling, "ng"), (reach["letter"]!.Path, Assert.Single(reach["letter"]!.Spellings)));
+        Assert.Equal(WarningCantTell.KindNotFollowed, reach["template"]!.CantTell);
+        Assert.Equal(WarningCantTell.NotInProject, reach["gone"]!.CantTell);
+        Assert.Null(reach["nothing"]);
+        Assert.All(outcome.Value.Findings, finding => Assert.Null(finding.YourWords));
+
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(grammar.FwDataPath)).Value!.Check!;
+        Assert.Equal(JsonSerializer.Serialize(outcome.Value.Findings.Select(finding => finding.Subject)),
+            JsonSerializer.Serialize(stored.Findings.Select(finding => finding.Subject)));
+    }
+
     private void Capture(string fwDataPath)
     {
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());

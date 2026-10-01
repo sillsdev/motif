@@ -37,6 +37,8 @@ public static class OverviewCommand
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
             var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
+            if (storedCheck is not null && evidence.Assessment is { } stored)
+                storedCheck = WarningWordsQuery.WithYourWords(storedCheck, stored.Words, evidence.EffectiveObjectTimings);
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
             var largestKind = warningCounts.ByKind.FirstOrDefault();
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
@@ -59,6 +61,7 @@ public static class OverviewCommand
                     WarningCount = warningCounts.WarningCount,
                     InformationCount = warningCounts.InformationCount,
                     ByKind = warningCounts.ByKind,
+                    YourWords = warningCounts.YourWords,
                 })
             {
                 SelectionResolved = selection is not null,
