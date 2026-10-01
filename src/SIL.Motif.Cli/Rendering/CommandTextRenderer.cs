@@ -324,7 +324,11 @@ public static class CommandTextRenderer
                 $"{CountLabel(response.Warnings.WarningCount, "warning", "warnings")}, " +
                 $"{response.Warnings.InformationCount?.ToString("N0") ?? "unknown"} information)");
         if (response.Warnings?.YourWords is { } touched)
+        {
             text.AppendLine($"           {TouchedLine(touched)}");
+            if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
+                text.AppendLine($"           Not counted: {candidates}");
+        }
         return text.ToString();
     }
 
@@ -340,34 +344,78 @@ public static class CommandTextRenderer
             $"({CountLabel(response.ErrorCount, "error", "errors")}, {CountLabel(response.WarningCount, "warning", "warnings")}, " +
             $"{response.InformationCount:N0} information)");
         if (response.YourWords is { } touched)
+        {
             text.AppendLine(TouchedLine(touched));
+            if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
+                text.AppendLine($"Not counted: {candidates}");
+        }
         foreach (var kind in response.ByKind)
+        {
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}" +
                 (kind.YourWords is { } words ? $", {words:N0} of your words" : string.Empty));
+            if (CandidateLine(kind.ByMembershipOnly ?? 0, kind.BySpellingOnly ?? 0) is { } candidates)
+                text.AppendLine($"    Not counted: {candidates}");
+        }
         foreach (var finding in response.Findings)
         {
             text.AppendLine($"  {finding.Text}");
+            text.AppendLine($"    {YourWordsLine(finding)}");
+            var limits = finding.AttributionLimits.Where(reason => reason != finding.AttributionReason).ToArray();
+            if (limits.Length > 0)
+                text.AppendLine($"    Attribution limits: {string.Join("; ", limits.Select(AttributionLimitText))}");
             if (finding.YourWords is { } yours)
-                text.AppendLine($"    {YourWordsLine(yours)}");
+            {
+                var members = yours.Match == WarningWordsMatch.Membership ? yours.Words : yours.MembershipCandidates;
+                var spelled = yours.Match == WarningWordsMatch.Spelling ? yours.Words : yours.SpellingCandidates;
+                if (members.Count > 0)
+                    text.AppendLine($"    Membership candidates; not confirmed uses of the named object: {WordList(members)}");
+                if (spelled.Count > 0)
+                    text.AppendLine($"    Spelling candidates; not confirmed uses of the phoneme: {WordList(spelled)}");
+            }
         }
         return text.ToString();
     }
 
     private static string TouchedLine(WarningWordsTouched touched) =>
-        $"{touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse" +
-        (touched.BySpellingOnly > 0 ? $", {touched.BySpellingOnly:N0} matched only by spelling)" : ")");
+        $"{touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse)";
 
-    private static string YourWordsLine(WarningWords yours) => yours.Match switch
+    private static string? CandidateLine(int members, int spelled)
     {
-        WarningWordsMatch.CantTell => "Your words: can't tell, " + yours.CantTell switch
+        var parts = new List<string>();
+        if (members > 0) parts.Add($"{members:N0} membership candidates");
+        if (spelled > 0) parts.Add($"{spelled:N0} spelling candidates; not confirmed uses of the phoneme");
+        return parts.Count == 0 ? null : string.Join("; ", parts);
+    }
+
+    private static string YourWordsLine(GrammarWarning finding) => finding.AttributionState switch
+    {
+        WarningAttributionState.ExactUses => "Your words: " + WordList(finding.YourWords!.Words),
+        WarningAttributionState.MembershipCandidates => "Your words: membership candidates only",
+        WarningAttributionState.SpellingCandidates => "Your words: spelling candidates only",
+        WarningAttributionState.NoneInSelection => "Your words: none in the Selection",
+        WarningAttributionState.ProjectWide => "Your words: project-wide; no word attribution",
+        WarningAttributionState.MissingObject => "Your words: missing object; " + (finding.AttributionReason switch
         {
-            WarningCantTell.NotInProject => "the object it names is not in the project",
-            WarningCantTell.KindNotFollowed => "Motif doesn't follow this kind of object to words",
-            _ => "PanGloss names no object",
-        },
-        _ when yours.Words.Count == 0 => "Your words: none in the Selection",
-        WarningWordsMatch.Spelling => "Your words, matched by spelling: " + WordList(yours.Words),
-        _ => "Your words: " + WordList(yours.Words),
+            WarningAttributionReason.WrongClass => "its GUID belongs to a different FieldWorks class",
+            _ => "its GUID is absent from the checked Baseline",
+        }),
+        WarningAttributionState.UnresolvedIdentity => "Your words: unresolved identity; " + (finding.AttributionReason switch
+        {
+            WarningAttributionReason.NamedWithoutProjectGuid => "the named subject has no project GUID",
+            WarningAttributionReason.UnsupportedKind => "the named class has no supported route to words",
+            _ => "PanGloss names no subject",
+        }),
+        _ => "Your words: evidence unavailable; no usable stored Parse all words",
+    };
+
+    private static string AttributionLimitText(WarningAttributionReason reason) => reason switch
+    {
+        WarningAttributionReason.UnsupportedKind => "an owner's class has no supported route to words",
+        WarningAttributionReason.NoWordAttribution => "an owner has no word attribution",
+        WarningAttributionReason.StaleGuid => "a subject's GUID is absent from the checked Baseline",
+        WarningAttributionReason.WrongClass => "a subject's GUID belongs to a different FieldWorks class",
+        WarningAttributionReason.NamedWithoutProjectGuid => "a named subject has no project GUID",
+        _ => "PanGloss names no subject",
     };
 
     private static string WordList(IReadOnlyList<ObjectUseWord> words)

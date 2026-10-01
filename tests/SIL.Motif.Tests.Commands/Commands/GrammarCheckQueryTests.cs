@@ -416,8 +416,9 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal(WarningWordsPath.RuleTimes, reach["rule"]!.Path);
         Assert.Equal((WarningWordsPath.Spelling, "u"), (reach["phoneme"]!.Path, Assert.Single(reach["phoneme"]!.Spellings)));
         Assert.Equal((WarningWordsPath.Spelling, "ng"), (reach["letter"]!.Path, Assert.Single(reach["letter"]!.Spellings)));
-        Assert.Equal(WarningCantTell.KindNotFollowed, reach["template"]!.CantTell);
-        Assert.Equal(WarningCantTell.NotInProject, reach["gone"]!.CantTell);
+        Assert.Equal((WarningWordsPath.MissingObject, WarningAttributionReason.StaleGuid),
+            (reach["template"]!.Path, reach["template"]!.Reason));
+        Assert.Equal(WarningAttributionReason.StaleGuid, reach["gone"]!.Reason);
         Assert.Null(reach["nothing"]);
         Assert.All(outcome.Value.Findings, finding => Assert.Null(finding.YourWords));
 

@@ -7,7 +7,7 @@ namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
 /// Finds the Selection's words each grammar finding touches, from what its subjects reach and the stored Parse all
-/// words: by identity through stored analyses and stored per-word rule times, by spelling only for letters.
+/// words: exact identity uses, membership candidates, and spelling candidates, kept separate in that order.
 /// </summary>
 public static class WarningWordsQuery
 {
@@ -37,7 +37,7 @@ public static class WarningWordsQuery
 
     /// <summary>
     /// The words <paramref name="finding"/> touches, or <see langword="null"/> when a subject was stored without
-    /// what it reaches. Subjects matched by identity win over subjects matched only by spelling.
+    /// what it reaches. Exact uses take precedence over membership candidates, then spelling candidates.
     /// </summary>
     public static WarningWords? YourWordsOf(GrammarWarning finding, IReadOnlyList<AssessmentWordResult> words,
         IReadOnlyList<AssessmentObjectTiming> timings)
@@ -49,29 +49,51 @@ public static class WarningWordsQuery
         var named = finding.Subject.Where(part => part.Reach is not null).ToArray();
         var reaches = named.Select(part => part.Reach!).ToArray();
 
-        var byIdentity = reaches.Where(reach => reach.Path is not (WarningWordsPath.Spelling or WarningWordsPath.CantTell))
-            .ToArray();
-        if (byIdentity.Length > 0)
-            return Found(WarningWordsMatch.Identity, words, ByIdentity(words, timings, byIdentity),
-                byIdentity.Select(reach => reach.Path));
-
-        var bySpelling = reaches.Where(reach => reach.Path == WarningWordsPath.Spelling).ToArray();
-        if (bySpelling.Length > 0)
+        var routes = reaches.Where(reach => reach.IsRoute).ToArray();
+        if (routes.Length > 0)
         {
-            var spellings = bySpelling.SelectMany(reach => reach.Spellings).Select(Fold)
+            var exactRoutes = routes.Where(reach => reach.Path is not
+                (WarningWordsPath.Spelling or WarningWordsPath.Membership)).ToArray();
+            var membershipRoutes = routes.Where(reach => reach.Path == WarningWordsPath.Membership)
+                .Concat(routes.Where(reach => reach.MembershipAllomorphIds.Count > 0 ||
+                    reach.MembershipGrammaticalInfoIds.Count > 0 || reach.MembershipTimingKeys.Count > 0)
+                    .Select(reach => new WarningReach(WarningWordsPath.Membership)
+                    {
+                        AllomorphIds = reach.MembershipAllomorphIds,
+                        GrammaticalInfoIds = reach.MembershipGrammaticalInfoIds,
+                        TimingKeys = reach.MembershipTimingKeys,
+                    })).ToArray();
+            var exact = ByIdentity(words, timings, exactRoutes).ToArray();
+            var stronger = exact.Select(word => word.Row.Word).ToHashSet(StringComparer.Ordinal);
+            var members = ByIdentity(words, timings, membershipRoutes)
+                .Where(word => stronger.Add(word.Row.Word)).ToArray();
+            var spellings = routes.SelectMany(reach => reach.Spellings).Select(Fold)
                 .Where(spelling => spelling.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
-            var spelled = words.Where(word => spellings.Any(Fold(word.Word).Contains))
-                .Select(word => new ObjectUseWord(WordRowProjection.Of(word)));
-            return Found(WarningWordsMatch.Spelling, words, spelled, [WarningWordsPath.Spelling]);
+            var spelled = words.Where(word => !stronger.Contains(word.Word) && spellings.Any(Fold(word.Word).Contains))
+                .Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray();
+            var paths = routes.Select(reach => reach.Path);
+            if (exactRoutes.Length > 0)
+                return Found(WarningWordsMatch.Identity, words, exact, paths) with
+                {
+                    MembershipCandidates = Found(WarningWordsMatch.Membership, words, members, []).Words,
+                    SpellingCandidates = spelled,
+                };
+            if (membershipRoutes.Length > 0)
+                return Found(WarningWordsMatch.Membership, words, members, paths) with { SpellingCandidates = spelled };
+            return Found(WarningWordsMatch.Spelling, words, spelled, paths);
         }
 
-        return new WarningWords(WarningWordsMatch.CantTell, [], [])
+        var unattributed = WarningReach.Unattributed(reaches);
+        var path = unattributed?.Path ?? WarningWordsPath.UnresolvedIdentity;
+        return new WarningWords(path switch
         {
-            CantTell = named.Length == 0
-                ? WarningCantTell.NothingNamed
-                : reaches.Select(reach => reach.CantTell).FirstOrDefault(reason => reason is not null)
-                  ?? WarningCantTell.KindNotFollowed,
-            Paths = [WarningWordsPath.CantTell],
+            WarningWordsPath.MissingObject => WarningWordsMatch.MissingObject,
+            WarningWordsPath.ProjectWide => WarningWordsMatch.ProjectWide,
+            _ => WarningWordsMatch.UnresolvedIdentity,
+        }, [], [])
+        {
+            Reason = unattributed?.Reason ?? WarningAttributionReason.NoSubject,
+            Paths = [path],
         };
     }
 
@@ -83,21 +105,33 @@ public static class WarningWordsQuery
     {
         ArgumentNullException.ThrowIfNull(findings);
         if (findings.Any(finding => finding.YourWords is null)) return null;
-        var rows = new Dictionary<string, (ObjectUseWord Word, bool ByIdentity)>(StringComparer.Ordinal);
+        var rows = new Dictionary<string, (ObjectUseWord Word, int Strength)>(StringComparer.Ordinal);
         foreach (var yours in findings.Select(finding => finding.YourWords!))
-            foreach (var word in yours.Words)
+        {
+            Add(yours.Words, yours.Match switch
             {
-                var byIdentity = yours.Match == WarningWordsMatch.Identity;
-                rows[word.Row.Word] = rows.TryGetValue(word.Row.Word, out var seen)
-                    ? (seen.Word, seen.ByIdentity || byIdentity) : (word, byIdentity);
-            }
-        var touched = rows.Values.Select(row => row.Word).ToArray();
+                WarningWordsMatch.Identity => 3,
+                WarningWordsMatch.Membership => 2,
+                _ => 1,
+            });
+            Add(yours.MembershipCandidates, 2);
+            Add(yours.SpellingCandidates, 1);
+        }
+        var touched = rows.Values.Where(row => row.Strength == 3).Select(row => row.Word).ToArray();
         return new WarningWordsTouched(touched.Length,
             touched.Count(word => word.Row.Outcome == WordRowOutcome.NoParse),
             ObjectUsesQuery.Split(touched).ByMeaning)
         {
-            BySpellingOnly = rows.Values.Count(row => !row.ByIdentity),
+            ByMembershipOnly = rows.Values.Count(row => row.Strength == 2),
+            BySpellingOnly = rows.Values.Count(row => row.Strength == 1),
         };
+
+        void Add(IReadOnlyList<ObjectUseWord> words, int strength)
+        {
+            foreach (var word in words)
+                if (!rows.TryGetValue(word.Row.Word, out var seen) || seen.Strength < strength)
+                    rows[word.Row.Word] = (word, strength);
+        }
     }
 
     private static IEnumerable<ObjectUseWord> ByIdentity(IReadOnlyList<AssessmentWordResult> words,

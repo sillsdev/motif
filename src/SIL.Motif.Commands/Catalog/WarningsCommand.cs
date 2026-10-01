@@ -26,10 +26,16 @@ public static class WarningsCommand
             .ToArray();
         var byKind = findings
             .GroupBy(finding => (finding.Code, finding.Group, finding.Severity))
-            .Select(group => new GrammarWarningSummary(group.Key.Code ?? string.Empty, group.Key.Group,
-                group.Key.Severity, group.Count())
+            .Select(group =>
             {
-                YourWords = WarningWordsQuery.Touched(group.ToArray())?.Words,
+                var touched = WarningWordsQuery.Touched(group.ToArray());
+                return new GrammarWarningSummary(group.Key.Code ?? string.Empty, group.Key.Group,
+                    group.Key.Severity, group.Count())
+                {
+                    YourWords = touched?.Words,
+                    ByMembershipOnly = touched?.ByMembershipOnly,
+                    BySpellingOnly = touched?.BySpellingOnly,
+                };
             })
             .OrderByDescending(row => row.Count)
             .ThenBy(row => row.Code, StringComparer.Ordinal)

@@ -209,14 +209,15 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal((3, 3_000_000L), (yours["rule"].Words[0].Calls!.Value, yours["rule"].Words[0].ElapsedNs!.Value));
         Assert.Equal(WarningWordsMatch.Spelling, yours["phoneme"].Match);
         Assert.Equal([SeededProject.UnanalysedWordForm], Words("phoneme"));
-        Assert.Equal((WarningWordsMatch.CantTell, WarningCantTell.KindNotFollowed),
-            (yours["template"].Match, yours["template"].CantTell));
-        Assert.Equal((WarningWordsMatch.CantTell, WarningCantTell.NothingNamed),
-            (yours["nothing"].Match, yours["nothing"].CantTell));
+        Assert.Equal((WarningWordsMatch.MissingObject, WarningAttributionReason.StaleGuid),
+            (yours["template"].Match, yours["template"].Reason));
+        Assert.Equal((WarningWordsMatch.UnresolvedIdentity, WarningAttributionReason.NoSubject),
+            (yours["nothing"].Match, yours["nothing"].Reason));
 
         var warnings = WarningsCommand.Warnings(new WarningsRequest(grammar.FwDataPath)).Value!;
         Assert.Equal((2, 2, 0), (warnings.YourWords!.Words, warnings.YourWords.NoParse, warnings.YourWords.BySpellingOnly));
-        Assert.Equal(1, warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
+        Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
+        Assert.Equal(1, warnings.ByKind.Single(kind => kind.Code == "phoneme").BySpellingOnly);
         Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "nothing").YourWords);
         var overview = OverviewCommand.Overview(new OverviewRequest(grammar.FwDataPath)).Value!;
         Assert.Equal((warnings.YourWords.Words, warnings.YourWords.NoParse),

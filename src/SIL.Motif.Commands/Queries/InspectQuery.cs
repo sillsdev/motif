@@ -82,6 +82,8 @@ public static class InspectQuery
     /// The findings among <paramref name="findings"/> that name <paramref name="subject"/> or reach it: a subject part
     /// that is the object, or whose stored reach holds its allomorph, its grammatical info or
     /// <paramref name="timingKey"/>. Matched by identity alone, GUIDs as GUIDs; a reach by spelling names no object.
+    /// Exact and membership references both identify related findings; membership remains candidate evidence,
+    /// never confirmed word use. A non-route outcome matches only a subject it explicitly names.
     /// A warning subject matches the findings with its code that name its object.
     /// </summary>
     public static IReadOnlyList<GrammarWarning> WarningsNaming(IReadOnlyList<GrammarWarning> findings,
@@ -98,10 +100,13 @@ public static class InspectQuery
         if (Guid.TryParse(timingKey?.Key, out var timedGuid)) ids.Add(timedGuid.ToString("D"));
         bool Names(GrammarWarningPart part) =>
             new[] { part.SubjectGuid, part.FieldWorksGuid }.Any(id => id is { Length: > 0 } && ids.Contains(IdKey(id))) ||
-            part.Reach is { } reach && (
-                subject.AllomorphId is { } allomorph && reach.AllomorphIds.Any(id => Same(id, allomorph)) ||
-                subject.GrammaticalInfoId is { } info && reach.GrammaticalInfoIds.Any(id => Same(id, info)) ||
-                timingKey is { } key && reach.TimingKeys.Any(timed => timed.Kind == key.Kind && Same(timed.Key, key.Key)));
+            part.Reach is { IsRoute: true } reach && (
+                subject.AllomorphId is { } allomorph && reach.AllomorphIds.Concat(reach.MembershipAllomorphIds)
+                    .Any(id => Same(id, allomorph)) ||
+                subject.GrammaticalInfoId is { } info && reach.GrammaticalInfoIds.Concat(reach.MembershipGrammaticalInfoIds)
+                    .Any(id => Same(id, info)) ||
+                timingKey is { } key && reach.TimingKeys.Concat(reach.MembershipTimingKeys)
+                    .Any(timed => timed.Kind == key.Kind && Same(timed.Key, key.Key)));
         return findings.Where(finding => finding.Subject.Any(Names)).ToArray();
     }
 

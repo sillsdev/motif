@@ -13,8 +13,10 @@ public sealed record WarningsResponse(
     public int ErrorCount { get; init; }
 
     /// <summary>
-    /// The Selection's words that use something these findings name, each counted once; <see langword="null"/>
-    /// when no stored Parse all words matches the current Baseline and Selection.
+    /// The Selection's words that exactly use something these findings name, through a stored analysis or a recorded
+    /// rule call, each counted once. Membership and spelling candidates are separate counts on the same value and are
+    /// excluded from its exact counts. <see langword="null"/> when no stored Parse all words matches the current
+    /// Baseline and Selection; a route that matches no word gives zero, not <see langword="null"/>.
     /// </summary>
     public WarningWordsTouched? YourWords { get; init; }
 

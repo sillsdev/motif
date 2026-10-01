@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.Commands;
 /// <summary>
 /// Pins how a grammar finding reaches the Selection's words: by identity through the stored analyses that use what
 /// it reaches, by identity through the stored per-word rule times, by spelling only for letters and labelled so, and
-/// "can't tell" when nothing is named. The join shows use, never cause.
+/// an explicit reason when no word attribution is possible. The join shows use, never cause.
 /// </summary>
 public sealed class WarningWordsQueryTests
 {
@@ -147,21 +147,121 @@ public sealed class WarningWordsQueryTests
 
         Assert.Equal(WarningWordsMatch.Identity, found.Match);
         Assert.Equal(["walikata", "anakata"], found.Words.Select(word => word.Row.Word));
+        Assert.Equal(["ngozi"], found.SpellingCandidates.Select(word => word.Row.Word));
     }
 
     [Fact]
-    public void AFindingThatNamesNothingCantTellAndSaysWhy()
+    public void MembershipIsSeparateFromExactUsesAndSpellingInAMixedFinding()
     {
-        var nothing = YourWords(Finding("fwdata.no-usable-allomorphs", Subject("", "no single place", null, guid: null)));
-        var template = YourWords(Finding("hc-empty-template", Subject("MoInflAffixTemplate", "Verb template",
-            new WarningReach(WarningWordsPath.CantTell) { CantTell = WarningCantTell.KindNotFollowed })));
-        var gone = YourWords(Finding("hc-no-category", Subject("LexEntry", "kata",
-            new WarningReach(WarningWordsPath.CantTell) { CantTell = WarningCantTell.NotInProject })));
+        var found = YourWords(Finding("mixed",
+            Subject("MoForm", "kat", new WarningReach(WarningWordsPath.Uses) { AllomorphIds = [Kat.AllomorphId!] }),
+            Subject("MoInflAffixSlot", "Plural", new WarningReach(WarningWordsPath.Membership)
+                { GrammaticalInfoIds = [Kul.GrammaticalInfoId!] }),
+            Subject("PhPhoneme", "ng", new WarningReach(WarningWordsPath.Spelling) { Spellings = ["ng"] })));
 
-        Assert.Equal((WarningWordsMatch.CantTell, WarningCantTell.NothingNamed), (nothing.Match, nothing.CantTell));
-        Assert.Equal(WarningCantTell.KindNotFollowed, template.CantTell);
-        Assert.Equal(WarningCantTell.NotInProject, gone.CantTell);
-        Assert.All([nothing, template, gone], found => Assert.Empty(found.Words));
+        Assert.Equal(WarningAttributionState.ExactUses, found.State);
+        Assert.Equal(["walikata", "anakata"], found.Words.Select(word => word.Row.Word));
+        Assert.Equal(["walikula"], found.MembershipCandidates.Select(word => word.Row.Word));
+        Assert.Equal(["ngozi"], found.SpellingCandidates.Select(word => word.Row.Word));
+        var touched = WarningWordsQuery.Touched([Finding("mixed") with { YourWords = found }])!;
+        Assert.Equal((2, 2, 1, 1), (touched.Words, touched.NoParse, touched.ByMembershipOnly, touched.BySpellingOnly));
+    }
+
+    [Fact]
+    public void CandidateOnlyFindingsHaveNoExactHeadlineCount()
+    {
+        var membership = YourWords(Finding("template", Subject("MoInflAffixTemplate", "Plural",
+            new WarningReach(WarningWordsPath.Membership) { AllomorphIds = [Kat.AllomorphId!] })));
+        var spelling = YourWords(Finding("phoneme", Subject("PhPhoneme", "kat",
+            new WarningReach(WarningWordsPath.Spelling) { Spellings = ["kat", "ng"] })));
+        Assert.Equal(WarningAttributionState.MembershipCandidates, membership.State);
+        Assert.Equal(WarningAttributionState.SpellingCandidates, spelling.State);
+        var touched = WarningWordsQuery.Touched([
+            Finding("template") with { YourWords = membership }, Finding("phoneme") with { YourWords = spelling }])!;
+        Assert.Equal((0, 0, 2, 1), (touched.Words, touched.NoParse, touched.ByMembershipOnly, touched.BySpellingOnly));
+        Assert.Empty(touched.ByMeaning);
+    }
+
+    [Theory]
+    [InlineData(WarningWordsPath.Uses)]
+    [InlineData(WarningWordsPath.Membership)]
+    [InlineData(WarningWordsPath.Spelling)]
+    public void SupportedEmptyRoutesSayNoneInThisSelection(WarningWordsPath path)
+    {
+        var result = YourWords(Finding("empty", Subject("MoForm", "unused", new WarningReach(path))));
+        Assert.Equal(WarningAttributionState.NoneInSelection, result.State);
+        Assert.Empty(result.Words);
+    }
+
+    [Theory]
+    [InlineData(WarningWordsPath.MissingObject, WarningAttributionReason.StaleGuid, WarningAttributionState.MissingObject)]
+    [InlineData(WarningWordsPath.MissingObject, WarningAttributionReason.WrongClass, WarningAttributionState.MissingObject)]
+    [InlineData(WarningWordsPath.UnresolvedIdentity, WarningAttributionReason.NamedWithoutProjectGuid, WarningAttributionState.UnresolvedIdentity)]
+    [InlineData(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution, WarningAttributionState.ProjectWide)]
+    public void UnattributedFindingsKeepTheirSpecificReason(WarningWordsPath path, WarningAttributionReason reason,
+        WarningAttributionState state)
+    {
+        var result = YourWords(Finding("unattributed", Subject("Grammar", "named",
+            new WarningReach(path) { Reason = reason })));
+        Assert.Equal(state, result.State);
+        Assert.Equal(reason, result.Reason);
+        Assert.Empty(result.Words);
+    }
+
+    [Fact]
+    public void NoSubjectIsExplicitAndIsNotANamedObjectWithoutAGuid()
+    {
+        var result = YourWords(Finding("no-subject"));
+        Assert.Equal(WarningAttributionState.UnresolvedIdentity, result.State);
+        Assert.Equal(WarningAttributionReason.NoSubject, result.Reason);
+    }
+
+    [Fact]
+    public void FeatureOwnersCanSupplyMembershipAlongsideExactUses()
+    {
+        var result = YourWords(Finding("feature", Subject("FsClosedFeature", "Number",
+            new WarningReach(WarningWordsPath.ThroughFeatureOwners)
+            {
+                GrammaticalInfoIds = [Kat.GrammaticalInfoId!],
+                MembershipGrammaticalInfoIds = [Kul.GrammaticalInfoId!],
+                Spellings = ["ng"],
+            })));
+        Assert.Equal(["walikata", "anakata"], result.Words.Select(word => word.Row.Word));
+        Assert.Equal(["walikula"], result.MembershipCandidates.Select(word => word.Row.Word));
+        Assert.Equal(["ngozi"], result.SpellingCandidates.Select(word => word.Row.Word));
+    }
+
+    [Fact]
+    public void StrongerRoutesRemoveDuplicatesWithinAndAcrossFindings()
+    {
+        var mixed = YourWords(Finding("mixed",
+            Subject("MoForm", "kat", new WarningReach(WarningWordsPath.Uses) { AllomorphIds = [Kat.AllomorphId!] }),
+            Subject("MoInflAffixSlot", "slot", new WarningReach(WarningWordsPath.Membership)
+                { AllomorphIds = [Kat.AllomorphId!, Kul.AllomorphId!] }),
+            Subject("PhPhoneme", "letters", new WarningReach(WarningWordsPath.Spelling) { Spellings = ["kat", "kul", "ng"] })));
+        Assert.Equal(["walikula"], mixed.MembershipCandidates.Select(word => word.Row.Word));
+        Assert.Equal(["ngozi"], mixed.SpellingCandidates.Select(word => word.Row.Word));
+        var exact = YourWords(Finding("exact", Subject("MoForm", "kul",
+            new WarningReach(WarningWordsPath.Uses) { AllomorphIds = [Kul.AllomorphId!] })));
+        var touched = WarningWordsQuery.Touched([
+            Finding("mixed") with { YourWords = mixed }, Finding("exact") with { YourWords = exact }])!;
+        Assert.Equal((3, 0, 1), (touched.Words, touched.ByMembershipOnly, touched.BySpellingOnly));
+    }
+
+    [Fact]
+    public void EmptyExactRouteKeepsCandidateEvidenceAndItsAttributionState()
+    {
+        var result = YourWords(Finding("mixed", Subject("FsClosedFeature", "feature",
+            new WarningReach(WarningWordsPath.ThroughFeatureOwners)
+            {
+                MembershipGrammaticalInfoIds = [Kul.GrammaticalInfoId!],
+                Spellings = ["ng"],
+            })));
+        Assert.Equal(WarningWordsMatch.Identity, result.Match);
+        Assert.Equal(WarningAttributionState.MembershipCandidates, result.State);
+        Assert.Empty(result.Words);
+        Assert.Equal("walikula", Assert.Single(result.MembershipCandidates).Row.Word);
+        Assert.Equal("ngozi", Assert.Single(result.SpellingCandidates).Row.Word);
     }
 
     [Fact]
@@ -189,10 +289,10 @@ public sealed class WarningWordsQueryTests
 
         var touched = WarningWordsQuery.Touched(WarningWordsQuery.WithYourWords(check, Words, []).Findings)!;
 
-        Assert.Equal(4, touched.Words);
+        Assert.Equal(3, touched.Words);
         Assert.Equal(2, touched.NoParse);
         Assert.Equal(1, touched.BySpellingOnly);
-        Assert.Equal([("Lost", 2), ("Kept", 2)], touched.ByMeaning.Select(meaning => (meaning.Meaning, meaning.Words)));
+        Assert.Equal([("Lost", 2), ("Kept", 1)], touched.ByMeaning.Select(meaning => (meaning.Meaning, meaning.Words)));
         Assert.Equal(0, WarningWordsQuery.Touched([])!.Words);
     }
 }

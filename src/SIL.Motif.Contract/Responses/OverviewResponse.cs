@@ -122,8 +122,9 @@ public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? L
     public IReadOnlyList<GrammarWarningSummary> ByKind { get; init; } = [];
 
     /// <summary>
-    /// The Selection's words that use something a finding names, each counted once; <see langword="null"/> when no
-    /// stored Parse all words matches the current Baseline and Selection.
+    /// The Selection's words that exactly use something a finding names, each counted once, with membership and
+    /// spelling candidates counted separately; <see langword="null"/> when no stored Parse all words matches the
+    /// current Baseline and Selection.
     /// </summary>
     public WarningWordsTouched? YourWords { get; init; }
 }
