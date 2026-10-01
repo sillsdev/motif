@@ -66,20 +66,37 @@ test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the 
 startup. `CrashDialogsTests` checks Windows suppression and requires a crashing child to exit promptly on
 every OS.
 
+**The build and tests write only inside the checkout.** A sandboxed agent may write only in its own
+worktree, and two worktrees must never race on one per-user folder. So `build.ps1` and `test.ps1` point
+every per-user cache their tools keep at `bin/.cache/` in this checkout (`tools/MotifToolEnvironment.psm1`):
+the .NET CLI's first-run, telemetry and workload files, the compiled hygiene tools, NuGet's HTTP and
+plugin caches, Avalonia's build statistics, and on Linux the XDG data and cache folders. A value you set
+yourself is kept. Two things stay outside, by design:
+- NuGet's global packages folder (`NUGET_PACKAGES`, default `$USERPROFILE/.nuget/packages`, an explicit
+  value is preserved) is shared. Restore fills it, and a build only reads it, so restore before you hand
+  a worktree to a sandboxed agent. It is a cache, not a package source.
+- The system temporary folder, which every sandbox allows.
+
+`tools/Test-HermeticBuild.ps1` enforces this on CI's Ubuntu job. It runs the build and one test
+project with `HOME` read-only, so a tool that starts writing a new per-user cache fails there and
+names the path.
+
 **Building inside an agent sandbox.** When several sandboxed agents build worktrees at once, for
-example Codex workers on Windows, set these before `./build.ps1`:
+example Codex workers on Windows, also set these before `./build.ps1`:
 
 ```
-$env:MSBUILDDISABLENODEREUSE = '1'; $env:UseSharedCompilation = 'false'; $env:AVALONIA_TELEMETRY_OPTOUT = '1'
+$env:MSBUILDDISABLENODEREUSE = '1'; $env:UseSharedCompilation = 'false'
 ```
-
-`build.ps1` uses `$USERPROFILE/.nuget/packages` as `NUGET_PACKAGES` when the latter is unset; an explicit
-`NUGET_PACKAGES` value is preserved. The global packages directory is a cache, not a package source.
 
 A reused MSBuild node or compiler server started by another sandbox can't write into your worktree,
-so the build fails with MSB3101/MSB3491 "access denied" in `obj/`. Separately, Avalonia's build-stats
-task writes under the user's local app-data directory, which a sandbox denies. A normal developer shell
-needs none of this.
+so the build fails with MSB3101/MSB3491 "access denied" in `obj/`. A normal developer shell needs
+neither.
+
+**Linux and macOS need SIL ICU staged once.** Motif opens no FieldWorks project without SIL ICU 70,
+and off Windows it comes from a folder named by `MOTIF_SIL_ICU_STAGE`. `build.ps1` copies it beside the
+product and the test hosts. On Linux, `bash tools/stage-sil-icu.sh` downloads and checks the pinned
+packages, needs no root, and prints the folder to export. CI's Ubuntu job runs the same script.
+Without the stage, `build.ps1` warns, and every test that opens a project refuses to start.
 
 ## Where the build lands
 

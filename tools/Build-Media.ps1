@@ -136,7 +136,7 @@ function Invoke-MediaStep {
             }
         }
         'icons' {
-            Invoke-Native 'dotnet' @('run', '--file', (Join-Path $repositoryRoot 'tools/Icons/render-icons.cs'))
+            Invoke-Native 'dotnet' @('run', '--file', (Join-Path $repositoryRoot 'tools/Icons/render-icons.cs'), '--artifacts-path', (Join-Path $repositoryRoot 'bin/.cache/runfile/render-icons'))
         }
         'samples' {
             & (Join-Path $repositoryRoot 'tools/Build-Samples.ps1') -Configuration $Configuration
