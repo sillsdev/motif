@@ -77,4 +77,43 @@ public sealed class WarningsPageWordsTests
             }
         });
     }
+
+    [Fact]
+    public async Task EachKindOfFindingCountsUnderItsFilterChipsMarkNotTheDifferentMark()
+    {
+        var fake = new FakeCommandClient();
+        fake.OnCheckGrammar((_, _) => Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(
+            new GrammarCheckResponse(SeededGrammarFindings.All(), HasBaseline: true))));
+        var grammar = new GrammarViewModel(fake);
+        await grammar.SetProjectAsync(@"C:\projects\sample.fwdata");
+
+        _avalonia.Invoke(() =>
+        {
+            var panel = new GrammarPanel(grammar);
+            var window = new Window { Content = panel, Width = 1240, Height = 1400 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var chipMark = panel.GetVisualDescendants().OfType<FilterChip>()
+                    .Single(chip => chip.Label == "Warnings")
+                    .GetVisualDescendants().OfType<TextBlock>().Single(block => block.Classes.Contains("severityGlyph")).Text;
+                var kinds = panel.GetVisualDescendants().OfType<ItemsControl>()
+                    .Single(list => Avalonia.Automation.AutomationProperties.GetName(list) == "Kinds of warning");
+                var countMarks = kinds.GetVisualDescendants().OfType<VerdictChip>()
+                    .Select(chip => chip.GetVisualDescendants().OfType<TextBlock>().First().Text)
+                    .ToList();
+
+                Assert.NotEmpty(countMarks);
+                Assert.All(countMarks, mark => Assert.Equal(chipMark, mark));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
 }

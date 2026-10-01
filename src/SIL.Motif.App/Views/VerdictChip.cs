@@ -20,6 +20,9 @@ public sealed class VerdictChip : Border
     public static readonly StyledProperty<string?> TextProperty =
         AvaloniaProperty.Register<VerdictChip, string?>(nameof(Text));
 
+    public static readonly StyledProperty<string?> GlyphTextProperty =
+        AvaloniaProperty.Register<VerdictChip, string?>(nameof(GlyphText));
+
     public static readonly StyledProperty<bool> CompactProperty =
         AvaloniaProperty.Register<VerdictChip, bool>(nameof(Compact));
 
@@ -28,6 +31,7 @@ public sealed class VerdictChip : Border
         VerdictProperty.Changed.AddClassHandler<VerdictChip>((chip, _) => chip.Rebuild());
         TextProperty.Changed.AddClassHandler<VerdictChip>((chip, _) => chip.Rebuild());
         CompactProperty.Changed.AddClassHandler<VerdictChip>((chip, _) => chip.Rebuild());
+        GlyphTextProperty.Changed.AddClassHandler<VerdictChip>((chip, _) => chip.Rebuild());
     }
 
     public VerdictChip()
@@ -51,6 +55,16 @@ public sealed class VerdictChip : Border
     {
         get => GetValue(TextProperty);
         set => SetValue(TextProperty, value);
+    }
+
+    /// <summary>
+    /// A mark to show in place of the verdict's glyph, for a chip that borrows a verdict's colour without meaning
+    /// that verdict; empty keeps the glyph.
+    /// </summary>
+    public string? GlyphText
+    {
+        get => GetValue(GlyphTextProperty);
+        set => SetValue(GlyphTextProperty, value);
     }
 
     /// <summary>Whether the chip is the smaller size a list row uses.</summary>
@@ -81,7 +95,7 @@ public sealed class VerdictChip : Border
         Classes.Set("compact", Compact);
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "verdictChipRow" } };
-        var glyph = Words(Verdicts.GlyphOf(Verdict));
+        var glyph = Words(GlyphText is { Length: > 0 } mark ? mark : Verdicts.GlyphOf(Verdict));
         glyph.FontWeight = FontWeight.Bold;
         glyph.IsHitTestVisible = false;
         row.Children.Add(glyph);
