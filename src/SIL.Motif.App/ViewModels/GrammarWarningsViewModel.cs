@@ -19,12 +19,13 @@ public enum GrammarFindingBucket
 
 /// <summary>
 /// The mark each grammar finding level wears on the Warnings page, on its filter chip and beside each kind's count
-/// alike. None of them is a verdict glyph: a grammar warning is not a parse that differs.
+/// alike: a warning is the sidebar's own triangle, an error a circled !, and a note a circled i. None is a parser
+/// outcome's sign, and none is ×, which already means "crossed with" and "times".
 /// </summary>
 public static class GrammarLevelMarks
 {
-    public const string Error = "×";
-    public const string Warning = "!";
+    public const string Error = "!";
+    public const string Warning = "⚠";
     public const string Information = "i";
 
     /// <summary>The mark for <paramref name="level"/>.</summary>
@@ -274,11 +275,8 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     /// <summary>What the selected diagnostic code means, when PanGloss supplied a description.</summary>
     public string? Description { get; }
     public bool HasDescription => Description is not null;
-    /// <summary>Whether a finding signals a difference or an informational limit, which chooses its colour.</summary>
-    public Verdict Meaning => IsWarning || IsError ? Verdict.Differs : Verdict.Limit;
-
     /// <summary>The level's own mark, the one its filter chip wears.</summary>
-    public string Mark => GrammarLevelMarks.Of(Level);
+    public Mark Mark => Mark.Of(Level);
 
     [ObservableProperty]
     private bool _isSelected;

@@ -17,10 +17,8 @@ public static class ReadingGradeLabels
     /// <summary>The label for <paramref name="grade"/>, or an empty string for a value that is not a grade.</summary>
     public static string Of(string? grade) => grade switch
     {
-        ReadingGrade.Approved => "Approved",
-        ReadingGrade.Disapproved => "Disapproved",
-        ReadingGrade.Candidate => "Unknown",
         ReadingGrade.NoOpinion => NotPresent,
+        ReadingGrade.Approved or ReadingGrade.Disapproved or ReadingGrade.Candidate => WindowWords.Of(WindowWords.OpinionOf(grade)),
         _ => string.Empty,
     };
 }

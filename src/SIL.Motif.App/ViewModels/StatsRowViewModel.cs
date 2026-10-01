@@ -63,8 +63,8 @@ public sealed class StatsRowViewModel
 
     public bool HasCompletion => CompletionShort.Length > 0;
 
-    /// <summary>The shared meaning of the completion: finished, or stopped at a limit.</summary>
-    public Verdict CompletionMeaning => IsIncomplete ? Verdict.Limit : CompletionShort == "Completed" ? Verdict.Agrees : Verdict.New;
+    /// <summary>A search stopped at a limit wears the Stopped mark; a finished one says so in words alone.</summary>
+    public Mark? CompletionMark => IsIncomplete ? Mark.Stopped : null;
 
     /// <summary>The numbers as the table shows them, grouped for reading; empty where the parser gave none.</summary>
     public string AttemptsText => Format(Attempts, "N0");

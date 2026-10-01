@@ -110,10 +110,10 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     [
         .. new[]
         {
-            new OutcomeSegment(Verdict.Agrees, _all.Count(row => row.IsParsed && !row.StoppedAtALimit), "parsed"),
-            new OutcomeSegment(Verdict.NoResult, _all.Count(row => row.IsFailed && !row.StoppedAtALimit), "no parse"),
-            new OutcomeSegment(Verdict.Limit, _all.Count(row => row.StoppedAtALimit), "stopped at a limit"),
-            new OutcomeSegment(Verdict.Several, _all.Count(row => row.Result == "Skipped" && !row.StoppedAtALimit), "skipped"),
+            new OutcomeSegment(Mark.Same, _all.Count(row => row.IsParsed && !row.StoppedAtALimit), "parsed"),
+            new OutcomeSegment(Mark.NoParse, _all.Count(row => row.IsFailed && !row.StoppedAtALimit), "no parse"),
+            new OutcomeSegment(Mark.Stopped, _all.Count(row => row.StoppedAtALimit), "stopped at a limit"),
+            new OutcomeSegment(Mark.NotParsed, _all.Count(row => row.Result == "Skipped" && !row.StoppedAtALimit), "skipped"),
         }.Where(segment => segment.Count > 0),
     ];
 
@@ -292,29 +292,12 @@ public sealed class AssessWordRowViewModel
     /// <summary>Whether there is a comparison to show; a word with no readings and nothing missed has none.</summary>
     public bool HasVsProject => VsProject != "—";
 
-    /// <summary>The shared meaning behind <see cref="VsProject"/>: a missed approved analysis is a no result.</summary>
-    public Verdict Meaning => VsProject switch
-    {
-        "Approved" => Verdict.Agrees,
-        "Disapproved" => Verdict.Differs,
-        "Unknown" => Verdict.Candidate,
-        ReadingGradeLabels.NotPresent => Verdict.New,
-        "Missed" => Verdict.NoResult,
-        _ => Verdict.Limit,
-    };
+    /// <summary>What PanGloss built for this word against what FieldWorks holds: its Matrix column.</summary>
+    public ParserOutcome ParserOutcome => WindowWords.OutcomeOf(CompareViewModel.Place(this).Column);
 
     /// <summary>How long the parser took, or nothing for a word it never tried.</summary>
     public string ElapsedText => Result == "Skipped" || ElapsedMs is not { } ms ? string.Empty
         : ms == 0 ? "<1 ms" : $"{ms:N0} ms";
-
-    /// <summary>The shared meaning behind <see cref="Result"/>: what the parser itself came to.</summary>
-    public Verdict ResultMeaning => Result switch
-    {
-        "Parsed" => Verdict.Agrees,
-        "No parse" => Verdict.NoResult,
-        "Time limit" or "Step limit" or "Skipped" => Verdict.Limit,
-        _ => Verdict.New,
-    };
 
     public IReadOnlyList<ParserReadingViewModel> Readings { get; }
     public bool HasReadings => Readings.Count > 0;
@@ -373,17 +356,6 @@ public sealed class ParserReadingViewModel
     public string Text { get; }
 
     public string? Grade { get; }
-
-    /// <summary>The shared meaning behind <see cref="Grade"/>, so a reading is coloured like everything else.</summary>
-    public Verdict Meaning => Grade switch
-    {
-        ReadingGrade.Approved => Verdict.Agrees,
-        ReadingGrade.Disapproved => Verdict.Differs,
-        ReadingGrade.Candidate => Verdict.Candidate,
-        "missed" => Verdict.NoResult,
-        "not-reached" or "not-tried" => Verdict.Limit,
-        _ => Verdict.New,
-    };
 
     /// <summary>What a missed approved analysis means: not produced, or not reached before a limit.</summary>
     public string MissedExplanation => Grade switch

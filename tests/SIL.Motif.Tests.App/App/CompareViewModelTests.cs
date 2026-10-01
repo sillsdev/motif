@@ -407,11 +407,11 @@ public sealed class CompareViewModelTests
         Assert.Equal(Sample.Length, compare.Cells.Sum(cell => cell.Count));
         Assert.Equal(Sample.Length, compare.Words.Count);
         int Column(CompareColumnKind column) => compare.Columns.Single(item => item.Column == column).Count;
-        int Outcome(Verdict meaning) => table.Outcomes.Where(segment => segment.Meaning == meaning).Sum(segment => segment.Count);
-        Assert.Equal(Outcome(Verdict.Agrees), Column(CompareColumnKind.Match) + Column(CompareColumnKind.NoMatch));
-        Assert.Equal(Outcome(Verdict.NoResult), Column(CompareColumnKind.NoParse));
-        Assert.Equal(Outcome(Verdict.Limit), Column(CompareColumnKind.Timeout));
-        Assert.Equal(Outcome(Verdict.Several), Column(CompareColumnKind.Skipped));
+        int Outcome(Mark mark) => table.Outcomes.Where(segment => segment.Mark == mark).Sum(segment => segment.Count);
+        Assert.Equal(Outcome(Mark.Same), Column(CompareColumnKind.Match) + Column(CompareColumnKind.NoMatch));
+        Assert.Equal(Outcome(Mark.NoParse), Column(CompareColumnKind.NoParse));
+        Assert.Equal(Outcome(Mark.Stopped), Column(CompareColumnKind.Timeout));
+        Assert.Equal(Outcome(Mark.NotParsed), Column(CompareColumnKind.Skipped));
     }
 
     [Fact]

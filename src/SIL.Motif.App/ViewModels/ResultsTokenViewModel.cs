@@ -40,7 +40,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
         ProjectStatusLabel = projectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
-        ProjectStatusVerdict = projectWord?.Verdict ?? global::SIL.Motif.App.ViewModels.Verdict.New;
+        ProjectStatusMark = projectWord is null ? Mark.NotInFieldWorks : projectWord.StatusMark;
         ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
         Marking = AnalysisMarkingState.Create(token, result, _isUnread);
@@ -69,9 +69,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         var others = Readings.Count - 1;
         ParserLine = Verdict switch
         {
-            OccurrenceVerdict.Matches => others > 0 ? $"✓ parser agrees, with {others} other reading{Plural(others)}" : "✓ parser agrees",
-            OccurrenceVerdict.Differs when first is null => "✗ parser: no parse",
-            OccurrenceVerdict.Differs => $"≠ parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
+            OccurrenceVerdict.Matches => others > 0
+                ? $"{Mark.Same.Glyph} parser agrees, with {others} other reading{Plural(others)}"
+                : $"{Mark.Same.Glyph} parser agrees",
+            OccurrenceVerdict.Differs when first is null => $"{Mark.NoParse.Glyph} parser: no parse",
+            OccurrenceVerdict.Differs => $"{Mark.Different.Glyph} parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.New => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.NoParse => "no parse",
             OccurrenceVerdict.Limit => "parser stopped at a limit",
@@ -193,8 +195,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The strip's PanGloss line when it shows no reading, in Round 4's short words.</summary>
     public string PanGlossNote => Marking.PanGlossClass switch
     {
-        AnalysisMarkingClass.Same => "= same",
-        AnalysisMarkingClass.None => "∅ No parse",
+        AnalysisMarkingClass.Same => $"{Mark.Same.Glyph} same",
+        AnalysisMarkingClass.None => $"{Mark.NoParse.Glyph} {Mark.NoParse.Word}",
         AnalysisMarkingClass.Capped => "Stopped at the step limit",
         _ => PanGlossSummary,
     };
@@ -233,7 +235,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     public string ProjectStatusLabel { get; }
 
-    public Verdict ProjectStatusVerdict { get; }
+    /// <summary>The opinion mark for what the project holds for this word; an incorrect spelling has none.</summary>
+    public Mark? ProjectStatusMark { get; }
 
     public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses { get; }
 
@@ -314,18 +317,20 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>Pending changes that affect this word and can be undone from its strip.</summary>
     public IReadOnlyList<StagedMarkingDisplayViewModel> StagedChanges { get; private set; } = [];
 
-    /// <summary>The shared meaning behind <see cref="Verdict"/>, used for its colour and glyph.</summary>
-    public Verdict Meaning => Verdict switch
-    {
-        OccurrenceVerdict.Matches => ViewModels.Verdict.Agrees,
-        OccurrenceVerdict.Differs => ViewModels.Verdict.Differs,
-        OccurrenceVerdict.New => ViewModels.Verdict.New,
-        OccurrenceVerdict.NoParse => ViewModels.Verdict.NoResult,
-        _ => ViewModels.Verdict.Limit,
-    };
+    /// <summary>What PanGloss built for this occurrence against what FieldWorks stores here.</summary>
+    public ParserOutcome Outcome => WindowWords.OutcomeOf(Marking.PanGlossClass);
 
     /// <summary>Whether the parser also produced a reading FieldWorks has disapproved for this word.</summary>
     public bool HasDisapprovedReading => Readings.Any(reading => reading.IsDisapproved);
+
+    /// <summary>The disapproved marker's mark: the Problem tone the Matrix gives a disapproved word PanGloss builds.</summary>
+    public Mark DisapprovedMark => Mark.Of(DisapprovedMeaning.Tone);
+
+    /// <summary>The disapproved marker's words, the Matrix's own for a disapproved word PanGloss builds.</summary>
+    public string DisapprovedLabel => DisapprovedMeaning.Word;
+
+    private static (string Word, MeaningTone Tone) DisapprovedMeaning =>
+        WindowWords.MeaningOf(ProjectStanding.Rejected, ParserOutcome.Same);
 
     /// <summary>What the disapproved marker says when a reader stops on it.</summary>
     public string DisapprovedTip => $"The parser also produced a reading FieldWorks has disapproved for {Text}.";

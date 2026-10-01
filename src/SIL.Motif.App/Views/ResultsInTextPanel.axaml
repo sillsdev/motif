@@ -203,11 +203,9 @@
                                                        AutomationProperties.AutomationId="{Binding WordAutomationId}" />
                               <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
-                              <Border Classes="verdictChip differs compact" VerticalAlignment="Center"
-                                      IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
-                                      AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}">
-                                <views:CopyableTextBlock Text="!" />
-                              </Border>
+                              <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
+                                              IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
+                                              AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
                             </StackPanel>
                             <Border Classes="stripRow stripFieldWorks analysisRow"
                                     AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">

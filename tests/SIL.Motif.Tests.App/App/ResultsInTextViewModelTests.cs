@@ -1230,16 +1230,16 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
-    public void ProjectStatusChipUsesTheWordStatusVerdict()
+    public void ProjectStatusChipUsesTheWordsOpinionMark()
     {
         var analysis = new ProjectAnalysis("k1", [new ParserReadingMorph("form", "gloss", "n", null, false, null)]);
         var cases = new[]
         {
-            (new TextWord("approved", null, [], [analysis], []), Verdict.Approved),
-            (new TextWord("candidate", null, [], [], [], CandidateCount: 1), Verdict.Candidate),
-            (new TextWord("rejected", null, [], [], [analysis]), Verdict.Differs),
-            (new TextWord("incorrect", null, [], [], [], IncorrectSpelling: true), Verdict.Several),
-            (new TextWord("new", null, [], [], []), Verdict.New),
+            (new TextWord("approved", null, [], [analysis], []), Mark.Approved),
+            (new TextWord("candidate", null, [], [], [], CandidateCount: 1), Mark.Unknown),
+            (new TextWord("rejected", null, [], [], [analysis]), Mark.Disapproved),
+            (new TextWord("incorrect", null, [], [], [], IncorrectSpelling: true), null),
+            (new TextWord("new", null, [], [], []), Mark.NotInFieldWorks),
         };
 
         foreach (var (word, expected) in cases)
@@ -1248,7 +1248,7 @@ public sealed class ResultsInTextViewModelTests
             var token = new ResultsTokenViewModel(word.Form, 1,
                 new TextToken(word.Form, word.Form, null, "unanalysed"), null, projectWord);
 
-            Assert.Equal(expected, token.ProjectStatusVerdict);
+            Assert.Equal(expected, token.ProjectStatusMark);
         }
     }
 

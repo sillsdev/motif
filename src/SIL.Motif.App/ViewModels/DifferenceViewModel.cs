@@ -211,14 +211,13 @@ public sealed partial class DifferenceViewModel : ObservableObject
         _ => "unchanged",
     };
 
-    /// <summary>The shared meaning a move is coloured with, so a regression reads like every other bad news.</summary>
-    public static Verdict VerdictOf(MoveKind kind) => kind switch
+    /// <summary>The tone a move is coloured with, so a regression reads like every other Problem.</summary>
+    public static MeaningTone ToneOf(MoveKind kind) => kind switch
     {
-        MoveKind.Regressed => Verdict.Differs,
-        MoveKind.NowUnknown or MoveKind.Changed => Verdict.NoResult,
-        MoveKind.NewCoverage => Verdict.New,
-        MoveKind.Unchanged => Verdict.Limit,
-        _ => Verdict.Agrees,
+        MoveKind.Regressed => MeaningTone.Problem,
+        MoveKind.Changed or MoveKind.NewCoverage => MeaningTone.Look,
+        MoveKind.NowUnknown or MoveKind.Unchanged => MeaningTone.Neutral,
+        _ => MeaningTone.Fine,
     };
 }
 
@@ -243,7 +242,8 @@ public sealed class MoveViewModel
     public string CountText => Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
     public MoveKind Kind { get; }
     public string KindLabel => DifferenceViewModel.LabelOf(Kind);
-    public Verdict Verdict => DifferenceViewModel.VerdictOf(Kind);
+    /// <summary>The move's tone, as the meaning mark its chip wears.</summary>
+    public Mark Mark => Mark.Of(DifferenceViewModel.ToneOf(Kind));
     public bool IsRegression => Kind == MoveKind.Regressed;
 
     /// <summary>The cell a word left, with its row, since two rows share cell names such as "Unknown".</summary>

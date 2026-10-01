@@ -15,7 +15,7 @@
                       IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}">
             <views:CopyableTextBlock Text="{Binding Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
                                      IsVisible="{Binding ShowsOtherWord}" AutomationProperties.Name="Diagnostic word" />
-            <views:VerdictChip Verdict="{Binding AnswerVerdict}" Text="{Binding AnswerText}"
+            <views:MarkChip Mark="{Binding AnswerMark}" Text="{Binding AnswerText}"
                                IsVisible="{Binding HasResult}" />
           </StackPanel>
           <Button DockPanel.Dock="Right" Content="&#x22ef;" FontSize="{DynamicResource Intent.Type.Section}" Padding="{DynamicResource Component.TryWord.ToolButtonInset}"
@@ -112,7 +112,7 @@
               <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
                   <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                    <views:VerdictChip Verdict="{Binding Meaning}" Text="{Binding Surface}" IsVisible="{Binding HasSurface}" />
+                    <views:MarkChip Mark="{Binding StepMark}" Text="{Binding Surface}" IsVisible="{Binding HasSurface}" />
                   </StackPanel>
                   <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" Separators="True" />
                   <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."

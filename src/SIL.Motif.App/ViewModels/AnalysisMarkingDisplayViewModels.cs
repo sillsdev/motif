@@ -12,11 +12,10 @@ public sealed class FieldWorksAnalysisDisplayViewModel
         ArgumentNullException.ThrowIfNull(analysis);
         StoredAnalysisId = analysis.StoredAnalysisId;
         Opinion = analysis.Opinion;
-        OpinionMarkKind = analysis.Opinion switch
+        OpinionMarkKind = WindowWords.OpinionOf(analysis.Opinion) switch
         {
-            ReadingGrade.Approved => OpinionMarkKind.Approved,
-            ReadingGrade.Disapproved => OpinionMarkKind.Disapproved,
-            _ => OpinionMarkKind.Unknown,
+            OpinionMarkKind.None => OpinionMarkKind.Unknown,
+            var opinion => opinion,
         };
         Morphs = analysis.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
     }
@@ -28,12 +27,7 @@ public sealed class FieldWorksAnalysisDisplayViewModel
     public string Opinion { get; }
 
     /// <summary>The opinion in FieldWorks' own words: Approved, Disapproved or Unknown.</summary>
-    public string OpinionLabel => OpinionMarkKind switch
-    {
-        OpinionMarkKind.Approved => "Approved",
-        OpinionMarkKind.Disapproved => "Disapproved",
-        _ => "Unknown",
-    };
+    public string OpinionLabel => WindowWords.Of(OpinionMarkKind);
 
     /// <summary>The mark that uses FieldWorks' shape and letter for this opinion.</summary>
     public OpinionMarkKind OpinionMarkKind { get; }

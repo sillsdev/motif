@@ -43,30 +43,29 @@
   <Style Selector="Border.outcomeSegment">
     <Setter Property="Background" Value="{DynamicResource Intent.TextFaint}" />
   </Style>
-  <Style Selector="Border.outcomeSegment.agrees">
+  <!-- A part takes its mark's colour: an outcome's, or for a meaning, a shade apart from a no-parse beside it. -->
+  <Style Selector="Border.outcomeSegment.outcome.same">
     <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Same}" />
   </Style>
-  <!-- A bar's differing part is a built-something-else problem, in a shade apart from a no-parse beside it. -->
-  <Style Selector="Border.outcomeSegment.differs">
-    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
+  <Style Selector="Border.outcomeSegment.outcome.different">
+    <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Different}" />
   </Style>
-  <Style Selector="Border.outcomeSegment.new">
-    <Setter Property="Background" Value="{DynamicResource Intent.Primary}" />
-  </Style>
-  <Style Selector="Border.outcomeSegment.noresult">
+  <Style Selector="Border.outcomeSegment.outcome.noParse">
     <Setter Property="Background" Value="{DynamicResource Intent.Outcome.NoParse}" />
   </Style>
-  <Style Selector="Border.outcomeSegment.limit">
+  <Style Selector="Border.outcomeSegment.outcome.stopped">
     <Setter Property="Background" Value="{DynamicResource Intent.Outcome.Stopped}" />
   </Style>
-  <!-- In a bar, several stands for words left out of the parse, so it draws as Not parsed. -->
-  <Style Selector="Border.outcomeSegment.several">
+  <Style Selector="Border.outcomeSegment.outcome.notParsed">
     <Setter Property="Background" Value="{DynamicResource Intent.Outcome.NotParsed}" />
   </Style>
-  <Style Selector="Border.outcomeSegment.approved">
-    <Setter Property="Background" Value="{DynamicResource Intent.Approved.Accent}" />
+  <Style Selector="Border.outcomeSegment.meaning.fine">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Fine}" />
   </Style>
-  <Style Selector="Border.outcomeSegment.candidate">
-    <Setter Property="Background" Value="{DynamicResource Intent.Candidate.Accent}" />
+  <Style Selector="Border.outcomeSegment.meaning.look">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Look.Edge}" />
+  </Style>
+  <Style Selector="Border.outcomeSegment.meaning.problem">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
   </Style>
 </Styles>

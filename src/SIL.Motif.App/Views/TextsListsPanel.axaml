@@ -88,12 +88,12 @@
                         AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
                 <views:CopyableTextBlock Grid.Column="2" Width="{DynamicResource Component.TextsPage.WordOccurrencesWidth}"
                                          Classes="muted" Text="{Binding OccurrenceText}" />
-                <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"
-                                   Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}"
+                <views:MarkChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"
+                                   Mark="{Binding RowMark}" Text="{Binding RowLabel}"
                                    Compact="True" HorizontalAlignment="Left"
                                    IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsRowStatus}" />
-                <views:VerdictChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.ListParserWidth}"
-                                   Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}"
+                <views:MarkChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.ListParserWidth}"
+                                   Mark="{Binding ColumnMark}" Text="{Binding ColumnLabel}"
                                    Compact="True" HorizontalAlignment="Left"
                                    IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsColumnStatus}" />
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding PendingChangeStatus}"

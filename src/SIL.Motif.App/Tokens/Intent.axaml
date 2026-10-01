@@ -54,12 +54,6 @@
     Intent.Danger.Text            small text saying something differs, on Intent.Danger.Fill
     Intent.Unread.Text            readable label for an Unread occurrence
     Intent.Unread.Fill            background behind the Unread label
-    Intent.Approved.Fill          behind an approved analysis (Motif's cyan palette)
-    Intent.Approved.Text          an approved analysis's text
-    Intent.Approved.Accent        an approved analysis's bar, underline or edge
-    Intent.Candidate.Fill         behind a candidate analysis (Motif's tan palette)
-    Intent.Candidate.Text         a candidate analysis's text
-    Intent.Candidate.Accent       a candidate analysis's bar, underline or edge
     Intent.Marking.Text           text on compact analysis marks and lines
     Intent.Marking.Border         edges of compact analysis marks and controls
     Intent.Marking.Surface        the surface of compact analysis controls
@@ -283,12 +277,6 @@
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose950}" />
-      <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan50}" />
-      <SolidColorBrush x:Key="Intent.Approved.Text" Color="{StaticResource Primitive.Color.Cyan800}" />
-      <SolidColorBrush x:Key="Intent.Approved.Accent" Color="{StaticResource Primitive.Color.Cyan500}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Fill" Color="{StaticResource Primitive.Color.Tan50}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Text" Color="{StaticResource Primitive.Color.Tan800}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Accent" Color="{StaticResource Primitive.Color.Tan500}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate950}" />
       <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate400}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Grey0}" />
@@ -380,12 +368,6 @@
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
       <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose200}" />
-      <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan900}" />
-      <SolidColorBrush x:Key="Intent.Approved.Text" Color="{StaticResource Primitive.Color.Cyan200}" />
-      <SolidColorBrush x:Key="Intent.Approved.Accent" Color="{StaticResource Primitive.Color.Cyan400}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Fill" Color="{StaticResource Primitive.Color.Tan900}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Text" Color="{StaticResource Primitive.Color.Tan200}" />
-      <SolidColorBrush x:Key="Intent.Candidate.Accent" Color="{StaticResource Primitive.Color.Tan500}" />
       <SolidColorBrush x:Key="Intent.Marking.Text" Color="{StaticResource Primitive.Color.Slate50}" />
       <SolidColorBrush x:Key="Intent.Marking.Border" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Marking.Surface" Color="{StaticResource Primitive.Color.Slate975}" />

@@ -37,21 +37,15 @@ public enum WordProjectStatus
     IncorrectSpelling,
 }
 
-/// <summary>Maps a Texts status to its shared meaning, colour and glyph.</summary>
+/// <summary>Maps a Texts status to its opinion mark and its label.</summary>
 public static class WordProjectStatuses
 {
     /// <summary>
-    /// Approved and candidate analyses wear FieldWorks' own cyan and tan, rejected differs, an incorrect spelling is
-    /// neutral, and a form with nothing stored is new.
+    /// The opinion mark for <paramref name="status"/>: A, U or D in its box, or the dashed box for a form with nothing
+    /// stored. An incorrect spelling is not an opinion, so it has no mark.
     /// </summary>
-    public static Verdict VerdictOf(WordProjectStatus status) => status switch
-    {
-        WordProjectStatus.Approved => Verdict.Approved,
-        WordProjectStatus.Candidate => Verdict.Candidate,
-        WordProjectStatus.Rejected => Verdict.Differs,
-        WordProjectStatus.IncorrectSpelling => Verdict.Several,
-        _ => Verdict.New,
-    };
+    public static Mark? MarkOf(WordProjectStatus status) =>
+        status == WordProjectStatus.IncorrectSpelling ? null : Mark.Of(WindowWords.OpinionOf(status));
 
     /// <summary>Which row <paramref name="word"/> belongs to, ranked by <see cref="ProjectStandings.Of"/>.</summary>
     public static WordProjectStatus Of(TextWord word)
@@ -75,11 +69,9 @@ public static class WordProjectStatuses
     /// <summary>The short label a Texts filter shows for <paramref name="status"/>.</summary>
     public static string LabelOf(WordProjectStatus status, int approvedCount = 1) => status switch
     {
-        WordProjectStatus.Approved => approvedCount > 1 ? $"Approved, {approvedCount} analyses" : "Approved",
-        WordProjectStatus.Candidate => "Unknown",
-        WordProjectStatus.Rejected => "Disapproved",
-        WordProjectStatus.IncorrectSpelling => "Incorrect spelling",
-        _ => ReadingGradeLabels.NotPresent,
+        WordProjectStatus.Approved when approvedCount > 1 => $"{WindowWords.LabelOf(status)}, {approvedCount} analyses",
+        WordProjectStatus.NotPresent => ReadingGradeLabels.NotPresent,
+        _ => WindowWords.LabelOf(status),
     };
 }
 
@@ -451,13 +443,17 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     // What the latest Assessment came to for this word; null before one, or when the word was not in it.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLastResult))]
-    [NotifyPropertyChangedFor(nameof(LastResultMeaning))]
+    [NotifyPropertyChangedFor(nameof(LastResultMark))]
     [NotifyPropertyChangedFor(nameof(LastResultLabel))]
     private AssessWordRowViewModel? _lastResult;
 
     public bool HasLastResult => LastResult is not null;
-    public Verdict LastResultMeaning => LastResult?.ResultMeaning ?? Verdict.Limit;
-    public string LastResultLabel => LastResult?.Result ?? string.Empty;
+
+    /// <summary>What PanGloss built for this word in the latest parse, as its outcome mark.</summary>
+    public Mark? LastResultMark => LastResult is { } result ? Mark.Of(result.ParserOutcome) : null;
+
+    /// <summary>The latest parse's outcome in the window's words.</summary>
+    public string LastResultLabel => LastResult is { } result ? WindowWords.Of(result.ParserOutcome) : string.Empty;
 
     internal void ShowAssessment(AssessWordRowViewModel? result) => LastResult = result;
 
@@ -497,8 +493,8 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     /// <summary>Whether this spelling carries different analyses in different places, usually homographs.</summary>
     public bool HasSeveralAnalyses { get; }
 
-    /// <summary>The shared meaning behind <see cref="Status"/>, used for its colour and glyph.</summary>
-    public Verdict Verdict => WordProjectStatuses.VerdictOf(Status);
+    /// <summary>The opinion mark behind <see cref="Status"/>; an incorrect spelling has none.</summary>
+    public Mark? StatusMark => WordProjectStatuses.MarkOf(Status);
 
     public string StatusLabel { get; }
     public string ProjectSummary { get; }

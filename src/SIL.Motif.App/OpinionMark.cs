@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Controls;
 
@@ -70,14 +71,9 @@ public sealed class OpinionMark : Border
             return;
         }
 
-        var (shape, letter, name) = kind switch
-        {
-            OpinionMarkKind.Approved => ("approved", (char?)'A', "Approved"),
-            OpinionMarkKind.Disapproved => ("disapproved", (char?)'D', "Disapproved"),
-            OpinionMarkKind.Unknown => ("unknown", (char?)'U', "Unknown"),
-            OpinionMarkKind.None => ("none", (char?)null, "Not in FieldWorks"),
-            _ => throw new ArgumentOutOfRangeException(nameof(Kind), Kind, null),
-        };
+        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(Kind), Kind, null);
+        var mark = Mark.Of(kind);
+        var (shape, letter, name) = (mark.Value, mark.Glyph is [var glyph] ? glyph : (char?)null, mark.Word);
         Letter = letter;
         Classes.Add(shape);
         Child = letter is { } value

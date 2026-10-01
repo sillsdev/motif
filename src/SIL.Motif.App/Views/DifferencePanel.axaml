@@ -64,7 +64,7 @@
                 <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CellColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
                 <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
               </Grid.ColumnDefinitions>
-              <views:VerdictChip Grid.Column="0" Verdict="{Binding Verdict}" Text="{Binding KindLabel}" Compact="True" HorizontalAlignment="Left" />
+              <views:MarkChip Grid.Column="0" Mark="{Binding Mark}" Text="{Binding KindLabel}" Compact="True" HorizontalAlignment="Left" />
               <StackPanel Grid.Column="1">
                 <views:CopyableTextBlock Text="{Binding FromLabel}" FontSize="{DynamicResource Intent.Type.Status}" />
                 <views:CopyableTextBlock Classes="muted" Text="{Binding FromRow}" FontSize="{DynamicResource Intent.Type.Label}" />

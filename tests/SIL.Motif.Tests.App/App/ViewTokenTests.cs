@@ -37,7 +37,7 @@ public sealed class ViewTokenTests
     {
         AssertStyled(() => new OutcomeBar
         {
-            Segments = [new OutcomeSegment(Verdict.Agrees, 3, "agree"), new OutcomeSegment(Verdict.Differs, 1, "differ")],
+            Segments = [new OutcomeSegment(Mark.Same, 3, "agree"), new OutcomeSegment(Mark.Of(MeaningTone.Problem), 1, "differ")],
         },
         [
             new("the bar", bar => bar, StackPanel.SpacingProperty, "Intent.Space.Related"),
@@ -56,7 +56,7 @@ public sealed class ViewTokenTests
 
     [Fact]
     public void AnOutcomeBarWithoutItsLegendTakesTheCompactTrackHeight() =>
-        AssertStyled(() => new OutcomeBar { ShowLegend = false, Segments = [new OutcomeSegment(Verdict.Agrees, 3, "agree")] },
+        AssertStyled(() => new OutcomeBar { ShowLegend = false, Segments = [new OutcomeSegment(Mark.Same, 3, "agree")] },
             [new("the track", bar => Nth<Grid>(bar, 0), Grid.HeightProperty, "Component.OutcomeBar.CompactTrackHeight")]);
 
     [Fact]
@@ -231,12 +231,12 @@ public sealed class ViewTokenTests
 
     [Fact]
     public void AFilterChipSpacesItsGlyphFromATokenLabel() =>
-        AssertStyled(() => new FilterChip { Label = "Agrees", Count = 3, Verdict = Verdict.Agrees },
+        AssertStyled(() => new FilterChip { Label = "Same", Count = 3, Mark = Mark.Same },
             [new("the chip's row", chip => Nth<StackPanel>(chip, 0), StackPanel.SpacingProperty, "Intent.Space.Snug")]);
 
     [Fact]
-    public void AVerdictChipSpacesItsGlyphFromAToken() =>
-        AssertStyled(() => new VerdictChip { Verdict = Verdict.Agrees },
+    public void AMarkChipSpacesItsGlyphFromAToken() =>
+        AssertStyled(() => new MarkChip { Mark = Mark.Same },
             [new("the chip's row", chip => Nth<StackPanel>(chip, 0), StackPanel.SpacingProperty, "Intent.Space.Compact")]);
 
     [Fact]
