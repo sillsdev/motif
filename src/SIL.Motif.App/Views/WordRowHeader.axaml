@@ -18,7 +18,7 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPanGloss" />
+              <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowMeaning" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWarnings" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPlaces" />

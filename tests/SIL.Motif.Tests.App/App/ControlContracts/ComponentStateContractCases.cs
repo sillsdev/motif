@@ -263,15 +263,15 @@ internal static class ComponentStateContractCases
             StateStimulus.Pointer, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new("ListBox.wordRows ListBoxItem:selected" + rowsFace, "selected", () => WordRowsEntry(selected: true),
             StateStimulus.None, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
-        yield return new("Border.wordRow:pointerover", "hover", () => Alone(WordRowLine()), StateStimulus.Pointer,
+        yield return new("Border.wordRowFrame:pointerover", "hover", () => Alone(WordRowLine()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.wordRow.open", "opened", () => Alone(WordRowLine("open")), StateStimulus.None,
+        yield return new("Border.wordRowFrame.open", "opened", () => Alone(WordRowLine("open")), StateStimulus.None,
             StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Border.wordRow.open", "opened under the pointer", () => Alone(WordRowLine("open")),
+        yield return new("Border.wordRowFrame.open", "opened under the pointer", () => Alone(WordRowLine("open")),
             StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Border.wordRow.open", "opened and keyboard focus", OpenRowBody, StateStimulus.KeyboardFocus,
+        yield return new("Border.wordRowFrame.open", "opened and keyboard focus", OpenRowBody, StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
-        yield return new("Border.wordRow.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
+        yield return new("Border.wordRowFrame.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
     }
 
@@ -309,7 +309,7 @@ internal static class ComponentStateContractCases
 
     private static Border WordRowLine(params string[] classes)
     {
-        var line = new Border { Classes = { "wordRow" }, Width = 300, Height = 40, Child = new TextBlock { Text = "kitabu" } };
+        var line = new Border { Classes = { "wordRowFrame" }, Width = 300, Height = 40, Child = new TextBlock { Text = "kitabu" } };
         line.Classes.AddRange(classes);
         return line;
     }
@@ -317,13 +317,13 @@ internal static class ComponentStateContractCases
     private static (Control, Control) OpenRowBody()
     {
         var body = new Border { Classes = { "wordRowBody" }, Focusable = true, Child = new TextBlock { Text = "kitabu" } };
-        return (new Border { Classes = { "wordRow", "open" }, Width = 300, Height = 40, Child = body }, body);
+        return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = body }, body);
     }
 
     private static (Control, Control) OpenRowEdge()
     {
         var edge = new Border { Classes = { "wordRowEdge" }, Child = new TextBlock { Text = "kitabu" } };
-        return (new Border { Classes = { "wordRow", "open" }, Width = 300, Height = 40, Child = edge }, edge);
+        return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = edge }, edge);
     }
 
     private static (Control, Control) Alone(Control control) => (control, control);

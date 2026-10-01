@@ -40,25 +40,25 @@
   </Style>
 
   <!-- The row's words stay selectable for copying, but Tab goes from the row to its next steps, not word by word. -->
-  <Style Selector="Border.wordRow SelectableTextBlock, Border.wordRowHeader SelectableTextBlock">
+  <Style Selector="Border.wordRowFrame SelectableTextBlock, Border.wordRowHeader SelectableTextBlock">
     <Setter Property="IsTabStop" Value="False" />
   </Style>
-  <Style Selector="Border.wordRow">
+  <Style Selector="Border.wordRowFrame">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
   </Style>
-  <Style Selector="Border.wordRow:pointerover">
+  <Style Selector="Border.wordRowFrame:pointerover">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
-  <Style Selector="Border.wordRow.open">
+  <Style Selector="Border.wordRowFrame.open">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
   <Style Selector="Border.wordRowEdge">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.MarkerStart}" />
   </Style>
-  <Style Selector="Border.wordRow.open Border.wordRowEdge">
+  <Style Selector="Border.wordRowFrame.open Border.wordRowEdge">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
   </Style>
   <Style Selector="Grid.wordRowLine">
@@ -102,7 +102,7 @@
     <Setter Property="Width" Value="{DynamicResource Component.WordRow.ReadWidth}" />
   </Style>
   <Style Selector="StackPanel.wordRowNext">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector="StackPanel.wordRowNext HyperlinkButton">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />

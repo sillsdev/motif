@@ -585,9 +585,9 @@ public sealed partial class ComponentStyleTests
         yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
             "Intent.Space.Snug");
 
-        yield return new("WordRow", "a row's divider", host => Add(host, Box("wordRow")),
+        yield return new("WordRow", "a row's divider", host => Add(host, Box("wordRowFrame")),
             Border.BorderBrushProperty, "Intent.Border");
-        yield return new("WordRow", "an opened row", host => Add(host, Box("wordRow", "open")),
+        yield return new("WordRow", "an opened row", host => Add(host, Box("wordRowFrame", "open")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("WordRow", "an opened row's accent edge", OpenRowEdge, Border.BorderBrushProperty, "Intent.Accent");
         yield return new("WordRow", "a row's body", host => Add(host, Box("wordRowBody")),
@@ -885,7 +885,7 @@ public sealed partial class ComponentStyleTests
     private static Border OpenRowEdge(Panel host)
     {
         var edge = Box("wordRowEdge");
-        host.Children.Add(new Border { Classes = { "wordRow", "open" }, Child = edge });
+        host.Children.Add(new Border { Classes = { "wordRowFrame", "open" }, Child = edge });
         return edge;
     }
 

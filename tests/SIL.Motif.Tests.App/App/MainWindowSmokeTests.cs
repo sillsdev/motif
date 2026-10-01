@@ -1026,7 +1026,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 Assert.True(row.IsOpen);
-                var line = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRow"));
+                var line = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowFrame"));
                 Assert.Contains("open", line.Classes);
                 Assert.True(Application.Current!.TryGetResource("Intent.Selected.Fill", ThemeVariant.Light, out var selectedFill));
                 Assert.Equal(selectedFill, line.Background);

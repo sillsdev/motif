@@ -495,7 +495,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         /// <summary>Opens the first row of the named list from the keyboard, as Enter on a focused row does.</summary>
         public async Task<string> OpenRow(WorkspacePage? page, TextsTab? tab, string list)
         {
+            await CloseRows();
             if (page is { } shown) Open(shown, tab);
+            PageScreenshots.Settle(Window);
             var body = RowBody(list);
             var row = body.FindAncestorOfType<WordRow>()!;
             body.BringIntoView();

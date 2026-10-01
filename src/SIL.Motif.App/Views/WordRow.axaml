@@ -6,7 +6,7 @@
              x:Class="SIL.Motif.App.Views.WordRow"
              x:DataType="views:WordRow"
              x:Name="Self">
-  <Border x:Name="Root" Classes="wordRow" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
+  <Border x:Name="Root" Classes="wordRowFrame" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
     <Border Classes="wordRowEdge">
       <StackPanel>
         <Grid Classes="wordRowLine">
@@ -27,7 +27,7 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPanGloss" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowMeaning" />
                 <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWarnings" />
                 <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowPlaces" />
