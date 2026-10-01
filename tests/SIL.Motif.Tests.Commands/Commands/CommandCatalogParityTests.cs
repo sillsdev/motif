@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Enforces ADR 0043's third invariant — every catalogued command has a CLI verb, and the reverse — by
 /// pinning <see cref="CommandCatalog.All"/> and <see cref="CliVerbCatalog.All"/> equal by command name,
 /// alongside the shape both catalogs depend on holding: unique command names, unique request types, and
-/// a stable, non-colliding refusal-code vocabulary. Also pins the source boundary Task 7 draws: no
+/// a stable, non-colliding refusal-code vocabulary. Also pins the command/CLI source boundary: no
 /// command file renders to the console or crosses into a CLI namespace, and the CLI never reaches into
 /// the store or LibLCM directly.
 /// </summary>
@@ -79,7 +79,7 @@ public sealed class CommandCatalogParityTests
         "apply.regression",
         "apply.reopen-failed",
         "apply.reconciliation-needed",
-        "assess.baseline-changed", "assess.invalid-limit", "assess.invocation-inconsistent", "assess.measurements-incomplete",
+        "assess.baseline-changed", "assess.invalid-limit", "assess.invalid-replacement", "assess.invocation-inconsistent", "assess.measurements-incomplete",
         "assess.parser-unavailable", "assess.unsupported-kind",
         "selection.default-missing", "selection.invalid", "selection.retry-source-required", "selection.retry-source-not-found", "selection.retry-source-invalid",
         "selection.retry-source-mismatch", "selection.retry-source-project-mismatch", "selection.retry-source-without-retry",
@@ -102,6 +102,7 @@ public sealed class CommandCatalogParityTests
         "config.invalid",
         "corpus.bundle-invalid", "corpus.document-invalid", "corpus.document-not-found", "corpus.invalid",
         "corpus.not-found",
+        "current-evidence.baseline-unavailable",
         "draft.invalid", "draft.name-collision", "draft.not-found", "draft.revision-conflict",
         "handoff.cancelled", "handoff.destination-exists", "handoff.invocation-mismatch", "handoff.invocation-not-found",
         "handoff.invocation-required", "handoff.parser-unavailable", "handoff.source-unavailable",
@@ -138,6 +139,7 @@ public sealed class CommandCatalogParityTests
         "wordtrace.parser-unavailable",
         "word.read-state-cancelled",
         "word.read-state-invalid",
+        "word-context.baseline-changed", "word-context.baseline-unavailable", "word-context.empty-word",
     };
 
     /// <summary>
@@ -169,7 +171,7 @@ public sealed class CommandCatalogParityTests
     // Every dotted, lower-case, hyphenated code literal (e.g. "draft.not-found") in a project's source.
     private static HashSet<string> RefusalCodeLiteralsIn(string projectName)
     {
-        var codePattern = new Regex(@"""([a-z][a-z]*(?:\.[a-z][a-z-]*)+)""", RegexOptions.None);
+        var codePattern = new Regex(@"""([a-z][a-z-]*(?:\.[a-z][a-z-]*)+)""", RegexOptions.None);
         var root = Path.Combine(RepoPaths.FindRepoRoot(), "src", projectName);
         var codes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))

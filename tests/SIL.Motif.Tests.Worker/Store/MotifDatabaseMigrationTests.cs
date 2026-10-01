@@ -266,14 +266,15 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "Pipeline|TEXT|0|0|", "DiagnosticCount|INTEGER|0|0|", "SavedUtc|TEXT|1|0|", "ProposalId|TEXT|0|0|",
                 "ProposalIntentDigest|TEXT|0|0|", "Assessor|TEXT|1|0|", "Kind|TEXT|1|0|", "ScopeJson|TEXT|1|0|",
                 "ScopeDigest|TEXT|1|0|", "TokeniserName|TEXT|1|0|", "TokeniserVersion|TEXT|1|0|",
-                "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|", "InvocationId|TEXT|0|0|"],
+                "BaselineToken|TEXT|1|0|", "CachePath|TEXT|0|0|", "CacheDigest|TEXT|0|0|", "InvocationId|TEXT|0|0|",
+                "ReplacesAssessmentId|TEXT|0|0|"],
             ["AssessedWords"] = ["AssessedWordId|INTEGER|0|1|", "AssessmentId|TEXT|1|0|", "OrdinalIndex|INTEGER|1|0|",
                 "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "ElapsedNs|INTEGER|0|0|",
                 "RawSignature|TEXT|0|0|",
                 "MorphologyJson|TEXT|0|0|", "CorrectnessJson|TEXT|0|0|", "ProjectStanding|TEXT|0|0|",
                 "OccurrenceCount|INTEGER|0|0|", "ReadingGradesJson|TEXT|0|0|", "MissedApprovedCount|INTEGER|0|0|",
                 "MissedApprovedJson|TEXT|0|0|",
-                "IsIncomplete|INTEGER|1|0|0"],
+                "IsIncomplete|INTEGER|1|0|0", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|"],
             ["AssessmentObjectTimings"] = ["AssessmentId|TEXT|1|1|", "OrdinalIndex|INTEGER|1|2|", "Kind|TEXT|1|0|",
                 "Key|TEXT|1|0|", "IdentityQuality|TEXT|1|0|", "Direction|TEXT|1|0|", "Object|TEXT|1|0|",
                 "Word|TEXT|1|0|", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|", "ElapsedNs|INTEGER|0|0|"],
@@ -315,7 +316,9 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["CorpusDocuments"] = ["Corpora|CorpusId|CorpusId|NO ACTION|NO ACTION|NONE"],
             ["NamedSelections"] = [],
             ["DefaultSelection"] = ["NamedSelections|SelectionName|SelectionName|NO ACTION|NO ACTION|NONE"],
-            ["Assessments"] = ["AssessmentInvocations|InvocationId|InvocationId|NO ACTION|NO ACTION|NONE", "Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
+            ["Assessments"] = ["Assessments|ReplacesAssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE",
+                "AssessmentInvocations|InvocationId|InvocationId|NO ACTION|NO ACTION|NONE",
+                "Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],
             ["AssessedWords"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE"],
             ["AssessmentObjectTimings"] = ["Assessments|AssessmentId|AssessmentId|NO ACTION|NO ACTION|NONE"],
             ["ParsedAnalyses"] = ["AssessedWords|AssessedWordId|AssessedWordId|NO ACTION|NO ACTION|NONE"],
@@ -504,17 +507,17 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Fact]
     public void PreviousSchemaIsRefusedWithoutMigration()
     {
-        const int previousSchema = 30;
-        var path = DatabasePath("schema-30.fwdata");
+        const int previousSchema = 32;
+        var path = DatabasePath("schema-32.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(31, MotifSchema.CurrentSchema);
+        Assert.Equal(33, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
-            path, Locator("schema-30.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+            path, Locator("schema-32.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
-        Assert.Contains("schema 30", refusal.Message);
-        Assert.Contains("schema 31", refusal.Message);
+        Assert.Contains("schema 32", refusal.Message);
+        Assert.Contains("schema 33", refusal.Message);
         Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));

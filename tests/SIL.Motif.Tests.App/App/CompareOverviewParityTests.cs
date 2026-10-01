@@ -114,6 +114,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.Equal(timing.Value!.WordCount, appTiming.Value!.WordCount);
             Assert.Equal(timing.Value.Aggregates, appTiming.Value.Aggregates);
             Assert.Equal(timing.Value.CostliestWords, appTiming.Value.CostliestWords);
+            File.Move(hiddenBaselinePath, baselineCachePath);
             var currentEvidence = CurrentEvidenceQuery.ReadCurrentEvidence(projectPath);
             Assert.True(currentEvidence.Succeeded, currentEvidence.Refusal?.Message);
             var appCurrentEvidence = await client.ReadCurrentEvidenceAsync(projectPath, CancellationToken.None);
@@ -183,7 +184,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
         }
         finally
         {
-            File.Move(hiddenBaselinePath, baselineCachePath);
+            if (File.Exists(hiddenBaselinePath)) File.Move(hiddenBaselinePath, baselineCachePath);
         }
     }
 
