@@ -20,6 +20,18 @@ internal static class BuildOutput
     /// <summary>The background job runner, started directly by the integration suites.</summary>
     internal static string Worker { get; } = InProductDirectory("SIL.Motif.Worker");
 
+    /// <summary>The portable package prepared by the build gate for sibling-process tests.</summary>
+    internal static string PortableWorkerPackageDirectory { get; } =
+        Path.Combine(ProductDirectory, "tests", "prepared", "portable-worker-package");
+
+    /// <summary>The checks recorded while the portable package was prepared.</summary>
+    internal static string PortableWorkerPackageValidation { get; } =
+        Path.Combine(ProductDirectory, "tests", "prepared", "portable-worker-package-validation.json");
+
+    /// <summary>The sample project prepared for the Explained Word Card walkthrough.</summary>
+    internal static string ExplainedWordCardFixtureDirectory { get; } =
+        Path.Combine(ProductDirectory, "tests", "prepared", "walkthrough-fixtures", "explained-word-card");
+
     private static string InProductDirectory(string name) =>
         Path.Combine(ProductDirectory, OperatingSystem.IsWindows() ? name + ".exe" : name);
 }
