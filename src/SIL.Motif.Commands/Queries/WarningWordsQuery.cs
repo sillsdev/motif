@@ -13,8 +13,8 @@ namespace SIL.Motif.Commands.Queries;
 public static class WarningWordsQuery
 {
     /// <summary>
-    /// <paramref name="check"/> with each finding's words, from the stored Parse all words matching the current
-    /// Baseline and default Selection; unchanged when none matches.
+    /// <paramref name="check"/> with each finding's words from stored Parse all words matching the checked
+    /// Baseline and default Selection; words remain unknown when matching context is unavailable.
     /// </summary>
     internal static GrammarCheckResponse WithYourWords(MotifDatabase database, ProjectLocator project,
         GrammarCheckResponse check, BaselineToken checkedBaseline)

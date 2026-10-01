@@ -6,6 +6,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
@@ -119,7 +120,8 @@ public static class InspectQuery
         if (subject.Kind == InspectorSubjectKind.Rule &&
             (subject.IdentityQuality != "authored" || !Guid.TryParse(subject.TimingKey?.Key, out _)))
             return (InspectorResolution.NotAuthored, null);
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+        var cache = reader.Cache;
         var (resolution, reference) = InspectorSubjectResolver.Resolve(cache, subject);
         if (reference is null) return (resolution, null);
         var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);

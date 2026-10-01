@@ -261,6 +261,9 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
         var child = await CliProcess.RunAsync(Path.Combine(_root, "worker"), null, true,
             "uses", "--project", project.Path, "--allomorph", _pristine.Seed.FirstLexemeFormId.ToString("D"), "--json");
+        var inspected = await CliProcess.RunAsync(Path.Combine(_root, "worker"), null, true,
+            "inspect", "--project", project.Path, "--allomorph",
+            _pristine.Seed.FirstLexemeFormId.ToString("D"), "--json");
         var context = await reading;
         Assert.True(numeric.Succeeded, numeric.Refusal?.Message);
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
@@ -269,6 +272,11 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.True(child.ExitCode == 0, child.Error + child.Output);
         var uses = ProjectionJson.Deserialize<ObjectUsesResponse>(child.Output)!;
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(uses.Uses!.Words).Row.Word);
+        Assert.NotNull(uses.Facts);
+        Assert.True(inspected.ExitCode == 0, inspected.Error + inspected.Output);
+        var inspection = ProjectionJson.Deserialize<InspectResponse>(inspected.Output)!;
+        Assert.Equal(InspectorSectionStatus.Available, inspection.Facts.Status);
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(inspection.Uses.Value!.Words).Row.Word);
         Assert.Equal(1, numeric.Value!.WordCount);
         Assert.Equal("assessment", Assert.Single(numeric.Value.Words).Origin!.AssessmentId);
         Assert.Single(overview.Value!.WordOrigins);
@@ -339,11 +347,17 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
                 string.Empty, TimeSpan.Zero),
         }, CancellationToken.None);
         Assert.True(check.Succeeded, check.Refusal?.Message);
-        Assert.Single(Assert.Single(check.Value!.Findings).YourWords!.Words);
+        var finding = Assert.Single(check.Value!.Findings);
+        Assert.Single(finding.YourWords!.Words);
+        Assert.Equal(WarningAttributionState.ExactUses, finding.AttributionState);
         File.Delete(project.Baseline.FwDataPath);
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(project.Path));
         Assert.True(stored.Succeeded, stored.Refusal?.Message);
-        Assert.Null(Assert.Single(stored.Value!.Check!.Findings).YourWords);
+        var unavailable = Assert.Single(stored.Value!.Check!.Findings);
+        Assert.Null(unavailable.YourWords);
+        Assert.Equal(WarningAttributionState.EvidenceUnavailable, unavailable.AttributionState);
+        Assert.Equal(ProjectionJson.Serialize(finding.Subject), ProjectionJson.Serialize(unavailable.Subject));
+        Assert.Equal(finding.AttributionLimits, unavailable.AttributionLimits);
         var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.Null(overview.Value!.Warnings!.YourWords);
