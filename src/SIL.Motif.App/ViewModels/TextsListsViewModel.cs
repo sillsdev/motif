@@ -104,9 +104,9 @@ public sealed partial class TextsListsViewModel : ObservableObject
     {
         ["Lost"] = "You approved these, and the grammar can no longer build them.",
         ["Built something else"] = "You approved these, and the grammar builds another analysis.",
-        ["Built anyway"] = "You disapproved these analyses, and the grammar still builds them.",
         ["Have a look"] = "Unknown analyses the grammar builds differently or cannot build, and misspellings it builds.",
-        ["New"] = "FieldWorks holds no analysis of these, and the grammar proposes one.",
+        ["Built anyway"] = "You disapproved these analyses, and the grammar still builds them.",
+        ["New: PanGloss proposes"] = "FieldWorks holds no analysis of these, and the grammar proposes one.",
         ["Nobody can analyze"] = "Neither FieldWorks nor the grammar can analyze these.",
         ["Stopped"] = "PanGloss stopped at a limit on these before it finished.",
         ["Not parsed"] = "PanGloss has not parsed these yet.",

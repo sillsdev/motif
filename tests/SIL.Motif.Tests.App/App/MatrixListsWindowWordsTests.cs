@@ -214,7 +214,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
         var lists = new TextsListsViewModel(compare);
 
-        Assert.Equal("New", lists.SelectedList?.Name);
+        Assert.Equal("New: PanGloss proposes", lists.SelectedList?.Name);
         Assert.Equal(["new-parse"], compare.Words.Select(word => word.Word));
     }
 

@@ -224,7 +224,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
                 ["Built something else"] = [],
                 ["Built anyway"] = [],
                 ["Have a look"] = [],
-                ["New"] = [SeededProject.FirstForm],
+                ["New: PanGloss proposes"] = [SeededProject.FirstForm],
                 ["Nobody can analyze"] = [SeededProject.SecondForm],
                 ["Stopped"] = ["motifextra"],
                 ["Not parsed"] = [],
@@ -275,7 +275,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
 
             var lists = page.TextsLists;
             Assert.False(lists.Lists[0].HasWords);
-            Assert.Equal("New", lists.SelectedList?.Name);
+            Assert.Equal("New: PanGloss proposes", lists.SelectedList?.Name);
             Assert.Equal([SeededProject.FirstForm], page.Assess.Compare.Words.Select(word => word.Word));
         }, TimeSpan.FromMinutes(1));
     }

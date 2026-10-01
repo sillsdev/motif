@@ -120,7 +120,8 @@ public sealed class PageScreenshots
         compare.Toggle(builtElse, additive: false);
 
         Assert.Equal(["a- 3SG in 2", "-a FV in 2"], compare.Shared.Select(item => $"{item.Form} {item.Gloss} {item.CountText}"));
-        Assert.All(compare.Words, word => Assert.Single(word.WordRow.Row.DifferingPositions));
+        Assert.Equal([3, 4], compare.Words.Single(word => word.Word == "alikula").WordRow.Row.DifferingPositions);
+        Assert.All(compare.Words.Where(word => word.Word != "alikula"), word => Assert.Single(word.WordRow.Row.DifferingPositions));
     }
 
     [Fact]
@@ -284,11 +285,12 @@ public sealed class PageScreenshots
             StoredAnalysisOpinion = ReadingGrade.Approved,
         };
 
+    // The sample's identities, so alikula's affixes are the ones the other approved words use.
     private static ParserReadingMorph Piece(string form, string gloss) =>
         new(form, gloss, "", null, false, "silfw://localhost/link?tool=lexiconEdit")
         {
-            AllomorphId = Id(form, 70),
-            GrammaticalInfoId = Id(form, 71),
+            AllomorphId = Id((form.Contains('-') ? "allomorph " : "stem of alikula ") + form + gloss, 0),
+            GrammaticalInfoId = Id("grammatical info " + gloss, 0),
         };
 
     private static ProjectAnalysis Stored(string word, int variant = 0)
