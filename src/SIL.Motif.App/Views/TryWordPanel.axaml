@@ -99,18 +99,16 @@
       <Border Classes="card bestPath" IsVisible="{Binding HasRulesOnBestPath}"
               AutomationProperties.Name="Rules on this word's best path">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="Rules on this word's best path, with where its time went"
+          <TextBlock Text="Rules on this word's best path"
                      FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <TextBlock Classes="muted" Text="{Binding TakingApartText}" TextWrapping="Wrap"
                      FontSize="{DynamicResource Intent.Type.Small}" IsVisible="{Binding HasTakingApart}" />
-          <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*,Auto"
+          <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*"
                 ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
             <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
             <TextBlock Grid.Column="2" Classes="muted" Text="Outcome" FontWeight="SemiBold" />
             <TextBlock Grid.Column="3" Classes="muted" Text="Explanation" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="4" Classes="muted" Text="Word share" FontWeight="SemiBold"
-                       IsVisible="{Binding HasWordShare}" />
           </Grid>
           <ItemsControl ItemsSource="{Binding RulesOnBestPath}" AutomationProperties.Name="Best path rules">
             <ItemsControl.ItemTemplate>
@@ -120,16 +118,48 @@
                   <Button Command="{Binding OpenTimingCommand}" HorizontalAlignment="Stretch"
                           HorizontalContentAlignment="Stretch" Theme="{DynamicResource BorderlessButton}"
                           Classes="ruleRow" ToolTip.Tip="Open stored Timing for this rule and word">
-                    <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*,Auto"
+                    <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*"
                           ColumnSpacing="{DynamicResource Intent.Space.Related}">
                       <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="1" Text="{Binding Kind}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="2" Text="{Binding Outcome}" TextWrapping="Wrap" />
                       <TextBlock Grid.Column="3" Text="{Binding Explanation}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="4" Classes.share="{Binding HasShare}" Classes.muted="{Binding !HasShare}"
-                                 Text="{Binding Share}" TextAlignment="Right" IsVisible="{Binding HasShare}" />
                     </Grid>
                   </Button>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- An earlier parse's whole-search times stay apart from this try's path, under the parse that measured them. -->
+      <Border Classes="card bestPath" IsVisible="{Binding HasEarlierTiming}"
+              AutomationProperties.Name="Time from an earlier parse">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <TextBlock Text="{Binding EarlierTimingTitle}"
+                     FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding EarlierTimingSource}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="2*,1.6*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+            <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Classes="muted" Text="Time" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="3" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="SemiBold"
+                       TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="Earlier rule times">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TryWordEarlierRuleTime">
+                <Border BorderBrush="{DynamicResource Intent.Border}"
+                        BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
+                        Padding="{DynamicResource Component.TryWord.SmallInset}">
+                  <Grid ColumnDefinitions="2*,1.6*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                    <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                               Classes.muted="{Binding IsOtherTime}" />
+                    <TextBlock Grid.Column="1" Text="{Binding KindLabel}" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="2" Text="{Binding TimeText}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="3" Classes="share" Text="{Binding ShareText}" TextAlignment="Right" />
+                  </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

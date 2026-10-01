@@ -4,6 +4,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -296,5 +297,44 @@ public sealed class StatisticsViewModelTests
         statistics.Reset();
         Assert.Null(statistics.AssessmentId);
         Assert.Empty(statistics.Metadata);
+    }
+
+    [Fact]
+    public async Task WordRowsCountSearchStepsAndWholeWordTime()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse(
+            """{"form":"slow","attempts":148,"passes":1,"elapsed_ns":48000000,"capped":false,"timed_out":false}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Search steps", statistics.CountHeader);
+        Assert.Equal("Word time (ms)", statistics.TimeHeader);
+        Assert.Equal("48 ms and 148 search steps.", statistics.SlowestDetail);
+        Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ObjectAttemptsAreShadedOnlyAgainstTheirOwnKind()
+    {
+        var (fake, statistics) = NewViewModel();
+        statistics.SelectedGroup = "object";
+        fake.StatsCompletesWith(RowsResponse(
+            """{"kind":"lex_entry","label":"entry","attempts":2,"time_ns":7600}""",
+            """{"kind":"root_index","label":"roots","attempts":900,"time_ns":1000}""",
+            """{"kind":"root_index","label":"more roots","attempts":450,"time_ns":1000}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Attempts", statistics.CountHeader);
+        Assert.Equal("Own time (ms)", statistics.TimeHeader);
+        var entry = statistics.Rows.Single(row => row.Object == "entry");
+        var roots = statistics.Rows.Single(row => row.Object == "roots");
+        var moreRoots = statistics.Rows.Single(row => row.Object == "more roots");
+        // An entry match and a root lookup are different events, so each is the largest of its own kind.
+        Assert.Equal(roots.AttemptsHeat, entry.AttemptsHeat);
+        Assert.True(moreRoots.AttemptsHeat < roots.AttemptsHeat);
+        Assert.Contains("own kind", statistics.ShadingNote, StringComparison.Ordinal);
     }
 }

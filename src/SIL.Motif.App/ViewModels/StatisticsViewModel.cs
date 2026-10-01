@@ -65,11 +65,33 @@ public sealed partial class StatisticsViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedGroupChanged(string value) => OnPropertyChanged(nameof(SelectedGroupChoice));
+    partial void OnSelectedGroupChanged(string value)
+    {
+        OnPropertyChanged(nameof(SelectedGroupChoice));
+        OnPropertyChanged(nameof(CountHeader));
+        OnPropertyChanged(nameof(TimeHeader));
+        OnPropertyChanged(nameof(ShadingNote));
+    }
+
+    private bool IsWordGroup => SelectedGroup == "word";
+
+    /// <summary>What the count column counts: a word's search steps, or each grammar object's own attempts.</summary>
+    public string CountHeader => IsWordGroup ? "Search steps" : "Attempts";
+
+    /// <summary>What the time column times: a word's whole parse, or the time spent in the object itself.</summary>
+    public string TimeHeader => IsWordGroup ? "Word time (ms)" : "Own time (ms)";
+
+    /// <summary>What the shading compares, and where each number comes from.</summary>
+    public string ShadingNote => IsWordGroup
+        ? "Shading: darker is larger, against the largest in its column. Search steps and word time are the " +
+            "parser's own record of the parse; whether a word finished comes from the last parse."
+        : "Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry " +
+            "matched, a root looked up), so attempts are shaded only against rows of their own kind. Own time " +
+            "leaves out time spent in the objects this one called.";
 
     /// <summary>
     /// Looks up a word in the Assessment these statistics came from, so a word's completion here is the same
-    /// answer Results gives. The statistics pass times its own parse, which can stop at a limit differently.
+    /// answer Results gives.
     /// </summary>
     public Func<string, AssessWordRowViewModel?>? AssessedWord { get; set; }
 
@@ -107,7 +129,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
     public string SlowestHeadline => SlowestWord is { } row ? $"Slowest word: {row.Word}" : string.Empty;
 
     public string SlowestDetail => SlowestWord is { } row
-        ? $"{row.ElapsedText} ms and {row.AttemptsText} attempts{(row.IsIncomplete ? " before a limit stopped it" : string.Empty)}."
+        ? $"{row.ElapsedText} ms{(row.Attempts is null ? string.Empty : $" and {row.AttemptsText} search steps")}" +
+            $"{(row.IsIncomplete ? " before a limit stopped it" : string.Empty)}."
         : string.Empty;
 
     // PanGloss's "passes" column counts the analyses a word produced, so it is shown as readings.
@@ -248,10 +271,12 @@ public sealed partial class StatisticsViewModel : ObservableObject
                     _allRows.Add(new StatsRowViewModel(row));
             }
             // Shaded against every fetched row, so filtering never changes what a shade means.
-            var largestAttempts = _allRows.Max(row => row.Attempts) ?? 0;
+            var largestAttempts = _allRows.GroupBy(row => row.Kind ?? string.Empty, StringComparer.Ordinal)
+                .ToDictionary(kind => kind.Key, kind => kind.Max(row => row.Attempts) ?? 0, StringComparer.Ordinal);
             var largestPasses = _allRows.Max(row => row.Passes) ?? 0;
             var largestElapsed = _allRows.Max(row => row.ElapsedMs) ?? 0;
-            foreach (var row in _allRows) row.ShadeAgainst(largestAttempts, largestPasses, largestElapsed);
+            foreach (var row in _allRows)
+                row.ShadeAgainst(largestAttempts[row.Kind ?? string.Empty], largestPasses, largestElapsed);
             if (AssessedWord is { } assessed)
                 foreach (var row in _allRows)
                     if (row.Word is { } word && assessed(word) is { } result)

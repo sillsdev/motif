@@ -458,7 +458,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
         Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
         Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
-        Assert.Equal("83% of these words' time · 26 attempts · 2 words touched", timing.RuleSummary);
+        Assert.Equal("10 ms · recorded in 2 words", timing.RuleSummary);
     }
 
     // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.
@@ -490,7 +490,7 @@ public sealed class WorkspaceContextTests
     [InlineData("root_index", "Root lookup")]
     [InlineData("lex_entry", "Lexical entries")]
     public void TimingDisplaysReadableRuleKindLabels(string storedKind, string label) =>
-        Assert.Equal(label, TimingKindLabelConverter.Display(storedKind));
+        Assert.Equal(label, TimingShare.KindName(storedKind));
 
     [Fact]
     public async Task TimingShowsFiveCostliestWordsButHandsOffEveryWordUnderTheRule()

@@ -2,12 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
-  <UserControl.Resources>
-    <views:TimingKindLabelConverter x:Key="KindLabel" />
-  </UserControl.Resources>
   <Grid>
     <ScrollViewer IsVisible="{Binding !Context.NeedsAssessment}">
     <Border Classes="timingPage">
@@ -129,7 +125,9 @@
             <Border Classes="card">
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" />
-                <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindTiming.Aggregates}"
+                <views:CopyableTextBlock Classes="muted" Text="{Binding ShareDenominatorText}" TextWrapping="Wrap"
+                                         AutomationProperties.Name="What every share is of" />
+                <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindShares}"
                                      Height="{DynamicResource Component.Timing.BarHeight}" />
                 <ItemsControl ItemsSource="{Binding #KindBar.Legend}"
                               AutomationProperties.Name="Timing by kind">
@@ -143,23 +141,27 @@
                       <StackPanel Classes="outcomeLegendEntry" Orientation="Horizontal"
                                   Spacing="{DynamicResource Intent.Space.Compact}">
                         <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
-                        <views:CopyableTextBlock Text="{Binding Row.Name, Converter={StaticResource KindLabel}}" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding Row.ShareOfTotal, StringFormat='{}{0:P0}'}" />
+                        <views:CopyableTextBlock Text="{Binding Row.Label}" />
+                        <views:CopyableTextBlock Text="{Binding Row.ShareText}" FontWeight="SemiBold" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding Row.TimeText, StringFormat='{}· {0}'}" />
                       </StackPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <views:CopyableTextBlock Classes="muted" Text="{Binding OtherTimeText}" TextWrapping="Wrap"
+                                         AutomationProperties.Name="Time recorded against rules" />
               </StackPanel>
             </Border>
 
             <Border Classes="card">
               <StackPanel>
-                <Grid Classes="timingTableHeader timingColumns" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
+                <Grid Classes="timingTableHeader timingColumns" ColumnDefinitions="2*,1.7*,0.9*,1.3*,0.7*">
                   <views:CopyableTextBlock Grid.Column="0" Text="RULE" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Grid.Column="1" Text="KIND" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Grid.Column="2" Text="SHARE OF TIME" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Grid.Column="3" Text="ATTEMPTS" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Grid.Column="4" Text="WORDS" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="2" Text="TIME" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="3" Text="{Binding RuleShareHeader}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="4" Text="WORDS" TextWrapping="Wrap"
+                                           ToolTip.Tip="How many of these words the parser recorded time for this rule in" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding RuleRows}"
                               AutomationProperties.Name="Timing by rule">
@@ -169,13 +171,12 @@
                               HorizontalContentAlignment="Stretch"
                               Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
                               CommandParameter="{Binding Row}">
-                        <Grid Classes="timingColumns" ColumnDefinitions="2*,1.7*,1.1*,1.1*,0.7*">
-                          <views:CopyableTextBlock Grid.Column="0" Text="{Binding Row.Name}" FontWeight="SemiBold" />
-                          <views:CopyableTextBlock Grid.Column="1" Classes="muted"
-                                                   Text="{Binding Row.Kind, Converter={StaticResource KindLabel}}" />
-                          <views:CopyableTextBlock Grid.Column="2" Text="{Binding Row.ShareOfTotal, StringFormat='{}{0:P0}'}" />
-                          <views:CopyableTextBlock Grid.Column="3" Classes="muted" Text="{Binding Row.Attempts, StringFormat='{}{0:N0}'}" />
-                          <views:CopyableTextBlock Grid.Column="4" Text="{Binding Row.WordsTouched, StringFormat='{}{0:N0}'}" />
+                        <Grid Classes="timingColumns" ColumnDefinitions="2*,1.7*,0.9*,1.3*,0.7*">
+                          <views:CopyableTextBlock Grid.Column="0" Text="{Binding Share.Label}" FontWeight="SemiBold" />
+                          <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Share.KindLabel}" />
+                          <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding Share.TimeText}" />
+                          <views:CopyableTextBlock Grid.Column="3" Text="{Binding Share.ShareText}" />
+                          <views:CopyableTextBlock Grid.Column="4" Text="{Binding Share.WordsText}" />
                         </Grid>
                       </Button>
                     </DataTemplate>
@@ -212,14 +213,15 @@
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRule}" />
                 <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="muted" Text="Words this rule cost most" />
-                <ItemsControl ItemsSource="{Binding CostliestRuleWords}"
+                <views:CopyableTextBlock Classes="muted" Text="Words where this rule took longest"
+                                         TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding CostliestRuleWordTimes}"
                               AutomationProperties.Name="Words under this rule">
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="responses:WordRuleTiming">
+                    <DataTemplate x:DataType="vm:TimingRuleWord">
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
                         <views:CopyableTextBlock Text="{Binding Word}" />
-                        <views:CopyableTextBlock Classes="muted" Text="{Binding ElapsedMs, StringFormat='{}{0:F1} ms'}" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding TimeText}" />
                       </StackPanel>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

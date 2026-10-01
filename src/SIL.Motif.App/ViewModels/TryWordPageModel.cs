@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
@@ -16,6 +17,7 @@ public sealed record TryWordRequest(string Word) : PageRequest(WorkspacePage.Try
 public sealed class TryWordPageModel : PageModel
 {
     private const int RecentWordLimit = 5;
+    private const int EarlierRuleLimit = 5;
     private int _timingGeneration;
     private string? _assessmentId;
 
@@ -77,8 +79,26 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Whether the current trace has named rules on its successful or furthest attempt.</summary>
     public bool HasRulesOnBestPath => RulesOnBestPath.Count > 0;
 
-    /// <summary>Whether any best-path rule has a stored share of this word's measured time.</summary>
-    public bool HasWordShare => RulesOnBestPath.Any(row => row.HasShare);
+    /// <summary>
+    /// The traced word's rule times from the earlier parse named in <see cref="EarlierTimingTitle"/>, then the time
+    /// that parse recorded against no rule; empty when no parse can be named as their source.
+    /// </summary>
+    public ObservableCollection<TryWordEarlierRuleTime> EarlierRuleTimes { get; } = [];
+
+    /// <summary>Whether timing from a named earlier parse is shown beside this try.</summary>
+    public bool HasEarlierTiming => EarlierRuleTimes.Count > 0;
+
+    /// <summary>Which parse the earlier timing comes from, by when it ran.</summary>
+    public string EarlierTimingTitle { get; private set; } = string.Empty;
+
+    /// <summary>That the earlier timing is not this try's, and what its rule times cover.</summary>
+    public string EarlierTimingSource { get; private set; } = string.Empty;
+
+    /// <summary>The share column's heading, naming the word's whole time it divides by; empty without one.</summary>
+    public string EarlierShareHeader { get; private set; } = string.Empty;
+
+    /// <summary>Whether the earlier parse kept the word's whole time, so its rule times have shares.</summary>
+    public bool HasEarlierShares => EarlierShareHeader.Length > 0;
 
     /// <summary>The sidebar link to the first named rule on the current trace, or its general Timing link.</summary>
     public string TimingLinkText => RulesOnBestPath.FirstOrDefault() is { } rule
@@ -104,6 +124,7 @@ public sealed class TryWordPageModel : PageModel
     {
         _assessmentId = null;
         _timingGeneration++;
+        ShowEarlierTiming(null, null);
         Trace.Reset();
         Trace.WordToTry = string.Empty;
         RecentWords.Clear();
@@ -178,14 +199,14 @@ public sealed class TryWordPageModel : PageModel
     {
         _assessmentId = assessmentId;
         _timingGeneration++;
-        foreach (var row in RulesOnBestPath) row.SetTiming(null);
+        ShowEarlierTiming(null, null);
         if (assessmentId is not null && Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
     }
 
     private void RebuildRules(WordTraceResponse? result)
     {
         _timingGeneration++;
-        foreach (var row in RulesOnBestPath) row.SetTiming(null);
+        ShowEarlierTiming(null, null);
         RulesOnBestPath.Clear();
         TakingApartText = string.Empty;
         if (result is not null)
@@ -215,7 +236,6 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(HasRulesOnBestPath));
         OnPropertyChanged(nameof(TakingApartText));
         OnPropertyChanged(nameof(HasTakingApart));
-        OnPropertyChanged(nameof(HasWordShare));
         OnPropertyChanged(nameof(TimingLinkText));
     }
 
@@ -296,7 +316,8 @@ public sealed class TryWordPageModel : PageModel
         var result = Trace.Result;
         var projectPath = Context.ProjectPath;
         var assessmentId = _assessmentId;
-        if (result is null || projectPath is null || assessmentId is null || RulesOnBestPath.Count == 0) return;
+        var parsedAt = EarlierParseTime;
+        if (result is null || projectPath is null || assessmentId is null || parsedAt is null) return;
 
         var generation = ++_timingGeneration;
         var outcome = await Context.Commands.TimingAsync(
@@ -305,26 +326,73 @@ public sealed class TryWordPageModel : PageModel
         if (generation != _timingGeneration || !ReferenceEquals(result, Trace.Result) ||
             !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
 
-        foreach (var row in RulesOnBestPath)
-            row.SetTiming(outcome.Succeeded
-                ? outcome.Value!.Aggregates.SingleOrDefault(aggregate =>
-                    string.Equals(aggregate.Name, row.Rule, StringComparison.Ordinal))
-                : null);
-        OnPropertyChanged(nameof(HasWordShare));
+        ShowEarlierTiming(outcome.Succeeded ? outcome.Value : null, parsedAt);
+    }
+
+    // When the stored parse behind the word's timing ran; unknown once a re-run has replaced some words' times.
+    private DateTimeOffset? EarlierParseTime => Context.Evidence.TimingOverrideAssessmentIds.Count > 0 ? null
+        : Context.Evidence.Assessment is { } shown &&
+            shown.Assessment.Measurements.Any(measurement => measurement.Kind == AssessmentKinds.ParseTime)
+            ? shown.WasRerun ? null : shown.CompletedAt
+            : Context.Evidence.Stored?.AssessedUtc;
+
+    private void ShowEarlierTiming(TimingResponse? timing, DateTimeOffset? parsedAt)
+    {
+        EarlierRuleTimes.Clear();
+        EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = string.Empty;
+        if (timing is { Aggregates.Count: > 0 } && parsedAt is { } ranAt && Trace.Result is { } result)
+        {
+            var wordMs = timing.Words.FirstOrDefault(word => word.Word == result.Word)?.ElapsedMs is > 0 and var ms
+                ? (double?)ms : null;
+            string ShareOf(double elapsed) => wordMs is { } whole
+                ? (elapsed / whole).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
+            foreach (var rule in timing.Aggregates.Take(EarlierRuleLimit))
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),
+                    SpeedText.PerWord(rule.ElapsedMs), ShareOf(rule.ElapsedMs), IsOtherTime: false));
+            if (timing.Aggregates.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
+            {
+                var restMs = rest.Sum(rule => rule.ElapsedMs);
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime(SpeedText.Count(rest.Length, "other rule", "other rules"),
+                    string.Empty, SpeedText.PerWord(restMs), ShareOf(restMs), IsOtherTime: false));
+            }
+            if (wordMs - timing.Aggregates.Sum(rule => rule.ElapsedMs) is double other && other >= TimingShare.SmallestShownMs)
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Other time", string.Empty,
+                    SpeedText.PerWord(other), ShareOf(other), IsOtherTime: true));
+            EarlierTimingTitle = $"Time from the parse of {ranAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
+            EarlierTimingSource = "Not from this try. " + (wordMs is { } took
+                ? $"In that parse {result.Word} took {SpeedText.PerWord(took)}; each rule's time covers that parse's " +
+                    "whole search for the word"
+                : $"Each rule's time covers that parse's whole search for {result.Word}") +
+                ", including attempts that stopped, not only the path above." +
+                (Context.Evidence.IsStale ? " FieldWorks has changed since that parse." : string.Empty);
+            EarlierShareHeader = wordMs is { } whole ? $"Share of {SpeedText.PerWord(whole)}" : string.Empty;
+        }
+        OnPropertyChanged(nameof(HasEarlierTiming));
+        OnPropertyChanged(nameof(EarlierTimingTitle));
+        OnPropertyChanged(nameof(EarlierTimingSource));
+        OnPropertyChanged(nameof(EarlierShareHeader));
+        OnPropertyChanged(nameof(HasEarlierShares));
     }
 }
 
-/// <summary>One named rule on the path and only the timing stored for that rule.</summary>
+/// <summary>One rule's time for the traced word in an earlier parse, or that parse's time against no rule.</summary>
+/// <param name="Rule">The rule's name, or what the row gathers.</param>
+/// <param name="KindLabel">The rule's kind as the window names it; empty for a gathered row.</param>
+/// <param name="TimeText">The time the earlier parse recorded.</param>
+/// <param name="ShareText">Its share of the word's whole time in that parse; empty when that time was not kept.</param>
+/// <param name="IsOtherTime">Whether this is the time the parser recorded against no rule.</param>
+public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, string TimeText, string ShareText,
+    bool IsOtherTime);
+
+/// <summary>One named rule on the best path, as this try recorded it.</summary>
 /// <param name="rule">The rule's name as recorded by the trace.</param>
 /// <param name="kind">The kinds of steps attributed to the rule.</param>
 /// <param name="outcome">The outcomes recorded for the rule's steps.</param>
 /// <param name="explanation">The recorded detail for the rule's steps.</param>
 /// <param name="openTiming">Opens Timing filtered to the rule and current word.</param>
 public sealed class TryWordRuleRowViewModel(
-    string rule, string kind, string outcome, string explanation, Action openTiming) : INotifyPropertyChanged
+    string rule, string kind, string outcome, string explanation, Action openTiming)
 {
-    private TimingAggregateRow? _timing;
-
     /// <summary>The rule's name as recorded by the trace.</summary>
     public string Rule { get; } = rule;
 
@@ -339,32 +407,4 @@ public sealed class TryWordRuleRowViewModel(
 
     /// <summary>Opens Timing filtered to the rule and current word.</summary>
     public IRelayCommand OpenTimingCommand { get; } = new RelayCommand(openTiming);
-
-    /// <summary>The stored elapsed time, or a statement that no measurement was recorded.</summary>
-    public string StoredTime => _timing is { } timing ? TraceWordViewModel.FormatMs(timing.ElapsedMs) : "Not recorded";
-
-    /// <summary>The number of stored attempts for this rule, or an em dash when no measurement was recorded.</summary>
-    public string Attempts => _timing?.Attempts.ToString("N0") ?? "—";
-
-    /// <summary>The stored share of this word's measured time, or a dash when no measurement was recorded.</summary>
-    public string Share => _timing is { } timing ? $"{timing.ShareOfTotal:P0}" : "—";
-
-    /// <summary>Whether a measured share was stored, so the cell wears the share colour rather than a plain dash.</summary>
-    public bool HasShare => _timing is not null;
-
-    /// <summary>Raised when one of the displayed timing values changes.</summary>
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    /// <summary>Sets the stored measurement returned for this rule, if one exists.</summary>
-    internal void SetTiming(TimingAggregateRow? timing)
-    {
-        _timing = timing;
-        OnPropertyChanged(nameof(StoredTime));
-        OnPropertyChanged(nameof(Attempts));
-        OnPropertyChanged(nameof(Share));
-        OnPropertyChanged(nameof(HasShare));
-    }
-
-    private void OnPropertyChanged(string propertyName) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
