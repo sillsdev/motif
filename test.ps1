@@ -195,6 +195,10 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
+# Held until this script exits, so a machine running many worktrees runs only MOTIF_TEST_SLOTS suites at once.
+Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
+$testSlot = Enter-MotifTestSlot
+
 if ($All) {
     $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
     if (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf) {

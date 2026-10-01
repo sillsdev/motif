@@ -33,7 +33,10 @@ System overrides for walkthroughs and real-parser tests. With no switch it selec
 It runs each selected test project as one or more processes, with concurrency capped at a sixth of the
 available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
-worker, and parser child processes. LibLCM cache startup goes through a process-wide gate in
+worker, and parser child processes. More than four worktrees testing at once oversubscribe the machine,
+so set `MOTIF_TEST_SLOTS` (for example `3`) where many agents share one: each run then waits for one of
+that many machine-wide slots (`tools/MotifTestSlot.psm1`, slot files in `MOTIF_TEST_SLOT_DIR`) before its
+tests start, and frees it when it exits. Unset, nothing waits. LibLCM cache startup goes through a process-wide gate in
 `FwDataProjectLoader`; cache-using test classes occupy four parallel collections, while tests that inspect
 process-wide writing-system state stay in `LcmCacheTestCollection`. Separate test processes cannot race,
 so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.csproj` is
