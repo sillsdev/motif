@@ -179,8 +179,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             () => stage.Strip("Sungura"), "the Sungura word strip", TextsTab.AnalyzeTexts));
         yield return new("analyze", "disapproved-tooltip", stage => stage.Hover(WorkspacePage.Texts,
             () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("verdictChip") && border.IsEffectivelyVisible),
-            "the ! mark on walikula", TextsTab.AnalyzeTexts));
+                .First(border => border.Classes.Contains("markChip") && border.IsEffectivelyVisible),
+            "the Built anyway mark on walikula", TextsTab.AnalyzeTexts));
         yield return new("analyze", "fix-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Strip("chakula").GetVisualDescendants().OfType<Button>()
                 .First(button => AutomationProperties.GetName(button) == "Fix actions from the word strip"),

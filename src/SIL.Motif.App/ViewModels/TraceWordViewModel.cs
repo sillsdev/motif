@@ -110,7 +110,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         RebuildStopGroups();
         OnPropertyChanged(nameof(SearchStatusText));
         OnPropertyChanged(nameof(AnswerText));
-        OnPropertyChanged(nameof(AnswerVerdict));
+        OnPropertyChanged(nameof(AnswerMark));
         OnPropertyChanged(nameof(ProvenanceWarning));
         OnPropertyChanged(nameof(HasProvenanceWarning));
         OnPropertyChanged(nameof(WritingSystemSummary));
@@ -228,10 +228,13 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public string AnswerText => Result is not { } result ? string.Empty
         : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
 
-    /// <summary>The colour that answer wears: the same green and amber every other stage uses.</summary>
-    public Verdict AnswerVerdict => Result is { Parsed: true } ? Verdict.Agrees
-        : Result is { Complete: false } ? Verdict.Limit
-        : Verdict.NoResult;
+    /// <summary>
+    /// The mark that answer wears: a trace that built the word is a built step, one that reached a limit is Stopped,
+    /// and one that finished without building it is No parse.
+    /// </summary>
+    public Mark AnswerMark => Result is { Parsed: true } ? Mark.Of(TraceStepMark.Built)
+        : Result is { Complete: false } ? Mark.Stopped
+        : Mark.NoParse;
 
     /// <summary>The rules that stopped the failed attempts, the busiest first; empty when nothing failed.</summary>
     public IReadOnlyList<TraceStopGroupViewModel> StopGroups => _stopGroups;
@@ -1029,8 +1032,8 @@ public sealed class TraceCandidateViewModel
     public string Gloss { get; }
     public string StatusText => Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
 
-    /// <summary>The shared meaning behind this attempt: it built the word, or a rule stopped it.</summary>
-    public Verdict Meaning => Succeeded ? Verdict.Agrees : IsFailure ? Verdict.Differs : Verdict.Limit;
+    /// <summary>How this attempt ended: it built the word, a rule refused it, or it was only tried.</summary>
+    public Mark StepMark => Mark.Of(Succeeded ? TraceStepMark.Built : IsFailure ? TraceStepMark.Refused : TraceStepMark.Tried);
 }
 
 /// <summary>One row of aggregate parser effort, explicitly separated from selected-step details.</summary>

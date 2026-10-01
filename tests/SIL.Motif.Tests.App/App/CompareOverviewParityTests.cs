@@ -103,7 +103,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.Contains($"of their {appOverview.Value.TextCoverage.TotalOccurrences:N0} occurrences",
                 overviewPage.TextCoverageWords);
             Assert.Equal(appOverview.Value.Accuracy.ApprovedWordsNoMatch + appOverview.Value.Accuracy.ApprovedWordsNoParse,
-                overviewPage.AccuracySegments.Where(segment => segment.Meaning is Verdict.Differs or Verdict.NoResult)
+                overviewPage.AccuracySegments.Where(segment => segment.Mark == Mark.Of(MeaningTone.Problem) || segment.Mark == Mark.NoParse)
                     .Sum(segment => segment.Count));
             Assert.Contains($"{appOverview.Value.Accuracy.RejectedAnalysesRebuilt:N0} disapproved analys",
                 overviewPage.AccuracyBreakdown);

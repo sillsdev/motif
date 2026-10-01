@@ -115,7 +115,7 @@ public sealed class TraceWordViewModelTests
         await trace.TryCommand.ExecuteAsync(null);
 
         Assert.Equal("No parse", trace.AnswerText);
-        Assert.Equal(Verdict.NoResult, trace.AnswerVerdict);
+        Assert.Equal(Mark.NoParse, trace.AnswerMark);
         // The busiest rule leads, and the bar is drawn against it.
         Assert.Equal(["-a", "-ja-"], trace.StopGroups.Select(group => group.RuleText));
         // A word that failed leads with why, so its attempts are never folded away.

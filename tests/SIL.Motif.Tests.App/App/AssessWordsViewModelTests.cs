@@ -35,8 +35,8 @@ public sealed class AssessWordsViewModelTests
 
         // A word that found a reading before a limit stopped it is counted once, as stopped.
         Assert.Equal(
-            [(Verdict.Agrees, 1), (Verdict.NoResult, 1), (Verdict.Limit, 2), (Verdict.Several, 1)],
-            table.Outcomes.Select(segment => (segment.Meaning, segment.Count)));
+            [(Mark.Same, 1), (Mark.NoParse, 1), (Mark.Stopped, 2), (Mark.NotParsed, 1)],
+            table.Outcomes.Select(segment => (segment.Mark, segment.Count)));
         Assert.Equal(table.AllCount, table.Outcomes.Sum(segment => segment.Count));
         Assert.Equal("5 words: 1 parsed, 1 no parse, 2 stopped at a limit, 1 skipped", table.OutcomeSummary);
     }
@@ -49,7 +49,6 @@ public sealed class AssessWordsViewModelTests
 
         var row = Assert.Single(table.Rows);
         Assert.Equal("Unknown", row.VsProject);
-        Assert.Equal(Verdict.Candidate, row.Meaning);
         Assert.Equal(0, table.NoOpinionCount);
     }
 
@@ -73,7 +72,7 @@ public sealed class AssessWordsViewModelTests
 
         var row = Assert.Single(table.Rows);
         Assert.Equal("Not tried", row.VsProject);
-        Assert.Equal(Verdict.Limit, row.Meaning);
+        Assert.Equal(ParserOutcome.NotParsed, row.ParserOutcome);
         Assert.Equal(0, table.MissedCount);
         Assert.Equal("Not tried", Assert.Single(row.MissedApproved).GradeLabel);
     }

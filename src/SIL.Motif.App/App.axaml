@@ -15,7 +15,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Notice.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Refusal.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Mark.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/VerdictChip.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MarkChip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/OutcomeBar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordVerdict.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/FilterChip.axaml" />

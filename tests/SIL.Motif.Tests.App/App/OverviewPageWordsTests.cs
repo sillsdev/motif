@@ -180,7 +180,7 @@ public sealed class OverviewPageWordsTests
                         .Where(entry => entry.Classes.Contains("outcomeLegendEntry")).ToArray();
                     Assert.Equal(bar.Segments!.Count, parts.Length);
                     // Parts that share a colour share one swatch, so the key shows each colour once.
-                    var colours = bar.Segments.Select((segment, index) => (segment, index)).GroupBy(item => item.segment.Meaning).ToArray();
+                    var colours = bar.Segments.Select((segment, index) => (segment, index)).GroupBy(item => item.segment.Mark).ToArray();
                     Assert.Equal(colours.Length, entries.Length);
                     for (var index = 0; index < entries.Length; index++)
                     {

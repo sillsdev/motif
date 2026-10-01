@@ -29,7 +29,7 @@ public sealed class DesignTokenTests
     public void EveryIntentKeyResolvesInBothThemeVariants()
     {
         var keys = IntentKeys();
-        Assert.Contains("Intent.Approved.Fill", keys);
+        Assert.Contains("Intent.Opinion.Approved.Fill", keys);
         Assert.Contains("Intent.Space.Compact", keys);
 
         _avalonia.Invoke(() =>
@@ -240,7 +240,7 @@ public sealed class DesignTokenTests
             .SelectMany(text => ResourceKeysNamedIn(text).Where(key => key.StartsWith("Intent.", StringComparison.Ordinal)))
             .Distinct()
             .ToList();
-        Assert.Contains("Intent.Candidate.Fill", keys);
+        Assert.Contains("Intent.Opinion.Unknown.Fill", keys);
 
         _avalonia.Invoke(() =>
         {
@@ -258,11 +258,11 @@ public sealed class DesignTokenTests
             Assert.Contains($"Tokens/Components/{Path.GetFileName(file)}\"", app);
     }
 
-    // The outcome, meaning and timing keys replaced these; an alias would keep two names for one meaning.
+    // The outcome, meaning, opinion and timing keys replaced these; an alias would keep two names for one meaning.
     [Fact]
     public void TheMarkKeysReplacedAreGoneWithoutAliases()
     {
-        var retired = new Regex(@"Intent\.(?:Parser|Agreement|Chart)\.");
+        var retired = new Regex(@"Intent\.(?:Parser|Agreement|Chart|Approved|Candidate)\.");
         Assert.DoesNotContain(IntentKeys(), key => retired.IsMatch(key));
         Assert.DoesNotContain(AppSources("*.axaml").Concat(AppSources("*.cs")), text => retired.IsMatch(text));
     }

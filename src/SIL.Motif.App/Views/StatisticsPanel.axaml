@@ -58,7 +58,7 @@
                Margin="{DynamicResource Intent.Gap.AfterGroup}" />
       <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                         IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
-      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Verdict="Limit" Margin="{DynamicResource Intent.Gap.AfterGroup}"
+      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Mark="{x:Static vm:Mark.Stopped}" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                         IsActive="{Binding Statistics.OnlyIncomplete}" Click="OnOnlyIncompleteClick" />
       <Button Content="Refresh"
               Command="{Binding Statistics.LoadCommand}"
@@ -106,7 +106,7 @@
         <DataGridTemplateColumn Header="Completion" Tag="completion" ClipboardContentBinding="{ReflectionBinding CompletionStatus}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:VerdictChip Verdict="{Binding CompletionMeaning}" Text="{Binding CompletionShort}" Compact="True"
+              <views:MarkChip Mark="{Binding CompletionMark}" Text="{Binding CompletionShort}" Compact="True"
                                  Margin="{DynamicResource Component.Statistics.CellMargin}" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
                                  ToolTip.Tip="{Binding CompletionStatus}" />
             </DataTemplate>

@@ -1,0 +1,87 @@
+<!--
+  One mark as a chip: a glyph and the view's words. A parser outcome and a trace step are coloured text on the plain
+  chip; an opinion is its letter box with its word beside it; only a meaning fills, and a severity's warning tints.
+  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.MarkChip.Padding" ResourceKey="Primitive.Inset.7_1_7_1" />
+    <StaticResource x:Key="Component.MarkChip.Radius" ResourceKey="Primitive.Radius.9" />
+  </Styles.Resources>
+  <Style Selector="Border.markChip">
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.MarkChip.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.MarkChip.Padding}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+  </Style>
+  <Style Selector="StackPanel.markChipRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord, Border.markChip :is(TextBlock).markGlyph">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.markChip.compact :is(TextBlock).markWord, Border.markChip.compact :is(TextBlock).markGlyph">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Border.markChip.plain :is(TextBlock).markWord">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+
+  <!-- An opinion's word takes the colour of its letter box. -->
+  <Style Selector="Border.markChip :is(TextBlock).markWord.opinion.approved">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.opinion.disapproved">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Disapproved.Text}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.opinion.unknown">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Unknown.Text}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.opinion.none">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.None.Text}" />
+  </Style>
+
+  <!-- A meaning is the only chip that fills and edges, in its tone. -->
+  <Style Selector="Border.markChip.meaning.fine, Border.markChip.meaning.neutral">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="Border.markChip.meaning.look">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Look.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Look.Edge}" />
+  </Style>
+  <Style Selector="Border.markChip.meaning.problem">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.meaning.fine">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Fine}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.meaning.look">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Look}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.meaning.problem">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.meaning.neutral">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Neutral}" />
+  </Style>
+
+  <!-- A severity's count is in its own colour; a warning's chip is tinted as the sidebar's triangle is. -->
+  <Style Selector="Border.markChip.severity.warning">
+    <Setter Property="Background" Value="{DynamicResource Intent.Severity.Warning.Fill}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.severity.warning">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.severity.error">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Error}" />
+  </Style>
+  <Style Selector="Border.markChip :is(TextBlock).markWord.severity.info">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Info}" />
+  </Style>
+</Styles>

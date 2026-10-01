@@ -8,8 +8,8 @@ using SIL.Motif.App.ViewModels;
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// One filter chip: a label, how many rows it would leave, and — when the filter names a verdict — that
-/// verdict's glyph in its colour. Every stage's chips are this control, so a chip means the same everywhere.
+/// One filter chip: a label, how many rows it would leave, and — when the filter names a mark — that mark's glyph
+/// in its colour. Every stage's chips are this control, so a chip means the same everywhere.
 /// </summary>
 public sealed class FilterChip : Button
 {
@@ -19,11 +19,8 @@ public sealed class FilterChip : Button
     public static readonly StyledProperty<int> CountProperty =
         AvaloniaProperty.Register<FilterChip, int>(nameof(Count));
 
-    public static readonly StyledProperty<Verdict?> VerdictProperty =
-        AvaloniaProperty.Register<FilterChip, Verdict?>(nameof(Verdict));
-
-    public static readonly StyledProperty<string?> GlyphTextProperty =
-        AvaloniaProperty.Register<FilterChip, string?>(nameof(GlyphText));
+    public static readonly StyledProperty<Mark?> MarkProperty =
+        AvaloniaProperty.Register<FilterChip, Mark?>(nameof(Mark));
 
     public static readonly StyledProperty<bool> IsActiveProperty =
         AvaloniaProperty.Register<FilterChip, bool>(nameof(IsActive));
@@ -32,8 +29,7 @@ public sealed class FilterChip : Button
     {
         LabelProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         CountProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
-        VerdictProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
-        GlyphTextProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
+        MarkProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
         IsActiveProperty.Changed.AddClassHandler<FilterChip>((chip, _) => chip.Rebuild());
     }
 
@@ -60,18 +56,11 @@ public sealed class FilterChip : Button
         set => SetValue(CountProperty, value);
     }
 
-    /// <summary>The meaning this chip filters to, or <see langword="null"/> for a chip like All.</summary>
-    public Verdict? Verdict
+    /// <summary>The mark this chip filters to, or <see langword="null"/> for a chip like All.</summary>
+    public Mark? Mark
     {
-        get => GetValue(VerdictProperty);
-        set => SetValue(VerdictProperty, value);
-    }
-
-    /// <summary>The symbol before the label when this chip does not name a verdict.</summary>
-    public string? GlyphText
-    {
-        get => GetValue(GlyphTextProperty);
-        set => SetValue(GlyphTextProperty, value);
+        get => GetValue(MarkProperty);
+        set => SetValue(MarkProperty, value);
     }
 
     /// <summary>Whether this chip is the one in force.</summary>
@@ -85,19 +74,7 @@ public sealed class FilterChip : Button
     {
         Classes.Set("active", IsActive);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
-        if (GlyphText is { } glyphText)
-        {
-            var glyph = new TextBlock { Text = glyphText, FontWeight = FontWeight.Bold };
-            glyph.Classes.Add("severityGlyph");
-            row.Children.Add(glyph);
-        }
-        else if (Verdict is { } verdict)
-        {
-            var glyph = new TextBlock { Text = Verdicts.GlyphOf(verdict), FontWeight = FontWeight.Bold };
-            glyph.Classes.Add("verdictGlyph");
-            glyph.Classes.Add(Verdicts.ClassOf(verdict));
-            row.Children.Add(glyph);
-        }
+        if (Mark is { } mark && MarkChip.GlyphOf(mark, insideButton: true) is { } glyph) row.Children.Add(glyph);
         row.Children.Add(new TextBlock { Text = Label });
         var count = new TextBlock { Text = Count.ToString("N0"), FontWeight = FontWeight.SemiBold };
         count.Classes.Add("chipCount");

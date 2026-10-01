@@ -61,7 +61,7 @@
                                  FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
                                  AutomationProperties.Name="Try a Word result"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
-        <views:VerdictChip Grid.Column="1" Verdict="{Binding Trace.AnswerVerdict}"
+        <views:MarkChip Grid.Column="1" Mark="{Binding Trace.AnswerMark}"
                            Text="{Binding Trace.AnswerText}" />
         <views:CopyableTextBlock Grid.Column="2" Text="{Binding Trace.PageSummaryText}"
                                  Classes="muted" TextWrapping="Wrap"

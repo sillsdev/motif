@@ -180,10 +180,10 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            new(Verdict.Agrees, overview.TextCoverage.ParsedWords, "parsed"),
-            new(Verdict.NoResult, overview.TextCoverage.NoParseWords, "no parse"),
-            new(Verdict.Limit, overview.TextCoverage.UnknownWords, "stopped (step or time limit)"),
-            new(Verdict.Limit, overview.TextCoverage.SkippedWords, "skipped"));
+            new(Mark.Same, overview.TextCoverage.ParsedWords, "parsed"),
+            new(Mark.NoParse, overview.TextCoverage.NoParseWords, "no parse"),
+            new(Mark.Stopped, overview.TextCoverage.UnknownWords, "stopped (step or time limit)"),
+            new(Mark.NotParsed, overview.TextCoverage.SkippedWords, "skipped"));
 
     /// <summary>How many approved words the grammar still builds.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
@@ -219,11 +219,11 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The approved-word outcomes that make up the Accuracy bar.</summary>
     public IReadOnlyList<OutcomeSegment> AccuracySegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            new(Verdict.Agrees, overview.Accuracy.ApprovedWordsKept, "rebuilt"),
-            new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
-            new(Verdict.NoResult, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
-            new(Verdict.Limit, overview.Accuracy.ApprovedWordsUnknown, "stopped"),
-            new(Verdict.Several, overview.Accuracy.ApprovedWordsSkipped, "skipped"));
+            new(Mark.Of(MeaningTone.Fine), overview.Accuracy.ApprovedWordsKept, "rebuilt"),
+            new(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
+            new(Mark.NoParse, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
+            new(Mark.Stopped, overview.Accuracy.ApprovedWordsUnknown, "stopped"),
+            new(Mark.NotParsed, overview.Accuracy.ApprovedWordsSkipped, "skipped"));
 
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;

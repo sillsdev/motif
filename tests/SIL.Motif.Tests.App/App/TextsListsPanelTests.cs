@@ -30,12 +30,12 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 window.UpdateLayout();
 
-                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<VerdictChip>(), chip => chip.IsVisible);
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<MarkChip>(), chip => chip.IsVisible);
 
                 lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped at a limit"));
                 window.UpdateLayout();
 
-                var visible = window.GetLogicalDescendants().OfType<VerdictChip>()
+                var visible = window.GetLogicalDescendants().OfType<MarkChip>()
                     .Where(chip => chip.IsVisible).ToArray();
                 Assert.Equal(2, visible.Length);
                 Assert.All(visible, chip => Assert.NotEqual("Stopped", chip.Text));

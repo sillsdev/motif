@@ -108,7 +108,7 @@ public sealed class TextWordsViewModelTests
         Assert.Equal(WordProjectStatus.Approved, row.Status);
         Assert.True(row.HasSeveralAnalyses);
         Assert.Equal("Approved, 2 analyses", row.StatusLabel);
-        Assert.Equal(Verdict.Approved, row.Verdict);
+        Assert.Equal(Mark.Approved, row.StatusMark);
         Assert.Equal(1, words.ApprovedFilterCount);
         Assert.Equal(1, words.SeveralFilterCount);
     }
@@ -150,16 +150,17 @@ public sealed class TextWordsViewModelTests
         var row = Assert.Single(words.Rows);
         Assert.Equal(expected, row.Status);
         Assert.Equal(label, row.StatusLabel);
-        Assert.Equal(WordProjectStatuses.VerdictOf(expected), row.Verdict);
+        Assert.Equal(WordProjectStatuses.MarkOf(expected), row.StatusMark);
     }
 
     [Fact]
-    public void WhatTheProjectHoldsWearsFieldWorksColoursForApprovedAndCandidate()
+    public void WhatTheProjectHoldsWearsItsOpinionMarkAndAnIncorrectSpellingNone()
     {
-        Assert.Equal(Verdict.Approved, WordProjectStatuses.VerdictOf(WordProjectStatus.Approved));
-        Assert.Equal(Verdict.Candidate, WordProjectStatuses.VerdictOf(WordProjectStatus.Candidate));
-        Assert.Equal(Verdict.New, WordProjectStatuses.VerdictOf(WordProjectStatus.NotPresent));
-        Assert.Equal(Verdict.Differs, WordProjectStatuses.VerdictOf(WordProjectStatus.Rejected));
+        Assert.Equal(Mark.Approved, WordProjectStatuses.MarkOf(WordProjectStatus.Approved));
+        Assert.Equal(Mark.Unknown, WordProjectStatuses.MarkOf(WordProjectStatus.Candidate));
+        Assert.Equal(Mark.NotInFieldWorks, WordProjectStatuses.MarkOf(WordProjectStatus.NotPresent));
+        Assert.Equal(Mark.Disapproved, WordProjectStatuses.MarkOf(WordProjectStatus.Rejected));
+        Assert.Null(WordProjectStatuses.MarkOf(WordProjectStatus.IncorrectSpelling));
     }
 
     [Fact]

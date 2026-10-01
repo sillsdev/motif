@@ -313,7 +313,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         [bar.MorphRuleBrush, bar.PhonRuleBrush, bar.LexiconBrush, bar.RootLookupBrush, bar.UnattributedBrush];
 
     // Each owner restyles the text inside it, and a tooltip's text is its owner's logical descendant.
-    public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "verdictChip", "ruleRow", "handoffQuestion" };
+    public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "markChip", "ruleRow", "handoffQuestion" };
 
     [Theory]
     [MemberData(nameof(TooltipOwners))]
@@ -326,7 +326,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 Control control = owner switch
                 {
                     "stagedStrip" => new Border { Classes = { "stagedStrip" }, Child = new TextBlock { Text = "Staged" } },
-                    "verdictChip" => new Border { Classes = { "verdictChip", "differs", "compact" }, Child = new TextBlock { Text = "!" } },
+                    "markChip" => new MarkChip { Mark = Mark.Of(MeaningTone.Problem), Text = "Built anyway", Compact = true },
                     "ruleRow" => new Button { Classes = { "ruleRow" }, Content = "lu" },
                     "handoffQuestion" => new Button { Classes = { "handoffQuestion" }, Content = "Which words did not parse?" },
                     _ => new Button { Content = "Refresh" },

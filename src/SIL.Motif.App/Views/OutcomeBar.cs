@@ -86,16 +86,16 @@ public sealed class OutcomeBar : StackPanel
         {
             bar.ColumnDefinitions.Add(new ColumnDefinition(segment.Count, GridUnitType.Star));
             var part = new Border { Classes = { "outcomeSegment" } };
-            VerdictClasses.SetVerdict(part, segment.Meaning);
+            MarkClasses.SetMark(part, segment.Mark);
             Grid.SetColumn(part, bar.ColumnDefinitions.Count - 1);
             bar.Children.Add(part);
         }
 
         // Parts that share a colour share one swatch, so the key names each colour once.
-        foreach (var colour in segments.GroupBy(segment => segment.Meaning))
+        foreach (var colour in segments.GroupBy(segment => segment.Mark))
         {
             var swatch = new Border { Classes = { "outcomeSegment", "swatch" } };
-            VerdictClasses.SetVerdict(swatch, colour.Key);
+            MarkClasses.SetMark(swatch, colour.Key);
             var entry = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "outcomeLegendEntry" } };
             entry.Children.Add(swatch);
             var parts = colour.ToList();

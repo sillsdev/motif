@@ -100,10 +100,11 @@ public sealed class WarningsPageWordsTests
 
                 var chipMark = panel.GetVisualDescendants().OfType<FilterChip>()
                     .Single(chip => chip.Label == "Warnings")
-                    .GetVisualDescendants().OfType<TextBlock>().Single(block => block.Classes.Contains("severityGlyph")).Text;
+                    .GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("severityGlyph"))
+                    .GetVisualDescendants().OfType<TextBlock>().Single().Text;
                 var kinds = panel.GetVisualDescendants().OfType<ItemsControl>()
                     .Single(list => Avalonia.Automation.AutomationProperties.GetName(list) == "Kinds of warning");
-                var countMarks = kinds.GetVisualDescendants().OfType<VerdictChip>()
+                var countMarks = kinds.GetVisualDescendants().OfType<MarkChip>()
                     .Select(chip => chip.GetVisualDescendants().OfType<TextBlock>().First().Text)
                     .ToList();
 
