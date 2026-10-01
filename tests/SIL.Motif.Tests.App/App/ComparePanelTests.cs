@@ -51,7 +51,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void MatrixRendersFiveByFiveFiltersWithOpinionAndAgreementLegends()
+    public void MatrixRendersFiveByFiveFiltersWithOpinionMarksAndNeutralColumnHeadings()
     {
         avalonia.Invoke(() =>
         {
@@ -88,9 +88,20 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(5, compare.Rows.Count);
                 Assert.Equal(5, compare.Columns.Count);
                 Assert.Equal(25, window.GetLogicalDescendants().OfType<MatrixCell>().Count());
-                Assert.Equal(10, window.GetLogicalDescendants().OfType<OpinionMark>().Count());
+                Assert.Equal(6, window.GetLogicalDescendants().OfType<OpinionMark>().Count());
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                    text.Text is "FieldWorks" or "PanGloss");
+                foreach (var (label, statusClass) in new[]
+                         { ("Stopped", "capped"), ("Not parsed", "notAssessed") })
+                {
+                    var heading = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                        button.Classes.Contains("header") && button.GetLogicalDescendants().OfType<TextBlock>()
+                            .Any(text => text.Text == label));
+                    var line = Assert.Single(heading.GetLogicalDescendants().OfType<Border>());
+                    Assert.DoesNotContain(statusClass, line.Classes);
+                }
                 var wordCell = window.GetLogicalDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("matrixWordCell"));
                 Assert.Equal("kitabu: Approved in FieldWorks, PanGloss found no parse.",
