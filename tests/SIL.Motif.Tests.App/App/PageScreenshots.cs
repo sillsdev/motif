@@ -108,6 +108,23 @@ public sealed class PageScreenshots
     }
 
     [Fact]
+    public void ScreenshotMatrixKeepsItsCellsAndItsApprovedWordsShareTheirAffixes()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load(Assessment().Words);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        var builtElse = compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoMatch);
+
+        Assert.Equal(5, builtElse.Count);
+        compare.Toggle(builtElse, additive: false);
+
+        Assert.Equal(["a- 3SG in 2", "-a FV in 2"], compare.Shared.Select(item => $"{item.Form} {item.Gloss} {item.CountText}"));
+        Assert.Equal([3, 4], compare.Words.Single(word => word.Word == "alikula").WordRow.Row.DifferingPositions);
+        Assert.All(compare.Words.Where(word => word.Word != "alikula"), word => Assert.Single(word.WordRow.Row.DifferingPositions));
+    }
+
+    [Fact]
     public void ScreenshotTextWordsCountTheirOccurrences()
     {
         var words = TextWords();
@@ -236,7 +253,28 @@ public sealed class PageScreenshots
         var item = Vocabulary.Single(entry => entry.Word == word);
         return new ParserReading([.. item.Forms.Select((form, index) =>
             new ParserReadingMorph(form, item.Glosses[index], index == item.Forms.Length - 1 ? "v" : "", null, false,
-                "silfw://localhost/link?tool=lexiconEdit"))]);
+                "silfw://localhost/link?tool=lexiconEdit")
+            {
+                AllomorphId = Id("allomorph " + form + item.Glosses[index], 0),
+                GrammaticalInfoId = Id("grammatical info " + item.Glosses[index], 0),
+            })]);
+    }
+
+    // Morphemes named by identity, so the Matrix can say what words share; another stem keeps each word's cell.
+    private static ParserReading ApprovedInAssessment(string word)
+    {
+        var item = Vocabulary.Single(entry => entry.Word == word);
+        return new ParserReading([.. Resolved(word).Morphs.Select(morph => morph with
+        {
+            AllomorphId = Id((morph.Form.Contains('-') ? "allomorph " : "stem of " + word + " ") + morph.Form + morph.Gloss, 0),
+            GrammaticalInfoId = Id("grammatical info " + morph.Gloss, 0),
+        })])
+        {
+            StoredAnalysisId = Id(word, 97),
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+            Identity = new ApprovedMorphology([.. Reading(word, 7).Morphs.Select((morph, index) =>
+                new ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [item.Forms[index]]))]),
+        };
     }
 
     // FieldWorks' kul against PanGloss's ku- + l: the sample's one word whose two analyses part inside a morpheme.
@@ -247,11 +285,12 @@ public sealed class PageScreenshots
             StoredAnalysisOpinion = ReadingGrade.Approved,
         };
 
+    // The sample's identities, so alikula's affixes are the ones the other approved words use.
     private static ParserReadingMorph Piece(string form, string gloss) =>
         new(form, gloss, "", null, false, "silfw://localhost/link?tool=lexiconEdit")
         {
-            AllomorphId = Id(form, 70),
-            GrammaticalInfoId = Id(form, 71),
+            AllomorphId = Id((form.Contains('-') ? "allomorph " : "stem of alikula ") + form + gloss, 0),
+            GrammaticalInfoId = Id("grammatical info " + gloss, 0),
         };
 
     private static ProjectAnalysis Stored(string word, int variant = 0)
@@ -305,6 +344,7 @@ public sealed class PageScreenshots
                     outcome == "no-analysis" ? "not-present" : "candidate",
                 OccurrenceCount = 1,
                 TryWordLink = "silfw://localhost/link?tool=Analyses",
+                StoredAnalyses = grades.Contains("approved") ? [ApprovedInAssessment(word)] : [],
             };
         return new AssessCommandResponse(Capture(), new SelectionProjection([], []), ["assessment/one"], "## 142 words\n\n118 parsed, 24 did not.")
         {

@@ -77,7 +77,7 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded();
 
         Assert.Equal(compare.Presets.Select(preset => preset.Label), lists.Lists.Select(list => list.Name));
-        Assert.Equal(["Lost", "Built something else", "Built anyway", "Have a look", "New", "Nobody can analyze",
+        Assert.Equal(["Lost", "Built something else", "Have a look", "Built anyway", "New: PanGloss proposes", "Nobody can analyze",
             "Stopped", "Not parsed"], lists.Lists.Select(list => list.Name));
         foreach (var (list, preset) in lists.Lists.Zip(compare.Presets))
             Assert.Equal(preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet(),
@@ -119,7 +119,7 @@ public sealed class TextsListsViewModelTests
     {
         var (compare, lists) = Loaded(withSecondHaveALookMeaning: true);
 
-        foreach (var name in new[] { "Lost", "Built something else", "Built anyway", "New", "Nobody can analyze",
+        foreach (var name in new[] { "Lost", "Built something else", "Built anyway", "New: PanGloss proposes", "Nobody can analyze",
                      "Stopped", "Not parsed" })
         {
             lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == name));
@@ -216,7 +216,7 @@ public sealed class TextsListsViewModelTests
     [Theory]
     [InlineData("Lost", "approved-empty")]
     [InlineData("Built something else", "approved-other")]
-    [InlineData("New", "new-parse")]
+    [InlineData("New: PanGloss proposes", "new-parse")]
     [InlineData("Nobody can analyze", "nobody")]
     [InlineData("Built anyway", "rejected-rebuilt")]
     [InlineData("Not parsed", "skipped")]

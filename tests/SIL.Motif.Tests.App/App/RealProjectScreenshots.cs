@@ -208,7 +208,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
                 TimeSpan.FromMinutes(2), "The spelling change did not finish");
         }
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New"));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
         if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0) is { } candidate)
         {
             candidate.IsChecked = true;

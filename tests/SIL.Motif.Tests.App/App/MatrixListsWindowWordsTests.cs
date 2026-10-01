@@ -135,7 +135,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
         Assert.Equal("—", cell.CountText);
         Assert.False(cell.ShowsLabel);
-        cell.SetDisplayedCount(6, "word");
+        cell.SetCounts(6, 6);
         Assert.Equal("6", cell.CountText);
         Assert.False(cell.ShowsLabel);
         Assert.True(new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match).ShowsLabel);
@@ -162,8 +162,8 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     {
         var compare = Compare(EveryKindOfWord);
 
-        Assert.Equal(["Lost", "Built something else", "Built anyway", "Have a look", "New", "Nobody can analyze",
-            "Stopped", "Not parsed"], compare.Presets.Select(preset => preset.Label));
+        Assert.Equal(["Lost", "Built something else", "Have a look", "Built anyway", "New: PanGloss proposes",
+            "Nobody can analyze", "Stopped", "Not parsed"], compare.Presets.Select(preset => preset.Label));
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Stopped"));
         Assert.Equal(["limit-too", "stopped"], compare.Words.Select(word => word.Word).Order());
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Built anyway"));
@@ -214,7 +214,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
         var lists = new TextsListsViewModel(compare);
 
-        Assert.Equal("New", lists.SelectedList?.Name);
+        Assert.Equal("New: PanGloss proposes", lists.SelectedList?.Name);
         Assert.Equal(["new-parse"], compare.Words.Select(word => word.Word));
     }
 
@@ -305,8 +305,8 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             foreach (var cell in compare.Cells)
             {
                 compare.Toggle(cell, additive: false);
-                shown.Add(compare.SelectionText);
-                shown.Add(cell.AccessibleName);
+                shown.AddRange([compare.SelectionText, compare.ListHeading, compare.ListSummary, compare.ListExplanation,
+                    compare.HandOffLabel, cell.AccessibleName, cell.PlacesText, cell.Explanation ?? string.Empty]);
             }
             shown.AddRange(compare.FixFirstRows.SelectMany(row => new[] { row.Category, row.Explanation }));
             compare.ClearSelectionCommand.Execute(null);
@@ -315,7 +315,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             shown.AddRange(Rendered(new ComparePanel(compare)));
 
             AssertWindowWords(shown);
-            Assert.Contains("Approve one analysis at a time, in the text.", shown);
+            Assert.DoesNotContain("Approve one analysis at a time, in the text.", shown);
         });
     }
 

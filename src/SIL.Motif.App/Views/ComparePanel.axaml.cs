@@ -24,7 +24,7 @@ public sealed partial class ComparePanel : UserControl
     {
         CompareSort.Alphabetical => "A to Z",
         CompareSort.Slowest => "Slowest first",
-        _ => "Most frequent first",
+        _ => "Most places first",
     });
 
     // Ctrl or Shift adds a cell to the choice, as in any list; a plain click chooses it alone.

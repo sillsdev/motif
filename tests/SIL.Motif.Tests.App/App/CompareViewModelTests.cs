@@ -156,9 +156,9 @@ public sealed class CompareViewModelTests
     public void MatrixCellAutomationNameUsesTheOpinionAndPanGlossSentence()
     {
         var cell = new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match);
-        cell.SetDisplayedCount(12, "word");
+        cell.SetCounts(12, 30);
 
-        Assert.Equal("12 words: Approved in FieldWorks, PanGloss finds the same", cell.AccessibleName);
+        Assert.Equal("12 words, 30 places: Approved in FieldWorks, PanGloss finds the same", cell.AccessibleName);
     }
 
     [Theory]
@@ -423,7 +423,7 @@ public sealed class CompareViewModelTests
 
         Assert.Equal(["hawajafika"], compare.Words.Select(word => word.Word));
         Assert.True(compare.Presets.Single(preset => preset.Label == "Lost").IsActive);
-        Assert.Equal("1 of 9 words", compare.ListSummary);
+        Assert.Equal("1 word", compare.ListSummary);
     }
 
     [Fact]
@@ -485,24 +485,257 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
-    public void TheMatrixCanCountOccurrencesWithoutChangingTheWordList()
+    public void ACellShowsItsWordsAndTheirPlacesTogetherSoNothingHidesBehindAToggle()
     {
         var table = new AssessWordsViewModel();
         table.Load([
             Word("common", "no-analysis", ProjectStanding.Approved, occurrences: 8),
-            Word("rare", "no-analysis", ProjectStanding.Approved, occurrences: 2),
+            Word("rare", "no-analysis", ProjectStanding.Approved, occurrences: 1),
+            Word("once", "analysed", ProjectStanding.Approved, ["approved"], occurrences: 1),
         ]);
         var compare = new CompareViewModel();
         compare.Load(table.AllRows);
-        var cell = compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse);
+        var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
+        var kept = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match);
 
-        Assert.Equal(2, cell.Count);
-        compare.CountMode = CompareCountMode.Occurrences;
-
-        Assert.Equal(10, cell.Count);
-        Assert.Equal(2, compare.Words.Count);
-        Assert.Equal(10, compare.Rows.Single(row => row.Row == WordProjectStatus.Approved).Count);
+        Assert.Equal("2", lost.CountText);
+        Assert.Equal("9 places", lost.PlacesText);
+        Assert.Equal("1 place", kept.PlacesText);
+        Assert.True(lost.ShowsPlaces);
+        Assert.False(Cell(compare, WordProjectStatus.Rejected, CompareColumnKind.Match).ShowsPlaces);
+        Assert.Equal("2 words, 9 places: Approved in FieldWorks, PanGloss found no parse", lost.AccessibleName);
+        Assert.Equal(3, compare.Rows.Single(row => row.Row == WordProjectStatus.Approved).Count);
+        Assert.Equal(2, compare.Presets.Single(preset => preset.Label == "Lost").Count);
+        Assert.Null(typeof(CompareViewModel).GetProperty("CountMode"));
     }
+
+    [Fact]
+    public void ThePresetsAreTheNamedListsInTheMatrixsOwnWords()
+    {
+        var compare = new CompareViewModel();
+
+        Assert.Equal(["Lost", "Built something else", "Have a look", "Built anyway", "New: PanGloss proposes",
+            "Nobody can analyze", "Stopped", "Not parsed"], compare.Presets.Select(preset => preset.Label));
+        foreach (var preset in compare.Presets.Where(preset => preset.Label is not ("Have a look" or "Stopped")))
+            Assert.All(preset.Cells, cell => Assert.Equal(preset.Label, cell.Label));
+        Assert.All(compare.Presets.Single(preset => preset.Label == "Have a look").Cells,
+            cell => Assert.Equal(MeaningTone.Look, cell.Tone));
+        Assert.All(compare.Presets.Single(preset => preset.Label == "Stopped").Cells,
+            cell => Assert.Equal(CompareColumnKind.Timeout, cell.Column));
+    }
+
+    [Fact]
+    public void EveryCellExplainsItsMeaningInOneLine()
+    {
+        var compare = new CompareViewModel();
+
+        foreach (var cell in compare.Cells.Where(cell => !cell.IsEmptyImpossible))
+        {
+            Assert.False(string.IsNullOrWhiteSpace(cell.Explanation), $"{cell.RowLabel} × {cell.ColumnLabel}");
+            Assert.DoesNotContain('\n', cell.Explanation!);
+            Assert.EndsWith(".", cell.Explanation, StringComparison.Ordinal);
+        }
+        Assert.Null(Cell(compare, WordProjectStatus.NotPresent, CompareColumnKind.Match).Explanation);
+        Assert.Equal("You approved these in FieldWorks; the grammar builds nothing for them.",
+            Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse).Explanation);
+        Assert.Equal("You disapproved these in FieldWorks; the grammar still builds them.",
+            Cell(compare, WordProjectStatus.Rejected, CompareColumnKind.Match).Explanation);
+    }
+
+    [Fact]
+    public void TheChosenCellsPanelNamesItsCellAndSaysWhatItHoldsInOneLine()
+    {
+        var compare = LostWords();
+
+        Assert.Equal("All words", compare.ListHeading);
+        Assert.Null(compare.ChosenCell);
+        Assert.Equal("5 words · 9 places", compare.ListSummary);
+        Assert.Equal("Choose a cell to list only its words; Ctrl-click adds cells.", compare.ListExplanation);
+        Assert.Equal("AI Handoff for these 5 words", compare.HandOffLabel);
+
+        var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
+        compare.Toggle(lost, additive: false);
+
+        Assert.Same(lost, compare.ChosenCell);
+        Assert.Equal("Approved × No parse", compare.ListHeading);
+        Assert.Equal("4 words · 7 places", compare.ListSummary);
+        Assert.Equal(lost.Explanation, compare.ListExplanation);
+        Assert.Equal("AI Handoff for these 4 words", compare.HandOffLabel);
+
+        compare.SearchText = "walikata";
+        Assert.Equal("1 of 4 words · 2 places", compare.ListSummary);
+        Assert.Equal("AI Handoff for this word", compare.HandOffLabel);
+
+        compare.SearchText = string.Empty;
+        compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match), additive: true);
+        Assert.Null(compare.ChosenCell);
+        Assert.Equal("2 cells chosen", compare.ListHeading);
+        Assert.Equal("5 words · 9 places", compare.ListSummary);
+    }
+
+    [Fact]
+    public void TheChosenCellsWordsShowTheMorphemesTheyShareByIdentity()
+    {
+        var compare = LostWords();
+        Assert.False(compare.HasShared);
+
+        compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse), additive: false);
+
+        Assert.True(compare.HasShared);
+        Assert.Equal(["-a FV in 4", "wa- 3PL in 2", "kat cut in 2", "ha- NEG in 2", "ja- NEG.PERF in 2"],
+            compare.Shared.Select(item => $"{item.Form} {item.Gloss} {item.CountText}"));
+        Assert.Equal("kat cut: 2 of these words use it", compare.Shared[2].AccessibleName);
+
+        compare.SearchText = "ha";
+        Assert.Equal(["ha- NEG in 2", "ja- NEG.PERF in 2", "-a FV in 2"],
+            compare.Shared.Select(item => $"{item.Form} {item.Gloss} {item.CountText}"));
+
+        compare.SearchText = "walikata";
+        Assert.False(compare.HasShared);
+        Assert.Empty(compare.Shared);
+    }
+
+    [Fact]
+    public void TheCardNamesEveryApprovedAnalysisPanGlossMissed_ExceptTheOneTheRowShows()
+    {
+        var a = Approved("a", "kit", "abu");
+        var b = Approved("b", "ki", "tabu");
+
+        var missesB = CardWord(stored: [a, b], built: [a], missed: [b]);
+        Assert.True(missesB.ShowsMissedApproved);
+        Assert.Equal(["b"], missesB.NotBuiltAnalyses.Select(reading => reading.StoredAnalysisId));
+
+        var missesTheShownOne = CardWord(stored: [a], built: [], missed: [a]);
+        Assert.False(missesTheShownOne.ShowsMissedApproved);
+        Assert.Empty(missesTheShownOne.NotBuiltAnalyses);
+
+        var missesBoth = CardWord(stored: [a, b], built: [], missed: [a, b]);
+        Assert.True(missesBoth.ShowsMissedApproved);
+        Assert.Equal(["b"], missesBoth.NotBuiltAnalyses.Select(reading => reading.StoredAnalysisId));
+    }
+
+    internal static ParserReading Approved(string id, params string[] forms) =>
+        new([.. forms.Select(form => new ParserReadingMorph(form, form + "-gloss", "n", null, false, null)
+        {
+            AllomorphId = IdOf("allomorph " + form),
+            GrammaticalInfoId = IdOf("grammatical info " + form),
+        })])
+        {
+            StoredAnalysisId = id,
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+        };
+
+    // A word FieldWorks approved as each of stored, in order, for which PanGloss built built and missed missed.
+    internal static CompareWordViewModel CardWord(ParserReading[] stored, ParserReading[] built, ParserReading[] missed)
+    {
+        var compare = new CompareViewModel();
+        compare.Load([new AssessWordRowViewModel(new AssessmentWordResult(
+            "kitabu", built.Length > 0 ? "analysed" : "no-analysis", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            ExpectedAnalysis = stored[0],
+            StoredAnalyses = stored,
+            Readings = built,
+            ReadingGrades = [.. built.Select(_ => ReadingGrade.Approved)],
+            MissedApproved = missed,
+            Morphology = new ParseWordEvidence("v1", 0, "kitabu", 10, false, false, false,
+                [.. built.Select(_ => new ParseAnalysis([]))], []),
+        })]);
+        return compare.Words.Single();
+    }
+
+    [Fact]
+    public void TheMeaningColumnShowsOnlyWhenTheListedCellsMixMeanings()
+    {
+        var compare = LostWords(
+            new AssessmentWordResult("polepole", "timed-out", true, "Search stopped at its time limit", 10, null)
+            {
+                ProjectStanding = ProjectStanding.NotPresent,
+            },
+            new AssessmentWordResult("haraka", "timed-out", true, "Search stopped at its time limit", 10, null)
+            {
+                ProjectStanding = ProjectStanding.Approved,
+            });
+        Assert.True(compare.ShowsMeaning);
+        Assert.Null(compare.ListMeaning);
+
+        var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
+        compare.Toggle(lost, additive: false);
+        Assert.False(compare.ShowsMeaning);
+        Assert.Null(compare.ListMeaning);
+
+        compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match), additive: true);
+        Assert.True(compare.ShowsMeaning);
+
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Stopped"));
+        Assert.False(compare.ShowsMeaning);
+        Assert.Equal("5 cells chosen", compare.ListHeading);
+        Assert.Equal("Unknown yet", compare.ListMeaning);
+        Assert.Equal("neutral", compare.ListMeaningMark?.Value);
+
+        compare.ClearSelectionCommand.Execute(null);
+        Assert.True(compare.ShowsMeaning);
+    }
+
+    [Fact]
+    public void TheStripShowsTheEightMostSharedMorphemesAndCountsTheRest()
+    {
+        var morphs = Enumerable.Range(1, 11).Select(index => IdMorph($"m{index}-", $"G{index}")).ToArray();
+        var table = new AssessWordsViewModel();
+        table.Load([Lost("one", 1, morphs), Lost("two", 1, morphs)]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+
+        compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse), additive: false);
+
+        Assert.Equal(Enumerable.Range(1, 8).Select(index => $"m{index}-"), compare.Shared.Select(item => item.Form));
+        Assert.Equal("and 3 more", compare.SharedMoreText);
+        compare.SearchText = "one";
+        Assert.Null(compare.SharedMoreText);
+    }
+
+    // Four approved words PanGloss could not parse, and one it kept that shares nothing with them by identity.
+    internal static CompareViewModel LostWords(params AssessmentWordResult[] more)
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([
+            .. more,
+            Lost("walikata", 2, IdMorph("wa-", "3PL"), IdMorph("li-", "PST"), IdMorph("kat", "cut"), IdMorph("-a", "FV")),
+            Lost("anakata", 1, IdMorph("a-", "3SG"), IdMorph("na-", "PRS"), IdMorph("kat", "cut"), IdMorph("-a", "FV")),
+            Lost("hawajafika", 3, IdMorph("ha-", "NEG"), IdMorph("wa-", "3PL"), IdMorph("ja-", "NEG.PERF"),
+                IdMorph("fik", "arrive"), IdMorph("-a", "FV")),
+            Lost("hatujaona", 1, IdMorph("ha-", "NEG"), IdMorph("tu-", "1PL"), IdMorph("ja-", "NEG.PERF"),
+                IdMorph("on", "see"), IdMorph("-a", "FV")),
+            Word("kata", "analysed", ProjectStanding.Approved, ["approved"], occurrences: 2),
+        ]);
+        var compare = new CompareViewModel();
+        compare.Load(table.AllRows);
+        return compare;
+    }
+
+    private static AssessmentWordResult Lost(string word, int places, params ParserReadingMorph[] morphs) =>
+        new(word, "no-analysis", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            OccurrenceCount = places,
+            StoredAnalyses = [new ParserReading(morphs)
+            {
+                StoredAnalysisId = "stored-" + word,
+                StoredAnalysisOpinion = ReadingGrade.Approved,
+            }],
+        };
+
+    private static ParserReadingMorph IdMorph(string form, string gloss) => new(form, gloss, "v", null, false, null)
+    {
+        AllomorphId = IdOf("allomorph " + form + gloss),
+        GrammaticalInfoId = IdOf("grammatical info " + gloss),
+    };
+
+    private static string IdOf(string text) =>
+        new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(text))).ToString("D");
+
+    private static CompareCellViewModel Cell(CompareViewModel compare, WordProjectStatus row, CompareColumnKind column) =>
+        compare.Cells.Single(cell => cell.Row == row && cell.Column == column);
 
     [Fact]
     public void FixFirstRanksTheNamedProblemsByFrequencyAndLeavesUnknownOut()
@@ -555,7 +788,8 @@ public sealed class CompareViewModelTests
         var word = compare.Words.Single(item => item.Word == "kitabu");
         word.IsChecked = true;
 
-        Assert.Equal("1 word selected", compare.CheckedWordText);
+        Assert.Equal("1 word ticked", compare.CheckedWordText);
+        Assert.True(compare.HasCheckedWords);
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Approve));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Reject));
         Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.Candidate));

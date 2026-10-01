@@ -45,7 +45,7 @@
     <views:CopyableTextBlock Grid.Row="2" Classes="wordRowCardLabel" Text="NOT BUILT" IsVisible="{Binding ShowsMissedApproved}" />
     <StackPanel Grid.Row="2" Grid.Column="1" Classes="wordRowCardSection" IsVisible="{Binding ShowsMissedApproved}">
       <views:CopyableTextBlock Classes="muted" Text="Approved analyses PanGloss did not build" />
-      <ItemsControl ItemsSource="{Binding MissedApproved}">
+      <ItemsControl ItemsSource="{Binding NotBuiltAnalyses}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
             <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" FormLinks="True" />

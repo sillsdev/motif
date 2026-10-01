@@ -48,9 +48,9 @@ public sealed partial class CompareViewModel : ObservableObject
             Preset("Lost", cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse),
             Preset("Built something else",
                 cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoMatch),
-            Preset("Built anyway", cell => cell.Row == WordProjectStatus.Rejected && cell.Column == CompareColumnKind.Match),
             Preset("Have a look", cell => cell.Family == CompareFamilyKind.Review),
-            Preset("New", cell => cell.Family == CompareFamilyKind.New),
+            Preset("Built anyway", cell => cell.Row == WordProjectStatus.Rejected && cell.Column == CompareColumnKind.Match),
+            Preset("New: PanGloss proposes", cell => cell.Family == CompareFamilyKind.New),
             Preset("Nobody can analyze", cell => cell.Family == CompareFamilyKind.Nobody),
             Preset("Stopped", cell => cell.Column == CompareColumnKind.Timeout),
             Preset("Not parsed", cell => cell.Column == CompareColumnKind.Skipped),
@@ -135,6 +135,7 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(CheckedWordCount));
             OnPropertyChanged(nameof(CheckedWordText));
+            OnPropertyChanged(nameof(HasCheckedWords));
             CheckedWordsChanged?.Invoke(this, EventArgs.Empty);
         }
         if (e.PropertyName == nameof(CompareWordViewModel.IsChecked)) ProposeCommand.NotifyCanExecuteChanged();
@@ -256,9 +257,6 @@ public sealed partial class CompareViewModel : ObservableObject
 
     public IReadOnlyList<CompareSort> SortChoices { get; } = Enum.GetValues<CompareSort>();
 
-    [ObservableProperty]
-    private CompareCountMode _countMode = CompareCountMode.Words;
-
     public int TotalCount => _all.Count;
     public bool HasWords => _all.Count > 0;
 
@@ -297,17 +295,107 @@ public sealed partial class CompareViewModel : ObservableObject
         }
     }
 
-    public string ListSummary => Words.Count == TotalCount
-        ? $"{TotalCount:N0} word{(TotalCount == 1 ? string.Empty : "s")}"
-        : $"{Words.Count:N0} of {TotalCount:N0} words";
+    /// <summary>The one cell chosen, which the list's heading names with its marks; otherwise <see langword="null"/>.</summary>
+    public CompareCellViewModel? ChosenCell => Cells.Where(cell => cell.IsSelected).Take(2).ToArray() is [var only] ? only : null;
+
+    /// <summary>What the list holds, named for the chosen cells: the one cell's opinion and outcome, or how many.</summary>
+    public string ListHeading
+    {
+        get
+        {
+            var chosen = Cells.Count(cell => cell.IsSelected);
+            return chosen switch
+            {
+                0 => "All words",
+                1 => $"{ChosenCell!.RowLabel} × {ChosenCell.ColumnLabel}",
+                _ => $"{chosen:N0} cells chosen",
+            };
+        }
+    }
+
+    /// <summary>
+    /// Whether the word rows show their meaning column: only when the listed cells mix meanings, since the heading
+    /// already names a list's one meaning.
+    /// </summary>
+    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1;
+
+    /// <summary>
+    /// The one meaning every listed word shares, for a chip after a heading that names no single cell; otherwise
+    /// <see langword="null"/>, as the chosen cell's own chip or the meaning column says it.
+    /// </summary>
+    public string? ListMeaning => ListMeaningCell?.Label;
+
+    /// <summary>The mark for <see cref="ListMeaning"/>, or <see langword="null"/> when it has none.</summary>
+    public Mark? ListMeaningMark => ListMeaningCell?.MeaningMark;
+
+    private CompareCellViewModel? ListMeaningCell =>
+        ChosenCell is null && !ShowsMeaning ? ListedCells().FirstOrDefault() : null;
+
+    private IEnumerable<CompareCellViewModel> ListedCells()
+    {
+        var chosen = Cells.Where(cell => cell.IsSelected).ToArray();
+        return (chosen.Length == 0 ? Cells : chosen).Where(cell => cell.WordCount > 0);
+    }
+
+    private IEnumerable<string> ListedMeanings() => ListedCells().Select(cell => cell.Label).Distinct(StringComparer.Ordinal);
+
+    /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
+    public string ListExplanation => Cells.Count(cell => cell.IsSelected) switch
+    {
+        0 => "Choose a cell to list only its words; Ctrl-click adds cells.",
+        1 => ChosenCell!.Explanation ?? string.Empty,
+        _ => "Ctrl-click a cell to add it or take it away.",
+    };
+
+    /// <summary>
+    /// How many words are listed and the places they occur, out of the chosen cells' words when a search narrows them.
+    /// </summary>
+    public string ListSummary
+    {
+        get
+        {
+            var chosen = Cells.Where(cell => cell.IsSelected).ToArray();
+            var inCells = chosen.Length == 0 ? TotalCount : chosen.Sum(cell => cell.WordCount);
+            var words = Words.Count == inCells
+                ? CompareCellViewModel.WordsText(Words.Count) : $"{Words.Count:N0} of {inCells:N0} words";
+            return Words.Any(word => word.Occurrences is not null)
+                ? $"{words} · {CompareCellViewModel.PlacesTextOf(Words.Sum(word => word.Occurrences ?? 0))}" : words;
+        }
+    }
+
+    /// <summary>The AI Handoff button's words, naming how many listed words it sends.</summary>
+    public string HandOffLabel => Words.Count switch
+    {
+        0 => "AI Handoff for these words",
+        1 => "AI Handoff for this word",
+        var count => $"AI Handoff for these {count:N0} words",
+    };
+
+    /// <summary>
+    /// The morphemes at least two listed words use, matched by identity, most words first. It stays empty until a cell
+    /// is chosen, because what the whole Selection shares is no clue to one cause.
+    /// </summary>
+    public ObservableCollection<CompareSharedMorphemeViewModel> Shared { get; } = [];
+
+    public bool HasShared => Shared.Count > 0;
+
+    // A cell of many words can share hundreds of morphemes; the strip is a first clue, not an inventory.
+    private const int SharedShown = 8;
+
+    /// <summary>How many more shared morphemes there are than the strip shows; null for none.</summary>
+    [ObservableProperty]
+    private string? _sharedMoreText;
 
     public int CheckedWordCount => Words.Count(word => word.IsChecked);
 
+    /// <summary>Whether any listed word is ticked, so the list's controls say how many.</summary>
+    public bool HasCheckedWords => CheckedWordCount > 0;
+
     public string CheckedWordText => CheckedWordCount switch
     {
-        0 => "No words selected",
-        1 => "1 word selected",
-        var count => $"{count:N0} words selected",
+        0 => "No words ticked",
+        1 => "1 word ticked",
+        var count => $"{count:N0} words ticked",
     };
 
     partial void OnSearchTextChanged(string value)
@@ -316,24 +404,6 @@ public sealed partial class CompareViewModel : ObservableObject
         ApplyFilter();
     }
     partial void OnSortChanged(CompareSort value) => ApplyFilter();
-    partial void OnCountModeChanged(CompareCountMode value)
-    {
-        RefreshCounts();
-        OnPropertyChanged(nameof(CountWords));
-        OnPropertyChanged(nameof(CountOccurrences));
-    }
-
-    public bool CountWords
-    {
-        get => CountMode == CompareCountMode.Words;
-        set { if (value) CountMode = CompareCountMode.Words; }
-    }
-
-    public bool CountOccurrences
-    {
-        get => CountMode == CompareCountMode.Occurrences;
-        set { if (value) CountMode = CompareCountMode.Occurrences; }
-    }
 
     /// <summary>Places every word in its cell and clears the selection; <see langword="null"/> empties the matrix.</summary>
     public void Load(IEnumerable<AssessWordRowViewModel>? rows)
@@ -346,7 +416,8 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var cell in Cells)
         {
             var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
-            cell.SetCounts(words.Length, words.Sum(word => word.Occurrences ?? 0));
+            cell.SetCounts(words.Length,
+                words.Any(word => word.Occurrences is not null) ? words.Sum(word => word.Occurrences ?? 0) : null);
             cell.IsSelected = false;
         }
         RefreshCounts();
@@ -420,17 +491,34 @@ public sealed partial class CompareViewModel : ObservableObject
                 .All(cell => cell.IsSelected == preset.Cells.Contains(cell));
         OnPropertyChanged(nameof(AnySelected));
         OnPropertyChanged(nameof(SelectionText));
+        OnPropertyChanged(nameof(ChosenCell));
+        OnPropertyChanged(nameof(ListHeading));
+        OnPropertyChanged(nameof(ListExplanation));
+        OnPropertyChanged(nameof(ShowsMeaning));
+        OnPropertyChanged(nameof(ListMeaning));
+        OnPropertyChanged(nameof(ListMeaningMark));
         ApplyFilter();
     }
 
     private void RefreshCounts()
     {
-        foreach (var cell in Cells)
-            cell.SetDisplayedCount(CountMode == CompareCountMode.Words ? cell.WordCount : cell.OccurrenceCount,
-                CountMode == CompareCountMode.Words ? "word" : "occurrence");
         foreach (var row in Rows) row.Count = row.Cells.Sum(cell => cell.Count);
         foreach (var column in Columns) column.Count = Cells.Where(cell => cell.Column == column.Column).Sum(cell => cell.Count);
         foreach (var preset in Presets) preset.Count = preset.Cells.Sum(cell => cell.Count);
+    }
+
+    private void RefreshShared(bool anyCellChosen)
+    {
+        Shared.Clear();
+        // Assessment order, not the list's sort, so re-sorting the list never reorders what the words share.
+        var listed = _all.Where(Words.ToHashSet().Contains).ToArray();
+        var shared = anyCellChosen && listed.Length >= 2
+            ? ObjectUsesQuery.SharedBy(listed.Select(word => word.Source).ToArray(), listed.Select(word => word.Word).ToArray())
+            : [];
+        foreach (var morpheme in shared.Take(SharedShown))
+            Shared.Add(new CompareSharedMorphemeViewModel(morpheme.Morpheme.Form, morpheme.Morpheme.Gloss, morpheme.Count));
+        SharedMoreText = shared.Count > SharedShown ? $"and {shared.Count - SharedShown:N0} more" : null;
+        OnPropertyChanged(nameof(HasShared));
     }
 
     private void OnChangesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
@@ -474,9 +562,12 @@ public sealed partial class CompareViewModel : ObservableObject
         };
         Words.Clear();
         foreach (var word in matches) Words.Add(word);
+        RefreshShared(chosen.Count > 0);
         OnPropertyChanged(nameof(ListSummary));
+        OnPropertyChanged(nameof(HandOffLabel));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(CheckedWordText));
+        OnPropertyChanged(nameof(HasCheckedWords));
         HandOffCommand.NotifyCanExecuteChanged();
         ProposeCommand.NotifyCanExecuteChanged();
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
@@ -523,6 +614,36 @@ public sealed partial class CompareViewModel : ObservableObject
         WordProjectStatus.Rejected => SIL.Motif.Contract.Responses.ProjectStanding.Rejected,
         WordProjectStatus.IncorrectSpelling => SIL.Motif.Contract.Responses.ProjectStanding.IncorrectSpelling,
         _ => SIL.Motif.Contract.Responses.ProjectStanding.NotPresent,
+    };
+
+    /// <summary>
+    /// What a cell's words have in common, in one line of window words; <see langword="null"/> for the one cell no
+    /// word can reach, a word FieldWorks lacks that PanGloss built the same as.
+    /// </summary>
+    public static string? ExplanationOf(WordProjectStatus row, CompareColumnKind column) => (row, column) switch
+    {
+        (_, CompareColumnKind.Timeout) => "PanGloss stopped at a limit before it finished these.",
+        (_, CompareColumnKind.Skipped) => "PanGloss hasn't parsed these yet.",
+        (WordProjectStatus.Approved, CompareColumnKind.Match) => "You approved these in FieldWorks; the grammar builds the same.",
+        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) =>
+            "You approved these in FieldWorks; the grammar builds something else.",
+        (WordProjectStatus.Approved, _) => "You approved these in FieldWorks; the grammar builds nothing for them.",
+        (WordProjectStatus.Candidate, CompareColumnKind.Match) => "These are Unknown in FieldWorks; the grammar builds the same.",
+        (WordProjectStatus.Candidate, CompareColumnKind.NoMatch) =>
+            "These are Unknown in FieldWorks; the grammar builds something else.",
+        (WordProjectStatus.Candidate, _) => "These are Unknown in FieldWorks; the grammar builds nothing for them.",
+        (WordProjectStatus.Rejected, CompareColumnKind.Match) =>
+            "You disapproved these in FieldWorks; the grammar still builds them.",
+        (WordProjectStatus.Rejected, CompareColumnKind.NoMatch) =>
+            "You disapproved these in FieldWorks; the grammar builds something else.",
+        (WordProjectStatus.Rejected, _) => "You disapproved these in FieldWorks; the grammar doesn't build them.",
+        (WordProjectStatus.IncorrectSpelling, CompareColumnKind.NoParse) =>
+            "You marked these as incorrect spellings; the grammar doesn't build them.",
+        (WordProjectStatus.IncorrectSpelling, _) =>
+            "You marked these as incorrect spellings; the grammar still builds them.",
+        (_, CompareColumnKind.Match) => null,
+        (_, CompareColumnKind.NoMatch) => "FieldWorks has no analysis for these; the grammar proposes one.",
+        _ => "Neither FieldWorks nor the grammar can analyze these.",
     };
 
     /// <summary>The label a row header shows, in FieldWorks' opinion words.</summary>
@@ -579,13 +700,6 @@ public enum CompareSort
     Slowest,
 }
 
-/// <summary>What the matrix counts in its cells and summaries.</summary>
-public enum CompareCountMode
-{
-    Words,
-    Occurrences,
-}
-
 /// <summary>One row of the matrix: what the project held, and its five cells.</summary>
 public sealed partial class CompareRowViewModel(WordProjectStatus row, IReadOnlyList<CompareCellViewModel> cells) : ObservableObject
 {
@@ -613,6 +727,9 @@ public sealed partial class CompareColumnViewModel(CompareColumnKind column) : O
 
     /// <summary>What PanGloss built for the words in this column.</summary>
     public ParserOutcome Outcome { get; } = WindowWords.OutcomeOf(column);
+
+    /// <summary>The outcome's mark, which the column's heading wears.</summary>
+    public Mark OutcomeMark => Mark.Of(Outcome);
     public string AccessibleName => $"Choose the PanGloss {Label} column";
     public bool IsSame => Column == CompareColumnKind.Match;
     public bool IsDifferent => Column == CompareColumnKind.NoMatch;
@@ -637,6 +754,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
         (Label, Family) = CompareViewModel.MeaningOf(row, column);
         RowLabel = CompareViewModel.RowLabelOf(row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(column);
+        Explanation = CompareViewModel.ExplanationOf(row, column);
     }
 
     public WordProjectStatus Row { get; }
@@ -646,14 +764,50 @@ public sealed partial class CompareCellViewModel : ObservableObject
 
     /// <summary>The tone the cell's meaning takes.</summary>
     public MeaningTone Tone => WindowWords.ToneOf(Family);
+
+    /// <summary>The meaning's mark, for the list's heading when this cell is chosen.</summary>
+    public Mark MeaningMark => Mark.Of(Tone);
+
+    /// <summary>The row's opinion, for the list's heading; an incorrect spelling has no mark.</summary>
+    public OpinionMarkKind OpinionMark => CompareViewModel.OpinionMarkFor(Row);
+    public bool IsOpinionMarkVisible => Row != WordProjectStatus.IncorrectSpelling;
+
+    /// <summary>The column's outcome, for the list's heading.</summary>
+    public Mark OutcomeMark => Mark.Of(WindowWords.OutcomeOf(Column));
     public string RowLabel { get; }
     public string ColumnLabel { get; }
 
+    /// <summary>What the cell's words have in common, in one line: the cell's tooltip and the list's explanation.</summary>
+    public string? Explanation { get; }
+
+    /// <summary>How many words fell here; <see cref="Count"/> follows it.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _wordCount;
 
+    /// <summary>How many places in the chosen Texts those words occur.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlacesText))]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _occurrenceCount;
+
+    /// <summary>Whether the places were counted: until the chosen Texts load, they are unknown, not 0.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPlaces))]
+    [NotifyPropertyChangedFor(nameof(AccessibleName))]
+    private bool _hasPlaces;
+
+    /// <summary>The places the cell's words occur, the small number beside the words.</summary>
+    public string PlacesText => PlacesTextOf(OccurrenceCount);
+
+    /// <summary>Whether to show the places; a cell no word fell in shows only its zero.</summary>
+    public bool ShowsPlaces => Count > 0 && HasPlaces;
+
+    /// <summary>A count of words with its noun.</summary>
+    public static string WordsText(int count) => count == 1 ? "1 word" : $"{count:N0} words";
+
+    /// <summary>A count of places with its noun.</summary>
+    public static string PlacesTextOf(int count) => count == 1 ? "1 place" : $"{count:N0} places";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasPendingChanges))]
@@ -673,31 +827,22 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public bool IsNobody => Family == CompareFamilyKind.Nobody;
     public bool IsNone => Family == CompareFamilyKind.None;
 
+    /// <summary>The words the cell shows, its big number.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CountText))]
-    [NotifyPropertyChangedFor(nameof(CountUnit))]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
     [NotifyPropertyChangedFor(nameof(IsEmptyImpossible))]
+    [NotifyPropertyChangedFor(nameof(ShowsPlaces))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _count;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CountUnit))]
-    [NotifyPropertyChangedFor(nameof(AccessibleName))]
-    private string _unit = "word";
-
-    public string CountUnit => Count == 1 ? Unit : $"{Unit}s";
-
-    public void SetCounts(int wordCount, int occurrenceCount)
+    /// <summary>Sets the words that fell here and their places, <see langword="null"/> when nobody counted them.</summary>
+    public void SetCounts(int wordCount, int? occurrenceCount)
     {
         WordCount = wordCount;
-        OccurrenceCount = occurrenceCount;
-    }
-
-    public void SetDisplayedCount(int count, string unit)
-    {
-        Count = count;
-        Unit = unit;
+        OccurrenceCount = occurrenceCount ?? 0;
+        HasPlaces = occurrenceCount is not null;
+        Count = wordCount;
     }
 
     /// <summary>No word fell here, so the cell is drawn faintly: still there to read, but not asking for attention.</summary>
@@ -715,7 +860,8 @@ public sealed partial class CompareCellViewModel : ObservableObject
     /// <summary>Whether the cell names what happened; a word FieldWorks lacks has nothing PanGloss could match.</summary>
     public bool ShowsLabel => Family != CompareFamilyKind.None;
 
-    public string AccessibleName => $"{Count} {CountUnit}: {CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row))}, " +
+    public string AccessibleName => (HasPlaces ? $"{WordsText(WordCount)}, {PlacesText}: " : $"{WordsText(WordCount)}: ") +
+        $"{CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row))}, " +
         CompareViewModel.ColumnSentenceOf(Column) +
         (PendingChangeStatus is { } status ? $". {status}" : string.Empty);
 }
@@ -731,6 +877,18 @@ public sealed record PanGlossLegendItem(AnalysisMarkingClass Kind, string Label)
     public bool IsNoParse => Kind == AnalysisMarkingClass.None;
     public bool IsCapped => Kind == AnalysisMarkingClass.Capped;
     public bool IsNotAssessed => Kind == AnalysisMarkingClass.NotAssessed;
+}
+
+/// <summary>A morpheme some listed words share by identity, and how many of them use it.</summary>
+/// <param name="Form">The morpheme's form, as the first word that uses it shows it.</param>
+/// <param name="Gloss">Its gloss.</param>
+/// <param name="Count">How many of the listed words use it.</param>
+public sealed record CompareSharedMorphemeViewModel(string Form, string Gloss, int Count)
+{
+    public string CountText => $"in {Count:N0}";
+
+    public string AccessibleName => (Gloss.Length == 0 ? Form : $"{Form} {Gloss}") +
+        (Count == 1 ? ": 1 of these words uses it" : $": {Count:N0} of these words use it");
 }
 
 /// <summary>A shortcut that chooses a named set of cells at once, such as every word PanGloss stopped on.</summary>
@@ -753,6 +911,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
+        Source = word.Source;
         WordRow = word.WordRow;
         Standing = word.Standing;
         Row = place.Row;
@@ -787,6 +946,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     }
 
     public string Word { get; }
+
+    /// <summary>The Assessment's result for the word, read by identity for what listed words share.</summary>
+    public AssessmentWordResult Source { get; }
 
     /// <summary>The word as every page's word row shows it: the same row Lists and Timing reach.</summary>
     public WordRowViewModel WordRow { get; }
@@ -854,8 +1016,14 @@ public sealed partial class CompareWordViewModel : ObservableObject
     /// <summary>Why the word has no analyses from PanGloss, in the window's words.</summary>
     public string NoReadingsText { get; }
 
-    // The row already shows one approved analysis; the card repeats a missed one only when there is more to see.
-    public bool ShowsMissedApproved => MissedApproved.Count > (HasFieldWorksAnalysis ? 1 : 0);
+    /// <summary>
+    /// The approved analyses PanGloss did not build, for the card: every one except the analysis the row already
+    /// shows, matched by its FieldWorks identity, never by how many there are.
+    /// </summary>
+    public IReadOnlyList<ParserReadingViewModel> NotBuiltAnalyses => [.. MissedApproved.Where(
+        reading => reading.StoredAnalysisId is not { } id || id != WordRow.Row.FieldWorksAnalysisId)];
+
+    public bool ShowsMissedApproved => NotBuiltAnalyses.Count > 0;
 
     public int ReadingCount { get; }
 

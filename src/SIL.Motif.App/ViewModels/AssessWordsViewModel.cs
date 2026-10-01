@@ -208,6 +208,7 @@ public sealed class AssessWordRowViewModel
     public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null, WordRowRoutes? routes = null)
     {
         ArgumentNullException.ThrowIfNull(word);
+        Source = word;
         Marking = AnalysisMarkingState.Create(word);
         Word = word.Word;
         Outcome = word.Outcome;
@@ -272,6 +273,9 @@ public sealed class AssessWordRowViewModel
             .ToArray())).ToArray();
 
     public string Word { get; }
+
+    /// <summary>The Assessment's result for the word, which identity queries such as shared morphemes read.</summary>
+    public AssessmentWordResult Source { get; }
     public AnalysisMarkingState Marking { get; }
     public string Outcome { get; }
     public ParseWordEvidence? Morphology { get; }

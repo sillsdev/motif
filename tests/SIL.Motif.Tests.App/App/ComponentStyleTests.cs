@@ -397,10 +397,25 @@ public sealed partial class ComponentStyleTests
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
         yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
             Border.BackgroundProperty, "Intent.Surface");
-        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
-            Border.PaddingProperty, "Component.MatrixCell.WordPadding");
-        yield return new("MatrixCell", "a compact word cell", host => Add(host, Box("matrixWordCell")),
-            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("MatrixCell", "a cell's places", host => Within(host, Box("matrixCell"), "matrixCellPlaces"),
+            TextBlock.FontSizeProperty, "Intent.Type.Label");
+        yield return new("MatrixCell", "a cell's places", host => Within(host, Box("matrixCell"), "matrixCellPlaces"),
+            TextBlock.MarginProperty, "Component.MatrixCell.PlacesMargin");
+        yield return new("MatrixCell", "a cell's count", host => Within(host, Box("matrixCell"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
+        yield return new("MatrixCell", "an empty cell's count", host => Within(host, Box("matrixCell", "empty"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Label");
+        yield return new("MatrixCell", "the dash cell's count",
+            host => Within(host, Box("matrixCell", "empty", "none"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
+        yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
+            Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
+            Border.PaddingProperty, "Component.MatrixCell.ChosenPadding");
+        yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
+            Border.PaddingProperty, "Component.MatrixCell.SharedPadding");
+        yield return new("MatrixCell", "how many share a morpheme", host => Within(host, Box("matrixShared"), "matrixSharedCount"),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("MatrixCell", "a cell's words", host => Inside(host, Box("matrixCell")),
             TextBlock.ForegroundProperty, "Intent.Consequence.Neutral");
         yield return new("MatrixCell", "a kept cell", host => Add(host, Box("matrixCell", "good")),
