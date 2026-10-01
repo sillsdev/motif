@@ -7,6 +7,10 @@ namespace SIL.Motif.App.Services;
 
 public partial interface ICommandClient
 {
+    /// <summary>Reads every stored analysis of one exact Baseline word, independently of any Assessment.</summary>
+    Task<CommandOutcome<WordContextResponse>> ReadWordContextAsync(
+        WordContextRequest request, CancellationToken cancellationToken);
+
     /// <summary>Reads the stored project Overview without opening a LibLCM project cache.</summary>
     Task<CommandOutcome<OverviewResponse>> OverviewAsync(
         OverviewRequest request, CancellationToken cancellationToken);

@@ -167,7 +167,86 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Null(WarningWordsQuery.Touched(result.Value.Findings));
     }
 
-    private CapturedProject Capture(bool analysedWordOutsideText = false)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExactWordContextDoesNotNeedMembershipInTheMeasuredSelection(bool priorAssessment)
+    {
+        var project = Capture(includeOtherOpinions: true);
+        if (priorAssessment)
+        {
+            Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(project.Path,
+                "Default", [], [SeededProject.UnanalysedWordForm])).Succeeded);
+            RecordAssessment(project, [SeededProject.UnanalysedWordForm], parsed: false);
+        }
+        File.WriteAllText(project.Path, File.ReadAllText(project.Path)
+            .Replace(SeededProject.FirstGloss, "changed live gloss", StringComparison.Ordinal));
+        File.SetLastWriteTimeUtc(project.Path, project.Baseline.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+        using var held = new FileStream(project.Path + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+        var context = WordContextQuery.Query(new WordContextRequest(project.Path, SeededProject.AnalysedWordForm,
+            project.Baseline.Token));
+        var emptyWordform = WordContextQuery.Query(new WordContextRequest(project.Path, SeededProject.UnanalysedWordForm));
+        var absent = WordContextQuery.Query(new WordContextRequest(project.Path, "absent-exact-form"));
+
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.True(context.Value!.HasBaseline);
+        Assert.True(context.Value.IsInFieldWorks);
+        Assert.True(context.Value.IsStale);
+        Assert.Equal(project.Baseline.Token, context.Value.Baseline);
+        Assert.Equal(project.Baseline.SourceLastWriteUtc, context.Value.SourceLastWriteUtc);
+        Assert.Equal([ReadingGrade.Approved, ReadingGrade.Disapproved, ReadingGrade.Candidate],
+            context.Value.Analyses.Select(analysis => analysis.StoredAnalysisOpinion));
+        Assert.All(context.Value.Analyses, analysis =>
+        {
+            Assert.NotNull(analysis.StoredAnalysisId);
+            Assert.Equal(SeededProject.FirstGloss, analysis.Morphs[0].Gloss);
+        });
+        Assert.Equal(context.Value.Analyses[0], context.Value.ExpectedAnalysis);
+        Assert.NotNull(context.Value.WordAnalysesLink);
+        Assert.True(emptyWordform.Succeeded, emptyWordform.Refusal?.Message);
+        Assert.True(emptyWordform.Value!.IsInFieldWorks);
+        Assert.Empty(emptyWordform.Value.Analyses);
+        Assert.True(absent.Succeeded, absent.Refusal?.Message);
+        Assert.False(absent.Value!.IsInFieldWorks);
+        Assert.Empty(absent.Value.Analyses);
+    }
+
+    [Fact]
+    public void WordContextBeforeCaptureLeavesMembershipUnknown()
+    {
+        var path = _pristine.CopyProjectFile();
+
+        var context = WordContextQuery.Query(new WordContextRequest(path, SeededProject.AnalysedWordForm));
+
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.False(context.Value!.HasBaseline);
+        Assert.Null(context.Value.Baseline);
+        Assert.Null(context.Value.IsInFieldWorks);
+        Assert.Empty(context.Value.Analyses);
+        Assert.Null(context.Value.ExpectedAnalysis);
+    }
+
+    [Fact]
+    public void WordContextRefusesAChangedOrMissingBaselineWithoutSubstitutingLiveAnalyses()
+    {
+        var project = Capture();
+        var token = project.Baseline.Token;
+        var otherToken = new SIL.Motif.Contract.Baselines.BaselineToken(token.ProjectIdentity,
+            token.SemanticSnapshotDigest, token.ProjectionVersion, token.CapturedUtc, "sha256:" + new string('f', 64));
+
+        var changed = WordContextQuery.Query(new WordContextRequest(project.Path,
+            SeededProject.AnalysedWordForm, otherToken));
+
+        Assert.False(changed.Succeeded);
+        Assert.Equal("word-context.baseline-changed", changed.Refusal!.Code);
+        File.Delete(project.Baseline.FwDataPath);
+        var missing = WordContextQuery.Query(new WordContextRequest(project.Path, SeededProject.AnalysedWordForm));
+        Assert.False(missing.Succeeded);
+        Assert.Equal("word-context.baseline-unavailable", missing.Refusal!.Code);
+    }
+
+    private CapturedProject Capture(bool analysedWordOutsideText = false, bool includeOtherOpinions = false)
     {
         string path;
         Guid textId;
@@ -176,6 +255,27 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         {
             var text = SeededProject.SeedText(cache, _pristine.Seed);
             textId = text.TextId;
+            if (includeOtherOpinions)
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                        .Single(word => word.Form.VernacularDefaultWritingSystem.Text == SeededProject.AnalysedWordForm);
+                    var source = wordform.HumanApprovedAnalyses.Single();
+                    foreach (var opinion in new[] { Opinions.disapproves, Opinions.noopinion })
+                    {
+                        var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                        wordform.AnalysesOC.Add(analysis);
+                        analysis.CategoryRA = source.CategoryRA;
+                        foreach (var original in source.MorphBundlesOS)
+                        {
+                            var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                            analysis.MorphBundlesOS.Add(bundle);
+                            bundle.MorphRA = original.MorphRA;
+                            bundle.MsaRA = original.MsaRA;
+                        }
+                        cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, opinion);
+                    }
+                });
             if (analysedWordOutsideText)
                 NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                     cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(text.TextId)

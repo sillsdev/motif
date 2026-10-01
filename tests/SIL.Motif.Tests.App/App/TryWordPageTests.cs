@@ -54,6 +54,57 @@ public sealed class TryWordPageTests
     public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void TypedWordReadsEveryOpinionBeforeAnyMainAssessment()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var approved = new ParserReading([new("dog", "dog", "n", null, false, null)])
+                { StoredAnalysisId = "approved", StoredAnalysisOpinion = "approved" };
+            var rejected = approved with { StoredAnalysisId = "rejected", StoredAnalysisOpinion = "disapproved" };
+            var candidate = approved with { StoredAnalysisId = "candidate", StoredAnalysisOpinion = "candidate" };
+            fake.WordContextHandler = (request, _) => Task.FromResult(
+                SIL.Motif.Contract.Commands.CommandOutcome<WordContextResponse>.Success(new(request.Word, true)
+                {
+                    IsInFieldWorks = true, Analyses = [approved, rejected, candidate], ExpectedAnalysis = approved,
+                }));
+            var page = new TryWordPageModel(context);
+            page.Trace.WordToTry = "dogs";
+            await Task.Yield();
+            Assert.Contains(fake.WordContextRequests, request => request.Word == "dogs");
+            Assert.Equal("dog", Assert.Single(page.Trace.ExpectedMorphs).Form);
+            Assert.Equal(["approved", "disapproved", "candidate"], page.WordContext!.Analyses.Select(analysis =>
+                analysis.StoredAnalysisOpinion));
+            Assert.Null(context.Evidence.Assessment);
+        });
+    }
+
+    [Fact]
+    public void ADelayedWordContextCannotReplaceTheNewWordAndUnknownMembershipStaysUnknown()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            var delayed = new TaskCompletionSource<SIL.Motif.Contract.Commands.CommandOutcome<WordContextResponse>>();
+            fake.WordContextHandler = (request, _) => request.Word == "old" ? delayed.Task : Task.FromResult(
+                SIL.Motif.Contract.Commands.CommandOutcome<WordContextResponse>.Success(new(request.Word, false)));
+            var page = new TryWordPageModel(context);
+            page.Trace.WordToTry = "old";
+            page.Trace.WordToTry = "new";
+            Assert.Equal("new", page.WordContext!.Word);
+            Assert.Null(page.WordContext.IsInFieldWorks);
+            delayed.SetResult(SIL.Motif.Contract.Commands.CommandOutcome<WordContextResponse>.Success(new("old", true)
+                { IsInFieldWorks = true }));
+            await Task.Yield();
+            Assert.Equal("new", page.WordContext.Word);
+            Assert.Empty(page.Trace.ExpectedMorphs);
+        });
+    }
+
+    [Fact]
     public void RecentWordsSitApartSoTwoWordsNeverReadAsOne()
     {
         _avalonia.Invoke(() =>
