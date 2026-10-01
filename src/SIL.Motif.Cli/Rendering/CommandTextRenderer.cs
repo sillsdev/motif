@@ -323,6 +323,8 @@ public static class CommandTextRenderer
                 $"({CountLabel(response.Warnings.ErrorCount, "error", "errors")}, " +
                 $"{CountLabel(response.Warnings.WarningCount, "warning", "warnings")}, " +
                 $"{response.Warnings.InformationCount?.ToString("N0") ?? "unknown"} information)");
+        if (response.Warnings?.YourWords is { } touched)
+            text.AppendLine($"           {TouchedLine(touched)}");
         return text.ToString();
     }
 
@@ -337,11 +339,42 @@ public static class CommandTextRenderer
         text.AppendLine($"Grammar findings: {response.TotalCount:N0} " +
             $"({CountLabel(response.ErrorCount, "error", "errors")}, {CountLabel(response.WarningCount, "warning", "warnings")}, " +
             $"{response.InformationCount:N0} information)");
+        if (response.YourWords is { } touched)
+            text.AppendLine(TouchedLine(touched));
         foreach (var kind in response.ByKind)
-            text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}");
+            text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}" +
+                (kind.YourWords is { } words ? $", {words:N0} of your words" : string.Empty));
         foreach (var finding in response.Findings)
+        {
             text.AppendLine($"  {finding.Text}");
+            if (finding.YourWords is { } yours)
+                text.AppendLine($"    {YourWordsLine(yours)}");
+        }
         return text.ToString();
+    }
+
+    private static string TouchedLine(WarningWordsTouched touched) =>
+        $"{touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse" +
+        (touched.BySpellingOnly > 0 ? $", {touched.BySpellingOnly:N0} matched only by spelling)" : ")");
+
+    private static string YourWordsLine(WarningWords yours) => yours.Match switch
+    {
+        WarningWordsMatch.CantTell => "Your words: can't tell, " + yours.CantTell switch
+        {
+            WarningCantTell.NotInProject => "the object it names is not in the project",
+            WarningCantTell.KindNotFollowed => "Motif doesn't follow this kind of object to words",
+            _ => "PanGloss names no object",
+        },
+        _ when yours.Words.Count == 0 => "Your words: none in the Selection",
+        WarningWordsMatch.Spelling => "Your words, matched by spelling: " + WordList(yours.Words),
+        _ => "Your words: " + WordList(yours.Words),
+    };
+
+    private static string WordList(IReadOnlyList<ObjectUseWord> words)
+    {
+        const int shown = 10;
+        var listed = string.Join(", ", words.Take(shown).Select(word => $"{word.Row.Word} ({word.Row.Meaning})"));
+        return words.Count > shown ? $"{listed} and {words.Count - shown:N0} more" : listed;
     }
 
     private static string RenderGrammarCheck(GrammarCheckResponse response)

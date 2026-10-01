@@ -42,6 +42,31 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void OverviewTextCountsTheWordsWarningsTouch()
+    {
+        var response = new OverviewResponse(
+            "Aweti", DateTimeOffset.Parse("2026-09-24T12:00:00Z"), DateTimeOffset.Parse("2026-09-24T11:00:00Z"),
+            135, 1, 4, 555, 300, 12, 100, "assessment/1", DateTimeOffset.Parse("2026-09-24T11:30:00Z"),
+            120, "sha256:grammar", "sha256:selection",
+            new OverviewTextCoverage(43, 20, 71, 1, 555, 300),
+            new OverviewAccuracy(33, 115, 18, 63, 2, 9, 4, 14),
+            new OverviewTiming(8, 400, [new SlowWordTiming("Akjulule", 1007)], 71),
+            Warnings: new OverviewWarningsSummary(24, 24, "Environment couldn't be read", 12)
+            {
+                ErrorCount = 0,
+                WarningCount = 24,
+                InformationCount = 0,
+                YourWords = new WarningWordsTouched(17, 7, []),
+            });
+
+        var rendered = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false);
+
+        Assert.Contains("Warnings   24 findings (0 errors, 24 warnings, 0 information)", rendered.Output, StringComparison.Ordinal);
+        Assert.Contains("           17 of your words use something a finding names (7 don't parse)", rendered.Output,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OverviewHeaderShowsProjectFreshnessAndCallsIncompleteWordsLimits()
     {
         var baseline = new DateTimeOffset(2026, 9, 24, 11, 2, 0, TimeSpan.Zero);
@@ -186,5 +211,45 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("Grammar findings: 1 (1 error, 0 warnings, 0 information)", text.Output);
         Assert.Contains("\"errorCount\": 1", json.Output);
         Assert.Contains("\"severity\": \"error\"", json.Output);
+    }
+
+    [Fact]
+    public void WarningsTextSaysWhichOfYourWordsEachFindingTouchesAndHowTheyWereFound()
+    {
+        static ObjectUseWord Word(string word, string meaning) =>
+            new(new WordRow(word, WordRowOutcome.NoParse, meaning, WordRowTone.Problem));
+        GrammarWarning Finding(string code, WarningWords words) =>
+            new(GrammarDiagnosticLevel.Warning, code, [], [], $"warning: {code}: described") { Code = code, YourWords = words };
+        var lost = new ObjectUseMeaning("Lost", WordRowTone.Problem, 2);
+        var findings = new[]
+        {
+            Finding("hc-unsegmentable", new WarningWords(WarningWordsMatch.Identity,
+                [Word("walikata", "Lost"), Word("anakata", "Lost")], [lost]) { Paths = [WarningWordsPath.Uses] }),
+            Finding("hc-undeclared-segment", new WarningWords(WarningWordsMatch.Spelling,
+                [Word("ngozi", "Lost")], [lost with { Words = 1 }]) { Paths = [WarningWordsPath.Spelling] }),
+            Finding("hc-bad-environment", new WarningWords(WarningWordsMatch.Identity, [], [])
+                { Paths = [WarningWordsPath.ThroughAllomorphs] }),
+            Finding("fwdata.no-usable-allomorphs", new WarningWords(WarningWordsMatch.CantTell, [], [])
+                { CantTell = WarningCantTell.NothingNamed }),
+        };
+        var response = new WarningsResponse(true, true, findings,
+            [new GrammarWarningSummary("hc-unsegmentable", "Allomorph can't be split", GrammarDiagnosticLevel.Warning, 1)
+                { YourWords = 2 }], 4, 0)
+        {
+            YourWords = new WarningWordsTouched(3, 3, [lost with { Words = 3 }]) { BySpellingOnly = 1 },
+        };
+
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: false).Output;
+        var json = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: true).Output;
+
+        Assert.Contains("3 of your words use something a finding names (3 don't parse, 1 matched only by spelling)", text,
+            StringComparison.Ordinal);
+        Assert.Contains("  hc-unsegmentable: 1 warning, 2 of your words", text, StringComparison.Ordinal);
+        Assert.Contains("    Your words: walikata (Lost), anakata (Lost)", text, StringComparison.Ordinal);
+        Assert.Contains("    Your words, matched by spelling: ngozi (Lost)", text, StringComparison.Ordinal);
+        Assert.Contains("    Your words: none in the Selection", text, StringComparison.Ordinal);
+        Assert.Contains("    Your words: can't tell, PanGloss names no object", text, StringComparison.Ordinal);
+        Assert.Contains("\"match\": \"spelling\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"cantTell\": \"nothing_named\"", json, StringComparison.Ordinal);
     }
 }

@@ -120,4 +120,10 @@ public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? L
 
     /// <summary>Finding counts by the report's stable diagnostic code.</summary>
     public IReadOnlyList<GrammarWarningSummary> ByKind { get; init; } = [];
+
+    /// <summary>
+    /// The Selection's words that use something a finding names, each counted once; <see langword="null"/> when no
+    /// stored Parse all words matches the current Baseline and Selection.
+    /// </summary>
+    public WarningWordsTouched? YourWords { get; init; }
 }

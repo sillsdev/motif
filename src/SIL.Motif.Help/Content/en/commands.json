@@ -71,7 +71,7 @@
   },
   "warnings": {
     "title": "Read grammar warnings",
-    "description": "Reads stored grammar-check findings and can filter them by code or warning level. Use it after grammar check to inspect the reported problems.",
+    "description": "Reads stored grammar-check findings and can filter them by code or warning level. Each finding lists the words in your Selection that use what it names, from the stored Assessment.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "grammar check": {

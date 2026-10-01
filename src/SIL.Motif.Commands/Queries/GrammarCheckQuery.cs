@@ -17,6 +17,8 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Projection.Grammar;
+using SIL.LCModel;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -123,25 +125,41 @@ public static class GrammarCheckQuery
             if (parserExitedNonzero && !findings.Any(finding => finding.Severity == GrammarDiagnosticLevel.Error))
                 return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
-            var response = new GrammarCheckResponse(findings, HasBaseline: true)
+            LcmCache? cache = null;
+            try
             {
-                Summary = summary,
-            };
-            var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
-            var selectionSha256 = SelectionDigest(database, baseline.FwDataPath, baselineToken);
-            new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp, response);
-            return CommandOutcome<GrammarCheckResponse>.Success(response);
+                LcmCache Cache() => cache ??= new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                var response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
+                    .ToArray(), HasBaseline: true)
+                {
+                    Summary = summary,
+                };
+                var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+                var selectionSha256 = SelectionDigest(database, Cache, baselineToken);
+                new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp, response);
+                return CommandOutcome<GrammarCheckResponse>.Success(
+                    WarningWordsQuery.WithYourWords(database, project, response));
+            }
+            finally
+            {
+                cache?.Dispose();
+            }
         });
     }
 
-    private static string SelectionDigest(SIL.Motif.Host.Store.MotifDatabase database, string fwDataPath,
+    // Reach is read from the checked Baseline once, so a later read joins it to words without opening the project.
+    private static GrammarWarning WithReach(GrammarWarning finding, Func<LcmCache> cache) => finding with
+    {
+        Subject = finding.Subject.Select(part => part with { Reach = WarningReachReader.Reach(part, cache) }).ToArray(),
+    };
+
+    private static string SelectionDigest(SIL.Motif.Host.Store.MotifDatabase database, Func<LcmCache> cache,
         string baselineToken)
     {
         var saved = new NamedSelectionRepository(database).GetDefault();
         if (saved is null) return string.Empty;
-        using var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath);
         var request = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null);
-        var composed = SelectionComposer.Compose(cache, request, new AssessmentRepository(database), baselineToken);
+        var composed = SelectionComposer.Compose(cache(), request, new AssessmentRepository(database), baselineToken);
         return composed.Succeeded ? composed.Value!.Selection.Sha256 : string.Empty;
     }
 
