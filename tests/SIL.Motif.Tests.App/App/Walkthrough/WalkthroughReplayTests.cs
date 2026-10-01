@@ -469,25 +469,37 @@ internal static class WalkthroughReplay
                     if (script.Id == "explained-word-card")
                     {
                         var calloutIds = step.Callouts!.Select(callout => callout.AutomationId).ToArray();
-                        // Evidence still publishing can hold the card in a stable but earlier layout under load.
-                        window.WaitUntil(() => window.Workspace.Context.EvidencePublication.IsCompleted &&
-                                !window.Workspace.Assess.IsActive && !window.Workspace.RefreshCommand.IsRunning,
-                            TimeSpan.FromSeconds(10), $"capture '{step.Id}' evidence did not finish publishing");
+                        window.WaitUntil(() => CardIsQuiet(window),
+                            TimeSpan.FromSeconds(10), $"capture '{step.Id}' evidence publication or word staging did not finish");
                         window.WaitUntil(() => calloutIds.All(window.HasVisibleTextOrMark),
                             TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout target content did not appear",
                             () => string.Join(", ", calloutIds.Where(id => !window.HasVisibleTextOrMark(id))));
                         // Under load a target can still be re-measuring after its text appears, which widens the crop.
                         string? previousBounds = null;
                         var settledPasses = 0;
+                        // A settle that times out must say whether a callout kept moving or the passes were starved.
+                        var boundsHistory = new List<string>();
+                        var passes = 0;
+                        var settleClock = Stopwatch.StartNew();
+                        var lastPassMs = 0L;
+                        var longestGapMs = 0L;
                         window.WaitUntil(() =>
                         {
+                            passes++;
+                            longestGapMs = Math.Max(longestGapMs, settleClock.ElapsedMilliseconds - lastPassMs);
+                            lastPassMs = settleClock.ElapsedMilliseconds;
                             window.Window.UpdateLayout();
                             var currentBounds = string.Join(";",
-                                calloutIds.Select(id => window.BoundsByAutomationId(id).ToString()));
+                                calloutIds.Select(id => $"{id}={window.BoundsByAutomationId(id)}"));
+                            if (currentBounds != previousBounds)
+                                boundsHistory.Add($"@{settleClock.ElapsedMilliseconds}ms {currentBounds}");
                             settledPasses = currentBounds == previousBounds ? settledPasses + 1 : 0;
                             previousBounds = currentBounds;
                             return settledPasses >= 2;
-                        }, TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout bounds did not settle");
+                        }, TimeSpan.FromSeconds(10), $"capture '{step.Id}' callout bounds did not settle",
+                            () => $"{passes} passes, longest gap {longestGapMs} ms, " +
+                                $"{boundsHistory.Count} distinct readings, last: " +
+                                string.Join(" | ", boundsHistory.TakeLast(4)));
                     }
                     if (script.Id == "review-apply-refresh-parse")
                         Assert.Null(window.Workspace.Context.Changes.ShownRefusal);
@@ -536,6 +548,19 @@ internal static class WalkthroughReplay
             }
         }
     }
+
+    /// <summary>Whether nothing that can still move the Analyze texts word strips is running.</summary>
+    /// <remarks>
+    /// Evidence still publishing can hold the card in a stable but earlier layout under load. So can a word's
+    /// staging: its Staged note shows as soon as the change is stored, but the word is marked Read only after
+    /// that, and its Unread dot then leaves the strip and moves the word; pinned by
+    /// `TheStagedCardIsNotQuietUntilApprovingTheWordHasMarkedItRead`.
+    /// </remarks>
+    internal static bool CardIsQuiet(WalkthroughWindow window) =>
+        window.Workspace.Context.EvidencePublication.IsCompleted &&
+        !window.Workspace.Assess.IsActive && !window.Workspace.RefreshCommand.IsRunning &&
+        !window.Workspace.PageModel<TextsPageModel>().ResultsInText
+            .StagePrimaryMarkingActionForTokenCommand.IsRunning;
 
     private static bool Satisfies(WalkthroughWindow window, WalkthroughStep step)
     {
