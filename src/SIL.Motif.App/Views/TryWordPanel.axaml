@@ -16,14 +16,14 @@
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
-                <Button Content="Open a saved trace..." Click="OnOpenDiagnosticClick" HorizontalAlignment="Stretch"
+                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Open a saved trace..." Click="OnOpenDiagnosticClick"
                         AutomationProperties.Name="Open a saved trace" />
-                <Button Content="Copy for a chat model" Click="OnCopyInstructionsClick" HorizontalAlignment="Stretch"
+                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy for a chat model" Click="OnCopyInstructionsClick"
                         AutomationProperties.Name="Copy AI diagnostic instructions" />
-                <Button Content="Save the trace..." Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
-                        HorizontalAlignment="Stretch" AutomationProperties.Name="Save full diagnostic JSON" />
-                <Button Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
-                        HorizontalAlignment="Stretch" AutomationProperties.Name="Copy full diagnostic JSON" />
+                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Save the trace..." Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
+                        AutomationProperties.Name="Save full diagnostic JSON" />
+                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
+                        AutomationProperties.Name="Copy full diagnostic JSON" />
                 <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap"
                                          FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}"
                                          AutomationProperties.Name="Diagnostic capture details" />

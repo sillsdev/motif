@@ -1,5 +1,7 @@
 <!--
-  A flyout menu of entries, each a bold title over a muted line saying what it does.
+  A flyout menu of entries, each a bold title over a muted line saying what it does, and the pop-up that holds it.
+  A pop-up never scrolls sideways: Semi's presenter caps its width and scrolls past the cap, which hid the Help
+  pop-up's left side and the tools menu's labels, so its content wraps to the presenter's width instead.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -10,7 +12,15 @@
     <StaticResource x:Key="Component.Menu.ActionGap" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.Menu.ButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.Menu.ButtonHeight" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.Menu.HelpMaxWidth" ResourceKey="Primitive.Size.780" />
   </Styles.Resources>
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <!-- The Help card is wider than Semi's cap, so its presenter alone may grow to hold it. -->
+  <Style Selector="FlyoutPresenter.help">
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Menu.HelpMaxWidth}" />
+  </Style>
   <Style Selector="StackPanel.menu">
     <Setter Property="Width" Value="{DynamicResource Component.Menu.Width}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
