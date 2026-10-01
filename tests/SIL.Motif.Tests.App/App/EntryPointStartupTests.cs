@@ -187,7 +187,7 @@ public sealed class EntryPointStartupTests
         Assert.Contains("cmp -- \"$staged_worker_runtime_config\" \"$worker_runtime_config\"", unixSmoke, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [WindowsHostFact]
     public void PackageReleaseRejectsUnixTargetsOnAWindowsHostBeforeResolvingTheParser()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
@@ -294,4 +294,13 @@ public sealed class EntryPointStartupTests
         OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(il, offset),
         _ => 4,
     };
+}
+
+/// <summary>A fact about how release packaging behaves when the host running it is Windows.</summary>
+internal sealed class WindowsHostFactAttribute : FactAttribute
+{
+    public WindowsHostFactAttribute()
+    {
+        if (!OperatingSystem.IsWindows()) Skip = "This checks packaging on a Windows host.";
+    }
 }
