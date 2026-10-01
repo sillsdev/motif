@@ -467,16 +467,27 @@ internal static class TooltipOwners
         new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
         new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,
-            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink"))
+            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink") &&
+                !control.Classes.Contains("listCardFormLink"))
         {
             Pending = "no tooltip scene opens a word row's card",
         },
         new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
         new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
-            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null)
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null),
+        new("the list's sentence", "Views/TextsListsPanel.axaml", "{Binding Lists.SelectedList.Sentence}", TooltipScene.Lists,
+            control => control is TextBlock && ToolTip.GetTip(control) is not null &&
+                control.GetVisualAncestors().OfType<DockPanel>().Any(panel => panel.Name == "ListHeader")),
+        new("Parse again on a list", "Views/TextsListsPanel.axaml", "{Binding Lists.ParseAgainHelpText}", TooltipScene.Lists,
+            control => control is Button && Name(control) == "Parse the selected list's stopped and unparsed words again")
         {
-            Pending = "the staged change moves chakula to Unknown and built something else, a cell no word list holds",
+            Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
+        },
+        new("morpheme form in a list card", "Views/ListWordCard.axaml.cs", "morph.FormLinkTip", TooltipScene.Lists,
+            control => control is HyperlinkButton && control.Classes.Contains("listCardFormLink"))
+        {
+            Pending = "no tooltip scene opens a list row's card",
         },
         new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
             TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in the selected list"),
