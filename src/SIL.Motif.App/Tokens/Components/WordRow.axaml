@@ -104,9 +104,17 @@
   <Style Selector="StackPanel.wordRowNext">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
+  <!-- The next steps rest in the secondary colour and take the accent as the row is hovered, focused or opened. -->
   <Style Selector="StackPanel.wordRowNext HyperlinkButton">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+  </Style>
+  <Style Selector="Border.wordRowFrame:pointerover StackPanel.wordRowNext HyperlinkButton, Border.wordRowFrame:focus-within StackPanel.wordRowNext HyperlinkButton, Border.wordRowFrame.open StackPanel.wordRowNext HyperlinkButton">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector="StackPanel.wordRowNext HyperlinkButton:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextFaint}" />
   </Style>
 
   <Style Selector=":is(TextBlock).wordRowForm">

@@ -35,6 +35,10 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 
     public bool HasWords => WordCount > 0;
 
+    /// <summary>Whether the list's words carry more than one meaning, so its rows need their meaning column.</summary>
+    public bool HasSeveralMeanings =>
+        Compare.Cells.Where(IsCell).Where(cell => cell.WordCount > 0).Select(cell => cell.Label).Distinct().Count() > 1;
+
     public bool HasPendingChanges => PendingState != PendingChangeState.None;
 
     public PendingChangeState PendingState
@@ -68,6 +72,7 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
         {
             OnPropertyChanged(nameof(WordCount));
             OnPropertyChanged(nameof(HasWords));
+            OnPropertyChanged(nameof(HasSeveralMeanings));
             OnPropertyChanged(nameof(CountText));
         }
         if (e.PropertyName is nameof(CompareCellViewModel.OccurrenceCount) or nameof(CompareCellViewModel.Count))
@@ -134,6 +139,12 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
+    /// <summary>
+    /// Whether the rows show their meaning column: only when the chosen list mixes meanings, since the header line
+    /// already names a list's one meaning.
+    /// </summary>
+    public bool ShowsMeaning => SelectedList?.HasSeveralMeanings ?? true;
+
     public string HandOffListDisabledReason => SelectedList is null
         ? "Choose a word list first."
         : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
@@ -182,6 +193,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedList))]
+    [NotifyPropertyChangedFor(nameof(ShowsMeaning))]
     [NotifyPropertyChangedFor(nameof(HandOffListDisabledReason))]
     [NotifyPropertyChangedFor(nameof(HandOffListUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsDisabledReason))]
@@ -286,6 +298,8 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(TextsListDefinitionViewModel.HasSeveralMeanings) && ReferenceEquals(sender, SelectedList))
+            OnPropertyChanged(nameof(ShowsMeaning));
         if (e.PropertyName == nameof(TextsListDefinitionViewModel.HasWords))
         {
             HandOffListCommand.NotifyCanExecuteChanged();

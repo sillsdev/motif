@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
-    public void EachListedWordIsTheOneWordRow_WithEveryMarkInItsColumn()
+    public void EachListedWordIsTheOneWordRow_WithItsOutcome_AndNoMeaningTheListAlreadyNames()
     {
         avalonia.Invoke(() =>
         {
@@ -48,7 +48,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                     var chips = row.GetVisualDescendants().OfType<MarkChip>().Where(chip => chip.IsEffectivelyVisible)
                         .Select(chip => chip.Mark?.Kind).ToArray();
                     Assert.Contains(MarkKind.Outcome, chips);
-                    Assert.Contains(MarkKind.Meaning, chips);
+                    Assert.DoesNotContain(MarkKind.Meaning, chips);
                 });
                 Assert.Single(panel.GetVisualDescendants().OfType<WordRowHeader>());
             }
@@ -137,6 +137,54 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
             }
         });
     }
+
+    [Fact]
+    public void OnAListOfOneMeaning_TheMeaningColumnAndItsHeadAreHidden_AndTheOtherColumnsKeepTheirOrder()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([
+                Word("approved-timeout", "timed-out", ProjectStanding.Approved),
+                Word("candidate-empty", "no-analysis", ProjectStanding.Candidate),
+                Word("candidate-other", "analysed", ProjectStanding.Candidate, parsedAs: "other"),
+            ]);
+            var lists = new TextsListsViewModel(compare);
+            var panel = new TextsListsPanel(lists);
+            var window = new Window { Content = panel, Width = 1200, Height = 800 };
+            try
+            {
+                window.Show();
+                lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped"));
+                window.UpdateLayout();
+
+                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row =>
+                {
+                    Assert.False(row.ShowsMeaning);
+                    Assert.DoesNotContain(row.GetVisualDescendants().OfType<MarkChip>(),
+                        chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning);
+                });
+
+                lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
+                window.UpdateLayout();
+
+                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row => Assert.Contains(
+                    row.GetVisualDescendants().OfType<MarkChip>(), chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    // The visible column heads in reading order, left to right.
+    private static string?[] Heads(Control panel) =>
+        panel.GetVisualDescendants().OfType<WordRowHeader>().Single().GetVisualDescendants().OfType<TextBlock>()
+            .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("wordRowHeading") && text.Text is { Length: > 1 })
+            .OrderBy(text => text.TranslatePoint(default, panel)!.Value.X).Select(text => text.Text).ToArray();
 
     [Fact]
     public void AnOpenedRowIsTheListCard_AndNothingElse()
@@ -242,10 +290,14 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
         };
     }
 
-    private static AssessWordRowViewModel Word(string form, string outcome, string standing) =>
+    private static AssessWordRowViewModel Word(string form, string outcome, string standing, string? parsedAs = null) =>
         new(new AssessmentWordResult(form, outcome, outcome is "timed-out" or "capped", "Search completed", 1, null)
         {
             ProjectStanding = standing,
             OccurrenceCount = 1,
+            ReadingGrades = parsedAs is null ? null : [ReadingGrade.NoOpinion],
+            Readings = parsedAs is null ? null : [new ParserReading([])],
+            Morphology = parsedAs is null ? null : new ParseWordEvidence("v1", 0, form, 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph(parsedAs, "n", null, null)])], []),
         });
 }

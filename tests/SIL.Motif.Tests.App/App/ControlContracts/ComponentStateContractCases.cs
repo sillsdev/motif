@@ -273,6 +273,18 @@ internal static class ComponentStateContractCases
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Border.wordRowFrame.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
+
+        const string nextHover = "Border.wordRowFrame:pointerover StackPanel.wordRowNext HyperlinkButton";
+        yield return new(nextHover, "a next step at rest, before the row is hovered", () => NextStep(), StateStimulus.None,
+            StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextSecondary");
+        yield return new(nextHover, "a next step on row hover", () => NextStep(), StateStimulus.Pointer,
+            StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("Border.wordRowFrame:focus-within StackPanel.wordRowNext HyperlinkButton", "a next step with focus in the row",
+            () => NextStep(), StateStimulus.KeyboardFocus, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("Border.wordRowFrame.open StackPanel.wordRowNext HyperlinkButton", "a next step on an opened row",
+            () => NextStep("open"), StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
+        yield return new("StackPanel.wordRowNext HyperlinkButton:disabled", "a next step that cannot open, on an opened row",
+            () => NextStep("open"), StateStimulus.Disabled, StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextFaint");
     }
 
     // A press lands under the pointer, so each face style is reached once by hovering and once by pressing.
@@ -318,6 +330,18 @@ internal static class ComponentStateContractCases
     {
         var body = new Border { Classes = { "wordRowBody" }, Focusable = true, Child = new TextBlock { Text = "kitabu" } };
         return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = body }, body);
+    }
+
+    private static (Control, Control) NextStep(params string[] classes)
+    {
+        var link = new HyperlinkButton { Content = "Try a Word" };
+        var frame = new Border
+        {
+            Classes = { "wordRowFrame" }, Width = 300, Height = 40,
+            Child = new StackPanel { Classes = { "wordRowNext" }, Children = { link } },
+        };
+        frame.Classes.AddRange(classes);
+        return (frame, link);
     }
 
     private static (Control, Control) OpenRowEdge()

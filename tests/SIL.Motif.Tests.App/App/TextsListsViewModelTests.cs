@@ -44,7 +44,8 @@ public sealed class TextsListsViewModelTests
             word.ReadingGrades, word.MissedApproved?.Count ?? 0), word.MissedApproved),
     };
 
-    private static (CompareViewModel Compare, TextsListsViewModel Lists) Loaded(bool withSecondApprovedNoParse = false)
+    private static (CompareViewModel Compare, TextsListsViewModel Lists) Loaded(bool withSecondApprovedNoParse = false,
+        bool withSecondHaveALookMeaning = false)
     {
         var words = new AssessWordsViewModel();
         var rows = new List<AssessmentWordResult>
@@ -62,6 +63,8 @@ public sealed class TextsListsViewModelTests
         };
         if (withSecondApprovedNoParse)
             rows.Add(Word("approved-empty-too", "no-analysis", ProjectStanding.Approved));
+        if (withSecondHaveALookMeaning)
+            rows.Add(Word("candidate-other", "analysed", ProjectStanding.Candidate, "no-opinion"));
         words.Load(rows);
         var compare = new CompareViewModel();
         compare.Load(words.AllRows);
@@ -109,6 +112,43 @@ public sealed class TextsListsViewModelTests
         Assert.Equal("You approved these, and the grammar can no longer build them.", lost.Sentence);
         Assert.Equal("2 words · 2 places", lost.CountText);
         Assert.Equal("1 word · 1 place", lists.Lists.Single(list => list.Name == "Built anyway").CountText);
+    }
+
+    [Fact]
+    public void AListShowsTheMeaningColumnOnlyWhenItsWordsMixMeanings()
+    {
+        var (compare, lists) = Loaded(withSecondHaveALookMeaning: true);
+
+        foreach (var name in new[] { "Lost", "Built something else", "Built anyway", "New", "Nobody can analyze",
+                     "Stopped", "Not parsed" })
+        {
+            lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == name));
+            Assert.False(lists.ShowsMeaning, $"{name} holds one meaning, so its rows need no meaning column");
+            Assert.Single(compare.Words.Select(word => word.Meaning).Distinct().DefaultIfEmpty(""));
+        }
+
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
+        Assert.True(lists.ShowsMeaning);
+        Assert.Equal(["Differs: have a look", "Grammar can't build it"],
+            compare.Words.Select(word => word.Meaning).Distinct().Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void WithOneMeaningLeftAfterANewParse_TheMeaningColumnGoes()
+    {
+        var (compare, lists) = Loaded(withSecondHaveALookMeaning: true);
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
+        var changed = new List<string?>();
+        lists.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        var words = new AssessWordsViewModel();
+        words.Load([Word("candidate-empty", "no-analysis", ProjectStanding.Candidate)]);
+
+        compare.Load(words.AllRows);
+        lists.SelectFirstIfNeeded();
+
+        Assert.Equal("Have a look", lists.SelectedList?.Name);
+        Assert.Contains(nameof(TextsListsViewModel.ShowsMeaning), changed);
+        Assert.False(lists.ShowsMeaning);
     }
 
     [Fact]

@@ -37,6 +37,9 @@ public sealed partial class WordRow : UserControl
     public static readonly StyledProperty<bool> ShowsTickProperty =
         AvaloniaProperty.Register<WordRow, bool>(nameof(ShowsTick), true);
 
+    public static readonly StyledProperty<bool> ShowsMeaningProperty =
+        AvaloniaProperty.Register<WordRow, bool>(nameof(ShowsMeaning), true);
+
     public static readonly StyledProperty<object?> CardProperty =
         AvaloniaProperty.Register<WordRow, object?>(nameof(Card));
 
@@ -99,6 +102,16 @@ public sealed partial class WordRow : UserControl
     {
         get => GetValue(ShowsTickProperty);
         set => SetValue(ShowsTickProperty, value);
+    }
+
+    /// <summary>
+    /// Whether the meaning column shows; a list whose words share one meaning hides it, with its head, and every other
+    /// column keeps its place.
+    /// </summary>
+    public bool ShowsMeaning
+    {
+        get => GetValue(ShowsMeaningProperty);
+        set => SetValue(ShowsMeaningProperty, value);
     }
 
     /// <summary>What the row shows inside itself when open: the list's word card.</summary>

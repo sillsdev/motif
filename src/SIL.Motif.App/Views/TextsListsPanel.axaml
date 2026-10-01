@@ -73,13 +73,14 @@
     </DockPanel>
 
     <Grid Grid.Row="3" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True" IsVisible="{Binding Lists.HasSelectedList}">
-      <views:WordRowHeader />
+      <views:WordRowHeader ShowsMeaning="{Binding Lists.ShowsMeaning}" />
       <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
                KeyboardNavigation.TabNavigation="Continue"
                AutomationProperties.Name="Words in the selected list">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
             <views:WordRow Row="{Binding WordRow}" List="lists" IsChecked="{Binding IsChecked}"
+                           ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
                            IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
               <views:WordRow.Card>
                 <views:ListWordCard />
