@@ -39,4 +39,11 @@ public partial interface ICommandClient
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Reads, from the stored Parse all words and the Baseline, the words that use an object, the words it ran in,
+    /// and what FieldWorks says about it.
+    /// </summary>
+    Task<CommandOutcome<ObjectUsesResponse>> ObjectUsesAsync(
+        ObjectUsesRequest request, CancellationToken cancellationToken);
+
 }

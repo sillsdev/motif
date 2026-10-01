@@ -36,6 +36,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ReadWordStateAsync)] = "word read-state",
             [nameof(ICommandClient.DeleteRefusedStoreAsync)] = "store delete-refused",
             [nameof(ICommandClient.TraceWordAsync)] = "trace",
+            [nameof(ICommandClient.ObjectUsesAsync)] = "uses",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.

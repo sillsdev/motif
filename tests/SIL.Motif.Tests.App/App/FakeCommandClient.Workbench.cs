@@ -35,6 +35,11 @@ public sealed partial class FakeCommandClient
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
 
+    private Func<ObjectUsesRequest, CancellationToken, Task<CommandOutcome<ObjectUsesResponse>>>
+        _objectUses = (_, _) => Refused<ObjectUsesResponse>(
+            new Refusal("uses.not-configured", FailureReason.Refused, "No object uses configured."));
+
+    public List<ObjectUsesRequest> ObjectUsesRequests { get; } = [];
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<OverviewRequest> OverviewRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
@@ -96,6 +101,17 @@ public sealed partial class FakeCommandClient
         _traceWord = behavior;
 
     public void TraceWordCompletesWith(WordTraceResponse response) => OnTraceWord((_, _) => Completed(response));
+
+    public void OnObjectUses(
+        Func<ObjectUsesRequest, CancellationToken, Task<CommandOutcome<ObjectUsesResponse>>> behavior) =>
+        _objectUses = behavior;
+
+    public Task<CommandOutcome<ObjectUsesResponse>> ObjectUsesAsync(
+        ObjectUsesRequest request, CancellationToken cancellationToken)
+    {
+        ObjectUsesRequests.Add(request);
+        return _objectUses(request, cancellationToken);
+    }
 
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken)
