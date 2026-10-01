@@ -27,7 +27,7 @@ public sealed record WordTraceReading(
 /// </summary>
 /// <param name="Id">The reading-wide id other records cite as <c>RefId</c>, built from the identity when there is one.</param>
 /// <param name="Kind">
-/// <c>morph</c>, <c>morphologicalRule</c>, <c>affixRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>,
+/// <c>morph</c>, <c>morphologicalRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>,
 /// <c>template</c> or <c>stratum</c>. A generic morphological identity does not distinguish an affix from a compound.
 /// </param>
 /// <param name="Label">The producer's captured display label, as the reading first shows it.</param>
@@ -119,7 +119,10 @@ public static class TraceRefIds
     }
 }
 
-/// <summary>Attempts stopped by one rule identity and reason, ordered by how many stopped.</summary>
+/// <summary>
+/// Attempts stopped by one typed rule ref and reason, ordered by how many stopped. Unidentified stopping
+/// occurrences remain separate; an attempt with no stopping ref forms its own group.
+/// </summary>
 public sealed record TraceStopGroup(
     string? Rule, string? RuleId, string? ReasonCode, string? Explanation,
     IReadOnlyList<TraceCandidate> Attempts)
@@ -259,8 +262,9 @@ public sealed record TraceCandidate(
     public string? Surface { get; init; }
 
     /// <summary>
-    /// The rule whose step failed just before this attempt ended, by the name the project gives it; <see langword="null"/>
+    /// The rule whose step failed just before this attempt ended, by its producer label; <see langword="null"/>
     /// when the attempt failed on its own terms, such as leaving morphemes unused.
+    /// Its captured FieldWorks name, when present, belongs to the ref identified by <see cref="StoppedByRefId"/>.
     /// </summary>
     public string? StoppedByRule { get; init; }
 

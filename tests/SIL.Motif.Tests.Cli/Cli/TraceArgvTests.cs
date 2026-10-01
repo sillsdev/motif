@@ -22,6 +22,26 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         Path.GetTempPath(), "motif-trace-argv-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public async Task TraceTextDisplaysCapturedRuleNamesWhileJsonKeepsProducerLabels()
+    {
+        Directory.CreateDirectory(_managedRoot);
+        var path = Path.Combine(_managedRoot, "captured-rule.json");
+        File.WriteAllText(path, TraceEnvelope.CapturedRuleLabel);
+        var text = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path);
+        Assert.True(text.ExitCode == 0, text.Error);
+        Assert.Contains("Stopped 1 attempt(s): Vowel harmony:", text.Output);
+        Assert.Contains("Phonological rule Vowel harmony, stopped:", text.Output);
+        Assert.Contains("phonologicalRule Vowel harmony", text.Output);
+        Assert.DoesNotContain("Producer name", text.Output);
+
+        var json = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path, "--json");
+        Assert.True(json.ExitCode == 0, json.Error);
+        var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
+        Assert.Equal("Producer name", Assert.Single(response.Reading.Refs).Label);
+        Assert.Equal("Vowel harmony", Assert.Single(response.Reading.Refs).CapturedFieldWorksLabel);
+    }
+
+    [Fact]
     public async Task TraceJsonOnTheSeededProjectMatchesTheGolden()
     {
         var (project, baseline) = TracedProject();

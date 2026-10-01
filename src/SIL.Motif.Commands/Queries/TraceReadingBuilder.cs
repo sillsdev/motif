@@ -255,7 +255,15 @@ public static class TraceReadingBuilder
                     node.OutcomeStatus is "success" or "succeeded" or "successful" || node.Type == "Successful";
                 var stop = succeeded ? null : StoppingStep(path, id);
                 var stopper = stop?.Node;
-                var reason = stopper?.FailureReason ?? attempt?.FailureReason ?? node.FailureReason;
+                var failure = stopper is not null
+                    ? (stopper.FailureReason, stopper.FailureContext, stopper.FailureRequired,
+                        stopper.FailureActual, stopper.FailureEnvironment, stopper.FailureEvidence)
+                    : attempt?.FailureReason is not null
+                        ? (attempt.FailureReason, attempt.FailureContext, attempt.FailureRequired,
+                            attempt.FailureActual, attempt.FailureEnvironment, attempt.FailureEvidence)
+                        : (node.FailureReason, node.FailureContext, node.FailureRequired,
+                            node.FailureActual, node.FailureEnvironment, node.FailureEvidence);
+                var reason = failure.FailureReason;
                 var morphs = attempt is { Morphs.Count: > 0 }
                     ? attempt.Morphs.Select((morph, index) => ToMorph(morph, $"attempt:{id}:morph:{index}")).ToArray()
                     : MorphsReached(path, stopper).Select((morph, index) => ToMorph(morph, $"attempt:{id}:morph:{index}")).ToArray();
@@ -274,11 +282,11 @@ public static class TraceReadingBuilder
                     RichMorphs = morphs,
                     MorphAvailability = morphs.Length > 0 ? "recorded" : "unavailable",
                     AttemptId = attempt?.AttemptId ?? id,
-                    ContextualFailure = attempt?.FailureContext ?? node.FailureContext,
-                    FailureRequired = attempt?.FailureRequired ?? node.FailureRequired,
-                    FailureActual = attempt?.FailureActual ?? node.FailureActual,
-                    FailureEnvironment = attempt?.FailureEnvironment ?? node.FailureEnvironment,
-                    FailureEvidence = attempt?.FailureEvidence ?? node.FailureEvidence ?? stopper?.FailureEvidence,
+                    ContextualFailure = failure.FailureContext,
+                    FailureRequired = failure.FailureRequired,
+                    FailureActual = failure.FailureActual,
+                    FailureEnvironment = failure.FailureEnvironment,
+                    FailureEvidence = failure.FailureEvidence,
                     SourceIdentityKind = attempt?.SourceIdentityKind ?? node.SourceIdentityKind,
                     SourceIdentityId = TraceRefIds.CanonicalIdentity(attempt?.SourceIdentityId ?? node.SourceIdentityId),
                     SourceIdentityQuality = attempt?.SourceIdentityQuality ?? node.SourceIdentityQuality,

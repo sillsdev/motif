@@ -516,6 +516,7 @@ public static class CommandTextRenderer
     private static string RenderTrace(WordTraceResponse response)
     {
         var reading = response.Reading;
+        var labels = new TraceDisplayLabels(reading.Refs);
         var text = new StringBuilder();
         var analyses = reading.Analyses.Count;
         text.AppendLine(response.Parsed
@@ -532,20 +533,21 @@ public static class CommandTextRenderer
             text.AppendLine("  Analysis: " + string.Join(" + ", analysis.Morphs.Select(MorphText)) + ways);
         }
         foreach (var group in reading.StopGroups)
-            text.AppendLine($"  Stopped {group.Count:N0} attempt(s): " + (group.Rule is null ? "" : group.Rule + ": ") +
+            text.AppendLine($"  Stopped {group.Count:N0} attempt(s): " +
+                (labels.Resolve(group.RuleRefId, group.Rule) is { } name ? name + ": " : "") +
                 (group.Explanation ?? group.ReasonCode ?? "no reason recorded"));
         if (reading.RulesOnBestPath.Count > 0)
         {
             text.AppendLine(response.Parsed ? "  Rules on the parse:" : "  Rules on the closest attempt:");
             foreach (var rule in reading.RulesOnBestPath)
-                text.AppendLine($"    {rule.Kind} {rule.Rule}, {rule.Outcome}: {rule.Explanation} " +
+                text.AppendLine($"    {rule.Kind} {labels.Resolve(rule.RefId, rule.Rule)}, {rule.Outcome}: {rule.Explanation} " +
                     $"(steps {string.Join(", ", rule.StepIds)})");
         }
         if (reading.Refs.Count > 0)
         {
             text.AppendLine("  Names:");
             foreach (var reference in reading.Refs)
-                text.AppendLine($"    {reference.Id}  {reference.Kind} {reference.Label} [{reference.IdentityQuality}]" +
+                text.AppendLine($"    {reference.Id}  {reference.Kind} {labels.Resolve(reference.Id, reference.Label)} [{reference.IdentityQuality}]" +
                     (reference.FieldWorks is { } fieldWorks ? $"  opens in {fieldWorks.ToolName}: {fieldWorks.Link}" : ""));
         }
         return text.ToString();

@@ -3,7 +3,9 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
@@ -13,6 +15,29 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class TraceWordViewModelTests
 {
+    [Fact]
+    public async Task LiveAndReopenedTracesDisplayTheCapturedRuleName()
+    {
+        var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(response);
+        var live = new TraceWordViewModel(fake) { WordToTry = "word" };
+        live.SetProjectPath(ProjectPath);
+        await live.TryCommand.ExecuteAsync(null);
+        var reopened = TraceWordViewModel.FromDiagnosticJson(live.DiagnosticJson);
+
+        foreach (var trace in new[] { live, reopened })
+        {
+            Assert.Equal("Stopped by Vowel harmony", Assert.Single(trace.ClosestAttempts).StopHeadline);
+            Assert.Equal("Vowel harmony", Assert.Single(trace.StopGroups).RuleText);
+            Assert.Equal("Vowel harmony", trace.Root!.Children[0].Source);
+            Assert.Equal("Vowel harmony", trace.Candidates[0].Steps[1].Source);
+            Assert.Equal("Producer name", Assert.Single(trace.Reading!.Refs).Label);
+            trace.RuleFilter = "Vowel harmony";
+            Assert.NotEmpty(trace.FilteredRoots);
+        }
+    }
+
     [Fact]
     public void AResponseRoundTripKeepsTheReadingAndItsAttemptSelections()
     {
@@ -28,7 +53,8 @@ public sealed class TraceWordViewModelTests
         var trace = new TraceWordViewModel { Result = loaded };
         Assert.Equal(ProjectionJson.Serialize(reading), ProjectionJson.Serialize(trace.Reading));
         Assert.NotEmpty(trace.ClosestAttempts);
-        Assert.All(trace.ClosestAttempts, candidate => Assert.Contains(candidate, trace.Candidates));
+        Assert.Equal(reading.ClosestAttempts.Take(trace.ClosestAttempts.Count).Select(attempt => attempt.AttemptId),
+            trace.ClosestAttempts.Select(attempt => attempt.AttemptId));
     }
 
     [Fact]

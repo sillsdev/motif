@@ -21,6 +21,27 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TryWordPageTests
 {
+    [Fact]
+    public void RulesRowsDisplayCapturedFieldWorksNames()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!);
+            var page = new TryWordPageModel(context);
+            var timing = new TimingPageModel(context);
+            context.TryWord("word");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.Equal("Vowel harmony", Assert.Single(page.RulesOnBestPath).Rule);
+            Assert.Equal("Producer name", Assert.Single(page.Trace.Reading!.Refs).Label);
+            Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
+            Assert.Equal("Vowel harmony", timing.Focus!.Rule);
+        });
+    }
+
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private readonly AvaloniaHeadlessFixture _avalonia;
 

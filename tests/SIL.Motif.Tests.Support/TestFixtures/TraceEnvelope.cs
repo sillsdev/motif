@@ -1,11 +1,22 @@
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// The <c>pangloss.trace-details.v1</c> document <c>pangloss parse --trace-details</c> writes, around a given
-/// tree, with field names and category shapes copied from a real run against the golden grammar.
+/// Producer diagnostic envelopes with recorded category shapes, plus host capture evidence for display tests.
 /// </summary>
 internal static class TraceEnvelope
 {
+    internal const string CapturedRuleLabel = """
+        {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":3,"elapsedNs":2},
+         "result":{"signature":"","guessed":false,"analyses":[]},"categories":{},
+         "hostCapture":{"traceLabels":[{"refId":"phonRule:rule-id","label":"Vowel harmony"}]},
+         "trace":{"type":"WordAnalysis","children":[
+           {"type":"PhonologicalRuleSynthesis","source":"Producer name",
+            "sourceIdentity":{"kind":"phonRule","id":"rule-id","quality":"authored"},
+            "failureReason":"RequiredSyntacticFeatureStruct","children":[]},
+           {"type":"Failed","failureReason":"PartialParse","children":[]}]}}
+        """;
+
     /// <summary>The document for <paramref name="tree"/>; a <see langword="null"/> tree is an untraced word.</summary>
     internal static string Of(
         string signature, string? tree, bool capped = false, bool invalidShape = false, bool guessed = false) =>

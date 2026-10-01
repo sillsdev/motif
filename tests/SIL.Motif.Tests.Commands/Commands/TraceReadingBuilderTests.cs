@@ -14,6 +14,48 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class TraceReadingBuilderTests
 {
     [Fact]
+    public void MatinluFailureEvidenceBelongsToTheEventThatSuppliesTheReason()
+    {
+        var reading = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!.Reading;
+        var failures = reading.Attempts.Where(attempt => !attempt.Succeeded).ToArray();
+
+        Assert.NotEmpty(failures);
+        Assert.All(failures, attempt =>
+        {
+            Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", attempt.FailureReason);
+            Assert.Equal(attempt.FailureReason, attempt.FailureEvidence!.ReasonCode);
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AStoppingEventNeverBorrowsTheTerminalEventsFailureOperands(bool hasContext)
+    {
+        var context = hasContext ? """
+            {"reasonCode":"RequiredSyntacticFeatureStruct","reason":"rule context",
+             "required":"rule required","actual":"rule actual","environment":"rule environment"}
+            """ : "null";
+        var tree = $$$"""
+            {"type":"WordAnalysis","children":[
+              {"type":"MorphologicalRuleSynthesis","source":"rule",
+               "failureReason":"RequiredSyntacticFeatureStruct","failureContext":{{{context}}},"children":[]},
+              {"type":"Failed","failureReason":"PartialParse","children":[],
+               "failureContext":{"reasonCode":"PartialParse","reason":"terminal context",
+                 "required":"terminal required","actual":"terminal actual","environment":"terminal environment"}}]}
+            """;
+        var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("", tree)));
+        var attempt = Assert.Single(reading.Attempts);
+
+        Assert.Equal("RequiredSyntacticFeatureStruct", attempt.FailureReason);
+        Assert.Equal(hasContext ? "rule context" : null, attempt.ContextualFailure);
+        Assert.Equal(hasContext ? "rule required" : null, attempt.FailureRequired);
+        Assert.Equal(hasContext ? "rule actual" : null, attempt.FailureActual);
+        Assert.Equal(hasContext ? "rule environment" : null, attempt.FailureEnvironment);
+        Assert.Equal(hasContext ? attempt.FailureReason : null, attempt.FailureEvidence?.ReasonCode);
+    }
+
+    [Fact]
     public void AlternateGuidSpellingsShareOneRuleRef()
     {
         var reading = AlternateGuidReading();

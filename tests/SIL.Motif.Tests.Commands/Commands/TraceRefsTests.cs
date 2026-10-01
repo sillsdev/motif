@@ -58,6 +58,7 @@ public sealed class TraceRefsTests : IDisposable
             CancellationToken.None).Value!;
         var live = Assert.Single(response.Reading!.Refs, reference => reference.Kind == "phonologicalRule");
         Assert.Equal("Producer name", live.Label);
+        Assert.Equal("Vowel harmony", new TraceDisplayLabels(response.Reading.Refs).Resolve(live.Id, live.Label));
         using var serialized = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(live));
         Assert.Equal("Vowel harmony", serialized.RootElement.GetProperty("capturedFieldWorksLabel").GetString());
         var reopened = WordTraceQuery.LoadDiagnostic(response.DiagnosticJson).Value!;
@@ -65,6 +66,7 @@ public sealed class TraceRefsTests : IDisposable
         using var savedJson = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(saved));
         Assert.Equal("Vowel harmony", savedJson.RootElement.GetProperty("capturedFieldWorksLabel").GetString());
         Assert.Equal(live.Label, saved.Label);
+        Assert.Equal("Vowel harmony", new TraceDisplayLabels(reopened.Reading.Refs).Resolve(saved.Id, saved.Label));
         Assert.Null(saved.FieldWorks);
     }
 
