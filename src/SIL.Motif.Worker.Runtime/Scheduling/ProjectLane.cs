@@ -25,6 +25,12 @@ public sealed class ProjectLane : IDisposable
         _runner = RunAsync();
     }
 
+    /// <summary>Returns work that the lane has yet to dispatch.</summary>
+    internal int PendingWorkCount
+    {
+        get { lock (_gate) return _queue.Count; }
+    }
+
     public Task<ProjectWorkResult> EnqueueAsync(ProjectWorkItem item, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(item);

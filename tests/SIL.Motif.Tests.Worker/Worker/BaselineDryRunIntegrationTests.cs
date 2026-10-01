@@ -247,6 +247,7 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
     {
         using var context = Context("serial");
         using var lanes = new ProjectLaneRegistry(_ => context.Token);
+        var lane = lanes.GetOrCreate(context.WorkspaceKey);
         var firstStarted = Signal();
         var releaseFirst = Signal();
         var secondStarted = false;
@@ -275,14 +276,15 @@ public sealed class BaselineDryRunSchedulingTests : IDisposable
         var secondClaim = DryRunJobTestHarness.Claim(context.Jobs, secondJob.JobId);
 
         var firstRun = DryRunJobTestHarness.RunAndFinishAsync(context.Jobs, handler, firstClaim, context.Project);
-        await firstStarted.Task;
+        await firstStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         var secondRun = DryRunJobTestHarness.RunAndFinishAsync(context.Jobs, handler, secondClaim, context.Project);
-        await Task.Delay(50);
+        Assert.Equal(1, lane.PendingWorkCount);
+        Assert.Equal(JobStatus.WaitingForBaseline, context.Jobs.Get(secondJob.JobId)!.Status);
         Assert.False(secondStarted);
 
         releaseFirst.SetResult();
-        await Task.WhenAll(firstRun, secondRun);
+        await Task.WhenAll(firstRun, secondRun).WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.True(secondStarted);
         Assert.Equal(JobStatus.CompletedDryRunOnly, context.Jobs.Get(firstJob.JobId)!.Status);
