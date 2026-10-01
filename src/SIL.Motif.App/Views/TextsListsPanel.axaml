@@ -89,10 +89,12 @@
                                          Classes="muted" Text="{Binding OccurrenceText}" />
                 <views:VerdictChip Grid.Column="3" Width="{DynamicResource Component.TextsPage.ListProjectWidth}"
                                    Verdict="{Binding RowVerdict}" Text="{Binding RowLabel}"
-                                   Compact="True" HorizontalAlignment="Left" />
+                                   Compact="True" HorizontalAlignment="Left"
+                                   IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsRowStatus}" />
                 <views:VerdictChip Grid.Column="4" Width="{DynamicResource Component.TextsPage.ListParserWidth}"
                                    Verdict="{Binding ColumnVerdict}" Text="{Binding ColumnLabel}"
-                                   Compact="True" HorizontalAlignment="Left" />
+                                   Compact="True" HorizontalAlignment="Left"
+                                   IsVisible="{Binding $parent[views:TextsListsPanel].Lists.ShowsColumnStatus}" />
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="{Binding PendingChangeStatus}"
                                          IsVisible="{Binding HasPendingChange}" />
               </Grid>
