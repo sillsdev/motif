@@ -26,6 +26,7 @@ public static partial class WarningReachReader
                 .Concat(prohibition.FirstMorphemeRA is { } first ? [first] : []).Distinct().Select(Id).ToArray(),
         },
         IPhBdryMarker boundary => Boundary(boundary),
+        // A phoneme set omits spellings: nearly every word is spelled with some phoneme of the set.
         IPhPhonemeSet set => Members(set.BoundaryMarkersOC.Select(Boundary)
             .Concat(set.PhonemesOC.Select(phoneme => ContextOwners(phoneme.Cache.ServiceLocator
                 .GetInstance<IPhSimpleContextSegRepository>().AllInstances()
@@ -88,17 +89,19 @@ public static partial class WarningReachReader
             : Merge(WarningWordsPath.ThroughEnvironmentsAndRules, owners.Select(OwnerReach));
     }
 
-    // A set's phonemes are left unspelled: nearly every word is spelled with some phoneme of the set.
     private static WarningReach Members(IEnumerable<WarningReach> members)
     {
-        var routes = members.Where(member => member.IsRoute).ToArray();
+        var routes = members.ToArray();
         if (routes.Length == 0) return Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution);
         var merged = Merge(WarningWordsPath.Membership, routes);
+        if (!merged.IsRoute) return merged;
         return new(WarningWordsPath.Membership)
         {
             AllomorphIds = merged.AllomorphIds.Concat(merged.MembershipAllomorphIds).Distinct().ToArray(),
             GrammaticalInfoIds = merged.GrammaticalInfoIds.Concat(merged.MembershipGrammaticalInfoIds).Distinct().ToArray(),
             TimingKeys = merged.TimingKeys.Concat(merged.MembershipTimingKeys).Distinct().ToArray(),
+            Spellings = merged.Spellings,
+            AttributionLimits = merged.AttributionLimits,
         };
     }
 
@@ -117,6 +120,9 @@ public static partial class WarningReachReader
         do
         {
             added = false;
+            foreach (var spec in matched.ToArray())
+                for (var container = spec.Owner; container is not null; container = container.Owner)
+                    if (container is IFsComplexValue complex) added |= matched.Add(complex);
             foreach (var shared in specifications.OfType<IFsSharedValue>())
                 if (shared.ValueRA is { } target && matched.Contains(target)) added |= matched.Add(shared);
         } while (added);
@@ -154,10 +160,15 @@ public static partial class WarningReachReader
     private static WarningReach Merge(WarningWordsPath path, IEnumerable<WarningReach> routes)
     {
         var items = routes.ToArray();
-        var exact = items.Where(item => item.Path != WarningWordsPath.Membership).ToArray();
-        var members = items.Where(item => item.Path == WarningWordsPath.Membership).ToArray();
+        var limits = items.SelectMany(item => item.AttributionLimits.Concat(
+            !item.IsRoute && item.Reason is { } reason ? [reason] : [])).Distinct().ToArray();
+        if (WarningReach.Unattributed(items) is { } unattributed)
+            return unattributed with { AttributionLimits = limits };
+        var exact = items.Where(item => item.IsRoute && item.Path != WarningWordsPath.Membership).ToArray();
+        var members = items.Where(item => item.IsRoute && item.Path == WarningWordsPath.Membership).ToArray();
         return new(path)
         {
+            AttributionLimits = limits,
             AllomorphIds = exact.SelectMany(item => item.AllomorphIds).Distinct().ToArray(),
             GrammaticalInfoIds = exact.SelectMany(item => item.GrammaticalInfoIds).Distinct().ToArray(),
             TimingKeys = exact.SelectMany(item => item.TimingKeys).Distinct().ToArray(),

@@ -60,6 +60,14 @@ public sealed record GrammarWarning(
     public WarningAttributionReason? AttributionReason => YourWords is { } yours ? yours.Reason :
         Subject.All(part => part.Reach is null) ? WarningAttributionReason.NoSubject : Unattributed()?.Reason;
 
+    /// <summary>
+    /// Limits encountered while following subjects or their owners, including limits alongside usable routes.
+    /// These remain visible whether stored word evidence is available or not.
+    /// </summary>
+    public IReadOnlyList<WarningAttributionReason> AttributionLimits => Subject.Select(part => part.Reach)
+        .OfType<WarningReach>().SelectMany(reach => reach.AttributionLimits.Concat(
+            !reach.IsRoute && reach.Reason is { } reason ? [reason] : [])).Distinct().ToArray();
+
     private WarningReach? Unattributed() =>
         WarningReach.Unattributed(Subject.Select(part => part.Reach).OfType<WarningReach>().ToArray());
 }
@@ -225,6 +233,12 @@ public sealed record WarningReach(WarningWordsPath Path)
     /// <see cref="WarningWordsPath.ProjectWide"/>.
     /// </summary>
     public WarningAttributionReason? Reason { get; init; }
+
+    /// <summary>
+    /// Limits from subjects or owners whose routes could not be followed, retained alongside usable routes.
+    /// A completed route's word matches do not remove these limits.
+    /// </summary>
+    public IReadOnlyList<WarningAttributionReason> AttributionLimits { get; init; } = [];
 
     /// <summary>Whether this reach is a route to words at all, rather than a reason there is none.</summary>
     [JsonIgnore]

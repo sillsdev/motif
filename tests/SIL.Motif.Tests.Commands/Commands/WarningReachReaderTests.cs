@@ -84,8 +84,10 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
         Assert.Equal("project_wide", WirePath(WarningReachReader.Reach(Subject(system), () => cache)!));
     }
 
-    [Fact]
-    public void NestedComplexAndSharedSpecificationsReachTheirLexicalOwners()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NestedComplexAndSharedSpecificationsReachTheirLexicalOwners(bool shareContainer)
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
         var objects = Author(cache);
@@ -110,12 +112,53 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
             other.MsFeaturesOA = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
             var shared = cache.ServiceLocator.GetInstance<IFsSharedValueFactory>().Create();
             other.MsFeaturesOA.FeatureSpecsOC.Add(shared);
-            shared.ValueRA = closed;
+            shared.ValueRA = shareContainer ? nested : closed;
         });
         var complexReach = WarningReachReader.Reach(Subject(complex), () => cache)!;
         Assert.Contains(objects["msa"].Guid.ToString("D"), complexReach.GrammaticalInfoIds);
         var valueReach = WarningReachReader.Reach(Subject(objects["value"]), () => cache)!;
         Assert.Contains(other.Guid.ToString("D"), valueReach.GrammaticalInfoIds);
+        var featureReach = WarningReachReader.Reach(Subject(objects["feature"]), () => cache)!;
+        Assert.Contains(other.Guid.ToString("D"), featureReach.GrammaticalInfoIds);
+        var word = new AssessmentWordResult("synthetic", "no-analysis", false, "Search completed", 1, null)
+        {
+            StoredAnalyses = [new ParserReading([new ParserReadingMorph("synthetic", "feature", "noun", null, false, null)
+                { GrammaticalInfoId = other.Guid.ToString("D") }]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
+        };
+        foreach (var (subject, reach) in new[] { (objects["feature"], featureReach), (objects["value"], valueReach) })
+        {
+            var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "feature",
+                [Subject(subject) with { Reach = reach }], [], "feature");
+            finding = finding with { YourWords = WarningWordsQuery.YourWordsOf(finding, [word], []) };
+            Assert.Equal(WarningAttributionState.ExactUses, finding.AttributionState);
+            Assert.Equal("synthetic", Assert.Single(finding.YourWords!.Words).Row.Word);
+            Assert.Equal(1, WarningWordsQuery.Touched([finding])!.Words);
+        }
+    }
+
+    [Fact]
+    public void SharedSpecificationCyclesReachEachOwnerOnce()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var objects = Author(cache);
+        var firstOwner = (IMoInflAffMsa)objects["msa"];
+        var secondOwner = (IMoStemMsa)cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+            .GetObject(pristine.Seed.SecondEntryId).MorphoSyntaxAnalysesOC.First();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            secondOwner.MsFeaturesOA = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
+            var first = cache.ServiceLocator.GetInstance<IFsSharedValueFactory>().Create();
+            firstOwner.InflFeatsOA.FeatureSpecsOC.Add(first);
+            first.FeatureRA = (IFsClosedFeature)objects["feature"];
+            var second = cache.ServiceLocator.GetInstance<IFsSharedValueFactory>().Create();
+            secondOwner.MsFeaturesOA.FeatureSpecsOC.Add(second);
+            first.ValueRA = second;
+            second.ValueRA = first;
+        });
+
+        var reach = WarningReachReader.Reach(Subject(objects["feature"]), () => cache)!;
+        Assert.Equal(new[] { firstOwner.Guid.ToString("D"), secondOwner.Guid.ToString("D") }.Order(),
+            reach.GrammaticalInfoIds.Order());
     }
 
     [Theory]

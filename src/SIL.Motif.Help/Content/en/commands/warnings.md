@@ -33,11 +33,13 @@ Motif finds the words from the object the finding names, by its FieldWorks ident
 
 Templates and slots reach words using their affixes as **membership candidates**. Inflection types, ad hoc prohibitions, phoneme sets and feature systems also reach members as candidates: using a member does not prove a parse selected the named resource.
 
-Letters and phonemes reach **spelling candidates; not confirmed uses of the phoneme**. Spelling uses case-insensitive, canonically decomposed substring matching, which cannot establish phoneme identity. A feature owned by a phoneme keeps that same limit.
+Letters and phonemes reach **spelling candidates; not confirmed uses of the phoneme**. Spelling uses case-insensitive, canonically decomposed substring matching, which cannot establish phoneme identity. A feature owned by a phoneme keeps that same limit, including when reached through its feature system. A phoneme set follows its members' grammar references and omits spelling candidates.
 
 For each finding, exact uses take precedence over membership candidates, then spelling candidates. The lists never share a word. The overall counts apply that precedence across all findings, too. The words show use, not cause: a word that uses what a warning names may fail for some other reason.
 
 Every finding has an attribution state. A supported route with no matching word says **none in this Selection**. A project resource without word attribution says **project-wide**. A **missing object** distinguishes a GUID absent from the checked Baseline from one belonging to a different FieldWorks class. **Unresolved identity** distinguishes no subject, a named subject without a project GUID, and a class with no supported route.
+
+Features also follow shared references to their enclosing complex specifications. If some feature owners have no supported route or no word attribution, the finding retains those attribution limits alongside any exact uses or candidates. When no owner has a supported route, the finding reports the limit rather than claiming there are no words in the Selection.
 
 Without a matching Assessment, supported routes say **evidence unavailable**; their counts are absent rather than zero. Missing and unresolved subjects retain their specific reasons. Motif refuses stores with an older shape and asks the developer to delete the database so it can recreate it.
 

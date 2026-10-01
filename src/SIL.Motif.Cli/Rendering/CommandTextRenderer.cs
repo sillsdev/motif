@@ -360,6 +360,9 @@ public static class CommandTextRenderer
         {
             text.AppendLine($"  {finding.Text}");
             text.AppendLine($"    {YourWordsLine(finding)}");
+            var limits = finding.AttributionLimits.Where(reason => reason != finding.AttributionReason).ToArray();
+            if (limits.Length > 0)
+                text.AppendLine($"    Attribution limits: {string.Join("; ", limits.Select(AttributionLimitText))}");
             if (finding.YourWords is { } yours)
             {
                 var members = yours.Match == WarningWordsMatch.Membership ? yours.Words : yours.MembershipCandidates;
@@ -403,6 +406,16 @@ public static class CommandTextRenderer
             _ => "PanGloss names no subject",
         }),
         _ => "Your words: evidence unavailable; no usable stored Parse all words",
+    };
+
+    private static string AttributionLimitText(WarningAttributionReason reason) => reason switch
+    {
+        WarningAttributionReason.UnsupportedKind => "an owner's class has no supported route to words",
+        WarningAttributionReason.NoWordAttribution => "an owner has no word attribution",
+        WarningAttributionReason.StaleGuid => "a subject's GUID is absent from the checked Baseline",
+        WarningAttributionReason.WrongClass => "a subject's GUID belongs to a different FieldWorks class",
+        WarningAttributionReason.NamedWithoutProjectGuid => "a named subject has no project GUID",
+        _ => "PanGloss names no subject",
     };
 
     private static string WordList(IReadOnlyList<ObjectUseWord> words)
