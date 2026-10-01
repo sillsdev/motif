@@ -72,8 +72,12 @@
   <Style Selector="StackPanel.overviewTileContent">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
   </Style>
-  <Style Selector="StackPanel.overviewOutcomeBar">
+  <Style Selector=":is(StackPanel).overviewOutcomeBar">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+  <Style Selector=":is(StackPanel).overviewOutcomeBar :is(TextBlock).outcomeLegendText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <Style Selector=":is(TextBlock).overviewTileTitle">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />

@@ -56,7 +56,6 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(SpeedDetails))]
     [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
     [NotifyPropertyChangedFor(nameof(TextCoverageWords))]
-    [NotifyPropertyChangedFor(nameof(TextCoverageBreakdown))]
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
     [NotifyPropertyChangedFor(nameof(AccuracyMain))]
     [NotifyPropertyChangedFor(nameof(AccuracyCaption))]
@@ -178,18 +177,12 @@ public sealed partial class OverviewPageModel : PageModel
         $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
         $"{overview.TextCoverage.TotalOccurrences:N0} occurrences";
 
-    /// <summary>The no-parse, stopped and skipped word counts; stopped words hit either a step or a time limit.</summary>
-    public string TextCoverageBreakdown => !HasAssessment || Overview is not { } overview ? string.Empty :
-        $"{overview.TextCoverage.NoParseWords:N0} no parse · " +
-        $"{overview.TextCoverage.UnknownWords:N0} stopped (step or time limit) · " +
-        $"{overview.TextCoverage.SkippedWords:N0} skipped";
-
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
             new(Verdict.Agrees, overview.TextCoverage.ParsedWords, "parsed"),
             new(Verdict.NoResult, overview.TextCoverage.NoParseWords, "no parse"),
-            new(Verdict.Limit, overview.TextCoverage.UnknownWords, "stopped"),
+            new(Verdict.Limit, overview.TextCoverage.UnknownWords, "stopped (step or time limit)"),
             new(Verdict.Limit, overview.TextCoverage.SkippedWords, "skipped"));
 
     /// <summary>How many approved words the grammar still builds.</summary>
@@ -202,8 +195,8 @@ public sealed partial class OverviewPageModel : PageModel
         $"{overview.Accuracy.ApprovedWordCount:N0} words you approved in FieldWorks.";
 
     /// <summary>
-    /// The approved words lost and not finished, the disapproved analyses still built, and the Unknown words
-    /// PanGloss confirms, each placed by the Compare matrix's rules.
+    /// What the bar above cannot show: the disapproved analyses still built, and the Unknown words PanGloss
+    /// confirms, each placed by the Compare matrix's rules. The bar's key gives the approved words' own outcomes.
     /// </summary>
     public string AccuracyBreakdown
     {
@@ -211,12 +204,11 @@ public sealed partial class OverviewPageModel : PageModel
         {
             if (!HasAssessment || Overview is not { } overview) return string.Empty;
             var accuracy = overview.Accuracy;
-            var lost = accuracy.ApprovedWordsNoMatch + accuracy.ApprovedWordsNoParse;
-            var unfinished = accuracy.ApprovedWordsUnknown + accuracy.ApprovedWordsSkipped;
-            var parts = new List<string> { SpeedText.Count(lost, "approved word", "approved words") + " lost" };
-            if (unfinished > 0) parts.Add($"{unfinished:N0} not finished");
-            parts.Add(SpeedText.Count(accuracy.RejectedAnalysesRebuilt, "disapproved analysis",
-                "disapproved analyses") + " still built");
+            var parts = new List<string>
+            {
+                SpeedText.Count(accuracy.RejectedAnalysesRebuilt, "disapproved analysis", "disapproved analyses") +
+                " still built",
+            };
             if (accuracy.CandidateWordCount > 0)
                 parts.Add($"PanGloss confirms {accuracy.CandidatesConfirmed:N0} of " +
                     SpeedText.Count(accuracy.CandidateWordCount, "word", "words") + " marked Unknown");
@@ -227,7 +219,7 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The approved-word outcomes that make up the Accuracy bar.</summary>
     public IReadOnlyList<OutcomeSegment> AccuracySegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            new(Verdict.Agrees, overview.Accuracy.ApprovedWordsKept, "kept"),
+            new(Verdict.Agrees, overview.Accuracy.ApprovedWordsKept, "rebuilt"),
             new(Verdict.Differs, overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
             new(Verdict.NoResult, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
             new(Verdict.Limit, overview.Accuracy.ApprovedWordsUnknown, "stopped"),
