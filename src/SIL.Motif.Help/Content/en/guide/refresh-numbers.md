@@ -4,7 +4,7 @@ Use **Refresh** after saving changes in FieldWorks when you want Motif’s resul
 
 1. Save your work in FieldWorks.
 2. In Motif, choose **Refresh** in the top bar and let it finish.
-3. Check the freshness line and the updated cards on **Overview**. The new [parse](term:assessment) saves what was measured.
+3. Check the freshness line and the updated cards on **Overview**. The new [parse](term:parse-all-words) saves what was measured.
 
 If this is the first Baseline, first-time setup may open so you can choose texts or add words before the first parse. If you cancel the run or the parser refuses it, the Baseline may still be newer than the numbers; read the freshness message before relying on them. Opening Motif again does not perform a Refresh for you.
 

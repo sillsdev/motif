@@ -10,6 +10,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
+using SIL.Motif.Help;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -33,6 +34,9 @@ public sealed partial class WindowWordsTests
     // A Guide page's cross-link target is a code; only its link text is read.
     [GeneratedRegex(@"\]\((?:cmd|term|shot):[^)]*\)")]
     private static partial Regex LinkTarget();
+
+    [GeneratedRegex(@"\]\(term:([^)]*)\)")]
+    private static partial Regex TermLink();
 
     [Fact]
     public void EveryPageAndTabOfTheWindowUsesWindowWords()
@@ -148,10 +152,20 @@ public sealed partial class WindowWordsTests
     {
         var guide = Path.Combine(RepoPaths.FindRepoRoot(), "help", "en", "guide");
         var agents = Path.Combine(guide, "agents") + Path.DirectorySeparatorChar;
-        var shown = Directory.EnumerateFiles(guide, "*.md", SearchOption.AllDirectories)
+        var pages = Directory.EnumerateFiles(guide, "*.md", SearchOption.AllDirectories)
             .Where(path => !path.StartsWith(agents, StringComparison.Ordinal))
-            .SelectMany(path => File.ReadLines(path)
-                .Select(line => $"{Path.GetRelativePath(guide, path)}: {LinkTarget().Replace(line, "]")}"));
+            .Select(path => (Name: Path.GetRelativePath(guide, path), Lines: File.ReadAllLines(path)))
+            .ToArray();
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        // A term a Guide page links to opens in the window too, so its title and description are scanned with it.
+        var terms = pages.SelectMany(page => page.Lines).SelectMany(line => TermLink().Matches(line))
+            .Select(link => Uri.UnescapeDataString(link.Groups[1].Value)).Distinct()
+            .Select(code => catalog.Find(HelpEntryKind.Term, code)
+                ?? throw new InvalidOperationException($"The Guide links to a missing term '{code}'."))
+            .SelectMany(term => new[] { $"{term.Title} ⟨term {term.Code}⟩", $"{term.Description} ⟨term {term.Code}⟩" });
+        var shown = pages.SelectMany(page => page.Lines
+                .Select(line => $"{page.Name}: {LinkTarget().Replace(line, "]")}"))
+            .Concat(terms);
 
         AssertWindowWords(shown);
     }
