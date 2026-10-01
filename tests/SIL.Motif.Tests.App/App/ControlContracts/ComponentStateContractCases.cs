@@ -509,6 +509,29 @@ internal static class TooltipOwners
         },
         new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
+        new("morpheme that opens the inspector", "Views/MorphemeRow.cs", "$\"Show {morph.Form} in the inspector\"",
+            TooltipScene.WordCard, control => control is Border && control.Classes.Contains("inspectable")),
+        new("closing the inspector", "Views/Inspector.axaml", "Close (Esc steps back)", TooltipScene.WordCard,
+            control => control is Button && control.Classes.Contains("inspectorClose"))
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("freshness of the inspector's facts", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("freshness of what the inspected object is", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("FieldWorks link in the inspector", "Views/Inspector.axaml", "{Binding LinkName}", TooltipScene.WordCard,
+            control => control is HyperlinkButton && control.Classes.Contains("revealLink") &&
+                control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
         new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
             control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null),
         new("the list's sentence", "Views/TextsListsPanel.axaml", "{Binding Lists.SelectedList.Sentence}", TooltipScene.Lists,
