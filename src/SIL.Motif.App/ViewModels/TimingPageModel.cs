@@ -56,6 +56,13 @@ public sealed partial class TimingPageModel : PageModel
         };
         context.PropertyChanged += OnContextPropertyChanged;
         context.Assess.Compare.CheckedWordsChanged += OnCheckedWordsChanged;
+        // The word rows come from the parse on screen, which can arrive after the times were read.
+        context.Assess.Words.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
+            OnPropertyChanged(nameof(SlowestWordRows));
+            OnPropertyChanged(nameof(CostliestRuleWordRows));
+        };
     }
 
     /// <summary>The page's own statistics, read through the context's commands.</summary>

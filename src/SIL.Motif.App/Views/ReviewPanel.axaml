@@ -79,7 +79,6 @@
                         <DataTemplate x:DataType="vm:ChangeViewModel">
                           <views:WordRow Row="{Binding Listed.Row}" List="review" IsOpen="{Binding Listed.IsOpen}"
                                          Columns="{x:Static views:WordRowColumnSets.Review}"
-                                         StagedText="{Binding TransitionText}"
                                          OpenedCommand="{Binding $parent[views:ReviewPanel].Page.ShowContextCommand}"
                                          OpenedCommandParameter="{Binding}">
                             <views:WordRow.Actions>
@@ -100,6 +99,8 @@
                                   </ItemsControl>
                                 </WrapPanel>
                                 <WrapPanel Classes="reviewActions">
+                                  <views:CopyableTextBlock Classes="wordRowStaged reviewGapEnd" Text="{Binding TransitionText}"
+                                                           VerticalAlignment="Center" />
                                   <views:CopyableTextBlock Classes="reviewSmall reviewGapEnd" Text="{Binding DetailText}"
                                                            TextWrapping="Wrap" VerticalAlignment="Center"
                                                            IsVisible="{Binding HasDetailText}" />
@@ -162,7 +163,8 @@
                                 <Border IsVisible="{Binding HasUnavailableContext}">
                                   <views:ParsePrompt DataContext="{Binding $parent[views:ReviewPanel].Page.Context}" />
                                 </Border>
-                                <ItemsControl ItemsSource="{Binding ContextTokens}" AutomationProperties.Name="Sentence context">
+                                <ItemsControl ItemsSource="{Binding ContextTokens}" AutomationProperties.Name="Sentence context"
+                                              IsVisible="{Binding ContextTokens.Count}">
                                   <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                   </ItemsControl.ItemsPanel>

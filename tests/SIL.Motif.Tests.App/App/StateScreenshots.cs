@@ -299,6 +299,62 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         })
         { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
 
+        // The word row on the pages beyond the Matrix and Lists: each list at rest, and one row opened.
+        yield return new("timing", "word-rows", async stage =>
+        {
+            await stage.ShowTimingWords();
+            return "Timing with a rule chosen: its costliest words and the slowest words as word rows.";
+        })
+        { Height = 1700 };
+        yield return new("timing", "word-row-opened", async stage =>
+        {
+            await stage.ShowTimingWords();
+            return await stage.OpenWordRow("timing-words");
+        })
+        { Height = 1700, Teardown = stage => stage.CloseWordRows() };
+        yield return new("overview", "slowest-row-opened", async stage =>
+        {
+            stage.Open(WorkspacePage.Overview);
+            return await stage.OpenWordRow("overview-slowest");
+        })
+        { Height = 1000, Teardown = stage => stage.CloseWordRows() };
+        yield return new("review", "word-rows", async stage =>
+        {
+            stage.Open(WorkspacePage.Review);
+            await stage.Until(() => stage.WordRows("review").Any(), "the staged change's row");
+            return "Review changes with chakula staged, as a word row with its staged arrow and Undo.";
+        })
+        { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
+        yield return new("review", "word-row-opened", async stage =>
+        {
+            stage.Open(WorkspacePage.Review);
+            return await stage.OpenWordRow("review");
+        })
+        { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = async stage =>
+            {
+                await stage.CloseWordRows();
+                await stage.UnstageChakula();
+            } };
+        yield return new("analyze", "word-list", async stage =>
+        {
+            stage.ShowWordList();
+            await stage.Until(() => stage.WordRows("word-list").Any(), "the Word list's rows");
+            return "Analyze texts' Word list as word rows.";
+        });
+        yield return new("analyze", "word-list-row-opened", async stage =>
+        {
+            stage.ShowWordList();
+            return await stage.OpenWordRow("word-list");
+        })
+        { Height = 1000, Teardown = stage => stage.CloseWordRows() };
+        yield return new("what-changed", "word-rows", async stage =>
+        {
+            stage.Open(WorkspacePage.Texts, TextsTab.WhatChanged);
+            await stage.Until(() => stage.WordRows("what-changed").Any(), "the chosen move's words");
+            return "What changed after a second run in which kitabu lost its analysis, with that move chosen.";
+        })
+        { Height = 1100, Setup = stage => stage.ParseWithKitabuLost(), Teardown = stage => stage.ParseAgain() };
+
         // AI Handoff.
         yield return new("ai-handoff", "drag-tooltip", stage => stage.Hover(WorkspacePage.AiHandoff,
             () => stage.Named<Button>("Drag all AI Handoff files"), "the drag-all button"));
@@ -582,6 +638,66 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             Workspace.Context.TryWord("matinlu");
             return Workspace.Assess.Trace.TryCommand.ExecutionTask!;
+        }
+
+        /// <summary>The visible word rows of the list named <paramref name="list"/> in the rows' automation ids.</summary>
+        public IEnumerable<WordRow> WordRows(string list) => Visible<WordRow>(row => row.List == list);
+
+        /// <summary>Opens the first row of a list from the keyboard, as Enter on a focused row does.</summary>
+        public async Task<string> OpenWordRow(string list)
+        {
+            await Until(() => WordRows(list).Any(), $"the {list} rows");
+            var row = WordRows(list).First();
+            if (!row.IsOpen)
+            {
+                var body = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowBody"));
+                body.BringIntoView();
+                body.Focus(NavigationMethod.Tab);
+                Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                await Until(() => row.IsOpen, $"the opened {list} row");
+            }
+            return $"Pressed Enter on '{row.Row?.Word}' in the {list} rows; its card is open inside the row.";
+        }
+
+        public Task CloseWordRows()
+        {
+            foreach (var row in Window.GetVisualDescendants().OfType<WordRow>()) row.IsOpen = false;
+            PageScreenshots.Settle(Window);
+            return Task.CompletedTask;
+        }
+
+        public async Task ShowTimingWords()
+        {
+            Open(WorkspacePage.Timing);
+            var timing = Workspace.PageModel<TimingPageModel>();
+            await Until(() => timing.RuleRows.Count > 0, "Timing's rules");
+            if (timing.CostliestRuleWordRows.Count == 0) await timing.ChooseRuleCommand.ExecuteAsync(timing.RuleRows[0].Row);
+            await Until(() => WordRows("timing-rule-words").Any() && WordRows("timing-words").Any(), "Timing's word rows");
+        }
+
+        public void ShowWordList()
+        {
+            Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+            Open(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+        }
+
+        // A second run in which kitabu loses its analysis, so What changed has a move to show, and that move chosen.
+        public async Task ParseWithKitabuLost()
+        {
+            Client.AssessCompletesWith(parsed with
+            {
+                Words = [.. parsed.Words.Select(word => word.Word != "kitabu" ? word : word with
+                {
+                    Outcome = "no-analysis",
+                    Morphology = null,
+                    Readings = [],
+                    ReadingGrades = [],
+                })],
+            });
+            await Workspace.Assess.RunCommand.ExecuteAsync(null);
+            var difference = Workspace.Assess.Difference;
+            await Until(() => difference.Moves.Count > 0, "a move between the two runs");
+            difference.SelectedMove = difference.Moves.First(move => move.Words.Any(word => word.Word == "kitabu"));
         }
 
         public async Task ParseAgain()

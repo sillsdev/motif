@@ -86,6 +86,10 @@
   <Style Selector=":is(Control).wordRowPanGloss">
     <Setter Property="MinWidth" Value="{DynamicResource Component.WordRow.PanGlossWidth}" />
   </Style>
+  <!-- A list that hides the morphemes shows the outcome alone, which needs no room kept for morphemes. -->
+  <Style Selector="Grid.wordRowCells.marksOnly > :is(Control).wordRowPanGloss">
+    <Setter Property="MinWidth" Value="{DynamicResource Intent.Space.None}" />
+  </Style>
   <Style Selector=":is(Control).wordRowMeaning">
     <Setter Property="Width" Value="{DynamicResource Component.WordRow.MeaningWidth}" />
   </Style>

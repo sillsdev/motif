@@ -141,6 +141,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
             _all.AddRange(words.Select(word => new AssessWordRowViewModel(word, occurrenceCounts?.Invoke(word.Word), Routes)));
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
+        OnPropertyChanged(nameof(AllRows));
         OnPropertyChanged(nameof(Outcomes));
         OnPropertyChanged(nameof(OutcomeSummary));
         OnPropertyChanged(nameof(ManyStoppedAtALimit));

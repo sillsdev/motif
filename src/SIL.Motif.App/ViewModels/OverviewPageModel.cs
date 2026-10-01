@@ -31,6 +31,7 @@ public sealed partial class OverviewPageModel : PageModel
             Context.ProjectPath is { } path ? RefreshOverviewAsync(path, CancellationToken.None) : Task.CompletedTask);
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
+        context.Assess.Words.PropertyChanged += OnWordsChanged;
     }
 
     /// <summary>The project's Baselines and Assessments, newest first, which the page loads for itself.</summary>
@@ -324,6 +325,14 @@ public sealed partial class OverviewPageModel : PageModel
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectFileName));
         }
+    }
+
+    // The slowest words' rows come from the parse on screen, which can arrive after the Overview was read.
+    private void OnWordsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
+        OnPropertyChanged(nameof(SlowestWordRows));
+        OnPropertyChanged(nameof(HasSlowestWordRows));
     }
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)

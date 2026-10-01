@@ -25,6 +25,11 @@ public sealed class ReviewPageModel : PageModel
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
+        // A change's row comes from the parse on screen, so a new parse rebuilds the rows.
+        context.Assess.Words.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AssessWordsViewModel.AllRows)) OnPropertyChanged(nameof(ReviewGroups));
+        };
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
         CheckAgainCommand = new AsyncRelayCommand(() => Changes.RecheckAsync(),

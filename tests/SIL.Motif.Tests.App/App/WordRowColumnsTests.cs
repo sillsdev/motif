@@ -48,6 +48,8 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
                 var panGloss = BoundsIn(Part(row, "wordRowPanGloss"), row);
                 var time = BoundsIn(Part(row, "wordRowTime"), row);
                 Assert.InRange(time.X - panGloss.Right, 0, 8.5);
+                // No room is kept for morphemes the list hides, so the row fits beside a page's side panel.
+                Assert.True(panGloss.Width < 110, $"The outcome alone takes {panGloss.Width:0.#} px.");
             }
             finally
             {

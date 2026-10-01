@@ -186,53 +186,6 @@
               </StackPanel>
             </Border>
 
-            <Border Classes="card" IsVisible="{Binding HasRule}">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
-                <StackPanel Grid.IsSharedSizeScope="True">
-                  <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
-                  <ItemsControl ItemsSource="{Binding CostliestRuleWordRows}" AutomationProperties.Name="Words under this rule"
-                                KeyboardNavigation.TabNavigation="Continue">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ListedWordViewModel">
-                        <views:WordRow Row="{Binding Row}" List="timing-rule-words" IsOpen="{Binding IsOpen}"
-                                       Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
-                          <views:WordRow.Card>
-                            <views:ListedWordCard />
-                          </views:WordRow.Card>
-                        </views:WordRow>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
-                <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
-                <views:CopyableTextBlock Classes="muted" Text="Step limit means the search ran out of steps; giving it more time alone will not finish it."
-                                         TextWrapping="Wrap" />
-                <views:CopyableTextBlock Text="Slowest words" FontWeight="SemiBold" />
-                <StackPanel Grid.IsSharedSizeScope="True">
-                  <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
-                  <ItemsControl ItemsSource="{Binding SlowestWordRows}" AutomationProperties.Name="Slowest words"
-                                KeyboardNavigation.TabNavigation="Continue">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ListedWordViewModel">
-                        <views:WordRow Row="{Binding Row}" List="timing-words" IsOpen="{Binding IsOpen}"
-                                       Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
-                          <views:WordRow.Card>
-                            <views:ListedWordCard />
-                          </views:WordRow.Card>
-                        </views:WordRow>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </StackPanel>
-            </Border>
           </StackPanel>
 
           <StackPanel Grid.Column="1" Width="{DynamicResource Component.Timing.SideWidth}"
@@ -274,6 +227,55 @@
             </Border>
           </StackPanel>
         </Grid>
+
+        <!-- The word lists take the page's full width, so each row keeps its columns and next steps at 1040. -->
+        <Border Classes="card" IsVisible="{Binding HasRule}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
+            <StackPanel Grid.IsSharedSizeScope="True">
+              <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
+              <ItemsControl ItemsSource="{Binding CostliestRuleWordRows}" AutomationProperties.Name="Words under this rule"
+                            KeyboardNavigation.TabNavigation="Continue">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ListedWordViewModel">
+                    <views:WordRow Row="{Binding Row}" List="timing-rule-words" IsOpen="{Binding IsOpen}"
+                                   Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
+                      <views:WordRow.Card>
+                        <views:ListedWordCard />
+                      </views:WordRow.Card>
+                    </views:WordRow>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" IsVisible="{Binding HasSelectedWords}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
+            <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
+            <views:CopyableTextBlock Classes="muted" Text="Step limit means the search ran out of steps; giving it more time alone will not finish it."
+                                     TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="Slowest words" FontWeight="SemiBold" />
+            <StackPanel Grid.IsSharedSizeScope="True">
+              <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
+              <ItemsControl ItemsSource="{Binding SlowestWordRows}" AutomationProperties.Name="Slowest words"
+                            KeyboardNavigation.TabNavigation="Continue">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ListedWordViewModel">
+                    <views:WordRow Row="{Binding Row}" List="timing-words" IsOpen="{Binding IsOpen}"
+                                   Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
+                      <views:WordRow.Card>
+                        <views:ListedWordCard />
+                      </views:WordRow.Card>
+                    </views:WordRow>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
 
         <Expander Header="Detailed statistics" IsVisible="{Binding ShowStatistics}">
           <ContentControl x:Name="StatisticsHost" />

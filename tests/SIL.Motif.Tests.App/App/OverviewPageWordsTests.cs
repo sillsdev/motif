@@ -37,6 +37,23 @@ public sealed class OverviewPageWordsTests
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
     }
 
+    [Fact]
+    public async Task TheSlowestWordsTakeTheirRowsFromAParseThatArrivesAfterTheOverview()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated());
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.False(page.SlowestWordRows[0].HasCard);
+
+        context.Assess.Words.Load([new AssessmentWordResult("mwalimu", "capped", true, "INCOMPLETE — step limit", 700, null)]);
+
+        var mwalimu = page.SlowestWordRows[0];
+        Assert.True(mwalimu.HasCard);
+        Assert.Same(context.Assess.Words.Find("mwalimu")!.WordRow, mwalimu.Row);
+        Assert.Equal("700 ms", mwalimu.TimeText);
+    }
+
     [Theory]
     [InlineData(1, 0.045, "1 word · 45 ms total word time")]
     [InlineData(9, 0.8, "9 words · 0.8 s total word time")]

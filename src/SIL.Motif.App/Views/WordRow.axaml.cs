@@ -303,8 +303,8 @@ public sealed partial class WordRow : UserControl
 
 /// <summary>
 /// The word row's columns a list can hide. The word and the three next steps are not here: every row shows them.
-/// <see cref="Morphemes"/> shows the morphemes beside the opinion and the outcome; without it each column shows only
-/// its mark, and the outcome says its word.
+/// <see cref="FieldWorksMorphemes"/> and <see cref="PanGlossMorphemes"/> show the morphemes beside the opinion and
+/// the outcome; without them the column shows only its mark, and the outcome says its word.
 /// </summary>
 [Flags]
 public enum WordRowColumns
@@ -313,13 +313,15 @@ public enum WordRowColumns
     Tick = 1,
     FieldWorks = 2,
     PanGloss = 4,
-    Morphemes = 8,
-    Meaning = 16,
-    Warnings = 32,
-    Places = 64,
-    Time = 128,
-    Read = 256,
-    All = Tick | FieldWorks | PanGloss | Morphemes | Meaning | Warnings | Places | Time | Read,
+    FieldWorksMorphemes = 8,
+    PanGlossMorphemes = 16,
+    Meaning = 32,
+    Warnings = 64,
+    Places = 128,
+    Time = 256,
+    Read = 512,
+    All = Tick | FieldWorks | FieldWorksMorphemes | PanGloss | PanGlossMorphemes | Meaning | Warnings | Places | Time |
+        Read,
 }
 
 /// <summary>
@@ -342,24 +344,25 @@ public static class WordRowColumnSets
 
     /// <summary>
     /// Review changes asks what Apply will write: what FieldWorks holds now and what PanGloss built, with their
-    /// morphemes, and the staged arrow under the word. Meaning, places, time and read state do not change what is
-    /// written.
+    /// morphemes; the staged arrow leads the line under the row. Meaning, places, time and read state do not change
+    /// what is written.
     /// </summary>
-    public static readonly WordRowColumns Review = WordRowColumns.FieldWorks | WordRowColumns.Morphemes |
-        WordRowColumns.PanGloss;
+    public static readonly WordRowColumns Review = WordRowColumns.FieldWorks | WordRowColumns.FieldWorksMorphemes |
+        WordRowColumns.PanGloss | WordRowColumns.PanGlossMorphemes;
 
     /// <summary>
-    /// What changed asks which words moved between two runs and what they mean now: the opinion, the outcome, the
-    /// meaning and how often the word occurs. The earlier run's answer is the row's note.
+    /// What changed lists the words of one chosen move, which already names the opinion and meaning they left and
+    /// reached: the row adds the outcome now and how often the word occurs, and its note gives the earlier answer.
     /// </summary>
-    public static readonly WordRowColumns WhatChanged = WordRowColumns.FieldWorks | WordRowColumns.PanGloss |
-        WordRowColumns.Meaning | WordRowColumns.Places;
+    public static readonly WordRowColumns WhatChanged = WordRowColumns.PanGloss | WordRowColumns.Places;
 
     /// <summary>
-    /// Analyze texts' Word list is every word of the Selection, ticked for AI Handoff: everything but the time, which
-    /// is Timing's question.
+    /// Analyze texts' Word list asks what FieldWorks holds for each word of the Selection, ticked for AI Handoff: the
+    /// opinion and FieldWorks' morphemes, PanGloss's outcome, places and read state. The meaning is the Matrix's
+    /// question and the time Timing's, and both are in the card or a click away; warnings join once they name words.
     /// </summary>
-    public static readonly WordRowColumns WordList = WordRowColumns.All & ~WordRowColumns.Time;
+    public static readonly WordRowColumns WordList = WordRowColumns.Tick | WordRowColumns.FieldWorks |
+        WordRowColumns.FieldWorksMorphemes | WordRowColumns.PanGloss | WordRowColumns.Places | WordRowColumns.Read;
 }
 
 /// <summary>
@@ -393,13 +396,16 @@ internal sealed class WordRowLayout
     public void Apply(WordRowColumns columns, bool showsMeaning)
     {
         bool Shows(WordRowColumns column) => (columns & column) == column;
-        var morphemes = Shows(WordRowColumns.Morphemes);
+        var fieldWorks = Shows(WordRowColumns.FieldWorksMorphemes);
+        var panGloss = Shows(WordRowColumns.PanGlossMorphemes);
         // Morphemes share the free width; marks alone size to the widest in the list, as the other columns do.
-        SetWidth(_cellParts[1].Column, morphemes, _sharedWidths[0], "WordRowFieldWorks");
-        SetWidth(_cellParts[2].Column, morphemes, _sharedWidths[1], "WordRowPanGloss");
-        foreach (var name in new[] { "FieldWorksMorphemes", "PanGlossMorphemes", "OutcomeBesideMorphemes" })
-            SetShown(name, morphemes);
-        SetShown("OutcomeAlone", !morphemes);
+        SetWidth(_cellParts[1].Column, fieldWorks, _sharedWidths[0], "WordRowFieldWorks");
+        SetWidth(_cellParts[2].Column, panGloss, _sharedWidths[1], "WordRowPanGloss");
+        SetShown("FieldWorksMorphemes", fieldWorks);
+        SetShown("PanGlossMorphemes", panGloss);
+        SetShown("OutcomeBesideMorphemes", panGloss);
+        SetShown("OutcomeAlone", !panGloss);
+        _cells.Classes.Set("marksOnly", !panGloss);
         Show(_line, _lineParts, [Shows(WordRowColumns.Tick), true, true]);
         Show(_cells, _cellParts,
         [
