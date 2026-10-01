@@ -124,7 +124,7 @@ public sealed class CommandCatalogParityTests
         "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
         "stats.no-cache", "stats.parser-refused", "stats.parser-unavailable",
         "stats.timed-out",
-        "timing.invalid-override", "timing.invalid-request", "timing.invalid-word-set",
+        "timing.ambiguous-rule", "timing.invalid-override", "timing.invalid-request", "timing.invalid-word-set",
         "timing.no-assessment", "timing.no-baseline", "timing.override-not-found",
         "timing.wrong-kind", "timing.word-set-not-found",
         "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
