@@ -46,16 +46,17 @@ public sealed class CatalogAggregationTests
     {
         AssessmentObjectTiming[] rows =
         [
-            new("affix", "Verb template", "a", 20, 3, 4),
-            new("affix", "Verb template", "b", 10, 2, 6),
-            new("phonology", "Nasal harmony", "a", 4, 1, 2),
+            new("affix", "affix-a", "authored", "analysis", "Verb template", "a", 20, null, 4_000_000),
+            new("affix", "affix-a", "authored", "analysis", "Verb template", "b", 10, null, 6_000_000),
+            new("affix", "affix-a", "authored", "synthesis", "Verb template", "b", 6, null, null),
+            new("phonology", "phon-rule", "authored", "analysis", "Nasal harmony", "a", 4, null, 2_000_000),
         ];
 
         var byKind = TimingAggregation.Aggregate(rows, "kind", rule: null, top: 10);
         Assert.Equal(["affix", "phonology"], byKind.Aggregates.Select(row => row.Name));
         Assert.Equal(10, byKind.Aggregates[0].ElapsedMs);
         Assert.Equal(10d / 12d, byKind.Aggregates[0].ShareOfTotal, precision: 6);
-        Assert.Equal(30, byKind.Aggregates[0].Attempts);
+        Assert.Equal(36, byKind.Aggregates[0].Attempts);
         Assert.Equal(2, byKind.Aggregates[0].WordsTouched);
         Assert.Equal("affix", byKind.Aggregates[0].Kind);
 
@@ -65,7 +66,7 @@ public sealed class CatalogAggregationTests
         var costliest = Assert.Single(byRule.CostliestWords);
         Assert.Equal("b", costliest.Word);
         Assert.Equal(6, costliest.ElapsedMs);
-        Assert.Equal(10, costliest.Attempts);
+        Assert.Equal(16, costliest.Attempts);
     }
 
     [Fact]

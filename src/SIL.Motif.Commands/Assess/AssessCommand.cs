@@ -282,7 +282,7 @@ public static class AssessCommand
                     AssessmentStage.ReadingStatistics, 0, null, "Reading PanGloss's statistics..."));
                 string summaryMarkdown;
                 // Require one batch statistics row for each resolved word before recording.
-                Dictionary<string, (int? Attempts, int? Passes)>? wordStats = null;
+                Dictionary<string, PanGlossWordStatistics>? wordStats = null;
                 var objectTimings = new List<AssessmentObjectTiming>();
                 if (statsCachePath is null)
                 {
@@ -316,10 +316,11 @@ public static class AssessCommand
                         return CommandOutcome<AssessCommandResponse>.Refused(
                             ParserUnavailable(request.ProjectPath, exception.Message));
                     }
-                    wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key,
-                        pair => ((int?)pair.Value.Attempts, (int?)pair.Value.Passes), StringComparer.Ordinal);
+                    wordStats = batchStatistics.Words.ToDictionary(pair => pair.Key, pair => pair.Value,
+                        StringComparer.Ordinal);
                     objectTimings.AddRange(batchStatistics.ObjectTimings.Select(row => new AssessmentObjectTiming(
-                        row.Kind, row.Object, row.Word, row.Attempts, row.Passes, row.ElapsedMs)));
+                        row.Kind, row.Key, row.IdentityQuality, row.Direction, row.Object, row.Word,
+                        row.Attempts, row.Passes, row.ElapsedNs)));
                     summaryMarkdown = $"Batch statistics: {batchStatistics.Words.Count} words; " +
                         $"{batchStatistics.ObjectTimings.Count} object timing rows.";
                 }
@@ -342,22 +343,26 @@ public static class AssessCommand
                 }
                 pendingRecords = pendingRecords.Select(record => record with
                 {
-                    Words = record.Words.Select(word => word with
+                    Words = record.Words.Select(word =>
                     {
-                        Morphology = word.Morphology is { } morphology &&
-                            wordStats is not null && wordStats.TryGetValue(word.Word, out var attempts) &&
-                            attempts.Attempts is { } count
-                                ? morphology with { Attempts = count }
+                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found)
+                            ? found : null;
+                        return word with
+                        {
+                            ElapsedNs = stats?.ElapsedNs,
+                            Morphology = word.Morphology is { } morphology && stats is not null
+                                ? morphology with { Attempts = stats.Attempts }
                                 : word.Morphology,
-                        ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
-                        OccurrenceCount = wordContext.HasTextSelection
-                            ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
-                        ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
-                            wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                            wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
-                            wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
-                        MissedApprovedCount = word.Correctness?.Unmatched.Count,
-                        MissedApproved = NameMissed(word.Word, word.Correctness),
+                            ProjectStanding = wordContext.Standings.GetValueOrDefault(word.Word),
+                            OccurrenceCount = wordContext.HasTextSelection
+                                ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
+                            ReadingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
+                                wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                                wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
+                                wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
+                            MissedApprovedCount = word.Correctness?.Unmatched.Count,
+                            MissedApproved = NameMissed(word.Word, word.Correctness),
+                        };
                     }).ToArray(),
                     ObjectTimings = record.Kind == AssessmentKind.ParseTime.ToStoredKind()
                         ? objectTimings : record.ObjectTimings,
@@ -417,7 +422,7 @@ public static class AssessCommand
                             : nonApproved.Length == 1
                                 ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
                                 : null;
-                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : ((int?)null, (int?)null);
+                        var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
                         var row = word with
                         {
                             Readings = readings,
@@ -429,8 +434,8 @@ public static class AssessCommand
                             MissedApproved = missedApproved,
                             ExpectedAnalysis = expectedAnalysis,
                             StoredAnalyses = storedAnalyses,
-                            Attempts = stats.Item1,
-                            Passes = stats.Item2,
+                            Attempts = stats?.Attempts,
+                            Passes = stats?.Passes,
                         };
                         return row with { FixFirst = AssessmentWordRows.FixFirst(row) };
                     }).ToArray();

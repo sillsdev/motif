@@ -84,7 +84,7 @@ public sealed class AssessCommandTests : IDisposable
         using var seeded = NewSeededScratch();
         var cachePath = Path.Combine(_managedRootsParent, "estimate.sqlite");
         // PanGloss derives word attempts from StepBudget ticks (pg-cli/src/stats_cmd.rs:330).
-        WriteStatsCache(cachePath, ("motifa", 10, 1, 90, 2_000_000L));
+        WriteStatsCache(cachePath, 725_001L, ("motifa", 10, 1, 90, 2_000_000L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
         {
@@ -114,8 +114,9 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(200m, rate.Value.MillisecondsPerStep);
         var parseRecord = measured.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind());
-        Assert.Equal(10, Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId)
-            .Words!).Morphology!.Attempts);
+        var parseWord = Assert.Single(OpenRepository(seeded.FwDataPath).Get(parseRecord.AssessmentId).Words!);
+        Assert.Equal(10, parseWord.Morphology!.Attempts);
+        Assert.Equal(725_001L, parseWord.ElapsedNs);
 
         var estimate = StepLimitEstimator.Calculate(new StepCap(4), rate.Value);
         Assert.NotNull(estimate);
@@ -247,7 +248,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(parseWords.Select(word => word.ReadingGrades),
             assessed.Value.Words.Select(word => word.ReadingGrades));
         Assert.Single(parseAssessment.ObjectTimings);
-        Assert.Equal(1, parseAssessment.ObjectTimings.Single(row =>
+        Assert.Null(parseAssessment.ObjectTimings.Single(row =>
             row.Word == SeededProject.AnalysedWordForm).Passes);
         Assert.StartsWith("1 search completed; 1 incomplete", assessed.Value.CompletionSummary, StringComparison.Ordinal);
         Assert.Contains("2 words; 1 object timing rows", assessed.Value.SummaryMarkdown, StringComparison.Ordinal);
@@ -1127,6 +1128,10 @@ public sealed class AssessCommandTests : IDisposable
     };
 
     private static void WriteStatsCache(string path,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words) =>
+        WriteStatsCache(path, 0L, words);
+
+    private static void WriteStatsCache(string path, long elapsedNs,
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -1142,10 +1147,11 @@ public sealed class AssessCommandTests : IDisposable
                 word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                 attempts INTEGER NOT NULL, passes INTEGER NOT NULL, capped INTEGER NOT NULL,
                 timed_out INTEGER NOT NULL, invalid_shape INTEGER NOT NULL);
-            CREATE TABLE object (object_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL);
+            CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, kind TEXT NOT NULL,
+                label TEXT NOT NULL, identity_quality TEXT NOT NULL);
             CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
-            INSERT INTO object VALUES (1, 'morph_rule', 'Verb template');
+                direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+            INSERT INTO object VALUES (1, 'mrule#0:Verb template', 'morph_rule', 'Verb template', 'structural');
             """;
         command.ExecuteNonQuery();
         foreach (var (word, attempts, passes, objectAttempts, selfTimeNs) in words)
@@ -1153,17 +1159,18 @@ public sealed class AssessCommandTests : IDisposable
             using var insert = connection.CreateCommand();
             insert.CommandText = """
                 INSERT INTO word (form, elapsed_ns, attempts, passes, capped, timed_out, invalid_shape)
-                VALUES ($form, 0, $attempts, $passes, 0, 0, 0);
+                VALUES ($form, $elapsedNs, $attempts, $passes, 0, 0, 0);
                 """;
             insert.Parameters.AddWithValue("$form", word);
+            insert.Parameters.AddWithValue("$elapsedNs", elapsedNs);
             insert.Parameters.AddWithValue("$attempts", attempts);
             insert.Parameters.AddWithValue("$passes", passes);
             insert.ExecuteNonQuery();
             if (objectAttempts == 0 && selfTimeNs == 0) continue;
             using var fact = connection.CreateCommand();
             fact.CommandText = """
-                INSERT INTO fact (word_id, object_id, attempts, self_time_ns)
-                SELECT word_id, 1, $attempts, $self_time_ns FROM word WHERE form = $form;
+                INSERT INTO fact (word_id, object_id, direction, attempts, self_time_ns)
+                SELECT word_id, 1, 'analysis', $attempts, $self_time_ns FROM word WHERE form = $form;
                 """;
             fact.Parameters.AddWithValue("$form", word);
             fact.Parameters.AddWithValue("$attempts", objectAttempts);

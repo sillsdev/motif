@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 28;
+    public const int CurrentSchema = 29;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -356,14 +356,16 @@ public static class MotifSchema
             C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT")],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
-            C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("RawSignature", "TEXT"),
+            C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
+            C("RawSignature", "TEXT"),
             C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
             C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
             C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0")],
         "AssessmentObjectTimings" =>
         [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
+            C("Key", "TEXT", true), C("IdentityQuality", "TEXT", true), C("Direction", "TEXT", true),
             C("Object", "TEXT", true), C("Word", "TEXT", true), C("Attempts", "INTEGER"), C("Passes", "INTEGER"),
-            C("ElapsedMs", "REAL", true)],
+            C("ElapsedNs", "INTEGER")],
         "BaselineSummaries" => [C("ProjectKey", "TEXT", false, 1), C("SummaryJson", "TEXT", true)],
         "BaselineTextWords" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("TextJson", "TEXT", true)],
@@ -599,6 +601,7 @@ public static class MotifSchema
             Word TEXT NOT NULL,
             Outcome TEXT NOT NULL,
             ElapsedMs INTEGER NULL,
+            ElapsedNs INTEGER NULL,
             RawSignature TEXT NULL,
             MorphologyJson TEXT NULL,
             CorrectnessJson TEXT NULL,
@@ -626,11 +629,14 @@ public static class MotifSchema
             AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
             OrdinalIndex INTEGER NOT NULL,
             Kind TEXT NOT NULL,
+            Key TEXT NOT NULL,
+            IdentityQuality TEXT NOT NULL,
+            Direction TEXT NOT NULL,
             Object TEXT NOT NULL,
             Word TEXT NOT NULL,
             Attempts INTEGER NULL,
             Passes INTEGER NULL,
-            ElapsedMs REAL NOT NULL,
+            ElapsedNs INTEGER NULL,
             PRIMARY KEY (AssessmentId, OrdinalIndex)
         );
 

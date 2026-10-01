@@ -548,11 +548,11 @@ public sealed class AssessmentRepository : IAssessmentRepository
         insertWord.Transaction = transaction;
         insertWord.CommandText = """
             INSERT INTO AssessedWords
-                (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, RawSignature, MorphologyJson, CorrectnessJson,
+                (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson, CorrectnessJson,
                  ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, MissedApprovedJson,
                  IsIncomplete)
             VALUES
-                ($id, $ordinal, $word, $outcome, $elapsed, $signature, $morphology, $correctness,
+                ($id, $ordinal, $word, $outcome, $elapsed, $elapsedNs, $signature, $morphology, $correctness,
                  $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
@@ -560,6 +560,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var wordTextParam = insertWord.Parameters.Add("$word", SqliteType.Text);
         var wordOutcomeParam = insertWord.Parameters.Add("$outcome", SqliteType.Text);
         var wordElapsedParam = insertWord.Parameters.Add("$elapsed", SqliteType.Integer);
+        var wordElapsedNsParam = insertWord.Parameters.Add("$elapsedNs", SqliteType.Integer);
         var wordSignatureParam = insertWord.Parameters.Add("$signature", SqliteType.Text);
         var morphologyParam = insertWord.Parameters.Add("$morphology", SqliteType.Text);
         var correctnessParam = insertWord.Parameters.Add("$correctness", SqliteType.Text);
@@ -595,6 +596,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             wordTextParam.Value = word.Word;
             wordOutcomeParam.Value = word.Outcome;
             wordElapsedParam.Value = (object?)word.ElapsedMs ?? DBNull.Value;
+            wordElapsedNsParam.Value = (object?)word.ElapsedNs ?? DBNull.Value;
             wordSignatureParam.Value = (object?)word.RawSignature ?? DBNull.Value;
             morphologyParam.Value = word.Morphology is null ? DBNull.Value
                 : JsonSerializer.Serialize(word.Morphology, ParseMorphEvidence.JsonOptions);
@@ -633,28 +635,36 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO AssessmentObjectTimings
-                (AssessmentId, OrdinalIndex, Kind, Object, Word, Attempts, Passes, ElapsedMs)
-            VALUES ($assessment, $ordinal, $kind, $object, $word, $attempts, $passes, $elapsed);
+                (AssessmentId, OrdinalIndex, Kind, Key, IdentityQuality, Direction, Object, Word,
+                 Attempts, Passes, ElapsedNs)
+            VALUES ($assessment, $ordinal, $kind, $key, $identityQuality, $direction, $object, $word,
+                    $attempts, $passes, $elapsedNs);
             """;
         var assessment = command.Parameters.Add("$assessment", SqliteType.Text);
         var ordinal = command.Parameters.Add("$ordinal", SqliteType.Integer);
         var kind = command.Parameters.Add("$kind", SqliteType.Text);
+        var key = command.Parameters.Add("$key", SqliteType.Text);
+        var identityQuality = command.Parameters.Add("$identityQuality", SqliteType.Text);
+        var direction = command.Parameters.Add("$direction", SqliteType.Text);
         var item = command.Parameters.Add("$object", SqliteType.Text);
         var word = command.Parameters.Add("$word", SqliteType.Text);
         var attempts = command.Parameters.Add("$attempts", SqliteType.Integer);
         var passes = command.Parameters.Add("$passes", SqliteType.Integer);
-        var elapsed = command.Parameters.Add("$elapsed", SqliteType.Real);
+        var elapsedNs = command.Parameters.Add("$elapsedNs", SqliteType.Integer);
         for (var index = 0; index < rows.Count; index++)
         {
             var row = rows[index];
             assessment.Value = assessmentId;
             ordinal.Value = index;
             kind.Value = row.Kind;
+            key.Value = row.Key;
+            identityQuality.Value = row.IdentityQuality;
+            direction.Value = row.Direction;
             item.Value = row.Object;
             word.Value = row.Word;
             attempts.Value = (object?)row.Attempts ?? DBNull.Value;
             passes.Value = (object?)row.Passes ?? DBNull.Value;
-            elapsed.Value = row.ElapsedMs;
+            elapsedNs.Value = (object?)row.ElapsedNs ?? DBNull.Value;
             command.ExecuteNonQuery();
         }
     }
@@ -663,7 +673,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT Kind, Object, Word, Attempts, Passes, ElapsedMs
+            SELECT Kind, Key, IdentityQuality, Direction, Object, Word, Attempts, Passes, ElapsedNs
             FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
             """;
         command.Parameters.AddWithValue("$id", assessmentId);
@@ -671,8 +681,9 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var rows = new List<AssessmentObjectTiming>();
         while (reader.Read())
             rows.Add(new AssessmentObjectTiming(reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.IsDBNull(3) ? null : reader.GetInt32(3), reader.IsDBNull(4) ? null : reader.GetInt32(4),
-                reader.GetDouble(5)));
+                reader.GetString(3), reader.GetString(4), reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                reader.IsDBNull(8) ? null : reader.GetInt64(8)));
         return rows;
     }
 
@@ -752,7 +763,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs,
+            SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
                    aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson
@@ -771,6 +782,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         string currentWord = "";
         string currentOutcome = "";
         int? currentElapsedMs = null;
+        long? currentElapsedNs = null;
         string? currentSignature = null;
         ParseWordEvidence? currentMorphology = null;
         WordCorrectness? currentCorrectness = null;
@@ -790,44 +802,45 @@ public sealed class AssessmentRepository : IAssessmentRepository
             {
                 if (currentWordId is not null)
                     words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
-                    { Morphology = currentMorphology, Correctness = currentCorrectness,
+                    { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
-                if (wordForms is null && reader.GetInt32(11) != words.Count)
+                if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
                 currentWord = reader.GetString(1);
                 currentOutcome = reader.GetString(2);
                 currentElapsedMs = reader.IsDBNull(3) ? null : reader.GetInt32(3);
-                currentSignature = reader.IsDBNull(8) ? null : reader.GetString(8);
-                currentMorphology = reader.IsDBNull(9) ? null
-                    : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(9), ParseMorphEvidence.JsonOptions);
-                currentCorrectness = reader.IsDBNull(10) ? null
-                    : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
-                currentStanding = reader.IsDBNull(12) ? null : reader.GetString(12);
-                currentOccurrenceCount = reader.IsDBNull(13) ? null : reader.GetInt32(13);
-                currentReadingGrades = reader.IsDBNull(14) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(14));
-                currentMissedApprovedCount = reader.IsDBNull(15) ? null : reader.GetInt32(15);
-                currentIncomplete = reader.GetInt32(16) != 0;
-                currentMissedApproved = reader.IsDBNull(17) ? null
-                    : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(17), ParseMorphEvidence.JsonOptions);
+                currentElapsedNs = reader.IsDBNull(4) ? null : reader.GetInt64(4);
+                currentSignature = reader.IsDBNull(9) ? null : reader.GetString(9);
+                currentMorphology = reader.IsDBNull(10) ? null
+                    : JsonSerializer.Deserialize<ParseWordEvidence>(reader.GetString(10), ParseMorphEvidence.JsonOptions);
+                currentCorrectness = reader.IsDBNull(11) ? null
+                    : JsonSerializer.Deserialize<WordCorrectness>(reader.GetString(11), ParseMorphEvidence.JsonOptions);
+                currentStanding = reader.IsDBNull(13) ? null : reader.GetString(13);
+                currentOccurrenceCount = reader.IsDBNull(14) ? null : reader.GetInt32(14);
+                currentReadingGrades = reader.IsDBNull(15) ? null : JsonSerializer.Deserialize<string[]>(reader.GetString(15));
+                currentMissedApprovedCount = reader.IsDBNull(16) ? null : reader.GetInt32(16);
+                currentIncomplete = reader.GetInt32(17) != 0;
+                currentMissedApproved = reader.IsDBNull(18) ? null
+                    : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(18), ParseMorphEvidence.JsonOptions);
                 currentAnalyses = [];
             }
 
-            if (!reader.IsDBNull(7)) // NULL here means no analysis row; the column itself is NOT NULL.
+            if (!reader.IsDBNull(8)) // NULL here means no analysis row; the column itself is NOT NULL.
             {
                 currentAnalyses.Add(new ParsedAnalysis(
-                    CategoryGuid: reader.IsDBNull(4) ? null : reader.GetString(4),
-                    MorphemeGuids: JsonSerializer.Deserialize<List<string>>(reader.GetString(5))!,
-                    RootIndex: reader.GetInt32(6),
-                    IdentityDigest: reader.GetString(7)));
+                    CategoryGuid: reader.IsDBNull(5) ? null : reader.GetString(5),
+                    MorphemeGuids: JsonSerializer.Deserialize<List<string>>(reader.GetString(6))!,
+                    RootIndex: reader.GetInt32(7),
+                    IdentityDigest: reader.GetString(8)));
             }
         }
 
         if (currentWordId is not null)
             words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
-            { Morphology = currentMorphology, Correctness = currentCorrectness,
+            { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });

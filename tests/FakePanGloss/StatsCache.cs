@@ -21,18 +21,19 @@ internal static class StatsCache
         using (var create = connection.CreateCommand())
         {
             create.CommandText = """
-                CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL,
+                CREATE TABLE word (word_id INTEGER PRIMARY KEY, form TEXT NOT NULL, elapsed_ns INTEGER NOT NULL,
                                    attempts INTEGER NOT NULL, passes INTEGER NOT NULL);
-                CREATE TABLE object (object_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, label TEXT NOT NULL);
+                CREATE TABLE object (object_id INTEGER PRIMARY KEY, key TEXT NOT NULL, identity_quality TEXT NOT NULL,
+                                     kind TEXT NOT NULL, label TEXT NOT NULL);
                 CREATE TABLE fact (word_id INTEGER NOT NULL, object_id INTEGER NOT NULL,
-                                   attempts INTEGER NOT NULL, self_time_ns INTEGER NOT NULL);
+                                   direction TEXT NOT NULL, attempts INTEGER NOT NULL, self_time_ns INTEGER);
                 """;
             create.ExecuteNonQuery();
         }
         foreach (var word in words.Distinct(StringComparer.Ordinal))
         {
             using var insert = connection.CreateCommand();
-            insert.CommandText = "INSERT INTO word (form, attempts, passes) VALUES ($form, 1, 1);";
+            insert.CommandText = "INSERT INTO word (form, elapsed_ns, attempts, passes) VALUES ($form, 0, 1, 1);";
             insert.Parameters.AddWithValue("$form", word);
             insert.ExecuteNonQuery();
         }

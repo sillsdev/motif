@@ -21,6 +21,8 @@ public sealed record AssessedWord(
     string? RawSignature = null)
 {
     public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
+    /// <summary>The exact whole-word elapsed time recorded in the PanGloss statistics cache.</summary>
+    public long? ElapsedNs { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
     public string? ProjectStanding { get; init; }
     public int? OccurrenceCount { get; init; }
