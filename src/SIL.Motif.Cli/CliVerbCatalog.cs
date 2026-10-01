@@ -247,6 +247,13 @@ public static class CliVerbCatalog
             }),
 
         new CliVerbDescriptor(
+            "Trace", "trace", "trace",
+            new[] { "trace --project <fwdata> --word <word> [--json]" }),
+        new CliVerbDescriptor(
+            "Trace", "trace", "trace --load",
+            new[] { "trace --load <file> [--json]" }),
+
+        new CliVerbDescriptor(
             "Handoff", "handoff", "handoff",
             new[]
             {

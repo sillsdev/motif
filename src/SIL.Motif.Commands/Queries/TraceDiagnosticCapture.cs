@@ -93,10 +93,22 @@ internal static class TraceDiagnosticCapture
             Root = ResolveStep(response.Root),
         };
         var reading = TraceReadingBuilder.Summarize(resolved.Word, resolved.Root, resolved.Candidates, resolved.Analyses);
+        TraceRef Link(TraceRef reference)
+        {
+            if (!comparison.CanNavigate || reference.IdentityQuality != "authored" ||
+                !Guid.TryParse(reference.Identity, out var id) || !repository.TryGetObject(id, out var found) ||
+                FieldWorksLinks.TargetFor(cache, found) is not { } target)
+                return reference;
+            return reference with
+            {
+                FieldWorks = new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
+                    target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!),
+            };
+        }
         return resolved with
         {
             Analyses = reading.Analyses,
-            Reading = reading,
+            Reading = reading with { Refs = reading.Refs.Select(Link).ToArray() },
         };
     }
 
@@ -115,7 +127,14 @@ internal static class TraceDiagnosticCapture
                 return gloss is { Length: > 0 } && gloss != "***" ? $"{headword} ‘{gloss}’" : headword;
             }
         }
-        return rule.ShortName is { Length: > 0 } name && name != "***" ? name : null;
+        // A rule's ShortName is its class description ("A PhRegularRule"), not the name the project gives it.
+        var named = rule switch
+        {
+            IPhSegmentRule segment => segment.Name.BestAnalysisAlternative?.Text,
+            IMoCompoundRule compound => compound.Name.BestAnalysisAlternative?.Text,
+            _ => rule.ShortName,
+        };
+        return named is { Length: > 0 } name && name != "***" ? name : null;
     }
 
     internal static TraceProvenanceComparison Compare(TraceHostCapture? recorded, TraceHostCapture? current)

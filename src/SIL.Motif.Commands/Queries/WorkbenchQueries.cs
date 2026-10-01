@@ -142,3 +142,6 @@ public sealed record TextToken(string Text, string? Form, string? Gloss, string?
 
 /// <summary>Which word to trace against the current Baseline grammar.</summary>
 public sealed record WordTraceRequest(string ProjectPath, string Word);
+
+/// <summary>Which saved trace file to read: a PanGloss trace document, as the window's Save diagnostic writes it.</summary>
+public sealed record WordTraceLoadRequest(string DiagnosticPath);

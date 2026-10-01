@@ -35,6 +35,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ReconfirmPendingChangeAsync)] = "reconfirm-pending-change",
             [nameof(ICommandClient.ReadWordStateAsync)] = "word read-state",
             [nameof(ICommandClient.DeleteRefusedStoreAsync)] = "store delete-refused",
+            [nameof(ICommandClient.TraceWordAsync)] = "trace",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.
@@ -46,7 +47,6 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.GetProjectHistoryAsync),
         nameof(ICommandClient.ReadStoredGrammarCheckAsync),
         nameof(ICommandClient.ListTextWordsAsync),
-        nameof(ICommandClient.TraceWordAsync),
         nameof(ICommandClient.ReadParserStepRateAsync),
     };
 

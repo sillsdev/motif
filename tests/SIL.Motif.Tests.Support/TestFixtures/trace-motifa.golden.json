@@ -1,0 +1,242 @@
+{
+  "word": "motifa",
+  "parsed": true,
+  "complete": true,
+  "stepCount": 3,
+  "elapsedMs": "<varies>",
+  "reading": {
+    "word": "motifa",
+    "root": {
+      "type": "WordAnalysis",
+      "input": "motifa",
+      "children": [
+        {
+          "type": "LexicalLookup",
+          "source": "Morphology",
+          "input": "motifa",
+          "children": [
+            {
+              "type": "Successful",
+              "output": "motifa",
+              "children": [],
+              "stepId": "0.0.0",
+              "attemptedMorphs": []
+            }
+          ],
+          "stepId": "0.0",
+          "attemptedMorphs": [
+            {
+              "identity": "{FirstLexemeFormId}",
+              "form": "motifa",
+              "gloss": "first seeded gloss",
+              "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+              "formId": "{FirstLexemeFormId}",
+              "entryId": "{FirstEntryId}",
+              "identityQuality": "authored",
+              "sourceFormIds": [],
+              "rawJson": "{\"identity\":{\"entryId\":\"{FirstEntryId}\",\"formId\":\"{FirstLexemeFormId}\",\"quality\":\"authored\"},\"form\":\"motifa\",\"gloss\":\"first seeded gloss\"}",
+              "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}"
+            }
+          ],
+          "sourceIdentityKind": "stratum",
+          "sourceIdentityId": "0",
+          "sourceIdentityQuality": "grammar-local",
+          "refId": "stratum:0"
+        }
+      ],
+      "stepId": "0",
+      "attemptedMorphs": []
+    },
+    "attempts": [
+      {
+        "morphs": [
+          {
+            "form": "motifa",
+            "gloss": "first seeded gloss",
+            "category": "",
+            "guessed": false,
+            "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "allomorphId": "{FirstLexemeFormId}"
+          }
+        ],
+        "succeeded": true,
+        "steps": [
+          {
+            "type": "WordAnalysis",
+            "input": "motifa",
+            "children": [],
+            "stepId": "0",
+            "attemptedMorphs": []
+          },
+          {
+            "type": "LexicalLookup",
+            "source": "Morphology",
+            "input": "motifa",
+            "children": [],
+            "stepId": "0.0",
+            "attemptedMorphs": [
+              {
+                "identity": "{FirstLexemeFormId}",
+                "form": "motifa",
+                "gloss": "first seeded gloss",
+                "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+                "formId": "{FirstLexemeFormId}",
+                "entryId": "{FirstEntryId}",
+                "identityQuality": "authored",
+                "sourceFormIds": [],
+                "rawJson": "{\"identity\":{\"entryId\":\"{FirstEntryId}\",\"formId\":\"{FirstLexemeFormId}\",\"quality\":\"authored\"},\"form\":\"motifa\",\"gloss\":\"first seeded gloss\"}",
+                "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}"
+              }
+            ],
+            "sourceIdentityKind": "stratum",
+            "sourceIdentityId": "0",
+            "sourceIdentityQuality": "grammar-local",
+            "refId": "stratum:0"
+          },
+          {
+            "type": "Successful",
+            "output": "motifa",
+            "children": [],
+            "stepId": "0.0.0",
+            "attemptedMorphs": []
+          }
+        ],
+        "attemptId": "0.0.0",
+        "morphAvailability": "recorded",
+        "richMorphs": [
+          {
+            "identity": "{FirstLexemeFormId}",
+            "form": "motifa",
+            "gloss": "first seeded gloss",
+            "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "formId": "{FirstLexemeFormId}",
+            "entryId": "{FirstEntryId}",
+            "identityQuality": "authored",
+            "sourceFormIds": [],
+            "rawJson": "{\"identity\":{\"entryId\":\"{FirstEntryId}\",\"formId\":\"{FirstLexemeFormId}\",\"quality\":\"authored\"},\"form\":\"motifa\",\"gloss\":\"first seeded gloss\"}",
+            "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}"
+          }
+        ],
+        "surface": "motifa"
+      }
+    ],
+    "analyses": [
+      {
+        "analysisId": "analysis-0",
+        "index": 0,
+        "surface": "motifa",
+        "availability": "recorded",
+        "morphs": [
+          {
+            "identity": "{FirstLexemeFormId}",
+            "form": "motifa",
+            "gloss": "first seeded gloss",
+            "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "formId": "{FirstLexemeFormId}",
+            "entryId": "{FirstEntryId}",
+            "identityQuality": "authored",
+            "sourceFormIds": [],
+            "rawJson": "{\"identity\":{\"entryId\":\"{FirstEntryId}\",\"formId\":\"{FirstLexemeFormId}\",\"quality\":\"authored\"},\"form\":\"motifa\",\"gloss\":\"first seeded gloss\"}",
+            "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}"
+          }
+        ],
+        "signature": "motifa|motifa",
+        "foundWays": 1,
+        "producerAnalysisIds": [
+          "analysis-0"
+        ]
+      }
+    ],
+    "stopGroups": [],
+    "closestAttempts": [],
+    "rulesOnBestPath": [],
+    "refs": [
+      {
+        "id": "stratum:0",
+        "kind": "stratum",
+        "label": "Morphology",
+        "identity": "0",
+        "identityQuality": "grammar-local"
+      },
+      {
+        "id": "morph:{FirstEntryId}//{FirstLexemeFormId}",
+        "kind": "morph",
+        "label": "motifa",
+        "gloss": "first seeded gloss",
+        "identity": "{FirstEntryId}",
+        "identityQuality": "authored",
+        "fieldWorks": {
+          "tool": "lexiconEdit",
+          "toolName": "Lexicon Edit",
+          "objectId": "{FirstEntryId}",
+          "link": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d"
+        },
+        "timingKey": {
+          "kind": "lex_entry",
+          "key": "{FirstEntryId}"
+        }
+      }
+    ]
+  },
+  "parserSteps": 42,
+  "parserElapsedMs": 1.5,
+  "guessed": false,
+  "effort": [
+    {
+      "kind": "Affix and derivation rules",
+      "attempts": 3,
+      "outputs": 2,
+      "notApplied": 1,
+      "noRoot": 0,
+      "surfaceMismatch": 0,
+      "uses": 1,
+      "selfMs": 0.0487,
+      "work": 12,
+      "timingAvailable": true
+    }
+  ],
+  "diagnosticJson": "<varies>",
+  "diagnosticFormat": "pangloss.trace-details.v1",
+  "searchStatus": "complete",
+  "invalidShape": false,
+  "hostCapture": {
+    "projectIdentity": "{ProjectIdentity}",
+    "bundleDigest": "<varies>",
+    "capturedUtc": "<varies>",
+    "wallElapsedMs": "<varies>",
+    "writingSystems": [
+      {
+        "id": "fr",
+        "name": "French",
+        "isVernacular": true,
+        "isDefault": true,
+        "direction": "ltr",
+        "font": "Charis SIL"
+      },
+      {
+        "id": "es",
+        "name": "Spanish",
+        "isVernacular": true,
+        "isDefault": false,
+        "direction": "ltr",
+        "font": "Charis SIL"
+      },
+      {
+        "id": "en",
+        "name": "English",
+        "isVernacular": false,
+        "isDefault": false,
+        "direction": "ltr",
+        "font": "Charis SIL"
+      }
+    ]
+  },
+  "provenance": {
+    "projectIdentityStatus": "match",
+    "grammarStatus": "unknown",
+    "writingSystemsStatus": "unknown",
+    "isCompatible": false,
+    "warning": "Recorded baseline evidence is shown. Current project grammar and writing systems have not been compared.",
+    "canNavigate": true
+  }
+}

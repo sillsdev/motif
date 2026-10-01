@@ -860,6 +860,22 @@ try
                 timingBy, flags.GetValueOrDefault("rule"), timingTop, explicitTimingWords)));
             break;
 
+        case "trace":
+            if (flags.TryGetValue("load", out var tracePath))
+            {
+                if (flags.ContainsKey("project") || flags.ContainsKey("word") || positionals.Count != 0 ||
+                    tracePath == "true")
+                    return Usage("Usage: motif " + UsageLineFor("trace --load"), asJson);
+                result = RenderCommand(WordTraceQuery.Load(new WordTraceLoadRequest(tracePath)));
+                break;
+            }
+            if (!flags.TryGetValue("project", out var traceProject) || !flags.TryGetValue("word", out var traceWord) ||
+                string.IsNullOrWhiteSpace(traceWord) || traceWord == "true" || positionals.Count != 0)
+                return Usage("Usage: motif " + UsageLineFor("trace") + " OR motif " + UsageLineFor("trace --load"), asJson);
+            result = RunWithConsoleCancellation(token => RenderCommand(
+                WordTraceQuery.Query(new WordTraceRequest(traceProject, traceWord), token)));
+            break;
+
         case "selection":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
                 return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
@@ -1230,6 +1246,8 @@ static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string
 
     if (verb == "report" && flags.ContainsKey("list-kinds"))
         return "report --list-kinds";
+    if (verb == "trace" && flags.ContainsKey("load"))
+        return "trace --load";
     if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
         return verb + " --wait";
     return verb;
@@ -1375,6 +1393,9 @@ static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
     PrintSection(
         writer, "Assess",
         "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):", policy);
+    PrintSection(
+        writer, "Trace",
+        "Trace (one word through the Baseline grammar, attempt by attempt, as Try a Word reads it):", policy);
     PrintSection(
         writer, "Handoff",
         "AI Handoff (the self-explaining folder a chat model reads, written atomically):", policy);

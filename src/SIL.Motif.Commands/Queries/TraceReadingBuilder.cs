@@ -38,11 +38,92 @@ public static class TraceReadingBuilder
             .ThenByDescending(candidate => candidate.Steps.Count).ToArray();
         var stops = closest.GroupBy(candidate => (Identity: candidate.StoppedByRuleId ?? candidate.StoppedByRule, candidate.FailureReason))
             .Select(group => new TraceStopGroup(group.First().StoppedByRule, group.First().StoppedByRuleId,
-                group.Key.FailureReason, group.First().Explanation, group.ToArray()))
+                group.Key.FailureReason, group.First().Explanation, group.ToArray())
+                { RuleRefId = group.First().StoppedByRefId })
             .OrderByDescending(group => group.Count).ToArray();
         var best = attempts.FirstOrDefault(candidate => candidate.Succeeded) ?? closest.FirstOrDefault();
         var rules = best is null ? [] : Rules(best);
-        return new WordTraceReading(word, root, attempts, DistinctAnalyses(analyses), stops, closest, rules);
+        var distinct = DistinctAnalyses(analyses);
+        return new WordTraceReading(word, root, attempts, distinct, stops, closest, rules)
+        {
+            Refs = Refs(root, attempts, distinct),
+        };
+    }
+
+    // First mention wins the label, so a ref reads as the reading first shows it.
+    private static TraceRef[] Refs(TraceStep root, IReadOnlyList<TraceCandidate> attempts, IReadOnlyList<TraceAnalysis> analyses)
+    {
+        var steps = new List<TraceStep>();
+        Collect(root);
+        foreach (var attempt in attempts) steps.AddRange(attempt.Steps);
+        var affixKeys = steps.Where(step => step.SourceIdentityKind == "morphRule" && step.SourceIdentityId is not null)
+            .Select(step => step.SourceIdentityId!).ToHashSet(StringComparer.Ordinal);
+        var morphs = analyses.SelectMany(analysis => analysis.Morphs)
+            .Concat(steps.SelectMany(step => step.AttemptedMorphs))
+            .Concat(attempts.SelectMany(attempt => attempt.RichMorphs));
+        var refs = new Dictionary<string, TraceRef>(StringComparer.Ordinal);
+        var order = new List<string>();
+        void Add(TraceRef reference)
+        {
+            if (refs.TryAdd(reference.Id, reference)) order.Add(reference.Id);
+        }
+        foreach (var step in steps)
+            if (step.RefId is { } id) Add(RuleRef(id, step));
+        foreach (var morph in morphs)
+            if (morph.RefId is { } id) Add(MorphRef(id, morph, affixKeys));
+        return order.Select(id => refs[id]).ToArray();
+
+        void Collect(TraceStep step)
+        {
+            steps.Add(step);
+            foreach (var child in step.Children) Collect(child);
+        }
+    }
+
+    private static TraceRef RuleRef(string id, TraceStep step)
+    {
+        var identityKind = step.SourceIdentityKind ?? TraceRefIds.IdentityKindOf(step.Type);
+        var kind = identityKind switch
+        {
+            "phonRule" => "phonologicalRule",
+            "morphRule" when step.Type.Contains("CompoundingRule", StringComparison.Ordinal) => "compoundRule",
+            "morphRule" => "affixRule",
+            "compoundingRule" => "compoundRule",
+            "template" or "affixTemplate" => "template",
+            "stratum" => "stratum",
+            _ => identityKind ?? "rule",
+        };
+        var identity = step.SourceIdentityKind is null ? null : step.SourceIdentityId;
+        var timingKind = identity is null ? null : step.SourceIdentityKind switch
+        {
+            "morphRule" => "morph_rule",
+            "phonRule" => "phon_rule",
+            _ => null,
+        };
+        return new TraceRef(id, kind, step.Source ?? identity ?? id)
+        {
+            Identity = identity,
+            IdentityQuality = identity is null ? TraceRefIds.UnknownQuality
+                : step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality,
+            TimingKey = timingKind is null ? null : new TraceTimingKey(timingKind, identity!),
+        };
+    }
+
+    // An affix is timed as the rule that adds it, keyed by its grammatical info; a stem as its entry.
+    private static TraceRef MorphRef(string id, TraceMorph morph, IReadOnlySet<string> affixKeys)
+    {
+        var quality = morph.IdentityQuality ?? TraceRefIds.UnknownQuality;
+        var keyed = quality is "authored" or "grammar-local";
+        var timing = !keyed ? null
+            : morph.MsaId is { } msa && affixKeys.Contains(msa) ? new TraceTimingKey("morph_rule", msa)
+            : morph.EntryId is { } entry ? new TraceTimingKey("lex_entry", entry) : null;
+        return new TraceRef(id, "morph", morph.Form ?? morph.GuessedString ?? morph.Headword ?? "?")
+        {
+            Gloss = morph.Gloss,
+            Identity = morph.EntryId ?? morph.FormId ?? morph.MsaId,
+            IdentityQuality = quality,
+            TimingKey = timing,
+        };
     }
 
     private static TraceAnalysis[] DistinctAnalyses(IReadOnlyList<TraceAnalysis> analyses) => analyses
@@ -78,7 +159,8 @@ public static class TraceReadingBuilder
             string.Join(" · ", group.Select(step => Kind(step.Type)).Distinct(StringComparer.Ordinal)),
             group.Any(step => step.Type == "Blocked" || step.OutcomeStatus == "blocked") ? "not repeated (would feed itself)"
                 : group.Any(step => step.FailureReason is { Length: > 0 }) ? "stopped" : best.Succeeded ? "applied" : "tried",
-            Explain(group.ToArray(), best.Steps), group.Select(step => step.StepId).ToArray())).ToArray();
+            Explain(group.ToArray(), best.Steps), group.Select(step => step.StepId).ToArray())
+            { RefId = group.First().RefId }).ToArray();
     }
 
     private static string Kind(string type) => type.Contains("PhonologicalRule", StringComparison.Ordinal) ? "Phonological rule"
@@ -184,6 +266,8 @@ public static class TraceReadingBuilder
                     Surface = node.OutputShape ?? node.InputShape ?? stopper?.InputShape,
                     StoppedByRule = stopper?.Source,
                     StoppedByRuleId = stopper?.SourceIdentityId,
+                    StoppedByRefId = stopper is null ? null : TraceRefIds.ForSource(
+                        stopper.Type, stopper.Source, stopper.SourceIdentityKind, stopper.SourceIdentityId),
                     RichMorphs = morphs,
                     MorphAvailability = morphs.Length > 0 ? "recorded" : "unavailable",
                     AttemptId = attempt?.AttemptId ?? id,
@@ -252,7 +336,11 @@ public static class TraceReadingBuilder
         morph.CategoryAbbreviation ?? morph.Category ?? string.Empty,
         null,
         morph.GuessedString is not null,
-        morph.FieldWorksLink);
+        morph.FieldWorksLink)
+    {
+        AllomorphId = morph.FormId,
+        GrammaticalInfoId = morph.MsaId,
+    };
     private static bool IsTerminalOutcome(string? status) => status is "successful" or "succeeded" or "success" or "failed" or "failure" or "blocked";
 
     private static TraceStep ConvertTree(PanGlossTraceNode node, string id) =>
