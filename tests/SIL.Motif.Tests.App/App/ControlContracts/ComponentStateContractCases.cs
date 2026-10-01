@@ -116,7 +116,11 @@ internal static class ComponentStateContractCases
         {
             yield return new($"Button.filterChip:{how}" + face, how, () => Alone(Press("filterChip")), stimulus,
                 StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
-            foreach (var (property, key) in ChosenUnderThePointer("Intent.Primary.Fill").Append((ContentPresenter.BorderBrushProperty, "Intent.Primary")))
+            foreach (var (property, key) in new[]
+            {
+                (ContentPresenter.BackgroundProperty, "Intent.Primary.Fill"),
+                (ContentPresenter.BorderBrushProperty, "Intent.Primary"),
+            })
                 yield return new($"Button.filterChip.active:{how}" + face, $"selected and {how}",
                     () => Alone(Press("filterChip", "active")), stimulus, StatePart.Face, property, key);
         }
@@ -214,9 +218,9 @@ internal static class ComponentStateContractCases
                 StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
             yield return new($"Button.timingRuleRow:{how}" + face, how, () => Alone(Press("timingRuleRow")), stimulus,
                 StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
-            foreach (var (property, key) in ChosenUnderThePointer("Intent.Selected.Fill"))
-                yield return new($"Button.timingRuleRow.chosen:{how}" + face, $"selected and {how}",
-                    () => Alone(Press("timingRuleRow", "chosen")), stimulus, StatePart.Face, property, key);
+            yield return new($"Button.timingRuleRow.chosen:{how}" + face, $"selected and {how}",
+                () => Alone(Press("timingRuleRow", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
+                "Intent.Selected.Fill");
         }
         yield return new("Button.timingRuleRow.chosen", "selected", () => Alone(Press("timingRuleRow", "chosen")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
@@ -231,15 +235,15 @@ internal static class ComponentStateContractCases
         yield return new("Button.stopGroup.chosen", "selected", () => Alone(Press("stopGroup", "chosen")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Danger.Fill");
         foreach (var (how, stimulus) in Hovers)
-        foreach (var (property, key) in ChosenUnderThePointer("Intent.Danger.Fill"))
             yield return new($"Button.stopGroup.chosen:{how}" + face, $"selected and {how}",
-                () => Alone(Press("stopGroup", "chosen")), stimulus, StatePart.Face, property, key);
+                () => Alone(Press("stopGroup", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
+                "Intent.Danger.Fill");
         yield return new("Button.findingGroup.chosen", "selected", () => Alone(Press("findingGroup", "chosen")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
         foreach (var (how, stimulus) in Hovers)
-        foreach (var (property, key) in ChosenUnderThePointer("Intent.Selected.Fill"))
             yield return new($"Button.findingGroup.chosen:{how}" + face, $"selected and {how}",
-                () => Alone(Press("findingGroup", "chosen")), stimulus, StatePart.Face, property, key);
+                () => Alone(Press("findingGroup", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
+                "Intent.Selected.Fill");
         yield return new("Button.findingGroup.chosen", "selected and keyboard focus", () => Alone(Press("findingGroup", "chosen")),
             StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
 
@@ -258,10 +262,6 @@ internal static class ComponentStateContractCases
     // A press lands under the pointer, so each face style is reached once by hovering and once by pressing.
     private static readonly (string How, StateStimulus Stimulus)[] Hovers =
         [("pointerover", StateStimulus.Pointer), ("pressed", StateStimulus.Press)];
-
-    // A chosen control keeps its chosen fill under the pointer, and the hover ring says the pointer is there.
-    private static IEnumerable<(AvaloniaProperty, string)> ChosenUnderThePointer(string chosenFill) =>
-        [(ContentPresenter.BackgroundProperty, chosenFill), (ContentPresenter.BoxShadowProperty, "Intent.Shadow.Hover")];
 
     /// <summary>Reads the named part of <paramref name="target"/> once its state is reached.</summary>
     internal static AvaloniaObject? PartOf(Control target, StatePart part) => part switch

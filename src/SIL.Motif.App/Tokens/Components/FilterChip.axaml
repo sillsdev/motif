@@ -28,7 +28,6 @@
   <Style Selector="Button.filterChip.active:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.filterChip.active:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
-    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
   </Style>
   <!-- A chip that cannot be chosen yet stays a chip, outline and all, rather than a floating grey label. -->
   <Style Selector="Button.filterChip:disabled /template/ ContentPresenter#PART_ContentPresenter">

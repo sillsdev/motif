@@ -24,7 +24,7 @@
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
     Intent.Surface.Raised         a card lifted above the page, such as an open word card
     Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
-    Intent.Shadow.Hover           a thin ring just inside a cell's or a chosen control's edge under the pointer
+    Intent.Shadow.Hover           a thin ring drawn just inside a cell's own edge under the pointer
     Intent.Shadow.Selected        a ring in Intent.Accent drawn just inside a chosen cell's own edge
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal

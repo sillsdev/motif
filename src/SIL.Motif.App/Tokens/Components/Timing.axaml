@@ -52,10 +52,9 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
   </Style>
-  <!-- After hover, so the chosen rule keeps its own fill under the pointer, with the hover ring on top. -->
+  <!-- After hover, so the chosen rule keeps its own fill under the pointer. -->
   <Style Selector="Button.timingRuleRow.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.timingRuleRow.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
-    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
   </Style>
   <Style Selector="Grid.timingColumns">
     <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
