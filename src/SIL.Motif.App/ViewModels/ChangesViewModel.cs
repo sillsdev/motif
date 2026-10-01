@@ -600,6 +600,10 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     [ObservableProperty]
     private bool _isContextExpanded;
 
+    /// <summary>The word as Review changes lists it; its Open in text goes to this change's place.</summary>
+    [ObservableProperty]
+    private ListedWordViewModel? _listed;
+
     /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
     public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];
 

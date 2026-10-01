@@ -7,14 +7,14 @@
   <Border Classes="wordRowHeader">
     <Border Classes="wordRowEdge">
       <Border Classes="wordRowHeadCells">
-      <Grid Classes="wordRowHeadLine">
+      <Grid x:Name="Line" Classes="wordRowHeadLine">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowNext" />
         </Grid.ColumnDefinitions>
-        <Panel Classes="wordRowTick" />
-          <Grid Grid.Column="1" Classes="wordRowCells">
+        <Panel x:Name="TickCell" Classes="wordRowTick" />
+          <Grid x:Name="Cells" Grid.Column="1" Classes="wordRowCells">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
               <ColumnDefinition Width="*" />
@@ -25,18 +25,17 @@
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTime" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowRead" />
             </Grid.ColumnDefinitions>
-            <views:CopyableTextBlock Classes="wordRowWord wordRowHeading" Text="WORD" />
-            <views:CopyableTextBlock Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS" />
-            <views:CopyableTextBlock Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS" />
-            <views:CopyableTextBlock Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING"
-                                     IsVisible="{Binding #Self.ShowsMeaning}" />
-            <views:CopyableTextBlock Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
+            <views:CopyableTextBlock x:Name="WordCell" Classes="wordRowWord wordRowHeading" Text="WORD" />
+            <views:CopyableTextBlock x:Name="FieldWorksCell" Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS" />
+            <views:CopyableTextBlock x:Name="PanGlossCell" Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS" />
+            <views:CopyableTextBlock x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING" />
+            <views:CopyableTextBlock x:Name="WarningsCell" Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
                        AutomationProperties.Name="Warnings" />
-            <views:CopyableTextBlock Grid.Column="5" Classes="wordRowPlaces wordRowHeading" Text="PLACES" TextAlignment="Right" />
-            <views:CopyableTextBlock Grid.Column="6" Classes="wordRowTime wordRowHeading" Text="TIME" TextAlignment="Right" />
-            <Panel Grid.Column="7" Classes="wordRowRead" />
+            <views:CopyableTextBlock x:Name="PlacesCell" Grid.Column="5" Classes="wordRowPlaces wordRowHeading" Text="PLACES" TextAlignment="Right" />
+            <views:CopyableTextBlock x:Name="TimeCell" Grid.Column="6" Classes="wordRowTime wordRowHeading" Text="TIME" TextAlignment="Right" />
+            <Panel x:Name="ReadCell" Grid.Column="7" Classes="wordRowRead" />
           </Grid>
-        <views:CopyableTextBlock Grid.Column="2" Classes="wordRowHeading" Text="NEXT" />
+        <views:CopyableTextBlock x:Name="NextCell" Grid.Column="2" Classes="wordRowHeading" Text="NEXT" />
       </Grid>
       </Border>
     </Border>

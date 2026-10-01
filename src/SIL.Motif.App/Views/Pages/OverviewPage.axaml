@@ -69,20 +69,38 @@
       <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowWarningsTile}"
             ColumnSpacing="{DynamicResource Intent.Space.Group}"
             RowSpacing="{DynamicResource Intent.Space.Group}">
-        <Button Grid.Row="0" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenTimingCommand}"
-                IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open Speed in Timing">
+        <!-- Its slowest words are rows with their own next steps, so this tile is a frame with a link, not a button. -->
+        <Border Grid.Row="0" Grid.Column="0" Classes="overviewTile" IsVisible="{Binding ShowTiles}"
+                AutomationProperties.Name="Speed">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
-              <TextBlock Classes="overviewTileLink" Text="Timing →" DockPanel.Dock="Right" />
+              <HyperlinkButton Classes="overviewTileLink" Content="Timing →" DockPanel.Dock="Right"
+                               Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open Speed in Timing" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedDetails}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedDetails}" TextWrapping="Wrap"
+                       IsVisible="{Binding SpeedDetails, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <StackPanel Grid.IsSharedSizeScope="True" IsVisible="{Binding HasSlowestWordRows}">
+              <TextBlock Classes="overviewTileDetail" Text="Slowest words" />
+              <ItemsControl ItemsSource="{Binding SlowestWordRows}" AutomationProperties.Name="Slowest words"
+                            KeyboardNavigation.TabNavigation="Continue">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ListedWordViewModel">
+                    <views:WordRow Row="{Binding Row}" List="overview-slowest" IsOpen="{Binding IsOpen}"
+                                   Columns="{x:Static views:WordRowColumnSets.Overview}" TimeText="{Binding TimeText}">
+                      <views:WordRow.Card>
+                        <views:ListedWordCard />
+                      </views:WordRow.Card>
+                    </views:WordRow>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
-        </Button>
+        </Border>
 
         <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
                 IsVisible="{Binding ShowTiles}"

@@ -56,6 +56,13 @@ public sealed partial class TimingPageModel : PageModel
         };
         context.PropertyChanged += OnContextPropertyChanged;
         context.Assess.Compare.CheckedWordsChanged += OnCheckedWordsChanged;
+        // The word rows come from the parse on screen, which can arrive after the times were read.
+        context.Assess.Words.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
+            OnPropertyChanged(nameof(SlowestWordRows));
+            OnPropertyChanged(nameof(CostliestRuleWordRows));
+        };
     }
 
     /// <summary>The page's own statistics, read through the context's commands.</summary>
@@ -117,10 +124,9 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The exact words returned by the timing command.</summary>
     public IReadOnlyList<string> SelectedWords => KindTiming?.Words.Select(word => word.Word).ToArray() ?? [];
 
-    /// <summary>The slowest words with the reason each stopped.</summary>
-    public IReadOnlyList<TimingSlowWord> SlowestWords => KindTiming?.SlowestWords.Select(slow =>
-        new TimingSlowWord(slow.Word, slow.ElapsedMs,
-            KindTiming.Words.FirstOrDefault(word => word.Word == slow.Word)?.Completion ?? TimingCompletion.Finished)).ToArray() ?? [];
+    /// <summary>The slowest words as word rows, each with the parse time Timing measured for it.</summary>
+    public IReadOnlyList<ListedWordViewModel> SlowestWordRows => KindTiming?.SlowestWords
+        .Select(slow => Listed(slow.Word, SpeedText.PerWord(slow.ElapsedMs))).ToArray() ?? [];
 
     public bool HasTiming => KindTiming is not null;
 
@@ -252,11 +258,24 @@ public sealed partial class TimingPageModel : PageModel
         [.. RuleShares.Select(share => new TimingRuleRow(share, share.Source?.Key == SelectedRule))];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
-    /// <summary>The selected rule's time in each of its costliest words, beside that word's whole parse time.</summary>
-    public IReadOnlyList<TimingRuleWord> CostliestRuleWordTimes => [.. CostliestRuleWords.Select(word =>
-        new TimingRuleWord(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
+    /// <summary>
+    /// The selected rule's costliest words as word rows, each with the rule's time in it beside that word's whole
+    /// parse time.
+    /// </summary>
+    public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
+        Listed(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
             ? $"{SpeedText.PerWord(word.SelfMs)} of its {SpeedText.PerWord(whole)}"
             : SpeedText.PerWord(word.SelfMs)))];
+
+    /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
+    public string RuleWordsTitle => $"Words where {SelectedRuleName} took longest";
+
+    private ListedWordViewModel Listed(string word, string timeText)
+    {
+        var listed = Context.Assess.Words.Listed(word);
+        listed.TimeText = timeText;
+        return listed;
+    }
 
     /// <summary>The selected rule's time, its share of the chosen words' whole parse time, and its words.</summary>
     public string RuleSummary => RuleShares.FirstOrDefault(share => share.Source?.Key == SelectedRule) is not { } rule
@@ -700,14 +719,14 @@ public sealed partial class TimingPageModel : PageModel
             nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(SelectedWords),
-            nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
+            nameof(SlowestWordRows), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
             nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(ScopeLabel),
             nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
             nameof(KindShares), nameof(RuleShares), nameof(RuleShareHeader), nameof(ShareDenominatorText),
-            nameof(OtherTimeText), nameof(CostliestRuleWordTimes),
+            nameof(OtherTimeText), nameof(CostliestRuleWordRows), nameof(RuleWordsTitle),
         }) OnPropertyChanged(property);
         RaiseFocusState();
         RaiseStoredTimingState();
@@ -751,12 +770,6 @@ public sealed partial class TimingPageModel : PageModel
         OnPropertyChanged(nameof(StoredTimingSummary));
     }
 }
-
-/// <summary>A slow word's recorded time and completion shown together.</summary>
-public sealed record TimingSlowWord(string Word, int ElapsedMs, string Completion);
-
-/// <summary>One word under the selected rule, with the rule's time there said against the word's whole time.</summary>
-public sealed record TimingRuleWord(string Word, string TimeText);
 
 /// <summary>
 /// One part of some words' measured parse time: a kind of rule, one rule, or the other time the parser recorded

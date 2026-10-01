@@ -30,6 +30,48 @@ public sealed class ReviewChangeActionsTests
     }
 
     [Fact]
+    public async Task ARowsWordRowOpensItsWordInTextAndInTryAWord()
+    {
+        var (context, page) = await OpenReviewAsync(
+        [
+            Change("second", "zebra", ChangeKinds.Approve),
+            Change("first", "apple", ChangeKinds.Approve),
+        ]);
+        var capture = new PageRequestCapture(context);
+        var zebra = Assert.Single(page.ReviewGroups).Items.Single(row => row.Word == "zebra").Listed!.Row;
+
+        zebra.OpenInTextCommand.Execute(null);
+        Assert.Equal(["zebra"], capture.Requests.Select(request => request.Word));
+        Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
+
+        zebra.TryWordCommand.Execute(null);
+        Assert.Equal(WorkspacePage.TryAWord, context.CurrentPage);
+    }
+
+    [Fact]
+    public async Task OpeningARowsCardShowsTheLineForTheExactOccurrence()
+    {
+        var textId = Guid.Parse("00000001-0000-0000-0000-000000000000");
+        var paragraphId = Guid.Parse("00000002-0000-0000-0000-000000000000");
+        var otherSegmentId = Guid.Parse("00000003-0000-0000-0000-000000000000");
+        var targetSegmentId = Guid.Parse("00000004-0000-0000-0000-000000000000");
+        var occurrence = new OccurrenceAnchor(textId, paragraphId, targetSegmentId, 1);
+        var (context, page, _) = await OpenReviewWithContextAsync(
+            [Change("target", "same", ChangeKinds.Approve, occurrence)],
+            textId, paragraphId, otherSegmentId, targetSegmentId);
+        var change = Assert.Single(Assert.Single(page.ReviewGroups).Items);
+        context.OpenPage(WorkspacePage.Review);
+
+        // Opening the row's card runs this; a second opening keeps the context shown rather than hiding it.
+        page.ShowContextCommand.Execute(change);
+        page.ShowContextCommand.Execute(change);
+
+        Assert.True(change.IsContextExpanded);
+        Assert.Equal(["near", "same"], change.ContextTokens.Select(token => token.Form));
+        Assert.Equal(WorkspacePage.Review, context.CurrentPage);
+    }
+
+    [Fact]
     public async Task ExpandedContextUsesTheLineForTheExactOccurrence()
     {
         var textId = Guid.Parse("00000001-0000-0000-0000-000000000000");

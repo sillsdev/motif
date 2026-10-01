@@ -11,7 +11,8 @@
       <ColumnDefinition Width="*" />
       <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.InspectorWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
     </Grid.ColumnDefinitions>
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+          Grid.IsSharedSizeScope="True">
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
         <views:CopyableTextBlock Text="{Binding Difference.Summary}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
@@ -80,40 +81,18 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <Grid Grid.Row="4" Margin="{DynamicResource Component.DifferencePanel.MoveHeaderMargin}"
-            IsVisible="{Binding Difference.HasChosenMove}">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.WordColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.OccurrenceColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-        </Grid.ColumnDefinitions>
-        <views:CopyableTextBlock Grid.Column="0" Classes="columnHeader" Text="WORD" />
-        <views:CopyableTextBlock Grid.Column="1" Classes="columnHeader" Text="IN TEXTS" />
-        <views:CopyableTextBlock Grid.Column="2" Classes="columnHeader" Text="BEFORE" />
-        <views:CopyableTextBlock Grid.Column="3" Classes="columnHeader" Text="AFTER" />
-      </Grid>
-      <ListBox Grid.Row="5" Classes="dense" ItemsSource="{Binding Difference.Words}" AutomationProperties.Name="Words in the chosen move"
-               IsVisible="{Binding Difference.HasChosenMove}">
+      <views:WordRowHeader Grid.Row="4" Columns="{x:Static views:WordRowColumnSets.WhatChanged}"
+                           IsVisible="{Binding Difference.HasChosenMove}" />
+      <ListBox Grid.Row="5" Classes="wordRows" ItemsSource="{Binding Difference.Words}" AutomationProperties.Name="Words in the chosen move"
+               IsVisible="{Binding Difference.HasChosenMove}" KeyboardNavigation.TabNavigation="Continue">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:MovedWordViewModel">
-            <Grid ColumnSpacing="{DynamicResource Intent.Space.Related}">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.WordColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.OccurrenceColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="{Binding Source={StaticResource Component.DifferencePanel.CountColumnWidth}, Converter={x:Static views:DifferencePanel.SizeToGridLength}}" />
-              </Grid.ColumnDefinitions>
-              <views:CopyableTextBlock Grid.Column="0" Text="{Binding Word}" FontWeight="SemiBold" VerticalAlignment="Center" />
-              <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding OccurrenceText}" VerticalAlignment="Center" />
-              <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding BeforeText}" FontSize="{DynamicResource Intent.Type.Small}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <views:CopyableTextBlock Grid.Column="3" Text="{Binding AfterText}" FontSize="{DynamicResource Intent.Type.Small}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              <HyperlinkButton Grid.Column="4" Content="Open" HorizontalAlignment="Right" VerticalAlignment="Center"
-                               Command="{Binding $parent[views:DifferencePanel].Difference.OpenWordCommand}" CommandParameter="{Binding}"
-                               AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Words'}" />
-            </Grid>
+            <views:WordRow Row="{Binding Listed.Row}" List="what-changed" IsOpen="{Binding Listed.IsOpen}"
+                           Columns="{x:Static views:WordRowColumnSets.WhatChanged}" Note="{Binding BeforeNote}">
+              <views:WordRow.Card>
+                <views:ListedWordCard DataContext="{Binding Listed}" />
+              </views:WordRow.Card>
+            </views:WordRow>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>

@@ -2,6 +2,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 
@@ -26,15 +27,22 @@ public sealed partial class WordRowViewModel : ObservableObject
     private const string WordAnalysesTool = "Analyses";
     private readonly WordRowRoutes? _routes;
 
-    public WordRowViewModel(WordRow row, WordRowRoutes? routes = null)
+    public WordRowViewModel(WordRow row, WordRowRoutes? routes = null) : this(row, routes, notParsedYet: false)
+    {
+    }
+
+    private WordRowViewModel(WordRow row, WordRowRoutes? routes, bool notParsedYet)
     {
         ArgumentNullException.ThrowIfNull(row);
         _row = row;
         _routes = routes;
+        _notParsedYet = notParsedYet;
         _isUnread = row.IsUnread;
         var standing = WordProjectStatuses.FromStanding(row.Opinion);
-        OpinionMark = WordProjectStatuses.MarkOf(standing);
-        OpinionLabel = WindowWords.LabelOf(standing);
+        // Without a parse, an unknown opinion is unread, not "Not in FieldWorks", so it shows no mark.
+        var opinionUnknown = notParsedYet && row.Opinion is null;
+        OpinionMark = opinionUnknown ? null : WordProjectStatuses.MarkOf(standing);
+        OpinionLabel = opinionUnknown ? string.Empty : WindowWords.LabelOf(standing);
         FieldWorksMorphemes = row.FieldWorksMorphemes.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
         var differing = row.DifferingPositions.ToHashSet();
         PanGlossMorphemes = row.PanGlossMorphemes.Select((morph, index) =>
@@ -45,6 +53,34 @@ public sealed partial class WordRowViewModel : ObservableObject
         OpenInTextCommand = new RelayCommand(() => _routes?.OpenInText?.Invoke(Word));
         TryWordCommand = new RelayCommand(() => _routes?.TryWord?.Invoke(Word));
     }
+
+    /// <summary>
+    /// The row of a word the latest parse did not reach: what FieldWorks holds for it, PanGloss's outcome as Not
+    /// parsed, and the three next steps, so a page can list any word of the project the same way.
+    /// </summary>
+    /// <param name="word">The word form.</param>
+    /// <param name="opinion">What FieldWorks holds, as a <see cref="ProjectStanding"/> value, or <see langword="null"/>.</param>
+    /// <param name="fieldWorks">The morphemes of the analysis FieldWorks holds, or none.</param>
+    /// <param name="places">How many places in the chosen Texts the word occurs, or <see langword="null"/>.</param>
+    /// <param name="routes">Where the next steps lead.</param>
+    public static WordRowViewModel NotParsed(string word, string? opinion = null,
+        IReadOnlyList<ParserReadingMorph>? fieldWorks = null, int? places = null, WordRowRoutes? routes = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        var morphs = fieldWorks ?? [];
+        var (meaning, family) = CompareSemantics.MeaningOf(opinion, CompareColumnKind.Skipped);
+        var row = new WordRow(word, WordRowOutcome.NotParsed, meaning, WordRowProjection.ToneOf(family))
+        {
+            Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
+            Opinion = opinion,
+            FieldWorksMorphemes = morphs,
+            Places = places,
+        };
+        return new WordRowViewModel(row, routes, notParsedYet: true);
+    }
+
+    // The Word Analyses link comes with a parse, so a row built before one cannot say FieldWorks lacks the word.
+    private readonly bool _notParsedYet;
 
     private WordRow _row;
 
@@ -127,7 +163,8 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string AutomationIdOf(string list, string part) => AutomationIds.ForWordRowPart(list, Word, part);
 
     /// <summary>The one-line summary a hover or focus shows, in window words.</summary>
-    public string Summary => $"{Word} · {OpinionLabel} · PanGloss: {OutcomeWord} · {Meaning}";
+    public string Summary => string.Join(" · ",
+        new[] { Word, OpinionLabel, $"PanGloss: {OutcomeWord}", Meaning }.Where(part => part.Length > 0));
 
     public string OpenInTextLabel => "Open in text";
 
@@ -152,6 +189,7 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>Why the Word Analyses step cannot open, or empty when it can.</summary>
     public string WordAnalysesDisabledReason => HasWordAnalysesLink ? string.Empty
+        : _notParsedYet ? $"Parse all words to link {Word} to Word Analyses"
         : $"FieldWorks has no wordform spelled {Word}";
 
     private static ParserOutcome OutcomeOf(WordRowOutcome outcome) => outcome switch

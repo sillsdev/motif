@@ -32,7 +32,26 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("142 words · 38 s total word time", page.SpeedMain);
         Assert.Equal("median 6.4 ms a word · 95th percentile 48 ms", page.SpeedMedian);
-        Assert.Equal("3 stopped at the step limit · slowest: mwalimu 700 ms, hawajafika 48 ms", page.SpeedDetails);
+        Assert.Equal("3 stopped at the step limit", page.SpeedDetails);
+        Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
+            page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
+    }
+
+    [Fact]
+    public async Task TheSlowestWordsTakeTheirRowsFromAParseThatArrivesAfterTheOverview()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated());
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.False(page.SlowestWordRows[0].HasCard);
+
+        context.Assess.Words.Load([new AssessmentWordResult("mwalimu", "capped", true, "INCOMPLETE — step limit", 700, null)]);
+
+        var mwalimu = page.SlowestWordRows[0];
+        Assert.True(mwalimu.HasCard);
+        Assert.Same(context.Assess.Words.Find("mwalimu")!.WordRow, mwalimu.Row);
+        Assert.Equal("700 ms", mwalimu.TimeText);
     }
 
     [Theory]
@@ -134,8 +153,8 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var tiles = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => button.Classes.Contains("overviewTile")).ToArray();
+                var tiles = window.GetLogicalDescendants().OfType<Control>()
+                    .Where(tile => tile.Classes.Contains("overviewTile")).ToArray();
                 Assert.Equal(4, tiles.Length);
                 foreach (var tile in tiles)
                 {
@@ -293,11 +312,11 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var tiles = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => button.Classes.Contains("overviewTile") && button.IsEffectivelyVisible)
-                    .OrderBy(button => Grid.GetRow(button)).ThenBy(button => Grid.GetColumn(button))
-                    .Select(button => Avalonia.Automation.AutomationProperties.GetName(button)).ToArray();
-                Assert.Equal("Open Speed in Timing", tiles[0]);
+                var tiles = window.GetLogicalDescendants().OfType<Control>()
+                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible)
+                    .OrderBy(tile => Grid.GetRow(tile)).ThenBy(tile => Grid.GetColumn(tile))
+                    .Select(tile => Avalonia.Automation.AutomationProperties.GetName(tile)).ToArray();
+                Assert.Equal("Speed", tiles[0]);
             }
             finally
             {

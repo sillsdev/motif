@@ -34,6 +34,7 @@ public sealed partial class TextsPageModel : PageModel
         Words.OpenWord = context.OpenWord;
         Words.HandOff = context.HandOff;
         Assess.TextWords = Words;
+        Words.WordRowRoutes = Assess.Words.Routes;
         ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
         ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes,

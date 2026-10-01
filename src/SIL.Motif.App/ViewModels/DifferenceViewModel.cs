@@ -269,7 +269,14 @@ public sealed class MovedWordViewModel
         To = CompareViewModel.Place(after);
         BeforeText = Describe(before);
         AfterText = Describe(after);
+        Listed = ListedWordViewModel.Of(after);
     }
+
+    /// <summary>The word as it is now, as its row and card show it on every page.</summary>
+    public ListedWordViewModel Listed { get; }
+
+    /// <summary>What the earlier run came to, under the word's row.</summary>
+    public string BeforeNote => $"Before: {BeforeText}";
 
     public string Word { get; }
     public int? Occurrences { get; }

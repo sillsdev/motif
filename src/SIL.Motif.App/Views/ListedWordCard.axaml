@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ListedWordCard"
+             x:DataType="vm:ListedWordViewModel">
+  <Panel>
+    <Panel IsVisible="{Binding HasCard}">
+      <views:WordRowCard DataContext="{Binding Card}" />
+    </Panel>
+    <views:CopyableTextBlock Classes="muted" Text="{Binding NotParsedText}" TextWrapping="Wrap"
+                             IsVisible="{Binding !HasCard}" />
+  </Panel>
+</UserControl>

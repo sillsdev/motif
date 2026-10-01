@@ -1,0 +1,50 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace SIL.Motif.App.ViewModels;
+
+/// <summary>
+/// One word a page lists beside its own content, such as Timing's slowest words or a change waiting in Review
+/// changes: the word's row, the same as on every page, and the card it opens in place.
+/// </summary>
+public sealed partial class ListedWordViewModel : ObservableObject
+{
+    public ListedWordViewModel(WordRowViewModel row, CompareWordViewModel? card = null)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        Row = row;
+        Card = card;
+    }
+
+    /// <summary>The word with its parse in the window: its row, and its card from the same parse.</summary>
+    /// <param name="word">The word as the latest Parse all words left it.</param>
+    /// <param name="routes">Where the row's next steps lead, when this page sends them elsewhere than the word's own.</param>
+    public static ListedWordViewModel Of(AssessWordRowViewModel word, WordRowRoutes? routes = null)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        var row = routes is null ? word.WordRow : new WordRowViewModel(word.WordRow.Row, routes);
+        return new ListedWordViewModel(row, new CompareWordViewModel(word, CompareViewModel.Place(word)));
+    }
+
+    public string Word => Row.Word;
+
+    /// <summary>The word's row: its marks, its morphemes and the three next steps.</summary>
+    public WordRowViewModel Row { get; }
+
+    /// <summary>What the opened row shows, or <see langword="null"/> when the latest parse did not reach the word.</summary>
+    public CompareWordViewModel? Card { get; }
+
+    public bool HasCard => Card is not null;
+
+    /// <summary>What the opened row says when there is no parse to show.</summary>
+    public string NotParsedText => $"No parse of {Word} is on screen yet. Parse all words to see what PanGloss builds.";
+
+    /// <summary>Whether the row's card is open.</summary>
+    [ObservableProperty]
+    private bool _isOpen;
+
+    /// <summary>The page's own measure of the word's time, in place of its parse time; <see langword="null"/> for that.</summary>
+    public string? TimeText { get; set; }
+
+    /// <summary>One line the page adds under the row, or <see langword="null"/> for none.</summary>
+    public string? Note { get; set; }
+}

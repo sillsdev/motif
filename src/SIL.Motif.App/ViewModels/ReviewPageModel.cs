@@ -25,6 +25,11 @@ public sealed class ReviewPageModel : PageModel
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
+        // A change's row comes from the parse on screen, so a new parse rebuilds the rows.
+        context.Assess.Words.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AssessWordsViewModel.AllRows)) OnPropertyChanged(nameof(ReviewGroups));
+        };
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
         CheckAgainCommand = new AsyncRelayCommand(() => Changes.RecheckAsync(),
@@ -32,6 +37,7 @@ public sealed class ReviewPageModel : PageModel
         ReconfirmChangeCommand = new AsyncRelayCommand<ChangeViewModel>(ReconfirmChangeAsync,
             change => change is { IsUncertain: true });
         ToggleContextCommand = new RelayCommand<ChangeViewModel>(ToggleContext);
+        ShowContextCommand = new RelayCommand<ChangeViewModel>(ShowContext);
         GoToTextCommand = new RelayCommand<ChangeViewModel>(change =>
         {
             if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word);
@@ -61,6 +67,9 @@ public sealed class ReviewPageModel : PageModel
     public IRelayCommand<ChangeViewModel> ToggleContextCommand { get; }
 
     public IRelayCommand<ChangeViewModel> GoToTextCommand { get; }
+
+    /// <summary>Shows the sentence a change was made in, as its row's card opens.</summary>
+    public IRelayCommand<ChangeViewModel> ShowContextCommand { get; }
 
     /// <summary>Starts a Trial of the touched words only when the person asks for one.</summary>
     public IAsyncRelayCommand MeasureCommand { get; }
@@ -103,6 +112,7 @@ public sealed class ReviewPageModel : PageModel
                 var location = change.Occurrence is { } occurrence ? Context.OccurrenceLocation(occurrence) : null;
                 change.SetWhereText(location?.Description ?? (change.Occurrence is null
                     ? "Not tied to a text occurrence" : "Text location not loaded"));
+                ListWord(change);
                 return (Change: change, Location: location);
             }).OrderBy(item => item.Location?.TextOrder ?? int.MaxValue)
                 .ThenBy(item => item.Location?.LineOrder ?? int.MaxValue)
@@ -443,6 +453,25 @@ public sealed class ReviewPageModel : PageModel
             MeasureCommand.NotifyCanExecuteChanged();
             ApplyCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    // Open in text goes to where the change was made, as Go to text did; an opened card stays open.
+    private void ListWord(ChangeViewModel change)
+    {
+        var wasOpen = change.Listed?.IsOpen == true;
+        change.Listed = Context.Assess.Words.Listed(change.Word, new WordRowRoutes
+        {
+            OpenInText = word => Context.OpenOccurrence(change.Occurrence, word),
+            TryWord = Context.TryWord,
+        });
+        change.Listed.IsOpen = wasOpen;
+    }
+
+    private void ShowContext(ChangeViewModel? change)
+    {
+        if (change is null) return;
+        change.IsContextExpanded = true;
+        change.SetContextTokens(change.Occurrence is { } occurrence ? Context.OccurrenceContext(occurrence) ?? [] : []);
     }
 
     private void ToggleContext(ChangeViewModel? change)
