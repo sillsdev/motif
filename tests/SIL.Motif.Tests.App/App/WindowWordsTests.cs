@@ -120,18 +120,27 @@ public sealed partial class WindowWordsTests
         AssertWindowWords(shown);
     }
 
-    [Fact]
-    public void EveryRefusalTheWindowShowsUsesWindowWords()
+    // Messages the real commands write, so the filter is tried on what reaches the window, not on a made-up line.
+    [Theory]
+    [InlineData("The Assessor returned no measurement collection.")]
+    [InlineData("The Assessor did not return exactly one measurement for every required kind.")]
+    [InlineData("The chosen reading is absent from the Assessment.")]
+    public void EveryRefusalTheWindowShowsUsesWindowWords(string message)
     {
-        var shown = typeof(RefusalCodes).GetFields(BindingFlags.Public | BindingFlags.Static)
+        const string fact = "assessmentId: assessment/one";
+        var refusals = typeof(RefusalCodes).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(field => field.IsLiteral)
             .Select(field => (string)field.GetRawConstantValue()!)
-            .Select(code => WindowRefusal.From(new Refusal(code, FailureReason.Refused,
-                "The chosen reading is absent from the Assessment.",
+            .Select(code => WindowRefusal.From(new Refusal(code, FailureReason.Refused, message,
                 new Dictionary<string, string> { ["assessmentId"] = "assessment/one" })))
-            .SelectMany(refusal => new[] { $"{refusal.Sentence} ⟨{refusal.Code}⟩", $"{refusal.Details} ⟨{refusal.Code}⟩" });
+            .ToArray();
 
-        AssertWindowWords(shown);
+        Assert.All(refusals, refusal => Assert.Contains(fact, refusal.Details ?? string.Empty, StringComparison.Ordinal));
+        AssertWindowWords(refusals.SelectMany(refusal => new[]
+        {
+            $"{refusal.Sentence} ⟨{refusal.Code}⟩",
+            $"{refusal.Details?.Replace(fact, string.Empty, StringComparison.Ordinal)} ⟨{refusal.Code}⟩",
+        }));
     }
 
     [Fact]

@@ -19,8 +19,9 @@ namespace SIL.Motif.App.ViewModels;
 /// <para>
 /// <see cref="Details"/> holds the command's message and facts, folded away but still on screen once
 /// expanded, so it keeps to the window's words too: it leaves out a sentence or fact that names a Proposal,
-/// a Draft, a Preflight or a Dry Run, and a sentence that tells the reader to run a command line, which a
-/// person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
+/// a Draft, a Preflight or a Dry Run, a sentence that names an Assessment or the Assessor (its facts stay, since
+/// a problem report needs an id such as <c>assessmentId</c>), and a sentence that tells the reader to run a
+/// command line, which a person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
 /// rest of its message in Details.
 /// </para>
 /// </remarks>
@@ -284,7 +285,8 @@ public sealed partial record WindowRefusal
     }
 
     private static string WindowSafe(string text) => string.Join(" ", SentenceBreak().Split(text.Trim())
-        .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence)));
+        .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence) &&
+            !AssessmentWord().IsMatch(sentence)));
 
     [GeneratedRegex(@"(?<=[.!?])\s+")]
     private static partial Regex SentenceBreak();
@@ -293,7 +295,11 @@ public sealed partial record WindowRefusal
     [GeneratedRegex(@"[`'](?:motif\s|[^`']*\s--[a-z])")]
     private static partial Regex CommandLine();
 
-    // The CLI's names for pending changes, their checks and a parse run, which ADR 0046 keeps off the screen.
-    [GeneratedRegex(@"proposal|draft|preflight|dry[\s-]?run|assessment", RegexOptions.IgnoreCase)]
+    // The CLI's names for pending changes and their checks, which ADR 0046 decision 3 keeps off the screen.
+    [GeneratedRegex(@"proposal|draft|preflight|dry[\s-]?run", RegexOptions.IgnoreCase)]
     private static partial Regex CliTerm();
+
+    // The CLI's words for a parse run, kept out of prose only: a fact such as assessmentId is what a report needs.
+    [GeneratedRegex(@"\bassess\w*", RegexOptions.IgnoreCase)]
+    private static partial Regex AssessmentWord();
 }
