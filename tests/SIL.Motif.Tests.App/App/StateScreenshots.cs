@@ -344,10 +344,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         };
     }
 
-    /// <summary>
-    /// Saves the window once two frames in a row match, so an expander's chevron or a menu caught mid-transition is
-    /// never the picture. A caret that keeps blinking never matches, so the last of a bounded run of frames is kept.
-    /// </summary>
+    // Two matching frames in a row, so no chevron is caught turning; a blinking caret ends the bounded run instead.
     private static void Save(MainWindow window, string path)
     {
         byte[]? previous = null;
