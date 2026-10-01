@@ -328,6 +328,21 @@ public sealed class CompareViewModelTests
         Assert.Equal(OpinionMarkKind.None, Assert.Single(word.OpinionMarks).Kind);
     }
 
+    // Without its analyses in hand the row's opinion still holds, so the mark must not claim "Not in FieldWorks".
+    [Theory]
+    [InlineData(WordProjectStatus.Approved, OpinionMarkKind.Approved, "Approved")]
+    [InlineData(WordProjectStatus.Candidate, OpinionMarkKind.Unknown, "Unknown")]
+    [InlineData(WordProjectStatus.Rejected, OpinionMarkKind.Disapproved, "Disapproved")]
+    public void ListedWordWithoutItsAnalysesInHandWearsItsRowsMark(WordProjectStatus row, OpinionMarkKind kind, string label)
+    {
+        var result = new AssessmentWordResult("alikula", "analysed", false, "Search completed", 10, null);
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result), (row, CompareColumnKind.NoMatch));
+
+        var mark = Assert.Single(word.OpinionMarks);
+        Assert.Equal(kind, mark.Kind);
+        Assert.Equal(label, mark.Label);
+    }
+
     private static ParserReading StoredReading(string id, string opinion) =>
         new([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
         {

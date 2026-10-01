@@ -786,7 +786,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         Marking = word.Marking;
         OpinionMarks = Marking.FieldWorksAnalyses.Select(analysis => new CompareOpinionMarkViewModel(
             OpinionMarkFor(analysis.Opinion), OpinionLabelOf(analysis.Opinion))).ToArray();
-        if (OpinionMarks.Count == 0) OpinionMarks = [new(OpinionMarkKind.None, "Not in FieldWorks")];
+        if (OpinionMarks.Count == 0)
+            OpinionMarks = [new(CompareViewModel.OpinionMarkFor(Row), CompareViewModel.OpinionLabelOf(Row))];
         OpinionMark = OpinionMarks[0].Kind;
         OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
         PanGlossLabel = CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
