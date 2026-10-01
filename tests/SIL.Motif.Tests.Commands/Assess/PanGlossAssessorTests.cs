@@ -7,14 +7,17 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Assess;
 
+[Collection(LcmCacheTestCollection.Name)]
 public sealed class PanGlossAssessorTests : IDisposable
 {
+    private readonly PristineProjectFixture _pristine;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-assessor-" + Guid.NewGuid().ToString("N"));
     private readonly string _candidate;
     private readonly StatsCacheStore _paths;
 
-    public PanGlossAssessorTests()
+    public PanGlossAssessorTests(PristineProjectFixture pristine)
     {
+        _pristine = pristine;
         _candidate = Path.Combine(_root, "candidate");
         Directory.CreateDirectory(_candidate);
         File.WriteAllText(Path.Combine(_candidate, "project.fwdata"), "fake grammar bytes");
@@ -66,6 +69,26 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.NotEqual(firstCache.Path, Assert.IsType<AssessmentRaw.FileCache>(second[1].Raw).Path);
         Assert.Equal(firstBytes, File.ReadAllBytes(firstCache.Path));
         Assert.Equal(firstCache.Digest, BatchInvocationEvidence.DigestFile(firstCache.Path));
+    }
+
+    [Fact]
+    public async Task CorrectnessReleasesRetainedSourceBeforeHashingIt()
+    {
+        var project = _pristine.CopyProjectFile();
+        using var invoker = RealFakeInvoker();
+        var assessor = new PanGlossAssessor(_paths, invoker, path =>
+        {
+            Assert.False(File.Exists(path + ".lock"), "The source cache is still open while its bytes are hashed.");
+            return BatchInvocationEvidence.DigestFile(path);
+        });
+
+        var produced = await assessor.ProduceAsync(
+            Scope(AssessmentKind.Correctness), Path.GetDirectoryName(project)!, CancellationToken.None);
+
+        var correctness = Assert.Single(produced);
+        Assert.Equal(AssessmentKind.Correctness, correctness.Kind);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(correctness.Invocation!.SourcePath),
+            correctness.GrammarSourceSha256);
     }
 
     [Fact]

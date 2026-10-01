@@ -3,6 +3,7 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.Assess;
 
@@ -33,11 +34,19 @@ public sealed class PanGlossAssessor : IAssessor
         [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming, AssessmentKind.Correctness];
     private readonly IAssessorCachePathResolver _paths;
     private readonly IPanGlossInvoker _invoker;
+    private readonly Func<string, string> _sourceDigest;
 
     public PanGlossAssessor(IAssessorCachePathResolver paths, IPanGlossInvoker invoker)
+        : this(paths, invoker, BatchInvocationEvidence.DigestFile)
+    {
+    }
+
+    internal PanGlossAssessor(IAssessorCachePathResolver paths, IPanGlossInvoker invoker,
+        Func<string, string> sourceDigest)
     {
         _paths = paths ?? throw new ArgumentNullException(nameof(paths));
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
+        _sourceDigest = sourceDigest ?? throw new ArgumentNullException(nameof(sourceDigest));
     }
 
     public string Name => AssessorName;
@@ -134,14 +143,15 @@ public sealed class PanGlossAssessor : IAssessor
                 }).ToArray();
                 if (wanted.Contains(AssessmentKind.Correctness))
                 {
-                    using var cache = new FwDataProjectLoader().LoadScratchCache(evidence.SourcePath);
-                    var expected = ApprovedMorphologyReader.Read(cache);
+                    IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> expected;
+                    using (var cache = new FwDataProjectLoader().LoadScratchCache(evidence.SourcePath))
+                        expected = ApprovedMorphologyReader.Read(cache);
                     rows = rows.Select(row => row with
                     {
                         Correctness = MorphologyCorrectness.Compare(row.Morphology!,
                             expected.TryGetValue(row.Word, out var approved) ? approved : []),
                     }).ToArray();
-                    if (BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
+                    if (_sourceDigest(evidence.SourcePath) != evidence.SourceBytesSha256)
                         throw new InvalidDataException("The source changed while reading approved expectations.");
                 }
             }
