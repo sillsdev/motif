@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
 {
     [Fact]
