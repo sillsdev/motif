@@ -53,7 +53,9 @@ one. Each of these was once machine-wide, and each serialized every suite on the
 worker root also put test projects into the developer's real machine database. A test about the shared
 default sets its own value, and a new per-user or machine-wide resource gets a per-process test value too.
 Test processes also sweep their temporary roots of directories older runs left behind
-(`StaleTestDirectories`).
+(`StaleTestDirectories`). Each test process reads a standard input file of its own, not the caller's: on Windows
+git and python block at startup on an inherited pipe that another process is reading, which once hung two suites
+for ten minutes; `PrivateStandardInputTests` checks it, and a test that runs git or python uses `ToolProcess`.
 No test run may show a Windows crash dialog: `test.ps1` suppresses it for its whole process tree, every
 test assembly does so again at load (`tests/Shared/NoCrashDialogs.cs`), and the runner and CLI do so at
 startup. `CrashDialogsTests` checks Windows suppression and requires a crashing child to exit promptly on

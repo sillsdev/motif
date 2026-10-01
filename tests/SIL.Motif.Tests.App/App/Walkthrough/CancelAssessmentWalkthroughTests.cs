@@ -71,6 +71,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 File.WriteAllText(releaseBatch, string.Empty);
             }
 
+            FakeParser.BehaveBesideExecutable(parserPath, new { });
             var previousRefresh = walkthrough.Workspace.RefreshCommand.ExecutionTask;
             walkthrough.Click("Refresh the project");
             walkthrough.WaitUntil(
@@ -87,7 +88,6 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             var baselineToken = Assert.IsType<SIL.Motif.Contract.Baselines.BaselineToken>(
                 walkthrough.Workspace.Baseline.Token);
 
-            FakeParser.BehaveBesideExecutable(parserPath, new { });
             Assert.True(walkthrough.Workspace.Assess.RunCommand.CanExecute(null));
             var rerun = walkthrough.Workspace.Assess.RunCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(

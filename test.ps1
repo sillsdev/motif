@@ -173,9 +173,14 @@ $jobs = foreach ($run in $testRuns) {
     $projectResults = Join-Path $resultsRoot $run.Label
     $projectLog = Join-Path $resultsRoot "$($run.Label).log"
     $projectErrorLog = Join-Path $resultsRoot "$($run.Label).stderr.log"
+    # A private standard input: git and python stall at startup on a shared pipe that something is reading.
+    $projectInput = Join-Path $resultsRoot "$($run.Label).stdin"
+    $inputToken = "$($run.Label)-$([guid]::NewGuid().ToString('N'))"
+    [IO.File]::WriteAllText($projectInput, $inputToken)
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
-        -ArgumentList $run.Label, $run.Path, $run.Shard, $Configuration, $projectResults, $projectLog, $projectErrorLog -ScriptBlock {
-        param($name, $projectPath, $shard, $configuration, $projectResults, $log, $errorLog)
+        -ArgumentList $run.Label, $run.Path, $run.Shard, $Configuration, $projectResults, $projectLog, $projectErrorLog,
+            $projectInput, $inputToken -ScriptBlock {
+        param($name, $projectPath, $shard, $configuration, $projectResults, $log, $errorLog, $inputPath, $inputToken)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         $arguments = @(
             'test'
@@ -196,9 +201,10 @@ $jobs = foreach ($run in $testRuns) {
         )
         # Passed to the test host alone: a thread job's own environment is shared with every other job.
         if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
+        $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
-            -RedirectStandardOutput $log -RedirectStandardError $errorLog
+            -RedirectStandardInput $inputPath -RedirectStandardOutput $log -RedirectStandardError $errorLog
         $summarySeenAt = $null
         $stopReason = $null
         while (-not $process.HasExited) {
