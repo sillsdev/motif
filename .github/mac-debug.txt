@@ -1,2 +1,2 @@
 # Run each failing project in full so the macOS runner can prove the whole fix set.
-SIL.Motif.Tests.App |
+SIL.Motif.Tests.App | FullyQualifiedName~ConcurrentWalkthroughTests

@@ -82,4 +82,25 @@ internal static class PanglossProcesses
 
     internal static bool AnyAlive(string executablePath, IEnumerable<int> ids) =>
         Snapshot(executablePath).Intersect(ids).Any();
+
+    internal static string DescribeCandidates(string executablePath)
+    {
+        var candidates = new List<string>();
+        foreach (var process in Process.GetProcesses())
+        {
+            using (process)
+            {
+                try
+                {
+                    if (process.ProcessName.Contains("pangloss", StringComparison.OrdinalIgnoreCase))
+                        candidates.Add($"{process.Id}: {process.ProcessName} at {process.MainModule?.FileName}");
+                }
+                catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or NotSupportedException)
+                {
+                    candidates.Add($"{process.Id}: {process.ProcessName}: {exception.Message}");
+                }
+            }
+        }
+        return $"Expected {Path.GetFullPath(executablePath)}; candidates: {string.Join("; ", candidates)}";
+    }
 }
