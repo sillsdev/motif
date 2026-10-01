@@ -252,6 +252,7 @@ public static class CliVerbCatalog
                 "uses --project <fwdata> [--allomorph <guid>] [--grammatical-info <guid>] [--timing <kind>:<key>] " +
                 "[--words <word,word>] [--json]",
                 "Name an object, some words, or both; objects and morphemes are matched by identity, never by spelling.",
+                "An object also gets what the Baseline's FieldWorks project says about it, and its timing key when none is given.",
             }),
 
         new CliVerbDescriptor(

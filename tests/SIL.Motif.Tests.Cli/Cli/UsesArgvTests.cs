@@ -84,6 +84,51 @@ public sealed class UsesArgvTests(PristineProjectFixture pristine) : IDisposable
             ""), text);
     }
 
+    [Fact]
+    public void UsesTextNamesWhatFieldWorksSaysAndTheToolEachFactOpensIn()
+    {
+        static TraceFieldWorksTarget Tool(string toolName) => new("tool", toolName, "id", "silfw://localhost/link");
+        var features = new ObjectFactsFeatures("[pol:negative]", [new ObjectFactsFeatureValue("Polarity", "negative")]);
+        var response = new ObjectUsesResponse("assessment-1")
+        {
+            Ref = new ObjectUseRef { Label = "ja-" },
+            Facts = new ObjectFacts
+            {
+                Entry = new ObjectFactsEntry("entry", "ja-") { MorphType = "prefix", FieldWorks = Tool("Lexicon Edit") },
+                Senses = [new ObjectFactsSense("sense", "1") { Gloss = "NEG.PERF", Definition = "not yet" }],
+                GrammaticalInfo = new ObjectFactsGrammaticalInfo("msa", "inflectionalAffix")
+                {
+                    Category = new ObjectFactsNamed("verb", "Verb") { FieldWorks = Tool("Category Edit") },
+                    Slots = [new ObjectFactsSlot("slot", "TAM") { Templates = [new ObjectFactsNamed("template", "Verb template")] }],
+                },
+                Allomorphs =
+                [
+                    new ObjectFactsAllomorph("ja", "ja-")
+                    {
+                        IsAsked = true, Environments = [new ObjectFactsEnvironment("env", "/ _ [C]")], RequiredFeatures = features,
+                    },
+                    new ObjectFactsAllomorph("j", "j-"),
+                ],
+                Rule = new ObjectFactsRule("msa", "affixRule", "ja- ‘NEG.PERF’") { FieldWorks = Tool("Lexicon Edit") },
+            },
+        };
+
+        var text = SIL.Motif.Cli.Rendering.CommandTextRenderer.Render(
+            SIL.Motif.Contract.Commands.CommandOutcome<ObjectUsesResponse>.Success(response), asJson: false).Output;
+
+        Assert.Equal(string.Join(Environment.NewLine,
+            "Uses of ja- (assessment-1)",
+            "  In FieldWorks, from the Baseline:",
+            "    Entry: ja- (prefix), in Lexicon Edit",
+            "    Sense 1: NEG.PERF, not yet",
+            "    Grammatical info: inflectionalAffix, Verb, in Category Edit",
+            "    Slot: TAM, in Verb template",
+            "    Allomorph: ja- / _ [C], requires [pol:negative] (this one)",
+            "    Allomorph: j-",
+            "    Rule: affixRule ja- ‘NEG.PERF’, in Lexicon Edit",
+            ""), text);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_managedRoot, recursive: true); }

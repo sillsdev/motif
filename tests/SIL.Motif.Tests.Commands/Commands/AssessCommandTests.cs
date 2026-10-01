@@ -345,27 +345,7 @@ public sealed class AssessCommandTests : IDisposable
         using var seeded = NewSeededScratch();
         Assert.Equal("uses.no-assessment", ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
             Words: [SeededProject.AnalysedWordForm])).Refusal?.Code);
-        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [])).Succeeded);
-        var cachePath = Path.Combine(_managedRootsParent, "uses-stats.sqlite");
-        WriteStatsCache(cachePath,
-            (SeededProject.AnalysedWordForm, 4, 0, 2, 2_000_000L),
-            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
-        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
-        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
-        {
-            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
-                [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
-                 new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
-                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
-            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
-            _ => new AssessmentRaw.WordMeasurements([]),
-        })
-        {
-            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
-        };
-        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
-            new FakeInvoker(), null, CancellationToken.None);
+        var assessed = AssessForUses(seeded);
         Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
         var parseAssessmentId = assessed.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
             .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId;
@@ -391,6 +371,42 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Empty(otherEntry.Value!.Uses!.Words);
         Assert.Equal("uses.invalid-request",
             ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath, new ObjectUseRef { Label = "kat" })).Refusal?.Code);
+    }
+
+    [Fact]
+    public void UsesReadsAMorphemesFactsFromTheBaselineAndTimesAStemUnderItsEntry()
+    {
+        using var seeded = NewSeededScratch();
+        var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
+        var assessed = AssessForUses(seeded, "lex_entry", entryKey);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        var first = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath).Value!.Assessment!.Words
+            .Single(word => word.Word == SeededProject.AnalysedWordForm).StoredAnalyses.Single().Morphs[0];
+
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath, ObjectUseRef.ForMorpheme(first)));
+
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        Assert.Equal(("lex_entry", entryKey), (uses.Value!.Ref!.TimingKind, uses.Value.Ref.TimingKey));
+        Assert.Equal([(SeededProject.AnalysedWordForm, 2, 2_000_000L)],
+            uses.Value.RanIn!.Words.Select(word => (word.Row.Word, word.Calls, word.ElapsedNs)));
+        var facts = uses.Value.Facts!;
+        Assert.Equal((SeededProject.FirstForm, "stem"), (facts.Entry!.Headword, facts.Entry.MorphType));
+        Assert.Equal(("Lexicon Edit", entryKey), (facts.Entry.FieldWorks!.ToolName, facts.Entry.FieldWorks.ObjectId));
+        Assert.Equal("lexiconEdit", FieldWorksLinks.ToolOf(facts.Entry.FieldWorks.Link));
+        Assert.Equal([("1", SeededProject.FirstGloss)], facts.Senses.Select(sense => (sense.Number, sense.Gloss)));
+        Assert.Equal(("stem", "SeededNoun"), (facts.GrammaticalInfo!.Kind, facts.GrammaticalInfo.Category!.Name));
+        Assert.Equal([(SeededProject.FirstForm, true)], facts.Allomorphs.Select(allomorph => (allomorph.Form, allomorph.IsAsked)));
+
+        var named = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
+            ObjectUseRef.ForMorpheme(first) with { TimingKind = "morph_rule", TimingKey = "mrule#0:Verb template" }));
+        Assert.Equal("mrule#0:Verb template", named.Value!.Ref!.TimingKey);
+        Assert.Empty(named.Value.RanIn!.Words);
+        var words = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath, Words: [SeededProject.AnalysedWordForm]));
+        Assert.Null(words.Value!.Facts);
+        var absent = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
+            new ObjectUseRef { AllomorphId = Guid.NewGuid().ToString("D") }));
+        Assert.Null(absent.Value!.Facts);
+        Assert.Null(absent.Value.RanIn);
     }
 
     [Fact]
@@ -1248,9 +1264,55 @@ public sealed class AssessCommandTests : IDisposable
         Respond = _ => new PanGlossOutcome.Completed("fake stats", string.Empty, TimeSpan.Zero),
     };
 
+    // Assesses the seeded Text's two words with the analysed one timed under the stats cache's one object.
+    private SIL.Motif.Contract.Commands.CommandOutcome<AssessCommandResponse> AssessForUses(SeededScratch seeded,
+        string objectKind = "morph_rule", string objectKey = "mrule#0:Verb template")
+    {
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [])).Succeeded);
+        var cachePath = Path.Combine(_managedRootsParent, "uses-stats.sqlite");
+        WriteStatsCache(cachePath, objectKind, objectKey,
+            (SeededProject.AnalysedWordForm, 4, 0, 2, 2_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
+                 new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        return AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+            new FakeInvoker(), null, CancellationToken.None);
+    }
+
     private static void WriteStatsCache(string path,
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words) =>
         WriteStatsCache(path, 0L, words);
+
+    private static void WriteStatsCache(string path, string objectKind, string objectKey,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
+    {
+        WriteStatsCache(path, 0L, words);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE object SET kind = $kind, key = $key, " +
+            "identity_quality = CASE WHEN $kind = 'lex_entry' THEN 'authored' ELSE identity_quality END";
+        command.Parameters.AddWithValue("$kind", objectKind);
+        command.Parameters.AddWithValue("$key", objectKey);
+        command.ExecuteNonQuery();
+    }
 
     private static void WriteStatsCache(string path, long elapsedNs,
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)

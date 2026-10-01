@@ -407,6 +407,8 @@ public static class CommandTextRenderer
         text.AppendLine(name is null ? $"Uses ({response.AssessmentId})" : $"Uses of {name} ({response.AssessmentId})");
         if (response.IsStale)
             text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
+        if (response.Facts is { } facts)
+            AppendFacts(text, facts);
         if (response.Uses is { } uses)
             AppendUseWords(text, "Your words that use it", uses);
         if (response.RanIn is { } ranIn)
@@ -421,6 +423,34 @@ public static class CommandTextRenderer
         if (response.UnknownWords.Count > 0)
             text.AppendLine("  Not in this Assessment: " + string.Join(", ", response.UnknownWords));
         return text.ToString();
+    }
+
+    private static void AppendFacts(StringBuilder text, ObjectFacts facts)
+    {
+        static string In(TraceFieldWorksTarget? target) => target is null ? "" : ", in " + target.ToolName;
+        static string Joined(params string?[] parts) => string.Join(", ", parts.Where(part => !string.IsNullOrEmpty(part)));
+        text.AppendLine("  In FieldWorks, from the Baseline:");
+        if (facts.Entry is { } entry)
+            text.AppendLine($"    Entry: {entry.Headword}" + (entry.MorphType is null ? "" : $" ({entry.MorphType})") + In(entry.FieldWorks));
+        foreach (var sense in facts.Senses)
+            text.AppendLine($"    Sense {sense.Number}: " + Joined(sense.Gloss, sense.Definition));
+        if (facts.GrammaticalInfo is { } info)
+        {
+            text.AppendLine("    Grammatical info: " + Joined(info.Kind, info.Category?.Name,
+                info.ResultCategory is { } result ? "makes " + result.Name : null) + In(info.Category?.FieldWorks));
+            foreach (var slot in info.Slots)
+                text.AppendLine($"    Slot: {slot.Name}" + (slot.Optional ? " (optional)" : "") +
+                    (slot.Templates.Count == 0 ? "" : ", in " + string.Join(", ", slot.Templates.Select(template => template.Name))));
+            if (info.RequiredFeatures is { } required) text.AppendLine($"    Requires: {required.Notation}");
+            if (info.AddedFeatures is { } added) text.AppendLine($"    Adds: {added.Notation}");
+        }
+        foreach (var allomorph in facts.Allomorphs)
+            text.AppendLine($"    Allomorph: {allomorph.Form}" +
+                string.Concat(allomorph.Environments.Select(environment => " " + environment.Notation)) +
+                (allomorph.RequiredFeatures is { } needs ? $", requires {needs.Notation}" : "") +
+                (allomorph.IsAsked ? " (this one)" : ""));
+        if (facts.Rule is { } rule)
+            text.AppendLine($"    Rule: {rule.Kind} {rule.Name}" + In(rule.FieldWorks));
     }
 
     private static void AppendUseWords(StringBuilder text, string heading, ObjectUseWords words)

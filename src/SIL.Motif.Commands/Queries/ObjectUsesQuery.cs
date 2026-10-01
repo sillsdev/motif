@@ -1,7 +1,12 @@
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
+using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Projection;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
@@ -12,7 +17,11 @@ namespace SIL.Motif.Commands.Queries;
 /// </summary>
 public static class ObjectUsesQuery
 {
-    /// <summary>Answers <paramref name="request"/> from the Assessment matching the current Baseline and Selection.</summary>
+    /// <summary>
+    /// Answers <paramref name="request"/> from the Assessment matching the current Baseline and Selection, with what
+    /// the Baseline's copy of the project says about the object. A ref without a timing key takes the one its
+    /// grammatical info or entry gives, so a morpheme from a word row finds the words it ran in.
+    /// </summary>
     public static CommandOutcome<ObjectUsesResponse> Query(ObjectUsesRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -33,11 +42,14 @@ public static class ObjectUsesQuery
                     "uses.no-assessment", FailureReason.NotFound,
                     "No stored Assessment matches the current Baseline and default Selection."));
             var timings = TimingsAfterReruns(record, snapshot.RerunAssessments);
+            var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
+                ? FactsOf(asked, baseline, project) : null;
             return CommandOutcome<ObjectUsesResponse>.Success(
-                Read(assessment.Words, timings, request.Ref, request.Words) with
+                Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words) with
                 {
                     AssessmentId = record.AssessmentId,
                     IsStale = snapshot.Freshness == EvidenceFreshness.Stale,
+                    Facts = facts,
                 });
         });
     }
@@ -125,6 +137,27 @@ public static class ObjectUsesQuery
         return morphemes.Where(item => item.Words.Count >= 2)
             .Select((item, order) => (item, order)).OrderByDescending(pair => pair.item.Words.Count)
             .ThenBy(pair => pair.order).Select(pair => new SharedMorpheme(pair.item.Morph, pair.item.Words)).ToArray();
+    }
+
+    /// <summary>
+    /// <paramref name="reference"/> with the timing key <paramref name="facts"/> gives, when the ref names none;
+    /// a key the caller gave is kept.
+    /// </summary>
+    public static ObjectUseRef? WithTimingKey(ObjectUseRef? reference, ObjectFacts? facts) =>
+        reference is { TimingKind: null or "", } or { TimingKey: null or "" } && facts?.TimingKey is { } key
+            ? reference with { TimingKind = key.Kind, TimingKey = key.Key }
+            : reference;
+
+    // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
+    private static ObjectFacts? FactsOf(ObjectUseRef reference, BaselineRecord baseline, ProjectLocator project)
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+        return ObjectFactsReader.Read(cache, reference, found =>
+            FieldWorksLinks.TargetFor(cache, found) is { } target
+                ? new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
+                    target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!)
+                : null);
     }
 
     // A word a later subset run measured again keeps that run's timings, as its outcome does.
