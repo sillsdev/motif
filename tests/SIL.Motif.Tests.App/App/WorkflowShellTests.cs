@@ -587,8 +587,9 @@ public sealed class WorkflowShellTests
                         .Select(item => item.Title));
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Added");
-                Assert.Contains(review.GetLogicalDescendants().OfType<OpinionMark>(),
-                    mark => mark.Kind == OpinionMarkKind.None);
+                // With no parse in the window, the row claims no opinion; the staged arrow says what changes.
+                Assert.DoesNotContain(review.GetLogicalDescendants().OfType<OpinionMark>(),
+                    mark => mark.IsEffectivelyVisible);
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Not in FieldWorks → Unknown");
                 Assert.DoesNotContain(review.GetVisualDescendants().OfType<Border>(),
@@ -604,7 +605,7 @@ public sealed class WorkflowShellTests
                     AutomationProperties.GetName(button) == "Undo all: Added");
                 Assert.DoesNotContain(buttons, button =>
                     AutomationProperties.GetName(button) == "Go to text in Added");
-                var goToText = buttons.Single(button => AutomationProperties.GetName(button) == "Go to text: kitabu");
+                var goToText = buttons.Single(button => AutomationProperties.GetName(button) == "Open kitabu in Analyze texts");
                 Assert.True(goToText.IsHitTestVisible);
                 Assert.Equal(1d, goToText.Opacity);
             }

@@ -323,6 +323,46 @@ public enum WordRowColumns
 }
 
 /// <summary>
+/// The columns each page beyond the Matrix and Lists shows, chosen for what its reader asks there. Whatever a page
+/// hides is still in the card the row opens, and every row keeps the word and the three next steps.
+/// </summary>
+public static class WordRowColumnSets
+{
+    /// <summary>
+    /// Timing asks which words cost the time and whether that time bought an answer: the opinion, the outcome and the
+    /// time Timing measured. Morphemes, the meaning, places and read state are in the card.
+    /// </summary>
+    public static readonly WordRowColumns Timing = WordRowColumns.FieldWorks | WordRowColumns.PanGloss | WordRowColumns.Time;
+
+    /// <summary>
+    /// The Overview names its slowest words only as a way in, inside the Speed tile: the word and its time. The rest is
+    /// on Timing and in the card.
+    /// </summary>
+    public static readonly WordRowColumns Overview = WordRowColumns.Time;
+
+    /// <summary>
+    /// Review changes asks what Apply will write: what FieldWorks holds now and what PanGloss built, with their
+    /// morphemes, and the staged arrow under the word. Meaning, places, time and read state do not change what is
+    /// written.
+    /// </summary>
+    public static readonly WordRowColumns Review = WordRowColumns.FieldWorks | WordRowColumns.Morphemes |
+        WordRowColumns.PanGloss;
+
+    /// <summary>
+    /// What changed asks which words moved between two runs and what they mean now: the opinion, the outcome, the
+    /// meaning and how often the word occurs. The earlier run's answer is the row's note.
+    /// </summary>
+    public static readonly WordRowColumns WhatChanged = WordRowColumns.FieldWorks | WordRowColumns.PanGloss |
+        WordRowColumns.Meaning | WordRowColumns.Places;
+
+    /// <summary>
+    /// Analyze texts' Word list is every word of the Selection, ticked for AI Handoff: everything but the time, which
+    /// is Timing's question.
+    /// </summary>
+    public static readonly WordRowColumns WordList = WordRowColumns.All & ~WordRowColumns.Time;
+}
+
+/// <summary>
 /// Shows only the chosen columns of a word row or its header: a hidden column's definition leaves its grid, so it
 /// takes neither width nor a column gap, and the columns left keep their order and their shared-size groups.
 /// </summary>

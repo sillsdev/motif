@@ -48,12 +48,15 @@ public static class WordProjectStatuses
         status == WordProjectStatus.IncorrectSpelling ? null : Mark.Of(WindowWords.OpinionOf(status));
 
     /// <summary>Which row <paramref name="word"/> belongs to, ranked by <see cref="ProjectStandings.Of"/>.</summary>
-    public static WordProjectStatus Of(TextWord word)
+    public static WordProjectStatus Of(TextWord word) => FromStanding(StandingOf(word));
+
+    /// <summary>What the project holds for <paramref name="word"/>, as a <see cref="ProjectStanding"/> value.</summary>
+    public static string StandingOf(TextWord word)
     {
         ArgumentNullException.ThrowIfNull(word);
         var candidates = word.Occurrences.Any(occurrence => occurrence.Status == InterlinearAnalysisStatus.Unapproved)
             ? Math.Max(word.CandidateCount, 1) : word.CandidateCount;
-        return FromStanding(ProjectStandings.Of(word.Approved.Count, candidates, word.Disapproved.Count, word.IncorrectSpelling));
+        return ProjectStandings.Of(word.Approved.Count, candidates, word.Disapproved.Count, word.IncorrectSpelling);
     }
 
     /// <summary>Reads a <see cref="ProjectStanding"/> wire value; anything unknown is treated as nothing stored.</summary>
@@ -154,6 +157,9 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     /// <summary>The navigation action used when someone opens a word from the list.</summary>
     public Action<string>? OpenWord { get; set; }
+
+    /// <summary>Where a word row's next steps lead for a word the latest parse did not reach.</summary>
+    public WordRowRoutes? WordRowRoutes { get; set; }
 
     /// <summary>Chooses one of the Words table's status filter chips, or <see langword="null"/> for All.</summary>
     public IRelayCommand<WordProjectStatus?> SetStatusFilterCommand { get; }
@@ -290,7 +296,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
             foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
             _all.Clear();
-            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word)));
+            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes)));
             foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
             OnPropertyChanged(nameof(CheckedWordCount));
             HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
@@ -442,6 +448,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     // What the latest Assessment came to for this word; null before one, or when the word was not in it.
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Listed))]
     [NotifyPropertyChangedFor(nameof(HasLastResult))]
     [NotifyPropertyChangedFor(nameof(LastResultMark))]
     [NotifyPropertyChangedFor(nameof(LastResultLabel))]
@@ -457,10 +464,30 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     internal void ShowAssessment(AssessWordRowViewModel? result) => LastResult = result;
 
-    public TextWordRowViewModel(TextWord word)
+    partial void OnLastResultChanged(AssessWordRowViewModel? value)
+    {
+        var wasOpen = _listed?.IsOpen == true;
+        _listed = value is null ? null : ListedWordViewModel.Of(value);
+        if (_listed is not null) _listed.IsOpen = wasOpen;
+        else if (wasOpen) _notParsed.IsOpen = true;
+    }
+
+    private ListedWordViewModel? _listed;
+    private readonly ListedWordViewModel _notParsed;
+
+    /// <summary>
+    /// The word as the Word list shows it: its row and card from the latest parse, or, before one reaches it, what
+    /// FieldWorks holds and Not parsed.
+    /// </summary>
+    public ListedWordViewModel Listed => _listed ?? _notParsed;
+
+    public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         Form = word.Form;
+        var held = word.Approved.FirstOrDefault() ?? (word.Analyses.Count == 1 ? word.Analyses[0] : null);
+        _notParsed = new ListedWordViewModel(WordRowViewModel.NotParsed(word.Form, WordProjectStatuses.StandingOf(word),
+            held?.Morphs, word.Occurrences.Count, routes));
         OccurrenceCount = word.Occurrences.Count;
         HasApproved = word.Approved.Count > 0;
 

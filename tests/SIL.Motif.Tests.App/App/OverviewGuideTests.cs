@@ -54,10 +54,10 @@ public sealed class OverviewGuideTests
                 window.Show();
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
-                titles = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => button.Classes.Contains("overviewTile") && button.IsEffectivelyVisible)
+                titles = window.GetLogicalDescendants().OfType<Control>()
+                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible)
                     .OrderBy(Grid.GetRow).ThenBy(Grid.GetColumn)
-                    .Select(button => button.GetLogicalDescendants().OfType<TextBlock>()
+                    .Select(tile => tile.GetLogicalDescendants().OfType<TextBlock>()
                         .Single(text => text.Classes.Contains("overviewTileTitle")).Text!)
                     .ToArray();
             }

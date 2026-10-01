@@ -54,6 +54,8 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(SpeedMain))]
     [NotifyPropertyChangedFor(nameof(SpeedMedian))]
     [NotifyPropertyChangedFor(nameof(SpeedDetails))]
+    [NotifyPropertyChangedFor(nameof(SlowestWordRows))]
+    [NotifyPropertyChangedFor(nameof(HasSlowestWordRows))]
     [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
     [NotifyPropertyChangedFor(nameof(TextCoverageWords))]
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
@@ -152,21 +154,23 @@ public sealed partial class OverviewPageModel : PageModel
           (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {SpeedText.PerWord(p95)}" : string.Empty)
         : "Parse all words to measure how fast PanGloss is.";
 
-    /// <summary>How many words stopped at the step limit, and the slowest words with their times.</summary>
-    public string SpeedDetails
-    {
-        get
-        {
-            if (Overview?.Timing is not { MeasuredWordCount: > 0 } timing) return string.Empty;
-            var parts = new List<string>();
-            if (timing.StepLimitedWordCount > 0)
-                parts.Add($"{timing.StepLimitedWordCount:N0} stopped at the step limit");
-            if (timing.SlowestWords.Count > 0)
-                parts.Add("slowest: " + string.Join(", ",
-                    timing.SlowestWords.Select(word => $"{word.Word} {SpeedText.PerWord(word.ElapsedMs)}")));
-            return string.Join(" · ", parts);
-        }
-    }
+    /// <summary>How many words stopped at the step limit, or empty when none did.</summary>
+    public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
+        ? $"{stopped:N0} stopped at the step limit"
+        : string.Empty;
+
+    /// <summary>The slowest words as word rows, each with the parse time the Overview read for it.</summary>
+    public IReadOnlyList<ListedWordViewModel> SlowestWordRows =>
+        Overview?.Timing is { MeasuredWordCount: > 0 } timing
+            ? [.. timing.SlowestWords.Select(slow =>
+            {
+                var listed = Context.Assess.Words.Listed(slow.Word);
+                listed.TimeText = SpeedText.PerWord(slow.ElapsedMs);
+                return listed;
+            })]
+            : [];
+
+    public bool HasSlowestWordRows => SlowestWordRows.Count > 0;
 
     /// <summary>How many Selection words produced a completed parse.</summary>
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :

@@ -70,6 +70,14 @@ public sealed partial class AssessWordsViewModel : ObservableObject
 
     /// <summary>The row for <paramref name="word"/> exactly as spelled, or <see langword="null"/> when this Assessment did not try it.</summary>
     public AssessWordRowViewModel? Find(string word) => _all.FirstOrDefault(row => row.Word == word);
+
+    /// <summary>
+    /// <paramref name="word"/> as another page lists it: its row and card from this parse, or a Not parsed row when
+    /// the parse did not reach it. <paramref name="routes"/> replaces the row's next steps for that page only.
+    /// </summary>
+    public ListedWordViewModel Listed(string word, WordRowRoutes? routes = null) => Find(word) is { } found
+        ? ListedWordViewModel.Of(found, routes)
+        : new ListedWordViewModel(WordRowViewModel.NotParsed(word, routes: routes ?? Routes));
     public int MissedCount => _all.Count(row => row.VsProject == "Missed");
     public int DisapprovedCount => _all.Count(row => row.VsProject == "Disapproved");
     public int NoOpinionCount => _all.Count(row => row.VsProject == ReadingGradeLabels.NotPresent);

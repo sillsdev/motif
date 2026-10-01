@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Selection.CountMargin" ResourceKey="Primitive.Inset.0_0_0_2" />
-    <StaticResource x:Key="Component.Selection.DensePadding" ResourceKey="Primitive.Inset.4_0_4_0" />
     <StaticResource x:Key="Component.Selection.ChipPadding" ResourceKey="Primitive.Inset.12_4_12_4" />
   </Styles.Resources>
   <Style Selector=":is(TextBlock).columnHeader">
@@ -16,17 +15,6 @@
   </Style>
   <Style Selector=":is(TextBlock).textCount">
     <Setter Property="Margin" Value="{DynamicResource Component.Selection.CountMargin}" />
-  </Style>
-  <Style Selector="ListBox.denseWords ListBoxItem">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
-  </Style>
-  <Style Selector="Expander.denseWord">
-    <Setter Property="Padding" Value="{DynamicResource Component.Selection.DensePadding}" />
-    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
   </Style>
   <Style Selector="Button.viewChip">
     <Setter Property="Padding" Value="{DynamicResource Component.Selection.ChipPadding}" />

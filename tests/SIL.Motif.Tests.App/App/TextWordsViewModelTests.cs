@@ -52,6 +52,41 @@ public sealed class TextWordsViewModelTests
     }
 
     [Fact]
+    public async Task EachWordsRowIsTheParsedRowOnceAParseReachesIt_AndWhatFieldWorksHoldsUntilThen()
+    {
+        var (fake, _, words) = NewViewModel();
+        var tried = new List<string>();
+        words.WordRowRoutes = new WordRowRoutes { TryWord = tried.Add };
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitabu", null,
+                [new WordOccurrence(TextId, "Alpha", 1, "kitabu.", "approved", Analysis("k1", "book")),
+                 new WordOccurrence(TextId, "Alpha", 2, "kitabu.", "approved", Analysis("k1", "book"))],
+                [Analysis("k1", "book")], []),
+             new TextWord("na", null, [new WordOccurrence(TextId, "Alpha", 3, "s", "unanalysed", null)], [], [])],
+            [], HasBaseline: true, OccurrenceCount: 3));
+        var assessed = new AssessWordsViewModel();
+        assessed.Load([new AssessmentWordResult("na", "no-analysis", false, "Search completed", 4, null)]);
+
+        await words.ReloadAsync();
+        words.ShowAssessment(assessed.Find);
+
+        var kitabu = words.Rows.Single(row => row.Form == "kitabu").Listed;
+        Assert.Equal(ParserOutcome.NotParsed, kitabu.Row.Outcome);
+        Assert.Equal(Mark.Approved, kitabu.Row.OpinionMark);
+        Assert.Equal(["kitabu"], kitabu.Row.FieldWorksMorphemes.Select(morph => morph.Form));
+        Assert.Equal("×2", kitabu.Row.PlacesText);
+        Assert.False(kitabu.HasCard);
+        Assert.Equal("Parse all words to link kitabu to Word Analyses", kitabu.Row.WordAnalysesTip);
+        kitabu.Row.TryWordCommand.Execute(null);
+        Assert.Equal(["kitabu"], tried);
+
+        var na = words.Rows.Single(row => row.Form == "na").Listed;
+        Assert.Same(assessed.Find("na")!.WordRow, na.Row);
+        Assert.True(na.HasCard);
+    }
+
+    [Fact]
     public async Task CheckingATextReloadsWordsForTheNewlyChosenTexts()
     {
         var (fake, selection, words) = NewViewModel();

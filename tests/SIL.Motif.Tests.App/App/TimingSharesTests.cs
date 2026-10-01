@@ -101,7 +101,7 @@ public sealed class TimingSharesTests
             [new WordRuleTiming("mwalimu", 180, 900), new WordRuleTiming("hawajafika", 34, 200)]);
 
         Assert.Equal(["180 ms of its 700 ms", "34 ms of its 48 ms"],
-            timing.CostliestRuleWordTimes.Select(word => word.TimeText));
+            timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 
     [Fact]
