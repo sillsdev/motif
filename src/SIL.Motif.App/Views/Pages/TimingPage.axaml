@@ -213,7 +213,7 @@
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRule}" />
                 <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="muted" Text="Words where this rule took longest: its time there, of the word's whole time"
+                <views:CopyableTextBlock Classes="muted" Text="Words where this rule took longest"
                                          TextWrapping="Wrap" />
                 <ItemsControl ItemsSource="{Binding CostliestRuleWordTimes}"
                               AutomationProperties.Name="Words under this rule">

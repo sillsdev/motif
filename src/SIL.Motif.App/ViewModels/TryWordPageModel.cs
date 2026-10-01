@@ -365,7 +365,7 @@ public sealed class TryWordPageModel : PageModel
                 : $"Each rule's time covers that parse's whole search for {result.Word}") +
                 ", including attempts that stopped, not only the path above." +
                 (Context.Evidence.IsStale ? " FieldWorks has changed since that parse." : string.Empty);
-            EarlierShareHeader = wordMs is { } whole ? $"SHARE OF {SpeedText.PerWord(whole)}" : string.Empty;
+            EarlierShareHeader = wordMs is { } whole ? $"Share of {SpeedText.PerWord(whole)}" : string.Empty;
         }
         OnPropertyChanged(nameof(HasEarlierTiming));
         OnPropertyChanged(nameof(EarlierTimingTitle));

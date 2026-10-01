@@ -138,7 +138,7 @@ public sealed class TryWordPageTests
             Assert.Equal("-s · dog → dogs", row.Explanation);
             // The stored share is of the word's whole parse time in that parse, not of the rules' recorded time.
             Assert.True(page.HasEarlierTiming);
-            Assert.Equal("SHARE OF 10 ms", page.EarlierShareHeader);
+            Assert.Equal("Share of 10 ms", page.EarlierShareHeader);
             Assert.Equal([("Plural", "Morphological rules", "4 ms", "40%"), ("Other time", "", "6 ms", "60%")],
                 page.EarlierRuleTimes.Select(time => (time.Rule, time.KindLabel, time.TimeText, time.ShareText)));
             Assert.Equal("Open dogs in Analyze texts", page.OpenInTextsText);

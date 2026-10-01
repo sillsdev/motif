@@ -8,8 +8,9 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Saves the Overview and Timing pages over a read Overview and stored parse times, the states the every-page
-/// capture cannot reach because its sample data configures neither read.
+/// Saves the Overview and Timing pages over a read Overview and stored parse times, and Try a Word beside its
+/// earlier parse's timing, the states the every-page capture cannot reach because its sample data configures
+/// neither read.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTimingScreenshots
@@ -32,6 +33,8 @@ public sealed class OverviewTimingScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: ReadOverviewAndTiming);
             try
             {
+                workspace.Context.TryWord("matinlu");
+                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
                     Application.Current!.RequestedThemeVariant = variant;
@@ -43,6 +46,7 @@ public sealed class OverviewTimingScreenshots
                                  {
                                      ("14-overview-populated", WorkspacePage.Overview),
                                      ("16-timing-filled", WorkspacePage.Timing),
+                                     ("17-try-a-word-earlier-timing", WorkspacePage.TryAWord),
                                  })
                         {
                             workspace.CurrentPage = page;
@@ -63,12 +67,24 @@ public sealed class OverviewTimingScreenshots
     internal static void ReadOverviewAndTiming(FakeCommandClient fake, AssessCommandResponse assessment)
     {
         fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
-        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            request.ExplicitWords is ["matinlu"] ? MatinluTiming() : Timing(request.By))));
         fake.AssessCompletesWith(assessment with
         {
             Measurements = [new ProducedAssessmentReference("assessment/one", "ParseTime", "assessment/one")],
         });
     }
+
+    // The stored parse kept matinlu's time to the whole millisecond, more than its two rules recorded.
+    private static TimingResponse MatinluTiming() =>
+        new("assessment/one", "all", "rule", 1, 1, 1, [new SlowWordTiming("matinlu", 1)],
+            [
+                new TimingAggregateRow("lu", 0.4, 0.4 / 0.7, 3, 1) { Kind = "morph_rule" },
+                new TimingAggregateRow("ma", 0.3, 0.3 / 0.7, 2, 1) { Kind = "morph_rule" },
+            ], [])
+        {
+            Words = [new TimingWordRow("matinlu", 1, 5, TimingCompletion.Finished)],
+        };
 
     private static TimingResponse Timing(string by) =>
         new("assessment/one", "all", by, Words.Length, 9, 700,
