@@ -70,7 +70,6 @@
   <Color x:Key="Primitive.Color.Violet975">#2B1C3B</Color>
 
   <Color x:Key="Primitive.Color.Blue10">#F1F5FF</Color>
-  <Color x:Key="Primitive.Color.Blue25">#EAF1FD</Color>
   <Color x:Key="Primitive.Color.Blue650">#215CC7</Color>
   <Color x:Key="Primitive.Color.Blue750">#174D9B</Color>
   <Color x:Key="Primitive.Color.Blue950">#1A2A4A</Color>

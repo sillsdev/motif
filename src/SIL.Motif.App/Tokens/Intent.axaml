@@ -318,20 +318,6 @@
       <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green700}" />
       <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber700}" />
       <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue750}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue25}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue650" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue750}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose950}" />
-      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber950}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet600}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green700}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber700}" />
-      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
@@ -422,20 +408,6 @@
       <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green300}" />
       <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber300}" />
       <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate400}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue250}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue350" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue250}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose200}" />
-      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber200}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>
