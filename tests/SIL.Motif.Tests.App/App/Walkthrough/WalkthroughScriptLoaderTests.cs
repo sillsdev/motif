@@ -264,9 +264,9 @@ public sealed class WalkthroughScriptLoaderTests
             var collectionName = Assert.IsType<string>(collection.ConstructorArguments.Single().Value);
             Assert.Equal(LcmCacheTestCollection.Name, collectionName);
             var fact = Assert.Single(item.Type.GetMethods(
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-                .Where(method => method.CustomAttributes.Any(attribute =>
-                    attribute.AttributeType == typeof(FactAttribute))));
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly),
+                method => method.CustomAttributes.Any(attribute =>
+                    attribute.AttributeType == typeof(FactAttribute)));
             Assert.Empty(fact.GetParameters());
             Assert.False(fact.IsGenericMethod);
             Assert.Null(fact.GetCustomAttribute<FactAttribute>(inherit: false)?.Skip);

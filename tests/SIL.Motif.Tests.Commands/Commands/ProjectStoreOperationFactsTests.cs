@@ -74,7 +74,7 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         Assert.Equal("project.operation-io", refusal.Code);
         Assert.Equal(FailureReason.Refused, refusal.Reason);
         Assert.Equal(exception.Message, refusal.Message);
-        Assert.Equal(1, refusal.Facts.Count);
+        Assert.Single(refusal.Facts);
         Assert.Equal(projectPath, refusal.Facts["fwDataPath"]);
     }
 

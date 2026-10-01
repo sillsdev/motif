@@ -177,7 +177,7 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         File.WriteAllText(heldPath, "held");
 
         var held = new FileStream(heldPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-        SIL.Motif.Contract.Responses.CommandOutcome<BaselineCaptureResponse> outcome;
+        SIL.Motif.Contract.Commands.CommandOutcome<BaselineCaptureResponse> outcome;
         try
         {
             outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
