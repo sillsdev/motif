@@ -641,7 +641,7 @@ public sealed class WorkflowShellTests
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
                 Assert.True(change.HasUnavailableContext);
                 var prompts = review.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
-                Assert.Equal(2, prompts.Count(prompt => prompt.IsEffectivelyVisible));
+                Assert.Single(prompts, prompt => prompt.IsEffectivelyVisible);
                 Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
             }
             finally

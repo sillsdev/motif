@@ -317,7 +317,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
                 stage = "Review prompt";
                 await ShowPageAsync(session, WorkspacePage.Review);
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
                     button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
