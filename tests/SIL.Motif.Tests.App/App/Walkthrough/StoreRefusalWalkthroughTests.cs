@@ -27,6 +27,8 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
         {
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
+            walkthrough.WaitUntilProjectIsQuiet(
+                WalkthroughSteps.Remaining(deadline), "the captured project was still being read");
 
             Assert.True(File.Exists(storePath));
             WithStore(storePath, command =>
@@ -68,6 +70,8 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             walkthrough.Click("Keep Motif's file");
             Assert.False(question.IsEffectivelyVisible);
             Assert.True(block.FindDeleteButton().IsEffectivelyVisible);
+            walkthrough.WaitUntilProjectIsQuiet(
+                WalkthroughSteps.Remaining(deadline), "keeping the older store left the project being read");
             Assert.Equal(oldStoreBytes, File.ReadAllBytes(storePath));
             Assert.Equal(MotifSchema.CurrentSchema - 1, UserVersion(storePath));
 
@@ -113,6 +117,8 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             Assert.True(block.IsEffectivelyVisible);
             Assert.Contains("damaged", refusal.Sentence, StringComparison.OrdinalIgnoreCase);
             Assert.False(block.FindDeleteButton().IsEffectivelyVisible);
+            walkthrough.WaitUntilProjectIsQuiet(
+                WalkthroughSteps.Remaining(deadline), "the damaged project's open stages did not finish");
             Assert.Equal(corruptBytes, File.ReadAllBytes(storePath));
 
             return Task.CompletedTask;

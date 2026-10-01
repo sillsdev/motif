@@ -146,7 +146,22 @@ public sealed class WalkthroughWindow : IDisposable
                 StringComparison.OrdinalIgnoreCase) &&
             (Workspace.Baseline.ProjectLastWriteUtc is not null || Workspace.Baseline.ShownRefusal is not null),
             TimeSpan.FromSeconds(60), "the selected project did not finish opening");
+        // The Baseline's answer comes first; later open stages still read the project's Motif file on the pool.
+        WaitUntilProjectOpened(TimeSpan.FromSeconds(60), "the selected project's open stages did not finish");
     }
+
+    /// <summary>
+    /// Waits until the window has stopped reading the project's files: no open stage, Refresh or evidence
+    /// publication is still running. On Windows a test cannot read a file the window still has open, pinned by
+    /// <c>ACorruptStoreIsShownInTheWindowWithoutADeleteButtonOrByteChanges</c>.
+    /// </summary>
+    public void WaitUntilProjectIsQuiet(TimeSpan timeout, string why) =>
+        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted &&
+            !Workspace.RefreshCommand.IsRunning, timeout, why);
+
+    private void WaitUntilProjectOpened(TimeSpan timeout, string why) =>
+        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted,
+            timeout, why);
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
     public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("Configure the project");
@@ -545,7 +560,7 @@ public sealed class WalkthroughWindow : IDisposable
     private void ClickControl(Control control, string accessibleName, TopLevel? topLevel = null)
     {
         // Stored evidence lands after the project's own counts and can push the target down mid-click.
-        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted,
+        WaitUntilProjectOpened(
             TimeSpan.FromSeconds(60), $"the project was still opening when '{accessibleName}' was to be clicked");
         var root = topLevel ?? Window;
         Rect? previousBounds = null;
