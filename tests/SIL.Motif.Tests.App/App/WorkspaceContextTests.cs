@@ -446,10 +446,16 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         var kindRows = new[] { new TimingAggregateRow("morph_rule", "morph_rule", 12, 1, 2) };
         var ruleRows = new[] { new TimingAggregateRow("Verb template", "Verb template", 10, 10d / 12, 2)
-            { Kind = "morph_rule" } };
+            { Kind = "morph_rule" },
+            new TimingAggregateRow("Other rule", "Other rule", 2, 2d / 12, 2) { Kind = "morph_rule" } };
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-            new TimingResponse("assessment-1", request.WordSet, request.By, 2, 5, 8, [],
-                request.By == "kind" ? kindRows : ruleRows, []))));
+            new TimingResponse("assessment-1", request.WordSet, request.By, 2, 6, 6, [],
+                request.By == "kind" ? kindRows : ruleRows, [])
+            {
+                Words = [new TimingWordRow("word-1", 6, TimingCompletion.StepLimit),
+                    new TimingWordRow("word-2", 6, TimingCompletion.StepLimit)],
+                Attribution = new WordTimeAttribution(2, 12, 12, 0, 0, 0, false),
+            })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
@@ -458,7 +464,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
         Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
         Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
-        Assert.Equal("10 ms · recorded in 2 words", timing.RuleSummary);
+        Assert.Equal("10 ms · 83% of these 2 words' 12 ms · recorded in 2 words", timing.RuleSummary);
     }
 
     // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.

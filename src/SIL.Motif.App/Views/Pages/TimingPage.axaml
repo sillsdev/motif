@@ -149,7 +149,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <views:CopyableTextBlock Classes="muted" Text="{Binding OtherTimeText}" TextWrapping="Wrap"
-                                         AutomationProperties.Name="Time recorded against rules" />
+                                         AutomationProperties.Name="Timing attribution details" />
               </StackPanel>
             </Border>
 
