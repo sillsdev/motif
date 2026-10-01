@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TryWordPageTests
 {
     [Fact]
-    public void RulesRowsDisplayCapturedFieldWorksNames()
+    public void RulesRowsDisplayCapturedFieldWorksNamesAndInspectTheirRecordedIdentity()
     {
         RunOnAvalonia(async () =>
         {
@@ -35,9 +35,15 @@ public sealed class TryWordPageTests
             context.TryWord("word");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Equal("Vowel harmony", Assert.Single(page.RulesOnBestPath).Rule);
+            var row = Assert.Single(page.RulesOnBestPath);
+            Assert.Equal("Vowel harmony", row.Rule);
+            var subject = Assert.IsType<InspectorSubject>(row.InspectSubject);
+            Assert.Equal(InspectorSubjectKind.Rule, subject.Kind);
+            Assert.Equal("Vowel harmony", subject.Label);
+            Assert.Equal(new TraceTimingKey("phon_rule", "rule-id"), subject.TimingKey);
+            Assert.Equal("authored", subject.IdentityQuality);
             Assert.Equal("Producer name", Assert.Single(page.Trace.Reading!.Refs).Label);
-            Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
+            row.OpenTimingCommand.Execute(null);
             Assert.Equal("Vowel harmony", timing.Focus!.Rule);
         });
     }

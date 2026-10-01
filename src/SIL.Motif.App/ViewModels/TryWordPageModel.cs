@@ -211,12 +211,17 @@ public sealed class TryWordPageModel : PageModel
         TakingApartText = string.Empty;
         var attempt = Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded) ?? Trace.ClosestAttempts.FirstOrDefault();
         if (attempt is not null) TakingApartText = TakingApart(attempt.Steps);
-        var labels = new TraceDisplayLabels(Trace.Reading?.Refs ?? []);
+        var refs = Trace.Reading?.Refs ?? [];
+        var labels = new TraceDisplayLabels(refs);
         foreach (var rule in Trace.Reading?.RulesOnBestPath ?? [])
         {
             var name = labels.Resolve(rule.RefId, rule.Rule)!;
             RulesOnBestPath.Add(new TryWordRuleRowViewModel(name, rule.Kind, rule.Outcome,
-                rule.Explanation, () => Context.OpenTiming([result!.Word], name)));
+                rule.Explanation, () => Context.OpenTiming([result!.Word], name))
+            {
+                InspectSubject = refs.FirstOrDefault(reference => reference.Id == rule.RefId) is { TimingKey: { } key } named
+                    ? InspectorSubject.Rule(key, name, named.IdentityQuality) : null,
+            });
         }
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
@@ -365,4 +370,17 @@ public sealed class TryWordRuleRowViewModel(
 
     /// <summary>Opens Timing filtered to the rule and current word.</summary>
     public IRelayCommand OpenTimingCommand { get; } = new RelayCommand(openTiming);
+
+    /// <summary>
+    /// The rule as the inspector looks it up, by the key PanGloss times it under; <see langword="null"/> when the
+    /// trace gave the rule no identity.
+    /// </summary>
+    public InspectorSubject? InspectSubject { get; init; }
+
+    /// <summary>What the trace recorded about the rule on this path, for the inspector to show apart from the Baseline.</summary>
+    public IReadOnlyList<InspectorDetail> Captured =>
+        InspectorDetail.Recorded(("Kind", Kind), ("Outcome", Outcome), ("Explanation", Explanation));
+
+    public bool CanInspect => InspectSubject is not null;
+    public bool CannotInspect => InspectSubject is null;
 }

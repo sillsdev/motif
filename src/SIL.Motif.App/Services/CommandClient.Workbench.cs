@@ -40,4 +40,8 @@ public sealed partial class CommandClient
         WordTraceRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath, cancellationToken), cancellationToken);
 
+    // The facts come from a scratch LibLCM cache of the Baseline, so the read waits its turn like the parser.
+    public Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => InspectQuery.Query(request), cancellationToken);
+
 }

@@ -24,6 +24,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TextsPage.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DifferencePanel.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MorphemeRow.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Inspector.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Handoff.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Shell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TopBar.axaml" />

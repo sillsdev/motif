@@ -320,6 +320,7 @@
                 <ContentControl.ContentTemplate>
                   <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                     <Border Classes="card wordCard" Focusable="True" KeyDown="OnTokenCardKeyDown"
+                            views:InspectLink.From="{Binding Text}"
                             AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
                       <StackPanel>
                         <Border Classes="wordCardHead hoverReveal">

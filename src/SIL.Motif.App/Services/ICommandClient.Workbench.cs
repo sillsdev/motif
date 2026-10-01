@@ -39,4 +39,10 @@ public partial interface ICommandClient
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
         WordTraceRequest request, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Reads what Motif knows about one inspector subject, each section from its own source: the Baseline's facts,
+    /// the stored Parse all words' words and times, and the stored grammar check's findings.
+    /// </summary>
+    Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken);
+
 }

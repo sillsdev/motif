@@ -155,6 +155,8 @@ internal static class ComponentStateContractCases
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
             "Intent.Transform.Pressed");
 
+        yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(Morpheme()), StateStimulus.Pointer,
+            StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Primary");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
@@ -362,6 +364,9 @@ internal static class ComponentStateContractCases
         return button;
     }
 
+    private static Border Morpheme() =>
+        new() { Classes = { "morph", "inspectable" }, Focusable = true, Width = 80, Height = 40, Child = new TextBlock { Text = "kat" } };
+
     private static Border Cell(params string[] classes)
     {
         var cell = new Border { Classes = { "matrixCell" }, Focusable = true, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
@@ -504,6 +509,29 @@ internal static class TooltipOwners
         },
         new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
+        new("morpheme that opens the inspector", "Views/MorphemeRow.cs", "$\"Show {morph.Form} in the inspector\"",
+            TooltipScene.WordCard, control => control is Border && control.Classes.Contains("inspectable")),
+        new("closing the inspector", "Views/Inspector.axaml", "Close (Esc steps back)", TooltipScene.WordCard,
+            control => control is Button && control.Classes.Contains("inspectorClose"))
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("freshness of the inspector's facts", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("freshness of what the inspected object is", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
+        new("FieldWorks link in the inspector", "Views/Inspector.axaml", "{Binding LinkName}", TooltipScene.WordCard,
+            control => control is HyperlinkButton && control.Classes.Contains("revealLink") &&
+                control.FindAncestorOfType<Inspector>() is not null)
+        {
+            Pending = "no tooltip scene opens the inspector",
+        },
         new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
             control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null),
         new("the list's sentence", "Views/TextsListsPanel.axaml", "{Binding Lists.SelectedList.Sentence}", TooltipScene.Lists,

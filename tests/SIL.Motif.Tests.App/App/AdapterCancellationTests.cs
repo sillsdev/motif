@@ -209,6 +209,8 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             client.CheckGrammarAsync(new GrammarCheckRequest(path), token)));
         yield return new("TraceWord", Observe(token =>
             client.TraceWordAsync(new WordTraceRequest(path, "motifa"), token)));
+        yield return new("Inspect", Observe(token =>
+            client.InspectAsync(new InspectRequest(path, InspectorSubject.Morpheme("form-id", null)!), token)));
     }
 
     private static IEnumerable<OutcomeCall> EveryOutcomeCall(

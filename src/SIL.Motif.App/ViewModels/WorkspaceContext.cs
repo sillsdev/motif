@@ -59,12 +59,41 @@ public sealed record GrammarSummary(string SummaryText, bool ShowFindings, strin
 /// <param name="Page">The page the request opens.</param>
 public abstract record PageRequest(WorkspacePage Page);
 
+/// <summary>A trace the inspector was opened from: the word traced, and the Baseline the trace read.</summary>
+/// <param name="Word">The traced word.</param>
+/// <param name="BaselineDigest">The bundle digest of the Baseline the trace read, or <see langword="null"/> when not recorded.</param>
+public sealed record InspectorTrace(string Word, string? BaselineDigest);
+
+/// <summary>One thing a trace recorded about a name, such as its gloss or the rule's outcome.</summary>
+/// <param name="Label">What the line is, such as <c>Gloss</c>.</param>
+/// <param name="Value">What the trace recorded.</param>
+public sealed record InspectorDetail(string Label, string Value)
+{
+    /// <summary>The lines for <paramref name="pairs"/>, leaving out any the trace did not record.</summary>
+    public static IReadOnlyList<InspectorDetail> Recorded(params (string Label, string? Value)[] pairs) =>
+        [.. pairs.Where(pair => pair.Value is { Length: > 0 } value && !value.EndsWith(" not recorded", StringComparison.Ordinal))
+            .Select(pair => new InspectorDetail(pair.Label, pair.Value!))];
+}
+
 /// <summary>
 /// A request to show one object in the inspector beside the page: a morpheme, rule or other name, by identity.
 /// Unlike a <see cref="PageRequest"/> it leaves the page where it is.
 /// </summary>
-/// <param name="Ref">The object to show.</param>
-public sealed record OpenInspectorRequest(ObjectUseRef Ref);
+/// <param name="Subject">The object to show.</param>
+public sealed record OpenInspectorRequest(InspectorSubject Subject)
+{
+    /// <summary>The trace the subject was named in, when it was opened from one; its details are kept apart.</summary>
+    public InspectorTrace? Trace { get; init; }
+
+    /// <summary>What that trace itself recorded about the subject, line by line; empty when not opened from a trace.</summary>
+    public IReadOnlyList<InspectorDetail> Captured { get; init; } = [];
+
+    /// <summary>
+    /// What the inspector's first breadcrumb names, such as the word whose card it opened from; <see langword="null"/>
+    /// names the page.
+    /// </summary>
+    public string? From { get; init; }
+}
 
 /// <summary>
 /// The project and evidence published to the window's pages, their shared Assessment and Selection, pending
@@ -523,9 +552,23 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));
 
-    /// <summary>Opens the inspector on <paramref name="reference"/>, beside the page the window is showing.</summary>
-    public void OpenInspector(ObjectUseRef reference) =>
-        Inspector = new OpenInspectorRequest(reference ?? throw new ArgumentNullException(nameof(reference)));
+    /// <summary>
+    /// Opens the inspector on <paramref name="subject"/>, beside the page the window is showing, with its first
+    /// breadcrumb naming <paramref name="from"/>, or the page when that is <see langword="null"/>.
+    /// </summary>
+    public void OpenInspector(InspectorSubject subject, string? from = null, InspectorTrace? trace = null,
+        IReadOnlyList<InspectorDetail>? captured = null)
+    {
+        var request = new OpenInspectorRequest(subject ?? throw new ArgumentNullException(nameof(subject)))
+        {
+            From = from,
+            Trace = trace,
+            Captured = trace is null ? [] : captured ?? [],
+        };
+        // Asking again for the object already open starts its breadcrumb afresh, as a new request would.
+        if (Equals(Inspector, request)) OnPropertyChanged(nameof(Inspector));
+        else Inspector = request;
+    }
 
     /// <summary>Closes the inspector.</summary>
     public void CloseInspector() => Inspector = null;

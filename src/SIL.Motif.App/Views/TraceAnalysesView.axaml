@@ -33,7 +33,12 @@
                   <DataTemplate x:DataType="vm:TraceMorphViewModel">
                     <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" />
+                        <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
+                                           FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}">
+                          <TextBlock Text="{Binding Form}" FontWeight="SemiBold" />
+                        </views:InspectLink>
+                        <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold"
+                                                 IsVisible="{Binding CannotInspect}" />
                         <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
                         <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
                         <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />

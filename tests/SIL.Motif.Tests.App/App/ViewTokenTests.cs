@@ -101,7 +101,7 @@ public sealed class ViewTokenTests
             Assert.Equal("form", form.Text);
             Assert.Equal("gloss", gloss.Text);
             var links = row.GetLogicalDescendants().OfType<HyperlinkButton>().ToArray();
-            Assert.Equal(2, links.Length);
+            Assert.Single(links);
             Assert.All(links, link =>
             {
                 Assert.Equal("Lexicon Edit ↗", link.Content);
@@ -209,23 +209,29 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
-    public void MorphemeRowsOfferAnAnchoredMorphemeCard()
+    public void AMorphemeWithIdentityAsksForTheInspectorOnAKeyAndOneWithoutStaysPlain()
     {
         _avalonia.Invoke(() =>
         {
+            var named = new ParserReadingMorph("kat", "cut", "v", null, false, "silfw://entry")
+                { AllomorphId = "form-1", GrammaticalInfoId = "msa-1" };
             var row = new MorphemeRow
             {
-                Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph(
-                    "form", "gloss", "n", null, false, "silfw://entry"))],
+                Morphs = [new ParserReadingMorphViewModel(named),
+                    new ParserReadingMorphViewModel(new ParserReadingMorph("-a", "FV", "", null, false, null))],
             };
-            var host = Assert.IsType<Panel>(Assert.Single(row.Children));
-            var anchor = Assert.IsType<Border>(host.Children[0]);
-            var popup = Assert.IsType<Popup>(host.Children[1]);
+            var asked = new List<InspectorSubject>();
+            row.AddHandler(InspectLink.RequestedEvent, (_, e) => asked.Add(e.Subject));
 
-            Assert.Same(anchor, popup.PlacementTarget);
-            Assert.True(popup.IsLightDismissEnabled);
-            Assert.Contains(popup.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                text.Text == "Morpheme details");
+            var chip = Assert.IsType<Border>(row.Children[0]);
+            var plain = Assert.IsType<Border>(row.Children[1]);
+            Assert.True(chip.Focusable);
+            Assert.False(plain.Focusable);
+            Assert.DoesNotContain(row.GetLogicalDescendants(), control => control is Popup);
+            chip.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = chip });
+
+            var reference = Assert.Single(asked);
+            Assert.Equal(("form-1", "msa-1", "kat"), (reference.AllomorphId, reference.GrammaticalInfoId, reference.Label));
         });
     }
 

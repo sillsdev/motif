@@ -476,4 +476,11 @@ public sealed class ParserReadingMorphViewModel
 
     /// <summary>The GUID of the grammatical info this morph uses, or <see langword="null"/> when the reading names none.</summary>
     public string? GrammaticalInfoId { get; }
+
+    /// <summary>The morph as the inspector looks it up, by identity; <see langword="null"/> when the reading names no id.</summary>
+    public InspectorSubject? InspectSubject => InspectorSubject.Morpheme(AllomorphId, GrammaticalInfoId, Form, Gloss);
+
+    /// <summary>What the reading itself says about the morph, for the inspector to show beside FieldWorks' facts.</summary>
+    public IReadOnlyList<InspectorDetail> Captured =>
+        InspectorDetail.Recorded(("Form", Form), ("Gloss", Gloss), ("Category", Category));
 }

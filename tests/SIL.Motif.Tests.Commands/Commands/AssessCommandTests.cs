@@ -10,6 +10,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
@@ -407,6 +408,98 @@ public sealed class AssessCommandTests : IDisposable
             new ObjectUseRef { AllomorphId = Guid.NewGuid().ToString("D") }));
         Assert.Null(absent.Value!.Facts);
         Assert.Null(absent.Value.RanIn);
+    }
+
+    [Fact]
+    public void InspectResolvesAnAuthoredLexicalEntryFromTimingToItsBaselineFacts()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(seeded.FwDataPath), NewManagedRoot()).Succeeded);
+        var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
+        var key = new TraceTimingKey("lex_entry", entryKey);
+
+        var inspected = InspectQuery.Query(new InspectRequest(seeded.FwDataPath,
+            InspectorSubject.Rule(key, identityQuality: "authored")));
+
+        Assert.True(inspected.Succeeded, inspected.Refusal?.Message);
+        var response = inspected.Value!;
+        Assert.Equal(InspectorResolution.Resolved, response.Resolution);
+        Assert.Equal(InspectorSectionStatus.Available, response.Facts.Status);
+        Assert.Equal(entryKey, response.Facts.Value!.Entry!.Id);
+        Assert.Equal(SeededProject.FirstForm, response.Facts.Value.Entry.Headword);
+        Assert.Equal("Lexicon Edit", response.Facts.Value.Entry.FieldWorks!.ToolName);
+        Assert.Equal(key, response.TimingKey);
+    }
+
+    [Fact]
+    public void InspectReadsAMorphemesBaselineFactsBeforeAnyParseAllWords()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(seeded.FwDataPath), NewManagedRoot()).Succeeded);
+        var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
+
+        var inspected = InspectQuery.Query(new InspectRequest(seeded.FwDataPath,
+            InspectorSubject.Morpheme(_pristine.Seed.FirstLexemeFormId.ToString("D"), null, SeededProject.FirstForm)!));
+
+        Assert.True(inspected.Succeeded, inspected.Refusal?.Message);
+        var response = inspected.Value!;
+        Assert.Equal(InspectorResolution.Resolved, response.Resolution);
+        Assert.Null(response.AssessmentId);
+        Assert.Equal(CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath).Value!.Baseline!.Token.BundleDigest,
+            response.BaselineDigest);
+        Assert.Equal(InspectorSectionStatus.Available, response.Facts.Status);
+        Assert.Equal(SeededProject.FirstForm, response.Facts.Value!.Entry!.Headword);
+        Assert.Equal(new TraceTimingKey("lex_entry", entryKey), response.TimingKey);
+        Assert.Equal(InspectorSectionStatus.Absent, response.Uses.Status);
+        Assert.Equal(InspectorSectionStatus.Absent, response.RanIn.Status);
+        Assert.Contains("Parse all words", response.Uses.Reason, StringComparison.Ordinal);
+        Assert.Equal(InspectorSectionStatus.Absent, response.Warnings.Status);
+    }
+
+    [Fact]
+    public void InspectNeverJoinsOneEntrysAllomorphToAnothersGrammaticalInfoNorFillsAnIdItCouldNotFind()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.True(AssessForUses(seeded).Succeeded);
+        var first = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath).Value!.Assessment!.Words
+            .Single(word => word.Word == SeededProject.AnalysedWordForm).StoredAnalyses.Single().Morphs[0];
+        InspectResponse Inspect(InspectorSubject subject)
+        {
+            var outcome = InspectQuery.Query(new InspectRequest(seeded.FwDataPath, subject));
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            return outcome.Value!;
+        }
+
+        var mixed = Inspect(InspectorSubject.Morpheme(_pristine.Seed.SecondLexemeFormId.ToString("D"), first.GrammaticalInfoId)!);
+        Assert.Equal(InspectorResolution.Contradictory, mixed.Resolution);
+        Assert.Equal(InspectorSectionStatus.Absent, mixed.Facts.Status);
+        Assert.Null(mixed.Facts.Value);
+        Assert.Equal(InspectorSectionStatus.Available, mixed.Uses.Status);
+        Assert.Empty(mixed.Uses.Value!.Words);
+        Assert.Null(mixed.TimingKey);
+
+        var missing = Inspect(InspectorSubject.Morpheme(first.AllomorphId, Guid.NewGuid().ToString("D"))!);
+        Assert.Equal(InspectorResolution.NotInBaseline, missing.Resolution);
+        Assert.Null(missing.Facts.Value);
+
+        var whole = Inspect(InspectorSubject.Morpheme(first)!);
+        Assert.Equal(InspectorResolution.Resolved, whole.Resolution);
+        Assert.Equal([(SeededProject.AnalysedWordForm, "Lost")],
+            whole.Uses.Value!.Words.Select(word => (word.Row.Word, word.Row.Meaning)));
+
+        var rule = Inspect(InspectorSubject.Rule(new TraceTimingKey("morph_rule", "mrule#0:Verb template"), "Verb template",
+            identityQuality: "structural"));
+        Assert.Equal(InspectorResolution.NotAuthored, rule.Resolution);
+        Assert.Equal(InspectorSectionStatus.Absent, rule.Facts.Status);
+        Assert.Equal(InspectorSectionStatus.Unsupported, rule.Uses.Status);
+        Assert.Equal([(SeededProject.AnalysedWordForm, 2, 2_000_000L)],
+            rule.RanIn.Value!.Words.Select(word => (word.Row.Word, word.Calls, word.ElapsedNs)));
+
+        var slot = Inspect(new InspectorSubject(InspectorSubjectKind.Slot) { ObjectId = Guid.NewGuid().ToString("D") });
+        Assert.Equal(InspectorResolution.Unsupported, slot.Resolution);
+        Assert.Equal(InspectorSectionStatus.Unsupported, slot.Facts.Status);
+        Assert.Equal(InspectorSectionStatus.Unsupported, slot.RanIn.Status);
+        Assert.Null(slot.TimingKey);
     }
 
     [Fact]

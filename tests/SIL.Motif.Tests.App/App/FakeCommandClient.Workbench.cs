@@ -35,6 +35,11 @@ public sealed partial class FakeCommandClient
         _traceWord = (_, _) => Refused<WordTraceResponse>(
             new Refusal("trace.not-configured", FailureReason.Refused, "No trace configured."));
 
+    private Func<InspectRequest, CancellationToken, Task<CommandOutcome<InspectResponse>>>
+        _inspect = (_, _) => Refused<InspectResponse>(
+            new Refusal("inspect.not-configured", FailureReason.Refused, "No inspection configured."));
+
+    public List<InspectRequest> InspectRequests { get; } = [];
     public List<ProjectHistoryRequest> ProjectHistoryRequests { get; } = [];
     public List<OverviewRequest> OverviewRequests { get; } = [];
     public List<GrammarCheckRequest> CheckGrammarRequests { get; } = [];
@@ -96,6 +101,15 @@ public sealed partial class FakeCommandClient
         _traceWord = behavior;
 
     public void TraceWordCompletesWith(WordTraceResponse response) => OnTraceWord((_, _) => Completed(response));
+
+    public void OnInspect(Func<InspectRequest, CancellationToken, Task<CommandOutcome<InspectResponse>>> behavior) =>
+        _inspect = behavior;
+
+    public Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken)
+    {
+        InspectRequests.Add(request);
+        return _inspect(request, cancellationToken);
+    }
 
     public Task<CommandOutcome<ProjectHistoryResponse>> GetProjectHistoryAsync(
         ProjectHistoryRequest request, CancellationToken cancellationToken)

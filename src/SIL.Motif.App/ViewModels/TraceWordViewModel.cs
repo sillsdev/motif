@@ -103,6 +103,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         ShowDroppedPaths = false;
         Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
+        OnPropertyChanged(nameof(InspectorTrace));
         OnPropertyChanged(nameof(HasEffort));
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(HasDiagnosticJson));
@@ -191,6 +192,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
     /// can report one analysis once for every order it found it in.
     /// </summary>
     public IReadOnlyList<TraceAnalysisViewModel> Analyses => _analyses;
+
+    /// <summary>The trace as the inspector names it, with the Baseline it read; <see langword="null"/> before a trace.</summary>
+    public InspectorTrace? InspectorTrace => Result is { } result
+        ? new InspectorTrace(result.Word, result.HostCapture?.BundleDigest) : null;
 
     public bool HasAnalyses => _analyses.Count > 0;
 
@@ -767,6 +772,8 @@ public sealed class TraceMorphViewModel
             $"Form ID: {FormId}", $"Entry ID: {EntryId}", $"Grammatical info ID: {MsaId}", $"Inflection type ID: {InflTypeId}",
             $"Writing systems: {(WritingSystems.Length == 0 ? "not recorded" : WritingSystems)}",
         });
+        var subject = InspectorSubject.Morpheme(morph.FormId, morph.MsaId, morph.Form ?? morph.Headword, morph.Gloss);
+        InspectSubject = subject is null ? null : subject with { IdentityQuality = morph.IdentityQuality ?? "unknown" };
         Link = allowLiveLink && Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
                string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
         var toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
@@ -875,6 +882,15 @@ public sealed class TraceMorphViewModel
     public string EntryId { get; }
     public string MsaId { get; }
     public string InflTypeId { get; }
+
+    /// <summary>The morph as the inspector looks it up, by identity; <see langword="null"/> when the trace names no id.</summary>
+    public InspectorSubject? InspectSubject { get; }
+
+    /// <summary>What the trace recorded about the morph, for the inspector to show apart from the Baseline's facts.</summary>
+    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded(("Form", Form), ("Headword", Headword),
+        ("Gloss", Gloss), ("Category", Category), ("Slot", Slot), ("Features", Features));
+    public bool CanInspect => InspectSubject is not null;
+    public bool CannotInspect => InspectSubject is null;
     public string Details { get; }
     public string WritingSystems { get; }
     public Uri? Link { get; }

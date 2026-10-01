@@ -80,6 +80,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Pages = PageRegistry.Entries
             .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context)))
             .ToArray();
+        Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         Context.AttachSetup(setup);
         setup.PropertyChanged += (_, e) =>
@@ -125,6 +126,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
         RefreshPages();
     }
+
+    /// <summary>The inspector beside the page, which any page opens through <see cref="WorkspaceContext.OpenInspector"/>.</summary>
+    public InspectorViewModel Inspector { get; }
 
     /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
     public TechDemoNoticeViewModel? TechDemoNotice { get; }

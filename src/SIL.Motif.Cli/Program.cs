@@ -881,6 +881,13 @@ try
             result = RenderCommand(ObjectUsesQuery.Query(new ObjectUsesRequest(usesProject, usesRef, usesWords)));
             break;
 
+        case "inspect":
+            if (!flags.TryGetValue("project", out var inspectProject) || positionals.Count != 0 ||
+                InspectSubjectFrom(flags) is not { } inspectSubject)
+                return Usage("Usage: motif " + UsageLineFor("inspect"), asJson);
+            result = RenderCommand(InspectQuery.Query(new InspectRequest(inspectProject, inspectSubject)));
+            break;
+
         case "trace":
             if (flags.TryGetValue("load", out var tracePath))
             {
@@ -1250,6 +1257,34 @@ static string AnalysesUsage() =>
     "Usage: motif analyses --project <fwdata> [--json] OR motif analyses --project <fwdata> " +
     "--assessment <assessmentId> --current-selection-sha256 <sha256> " +
     "--current-grammar-sha256 <sha256> [--json]";
+
+// Exactly one subject, each kind by its own flags; a flag left without a value names nothing.
+static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> flags)
+{
+    string? Value(string name) => flags.TryGetValue(name, out var value) ? value : null;
+    var kinds = new[] { "rule", "slot", "environment", "feature", "warning" };
+    if (kinds.Append("allomorph").Append("grammatical-info")
+        .Any(name => Value(name) is "true" || Value(name) is { } value && string.IsNullOrWhiteSpace(value)))
+        return null;
+    var morpheme = Value("allomorph") is not null || Value("grammatical-info") is not null;
+    var named = kinds.Where(name => Value(name) is not null).ToArray();
+    if ((morpheme ? 1 : 0) + named.Length != 1) return null;
+    if (morpheme) return InspectorSubject.Morpheme(Value("allomorph"), Value("grammatical-info"));
+    var given = Value(named[0])!;
+    return named[0] switch
+    {
+        "rule" => given.Split(':', 2) is [{ Length: > 0 } kind, { Length: > 0 } key]
+            ? InspectorSubject.Rule(new TraceTimingKey(kind, key),
+                identityQuality: flags.ContainsKey("structural") ? "structural" : Guid.TryParse(key, out _) ? "authored" : "unknown")
+            : null,
+        "slot" => new InspectorSubject(InspectorSubjectKind.Slot) { ObjectId = given },
+        "environment" => new InspectorSubject(InspectorSubjectKind.Environment) { ObjectId = given },
+        "feature" => new InspectorSubject(InspectorSubjectKind.Feature) { ObjectId = given },
+        _ => given.Split(':', 2) is [{ Length: > 0 } code, .. var rest]
+            ? new InspectorSubject(InspectorSubjectKind.Warning) { WarningCode = code, ObjectId = rest.FirstOrDefault() }
+            : null,
+    };
+}
 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
