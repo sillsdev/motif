@@ -140,6 +140,22 @@ public sealed class ObjectFactsReaderTests : IDisposable
     }
 
     [Fact]
+    public void AStemAllomorphAloneIsTimedUnderItsEntry_HoweverManyGrammaticalInfosItHas()
+    {
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var second = _cache.ServiceLocator.GetInstance<IMoStemMsaFactory>().Create();
+            _grammar.Kata.MorphoSyntaxAnalysesOC.Add(second);
+            second.PartOfSpeechRA = _grammar.Verb;
+        });
+
+        var facts = Read(new ObjectUseRef { AllomorphId = _grammar.Kata.LexemeFormOA.Guid.ToString("D") })!;
+
+        Assert.Null(facts.GrammaticalInfo);
+        Assert.Equal(new TraceTimingKey("lex_entry", _grammar.Kata.Guid.ToString("D")), facts.TimingKey);
+    }
+
+    [Fact]
     public void NothingTheBaselineHolds_OrNoRefAtAll_ReadsAsNoFacts()
     {
         Assert.Null(Read(new ObjectUseRef { AllomorphId = Guid.NewGuid().ToString("D") }));

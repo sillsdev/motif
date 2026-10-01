@@ -61,7 +61,9 @@ public static class ObjectFactsReader
         ILexEntry? entry)
     {
         if (timed is not null) return new TraceTimingKey(reference.TimingKind!, Id(timed));
-        if (msa is IMoStemMsa && entry is not null) return new TraceTimingKey("lex_entry", Id(entry));
+        var stems = entry?.MorphoSyntaxAnalysesOC;
+        if (entry is not null && (msa is IMoStemMsa || msa is null && stems!.Count > 0 && stems.All(each => each is IMoStemMsa)))
+            return new TraceTimingKey("lex_entry", Id(entry));
         return msa is null ? null : new TraceTimingKey("morph_rule", Id(msa));
     }
 

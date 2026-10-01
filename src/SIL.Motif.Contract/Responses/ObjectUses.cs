@@ -159,7 +159,7 @@ public sealed record ObjectFactsSense(string Id, string Number)
 /// <param name="Id">The grammatical info's GUID.</param>
 /// <param name="Kind">
 /// <c>stem</c>, <c>inflectionalAffix</c>, <c>derivationalAffix</c>, <c>unclassifiedAffix</c> or
-/// <c>derivationalStep</c>, after FieldWorks' own kinds of grammatical info.
+/// <c>derivationalStep</c>, after FieldWorks' own kinds of grammatical info; <c>unknown</c> for any other.
 /// </param>
 public sealed record ObjectFactsGrammaticalInfo(string Id, string Kind)
 {
