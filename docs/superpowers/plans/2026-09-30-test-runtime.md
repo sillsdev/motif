@@ -50,10 +50,10 @@ All authored walkthroughs must remain in the full suite, with screenshots and re
 The post-Analyze Release archive at .tmp/combined-release-red-b7c55b71 recorded seven passing replay rows totaling 153.973 seconds. They were all in WalkthroughReplayTests, so class-based sharding assigned them to one process; the recorded class weight was only 2.6 seconds. The complete run failed elsewhere and is timing evidence, not a green benchmark. Its longest App process took 216.7 seconds. These release-media timings must not be presented as ordinary developer timings.
 
 - [x] Independently review process isolation and the existing class-sharding boundary.
-- [ ] Extract one shared replay harness without changing any behavioral, capture or clip assertion.
-- [ ] Give each authored flow one thin, independently sharded class; keep non-authored harness tests once.
-- [ ] Pin exact discovery coverage and reject duplicate registrations, preserving automatic inclusion pressure for new scripts.
-- [ ] Preserve script IDs, screenshot paths, all video formats and media-tool discovery; record changed test names.
+- [x] Extract one shared replay harness without changing any behavioral, capture or clip assertion.
+- [x] Give each authored flow one thin, independently sharded class; keep non-authored harness tests once.
+- [x] Pin exact discovery coverage and reject duplicate registrations, preserving automatic inclusion pressure for new scripts.
+- [x] Preserve script IDs, screenshot paths, all video formats and media-tool discovery; record changed test names.
 - [ ] Renew class weights from a representative complete run and compare the same media mode before claiming improvement.
 
 The existing three-process cap remains unchanged. This correction distributes work already in the suite; it does not remove tests or promise a two-minute outcome.
@@ -66,5 +66,14 @@ The independently reviewed PendingChanges workflow diagnostic records selected j
 
 - [x] Review and integrate the additive failure diagnostic.
 - [x] Review and integrate the deterministic current-behavior characterization.
-- [ ] Execute both in the combined full gate and retain any recurrence facts.
+- [x] Execute both in the combined full gate and retain any recurrence facts.
 - [ ] Select a product correction only after the job lifecycle cause is established.
+## Final reviewed release result and scope
+
+The integrated release is verified with the real parser and current documentation media. Further test-speed experiments are stopped at the user's request; the two-minute ordinary developer gate is not established.
+
+Source a911ec3b passed the complete Release documentation helper without resuming or bypassing a failed step. It reported 3930 passed, zero failed and 26 skipped in 234.6 test-phase seconds; the complete helper took 317.756 seconds. All five required PanGloss integrations passed, all seven authored flows produced required screenshots/manifests and MP4/WebM/poster outputs, and production website generation plus all 20 website checks passed.
+
+Seven thin replay classes now share the complete existing harness. Their names end in WalkthroughReplayTests and their common Fact is ReplaysAuthoredWalkthrough; script IDs and artifact paths remain unchanged. The coverage guard rejects missing/duplicate registrations, mismatched filenames, skipped or parameterized Facts, wrong collections, and wrappers outside the media selector. The slowest App process was 106.3 seconds; the earlier same-media-mode archive recorded 216.7 seconds. These are different revisions and conditions, not a controlled attribution experiment. The portable package case passed in 42.050 seconds.
+
+Both job-diagnostic and late-retirement characterization tests passed. The archived timeout's cause remains unproved; this result is not evidence that it was fixed. Class weight renewal, ordinary-gate timing and additional performance corrections are deferred under the user's stop instruction. The separate triple-build/default-test-selection lane is owned by the other thread.
