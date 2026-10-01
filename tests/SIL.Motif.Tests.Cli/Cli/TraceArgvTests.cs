@@ -22,6 +22,26 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         Path.GetTempPath(), "motif-trace-argv-" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public async Task TraceTextDisplaysCapturedRuleNamesWhileJsonKeepsProducerLabels()
+    {
+        Directory.CreateDirectory(_managedRoot);
+        var path = Path.Combine(_managedRoot, "captured-rule.json");
+        File.WriteAllText(path, TraceEnvelope.CapturedRuleLabel);
+        var text = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path);
+        Assert.True(text.ExitCode == 0, text.Error);
+        Assert.Contains("Stopped 1 attempt(s): Vowel harmony:", text.Output);
+        Assert.Contains("Phonological rule Vowel harmony, stopped:", text.Output);
+        Assert.Contains("phonologicalRule Vowel harmony", text.Output);
+        Assert.DoesNotContain("Producer name", text.Output);
+
+        var json = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path, "--json");
+        Assert.True(json.ExitCode == 0, json.Error);
+        var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
+        Assert.Equal("Producer name", Assert.Single(response.Reading.Refs).Label);
+        Assert.Equal("Vowel harmony", Assert.Single(response.Reading.Refs).CapturedFieldWorksLabel);
+    }
+
+    [Fact]
     public async Task TraceJsonOnTheSeededProjectMatchesTheGolden()
     {
         var (project, baseline) = TracedProject();
@@ -65,6 +85,14 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         Assert.True(result.ExitCode == 0, result.Error);
         var loaded = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
         var window = WordTraceQuery.LoadDiagnostic(File.ReadAllText(path)).Value!;
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.False(json.RootElement.TryGetProperty("root", out _));
+        Assert.False(json.RootElement.TryGetProperty("candidates", out _));
+        Assert.False(json.RootElement.TryGetProperty("analyses", out _));
+        var authority = json.RootElement.GetProperty("reading");
+        Assert.Equal(JsonValueKind.Object, authority.GetProperty("root").ValueKind);
+        Assert.Equal(JsonValueKind.Array, authority.GetProperty("attempts").ValueKind);
+        Assert.Equal(JsonValueKind.Array, authority.GetProperty("analyses").ValueKind);
         Assert.Equal(ProjectionJson.Serialize(window.Reading!), ProjectionJson.Serialize(loaded.Reading!));
         Assert.NotEmpty(loaded.Reading!.Refs);
     }

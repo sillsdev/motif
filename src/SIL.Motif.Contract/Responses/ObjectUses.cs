@@ -261,7 +261,7 @@ public sealed record ObjectFactsEnvironment(string Id, string Notation)
 
 /// <summary>A rule PanGloss runs, and the FieldWorks tool that edits it.</summary>
 /// <param name="Id">The rule's GUID: an affix's is its grammatical info's.</param>
-/// <param name="Kind"><c>affixRule</c>, <c>phonologicalRule</c> or <c>compoundRule</c>, as trace refs name them.</param>
+/// <param name="Kind"><c>affixRule</c>, <c>phonologicalRule</c> or <c>compoundRule</c>, as object facts classify them.</param>
 /// <param name="Name">The rule's name, or an affix's headword and gloss.</param>
 public sealed record ObjectFactsRule(string Id, string Kind, string Name)
 {

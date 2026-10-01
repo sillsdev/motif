@@ -14,7 +14,7 @@ public sealed record WordTraceReading(
     IReadOnlyList<TraceRuleReading> RulesOnBestPath)
 {
     /// <summary>
-    /// Every morph, rule, template and stratum the reading names, once each, in the order first met. Each step,
+    /// Every morph, rule, template and stratum identity or unidentified occurrence, in the order first met. Each step,
     /// morph, stop group and rule names its entry here by <c>RefId</c>, so a link to FieldWorks or a join to Timing
     /// goes through identity rather than through display text.
     /// </summary>
@@ -27,11 +27,15 @@ public sealed record WordTraceReading(
 /// </summary>
 /// <param name="Id">The reading-wide id other records cite as <c>RefId</c>, built from the identity when there is one.</param>
 /// <param name="Kind">
-/// <c>morph</c>, <c>affixRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>, <c>template</c> or <c>stratum</c>.
+/// <c>morph</c>, <c>morphologicalRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>,
+/// <c>template</c> or <c>stratum</c>. A generic morphological identity does not distinguish an affix from a compound.
 /// </param>
-/// <param name="Label">The name the project gives it, as the reading first shows it.</param>
+/// <param name="Label">The producer's captured display label, as the reading first shows it.</param>
 public sealed record TraceRef(string Id, string Kind, string Label)
 {
+    /// <summary>The Baseline's FieldWorks name captured for this identity, separate from the producer label.</summary>
+    public string? CapturedFieldWorksLabel { get; init; }
+
     /// <summary>A morph's gloss; <see langword="null"/> for a rule, template or stratum.</summary>
     public string? Gloss { get; init; }
 
@@ -66,7 +70,7 @@ public sealed record TraceFieldWorksTarget(string Tool, string ToolName, string 
 /// <summary>An object's identity in PanGloss's statistics: its kind there, such as <c>phon_rule</c>, and its key.</summary>
 public sealed record TraceTimingKey(string Kind, string Key);
 
-/// <summary>Builds the reading-wide id a step or morph cites as <c>RefId</c>, from identity first and label last.</summary>
+/// <summary>Builds a reading-local <c>RefId</c> from recorded identity or an occurrence address, never display text.</summary>
 public static class TraceRefIds
 {
     /// <summary>The identity quality of a name whose trace recorded no identity.</summary>
@@ -74,30 +78,34 @@ public static class TraceRefIds
 
     /// <summary>
     /// The id of the rule, template or stratum a step names: its recorded identity kind and id, or, when the trace
-    /// recorded none, the kind its step type implies and its label; <see langword="null"/> for a step naming nothing.
+    /// recorded none, the kind its step type implies and its document-local step address.
+    /// <see langword="null"/> for a step naming nothing or having no recorded identity or step address.
     /// </summary>
-    public static string? ForSource(string type, string? source, string? identityKind, string? identityId)
+    public static string? ForSource(string type, string? source, string? identityKind, string? identityId, string? stepId = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         if (!string.IsNullOrEmpty(identityKind) && !string.IsNullOrEmpty(identityId))
-            return identityKind + ":" + identityId;
+            return identityKind + ":" + CanonicalIdentity(identityId);
         if (string.IsNullOrWhiteSpace(source)) return null;
-        return IdentityKindOf(type) is { } kind ? kind + ":name:" + source : null;
+        return stepId is { Length: > 0 } && IdentityKindOf(type) is { } kind ? kind + ":step:" + stepId : null;
     }
 
     /// <summary>
     /// The id of a morph: its entry, grammatical info and allomorph GUIDs; else the grammar's own morpheme and
-    /// allomorph numbers; else the guessed or written form; <see langword="null"/> for a morph with none of them.
+    /// allomorph numbers; else its document-local occurrence address. Display spelling is never identity.
     /// </summary>
     public static string? ForMorph(TraceMorph morph)
     {
         ArgumentNullException.ThrowIfNull(morph);
         if (morph.EntryId is not null || morph.MsaId is not null || morph.FormId is not null)
-            return $"morph:{morph.EntryId}/{morph.MsaId}/{morph.FormId}";
+            return $"morph:{CanonicalIdentity(morph.EntryId)}/{CanonicalIdentity(morph.MsaId)}/{CanonicalIdentity(morph.FormId)}";
         if (morph.MorphemeId is { } morpheme) return $"morph:#{morpheme}.{morph.AllomorphId}";
-        if (!string.IsNullOrEmpty(morph.GuessedString)) return "morph:guess:" + morph.GuessedString;
-        return string.IsNullOrEmpty(morph.Form) ? null : "morph:name:" + morph.Form;
+        return morph.OccurrenceId is { Length: > 0 } occurrence ? "morph:occurrence:" + occurrence : null;
     }
+
+    /// <summary>Formats a GUID identity in D format while preserving a non-GUID grammar-local key verbatim.</summary>
+    public static string? CanonicalIdentity(string? identity) =>
+        Guid.TryParse(identity, out var guid) ? guid.ToString("D") : identity;
 
     /// <summary>The identity kind PanGloss records for a step of <paramref name="type"/>, or <see langword="null"/>.</summary>
     public static string? IdentityKindOf(string type)
@@ -111,7 +119,10 @@ public static class TraceRefIds
     }
 }
 
-/// <summary>Attempts stopped by one rule identity and reason, ordered by how many stopped.</summary>
+/// <summary>
+/// Attempts stopped by one typed rule ref and reason, ordered by how many stopped. Unidentified stopping
+/// occurrences remain separate; an attempt with no stopping ref forms its own group.
+/// </summary>
 public sealed record TraceStopGroup(
     string? Rule, string? RuleId, string? ReasonCode, string? Explanation,
     IReadOnlyList<TraceCandidate> Attempts)
@@ -122,7 +133,7 @@ public sealed record TraceStopGroup(
     public string? RuleRefId { get; init; }
 }
 
-/// <summary>A named rule on the best attempt, with its building-order reading and original step ids.</summary>
+/// <summary>One rule event on the best attempt, in building order, with its document-local step address.</summary>
 public sealed record TraceRuleReading(
     string Rule, string? RuleId, string Kind, string Outcome, string Explanation,
     IReadOnlyList<string> StepIds)
@@ -140,10 +151,8 @@ public sealed record WordTraceResponse(
     int StepCount,
     string? DeepestRule,
     int ElapsedMs,
-    IReadOnlyList<TraceCandidate> Candidates,
-    TraceStep Root)
+    WordTraceReading Reading)
 {
-    public WordTraceReading? Reading { get; init; }
     public long? ParserSteps { get; init; }
     public double? ParserElapsedMs { get; init; }
     public bool Guessed { get; init; }
@@ -152,7 +161,6 @@ public sealed record WordTraceResponse(
     public string DiagnosticFormat { get; init; } = string.Empty;
     public string SearchStatus { get; init; } = "complete";
     public bool InvalidShape { get; init; }
-    public IReadOnlyList<TraceAnalysis> Analyses { get; init; } = [];
     public TraceHostCapture? HostCapture { get; init; }
     public TraceProvenanceComparison? Provenance { get; init; }
     public string? ParserName { get; init; }
@@ -182,6 +190,7 @@ public sealed record TraceAnalysis(
     public string? LegacyMorphemes { get; init; }
     public string? ProjectionStatus { get; init; }
     public string? ProjectionError { get; init; }
+    public string? ProjectionErrorCode { get; init; }
 }
 
 public sealed record TraceMorph(
@@ -196,6 +205,9 @@ public sealed record TraceMorph(
     string? GuessedString,
     string? FieldWorksLink)
 {
+    /// <summary>The occurrence address within this diagnostic, used when no object identity was recorded.</summary>
+    public string? OccurrenceId { get; init; }
+
     public string? FormId { get; init; }
     public string? EntryId { get; init; }
     public string? MsaId { get; init; }
@@ -239,6 +251,7 @@ public sealed record TraceCandidate(
     public string? FailureRequired { get; init; }
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
+    public TraceFailureEvidence? FailureEvidence { get; init; }
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
     public string? SourceIdentityQuality { get; init; }
@@ -249,8 +262,9 @@ public sealed record TraceCandidate(
     public string? Surface { get; init; }
 
     /// <summary>
-    /// The rule whose step failed just before this attempt ended, by the name the project gives it; <see langword="null"/>
+    /// The rule whose step failed just before this attempt ended, by its producer label; <see langword="null"/>
     /// when the attempt failed on its own terms, such as leaving morphemes unused.
+    /// Its captured FieldWorks name, when present, belongs to the ref identified by <see cref="StoppedByRefId"/>.
     /// </summary>
     public string? StoppedByRule { get; init; }
 
@@ -276,14 +290,23 @@ public sealed record TraceStep(
     public string? FailureRequired { get; init; }
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
+    public TraceFailureEvidence? FailureEvidence { get; init; }
     public IReadOnlyList<TraceMorph> AttemptedMorphs { get; init; } = [];
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
     public string? SourceIdentityQuality { get; init; }
 
     /// <summary>The <see cref="TraceRef.Id"/> of the rule, template or stratum this step names, if any.</summary>
-    public string? RefId => TraceRefIds.ForSource(Type, Source, SourceIdentityKind, SourceIdentityId);
+    public string? RefId => TraceRefIds.ForSource(Type, Source, SourceIdentityKind, SourceIdentityId, StepId);
 }
+
+/// <summary>Recorded failure-owner evidence; structured operands remain diagnostic JSON, never authored notation.</summary>
+public sealed record TraceFailureEvidence(
+    string? Kind, string? Source, string? ReasonCode, string? Status, string? UnavailableReason,
+    string? Reason, string? Required, string? Actual, string? Environment);
+
+/// <summary>A captured FieldWorks name keyed by a ref's exact identity within this diagnostic.</summary>
+public sealed record TraceCapturedLabel(string RefId, string Label);
 
 public sealed record TraceHostCapture(
     string? ProjectIdentity,
@@ -292,7 +315,11 @@ public sealed record TraceHostCapture(
     string? BundleDigest,
     DateTimeOffset? CapturedUtc,
     long? WallElapsedMs,
-    IReadOnlyList<TraceWritingSystem> WritingSystems);
+    IReadOnlyList<TraceWritingSystem> WritingSystems)
+{
+    /// <summary>Baseline names keyed by trace ref id, replayed without authorizing live navigation.</summary>
+    public IReadOnlyList<TraceCapturedLabel> TraceLabels { get; init; } = [];
+}
 
 public sealed record TraceWritingSystem(
     string Id,

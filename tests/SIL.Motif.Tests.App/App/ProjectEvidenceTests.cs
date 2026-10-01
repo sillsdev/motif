@@ -44,9 +44,8 @@ public sealed class ProjectEvidenceTests
             fake.ReadCurrentEvidenceCompletesWith(StoredSnapshot());
             fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "kind", 1, 5, 8, [], [], []));
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-                [new TraceCandidate([], true, null, "Built the word", [
-                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
-                new TraceStep("WordAnalysis", null, null, null, null, [])));
+                TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])], [])));
 
             await context.OpenProjectAsync(ProjectPath);
 

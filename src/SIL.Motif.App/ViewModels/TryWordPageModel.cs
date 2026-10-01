@@ -63,7 +63,7 @@ public sealed class TryWordPageModel : PageModel
     public ObservableCollection<string> RecentWords { get; } = [];
 
     /// <summary>
-    /// Unique named rules on the successful or furthest recorded attempt, in building order: outward from the stem,
+    /// Rule events, including repeats, on the successful or furthest recorded attempt, outward from the stem,
     /// as a linguist builds the word, not in the order the parser took it apart.
     /// </summary>
     public ObservableCollection<TryWordRuleRowViewModel> RulesOnBestPath { get; } = [];
@@ -211,9 +211,13 @@ public sealed class TryWordPageModel : PageModel
         TakingApartText = string.Empty;
         var attempt = Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded) ?? Trace.ClosestAttempts.FirstOrDefault();
         if (attempt is not null) TakingApartText = TakingApart(attempt.Steps);
+        var labels = new TraceDisplayLabels(Trace.Reading?.Refs ?? []);
         foreach (var rule in Trace.Reading?.RulesOnBestPath ?? [])
-            RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Rule, rule.Kind, rule.Outcome,
-                rule.Explanation, () => Context.OpenTiming([result!.Word], rule.Rule)));
+        {
+            var name = labels.Resolve(rule.RefId, rule.Rule)!;
+            RulesOnBestPath.Add(new TryWordRuleRowViewModel(name, rule.Kind, rule.Outcome,
+                rule.Explanation, () => Context.OpenTiming([result!.Word], name)));
+        }
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
         OnPropertyChanged(nameof(TakingApartText));
@@ -338,8 +342,8 @@ public sealed class TryWordPageModel : PageModel
 public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, string TimeText, string ShareText,
     bool IsOtherTime);
 
-/// <summary>One named rule on the best path, as this try recorded it.</summary>
-/// <param name="rule">The rule's name as recorded by the trace.</param>
+/// <summary>One rule event on the best path, including repeated events for the same rule.</summary>
+/// <param name="rule">The captured FieldWorks name when available, otherwise the producer label.</param>
 /// <param name="kind">The kinds of steps attributed to the rule.</param>
 /// <param name="outcome">The outcomes recorded for the rule's steps.</param>
 /// <param name="explanation">The recorded detail for the rule's steps.</param>
@@ -347,7 +351,7 @@ public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, strin
 public sealed class TryWordRuleRowViewModel(
     string rule, string kind, string outcome, string explanation, Action openTiming)
 {
-    /// <summary>The rule's name as recorded by the trace.</summary>
+    /// <summary>The captured FieldWorks name when available, otherwise the producer label.</summary>
     public string Rule { get; } = rule;
 
     /// <summary>The kinds of steps attributed to the rule.</summary>

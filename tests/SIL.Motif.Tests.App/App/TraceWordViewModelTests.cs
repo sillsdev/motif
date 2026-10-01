@@ -3,6 +3,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -14,6 +15,57 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class TraceWordViewModelTests
 {
+    [Fact]
+    public async Task LiveAndReopenedTracesDisplayTheCapturedRuleName()
+    {
+        var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(response);
+        var live = new TraceWordViewModel(fake) { WordToTry = "word" };
+        live.SetProjectPath(ProjectPath);
+        await live.TryCommand.ExecuteAsync(null);
+        var reopened = TraceWordViewModel.FromDiagnosticJson(live.DiagnosticJson);
+
+        foreach (var trace in new[] { live, reopened })
+        {
+            Assert.Equal("Stopped by Vowel harmony", Assert.Single(trace.ClosestAttempts).StopHeadline);
+            Assert.Equal("Vowel harmony", Assert.Single(trace.StopGroups).RuleText);
+            Assert.Equal("Vowel harmony", trace.Root!.Children[0].Source);
+            Assert.Equal("Vowel harmony", trace.Candidates[0].Steps[1].Source);
+            Assert.Equal("Producer name", Assert.Single(trace.Reading!.Refs).Label);
+            trace.RuleFilter = "Vowel harmony";
+            Assert.NotEmpty(trace.FilteredRoots);
+        }
+    }
+
+    [Fact]
+    public void AResponseRoundTripKeepsTheReadingAndItsAttemptSelections()
+    {
+        var response = MatinluTrace();
+        var reading = response.Reading! with
+        {
+            Refs = response.Reading!.Refs.Select(reference => reference with
+            {
+                FieldWorks = new TraceFieldWorksTarget("tool", "Tool", "object", "silfw://recorded"),
+            }).ToArray(),
+        };
+        var loaded = ProjectionJson.Deserialize<WordTraceResponse>(ProjectionJson.Serialize(response with { Reading = reading }))!;
+        var trace = new TraceWordViewModel { Result = loaded };
+        Assert.Equal(ProjectionJson.Serialize(reading), ProjectionJson.Serialize(trace.Reading));
+        Assert.NotEmpty(trace.ClosestAttempts);
+        Assert.Equal(reading.ClosestAttempts.Take(trace.ClosestAttempts.Count).Select(attempt => attempt.AttemptId),
+            trace.ClosestAttempts.Select(attempt => attempt.AttemptId));
+    }
+
+    [Fact]
+    public void AnUnknownFailureNameIsShownAsACodeWithoutAnExplanation()
+    {
+        var reason = TraceStepKinds.ExplainReason("FutureUnificationMechanism");
+        Assert.Contains("FutureUnificationMechanism", reason);
+        Assert.Contains("not recorded", reason);
+        Assert.DoesNotContain("future unification mechanism", reason);
+    }
+
     [Fact]
     public void ABlockedStepSaysWhyItWasNotRepeated()
     {
@@ -75,7 +127,8 @@ public sealed class TraceWordViewModelTests
         var fake = new FakeCommandClient();
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "kitabu", Parsed: false, Complete: false, StopReason: "The parser stopped at its step cap.", StepCount: 3,
-            DeepestRule: null, ElapsedMs: 1500, [], Leaf("WordAnalysis"))
+            DeepestRule: null, ElapsedMs: 1500,
+            TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
             ParserSteps = 12345,
             ParserElapsedMs = 0.2876,
@@ -108,20 +161,20 @@ public sealed class TraceWordViewModelTests
             new([.. Enumerable.Range(0, morphs).Select(index => new ParserReadingMorph($"m{index}", "gloss", "v", null, false, null))],
                 Succeeded: false, reason, $"Because of {reason}.", [])
             {
-                Surface = surface, StoppedByRule = rule, OutcomeStatus = "failed",
+                Surface = surface, StoppedByRule = rule, StoppedByRuleId = rule,
+                StoppedByRefId = "morphRule:" + rule, OutcomeStatus = "failed",
             };
         var fake = new FakeCommandClient();
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "hawajafika", Parsed: false, Complete: true, StopReason: null, StepCount: 9, DeepestRule: null, ElapsedMs: 5,
-            [
+            TraceReadingBuilder.Build("hawajafika", Leaf("WordAnalysis"), [
                 Attempt("-a", "SurfaceFormMismatch", "hawajafik", 4),
                 Attempt("-a", "SurfaceFormMismatch", "hawajaf", 2),
                 Attempt("-a", "SurfaceFormMismatch", "haw", 1),
                 Attempt("-a", "SurfaceFormMismatch", "ha", 1),
                 Attempt("-ja-", "ObligatorySyntacticFeatures", "hawafika", 3),
                 new TraceCandidate([], Succeeded: true, null, null, []) { Surface = "other" },
-            ],
-            Leaf("WordAnalysis")));
+            ], [])));
         var trace = new TraceWordViewModel(fake);
         trace.SetProjectPath(ProjectPath);
         trace.WordToTry = "hawajafika";
@@ -217,9 +270,9 @@ public sealed class TraceWordViewModelTests
     }
 
     [Theory]
-    [InlineData("MorphologicalRuleSynthesis", "Affix rule")]
-    [InlineData("MorphologicalRuleAnalysis", "Affix rule")]
-    [InlineData("MorphologicalRule", "Affix rule")]
+    [InlineData("MorphologicalRuleSynthesis", "Morphological rule")]
+    [InlineData("MorphologicalRuleAnalysis", "Morphological rule")]
+    [InlineData("MorphologicalRule", "Morphological rule")]
     [InlineData("PhonologicalRuleSynthesis", "Phonological rule")]
     [InlineData("TemplateAnalysisInput", "Affix template")]
     [InlineData("LexicalLookup", "Lexical lookup")]
@@ -245,11 +298,11 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void AStopGroupWithoutASentenceStillReadsInWordsNotTheParsersCode()
+    public void AStopGroupWithoutAnExplanationShowsTheRecordedCode()
     {
         var group = new TraceStopGroupViewModel("lu", "SomeNewReason", null, 2);
 
-        Assert.Equal("The parser stopped here: some new reason.", group.ReasonText);
+        Assert.Equal("Explanation not recorded (reason code: SomeNewReason).", group.ReasonText);
     }
 
     [Fact]
@@ -258,8 +311,7 @@ public sealed class TraceWordViewModelTests
         var fake = new FakeCommandClient();
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "kitabu", Parsed: true, Complete: true, StopReason: null, StepCount: 1, DeepestRule: null, ElapsedMs: 1,
-            [new TraceCandidate([new ParserReadingMorph("kitabu", "book", "n", null, false, null)], true, null, null, [])],
-            Leaf("WordSynthesis")));
+            TraceReadingBuilder.Build("kitabu", Leaf("WordSynthesis"), [new TraceCandidate([new ParserReadingMorph("kitabu", "book", "n", null, false, null)], true, null, null, [])], [])));
         var trace = new TraceWordViewModel(fake);
         trace.SetProjectPath(ProjectPath);
         trace.WordToTry = "kitabu";
@@ -290,10 +342,9 @@ public sealed class TraceWordViewModelTests
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "kitabu", Parsed: true, Complete: true, StopReason: null, StepCount: 3, DeepestRule: "root",
             ElapsedMs: 12,
-            [new TraceCandidate(
+            TraceReadingBuilder.Build("kitabu", Leaf("WordSynthesis", "root"), [new TraceCandidate(
                 [new ParserReadingMorph("kitabu", "book", "n", null, false, null)],
-                Succeeded: true, FailureReason: null, Explanation: null, Steps: [])],
-            Leaf("WordSynthesis", "root")));
+                Succeeded: true, FailureReason: null, Explanation: null, Steps: [])], [])));
         var trace = new TraceWordViewModel(fake);
         trace.SetProjectPath(ProjectPath);
         trace.WordToTry = "kitabu";
@@ -355,15 +406,14 @@ public sealed class TraceWordViewModelTests
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "hawajafika", Parsed: false, Complete: true, StopReason: null, StepCount: 3, DeepestRule: "neg-ha-",
             ElapsedMs: 12,
-            [new TraceCandidate(
+            TraceReadingBuilder.Build("hawajafika", Leaf("WordSynthesis", "root"), [new TraceCandidate(
                 [new ParserReadingMorph("ha-", "neg", "infl", null, false, null)],
                 Succeeded: false, FailureReason: "mismatch", Explanation: "does not match",
                 Steps:
                 [
                     Leaf("LexicalLookup", "fik"),
                     Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked"),
-                ])],
-            Leaf("WordSynthesis", "root")));
+                ])], [])));
         var trace = new TraceWordViewModel(fake);
         trace.SetProjectPath(ProjectPath);
         trace.WordToTry = "hawajafika";
@@ -410,10 +460,9 @@ public sealed class TraceWordViewModelTests
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "hawajafika", Parsed: false, Complete: true, StopReason: null, StepCount: 3, DeepestRule: "neg-ha-",
             ElapsedMs: 12,
-            [new TraceCandidate(
+            TraceReadingBuilder.Build("hawajafika", Leaf("WordSynthesis", "root"), [new TraceCandidate(
                 [new ParserReadingMorph("ha-", "neg", "infl", null, false, null)],
-                Succeeded: false, FailureReason: "mismatch", Explanation: "does not match", Steps: [])],
-            Leaf("WordSynthesis", "root")));
+                Succeeded: false, FailureReason: "mismatch", Explanation: "does not match", Steps: [])], [])));
         var trace = new TraceWordViewModel(fake);
         trace.SetProjectPath(ProjectPath);
         var approved = new ParserReadingViewModel(1, new ParserReading(
@@ -444,7 +493,7 @@ public sealed class TraceWordViewModelTests
         trace.WordToTry = "kitabu";
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "kitabu", Parsed: false, Complete: true, StopReason: null, StepCount: 1, DeepestRule: "root", ElapsedMs: 1,
-            [], Leaf("WordSynthesis", "root")));
+            TraceReadingBuilder.Build("kitabu", Leaf("WordSynthesis", "root"), [], [])));
 
         await trace.TryCommand.ExecuteAsync(null);
 
@@ -460,10 +509,9 @@ public sealed class TraceWordViewModelTests
         trace.WordToTry = "kitabu";
         fake.TraceWordCompletesWith(new WordTraceResponse(
             "kitabu", Parsed: true, Complete: true, StopReason: null, StepCount: 1, DeepestRule: "root", ElapsedMs: 1,
-            [new TraceCandidate(
+            TraceReadingBuilder.Build("kitabu", Leaf("WordSynthesis", "root"), [new TraceCandidate(
                 [new ParserReadingMorph("kitabu", "book", "n", null, false, null)],
-                Succeeded: true, FailureReason: null, Explanation: null, Steps: [])],
-            Leaf("WordSynthesis", "root")));
+                Succeeded: true, FailureReason: null, Explanation: null, Steps: [])], [])));
         await trace.TryCommand.ExecuteAsync(null);
         trace.SelectedCandidate = trace.Candidates[0];
         trace.SelectedStep = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestRule: null);
@@ -495,7 +543,8 @@ public sealed class TraceWordViewModelTests
     {
         var response = new WordTraceResponse(
             "kitabu", Parsed: false, Complete: false, StopReason: stopReason, StepCount: 5,
-            DeepestRule: null, ElapsedMs: 12, [], Leaf("WordAnalysis"))
+            DeepestRule: null, ElapsedMs: 12,
+            TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
             SearchStatus = "incomplete",
         };
@@ -512,19 +561,18 @@ public sealed class TraceWordViewModelTests
         var response = new WordTraceResponse(
             "kitabu", Parsed: true, Complete: false, StopReason: "The search reached its limit.", StepCount: 5,
             DeepestRule: null, ElapsedMs: 12,
-            [
+            TraceReadingBuilder.Build("kitabu", Leaf("WordSynthesis"), [
                 new TraceCandidate(
                     [new ParserReadingMorph("ki", "book", "n", "regular", false, "silfw://entry/1")],
                     Succeeded: true, FailureReason: null, Explanation: null, Steps: []),
                 new TraceCandidate(
                     [new ParserReadingMorph("ta", "write", "v", null, false, null)],
                     Succeeded: false, FailureReason: "surface-mismatch", Explanation: "The output did not match.", Steps: [])
-            ],
-            Leaf("WordSynthesis"))
+            ], [new TraceAnalysis("analysis-1", 0, "kitabu", "available",
+                [new TraceMorph("morph-1", "ki", "kika", "book", "N", null, null, null, null, null)])]))
         {
             Effort = [new TraceEffort("Lexical entries", 3, 2, 1, 0, 0, 4, 0.5) { Work = 2 }],
-            Analyses = [new TraceAnalysis("analysis-1", 0, "kitabu", "available",
-                [new TraceMorph("morph-1", "ki", "kika", "book", "N", null, null, null, null, null)])],
+
         };
         var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = response };
 
@@ -590,8 +638,9 @@ public sealed class TraceWordViewModelTests
         };
         var response = new WordTraceResponse(
             "word", Parsed: false, Complete: true, StopReason: null, StepCount: 2,
-            DeepestRule: null, ElapsedMs: 1, Candidates: [], Root: new TraceStep(
-                "WordSynthesis", "root", "in", "out", null, [child]));
+            DeepestRule: null, ElapsedMs: 1,
+            TraceReadingBuilder.Build("word", new TraceStep(
+                "WordSynthesis", "root", "in", "out", null, [child]), [], []));
         var trace = new TraceWordViewModel { Result = response };
 
         trace.MorphFilter = "needle";
@@ -608,11 +657,9 @@ public sealed class TraceWordViewModelTests
     {
         var response = new WordTraceResponse(
             "word", Parsed: true, Complete: true, StopReason: null, StepCount: 1,
-            DeepestRule: null, ElapsedMs: 1, Candidates: [], Root: Leaf("Success"))
-        {
-            Analyses = [new TraceAnalysis("a", 0, "word", "available",
-                [new TraceMorph("m", "form", "head", "gloss", "noun", null, null, null, null, "silfw://entry/1")])],
-        };
+            DeepestRule: null, ElapsedMs: 1,
+            TraceReadingBuilder.Build("word", Leaf("Success"), [], [new TraceAnalysis("a", 0, "word", "available",
+                [new TraceMorph("m", "form", "head", "gloss", "noun", null, null, null, null, "silfw://entry/1")])]));
         var trace = new TraceWordViewModel { Result = response };
 
         Assert.False(Assert.Single(Assert.Single(trace.Analyses).Morphs).HasLink);
@@ -655,10 +702,7 @@ public sealed class TraceWordViewModelTests
         {
             Result = new WordTraceResponse(
                 "kitabu", Parsed: true, Complete: true, StopReason: null, StepCount: 3, DeepestRule: null, ElapsedMs: 1,
-                [new TraceCandidate([], Succeeded: true, null, null, [])], Leaf("WordAnalysis"))
-            {
-                Analyses = [Analysis(0, "KI+TABU"), Analysis(1, "KITABU"), Analysis(2, "KI+TABU")],
-            },
+                TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [new TraceCandidate([], Succeeded: true, null, null, [])], [Analysis(0, "KI+TABU"), Analysis(1, "KITABU"), Analysis(2, "KI+TABU")])),
         };
 
         Assert.Equal(["Analysis 1", "Analysis 2"], trace.Analyses.Select(analysis => analysis.Label));
@@ -667,7 +711,11 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("Parsed: 2 analyses, found 3 ways", trace.AnalysesHeading);
         Assert.False(trace.HasDroppedPaths);
 
-        trace.Result = trace.Result! with { Analyses = [Analysis(0, "KITABU")] };
+        trace.Result = trace.Result! with
+        {
+            Reading = TraceReadingBuilder.Build(trace.Result.Word, trace.Result.Reading.Root,
+                trace.Result.Reading.Attempts, [Analysis(0, "KITABU")]),
+        };
         Assert.Equal("Parsed: 1 analysis", trace.AnalysesHeading);
     }
 

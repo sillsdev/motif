@@ -30,6 +30,7 @@
               "form": "motifa",
               "gloss": "first seeded gloss",
               "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+              "occurrenceId": "step:0.0:morph:0",
               "formId": "{FirstLexemeFormId}",
               "entryId": "{FirstEntryId}",
               "identityQuality": "authored",
@@ -80,6 +81,7 @@
                 "form": "motifa",
                 "gloss": "first seeded gloss",
                 "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+                "occurrenceId": "step:0.0:morph:0",
                 "formId": "{FirstLexemeFormId}",
                 "entryId": "{FirstEntryId}",
                 "identityQuality": "authored",
@@ -109,6 +111,7 @@
             "form": "motifa",
             "gloss": "first seeded gloss",
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "occurrenceId": "attempt:0.0.0:morph:0",
             "formId": "{FirstLexemeFormId}",
             "entryId": "{FirstEntryId}",
             "identityQuality": "authored",
@@ -132,6 +135,7 @@
             "form": "motifa",
             "gloss": "first seeded gloss",
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "occurrenceId": "analysis:0:morph:0",
             "formId": "{FirstLexemeFormId}",
             "entryId": "{FirstEntryId}",
             "identityQuality": "authored",
@@ -162,6 +166,7 @@
         "id": "morph:{FirstEntryId}//{FirstLexemeFormId}",
         "kind": "morph",
         "label": "motifa",
+        "capturedFieldWorksLabel": "motifa ‘first seeded gloss’",
         "gloss": "first seeded gloss",
         "identity": "{FirstEntryId}",
         "identityQuality": "authored",
@@ -228,6 +233,12 @@
         "isDefault": false,
         "direction": "ltr",
         "font": "Charis SIL"
+      }
+    ],
+    "traceLabels": [
+      {
+        "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}",
+        "label": "motifa ‘first seeded gloss’"
       }
     ]
   },

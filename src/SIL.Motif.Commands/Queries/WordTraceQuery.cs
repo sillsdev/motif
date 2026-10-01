@@ -132,8 +132,8 @@ public static class WordTraceQuery
             summary?.StepCount ?? 0,
             summary?.DeepestRuleReached,
             elapsedMs,
-            [],
-            root is null ? new TraceStep("NoTrace", null, null, null, null, []) : ConvertTree(root))
+            TraceReadingBuilder.Build(word,
+                root is null ? new TraceStep("NoTrace", null, null, null, null, []) : ConvertTree(root), [], []))
         {
             ParserSteps = details?.Steps,
             ParserElapsedMs = details is null ? null : details.ElapsedNs / 1_000_000.0,
@@ -141,10 +141,7 @@ public static class WordTraceQuery
             SearchStatus = complete ? "complete" : "incomplete",
             InvalidShape = details?.InvalidShape ?? false,
         };
-        return CommandOutcome<WordTraceResponse>.Success(response with
-        {
-            Reading = TraceReadingBuilder.Summarize(response.Word, response.Root, response.Candidates, response.Analyses),
-        });
+        return CommandOutcome<WordTraceResponse>.Success(response);
     }
 
     private static TraceStep ConvertTree(PanGlossTraceNode node) =>
@@ -158,7 +155,8 @@ public static class WordTraceQuery
             FailureRequired = node.FailureRequired,
             FailureActual = node.FailureActual,
             FailureEnvironment = node.FailureEnvironment,
-            AttemptedMorphs = node.AttemptedMorphs.Select(TraceReadingBuilder.ToMorph).ToArray(),
+            AttemptedMorphs = node.AttemptedMorphs.Select(morph => TraceReadingBuilder.ToMorph(morph)).ToArray(),
+            FailureEvidence = node.FailureEvidence,
             SourceIdentityKind = node.SourceIdentityKind,
             SourceIdentityId = node.SourceIdentityId,
             SourceIdentityQuality = node.SourceIdentityQuality,

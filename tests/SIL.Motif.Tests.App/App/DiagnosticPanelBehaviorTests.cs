@@ -8,7 +8,6 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using Xunit;
-
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -23,10 +22,10 @@ public sealed class DiagnosticPanelBehaviorTests
         };
         var model = new TraceWordViewModel
         {
-            Result = new WordTraceResponse("word", true, true, null, 1, null, 1, [],
-                new TraceStep("WordAnalysis", null, null, null, null, []))
+            Result = new WordTraceResponse("word", true, true, null, 1, null, 1,
+                TraceReadingBuilder.Build("word", new TraceStep("WordAnalysis", null, null, null, null, []), [], [new TraceAnalysis("analysis-0", 0, "word", "recorded", [morph])]))
             {
-                Analyses = [new TraceAnalysis("analysis-0", 0, "word", "recorded", [morph])],
+
                 HostCapture = new TraceHostCapture(null, null, null, null, null, null,
                     [new TraceWritingSystem("ar", "Arabic", true, true, "rtl", null),
                      new TraceWritingSystem("ar", "Arabic", false, false, "rtl", null)]),
@@ -53,7 +52,8 @@ public sealed class DiagnosticPanelBehaviorTests
             var root = new TraceStep("WordAnalysis", null, null, null, null, [branch]);
             var model = new TraceWordViewModel
             {
-                Result = new WordTraceResponse("word", false, true, null, 3, null, 1, [], root),
+                Result = new WordTraceResponse("word", false, true, null, 3, null, 1,
+                    TraceReadingBuilder.Build("word", root, [], [])),
                 MorphFilter = "needle",
             };
             var panel = new DiagnosticPanel(ToolsFor(model));
@@ -98,8 +98,8 @@ public sealed class DiagnosticPanelBehaviorTests
         {
             var model = new TraceWordViewModel
             {
-                Result = new WordTraceResponse("word", false, true, null, 1, null, 1, [],
-                    new TraceStep("WordAnalysis", null, null, null, null, [])),
+                Result = new WordTraceResponse("word", false, true, null, 1, null, 1,
+                    TraceReadingBuilder.Build("word", new TraceStep("WordAnalysis", null, null, null, null, []), [], [])),
             };
             model.SelectedStep = model.FilteredRoots[0];
             var panel = new DiagnosticPanel(ToolsFor(model));
@@ -125,8 +125,8 @@ public sealed class DiagnosticPanelBehaviorTests
         {
             var model = new TraceWordViewModel
             {
-                Result = new WordTraceResponse("word", false, true, null, 1, null, 1, [],
-                    new TraceStep("WordAnalysis", null, null, null, null, [])),
+                Result = new WordTraceResponse("word", false, true, null, 1, null, 1,
+                    TraceReadingBuilder.Build("word", new TraceStep("WordAnalysis", null, null, null, null, []), [], [])),
             };
             var panel = new DiagnosticPanel(ToolsFor(model));
 
@@ -144,8 +144,8 @@ public sealed class DiagnosticPanelBehaviorTests
         {
             var model = new TraceWordViewModel
             {
-                Result = new WordTraceResponse("word", true, true, null, 1, null, 1, [],
-                    new TraceStep("WordAnalysis", null, null, null, null, [])),
+                Result = new WordTraceResponse("word", true, true, null, 1, null, 1,
+                    TraceReadingBuilder.Build("word", new TraceStep("WordAnalysis", null, null, null, null, []), [], [])),
             };
             var panel = new DiagnosticPanel(ToolsFor(model), showResultSummary: false);
             var window = new Window { Content = panel, Width = 1000, Height = 800 };

@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Responses;
+
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
@@ -28,6 +30,7 @@ public sealed record PanGlossTraceNode(
     public string? FailureRequired { get; init; }
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
+    public TraceFailureEvidence? FailureEvidence { get; init; }
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
     public string? SourceIdentityQuality { get; init; }

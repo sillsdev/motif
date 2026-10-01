@@ -66,7 +66,7 @@ public sealed class TraceDiagnosticCaptureTests
         Assert.Equal(1234, response.HostCapture!.WallElapsedMs);
         Assert.True(response.Parsed);
         Assert.False(response.Complete);
-        Assert.Contains("recorded projection failed", Assert.Single(response.Analyses).ProjectionError);
+        Assert.Contains("recorded projection failed", Assert.Single(response.Reading.Analyses).ProjectionError);
         Assert.True(response.Provenance!.IsCompatible);
         using var parsed = JsonDocument.Parse(response.DiagnosticJson);
         Assert.Equal(3, parsed.RootElement.GetProperty("extension").GetProperty("preserve").GetArrayLength());
