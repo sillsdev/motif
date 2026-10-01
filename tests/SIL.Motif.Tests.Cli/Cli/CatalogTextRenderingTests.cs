@@ -229,27 +229,75 @@ public sealed class CatalogTextRenderingTests
                 [Word("ngozi", "Lost")], [lost with { Words = 1 }]) { Paths = [WarningWordsPath.Spelling] }),
             Finding("hc-bad-environment", new WarningWords(WarningWordsMatch.Identity, [], [])
                 { Paths = [WarningWordsPath.ThroughAllomorphs] }),
-            Finding("fwdata.no-usable-allomorphs", new WarningWords(WarningWordsMatch.CantTell, [], [])
-                { CantTell = WarningCantTell.NothingNamed }),
+            Finding("fwdata.no-usable-allomorphs", new WarningWords(WarningWordsMatch.UnresolvedIdentity, [], [])
+                { Reason = WarningAttributionReason.NoSubject }),
         };
         var response = new WarningsResponse(true, true, findings,
             [new GrammarWarningSummary("hc-unsegmentable", "Allomorph can't be split", GrammarDiagnosticLevel.Warning, 1)
                 { YourWords = 2 }], 4, 0)
         {
-            YourWords = new WarningWordsTouched(3, 3, [lost with { Words = 3 }]) { BySpellingOnly = 1 },
+            YourWords = new WarningWordsTouched(2, 2, [lost]) { BySpellingOnly = 1 },
         };
 
         var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: false).Output;
         var json = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: true).Output;
 
-        Assert.Contains("3 of your words use something a finding names (3 don't parse, 1 matched only by spelling)", text,
+        Assert.Contains("2 of your words use something a finding names (2 don't parse)", text,
             StringComparison.Ordinal);
+        Assert.Contains("1 spelling candidates; not confirmed uses of the phoneme", text, StringComparison.Ordinal);
         Assert.Contains("  hc-unsegmentable: 1 warning, 2 of your words", text, StringComparison.Ordinal);
         Assert.Contains("    Your words: walikata (Lost), anakata (Lost)", text, StringComparison.Ordinal);
-        Assert.Contains("    Your words, matched by spelling: ngozi (Lost)", text, StringComparison.Ordinal);
+        Assert.Contains("    Spelling candidates; not confirmed uses of the phoneme: ngozi (Lost)", text, StringComparison.Ordinal);
         Assert.Contains("    Your words: none in the Selection", text, StringComparison.Ordinal);
-        Assert.Contains("    Your words: can't tell, PanGloss names no object", text, StringComparison.Ordinal);
+        Assert.Contains("    Your words: unresolved identity; PanGloss names no subject", text, StringComparison.Ordinal);
         Assert.Contains("\"match\": \"spelling\"", json, StringComparison.Ordinal);
-        Assert.Contains("\"cantTell\": \"nothing_named\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"reason\": \"no_subject\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"state\": \"unresolved_identity\"", json, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(WarningWordsMatch.ProjectWide, WarningAttributionReason.NoWordAttribution,
+        "Your words: project-wide; no word attribution")]
+    [InlineData(WarningWordsMatch.MissingObject, WarningAttributionReason.StaleGuid,
+        "Your words: missing object; its GUID is absent from the checked Baseline")]
+    [InlineData(WarningWordsMatch.MissingObject, WarningAttributionReason.WrongClass,
+        "Your words: missing object; its GUID belongs to a different FieldWorks class")]
+    [InlineData(WarningWordsMatch.UnresolvedIdentity, WarningAttributionReason.NamedWithoutProjectGuid,
+        "Your words: unresolved identity; the named subject has no project GUID")]
+    [InlineData(WarningWordsMatch.UnresolvedIdentity, WarningAttributionReason.UnsupportedKind,
+        "Your words: unresolved identity; the named class has no supported route to words")]
+    public void WarningsTextExplainsEachUnattributedState(WarningWordsMatch match,
+        WarningAttributionReason reason, string expected)
+    {
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "finding", [], [], "finding")
+            { YourWords = new WarningWords(match, [], []) { Reason = reason } };
+        var response = new WarningsResponse(true, true, [finding], [], 1, 0);
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: false).Output;
+        Assert.Contains(expected, text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WarningsTextShowsWeakerCandidatesBesideExactUsesAndUnavailableEvidence()
+    {
+        static ObjectUseWord Word(string word) =>
+            new(new WordRow(word, WordRowOutcome.NoParse, "Lost", WordRowTone.Problem));
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "mixed", [], [], "mixed")
+        {
+            YourWords = new WarningWords(WarningWordsMatch.Identity, [Word("exact")], [])
+            {
+                MembershipCandidates = [Word("member")], SpellingCandidates = [Word("spelled")],
+            },
+        };
+        var unavailable = new GrammarWarning(GrammarDiagnosticLevel.Warning, "unavailable",
+            [new GrammarWarningPart("form", GrammarWarningPartRole.Object, "id", "MoForm")
+                { Reach = new WarningReach(WarningWordsPath.Uses) }], [], "unavailable");
+        var response = new WarningsResponse(true, true, [finding, unavailable], [], 2, 0)
+            { YourWords = new WarningWordsTouched(1, 1, []) { ByMembershipOnly = 1, BySpellingOnly = 1 } };
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), asJson: false).Output;
+        Assert.Contains("Not counted: 1 membership candidates; 1 spelling candidates; not confirmed uses of the phoneme", text);
+        Assert.Contains("Your words: exact (Lost)", text);
+        Assert.Contains("Membership candidates; not confirmed uses of the named object: member (Lost)", text);
+        Assert.Contains("Spelling candidates; not confirmed uses of the phoneme: spelled (Lost)", text);
+        Assert.Contains("Your words: evidence unavailable; no usable stored Parse all words", text);
     }
 }
