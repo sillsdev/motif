@@ -132,27 +132,21 @@
 
           <!-- Right: the chosen kind's findings, each with the objects it names linked into FieldWorks. -->
           <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
-              <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
+                <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
+              </StackPanel>
+              <views:CopyableTextBlock Classes="muted" Text="Choose a finding to see what to do in FieldWorks." TextWrapping="Wrap" />
             </StackPanel>
-        <!-- The parser's own account of the chosen kind: what it means and what usually helps. -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
-              IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDetails, FallbackValue=False}">
-          <Border Grid.Column="0" Classes="card warningDetail">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-              <views:CopyableTextBlock Text="What it means" FontWeight="SemiBold" />
-              <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Description, FallbackValue=''}" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-          <Border Grid.Column="1" Classes="card warningDetail"
-                  IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasGuidance, FallbackValue=False}">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-              <views:CopyableTextBlock Text="What usually helps" FontWeight="SemiBold" />
-              <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Guidance, FallbackValue=''}" TextWrapping="Wrap" />
-            </StackPanel>
-          </Border>
-        </Grid>
+        <!-- What the chosen kind means; what to do about it sits on each row, since the advice names that row's item. -->
+        <Border Grid.Row="1" Classes="card warningDetail"
+                IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDescription, FallbackValue=False}">
+          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+            <views:CopyableTextBlock Text="What it means" FontWeight="SemiBold" />
+            <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Description, FallbackValue=''}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
         <Grid Grid.Row="2" ColumnDefinitions="*,2*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
           <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.WhereFilter}"
                    PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
@@ -165,7 +159,46 @@
                   CanUserResizeColumns="True"
                   GridLinesVisibility="Horizontal"
                   ClipboardCopyMode="IncludeHeader"
+                  RowDetailsVisibilityMode="VisibleWhenSelected"
                   AutomationProperties.Name="Grammar warnings">
+          <!-- A chosen finding opens on PanGloss's advice for it and the steps that show whether the fix worked. -->
+          <DataGrid.RowDetailsTemplate>
+            <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+              <Grid Classes="warningRowDetail" ColumnDefinitions="3*,2*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                <Border Classes="card warningRowCard">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                    <views:CopyableTextBlock Text="What to do in FieldWorks" FontWeight="SemiBold" />
+                    <views:CopyableTextBlock Text="{Binding Advice}" TextWrapping="Wrap" />
+                    <Border Classes="warningUnnamed" IsVisible="{Binding NamesNoItem}">
+                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding NoItemText}" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding WhereToLookText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Classes="card warningRowCard" IsVisible="{Binding ShowsFixSteps}">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                    <views:CopyableTextBlock Text="After you fix it" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
+                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="1" /></Border>
+                      <views:CopyableTextBlock Grid.Column="1" Text="Save your change in FieldWorks." TextWrapping="Wrap" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
+                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="2" /></Border>
+                      <views:CopyableTextBlock Grid.Column="1" TextWrapping="Wrap"
+                                               Text="Press Refresh at the top of this window. Motif reads the saved project and checks the grammar again." />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
+                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="3" /></Border>
+                      <views:CopyableTextBlock Grid.Column="1" TextWrapping="Wrap"
+                                               Text="If the fix worked, this finding is gone. Parse all words again to see how your words parse now." />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </DataTemplate>
+          </DataGrid.RowDetailsTemplate>
           <DataGrid.Columns>
             <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
                  DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->

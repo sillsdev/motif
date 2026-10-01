@@ -12,6 +12,10 @@
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
     <StaticResource x:Key="Component.Warnings.KindWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.Warnings.ParserLineFont" ResourceKey="Primitive.Font.Mono" />
+    <StaticResource x:Key="Component.Warnings.RowDetailMargin" ResourceKey="Primitive.Inset.10_10_10_10" />
+    <StaticResource x:Key="Component.Warnings.NotePadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Warnings.StepMarkSize" ResourceKey="Primitive.Size.18" />
+    <StaticResource x:Key="Component.Warnings.StepMarkRadius" ResourceKey="Primitive.Radius.9" />
   </Styles.Resources>
   <Style Selector="Grid.warningPanel">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
@@ -61,6 +65,26 @@
   </Style>
   <Style Selector="Border.warningDetail">
     <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
+  </Style>
+  <!-- An opened row: its advice and the steps after a fix, on the page's surface rather than the selection fill. -->
+  <Style Selector="Grid.warningRowDetail">
+    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.RowDetailMargin}" />
+  </Style>
+  <Style Selector="Border.warningRowCard">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
+  </Style>
+  <Style Selector="Border.warningUnnamed">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.NotePadding}" />
+  </Style>
+  <Style Selector="Border.stepMark.warningStep">
+    <Setter Property="Width" Value="{DynamicResource Component.Warnings.StepMarkSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.Warnings.StepMarkSize}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Warnings.StepMarkRadius}" />
   </Style>
   <Style Selector=":is(TextBlock).warningCell">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.CellMargin}" />
