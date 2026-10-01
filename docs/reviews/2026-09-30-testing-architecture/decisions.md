@@ -54,3 +54,9 @@ The first round covers independent policies whose source evidence is already est
    - Implementation must provision the encoder and fail on absent required output; a stable headless capture platform supplies website media.
 
 Answers update this log as they arrive. New glossary terms belong in CONTEXT.md only after their meaning is resolved; runtime settings and interview notes do not belong in the glossary.
+
+## Documentation validation policy, 2026-10-01
+
+Ordinary changes still receive the full cross-platform build and test checks; release documentation work is an explicit workflow choice.
+
+The requirement for fresh screenshots and manifests applies whenever documentation validation runs, and release validation additionally requires videos. The owner chose to make that job opt-in through manual workflow dispatch with publish_website; ordinary pushes and pull requests do not run it. The workflow still runs ./build.ps1 for comment hygiene, token hygiene, and compilation, followed by ./test.ps1 across Windows, Ubuntu, macOS ARM, and macOS Intel. The opt-in decision is recorded in e446e855.

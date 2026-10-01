@@ -98,7 +98,7 @@ Files: `RestartAndSwitchWalkthroughTests.cs`, `ApplyReadBackWalkthroughTests.cs`
 ```
 
 - [x] Follow with first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry authored flows. Every step uses a real control ID and bounded state assertion; distinguish fixture preparation from user actions. Register localized titles/descriptions once.
-- [ ] Review screenshot baselines visually; keep separate native picker/drag evidence. Generated media output proves current screenshots only when manifests/assets are required.
+- [x] Review screenshot baselines visually; keep separate native picker/drag evidence. Generated media output proves current screenshots only when manifests/assets are required.
 - [x] Run ./test.ps1 with and without media output. See the documentation plan for same-run site consumption.
 
 ## Validation and completion
@@ -106,3 +106,10 @@ Files: `RestartAndSwitchWalkthroughTests.cs`, `ApplyReadBackWalkthroughTests.cs`
 One final suite should establish clean gates and the integrated behaviors, with known external skips reported honestly. Each changed behavior also needs red evidence before its correction.
 
 Set MSBUILDDISABLENODEREUSE=1, UseSharedCompilation=false and AVALONIA_TELEMETRY_OPTOUT=1. Use ./test.ps1; -SkipBuild only reuses a build just validated. Use npm test --prefix site for site transformations and the live-source documentation gate for publishing input. Keep resources per-process; never add a shared machine root to tests.
+
+## Status, 2026-10-01
+
+The authored walkthroughs and their fresh media now show the current window behavior, while native picker and drag evidence remain separate.
+
+- The close/reopen test and seven authored walkthrough scripts use current controls and bounded state assertions (1ffe5c88, 1b08dd51).
+- Fresh screenshots and release videos were generated and reviewed in the integrated validation; disposal cleanup is bounded (a911ec3b, 952aec21).

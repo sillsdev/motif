@@ -40,6 +40,7 @@ public sealed class SeededProjectRealTransferTests(PristineProjectFixture pristi
         });
         Assert.NotEmpty(assessment.AssessmentIds);
         var retainedInvocationCount = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count;
+        var handoffProgress = new List<AssessmentProgress>();
 
         var handoffParent = Path.Combine(
             Path.GetTempPath(), "Motif.SeededProject.Handoff", Guid.NewGuid().ToString("N"));
@@ -49,8 +50,10 @@ public sealed class SeededProjectRealTransferTests(PristineProjectFixture pristi
             var handedOff = await client.HandoffAsync(new HandoffRequest(
                     project.FwDataPath, outputDirectory, selection, Assess: true,
                     InvocationId: assessment.InvocationId),
-                new Progress<AssessmentProgress>(), timeout.Token);
+                new SynchronousProgress<AssessmentProgress>(handoffProgress.Add), timeout.Token);
             Assert.True(handedOff.Succeeded, handedOff.Refusal?.Message);
+            Assert.Contains(AssessmentStage.ImportingGrammar, handoffProgress.Select(step => step.Stage));
+            Assert.Contains(AssessmentStage.Complete, handoffProgress.Select(step => step.Stage));
 
             var transfer = handedOff.Value!;
             Assert.Equal(assessment.InvocationId, transfer.InvocationId);
@@ -72,5 +75,10 @@ public sealed class SeededProjectRealTransferTests(PristineProjectFixture pristi
         }
 
         Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));
+    }
+
+    private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 }

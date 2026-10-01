@@ -154,6 +154,11 @@ public sealed class MachinePanGlossQueueTests
             using var queue = new MachinePanGlossQueue(slotNames);
             var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var secondWaitingForSlot = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            queue.SlotWaitStarted = jobId =>
+            {
+                if (jobId == "second") secondWaitingForSlot.TrySetResult();
+            };
             var first = queue.RunAsync("first", async (_, cancellationToken) =>
             {
                 firstStarted.SetResult();
@@ -167,8 +172,8 @@ public sealed class MachinePanGlossQueueTests
                 secondStarted.SetResult();
                 return Task.FromResult(2);
             }, CancellationToken.None);
-            var admission = await Task.WhenAny(secondStarted.Task, Task.Delay(TimeSpan.FromMilliseconds(250)));
-            Assert.NotSame(secondStarted.Task, admission);
+            await secondWaitingForSlot.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.False(secondStarted.Task.IsCompleted);
 
             await File.WriteAllTextAsync(releaseFile, string.Empty);
             await secondStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));

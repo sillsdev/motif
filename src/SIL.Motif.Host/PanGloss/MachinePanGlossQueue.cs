@@ -68,6 +68,9 @@ public sealed class MachinePanGlossQueue : IDisposable
     /// <summary>Observes each job object the moment a job is admitted into it. Set only by tests.</summary>
     internal Action<PanGlossContainmentJob>? JobAdmitted { get; set; }
 
+    /// <summary>Observes the first failed slot acquisition for each job.</summary>
+    internal Action<string>? SlotWaitStarted { get; set; }
+
     /// <summary>
     /// Queues <paramref name="work"/> under <paramref name="jobId"/> and returns its result once the
     /// job has been admitted to a machine slot and has run to completion.
@@ -177,6 +180,7 @@ public sealed class MachinePanGlossQueue : IDisposable
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
         var owners = new List<WorkerMutexOwner>(_slotNames.Count);
         var winner = -1;
+        var waitReported = false;
         try
         {
             foreach (var slotName in _slotNames)
@@ -192,6 +196,11 @@ public sealed class MachinePanGlossQueue : IDisposable
                     _slotOwnership[i] = jobId;
                     return new MachineSlotLease(owners[i], i, jobId,
                         released => _slotOwnership.TryRemove(released, out _));
+                }
+                if (!waitReported)
+                {
+                    SlotWaitStarted?.Invoke(jobId);
+                    waitReported = true;
                 }
                 await Task.Delay(SlotPollInterval, cancellationToken).ConfigureAwait(false);
             }

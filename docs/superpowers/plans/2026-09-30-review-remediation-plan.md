@@ -35,8 +35,8 @@ The same source should supply short explanations, full pages and stable links fo
 
 - [x] Make SIL.Motif.Help own Guide inventory, metadata derivation, locale fallback, stable codes and routes, including nested agent and Learn pages.
 - [x] Add explicit Guide lookup/export to CLI and consume the catalog from the App. Preserve command/glossary lookup and control overrides.
-- [ ] Render site Guide pages, outline labels and home-card summaries from exported metadata and pages. Keep presentation ordering separate, with missing/duplicate/nonexistent-entry checks.
-- [ ] Locate shared authored user content under `src/SIL.Motif.Help/Content`, following the owner's near-code preference; move it once and update every consumer, translation input and test path. Embedded logical names and public routes are contracts to preserve. Add no dual-reader fallback.
+- [x] Render site Guide pages, outline labels and home-card summaries from exported metadata and pages. Keep presentation ordering separate, with missing/duplicate/nonexistent-entry checks.
+- [x] Locate shared authored user content under `src/SIL.Motif.Help/Content`, following the owner's near-code preference; move it once and update every consumer, translation input and test path. Embedded logical names and public routes are contracts to preserve. Add no dual-reader fallback.
 - [x] Make README orientation/setup links, replace stale current architecture prose with one maintained implementation-oriented overview, and turn CLI API prose into links to shared agent guides/generated reference.
 - [x] Mark superseded plans as historical. Preserve ADR rationale; amend a decision only when a new decision is recorded.
 
@@ -48,11 +48,11 @@ Tests should accurately say whether they cover a control, a window lifetime, a p
 
 - [x] Remove fake-self-tests after mapping their intended assertions to production consumers or adapters. Retain architecture-policy guards; do not mistake source scans for behavioral proof.
 - [x] Replace the runner race's fixed sleep with evidence of a failed ownership attempt before release; retain the real-process integration assertion.
-- [ ] Rename same-process restart and queued Handoff cancellation claims. Strengthen existing Handoff staging cancellation coverage with a held import, actual cancellation, staging cleanup and preserved existing destination.
-- [ ] Correct Apply/Refresh walkthrough proof: assert persisted model change, changed Baseline after Refresh, then explicitly Parse and assert changed measurement. Preserve existing no-parse-on-Refresh coverage.
-- [ ] Add a real-control authored typing scenario, then first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry scripts using AutomationIds. Keep deeper C# switch/reopen scenarios.
+- [x] Rename same-process restart and queued Handoff cancellation claims. Strengthen existing Handoff staging cancellation coverage with a held import, actual cancellation, staging cleanup and preserved existing destination.
+- [x] Correct Apply/Refresh walkthrough proof: assert persisted model change, changed Baseline after Refresh, then explicitly Parse and assert changed measurement. Preserve existing no-parse-on-Refresh coverage.
+- [x] Add a real-control authored typing scenario, then first setup/parse, stage/Review/Apply/Refresh/Parse and Handoff cancel/retry scripts using AutomationIds. Keep deeper C# switch/reopen scenarios.
 - [x] Remove permanently skipped retired assess-protocol tests only after a coverage map identifies current owners. Preserve or port universal emitted-identity resolution where required; do not resurrect the obsolete parser command.
-- [ ] Add a documentation CI/build gate generating Help export and screenshots in fresh isolated output, requiring expected manifests/assets, then syncing/building the site with those exact paths. Release validation additionally requires videos. Upload review artifacts; no site deployment is requested.
+- [x] Add a documentation CI/build gate generating Help export and screenshots in fresh isolated output, requiring expected manifests/assets, then syncing/building the site with those exact paths. Release validation additionally requires videos. Upload review artifacts; no site deployment is requested.
 
 Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md).
 
@@ -60,12 +60,12 @@ Detailed work: [testing and behavior](2026-09-30-testing-behavior-remediation.md
 
 Every parser request should verify the capabilities it actually needs, and Motif should consume its output efficiently. Usage records count explicit outer user actions without duplicated nested calls.
 
-- [ ] Validate actual typed request flags/positionals for Batch analyses, Import and Trace; cache a parsed capability description rather than only a path-wide Boolean. Preserve schema/version and hidden-command checks.
-- [ ] Create Unix capture files with owner-only permissions; assert live-file mode on Linux/macOS.
+- [x] Validate actual typed request flags/positionals for Batch analyses, Import and Trace; cache a parsed capability description rather than only a path-wide Boolean. Preserve schema/version and hidden-command checks.
+- [x] Create Unix capture files with owner-only permissions; assert live-file mode on Linux/macOS.
 - [x] Eliminate avoidable repeated whole-file materialization and investigate streaming capture while preserving complete output, concurrent draining, evidence validation and cleanup. The arbitrary proposed output-size quotas are withdrawn; do not kill valid runs for exceeding them.
 - [x] Preserve cancellable uncapped Batch behavior and align its ADR and code/test documentation. Keep the existing child memory containment.
-- [ ] Implement exactly-once usage recording for explicit outer user actions across CLI and GUI. Record argument shapes, not values; exclude automatic queries and nested helpers. Test success, refusal and nested workflows.
-- [ ] Require a real pinned PanGloss release for Motif release integration validation, retaining parserless local skips. Move grammar conformance/engine benchmarks out of Motif's scope; use Motif-owned integration fixtures and regenerate the website.
+- [x] Implement exactly-once usage recording for explicit outer user actions across CLI and GUI. Record argument shapes, not values; exclude automatic queries and nested helpers. Test success, refusal and nested workflows.
+- [x] Require a real pinned PanGloss release for Motif release integration validation, retaining parserless local skips. Move grammar conformance/engine benchmarks out of Motif's scope; use Motif-owned integration fixtures and regenerate the website.
 
 Detailed work: [architecture and contracts](2026-09-30-architecture-contract-remediation.md).
 
@@ -73,11 +73,11 @@ Detailed work: [architecture and contracts](2026-09-30-architecture-contract-rem
 
 Front ends should depend on reusable implementation rather than inherit an executable's packaging files. This is a maintainability and packaging correction, with no new communication channel or storage abstraction.
 
-- [ ] Pin portable package contents and runner startup before moving code.
-- [ ] Extract the command-consumed dependency closure into one library while retaining SIL.Motif.Worker as the shipped executable identity. Keep namespaces and behavior where practical; do not redesign storage/scheduling simultaneously.
-- [ ] Remove executable references from Commands/CLI when no longer needed, and narrow packaging exclusions accordingly.
-- [ ] Preserve LiveHost's saved-file and caller-owned-cache seam. Do not merge it because of size or absence of an interface.
-- [ ] Verify real SQLite workflows, CLI/worker spine and portable apphost discovery after extraction.
+- [x] Pin portable package contents and runner startup before moving code.
+- [x] Extract the command-consumed dependency closure into one library while retaining SIL.Motif.Worker as the shipped executable identity. Keep namespaces and behavior where practical; do not redesign storage/scheduling simultaneously.
+- [x] Remove executable references from Commands/CLI when no longer needed, and narrow packaging exclusions accordingly.
+- [x] Preserve LiveHost's saved-file and caller-owned-cache seam. Do not merge it because of size or absence of an interface.
+- [x] Verify real SQLite workflows, CLI/worker spine and portable apphost discovery after extraction.
 
 Detailed work: [architecture and contracts](2026-09-30-architecture-contract-remediation.md).
 
@@ -97,3 +97,11 @@ Record answers in [the decision log](../../reviews/2026-09-30-testing-architectu
 
 Final gate: ./test.ps1 with clean comment/token gates and no unexplained failures; npm test --prefix site; real CLI Help export -> real-content sync -> site build; required same-run media manifests/assets; package/startup checks for any project split. Report exact pass/fail/skip counts and classify remaining parser/native limitations. No green fixture-only site test may substitute for real-source synchronization.
 
+## Status, 2026-10-01
+
+The shared Help, Worker, parser, and walkthrough work is integrated, so these entries now describe shipped behavior rather than pending plans.
+
+- Shared Help content feeds the CLI, window, and site from one source (57df7a2c, b63a666b, f7d8cc96).
+- Parser request validation, private Unix capture files, and the reusable Worker runtime are in place (dcd685d6, 2b2a4b22).
+- Seven authored walkthroughs and the close/reopen lifetime coverage describe current interactions (1ffe5c88, 1b08dd51); disposal cleanup is bounded (952aec21).
+- Website publishing and its documentation validation run only when the manual workflow enables publish_website (e446e855).

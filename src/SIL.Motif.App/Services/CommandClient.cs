@@ -21,9 +21,7 @@ namespace SIL.Motif.App.Services;
 /// view model instead of the command's own typed cancellation refusal, pinned by
 /// <c>CommandClientCancellationTests.ACancellationBeforeTheCommandStartsIsStillATypedRefusal</c>.
 /// </para>
-/// <see cref="HandoffAsync"/> does not yet report through its <c>progress</c> parameter: there is no
-/// in-process collaborator to produce Handoff progress steps from. The parameter exists so a caller can
-/// already depend on the same <see cref="IProgress{T}"/> shape <see cref="AssessAsync"/> uses.
+/// <see cref="HandoffAsync"/> reports command progress through the supplied <c>progress</c> callback.
 /// <para>
 /// Every call that opens a project copy through LibLCM runs one at a time. LibLCM locks a project file
 /// exclusively, and the window starts several such reads at once when a project is chosen — the grammar
