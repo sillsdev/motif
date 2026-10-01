@@ -79,7 +79,9 @@ public sealed class TestLevelGuardTests
                     var walkthroughNamespace = testClass.Namespace?.Split('.')
                         .Any(segment => segment is "Walkthrough" or "Smoke") == true;
                     var namedSystemClass = testClass.Name is "PortableWorkerPackageTests" or
-                        "ExplainedWordCardWalkthroughReplayTests";
+                        "ExplainedWordCardWalkthroughReplayTests" or
+                        "ExternalApplyActivationRealClientTests" or
+                        "RunnerSpineTests";
                     var resolvedLevel = TestLevelClassifier.ResolveLevel(
                         testClass.FullName!, defaultLevel, declarations, parserClass);
                     Assert.Contains(resolvedLevel, ValidLevels);
