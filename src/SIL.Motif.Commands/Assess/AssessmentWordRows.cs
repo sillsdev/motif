@@ -98,6 +98,8 @@ internal static class AssessmentWordRows
             var row = FromRecorded(word);
             row = snapshot.StoredAnalysesByWord.TryGetValue(word.Word, out var stored)
                 ? row with { StoredAnalyses = stored } : row;
+            row = snapshot.WordAnalysesLinksByWord.TryGetValue(word.Word, out var link)
+                ? row with { TryWordLink = link } : row;
             return snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
                 ? row with { Readings = readings } : row;
         }).ToArray();

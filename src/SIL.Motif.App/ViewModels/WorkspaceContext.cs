@@ -99,6 +99,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DiagnosticDialogs = diagnosticDialogs ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Assess.Words.Routes.OpenInText = OpenWord;
+        Assess.Words.Routes.TryWord = TryWord;
         Evidence.PropertyChanged += OnEvidencePropertyChanged;
         _projectParticipants.Add(baseline);
         _projectParticipants.Add(selection);

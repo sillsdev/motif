@@ -149,9 +149,16 @@ public static class TextWordsQuery
 
     private static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName)
     {
-        var morphs = analysis.Morphs.Select(morph => new ParserReadingMorph(
+        // The stored identity lists the same bundles in the same order, so it gives each morph its ids.
+        var identities = analysis.Identity?.Morphs;
+        var morphs = analysis.Morphs.Select((morph, index) => new ParserReadingMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            FieldWorksLinks.ForTarget(projectName, morph.LinkTarget)) { Entry = morph.Entry }).ToArray();
+            FieldWorksLinks.ForTarget(projectName, morph.LinkTarget))
+        {
+            Entry = morph.Entry,
+            AllomorphId = identities is { } ids && index < ids.Count ? ids[index].Form : null,
+            GrammaticalInfoId = identities is { } msas && index < msas.Count ? msas[index].Msa : null,
+        }).ToArray();
         return new ProjectAnalysis(analysis.Key, morphs)
         {
             StoredAnalysisId = CanonicalId.FromGuid(analysis.AnalysisId).Value,

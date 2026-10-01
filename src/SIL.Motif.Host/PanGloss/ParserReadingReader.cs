@@ -88,8 +88,12 @@ public static class ParserReadingReader
             FieldWorksLinks.ForTarget(projectName, EntryTargetFor(cache, objects, morph)))
         {
             Entry = entry?.LexemeFormOA is { } lexemeForm ? Marked(lexemeForm) : null,
+            AllomorphId = IdOf(morph.Form),
+            GrammaticalInfoId = IdOf(morph.Msa),
         };
     }
+
+    private static string? IdOf(string? id) => Guid.TryParse(id, out var guid) ? guid.ToString("D") : null;
 
     private static T? Find<T>(ICmObjectRepository objects, string? id) where T : class, ICmObject =>
         Guid.TryParse(id, out var guid) && objects.TryGetObject(guid, out var found) ? found as T : null;

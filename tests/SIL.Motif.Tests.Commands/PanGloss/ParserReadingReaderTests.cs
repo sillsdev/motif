@@ -50,6 +50,33 @@ public sealed class ParserReadingReaderTests : IDisposable
     }
 
     [Fact]
+    public void AReadingKeepsTheAllomorphAndGrammaticalInfoItNames()
+    {
+        var msa = _cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+            .GetObject(_seed.FirstEntryId).MorphoSyntaxAnalysesOC.Single();
+
+        var morph = Assert.Single(Assert.Single(ParserReadingReader.Read(_cache, "Sena 3", Evidence(
+            new ParseMorph(_seed.FirstLexemeFormId.ToString("D"), msa.Guid.ToString("D"), null, null)))).Morphs);
+
+        Assert.Equal(_seed.FirstLexemeFormId.ToString("D"), morph.AllomorphId);
+        Assert.Equal(msa.Guid.ToString("D"), morph.GrammaticalInfoId);
+    }
+
+    [Fact]
+    public void IdentifiersTheProjectLacksAreStillCarried_AndAMorphThatNamesNoneHasNoIds()
+    {
+        var reading = Assert.Single(ParserReadingReader.Read(_cache, "Sena 3", new ParseWordEvidence(
+            ParseMorphEvidence.Schema, 0, "word", 1, false, false, false,
+            [new ParseAnalysis([
+                new ParseMorph("0C686AFA-8D21-4E3B-BC0E-41812150CF4C", "14ff3655-598a-4ce5-8186-805c65398553", null, null),
+                new ParseMorph(null, "not a guid", null, "kuon")])], [])));
+
+        Assert.Equal(("0c686afa-8d21-4e3b-bc0e-41812150cf4c", "14ff3655-598a-4ce5-8186-805c65398553"),
+            (reading.Morphs[0].AllomorphId, reading.Morphs[0].GrammaticalInfoId));
+        Assert.Equal(((string?)null, (string?)null), (reading.Morphs[1].AllomorphId, reading.Morphs[1].GrammaticalInfoId));
+    }
+
+    [Fact]
     public void AnIdentifierTheProjectLacksShowsAMarkerRatherThanTheIdentifier()
     {
         var reading = Assert.Single(ParserReadingReader.Read(_cache, "Sena 3", Evidence(

@@ -66,4 +66,16 @@ public sealed record ParserReadingMorph(
 {
     /// <summary>The entry's lexeme form, marked with the morph type, or <see langword="null"/> when unresolved.</summary>
     public string? Entry { get; init; }
+
+    /// <summary>
+    /// The GUID of the allomorph this morph uses, as the reading names it whether or not the project still holds
+    /// it, or <see langword="null"/> when the reading names none.
+    /// </summary>
+    public string? AllomorphId { get; init; }
+
+    /// <summary>
+    /// The GUID of the grammatical info this morph uses, as the reading names it whether or not the project still
+    /// holds it, or <see langword="null"/> when the reading names none.
+    /// </summary>
+    public string? GrammaticalInfoId { get; init; }
 }

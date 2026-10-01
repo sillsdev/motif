@@ -721,6 +721,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             token.SetReadState(token.Occurrence is { } occurrence && read.Contains(occurrence));
         OnPropertyChanged(nameof(UnreadCount));
         RefreshLines();
+        var unreadByForm = _allWords.Where(token => token.Occurrence is not null)
+            .GroupBy(token => token.Form, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.Any(token => token.Marking.IsUnread), StringComparer.Ordinal);
+        _assess.Words.ApplyReadState(form => unreadByForm.TryGetValue(form, out var unread) ? unread : null);
     }
 
     private bool CanAddSelectedChange(string? kind) => kind switch
