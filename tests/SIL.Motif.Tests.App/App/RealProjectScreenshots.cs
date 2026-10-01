@@ -37,6 +37,7 @@ public sealed class RealProjectScreenshotFactAttribute : FactAttribute
 /// Each project is copied first, so the originals are never opened for writing.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class RealProjectScreenshots(ITestOutputHelper output)
 {
     private const int WordBudget = 150;

@@ -11,6 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App.RealClient;
 
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class SetupRealClientTests(PristineProjectFixture pristine)
 {
     [Fact]

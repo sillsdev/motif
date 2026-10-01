@@ -109,21 +109,34 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
             ?? throw new InvalidOperationException($"{WeightsVariable} names '{path}', which holds no weights.");
     }
 
-    private sealed class ShardedExecutor(
-        AssemblyName assemblyName, ISourceInformationProvider sourceInformationProvider, IMessageSink diagnosticMessageSink)
-        : XunitTestFrameworkExecutor(assemblyName, sourceInformationProvider, diagnosticMessageSink)
+    private sealed class ShardedExecutor : XunitTestFrameworkExecutor
     {
+        private readonly AssemblyName _assemblyName;
+
+        public ShardedExecutor(
+            AssemblyName assemblyName, ISourceInformationProvider sourceInformationProvider, IMessageSink diagnosticMessageSink)
+            : base(assemblyName, sourceInformationProvider, diagnosticMessageSink) => _assemblyName = assemblyName;
+
         protected override void RunTestCases(
             IEnumerable<IXunitTestCase> testCases, IMessageSink executionMessageSink,
             ITestFrameworkExecutionOptions executionOptions)
         {
+            var selectedLevels = TestLevelClassifier.ParseSelection(
+                Environment.GetEnvironmentVariable(TestLevelClassifier.EnvironmentVariable));
+            var cases = testCases.ToArray();
+            if (selectedLevels is not null)
+            {
+                var defaultLevel = TestLevelClassifier.ReadAssemblyDefault(Assembly.Load(_assemblyName));
+                cases = cases.Where(testCase => TestLevelClassifier.IsSelected(testCase, defaultLevel, selectedLevels))
+                    .ToArray();
+            }
+
             var shard = CurrentShard();
             if (shard is not { } s)
             {
-                base.RunTestCases(testCases, executionMessageSink, executionOptions);
+                base.RunTestCases(cases, executionMessageSink, executionOptions);
                 return;
             }
-            var cases = testCases.ToArray();
             var assignment = Assign(cases.Select(ClassOf), s.Count, CurrentWeights());
             base.RunTestCases(cases.Where(testCase => assignment[ClassOf(testCase)] == s.Index),
                 executionMessageSink, executionOptions);
