@@ -753,6 +753,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
+        WordRow = word.WordRow;
         Standing = word.Standing;
         Row = place.Row;
         Column = place.Column;
@@ -785,6 +786,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     }
 
     public string Word { get; }
+
+    /// <summary>The word as every page's word row shows it: the same row Lists and Timing reach.</summary>
+    public WordRowViewModel WordRow { get; }
     public WordProjectStatus? Standing { get; }
     public WordProjectStatus Row { get; }
     public CompareColumnKind Column { get; }

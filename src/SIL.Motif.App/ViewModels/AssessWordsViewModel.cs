@@ -28,6 +28,9 @@ public sealed partial class AssessWordsViewModel : ObservableObject
 
     public AssessWordsViewModel() => SetFilterCommand = new RelayCommand<ResultsWordFilter>(filter => SelectedFilter = filter);
 
+    /// <summary>Where every word row's next steps lead; the page that hosts the rows fills them in.</summary>
+    public WordRowRoutes Routes { get; } = new();
+
     public ObservableCollection<AssessWordRowViewModel> Rows { get; } = [];
 
     /// <summary>Chooses one of the six filter chips, replacing whichever was chosen before.</summary>
@@ -127,7 +130,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     {
         _all.Clear();
         if (words is not null)
-            _all.AddRange(words.Select(word => new AssessWordRowViewModel(word, occurrenceCounts?.Invoke(word.Word))));
+            _all.AddRange(words.Select(word => new AssessWordRowViewModel(word, occurrenceCounts?.Invoke(word.Word), Routes)));
         TotalCount = _all.Count;
         Outcomes = CountOutcomes();
         OnPropertyChanged(nameof(Outcomes));
@@ -139,6 +142,16 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         OnPropertyChanged(nameof(SkippedHint));
         OnPropertyChanged(nameof(LimitHint));
         Refresh();
+    }
+
+    /// <summary>
+    /// Tells every word row whether it is unread: <paramref name="isUnread"/> answers for a word form, or gives
+    /// <see langword="null"/> when no place the word occurs has a known read state.
+    /// </summary>
+    public void ApplyReadState(Func<string, bool?> isUnread)
+    {
+        ArgumentNullException.ThrowIfNull(isUnread);
+        foreach (var row in _all) row.WordRow.IsUnread = isUnread(row.Word);
     }
 
     partial void OnWordFilterChanged(string value) => Refresh();
@@ -183,7 +196,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
 /// </summary>
 public sealed class AssessWordRowViewModel
 {
-    public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null)
+    public AssessWordRowViewModel(AssessmentWordResult word, int? occurrenceCount = null, WordRowRoutes? routes = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         Marking = AnalysisMarkingState.Create(word);
@@ -238,6 +251,8 @@ public sealed class AssessWordRowViewModel
         Unavailable = word.Correctness?.Unavailable ?? word.Morphology?.Unavailable ?? [];
         Detail = $"{word.CompletionStatus}. {word.EvidenceStatus}";
         CompletionStatus = word.CompletionStatus;
+        WordRow = new WordRowViewModel(WordRowProjection.Of(word, CompareViewModel.Place(this).Column,
+            new WordRowFacts(Places: OccurrenceCount)), routes);
     }
 
     // Readings nobody resolved against the project still show, by count and guessed form, rather than vanish.
@@ -314,6 +329,9 @@ public sealed class AssessWordRowViewModel
 
     public Uri? TryWordLink { get; }
     public bool HasTryWordLink => TryWordLink is not null;
+
+    /// <summary>The word as every page's word row shows it, placed where the Matrix places it.</summary>
+    public WordRowViewModel WordRow { get; }
     public IReadOnlyList<string> Unavailable { get; }
     public string Detail { get; }
 }
@@ -398,6 +416,8 @@ public sealed class ParserReadingMorphViewModel
         Link = morph.FieldWorksLink is { } link ? new Uri(link) : null;
         _entry = morph.Entry;
         _toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
+        AllomorphId = morph.AllomorphId;
+        GrammaticalInfoId = morph.GrammaticalInfoId;
     }
 
     private ParserReadingMorphViewModel(ParserReadingMorph morph, string form, string glossPlaceholder) : this(morph)
@@ -435,4 +455,10 @@ public sealed class ParserReadingMorphViewModel
     public Uri? Link { get; }
     public bool HasLink => Link is not null;
     public bool HasNoLink => Link is null;
+
+    /// <summary>The GUID of the allomorph this morph uses, or <see langword="null"/> when the reading names none.</summary>
+    public string? AllomorphId { get; }
+
+    /// <summary>The GUID of the grammatical info this morph uses, or <see langword="null"/> when the reading names none.</summary>
+    public string? GrammaticalInfoId { get; }
 }
