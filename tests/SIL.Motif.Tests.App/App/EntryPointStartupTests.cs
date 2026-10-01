@@ -188,6 +188,27 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
+    public void PackageReleaseRejectsUnixTargetsOnAWindowsHostBeforeResolvingTheParser()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));
+        var start = new System.Diagnostics.ProcessStartInfo("pwsh");
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-File");
+        start.ArgumentList.Add(Path.Combine(repositoryRoot, "tools", "package-release.ps1"));
+        start.ArgumentList.Add("-ProductVersion");
+        start.ArgumentList.Add("0.1.0");
+        start.ArgumentList.Add("-ParserArtifact");
+        start.ArgumentList.Add(Path.Combine(repositoryRoot, ".tmp", "missing-pangloss"));
+        start.ArgumentList.Add("-RuntimeIdentifier");
+        start.ArgumentList.Add("linux-x64");
+
+        var result = ToolProcess.Run(start);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Unix package targets must be built on Linux or macOS", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void UnixPackageSmokeWaitsForThePackagedWorkerToExitBeforeCheckingItsJob()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(BuildOutput.ProductDirectory, "..", ".."));

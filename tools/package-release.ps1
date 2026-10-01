@@ -20,6 +20,12 @@ Import-Module (Join-Path $PSScriptRoot 'PanGlossRelease.psm1') -Force
 if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
     $RuntimeIdentifier = Get-CurrentPanGlossRuntimeIdentifier
 }
+$hostIsWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+    [System.Runtime.InteropServices.OSPlatform]::Windows)
+$targetIsWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
+if ($hostIsWindows -and -not $targetIsWindows) {
+    throw 'Unix package targets must be built on Linux or macOS to preserve executable file modes.'
+}
 $pinnedParser = Get-PinnedPanGlossArtifact -RepositoryRoot $repoRoot -RuntimeIdentifier $RuntimeIdentifier -ArtifactPath $ParserArtifact
 $RuntimeIdentifier = $pinnedParser.RuntimeIdentifier
 $parserPin = [pscustomobject]@{ tag = $pinnedParser.Tag; version = $pinnedParser.Version }
@@ -53,7 +59,6 @@ foreach ($icuLibrary in $icuLibraries) {
         throw "SIL ICU library names for $RuntimeIdentifier must be file names."
     }
 }
-$targetIsWindows = $RuntimeIdentifier.StartsWith('win-', [System.StringComparison]::Ordinal)
 $icuBuildOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'bin/Release'))
 $icuBuildOutputDirectory = [System.IO.Path]::GetFullPath((Join-Path $icuBuildOutputRoot $icuNativeOutputDirectory))
 $parserFileName = if ($targetIsWindows) { 'pangloss.exe' } else { 'pangloss' }
