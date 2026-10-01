@@ -257,7 +257,7 @@ public sealed class WalkthroughWindow : IDisposable
         var topLevel = automationId == AutomationIds.SelectNewProject
             ? TopLevel.GetTopLevel(control) ?? Window
             : Window;
-        HeadlessClick.Click(topLevel, control, automationId);
+        ClickControl(control, automationId, topLevel);
         Window.UpdateLayout();
         Pump();
     }
@@ -542,14 +542,18 @@ public sealed class WalkthroughWindow : IDisposable
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-    private void ClickControl(Control control, string accessibleName)
+    private void ClickControl(Control control, string accessibleName, TopLevel? topLevel = null)
     {
+        // Stored evidence lands after the project's own counts and can push the target down mid-click.
+        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted,
+            TimeSpan.FromSeconds(60), $"the project was still opening when '{accessibleName}' was to be clicked");
+        var root = topLevel ?? Window;
         Rect? previousBounds = null;
         var stablePasses = 0;
         WaitUntil(() =>
         {
-            Window.UpdateLayout();
-            var topLeft = control.TranslatePoint(new Point(0, 0), Window);
+            root.UpdateLayout();
+            var topLeft = control.TranslatePoint(new Point(0, 0), root);
             if (!control.IsEffectivelyVisible || topLeft is null)
             {
                 previousBounds = null;
@@ -567,7 +571,7 @@ public sealed class WalkthroughWindow : IDisposable
 
             return stablePasses >= 2;
         }, TimeSpan.FromSeconds(10), $"'{accessibleName}' did not settle before clicking");
-        HeadlessClick.Click(Window, control, accessibleName);
+        HeadlessClick.Click(root, control, accessibleName);
     }
 
     private sealed class ScriptedProjectPicker(string path) : IProjectPicker

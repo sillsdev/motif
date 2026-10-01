@@ -225,7 +225,12 @@ internal static class Program
                     for (var index = 0; index < words.Length; index++)
                     {
                         writer.WriteLine($"{index}\t{words[index]}\tSTARTED");
-                        Thread.Sleep(behaviour.DelayMilliseconds);
+                        if (behaviour.HoldEachWordUntil is { } wordRelease)
+                        {
+                            var wordExit = WaitForHoldRelease(wordRelease + "." + index, behaviour.HoldTimeoutMs);
+                            if (wordExit != 0) return wordExit;
+                        }
+                        else Thread.Sleep(behaviour.DelayMilliseconds);
                         writer.WriteLine(rows[index]);
                     }
                 }
@@ -620,6 +625,8 @@ internal static class Program
         public string? HeartbeatPath { get; init; }
         public string? StartedPath { get; init; }
         public string? HoldUntilPath { get; init; }
+        // A streamed batch stays on word i until a file named this path plus ".i" exists.
+        public string? HoldEachWordUntil { get; init; }
         public string? ProcessIdPath { get; init; }
         public string? StandardError { get; init; }
         public string SemanticDigest { get; init; } = "sha256:" + new string('b', 64);

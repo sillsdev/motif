@@ -306,7 +306,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
     }
 
-    private static async Task MonitorBatchProgressAsync(PanGlossRequest.Batch batch, string path,
+    // Its own thread: on a busy thread pool a timer-driven loop sampled once a second and skipped whole words.
+    private static Task MonitorBatchProgressAsync(PanGlossRequest.Batch batch, string path,
+        CancellationToken cancellationToken) =>
+        Task.Factory.StartNew(() => MonitorBatchProgress(batch, path, cancellationToken), CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+    private static void MonitorBatchProgress(PanGlossRequest.Batch batch, string path,
         CancellationToken cancellationToken)
     {
         var progressReader = new BatchProgressReader(batch.Words);
@@ -322,12 +328,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
             // A progress-store failure must not turn a completed parser run into an Assessment failure.
             catch (Exception) { }
         }
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            Publish(progressReader.Read(path));
-            try { await Task.Delay(100, cancellationToken).ConfigureAwait(false); }
-            catch (OperationCanceledException) { break; }
-        }
+        do Publish(progressReader.Read(path));
+        while (!cancellationToken.WaitHandle.WaitOne(100));
         Publish(progressReader.Read(path));
     }
 
