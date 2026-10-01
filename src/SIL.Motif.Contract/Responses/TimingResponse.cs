@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Baselines;
+
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>Stored parse-time percentiles and PanGloss timing rows aggregated for the requested word set.</summary>
@@ -12,8 +15,20 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
-    /// <summary>Whether the FieldWorks file has changed since the current Baseline.</summary>
+    /// <summary>Whether the selected measurement uses a historical Baseline or predates the live file's save.</summary>
     public bool IsStale { get; init; }
+
+    /// <summary>The selected measurement's relationship to the current project evidence.</summary>
+    public TimingEvidenceRelation EvidenceRelation { get; init; }
+
+    /// <summary>The selected measurement's exact Baseline identity, when recorded as a valid token.</summary>
+    public BaselineToken? Baseline { get; init; }
+
+    /// <summary>The selected measurement's captured FieldWorks save, when its invocation retains it.</summary>
+    public DateTimeOffset? SourceLastWriteUtc { get; init; }
+
+    /// <summary>Whether the live file has changed since the project's current Baseline, independently of this run.</summary>
+    public bool CurrentProjectIsStale { get; init; }
 
     /// <summary>The exact words the command selected, with their recorded time and why each search stopped.</summary>
     public IReadOnlyList<TimingWordRow> Words { get; init; } = [];
@@ -23,6 +38,20 @@ public sealed record TimingResponse(
     /// of it no parser object's timer covers.
     /// </summary>
     public WordTimeAttribution Attribution { get; init; } = WordTimeAttribution.None;
+}
+
+/// <summary>Whether a selected timing measurement belongs to the current saved project evidence.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<TimingEvidenceRelation>))]
+public enum TimingEvidenceRelation
+{
+    /// <summary>The stored provenance cannot establish a relationship to the current project.</summary>
+    Unknown,
+    /// <summary>The selected run measured the current Baseline and the live file has no later save.</summary>
+    Current,
+    /// <summary>The selected run measured a different Baseline from the current one.</summary>
+    Historical,
+    /// <summary>The live file has a later save than the Baseline measured by this run.</summary>
+    SavedSince,
 }
 
 /// <summary>The reasons a timed word's search ended, as <see cref="TimingWordRow.Completion"/> carries them.</summary>
@@ -46,6 +75,8 @@ public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completio
 {
     /// <summary>The word's parse time in nanoseconds from the parser's statistics, when it recorded one.</summary>
     public long? ElapsedNs { get; init; }
+    /// <summary>The producing measurement, including its recorded time.</summary>
+    public WordMeasurementOrigin? Origin { get; init; }
 }
 
 /// <summary>
