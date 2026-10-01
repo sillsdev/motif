@@ -30,42 +30,42 @@
                           MaxWidth="{DynamicResource Component.TextsPage.ActionMenuWidth}">
                 <views:CopyableTextBlock Text="{Binding InText.CheckedWordCountLabel}" FontWeight="SemiBold" />
                 <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ScopeCountSummary}" />
-                <WrapPanel>
-                  <Button Classes="menuAction" Content="{Binding InText.ChooseWordsLabel}" Command="{Binding InText.ChooseWordsCommand}"
+                <StackPanel>
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{Binding InText.ChooseWordsLabel}" Command="{Binding InText.ChooseWordsCommand}"
                           AutomationProperties.Name="Choose words with checkboxes" />
-                  <Button Classes="menuAction" Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Select all" Command="{Binding InText.SelectAllWordsCommand}"
                           AutomationProperties.Name="Select all chosen word occurrences" />
-                  <Button Classes="menuAction" Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Clear selection" Command="{Binding InText.ClearSelectedWordsCommand}"
                           IsVisible="{Binding InText.HasCheckedWords}"
                           AutomationProperties.Name="Clear selected word occurrences" />
-                </WrapPanel>
+                </StackPanel>
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding InText.HasCheckedWords}">
                   <views:CopyableTextBlock Classes="section-title" Text="For the selected words" />
                   <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                            Text="Approve one analysis at a time. Opinions apply to one word because each word has its own readings." />
-                  <WrapPanel>
-                    <Button Classes="menuAction" Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuAction" Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuAction" Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuAction" Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuAction" Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
-                    <Button Classes="menuAction" Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
+                  <StackPanel>
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown" Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept the new set" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark Incorrect" Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Remove analyses" Command="{Binding InText.RemoveAnalysesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.CheckedWords}" />
+                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Check again" Command="{Binding InText.RecheckCheckedChangesCommand}"
                             IsVisible="{Binding InText.HasCheckedUncertainChanges}" />
-                  </WrapPanel>
+                  </StackPanel>
                 </StackPanel>
                 <views:CopyableTextBlock Classes="section-title" Text="In this Text" />
-                <WrapPanel>
-                  <Button Classes="menuAction" Content="Add readings as Unknown in this Text"
+                <StackPanel>
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown in this Text"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                           AutomationProperties.Name="Add parser readings as Unknown in this Text" />
-                  <Button Classes="menuAction" Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept new set in this Text" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                           AutomationProperties.Name="Accept new set for the selected Text" />
-                  <Button Classes="menuAction" Content="Mark spellings Incorrect in this Text"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark spellings Incorrect in this Text"
                           Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                           AutomationProperties.Name="Mark spellings Incorrect in the selected Text" />
-                  <Button Classes="menuAction" Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes in this Text" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.SelectedText}"
                           AutomationProperties.Name="Undo changes in the selected Text" />
-                </WrapPanel>
+                </StackPanel>
                 <Expander Header="{Binding InText.SelectedTextRemoveHeader}" IsVisible="{Binding InText.HasSelectedTextAnalyses}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.SelectedTextRemovalPreview}" TextWrapping="Wrap" />
@@ -74,20 +74,20 @@
                   </StackPanel>
                 </Expander>
                 <views:CopyableTextBlock Classes="section-title" Text="In all chosen Texts" />
-                <WrapPanel>
-                  <Button Classes="menuAction" Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
+                <StackPanel>
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Accept new set in Selection" Command="{Binding InText.AcceptNewSetCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.AssessmentSelection}"
                           AutomationProperties.Name="Accept new set for the Selection" />
-                  <Button Classes="menuAction" Content="Add readings as Unknown in all chosen Texts"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Add readings as Unknown in all chosen Texts"
                           Command="{Binding InText.AddParserReadingsCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
                           AutomationProperties.Name="Add parser readings as Unknown in all chosen Texts" />
-                  <Button Classes="menuAction" Content="Mark spellings Incorrect in all chosen Texts"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Mark spellings Incorrect in all chosen Texts"
                           Command="{Binding InText.MarkSpellingsIncorrectCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
                           AutomationProperties.Name="Mark spellings Incorrect in all chosen Texts" />
-                  <Button Classes="menuAction" Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Undo changes in all chosen Texts" Command="{Binding InText.UndoChangesCommand}" CommandParameter="{x:Static vm:AnalysisOperationScope.ChosenTexts}"
                           AutomationProperties.Name="Undo changes in all chosen Texts" />
-                  <Button Classes="menuAction" Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="Check again" Command="{Binding InText.RecheckChangesCommand}"
                           AutomationProperties.Name="Check uncertain changes again" />
-                </WrapPanel>
+                </StackPanel>
                 <Expander Header="{Binding InText.ChosenTextsRemoveHeader}" IsVisible="{Binding InText.HasChosenTextAnalyses}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                     <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ChosenTextsRemovalPreview}" TextWrapping="Wrap" />
@@ -104,18 +104,18 @@
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                <Button Classes="menuAction" Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
+              <StackPanel Classes="menu">
+                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark this Text as read" Command="{Binding InText.MarkTextReadCommand}"
                         AutomationProperties.Name="Mark the selected Text as read" />
-                <Button Classes="menuAction" Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
+                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark this Text as unread" Command="{Binding InText.MarkTextUnreadCommand}"
                         AutomationProperties.Name="Mark the selected Text as unread" />
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
                             IsVisible="{Binding InText.HasSelectedReadStateOccurrences}">
                   <views:CopyableTextBlock Classes="muted" Text="{Binding InText.CheckedWordCountLabel}"
                                            AutomationProperties.Name="Selected occurrence count" />
-                  <Button Classes="menuAction" Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark selected as read" Command="{Binding InText.MarkSelectionReadCommand}"
                           AutomationProperties.Name="Mark selected occurrences as read" />
-                  <Button Classes="menuAction" Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Content="Mark selected as unread" Command="{Binding InText.MarkSelectionUnreadCommand}"
                           AutomationProperties.Name="Mark selected occurrences as unread" />
                 </StackPanel>
               </StackPanel>
@@ -268,15 +268,24 @@
                                       AutomationProperties.AutomationId="{Binding FixAutomationId}">
                                 <Button.Flyout>
                                   <Flyout Placement="BottomEdgeAlignedLeft">
-                                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                      <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
-                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
+                                    <StackPanel Classes="menu">
+                                      <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                              Command="{Binding Actions.AddChangeCommand}"
+                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect">
+                                        <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
+                                      </Button>
                                       <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
                                         <ItemsControl.ItemTemplate>
                                           <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                                            <Button Content="{Binding Label}"
+                                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                                     Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
+                                              <StackPanel>
+                                                <TextBlock Classes="menuTitle" Text="{Binding Label}" />
+                                                <TextBlock Classes="menuDetail" Text="{Binding Subtitle}"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                              </StackPanel>
+                                            </Button>
                                           </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                       </ItemsControl>
@@ -395,18 +404,24 @@
                               <Button Classes="wordCardAction" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
                                 <Button.Flyout>
                                   <Flyout Placement="BottomEdgeAlignedLeft">
-                                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                      <Button Content="Incorrect spelling" Command="{Binding Actions.AddChangeCommand}"
-                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect" />
+                                    <StackPanel Classes="menu">
+                                      <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                              Command="{Binding Actions.AddChangeCommand}"
+                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect">
+                                        <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
+                                      </Button>
                                       <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
                                         <ItemsControl.ItemTemplate>
                                           <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                              <Button Content="{Binding Label}"
-                                                      Command="{Binding $parent[ItemsControl].DataContext.Actions.StageMarkingChoiceCommand}"
-                                                      CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}" />
-                                              <views:CopyableTextBlock Classes="muted" Text="{Binding Subtitle}" />
-                                            </StackPanel>
+                                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                                    Command="{Binding $parent[ItemsControl].DataContext.Actions.StageMarkingChoiceCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
+                                              <StackPanel>
+                                                <TextBlock Classes="menuTitle" Text="{Binding Label}" />
+                                                <TextBlock Classes="menuDetail" Text="{Binding Subtitle}"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                              </StackPanel>
+                                            </Button>
                                           </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                       </ItemsControl>

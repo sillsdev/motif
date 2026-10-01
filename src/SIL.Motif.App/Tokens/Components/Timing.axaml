@@ -39,4 +39,11 @@
   <Style Selector="Button.timingRuleRow:pointerover">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
+  <!-- After hover, so the chosen rule keeps its own fill under the pointer. -->
+  <Style Selector="Button.timingRuleRow.chosen">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <Style Selector="Grid.timingColumns">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
 </Styles>

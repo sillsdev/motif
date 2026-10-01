@@ -7,8 +7,9 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Freshness.DotSize" ResourceKey="Primitive.Size.8" />
   </Styles.Resources>
-  <Style Selector="StackPanel.freshness">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
+  <!-- A dock, not a stack: the detail fills what the bar's buttons leave and trims, rather than running under them. -->
+  <Style Selector="DockPanel.freshness">
+    <Setter Property="HorizontalSpacing" Value="{DynamicResource Intent.Space.Snug}" />
   </Style>
   <Style Selector="Ellipse.freshDot">
     <Setter Property="Width" Value="{DynamicResource Component.Freshness.DotSize}" />

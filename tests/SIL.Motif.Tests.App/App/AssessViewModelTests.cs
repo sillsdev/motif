@@ -214,6 +214,45 @@ public sealed class AssessViewModelTests
         Assert.Equal("assess", Assert.Single(fake.UsageEntries).Command);
     }
 
+    // A parse can run for minutes; the linguist keeps reading the last results until new ones replace them.
+    [Fact]
+    public async Task TheLastResultsStayShownWhileAParseRunsAndAfterItIsRefused()
+    {
+        var (fake, _, assess) = NewViewModel();
+        fake.AssessCompletesWith(NewResponse() with
+        {
+            Words = [new AssessmentWordResult("dogs", "analysed", false, "Finished", 5, null)],
+        }, Steps);
+        await assess.RunCommand.ExecuteAsync(null);
+        Assert.True(assess.Compare.HasWords);
+        Assert.False(assess.ShowsEarlierResults);
+
+        fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));
+        var running = assess.RunCommand.ExecuteAsync(null);
+        Assert.True(assess.IsActive);
+        Assert.Equal(["dogs"], assess.Words.AllRows.Select(row => row.Word));
+        Assert.True(assess.Compare.HasWords);
+        Assert.True(assess.ShowsEarlierResults);
+        Assert.Equal("These are the results from before. The new ones replace them when parsing finishes.",
+            assess.EarlierResultsNote);
+        Assert.False(assess.OffersProblemReport);
+        assess.CancelCommand.Execute(null);
+        await running;
+
+        fake.AssessRefusesWith(new Refusal("assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built here."));
+        await assess.RunCommand.ExecuteAsync(null);
+        Assert.Equal(RunState.Refused, assess.State);
+        Assert.Equal(["dogs"], assess.Words.AllRows.Select(row => row.Word));
+        Assert.True(assess.Compare.HasWords);
+        Assert.True(assess.ShowsEarlierResults);
+        Assert.Equal("These are the results from before this parse.", assess.EarlierResultsNote);
+        Assert.True(assess.OffersProblemReport);
+
+        assess.Reset();
+        Assert.False(assess.Compare.HasWords);
+        Assert.False(assess.ShowsEarlierResults);
+    }
+
     [Fact]
     public async Task DisposalCancelsAndAwaitsAnActiveRun()
     {

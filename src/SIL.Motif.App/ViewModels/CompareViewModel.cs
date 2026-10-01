@@ -786,7 +786,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         Marking = word.Marking;
         OpinionMarks = Marking.FieldWorksAnalyses.Select(analysis => new CompareOpinionMarkViewModel(
             OpinionMarkFor(analysis.Opinion), OpinionLabelOf(analysis.Opinion))).ToArray();
-        if (OpinionMarks.Count == 0) OpinionMarks = [new(OpinionMarkKind.None, "Not in FieldWorks")];
+        if (OpinionMarks.Count == 0)
+            OpinionMarks = [new(CompareViewModel.OpinionMarkFor(Row), CompareViewModel.OpinionLabelOf(Row))];
         OpinionMark = OpinionMarks[0].Kind;
         OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
         PanGlossLabel = CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
@@ -798,6 +799,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
         RowVerdict = WordProjectStatuses.VerdictOf(Row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         ColumnVerdict = CompareViewModel.VerdictOf(Column);
+        Readings = word.Readings;
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         MissedApproved = word.MissedApproved;
         FixFirst = word.FixFirst;
@@ -837,6 +839,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public Verdict RowVerdict { get; }
     public string ColumnLabel { get; }
     public Verdict ColumnVerdict { get; }
+
+    /// <summary>Every parser reading of the word, morpheme by morpheme, for a list row opened to show them.</summary>
+    public IReadOnlyList<ParserReadingViewModel> Readings { get; }
 
     /// <summary>The parser's first reading, so a listed word shows what was just calculated for it.</summary>
     public string FirstReading { get; }

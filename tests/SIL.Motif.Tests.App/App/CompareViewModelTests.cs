@@ -328,6 +328,43 @@ public sealed class CompareViewModelTests
         Assert.Equal(OpinionMarkKind.None, Assert.Single(word.OpinionMarks).Kind);
     }
 
+    // Without its analyses in hand the row's opinion still holds, so the mark must not claim "Not in FieldWorks".
+    [Theory]
+    [InlineData(WordProjectStatus.Approved, OpinionMarkKind.Approved, "Approved")]
+    [InlineData(WordProjectStatus.Candidate, OpinionMarkKind.Unknown, "Unknown")]
+    [InlineData(WordProjectStatus.Rejected, OpinionMarkKind.Disapproved, "Disapproved")]
+    public void ListedWordWithoutItsAnalysesInHandWearsItsRowsMark(WordProjectStatus row, OpinionMarkKind kind, string label)
+    {
+        var result = new AssessmentWordResult("alikula", "analysed", false, "Search completed", 10, null);
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result), (row, CompareColumnKind.NoMatch));
+
+        var mark = Assert.Single(word.OpinionMarks);
+        Assert.Equal(kind, mark.Kind);
+        Assert.Equal(label, mark.Label);
+    }
+
+    // Lists draws each reading as the interlinear morpheme row used elsewhere, not as "a- + li- = 3SG + PST".
+    [Fact]
+    public void AListedWordOffersEachParserReadingAsMorphemes()
+    {
+        var result = new AssessmentWordResult("alikula", "analysed", false, "Search completed", 10, null)
+        {
+            Readings =
+            [
+                new ParserReading([
+                    new ParserReadingMorph("a-", "3SG", null, null, false, null),
+                    new ParserReadingMorph("kul", "eat", "v", null, false, null),
+                ]),
+            ],
+        };
+        var word = new CompareWordViewModel(new AssessWordRowViewModel(result),
+            (WordProjectStatus.Approved, CompareColumnKind.NoMatch));
+
+        var reading = Assert.Single(word.Readings);
+        Assert.Equal(["a-", "kul"], reading.Morphs.Select(morph => morph.Form));
+        Assert.Equal(["3SG", "eat"], reading.Morphs.Select(morph => morph.Gloss));
+    }
+
     private static ParserReading StoredReading(string id, string opinion) =>
         new([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
         {

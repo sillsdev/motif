@@ -302,7 +302,6 @@ public sealed class DesignTokenTests
         ("Intent.TextMuted", "SemiColorText2"),
         ("Intent.TextFaint", "SemiColorText3"),
         ("Intent.Border", "SemiColorBorder"),
-        ("Intent.Focus", "SemiColorFocusBorder"),
         ("Intent.Primary", "SemiColorPrimary"),
         ("Intent.Primary.Fill", "SemiColorPrimaryLight"),
         ("Intent.Link", "SemiColorLink"),

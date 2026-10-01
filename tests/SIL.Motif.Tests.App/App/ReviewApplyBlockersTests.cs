@@ -103,6 +103,7 @@ public sealed class ReviewApplyBlockersTests
         Assert.Equal("Apply is blocked by 1 thing", page.ApplyBlockedTitle);
         Assert.Equal("Check these changes", blocker.ActionText);
         Assert.Same(page.MeasureCommand, blocker.Action);
+        Assert.Equal("See what applying does to the numbers before applying.", page.ApplyDisabledReason);
     }
 
     [Fact]
@@ -122,6 +123,7 @@ public sealed class ReviewApplyBlockersTests
         Assert.Equal(string.Empty, page.ApplyBlockedTitle);
         Assert.False(page.IsApplyBlocked);
         Assert.True(page.CanApply);
+        Assert.Null(page.ApplyDisabledReason);
     }
 
     [Fact]

@@ -21,6 +21,8 @@
                                    Text="Grouped by what they do. Nothing reaches FieldWorks until you apply." />
           <views:CopyableTextBlock x:Name="ApplyBlockedTitle" Classes="reviewBlockedTitle"
                                    Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
+          <views:CopyableTextBlock x:Name="ApplyBlockedReason" Classes="muted" TextWrapping="Wrap"
+                                   Text="{Binding ApplyDisabledReason}" IsVisible="{Binding IsApplyBlocked}" />
         </StackPanel>
         <Border Classes="notice" IsVisible="{Binding NeedsReconciliation}">
           <DockPanel LastChildFill="True">
@@ -240,6 +242,8 @@
           <views:RefusalBlock DataContext="{Binding ShownApplyRefusal}" />
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
+                  ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
+                  ToolTip.Placement="Left" ToolTip.VerticalOffset="0"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" IsVisible="{Binding Changes.HasItems}" />
           <views:CopyableTextBlock Classes="reviewSmall"

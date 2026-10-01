@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Services;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -122,6 +123,9 @@ public sealed partial class TextsPageModel : PageModel
     public bool ShowAssessStatus => Assess.IsActive || Assess.Refusal is not null;
 
     public bool ShowAssessRefusal => Assess.Refusal is not null;
+
+    /// <summary>Where Report a problem beside a refused parse leads.</summary>
+    public Uri ReportProblemUri { get; } = new(AppLinks.Issues);
 
     /// <summary>Opens the tab passed as the command parameter.</summary>
     public IRelayCommand<TextsTab> ShowTabCommand { get; }

@@ -283,6 +283,8 @@ public sealed class ComponentStyleTests
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
 
+        yield return new("Freshness", "the line", host => Add(host, With(new DockPanel(), ["freshness"])),
+            DockPanel.HorizontalSpacingProperty, "Intent.Space.Snug");
         yield return new("Freshness", "a stale dot", host => Add(host, Dot("stale")), Shape.FillProperty, "Intent.Warning.Text");
         yield return new("Freshness", "a dot", host => Add(host, Dot()), Shape.WidthProperty, "Component.Freshness.DotSize");
         yield return new("Freshness", "a current label", host => Add(host, Text("freshLabel", "current")),
@@ -354,6 +356,10 @@ public sealed class ComponentStyleTests
             "Component.Timing.PagePadding");
         yield return new("Timing", "the table header", host => Add(host, Box("timingTableHeader")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
+        yield return new("Timing", "the chosen rule row", host => Add(host, Press("timingRuleRow", "chosen")),
+            Button.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Timing", "the table's columns", host => Add(host, With(new Grid(), ["timingColumns"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Group");
         yield return new("Timing", "a rule row", host => Add(host, Press("timingRuleRow")), Button.PaddingProperty,
             "Component.Timing.RowPadding");
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),
@@ -452,6 +458,14 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("TextsPage", "results kept while a parse runs", host => Add(host, Stack("waiting")),
+            Visual.OpacityProperty, "Intent.Opacity.Waiting");
+
+        yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
+            Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
+            Border.BorderThicknessProperty, "Intent.Stroke.Focus");
+
         yield return new("Density", "the compact word strip height", CompactWordStrip,
             Border.MinHeightProperty, "Component.Density.CompactWordHeight");
         yield return new("Density", "the compact word strip type", host =>

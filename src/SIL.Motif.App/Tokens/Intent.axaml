@@ -15,6 +15,7 @@
 
   Semi's solid primary button (ButtonSolidPrimary*) is too light in the dark theme to carry its white label, so both
   theme dictionaries replace those brushes with primitives. No view or component names them; Semi's theme does.
+  Semi's own focus adorner (AdornerLayerBorderBrush) is pale enough to miss, so it takes Intent.Focus's primitive too.
 
   Theme brushes and shadows:
     Intent.Surface                the window's own background (Semi's Background0)
@@ -23,6 +24,8 @@
     Intent.Surface.Neutral        a chip or tag with no verdict of its own (Semi's Fill1)
     Intent.Surface.Raised         a card lifted above the page, such as an open word card
     Intent.Shadow.Raised          the elevation shadow under Intent.Surface.Raised
+    Intent.Shadow.Hover           a thin ring drawn just inside a cell's own edge under the pointer
+    Intent.Shadow.Selected        a ring in Intent.Accent drawn just inside a chosen cell's own edge
     Intent.Clear                  no fill at all, where a style must set a brush but show nothing
     Intent.Scrim                  the dark layer that dims a window beneath a modal
     Intent.Text                   body text (Semi's Text0)
@@ -30,7 +33,7 @@
     Intent.TextMuted              supporting text: details, captions, counts (Semi's Text2)
     Intent.TextFaint              an unset or unknown state's mark (Semi's Text3)
     Intent.Border                 card edges, dividers and hairlines (Semi's Border)
-    Intent.Focus                  keyboard focus (Semi's FocusBorder)
+    Intent.Focus                  the keyboard focus ring, also Semi's own focus adorner
     Intent.Accent                 the chosen thing: selected page, active tab, work in progress
     Intent.Selected.Fill          behind the selected entry of a list
     Intent.Emphasis.Fill          a solid count or marker that must catch the eye
@@ -114,6 +117,7 @@
   Strokes (Thickness for BorderThickness; double for StrokeThickness):
     Intent.Stroke.None            no border
     Intent.Stroke.Box             a border all round
+    Intent.Stroke.Focus           the keyboard focus ring
     Intent.Stroke.DividerEnd      a divider on the trailing edge
     Intent.Stroke.DividerBottom   a divider along the bottom
     Intent.Stroke.Underline       an active tab's underline
@@ -138,8 +142,12 @@
     Intent.Type.Label             badges, compact chips, the sidebar footer, disclosure marks
     Intent.Type.Micro             a badge on the collapsed sidebar
 
+  Transforms:
+    Intent.Transform.Pressed      a button held down, drawn a little smaller so it reads as pushed in
+
   Opacity (double):
     Intent.Opacity.Dimmed         something shown but set aside
+    Intent.Opacity.Waiting        results kept on screen from before while a newer parse runs
 
   WCAG contrast for text, light then dark (AA needs 4.5:1):
     Approved.Text on Approved.Fill: 5.84:1 light, 8.21:1 dark
@@ -160,6 +168,9 @@
   WCAG contrast for a chart's parts on Surface, light then dark (AA needs 3:1):
     Series1 6.14:1, 8.07:1 · Series2 5.43:1, 7.96:1 · Series3 4.37:1, 9.41:1
     Series4 4.28:1, 9.48:1 · Other 4.82:1, 3.75:1
+
+  WCAG contrast for the focus ring, light then dark (a focus indicator needs 3:1):
+    Focus on Surface: 6.14:1 light, 8.07:1 dark · Focus on Surface.Subtle: 5.98:1 light, 7.47:1 dark
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -180,6 +191,7 @@
 
   <StaticResource x:Key="Intent.Stroke.None" ResourceKey="Primitive.Inset.0_0_0_0" />
   <StaticResource x:Key="Intent.Stroke.Box" ResourceKey="Primitive.Inset.1_1_1_1" />
+  <StaticResource x:Key="Intent.Stroke.Focus" ResourceKey="Primitive.Inset.2_2_2_2" />
   <StaticResource x:Key="Intent.Stroke.DividerEnd" ResourceKey="Primitive.Inset.0_0_1_0" />
   <StaticResource x:Key="Intent.Stroke.DividerBottom" ResourceKey="Primitive.Inset.0_0_0_1" />
   <StaticResource x:Key="Intent.Stroke.Underline" ResourceKey="Primitive.Inset.0_0_0_2" />
@@ -204,6 +216,8 @@
 
 
   <StaticResource x:Key="Intent.Opacity.Dimmed" ResourceKey="Primitive.Opacity.35" />
+  <StaticResource x:Key="Intent.Transform.Pressed" ResourceKey="Primitive.Transform.Scale96" />
+  <StaticResource x:Key="Intent.Opacity.Waiting" ResourceKey="Primitive.Opacity.60" />
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
@@ -215,12 +229,15 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey0}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop3_10.Slate950A10" />
+      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue500" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue700" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
-      <StaticResource x:Key="Intent.Focus" ResourceKey="SemiColorFocusBorder" />
+      <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue650}" />
+      <SolidColorBrush x:Key="AdornerLayerBorderBrush" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue700}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue50}" />
@@ -299,12 +316,15 @@
       <StaticResource x:Key="Intent.Surface.Neutral" ResourceKey="SemiColorFill1" />
       <SolidColorBrush x:Key="Intent.Surface.Raised" Color="{StaticResource Primitive.Color.Grey800}" />
       <StaticResource x:Key="Intent.Shadow.Raised" ResourceKey="Primitive.Shadow.Drop4_14.BlackA45" />
+      <StaticResource x:Key="Intent.Shadow.Hover" ResourceKey="Primitive.Shadow.InsetRing1.Blue350" />
+      <StaticResource x:Key="Intent.Shadow.Selected" ResourceKey="Primitive.Shadow.InsetRing2.Blue200" />
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
-      <StaticResource x:Key="Intent.Focus" ResourceKey="SemiColorFocusBorder" />
+      <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue350}" />
+      <SolidColorBrush x:Key="AdornerLayerBorderBrush" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey900}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue200}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue900}" />

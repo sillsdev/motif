@@ -217,6 +217,12 @@ public sealed class ReviewPageModel : PageModel
         !Changes.HasItems && !NeedsReconciliation ? "Choose a change in Texts to begin." :
         string.Join(" ", ApplyBlockers.Select(blocker => blocker.Sentence));
 
+    /// <summary>
+    /// Why Apply cannot be pressed, shown beside it and under the page's blocked title; null while it can. A disabled
+    /// button shows no tooltip of its own, so the reason has to be written where the button is.
+    /// </summary>
+    public string? ApplyDisabledReason => CanApply ? null : ApplyBlockReason;
+
     /// <summary>Shows that a saved project change could not be matched to its recorded Receipt.</summary>
     internal void ShowReconciliationNeeded()
     {
@@ -503,6 +509,7 @@ public sealed class ReviewPageModel : PageModel
                 OnPropertyChanged(nameof(ApplyBlockReason));
                 break;
             case nameof(ApplyBlockReason):
+                OnPropertyChanged(nameof(ApplyDisabledReason));
                 OnPropertyChanged(nameof(ApplyBlockers));
                 OnPropertyChanged(nameof(IsApplyBlocked));
                 OnPropertyChanged(nameof(ApplyBlockedTitle));

@@ -13,22 +13,28 @@
           IsVisible="{Binding Statistics.HasWordRows}">
       <Border Grid.Column="0" Classes="card">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
-          <HyperlinkButton Content="Give each word longer: Texts, Options" Padding="{DynamicResource Intent.Inset.None}" Click="OnOpenTimeLimitClick"
-                           IsVisible="{Binding Statistics.AnyIncomplete}" />
+          <HyperlinkButton Padding="{DynamicResource Intent.Inset.None}" Click="OnOpenTimeLimitClick"
+                           AutomationProperties.Name="Give each word longer: Texts, Options"
+                           IsVisible="{Binding Statistics.AnyIncomplete}">
+            <TextBlock Text="Give each word longer: Texts, Options" TextWrapping="Wrap" />
+          </HyperlinkButton>
         </StackPanel>
       </Border>
       <Border Grid.Column="1" Classes="card" IsVisible="{Binding Statistics.HasSlowestWord}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.SlowestHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding Statistics.SlowestHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.SlowestDetail}" />
-          <HyperlinkButton Content="Try it in Try a Word" Padding="{DynamicResource Intent.Inset.None}" Click="OnTrySlowestClick" />
+          <HyperlinkButton Padding="{DynamicResource Intent.Inset.None}" Click="OnTrySlowestClick"
+                           AutomationProperties.Name="Try it in Try a Word">
+            <TextBlock Text="Try it in Try a Word" TextWrapping="Wrap" />
+          </HyperlinkButton>
         </StackPanel>
       </Border>
       <Border Grid.Column="2" Classes="card">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.PassesHeadline}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding Statistics.PassesHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.PassesDetail}" />
         </StackPanel>
       </Border>

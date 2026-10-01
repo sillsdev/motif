@@ -49,7 +49,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
 
             try
             {
-                walkthrough.Click("Cancel parsing");
+                walkthrough.Click("Cancel parsing all words");
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.Assess.State == RunState.Cancelled &&
                         walkthrough.Workspace.Assess.RunCommand.CanExecute(null) &&
