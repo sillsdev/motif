@@ -546,7 +546,7 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                Assert.False(window.FindControl<StackPanel>("FreshnessLine")!.IsEffectivelyVisible);
+                Assert.False(window.FindControl<Control>("FreshnessLine")!.IsEffectivelyVisible);
                 Assert.True(ButtonNamed(window, "Refresh the project").IsEffectivelyVisible);
                 Assert.False(ButtonNamed(window, "Refresh the project").IsEffectivelyEnabled);
                 Assert.False(workspace.ShowsParseAllWordsAction);

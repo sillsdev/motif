@@ -283,6 +283,8 @@ public sealed class ComponentStyleTests
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
 
+        yield return new("Freshness", "the line", host => Add(host, With(new DockPanel(), ["freshness"])),
+            DockPanel.HorizontalSpacingProperty, "Intent.Space.Snug");
         yield return new("Freshness", "a stale dot", host => Add(host, Dot("stale")), Shape.FillProperty, "Intent.Warning.Text");
         yield return new("Freshness", "a dot", host => Add(host, Dot()), Shape.WidthProperty, "Component.Freshness.DotSize");
         yield return new("Freshness", "a current label", host => Add(host, Text("freshLabel", "current")),

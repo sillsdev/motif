@@ -111,12 +111,12 @@
                   ToolTip.Tip="Capture a new Baseline from FieldWorks' last save." />
         </StackPanel>
 
-        <StackPanel x:Name="FreshnessLine" Classes="freshness" Orientation="Horizontal" VerticalAlignment="Center"
-                    IsVisible="{Binding HasFreshness}">
-          <Ellipse Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
+        <DockPanel x:Name="FreshnessLine" Classes="freshness" VerticalAlignment="Center"
+                   IsVisible="{Binding HasFreshness}">
+          <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.current="{Binding FreshnessIsCurrent}"
                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
                    Classes.refused="{Binding HasRefreshRefusal}" />
-          <views:CopyableTextBlock Classes="freshLabel" Text="{Binding FreshnessLabel}"
+          <views:CopyableTextBlock DockPanel.Dock="Left" Classes="freshLabel" Text="{Binding FreshnessLabel}"
                                    Classes.current="{Binding FreshnessIsCurrent}"
                                    Classes.stale="{Binding FreshnessIsStale}" Classes.busy="{Binding FreshnessIsBusy}"
                                    Classes.refused="{Binding HasRefreshRefusal}"
@@ -124,7 +124,7 @@
           <views:CopyableTextBlock Classes="muted freshDetail" Text="{Binding FreshnessDetail}"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
-        </StackPanel>
+        </DockPanel>
       </DockPanel>
     </Border>
 
