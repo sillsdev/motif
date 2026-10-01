@@ -2,11 +2,12 @@ using SIL.Motif.App.Services;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
-/// <summary>Holds the real command client's Assessment or Handoff before it starts, until released.</summary>
+/// <summary>Holds the real command client's Assessment, Handoff or word read-state before it starts, until released.</summary>
 internal sealed class HoldingStartGate : ICommandStartGate
 {
     private TaskCompletionSource _assess;
     private readonly TaskCompletionSource _handoff;
+    private TaskCompletionSource _wordReadState = NewGate(held: false);
 
     internal HoldingStartGate(bool holdAssess = false, bool holdHandoff = false)
     {
@@ -22,10 +23,19 @@ internal sealed class HoldingStartGate : ICommandStartGate
 
     internal void ReleaseHandoff() => _handoff.TrySetResult();
 
+    internal void HoldWordReadState() => _wordReadState = NewGate(held: true);
+
+    internal void ReleaseWordReadState() => _wordReadState.TrySetResult();
+
     public Task WaitToStartAsync(GatedCommand command)
     {
         Waiting++;
-        return command == GatedCommand.Assess ? _assess.Task : _handoff.Task;
+        return command switch
+        {
+            GatedCommand.Assess => _assess.Task,
+            GatedCommand.Handoff => _handoff.Task,
+            _ => _wordReadState.Task,
+        };
     }
 
     private static TaskCompletionSource NewGate(bool held)
