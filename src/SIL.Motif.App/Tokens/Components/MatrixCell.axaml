@@ -96,6 +96,10 @@
   <Style Selector="Border.matrixCell.empty :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
+  <!-- An empty cell's 0 drops to its meaning's size, so the cells with words are the numbers the eye finds. -->
+  <Style Selector="Border.matrixCell.empty:not(.none) :is(TextBlock).matrixCellCount">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
   <!-- Hover and choosing ring the inside of the cell, never taking its meaning's edge away; a row clips outside. -->
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />

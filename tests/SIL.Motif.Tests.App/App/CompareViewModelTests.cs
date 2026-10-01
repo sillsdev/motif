@@ -596,6 +596,39 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
+    public void TheMeaningColumnShowsOnlyWhenTheListedCellsMixMeanings()
+    {
+        var compare = LostWords(
+            new AssessmentWordResult("polepole", "timed-out", true, "Search stopped at its time limit", 10, null)
+            {
+                ProjectStanding = ProjectStanding.NotPresent,
+            },
+            new AssessmentWordResult("haraka", "timed-out", true, "Search stopped at its time limit", 10, null)
+            {
+                ProjectStanding = ProjectStanding.Approved,
+            });
+        Assert.True(compare.ShowsMeaning);
+        Assert.Null(compare.ListMeaning);
+
+        var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
+        compare.Toggle(lost, additive: false);
+        Assert.False(compare.ShowsMeaning);
+        Assert.Null(compare.ListMeaning);
+
+        compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match), additive: true);
+        Assert.True(compare.ShowsMeaning);
+
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Stopped"));
+        Assert.False(compare.ShowsMeaning);
+        Assert.Equal("5 cells chosen", compare.ListHeading);
+        Assert.Equal("Unknown yet", compare.ListMeaning);
+        Assert.Equal("neutral", compare.ListMeaningMark?.Value);
+
+        compare.ClearSelectionCommand.Execute(null);
+        Assert.True(compare.ShowsMeaning);
+    }
+
+    [Fact]
     public void TheStripShowsTheEightMostSharedMorphemesAndCountsTheRest()
     {
         var morphs = Enumerable.Range(1, 11).Select(index => IdMorph($"m{index}-", $"G{index}")).ToArray();

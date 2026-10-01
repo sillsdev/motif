@@ -3,6 +3,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Media;
 using Avalonia.Automation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Controls;
@@ -215,6 +216,66 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void AnEmptyCellsZeroIsItsMeaningsSizeAndMuted_WhileACellWithWordsAndTheDashCellKeepTheBigNumber()
+    {
+        avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1000, window =>
+        {
+            TextBlock CountOf(WordProjectStatus row, CompareColumnKind column) => window.GetVisualDescendants().OfType<MatrixCell>()
+                .Single(cell => cell.DataContext is CompareCellViewModel cellModel && cellModel.Row == row && cellModel.Column == column)
+                .GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("matrixCellCount"));
+            double Resource(string key) => (double)Application.Current!.FindResource(key)!;
+
+            var full = CountOf(WordProjectStatus.Approved, CompareColumnKind.NoParse);
+            var empty = CountOf(WordProjectStatus.Rejected, CompareColumnKind.Match);
+            var dash = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell => cell.DataContext is CompareCellViewModel { IsNone: true })
+                .GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("matrixCellCount"));
+            Assert.Equal("0", empty.Text);
+            Assert.Equal(Resource("Intent.Type.Label"), empty.FontSize);
+            Assert.Equal(Resource("Intent.Type.Title"), full.FontSize);
+            Assert.Equal(Resource("Intent.Type.Title"), dash.FontSize);
+            var muted = (IBrush)Application.Current!.FindResource(ThemeVariant.Light, "Intent.TextMuted")!;
+            Assert.Equal(muted, empty.Foreground);
+        }));
+    }
+
+    [Fact]
+    public void TheChosenCellsWordsHideTheMeaningTheyShare_AndAllWordsShowIt()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = CompareViewModelTests.LostWords();
+            WithPanel(compare, 1000, window =>
+            {
+                Assert.Contains("MEANING", MatrixHeads(window));
+                Assert.All(MatrixRows(window), row => Assert.True(row.ShowsMeaning));
+
+                compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                    cell.Column == CompareColumnKind.NoParse), additive: false);
+                window.UpdateLayout();
+                Assert.DoesNotContain("MEANING", MatrixHeads(window));
+                Assert.NotEmpty(MatrixRows(window));
+                Assert.All(MatrixRows(window), row =>
+                {
+                    Assert.False(row.ShowsMeaning);
+                    Assert.DoesNotContain(row.GetVisualDescendants().OfType<MarkChip>(),
+                        chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning);
+                });
+            });
+        });
+    }
+
+    private static Grid MatrixList(Window window) => (Grid)window.GetVisualDescendants().OfType<ListBox>()
+        .Single(list => AutomationProperties.GetName(list) == "Words in the chosen cells").Parent!;
+
+    private static WordRow[] MatrixRows(Window window) => MatrixList(window).GetVisualDescendants().OfType<WordRow>().ToArray();
+
+    // The matrix list's visible column heads in reading order; Fix these first keeps its own header.
+    private static string?[] MatrixHeads(Window window) =>
+        MatrixList(window).Children.OfType<WordRowHeader>().Single().GetVisualDescendants().OfType<TextBlock>()
+            .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("wordRowHeading") && text.Text is { Length: > 1 })
+            .OrderBy(text => text.TranslatePoint(default, window)!.Value.X).Select(text => text.Text).ToArray();
+
+    [Fact]
     public void TheChosenCellsPanelShowsWhatItsWordsShare_AboveOneRowOfControls()
     {
         avalonia.Invoke(() =>
@@ -263,26 +324,34 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void AtTheNarrowWindowTheChosenCellsColumnHeadsStayApart()
+    public void AtTheNarrowWindowTheChosenCellsColumnHeadsStayApart_WithTheMeaningColumnOrWithout()
     {
         avalonia.Invoke(() =>
         {
             var compare = CompareViewModelTests.LostWords();
-            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
-                cell.Column == CompareColumnKind.NoParse), additive: false);
             // A 1040 px window leaves the Matrix about this wide beside the collapsed sidebar.
             WithPanel(compare, 988, window =>
             {
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                var header = Assert.Single(window.GetVisualDescendants().OfType<WordRowHeader>());
-                var heads = header.GetVisualDescendants().OfType<TextBlock>().Where(text => !string.IsNullOrEmpty(text.Text))
-                    .OrderBy(text => text.TranslatePoint(default, window)!.Value.X).ToArray();
-                foreach (var (left, right) in heads.Zip(heads.Skip(1)))
+                void HeadsStayApart(string?[] expected)
                 {
-                    var end = left.TranslatePoint(default, window)!.Value.X + left.TextLayout.WidthIncludingTrailingWhitespace;
-                    Assert.True(end + 4 <= right.TranslatePoint(default, window)!.Value.X, $"'{left.Text}' runs into '{right.Text}'.");
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var header = MatrixList(window).Children.OfType<WordRowHeader>().Single();
+                    var heads = header.GetVisualDescendants().OfType<TextBlock>()
+                        .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text))
+                        .OrderBy(text => text.TranslatePoint(default, window)!.Value.X).ToArray();
+                    Assert.Equal(expected, heads.Select(text => text.Text).Where(text => text!.Length > 1).Take(4));
+                    foreach (var (left, right) in heads.Zip(heads.Skip(1)))
+                    {
+                        var end = left.TranslatePoint(default, window)!.Value.X + left.TextLayout.WidthIncludingTrailingWhitespace;
+                        Assert.True(end + 4 <= right.TranslatePoint(default, window)!.Value.X, $"'{left.Text}' runs into '{right.Text}'.");
+                    }
                 }
+
+                HeadsStayApart(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING"]);
+                compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                    cell.Column == CompareColumnKind.NoParse), additive: false);
+                HeadsStayApart(["WORD", "FIELDWORKS", "PANGLOSS", "PLACES"]);
             });
         });
     }

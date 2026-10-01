@@ -313,6 +313,32 @@ public sealed partial class CompareViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Whether the word rows show their meaning column: only when the listed cells mix meanings, since the heading
+    /// already names a list's one meaning.
+    /// </summary>
+    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1;
+
+    /// <summary>
+    /// The one meaning every listed word shares, for a chip after a heading that names no single cell; otherwise
+    /// <see langword="null"/>, as the chosen cell's own chip or the meaning column says it.
+    /// </summary>
+    public string? ListMeaning => ListMeaningCell?.Label;
+
+    /// <summary>The mark for <see cref="ListMeaning"/>, or <see langword="null"/> when it has none.</summary>
+    public Mark? ListMeaningMark => ListMeaningCell?.MeaningMark;
+
+    private CompareCellViewModel? ListMeaningCell =>
+        ChosenCell is null && !ShowsMeaning ? ListedCells().FirstOrDefault() : null;
+
+    private IEnumerable<CompareCellViewModel> ListedCells()
+    {
+        var chosen = Cells.Where(cell => cell.IsSelected).ToArray();
+        return (chosen.Length == 0 ? Cells : chosen).Where(cell => cell.WordCount > 0);
+    }
+
+    private IEnumerable<string> ListedMeanings() => ListedCells().Select(cell => cell.Label).Distinct(StringComparer.Ordinal);
+
     /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
     public string ListExplanation => Cells.Count(cell => cell.IsSelected) switch
     {
@@ -468,6 +494,9 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(ChosenCell));
         OnPropertyChanged(nameof(ListHeading));
         OnPropertyChanged(nameof(ListExplanation));
+        OnPropertyChanged(nameof(ShowsMeaning));
+        OnPropertyChanged(nameof(ListMeaning));
+        OnPropertyChanged(nameof(ListMeaningMark));
         ApplyFilter();
     }
 

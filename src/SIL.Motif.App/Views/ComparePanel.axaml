@@ -165,8 +165,13 @@
                          Text="{Binding ColumnLabel}" />
               <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Label}" Compact="True" />
             </StackPanel>
-            <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold"
-                       IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}" />
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                        IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}">
+              <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" />
+              <views:MarkChip Classes="matrixListMeaning" Mark="{Binding Compare.ListMeaningMark}"
+                              Text="{Binding Compare.ListMeaning}" Compact="True"
+                              IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
           </StackPanel>
           <DockPanel VerticalAlignment="Center">
             <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
@@ -255,13 +260,14 @@
         </StackPanel>
 
         <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-          <views:WordRowHeader />
+          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" />
           <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                    KeyboardNavigation.TabNavigation="Continue"
                    AutomationProperties.Name="Words in the chosen cells">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:CompareWordViewModel">
                 <views:WordRow Row="{Binding WordRow}" List="matrix" IsChecked="{Binding IsChecked}"
+                               ShowsMeaning="{Binding $parent[views:ComparePanel].Compare.ShowsMeaning}"
                                IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
                   <views:WordRow.Card>
                     <views:WordRowCard />

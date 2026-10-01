@@ -401,6 +401,13 @@ public sealed partial class ComponentStyleTests
             TextBlock.FontSizeProperty, "Intent.Type.Label");
         yield return new("MatrixCell", "a cell's places", host => Within(host, Box("matrixCell"), "matrixCellPlaces"),
             TextBlock.MarginProperty, "Component.MatrixCell.PlacesMargin");
+        yield return new("MatrixCell", "a cell's count", host => Within(host, Box("matrixCell"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
+        yield return new("MatrixCell", "an empty cell's count", host => Within(host, Box("matrixCell", "empty"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Label");
+        yield return new("MatrixCell", "the dash cell's count",
+            host => Within(host, Box("matrixCell", "empty", "none"), "matrixCellCount"),
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
