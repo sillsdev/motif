@@ -298,13 +298,17 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.True(workspace.Context.Evidence.HasAssessment);
                 Assert.True(workspace.ShowsRefreshAction);
 
-                new SIL.Motif.Tests.TestFixtures.FieldWorksSimulator(project.FwDataPath).SaveEdit(_ => { });
+                new SIL.Motif.Tests.TestFixtures.FieldWorksSimulator(project.FwDataPath).AddWordform("refresh-edit");
                 stage = "Refresh after a FieldWorks save";
                 refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
                 Click(session.Window, refresh);
                 await Until(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
-                    "Refresh after a FieldWorks save did not leave the new Baseline unparsed");
+                    () => "Refresh after a FieldWorks save did not leave the new Baseline unparsed; " +
+                        $"refresh running={workspace.RefreshCommand.IsRunning}, " +
+                        $"needs parse={workspace.Context.NeedsAssessment}, " +
+                        $"baseline='{workspace.Baseline.CapturedTimeText}', " +
+                        $"baseline refusal='{workspace.Baseline.ShownRefusal?.Sentence}'");
                 Assert.True(workspace.ShowsParseAllWordsAction);
 
                 stage = "Overview prompt";

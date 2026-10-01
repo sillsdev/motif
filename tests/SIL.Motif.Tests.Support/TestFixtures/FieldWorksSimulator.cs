@@ -1,4 +1,5 @@
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.LcmUtils;
 
@@ -46,6 +47,16 @@ public sealed class FieldWorksSimulator
         if (savedAt <= before) savedAt = before.AddSeconds(1);
         File.SetLastWriteTimeUtc(_projectPath, savedAt);
     }
+
+    /// <summary>
+    /// Saves a change FieldWorks could make, for a test that needs a new Baseline. An empty save is not one:
+    /// unchanged bytes saved within two seconds rebuild the same bundle, because zip entry times have that
+    /// resolution.
+    /// </summary>
+    public void AddWordform(string form) => SaveEdit(cache =>
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString(form, cache.DefaultVernWs))));
 
     public void DeleteWordform(string form) => SaveEdit(cache =>
     {
