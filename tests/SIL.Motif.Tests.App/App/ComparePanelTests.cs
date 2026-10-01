@@ -371,10 +371,10 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     }
                 }
 
-                HeadsStayApart(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING"]);
+                HeadsStayApart(["WORD", "FW", "PG", "MEANING"]);
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
-                HeadsStayApart(["WORD", "FIELDWORKS", "PANGLOSS", "PLACES"]);
+                HeadsStayApart(["WORD", "FW", "PG", "PLACES"]);
             });
         });
     }

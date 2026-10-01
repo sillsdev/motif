@@ -100,6 +100,38 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
+    public async Task RefreshRequestedDuringAReadRunsAgainWithTheLatestKnownProjects()
+    {
+        var firstRead = new TaskCompletionSource<IReadOnlyList<KnownProjectSummary>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstReadStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var latest = new KnownProjectSummary(@"C:\projects\latest.fwdata", DateTimeOffset.UtcNow);
+        var (client, _, _, _, workspace) = NewWorkspace();
+        var reads = 0;
+        client.OnListKnownProjects(_ =>
+        {
+            if (Interlocked.Increment(ref reads) == 1)
+            {
+                firstReadStarted.TrySetResult();
+                return firstRead.Task;
+            }
+
+            return Task.FromResult<IReadOnlyList<KnownProjectSummary>>([latest]);
+        });
+
+        var refresh = workspace.RefreshKnownProjectsAsync();
+        await firstReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var refreshAfterChange = workspace.RefreshKnownProjectsAsync();
+        firstRead.TrySetResult([]);
+
+        await refreshAfterChange.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(2, reads);
+        Assert.Equal(latest.FullFwDataPath, Assert.Single(workspace.Project.KnownProjects).FullFwDataPath);
+        await workspace.DisposeAsync();
+    }
+
+    [Fact]
     public async Task RerunningFromTimingKeepsTimingOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
