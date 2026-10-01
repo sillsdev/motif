@@ -293,7 +293,8 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     window.Show();
                     foreach (var order in new[] { new[] { kind, "other" }, new[] { "other", kind } })
                     {
-                        bar.Rows = [.. order.Select(name => new SIL.Motif.Contract.Responses.TimingAggregateRow(name, 1, 0.5, 1, 1) { Kind = name })];
+                        bar.Rows = [.. order.Select(name => new TimingShare(name, name, 1, 0.5, 1,
+                            new SIL.Motif.Contract.Responses.TimingAggregateRow(name, 1, 0.5, 1, 1) { Kind = name }))];
                         window.UpdateLayout();
                         var entry = Assert.Single(bar.Legend, entry => entry.Row.Kind == kind);
                         var brush = Assert.IsAssignableFrom<ISolidColorBrush>(entry.Brush);

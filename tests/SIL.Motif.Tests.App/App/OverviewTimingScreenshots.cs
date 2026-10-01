@@ -73,13 +73,14 @@ public sealed class OverviewTimingScreenshots
     private static TimingResponse Timing(string by) =>
         new("assessment/one", "all", by, Words.Length, 9, 700,
             [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48), new SlowWordTiming("walikula", 12)],
+            // The kinds record 680 ms of the words' 800 ms, so the page has other time to show.
             by == "kind"
                 ?
                 [
-                    new TimingAggregateRow("morph_rule", 512, 0.64, 3500, 9) { Kind = "morph_rule" },
-                    new TimingAggregateRow("phon_rule", 176, 0.22, 1200, 7) { Kind = "phon_rule" },
-                    new TimingAggregateRow("lex_entry", 72, 0.09, 400, 9) { Kind = "lex_entry" },
-                    new TimingAggregateRow("root_index", 40, 0.05, 200, 9) { Kind = "root_index" },
+                    new TimingAggregateRow("morph_rule", 448, 448d / 680, 3500, 9) { Kind = "morph_rule" },
+                    new TimingAggregateRow("phon_rule", 160, 160d / 680, 1200, 7) { Kind = "phon_rule" },
+                    new TimingAggregateRow("lex_entry", 40, 40d / 680, 400, 9) { Kind = "lex_entry" },
+                    new TimingAggregateRow("root_index", 32, 32d / 680, 200, 9) { Kind = "root_index" },
                 ]
                 :
                 [

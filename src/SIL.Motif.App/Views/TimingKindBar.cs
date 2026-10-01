@@ -1,23 +1,24 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using SIL.Motif.Contract.Responses;
+using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
 /// <summary>One kind in a <see cref="TimingKindBar"/>'s legend, with the brush its part is drawn in.</summary>
-/// <param name="Row">The kind and its share of the time.</param>
+/// <param name="Row">The kind, or the other time, and its share of the words' whole parse time.</param>
 /// <param name="Brush">The brush the bar fills this kind's part with.</param>
-public sealed record TimingKindLegendEntry(TimingAggregateRow Row, IBrush? Brush);
+public sealed record TimingKindLegendEntry(TimingShare Row, IBrush? Brush);
 
 /// <summary>
-/// Draws the command's kind shares across one full-width bar, and names each part's colour for a legend. Each kind
-/// keeps one colour wherever it falls in the bar, so a kind looks the same however the shares sort.
+/// Draws each kind's share of the words' whole parse time across one full-width bar, and names each part's colour
+/// for a legend. Each kind keeps one colour wherever it falls in the bar, so a kind looks the same however the
+/// shares sort; the other time, which has no kind, takes the unattributed colour.
 /// </summary>
 public sealed class TimingKindBar : Control
 {
-    public static readonly StyledProperty<IReadOnlyList<TimingAggregateRow>?> RowsProperty =
-        AvaloniaProperty.Register<TimingKindBar, IReadOnlyList<TimingAggregateRow>?>(nameof(Rows));
+    public static readonly StyledProperty<IReadOnlyList<TimingShare>?> RowsProperty =
+        AvaloniaProperty.Register<TimingKindBar, IReadOnlyList<TimingShare>?>(nameof(Rows));
     public static readonly StyledProperty<IBrush?> MorphRuleBrushProperty =
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(MorphRuleBrush));
     public static readonly StyledProperty<IBrush?> PhonRuleBrushProperty =
@@ -36,7 +37,7 @@ public sealed class TimingKindBar : Control
     static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, MorphRuleBrushProperty,
         PhonRuleBrushProperty, LexiconBrushProperty, RootLookupBrushProperty, UnattributedBrushProperty);
 
-    public IReadOnlyList<TimingAggregateRow>? Rows
+    public IReadOnlyList<TimingShare>? Rows
     {
         get => GetValue(RowsProperty);
         set => SetValue(RowsProperty, value);
@@ -110,7 +111,7 @@ public sealed class TimingKindBar : Control
         var x = 0d;
         foreach (var row in Rows)
         {
-            var width = Math.Max(0, Math.Min(Bounds.Width - x, row.ShareOfTotal * Bounds.Width));
+            var width = Math.Max(0, Math.Min(Bounds.Width - x, (row.Share ?? 0) * Bounds.Width));
             if (BrushFor(row.Kind) is { } brush)
                 context.FillRectangle(brush, new Rect(x, 0, width, Bounds.Height));
             x += width;

@@ -89,8 +89,8 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
             overview.SpeedMain);
         Assert.True(timing.HasHeadline, timing.TimingRefusal?.Sentence ?? "Timing read no stored words");
         Assert.Equal(expectedTotal, timing.HeadlineTotal);
-        Assert.Equal(measured.Length == 1 ? "for 1 word" : $"for all {measured.Length:N0} words",
-            timing.HeadlineTotalCaption);
+        // The caption counts the measured words against every chosen word, so the untimed one is not hidden.
+        Assert.Equal($"for {measured.Length:N0} of the {words.Count:N0} words", timing.HeadlineTotalCaption);
     }
 
     public void Dispose()

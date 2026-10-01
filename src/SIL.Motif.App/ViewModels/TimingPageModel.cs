@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Assess;
@@ -137,8 +138,10 @@ public sealed partial class TimingPageModel : PageModel
     public string HeadlineTotal => HasHeadline ? SpeedText.Duration(MeasuredWords.Sum(word => word.ElapsedMs!.Value))
         : string.Empty;
 
-    /// <summary>Which words the total covers: all of them, or the group chosen above.</summary>
+    /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
     public string HeadlineTotalCaption => !HasHeadline ? string.Empty
+        : MeasuredWords.Count < ChosenWordCount
+            ? $"for {MeasuredWords.Count:N0} of {(IsAllSelected ? "the" : "these")} {ChosenWordCount:N0} words"
         : MeasuredWords.Count == 1 ? "for 1 word"
         : $"for {(IsAllSelected ? "all" : "these")} {MeasuredWords.Count:N0} words";
 
@@ -156,6 +159,71 @@ public sealed partial class TimingPageModel : PageModel
 
     private IReadOnlyList<TimingWordRow> MeasuredWords =>
         KindTiming?.Words.Where(word => word.ElapsedMs is not null).ToArray() ?? [];
+
+    private int ChosenWordCount => KindTiming?.Words.Count ?? 0;
+
+    // The one denominator every share on the page divides by: the chosen words' whole measured parse time.
+    private double MeasuredTotalMs => MeasuredWords.Sum(word => word.ElapsedMs!.Value);
+
+    private string MeasuredWordsPhrase => MeasuredWords.Count < ChosenWordCount
+        ? $"{MeasuredWords.Count:N0} of {(IsAllSelected ? "the" : "these")} {ChosenWordCount:N0} words"
+        : MeasuredWords.Count == 1 ? "this word"
+        : $"{(IsAllSelected ? "all" : "these")} {MeasuredWords.Count:N0} words";
+
+    /// <summary>The chosen words' time by kind, each a share of their whole parse time, then the other time.</summary>
+    public IReadOnlyList<TimingShare> KindShares
+    {
+        get
+        {
+            var shares = SharesOf(KindTiming?.Aggregates, byKind: true);
+            var other = MeasuredTotalMs - shares.Sum(share => share.ElapsedMs);
+            return HasHeadline && other >= TimingShare.SmallestShownMs
+                ? [.. shares, new TimingShare("Other time", string.Empty, other, other / MeasuredTotalMs, 0, null)]
+                : shares;
+        }
+    }
+
+    /// <summary>The chosen words' time by rule, each a share of the same whole parse time as the kinds.</summary>
+    public IReadOnlyList<TimingShare> RuleShares => SharesOf(RuleTiming?.Aggregates, byKind: false);
+
+    /// <summary>The rule table's share column, named by what it divides by.</summary>
+    public string RuleShareHeader => HasHeadline ? $"SHARE OF {HeadlineTotal}" : "SHARE";
+
+    /// <summary>What every share on the page is a share of.</summary>
+    public string ShareDenominatorText
+    {
+        get
+        {
+            if (KindTiming is null) return string.Empty;
+            if (!HasHeadline) return "No parse time was kept for these words, so no shares are shown.";
+            var missing = ChosenWordCount - MeasuredWords.Count;
+            return $"Every share is of the {HeadlineTotal} {MeasuredWordsPhrase} took to parse" + (missing > 0
+                ? $"; {missing:N0} {(missing == 1 ? "has" : "have")} no parse time." : ".");
+        }
+    }
+
+    /// <summary>How much of the whole parse time the parser recorded against a rule, and what the rest is.</summary>
+    public string OtherTimeText
+    {
+        get
+        {
+            if (!HasHeadline || KindTiming is not { Aggregates.Count: > 0 } kinds) return string.Empty;
+            var recorded = kinds.Aggregates.Sum(row => row.ElapsedMs);
+            var other = MeasuredTotalMs - recorded;
+            if (other >= TimingShare.SmallestShownMs)
+                return $"The parser recorded {(recorded / MeasuredTotalMs).ToString("P0", CultureInfo.CurrentCulture)} " +
+                    "of that time against rules and lookups. Other time is the rest of its work, which it records " +
+                    "against no rule.";
+            return other <= -TimingShare.SmallestShownMs
+                ? $"The parser recorded {SpeedText.PerWord(-other)} more against rules and lookups than the words' " +
+                    "whole parse time, because each word's time is kept to the whole millisecond."
+                : "The parser recorded all of that time against rules and lookups.";
+        }
+    }
+
+    private IReadOnlyList<TimingShare> SharesOf(IReadOnlyList<TimingAggregateRow>? rows, bool byKind) => rows is null ? [] :
+        [.. rows.Select(row => new TimingShare(byKind ? TimingShare.KindName(row.Name) : row.Name, row.Kind, row.ElapsedMs,
+            HasHeadline && MeasuredTotalMs > 0 ? row.ElapsedMs / MeasuredTotalMs : null, row.WordsTouched, row))];
     public bool HasSelectedWords => KindTiming?.WordCount > 0;
     public bool ShowEmptySelection => KindTiming is { WordCount: 0 };
     public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
@@ -177,10 +245,20 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
-        RuleTiming?.Aggregates.Select(row => new TimingRuleRow(row, row.Name == SelectedRule)).ToArray() ?? [];
+        [.. RuleShares.Select(share => new TimingRuleRow(share, share.Source?.Name == SelectedRule))];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
-    public string RuleSummary => SelectedRuleRow is not { } row ? string.Empty :
-        $"{row.ShareOfTotal:P0} of these words' time · {row.Attempts:N0} attempts · {row.WordsTouched:N0} words touched";
+
+    /// <summary>The selected rule's time in each of its costliest words, beside that word's whole parse time.</summary>
+    public IReadOnlyList<TimingRuleWord> CostliestRuleWordTimes => [.. CostliestRuleWords.Select(word =>
+        new TimingRuleWord(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
+            ? $"{SpeedText.PerWord(word.ElapsedMs)} of its {SpeedText.PerWord(whole)}"
+            : SpeedText.PerWord(word.ElapsedMs)))];
+
+    /// <summary>The selected rule's time, its share of the chosen words' whole parse time, and its words.</summary>
+    public string RuleSummary => RuleShares.FirstOrDefault(share => share.Source?.Name == SelectedRule) is not { } rule
+        ? string.Empty
+        : (rule.Share is null ? rule.TimeText : $"{rule.TimeText} · {rule.ShareText} of {MeasuredWordsPhrase}' {HeadlineTotal}") +
+            $" · recorded in {SpeedText.Count(rule.Words, "word", "words")}";
     public IReadOnlyList<CompareCellViewModel> MatrixCells =>
         Context.Assess.Compare.Cells.Where(cell => cell.Count > 0).ToArray();
     public IReadOnlyList<ComparePresetViewModel> TextsLists =>
@@ -622,6 +700,8 @@ public sealed partial class TimingPageModel : PageModel
             nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
+            nameof(KindShares), nameof(RuleShares), nameof(RuleShareHeader), nameof(ShareDenominatorText),
+            nameof(OtherTimeText), nameof(CostliestRuleWordTimes),
         }) OnPropertyChanged(property);
         RaiseFocusState();
         RaiseStoredTimingState();
@@ -669,7 +749,53 @@ public sealed partial class TimingPageModel : PageModel
 /// <summary>A slow word's recorded time and completion shown together.</summary>
 public sealed record TimingSlowWord(string Word, int ElapsedMs, string Completion);
 
+/// <summary>One word under the selected rule, with the rule's time there said against the word's whole time.</summary>
+public sealed record TimingRuleWord(string Word, string TimeText);
+
+/// <summary>
+/// One part of some words' measured parse time: a kind of rule, one rule, or the other time the parser recorded
+/// against no rule. Its share is always of the words' whole parse time, never of the time recorded against rules.
+/// </summary>
+/// <param name="Label">The kind's or rule's name as the window shows it.</param>
+/// <param name="Kind">The stored kind, for a rule; empty for the other time.</param>
+/// <param name="ElapsedMs">The time the parser recorded, in milliseconds.</param>
+/// <param name="Share">The share of the words' whole parse time, or <see langword="null"/> when none was kept.</param>
+/// <param name="Words">How many words the parser recorded this part's time in.</param>
+/// <param name="Source">The command's row behind it, or <see langword="null"/> for the other time.</param>
+public sealed record TimingShare(string Label, string Kind, double ElapsedMs, double? Share, int Words,
+    TimingAggregateRow? Source)
+{
+    /// <summary>Less time than this is rounding, not other time the parser spent.</summary>
+    public const double SmallestShownMs = 0.05;
+
+    /// <summary>Whether this is the time the parser recorded against no rule.</summary>
+    public bool IsOtherTime => Source is null;
+
+    /// <summary>The window's name for this part's stored kind.</summary>
+    public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
+
+    public string TimeText => SpeedText.PerWord(ElapsedMs);
+
+    public string ShareText => Share is { } share ? share.ToString("P0", CultureInfo.CurrentCulture) : "—";
+
+    public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>The window's name for a stored parser kind.</summary>
+    public static string KindName(string kind) => kind switch
+    {
+        "morph_rule" => "Morphological rules",
+        "phon_rule" => "Phonological rules",
+        "root_index" => "Root lookup",
+        "lex_entry" => "Lexical entries",
+        _ => kind.Replace('_', ' '),
+    };
+}
+
 /// <summary>One row of the Timing page's by-rule table, and whether it is the chosen rule.</summary>
-/// <param name="Row">The rule's timing, as the command reported it.</param>
+/// <param name="Share">The rule's time and its share of the words' whole parse time.</param>
 /// <param name="IsChosen">Whether the side card describes this rule.</param>
-public sealed record TimingRuleRow(TimingAggregateRow Row, bool IsChosen);
+public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
+{
+    /// <summary>The rule's timing, as the command reported it.</summary>
+    public TimingAggregateRow Row => Share.Source!;
+}
