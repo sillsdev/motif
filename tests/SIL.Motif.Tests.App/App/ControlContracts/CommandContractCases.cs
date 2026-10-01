@@ -140,11 +140,11 @@ internal static class CommandContractCases
             "TraceWordViewModelTests.ChoosingAnotherWordCancelsTheTraceStillRunning"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SelectStopGroupCommand),
             typeof(TraceStopGroupViewModel), null, true,
-            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThemClosestFirstAndFilterable"),
+            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThem_ClosestFirstAndFilterable"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SetViewCommand), typeof(TraceView),
             TraceView.Candidates, true, "TraceWordViewModelTests.SetWordFillsTheBoxWithoutStartingATrace"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.ShowEveryAttemptCommand), null, null, true,
-            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThemClosestFirstAndFilterable"),
+            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThem_ClosestFirstAndFilterable"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.TryCommand), null, null, false,
             "TraceWordViewModelTests.WithNoProjectTheCommandCannotRun"),
     ];
