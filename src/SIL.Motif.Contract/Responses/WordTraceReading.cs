@@ -27,7 +27,8 @@ public sealed record WordTraceReading(
 /// </summary>
 /// <param name="Id">The reading-wide id other records cite as <c>RefId</c>, built from the identity when there is one.</param>
 /// <param name="Kind">
-/// <c>morph</c>, <c>affixRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>, <c>template</c> or <c>stratum</c>.
+/// <c>morph</c>, <c>morphologicalRule</c>, <c>affixRule</c>, <c>compoundRule</c>, <c>phonologicalRule</c>,
+/// <c>template</c> or <c>stratum</c>. A generic morphological identity does not distinguish an affix from a compound.
 /// </param>
 /// <param name="Label">The name the project gives it, as the reading first shows it.</param>
 public sealed record TraceRef(string Id, string Kind, string Label)

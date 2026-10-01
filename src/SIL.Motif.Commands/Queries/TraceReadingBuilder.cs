@@ -87,7 +87,7 @@ public static class TraceReadingBuilder
         {
             "phonRule" => "phonologicalRule",
             "morphRule" when step.Type.Contains("CompoundingRule", StringComparison.Ordinal) => "compoundRule",
-            "morphRule" => "affixRule",
+            "morphRule" => "morphologicalRule",
             "compoundingRule" => "compoundRule",
             "template" or "affixTemplate" => "template",
             "stratum" => "stratum",
@@ -164,7 +164,7 @@ public static class TraceReadingBuilder
     }
 
     private static string Kind(string type) => type.Contains("PhonologicalRule", StringComparison.Ordinal) ? "Phonological rule"
-        : type.Contains("MorphologicalRule", StringComparison.Ordinal) ? "Affix rule"
+        : type.Contains("MorphologicalRule", StringComparison.Ordinal) ? "Morphological rule"
         : type.Contains("CompoundingRule", StringComparison.Ordinal) ? "Compound rule"
         : type.Contains("Template", StringComparison.Ordinal) ? "Affix template" : type;
 

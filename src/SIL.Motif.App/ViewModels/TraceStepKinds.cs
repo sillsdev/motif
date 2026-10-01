@@ -3,7 +3,7 @@ using System.Text;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Plain names for the kinds of step a parser trace records, such as "Affix rule" for a step the parser calls
+/// Plain names for the kinds of step a parser trace records, such as "Morphological rule" for a step called
 /// <c>MorphologicalRuleSynthesis</c>. A rule is one rule to a linguist whichever way the parser ran it, so the
 /// analysis and synthesis halves of a step read the same, and a kind this table does not know is spelled out
 /// in words rather than shown as the parser's class name.
@@ -14,7 +14,7 @@ public static class TraceStepKinds
 
     private static readonly IReadOnlyDictionary<string, string> Kinds = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["MorphologicalRule"] = "Affix rule",
+        ["MorphologicalRule"] = "Morphological rule",
         ["PhonologicalRule"] = "Phonological rule",
         ["Template"] = "Affix template",
         ["LexicalLookup"] = "Lexical lookup",

@@ -55,6 +55,19 @@ public sealed class TraceReadingBuilderTests
             "morphRule", "local:Rule"));
     }
 
+    [Fact]
+    public void GenericMorphologicalStepsDoNotClaimToBeAffixRules()
+    {
+        var reading = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "trace-details-v2-kumata.json"))).Value!.Reading!;
+
+        var compounds = reading.Refs.Where(reference => reference.Label.Contains("Compounding")).ToArray();
+        Assert.Equal(2, compounds.Length);
+        Assert.All(compounds, reference => Assert.Equal("morphologicalRule", reference.Kind));
+        Assert.All(reading.RulesOnBestPath.Where(rule => rule.Kind.Contains("Affix rule")),
+            rule => Assert.Fail("A generic morphological event cannot identify an affix rule."));
+    }
+
     private static WordTraceReading AlternateGuidReading(bool mixedSpellings = true)
     {
         var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-kumata.json"));

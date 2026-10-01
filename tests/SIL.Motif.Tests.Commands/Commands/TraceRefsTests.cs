@@ -128,7 +128,7 @@ public sealed class TraceRefsTests : IDisposable
         Assert.All(reading.Attempts.SelectMany(attempt => attempt.Steps).Where(step => step.Source is not null),
             step => Assert.Contains(step.RefId!, refs.Keys));
         var affix = refs["morphRule:00000000-0000-0000-0000-000000000109"];
-        Assert.Equal(("affixRule", "-ta", "authored"), (affix.Kind, affix.Label, affix.IdentityQuality));
+        Assert.Equal(("morphologicalRule", "-ta", "authored"), (affix.Kind, affix.Label, affix.IdentityQuality));
         Assert.Equal(new TraceTimingKey("morph_rule", "00000000-0000-0000-0000-000000000109"), affix.TimingKey);
         var template = refs["template:0"];
         Assert.Equal(("template", "NounTemplate", "grammar-local"), (template.Kind, template.Label, template.IdentityQuality));
@@ -151,7 +151,7 @@ public sealed class TraceRefsTests : IDisposable
     {
         var reading = WordTraceQuery.LoadDiagnostic(SagdTrace(identity: null)).Value!.Reading!;
 
-        var rule = Assert.Single(reading.Refs, reference => reference.Kind == "affixRule");
+        var rule = Assert.Single(reading.Refs, reference => reference.Kind == "morphologicalRule");
         Assert.Equal("morphRule:name:ed_suffix", rule.Id);
         Assert.Null(rule.Identity);
         Assert.Equal(TraceRefIds.UnknownQuality, rule.IdentityQuality);
@@ -189,7 +189,7 @@ public sealed class TraceRefsTests : IDisposable
 
         // An affix rule is known by its grammatical info, and opens on the entry that owns it.
         var affix = refs["morphRule:" + affixMsa.ToString("D")];
-        Assert.Equal("affixRule", affix.Kind);
+        Assert.Equal("morphologicalRule", affix.Kind);
         Assert.Equal(("lexiconEdit", "Lexicon Edit", affixEntry.ToString("D")),
             (affix.FieldWorks!.Tool, affix.FieldWorks.ToolName, affix.FieldWorks.ObjectId));
     }

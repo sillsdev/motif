@@ -217,9 +217,9 @@ public sealed class TraceWordViewModelTests
     }
 
     [Theory]
-    [InlineData("MorphologicalRuleSynthesis", "Affix rule")]
-    [InlineData("MorphologicalRuleAnalysis", "Affix rule")]
-    [InlineData("MorphologicalRule", "Affix rule")]
+    [InlineData("MorphologicalRuleSynthesis", "Morphological rule")]
+    [InlineData("MorphologicalRuleAnalysis", "Morphological rule")]
+    [InlineData("MorphologicalRule", "Morphological rule")]
     [InlineData("PhonologicalRuleSynthesis", "Phonological rule")]
     [InlineData("TemplateAnalysisInput", "Affix template")]
     [InlineData("LexicalLookup", "Lexical lookup")]
