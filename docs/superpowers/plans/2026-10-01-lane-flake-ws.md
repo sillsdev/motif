@@ -17,8 +17,8 @@ The regression test should name every LibLCM test class that writes to the proce
 **Files:**
 - Modify: `tests/SIL.Motif.Tests.LibLcm/Host/ParallelCacheCollectionsTests.cs`
 
-- [ ] Add `TestsThatPersistWritingSystemsRunInTheSerializedCollection`, covering `FootprintPlanAgreementTests`, the three `*EndToEndTests` classes, `ProjectLoadTests`, `PanGlossCandidateExportTests`, and `TagalogFeasibilityTests`.
-- [ ] Run `./test.ps1 -Project SIL.Motif.Tests.LibLcm -Filter FullyQualifiedName~ParallelCacheCollectionsTests.TestsThatPersistWritingSystemsRunInTheSerializedCollection` and confirm it fails because the classes currently name parallel collections.
+- [x] Add `TestsThatPersistWritingSystemsRunInTheSerializedCollection`, covering `FootprintPlanAgreementTests`, the three `*EndToEndTests` classes, `ProjectLoadTests`, `PanGlossCandidateExportTests`, and `TagalogFeasibilityTests`.
+- [x] Run `./test.ps1 -Project SIL.Motif.Tests.LibLcm -Filter FullyQualifiedName~ParallelCacheCollectionsTests.TestsThatPersistWritingSystemsRunInTheSerializedCollection` and confirm it fails because the classes currently name parallel collections.
 
 ### Task 2: Serialize the process-repository users
 
@@ -33,9 +33,9 @@ The existing collection already prevents these tests from overlapping with other
 - Modify: `tests/SIL.Motif.Tests.LibLcm/Parser/PanGlossCandidateExportTests.cs`
 - Modify: `tests/SIL.Motif.Tests.LibLcm/Samples/TagalogFeasibilityTests.cs`
 
-- [ ] Replace each parallel collection assignment with `LcmCacheTestCollection.Name`.
-- [ ] Re-run the collection-membership test and confirm it passes.
-- [ ] Run the affected LibLCM tests repeatedly through `./test.ps1`; then run the default `./test.ps1` suite.
+- [x] Replace each parallel collection assignment with `LcmCacheTestCollection.Name`.
+- [x] Re-run the collection-membership test and confirm it passes.
+- [x] Run the affected LibLCM tests repeatedly through `./test.ps1`; then run the default `./test.ps1` suite.
 
 ### Task 3: Record evidence
 
@@ -44,5 +44,5 @@ The report should connect the failing message to concurrent cache disposals and 
 **Files:**
 - Create: `_briefs/report-lane-flake-ws.md`
 
-- [ ] Record the affected classes, the observed failure, the fix, and exact verification totals.
-- [ ] Commit the focused test and collection changes without pushing or merging.
+- [x] Record the affected classes, the observed failure, the fix, and exact verification totals.
+- [x] Commit the focused test and collection changes without pushing or merging.
