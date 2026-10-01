@@ -8,6 +8,8 @@ using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -397,6 +399,115 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    // A disabled control's own label may be faint; its reason, in the tooltip and beside it, must still read.
+    [Fact]
+    public void DisabledReasonsRemainReadableAfterThemeChange()
+    {
+        var failures = new List<string>();
+        var measured = 0;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+                [new("kept", "wordform/kept", "kept", "approve", "assessment/one", "reading", ["operation/kept"])],
+                [new ChangeFit("kept", true, [])]));
+            var context = DisabledReasonContext(fake);
+            var review = new ReviewPageModel(context);
+            await context.OpenProjectAsync(@"C:\projects\reasons.fwdata");
+            var compare = new CompareViewModel();
+            compare.Load([new AssessWordRowViewModel(
+                new AssessmentWordResult("hawajafika", "no-analysis", false, "Search completed", 1, null)
+                {
+                    ProjectStanding = ProjectStanding.Approved,
+                    OccurrenceCount = 1,
+                })]);
+            var lists = new TextsListsViewModel(compare);
+
+            var prior = Application.Current!.RequestedThemeVariant;
+            var reviewWindow = new Window { Content = new ReviewPanel(review), Width = 1100, Height = 800 };
+            var listsWindow = new Window { Content = new TextsListsPanel(lists), Width = 1100, Height = 800 };
+            try
+            {
+                Application.Current.RequestedThemeVariant = ThemeVariant.Light;
+                reviewWindow.Show();
+                listsWindow.Show();
+                foreach (var (state, list) in new[] { ("ticked none", "Approved, not parsed"), ("empty list", "Nobody can analyze") })
+                {
+                    lists.SelectListCommand.Execute(lists.Lists.Single(candidate => candidate.Name == list));
+                    foreach (var theme in Themes)
+                    {
+                        Application.Current.RequestedThemeVariant = theme;
+                        PageScreenshots.Settle(listsWindow);
+                        PageScreenshots.Settle(reviewWindow);
+                        var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
+                        var ticked = Disabled(listsWindow, "AI Handoff for ticked words in the selected list", failures);
+                        var whole = lists.HandOffListUnavailable
+                            ? Disabled(listsWindow, "AI Handoff for the whole selected list", failures) : null;
+                        var owners = new[] { apply, ticked, whole }.OfType<Button>().ToList();
+                        var reasons = new List<(string What, TextBlock Text)>();
+                        foreach (var owner in owners)
+                            reasons.AddRange(ControlContracts.TooltipScenes.OpenTipTexts(owner)
+                                .Select(text => ($"the tooltip on {AutomationProperties.GetName(owner)}", text)));
+                        reasons.AddRange(Shown(listsWindow, lists.HandOffCheckedWordsDisabledReason, lists.HandOffListDisabledReason)
+                            .Select(text => ("the reason under the AI Handoff buttons", text)));
+                        reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, .. review.ApplyBlockers.Select(item => item.Sentence)])
+                            .Select(text => ("the reasons Apply is blocked", text)));
+                        if (reasons.Count < 4) failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
+                        foreach (var (what, text) in reasons)
+                        {
+                            var ratio = Effective(text);
+                            measured++;
+                            if (ratio < Text) failures.Add($"{theme} {state}: {what} '{text.Text}' is {ratio:F2}:1, needs {Text}:1");
+                        }
+                        foreach (var owner in owners) ToolTip.SetIsOpen(owner, false);
+                    }
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = prior;
+                reviewWindow.Close();
+                listsWindow.Close();
+            }
+        }, TimeSpan.FromMinutes(1));
+
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        Assert.True(measured > 0, "no reason was measured");
+    }
+
+    private static Button? Disabled(Window window, string name, List<string> failures)
+    {
+        var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(candidate => AutomationProperties.GetName(candidate) == name);
+        if (button is null) failures.Add($"'{name}' is not shown");
+        else if (button.IsEffectivelyEnabled) failures.Add($"'{name}' is enabled, so it shows no reason");
+        else if (ToolTip.GetTip(button) is not string { Length: > 0 }) failures.Add($"'{name}' is disabled with no reason in its tooltip");
+        return button is { IsEffectivelyEnabled: false } ? button : null;
+    }
+
+    private static IEnumerable<TextBlock> Shown(Window window, params string[] sentences) =>
+        window.GetVisualDescendants().OfType<TextBlock>()
+            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text) && sentences.Contains(text.Text) &&
+                text.FindAncestorOfType<ToolTip>() is null);
+
+    private static WorkspaceContext DisabledReasonContext(FakeCommandClient fake)
+    {
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        var selection = new SelectionViewModel(fake);
+        return new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
+            new NoFolder(), new NoDrag(), new BaselineViewModel(fake));
+    }
+
+    private sealed class NoFolder : SIL.Motif.App.Services.IHandoffFolderPicker
+    {
+        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+    }
+
+    private sealed class NoDrag : SIL.Motif.App.Services.IFileDragSource
+    {
+        public Task<Avalonia.Input.DragDropEffects> StartDragAsync(Avalonia.Input.PointerPressedEventArgs trigger,
+            IReadOnlyList<string> filePaths, Avalonia.Input.DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
+    }
+
     private static Color LabelColour(Button button) => Assert.IsAssignableFrom<ISolidColorBrush>(
         button.GetVisualDescendants().OfType<TextBlock>().First().Foreground).Color;
 
@@ -429,7 +540,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     /// <summary>The ratio between a text's painted colour and the colour painted behind it.</summary>
-    private static double Effective(TextBlock text)
+    internal static double Effective(TextBlock text)
     {
         var foreground = Assert.IsAssignableFrom<ISolidColorBrush>(text.Foreground);
         return Ratio(Painted(text, Layer(foreground)), Painted(text, default));

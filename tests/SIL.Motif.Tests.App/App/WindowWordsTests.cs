@@ -8,6 +8,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Help;
@@ -53,7 +54,10 @@ public sealed partial class WindowWordsTests
         var shown = new List<string>();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            // Other known projects, so Open recent has entries for its nested menu to show.
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, _) =>
+                fake.KnownProjectsListIs([.. new[] { "Sample", "Kiswahili", "Mbugwe" }.Select(name => new KnownProjectSummary(
+                    $@"C:\Users\linguist\FieldWorks\Projects\{name}\{name}.fwdata", DateTimeOffset.UtcNow.AddDays(-2)))]));
             try
             {
                 window.Width = 1240;
@@ -192,6 +196,24 @@ public sealed partial class WindowWordsTests
         AssertWindowWords(shown);
     }
 
+    [Fact]
+    public void TheWordsReaderReadsRichTooltipsAndMenuEntries()
+    {
+        var read = new List<string>();
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var owner = new Button { Content = "Apply" };
+            ToolTip.SetTip(owner, new StackPanel { Children = { new TextBlock { Text = "Why it waits" }, new TextBlock { Text = "What to do" } } });
+            var menu = new MenuItem { Header = "Open the entry" };
+            read.AddRange(Rendered(new StackPanel { Children = { owner, new Menu { Items = { menu } } } }));
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+
+        Assert.Contains("Why it waits", read);
+        Assert.Contains("What to do", read);
+        Assert.Contains("Open the entry", read);
+    }
+
     private static IEnumerable<(WorkspacePage Page, TextsTab Tab)> EveryView() =>
     [
         .. Enum.GetValues<WorkspacePage>().Where(page => page != WorkspacePage.Texts)
@@ -212,7 +234,7 @@ public sealed partial class WindowWordsTests
         return shown;
     }
 
-    private static void AssertWindowWords(IEnumerable<string> shown)
+    internal static void AssertWindowWords(IEnumerable<string> shown)
     {
         var retired = shown.Where(text => FileName().Replace(text, string.Empty) is var prose &&
                 (RetiredWord().IsMatch(prose) || LowerCaseOpinion().IsMatch(prose) || FieldWorksClassName().IsMatch(prose)))
@@ -238,20 +260,31 @@ public sealed partial class WindowWordsTests
         shown.AddRange(Rendered(window));
         var menus = window.GetVisualDescendants().OfType<Button>()
             .Where(button => button.IsEffectivelyVisible && button.IsEffectivelyEnabled && button.Flyout is not null).ToList();
-        foreach (var button in menus)
-        {
-            button.Flyout!.ShowAt(button);
-            PageScreenshots.Settle(window);
-            foreach (var presenter in window.GetVisualDescendants().OfType<ContentControl>()
-                .Where(control => control is FlyoutPresenter || (Control)control is MenuFlyoutPresenter))
-                shown.AddRange(Rendered(presenter));
-            button.Flyout.Hide();
-            PageScreenshots.Settle(window);
-        }
+        foreach (var button in menus) shown.AddRange(OpenedMenu(window, button, depth: 0));
         foreach (var expander in opened) expander.IsExpanded = false;
         PageScreenshots.Settle(window);
         return shown;
     }
+
+    // A menu entry can open a menu of its own, such as Open recent; its entries exist only while both are open.
+    private static List<string> OpenedMenu(MainWindow window, Button button, int depth)
+    {
+        var shown = new List<string>();
+        button.Flyout!.ShowAt(button);
+        PageScreenshots.Settle(window);
+        var presenters = Presenters(window).ToList();
+        foreach (var presenter in presenters) shown.AddRange(Rendered(presenter));
+        if (depth < 2)
+            foreach (var nested in presenters.SelectMany(presenter => presenter.GetVisualDescendants().OfType<Button>())
+                .Where(candidate => candidate.IsEffectivelyVisible && candidate.IsEffectivelyEnabled && candidate.Flyout is not null).ToList())
+                shown.AddRange(OpenedMenu(window, nested, depth + 1));
+        button.Flyout.Hide();
+        PageScreenshots.Settle(window);
+        return shown;
+    }
+
+    private static IEnumerable<Control> Presenters(Control root) =>
+        root.GetVisualDescendants().OfType<Control>().Where(control => control is FlyoutPresenter or MenuFlyoutPresenter);
 
     // Hidden text too, as the sample reaches few states; both trees, as a DataGrid's cells are only visual.
     private static IEnumerable<string> Rendered(Control root)
@@ -264,8 +297,10 @@ public sealed partial class WindowWordsTests
             texts.Add(AutomationProperties.GetName(control));
             texts.Add(AutomationProperties.GetHelpText(control));
             texts.Add(ToolTip.GetTip(control) as string);
+            if (ToolTip.GetTip(control) is Control rich) texts.AddRange(Rendered(rich));
             switch (control)
             {
+                case MenuItem { Header: string item }: texts.Add(item); break;
                 case TextBlock block:
                     texts.Add(block.Text);
                     if (block.Inlines is { } inlines) texts.AddRange(inlines.OfType<Run>().Select(run => run.Text));

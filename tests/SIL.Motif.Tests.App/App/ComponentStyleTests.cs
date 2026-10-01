@@ -1,10 +1,13 @@
+using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Input;
 using Avalonia.Threading;
+using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -15,7 +18,7 @@ namespace SIL.Motif.Tests.App;
 /// error, so only applying the styles shows that a component is styled at all.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class ComponentStyleTests
+public sealed partial class ComponentStyleTests
 {
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -191,6 +194,122 @@ public sealed class ComponentStyleTests
             }
         });
     }
+
+    // A state a person reaches by pointer, keyboard or availability, or a selection or opening the model sets.
+    [GeneratedRegex(@":(pointerover|pressed|disabled|focus|focus-visible|focus-within|selected|checked|open|expanded)\b" +
+        @"|\.(active|chosen|selected|open)\b")]
+    private static partial Regex InteractionState();
+
+    [Fact]
+    public void EveryInteractionSelectorHasAnAuthoredStateCase()
+    {
+        var app = AppDirectory();
+        var declared = Directory.GetFiles(System.IO.Path.Combine(app, "Tokens"), "*.axaml", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(System.IO.Path.Combine(app, "Views"), "*.axaml", SearchOption.AllDirectories))
+            .Append(System.IO.Path.Combine(app, "App.axaml"))
+            .SelectMany(file => SelectorAttribute().Matches(File.ReadAllText(file)).Select(match => match.Groups[1].Value))
+            .SelectMany(selector => selector.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            .Where(selector => InteractionState().IsMatch(selector))
+            .ToHashSet(StringComparer.Ordinal);
+        var authored = ComponentStateContractCases.All().Select(item => item.Selector)
+            .Concat(ComponentStateContractCases.Pinned.Select(item => item.Selector))
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.NotEmpty(declared);
+        Assert.True(declared.SetEquals(authored),
+            "States a style declares without a case: " + string.Join("; ", declared.Except(authored).Order()) + Environment.NewLine +
+            "Cases for no declared state: " + string.Join("; ", authored.Except(declared).Order()));
+    }
+
+    [GeneratedRegex(@"<Style\s+Selector=""([^""]+)""")]
+    private static partial Regex SelectorAttribute();
+
+    [Fact]
+    public void EveryAuthoredComponentStateUsesItsIntentTokenInBothThemes()
+    {
+        var failures = new List<string>();
+        var gapsSeen = new HashSet<string>(StringComparer.Ordinal);
+        var gaps = ComponentStateContractCases.Gaps.Select(gap => gap.Case).ToHashSet(StringComparer.Ordinal);
+        var reachedCases = 0;
+        _avalonia.Invoke(() =>
+        {
+            foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+            foreach (var item in ComponentStateContractCases.All())
+            {
+                var (content, target) = item.Build();
+                var window = new Window { Content = content, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                try
+                {
+                    if (item.Stimulus.HasFlag(StateStimulus.Disabled)) target.IsEnabled = false;
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    if (Reach(item, content, target, window) is { } missed)
+                    {
+                        failures.Add($"{variant} {item}: {missed}");
+                        continue;
+                    }
+                    reachedCases++;
+                    if (ComponentStateContractCases.PartOf(target, item.Part) is not { } part)
+                    {
+                        failures.Add($"{variant} {item}: the control shows no {item.Part}");
+                        continue;
+                    }
+                    Assert.True(Application.Current!.TryGetResource(item.Key, variant, out var expected), $"{item.Key} does not resolve");
+                    var actual = part.GetValue(item.Property);
+                    if (SamePaint(expected, actual)) continue;
+                    if (gaps.Contains(item.ToString())) gapsSeen.Add(item.ToString());
+                    else failures.Add($"{variant} {item}: is {Describe(actual)}, not {item.Key} ({Describe(expected)})");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+        failures.AddRange(gaps.Except(gapsSeen).Select(gap => $"{gap}: the reported gap is fixed, so remove it from the gaps"));
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        Assert.Equal(2 * ComponentStateContractCases.All().Count(), reachedCases);
+    }
+
+    // Drives the state by real input and confirms it landed, so a missed stimulus fails instead of reading rest.
+    private static string? Reach(ComponentStateCase item, Control content, Control target, Window window)
+    {
+        if (item.Stimulus.HasFlag(StateStimulus.Disabled) && target.IsEffectivelyEnabled) return "the control is still enabled";
+        if (item.Stimulus.HasFlag(StateStimulus.KeyboardFocus) && !target.Focus(NavigationMethod.Tab))
+            return "the control took no keyboard focus";
+        if (item.Stimulus.HasFlag(StateStimulus.KeyboardFocusInside))
+        {
+            if (!target.Focus(NavigationMethod.Tab)) return "the control inside took no keyboard focus";
+            if (!content.IsKeyboardFocusWithin) return "focus is not within the owner";
+        }
+        if (item.Stimulus.HasFlag(StateStimulus.Pointer) || item.Stimulus.HasFlag(StateStimulus.Press))
+        {
+            window.MouseMove(CentreOf(target, window));
+            Dispatcher.UIThread.RunJobs();
+            if (!content.IsPointerOver) return "the pointer is not over the control";
+            if (target.IsHitTestVisible && !target.IsPointerOver) return "the pointer is not over the target";
+        }
+        if (item.Stimulus.HasFlag(StateStimulus.Press))
+        {
+            window.MouseDown(CentreOf(target, window), MouseButton.Left);
+            Dispatcher.UIThread.RunJobs();
+            if (target is Button { IsPressed: false }) return "the press did not land";
+        }
+        Dispatcher.UIThread.RunJobs();
+        window.UpdateLayout();
+        return null;
+    }
+
+    // Semi and an Intent alias may hand out two brushes for one paint, so brushes compare by what they paint.
+    private static bool SamePaint(object? expected, object? actual) => (expected, actual) switch
+    {
+        (ISolidColorBrush want, ISolidColorBrush got) => want.Color == got.Color && want.Opacity.Equals(got.Opacity),
+        _ => Equals(expected, actual),
+    };
+
+    private static string Describe(object? value) =>
+        value is ISolidColorBrush brush ? $"{brush.Color} at {brush.Opacity:0.##}" : value?.ToString() ?? "unset";
 
     private static IEnumerable<Case> Cases()
     {
