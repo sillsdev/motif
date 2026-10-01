@@ -198,17 +198,15 @@ public sealed class CommandCatalogParityTests
         Assert.Empty(offendingLines);
     }
 
-    /// <summary>The CLI never opens the store or touches LibLCM directly; only Commands may (ADR 0043).</summary>
+    /// <summary>The CLI assembly does not directly reference SQLite storage or LibLCM.</summary>
     [Fact]
-    public void CliSourceHasNoStoreOrLibLcmReference()
+    public void CliAssemblyDoesNotReferenceSqliteOrLibLcm()
     {
-        var cliRoot = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.Cli");
-        var offendingLines = Directory.EnumerateFiles(cliRoot, "*.cs", SearchOption.AllDirectories)
-            .SelectMany(File.ReadLines)
-            .Where(line => line.Contains("Microsoft.Data.Sqlite", StringComparison.Ordinal)
-                || line.Contains("SIL.LCModel", StringComparison.Ordinal))
-            .ToList();
+        var assembly = System.Reflection.Assembly.Load("motif");
+        var referencedNames = assembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty);
 
-        Assert.Empty(offendingLines);
+        Assert.DoesNotContain("Microsoft.Data.Sqlite", referencedNames);
+        Assert.DoesNotContain("SIL.LCModel", referencedNames);
     }
 }
