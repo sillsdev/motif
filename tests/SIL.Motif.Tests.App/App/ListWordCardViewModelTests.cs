@@ -31,7 +31,7 @@ public sealed class ListWordCardViewModelTests
     {
         var row = new WordRow("alikula", outcome, "Built something else", WordRowTone.Problem)
         {
-            Opinion = ProjectStanding.Approved,
+            Opinion = fieldWorks.Count == 0 ? ProjectStanding.NotPresent : ProjectStanding.Approved,
             FieldWorksMorphemes = fieldWorks,
             PanGlossMorphemes = panGloss,
             DifferingPositions = fieldWorks.Count == 0 ? [] : WordRowProjection.DifferingPositions(fieldWorks, panGloss),
@@ -62,7 +62,7 @@ public sealed class ListWordCardViewModelTests
     {
         var card = Card(WordRowOutcome.Different, [A, Li, Kul, Fv], [A, Li, Ku, L, Fv]);
 
-        Assert.Equal("PanGloss reads FieldWorks' kul ‘eat’ as ku- ‘INF’ + l ‘eat’. Every other morpheme matches.",
+        Assert.Equal("PanGloss reads FieldWorks' kul 'eat' as ku- 'INF' + l 'eat'. Every other morpheme matches.",
             card.WhereTheyPart);
     }
 
@@ -72,16 +72,16 @@ public sealed class ListWordCardViewModelTests
         var other = Morph("wa-", "3PL");
         var card = Card(WordRowOutcome.Different, [A, Li, Kul, Fv], [other, Li, Ku, L, Fv]);
 
-        Assert.Equal("PanGloss reads FieldWorks' a- ‘3SG’ as wa- ‘3PL’. They part in 2 places; this is the first.",
+        Assert.Equal("PanGloss reads FieldWorks' a- '3SG' as wa- '3PL'. They part in 2 places; this is the first.",
             card.WhereTheyPart);
     }
 
     [Fact]
     public void AMorphemeOnlyOneSideHasIsNamedAsAddedOrLeftOut()
     {
-        Assert.Equal("PanGloss adds li- ‘PST’, which FieldWorks' analysis does not have. Every other morpheme matches.",
+        Assert.Equal("PanGloss adds li- 'PST', which FieldWorks' analysis does not have. Every other morpheme matches.",
             Card(WordRowOutcome.Different, [A, Kul, Fv], [A, Li, Kul, Fv]).WhereTheyPart);
-        Assert.Equal("PanGloss leaves out FieldWorks' li- ‘PST’. Every other morpheme matches.",
+        Assert.Equal("PanGloss leaves out FieldWorks' li- 'PST'. Every other morpheme matches.",
             Card(WordRowOutcome.Different, [A, Li, Kul, Fv], [A, Kul, Fv]).WhereTheyPart);
     }
 
@@ -94,6 +94,21 @@ public sealed class ListWordCardViewModelTests
         Assert.Equal(["|ku- l"], card.Segments.Select(Shape));
         Assert.DoesNotContain(card.Segments.SelectMany(segment => segment.PanGloss), morph => morph.IsDifferent);
         Assert.Equal("FieldWorks holds no analysis of this word to compare with.", card.WhereTheyPart);
+    }
+
+    [Fact]
+    public void WithAnOpinionButNoSingleAnalysis_TheCardNeverSaysFieldWorksHoldsNone()
+    {
+        var row = new WordRow("alikula", WordRowOutcome.Different, "Differs: have a look", WordRowTone.Look)
+        {
+            Opinion = ProjectStanding.Candidate,
+            PanGlossMorphemes = [Ku, L],
+            PanGlossReadingCount = 1,
+        };
+        var card = new ListWordCardViewModel(new WordRowViewModel(row));
+
+        Assert.Equal("FieldWorks holds no single analysis of this word to line up.", card.FieldWorksAbsentText);
+        Assert.Equal("FieldWorks holds no single analysis of this word to compare with.", card.WhereTheyPart);
     }
 
     [Theory]

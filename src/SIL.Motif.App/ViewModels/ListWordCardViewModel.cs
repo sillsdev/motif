@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using SIL.Motif.App.Controls;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -44,7 +45,11 @@ public sealed class ListWordCardViewModel
 
     public bool HasPanGlossNote => PanGlossNote.Length > 0;
 
-    public string FieldWorksAbsentText => "FieldWorks holds no analysis of this word.";
+    /// <summary>Why FieldWorks' line is empty: no analysis at all, or an opinion with no single analysis to line up.</summary>
+    public string FieldWorksAbsentText => HoldsNothing
+        ? "FieldWorks holds no analysis of this word." : "FieldWorks holds no single analysis of this word to line up.";
+
+    private bool HoldsNothing => Row.Row.Opinion is null or ProjectStanding.NotPresent;
 
     public Mark OutcomeMark => Row.OutcomeMark;
 
@@ -71,7 +76,9 @@ public sealed class ListWordCardViewModel
             ParserOutcome.Different => "PanGloss built something different, but kept no morphemes to show.",
             _ => "PanGloss has not parsed this word yet.",
         };
-        if (!HasFieldWorksAnalysis) return "FieldWorks holds no analysis of this word to compare with.";
+        if (!HasFieldWorksAnalysis) return HoldsNothing
+            ? "FieldWorks holds no analysis of this word to compare with."
+            : "FieldWorks holds no single analysis of this word to compare with.";
         var parted = Segments.Where(segment => segment.IsParted).ToArray();
         if (parted.Length == 0) return "Every morpheme matches.";
         var first = parted[0];
@@ -89,7 +96,7 @@ public sealed class ListWordCardViewModel
 
     private static string Pieces(IReadOnlyList<ListWordCardMorphViewModel> morphs) =>
         string.Join(" + ", morphs.Select(morph =>
-            morph.Morph.Gloss.Length == 0 ? morph.Morph.Form : $"{morph.Morph.Form} ‘{morph.Morph.Gloss}’"));
+            morph.Morph.Gloss.Length == 0 ? morph.Morph.Form : $"{morph.Morph.Form} '{morph.Morph.Gloss}'"));
 }
 
 /// <summary>One column of the aligned card: the FieldWorks and PanGloss morphemes it holds, and whether they part there.</summary>

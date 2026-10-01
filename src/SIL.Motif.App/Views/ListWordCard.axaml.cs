@@ -53,15 +53,16 @@ public sealed partial class ListWordCard : UserControl
             if (card.HasFieldWorksAnalysis) Place(grid, Span(segment.FieldWorks, parted: segment.IsParted, blue: false), 0, index + 1);
             if (card.ShowsPanGlossMorphemes) Place(grid, Span(segment.PanGloss, parted: false, blue: true), 1, index + 1);
         }
+        // A line with nothing to align spans the filler too, so its width never spreads the other line's columns.
         if (!card.HasFieldWorksAnalysis)
             Place(grid, new CopyableTextBlock { Text = card.FieldWorksAbsentText, Classes = { "muted", "listCardAbsent" } },
-                0, 1, columns);
+                0, 1, columns + 1);
         if (!card.ShowsPanGlossMorphemes)
             Place(grid, new MarkChip
             {
                 Mark = card.OutcomeMark, Text = card.OutcomeWord, Compact = true,
                 HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
-            }, 1, 1, columns);
+            }, 1, 1, columns + 1);
         if (card.HasPanGlossNote)
             Place(grid, new CopyableTextBlock { Text = card.PanGlossNote, Classes = { "muted", "listCardNote" } },
                 1, columns + 1);
@@ -96,7 +97,7 @@ public sealed partial class ListWordCard : UserControl
     private static HyperlinkButton FormLink(ParserReadingMorphViewModel morph)
     {
         var words = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "morphFormLinkWords" } };
-        words.Children.Add(new TextBlock { Text = morph.Form, Classes = { "wordRowMorphForm" } });
+        words.Children.Add(new TextBlock { Text = morph.Form, Classes = { "wordRowMorphForm", "listCardFormText" } });
         words.Children.Add(new TextBlock { Text = "↗", Classes = { "morphLinkMark" } });
         var link = new HyperlinkButton
         {

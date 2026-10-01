@@ -160,7 +160,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(["Compare in Try a Word"], buttons.Select(button => button.Content));
                 var texts = card.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible)
                     .Select(text => text.Text).Distinct().ToArray();
-                Assert.Equal(["FIELDWORKS", "PANGLOSS", "FieldWorks holds no analysis of this word.", "No parse",
+                Assert.Equal(["FIELDWORKS", "PANGLOSS", "FieldWorks holds no single analysis of this word to line up.", "No parse",
                     "PanGloss built no analysis of this word.", "Compare in Try a Word"],
                     texts.Where(text => text is { Length: > 1 }));
             }
@@ -202,8 +202,11 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var blue = (ISolidColorBrush)Chip(1, "ku-").GetVisualDescendants().OfType<TextBlock>().First().Foreground!;
                 Assert.True(card.TryFindResource("Intent.Outcome.Different", ThemeVariant.Light, out var expected));
                 Assert.Equal(((ISolidColorBrush)expected!).Color, blue.Color);
+                Assert.True(card.TryFindResource("Intent.Text", ThemeVariant.Light, out var plain));
+                var linkedForm = (ISolidColorBrush)Chip(1, "a-").GetVisualDescendants().OfType<TextBlock>().First().Foreground!;
+                Assert.Equal(((ISolidColorBrush)plain!).Color, linkedForm.Color);
                 Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "PanGloss reads FieldWorks' kul \u2018eat\u2019 as ku- \u2018INF\u2019 + l \u2018eat\u2019. Every other morpheme matches.");
+                    text.Text == "PanGloss reads FieldWorks' kul 'eat' as ku- 'INF' + l 'eat'. Every other morpheme matches.");
             }
             finally
             {
@@ -218,7 +221,11 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
         chip.GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("listCardSpan"));
 
     private static ParserReadingMorph Morph(string form, string gloss) =>
-        new(form, gloss, "v", null, false, null) { AllomorphId = "form-" + form, GrammaticalInfoId = "msa-" + form };
+        new(form, gloss, "v", null, false, "silfw://localhost/link?tool=lexiconEdit")
+        {
+            AllomorphId = "form-" + form,
+            GrammaticalInfoId = "msa-" + form,
+        };
 
     private static SIL.Motif.Contract.Responses.WordRow Alikula()
     {

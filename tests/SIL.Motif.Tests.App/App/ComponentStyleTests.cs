@@ -722,6 +722,11 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Border");
         yield return new("WordCard", "the segment's edge", host => Add(host, Box("listCardSpan", "parted")),
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
+        yield return new("WordCard", "a linked form in the list card", host => Within(host, Box("listCardMorph"), "listCardFormText"),
+            TextBlock.ForegroundProperty, "Intent.Text");
+        yield return new("WordCard", "a differing linked form in the list card",
+            host => Within(host, Box("listCardMorph", "different"), "listCardFormText"),
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
         yield return new("WordCard", "the where-they-part sentence", host => Add(host, Text("listCardSentence")),
             TextBlock.FontSizeProperty, "Intent.Type.Small");
         yield return new("WordCard", "the closest-reading note", host => Add(host, Text("listCardNote")),
