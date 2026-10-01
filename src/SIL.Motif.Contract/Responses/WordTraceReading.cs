@@ -80,7 +80,7 @@ public static class TraceRefIds
     {
         ArgumentNullException.ThrowIfNull(type);
         if (!string.IsNullOrEmpty(identityKind) && !string.IsNullOrEmpty(identityId))
-            return identityKind + ":" + identityId;
+            return identityKind + ":" + CanonicalIdentity(identityId);
         if (string.IsNullOrWhiteSpace(source)) return null;
         return IdentityKindOf(type) is { } kind ? kind + ":name:" + source : null;
     }
@@ -93,11 +93,15 @@ public static class TraceRefIds
     {
         ArgumentNullException.ThrowIfNull(morph);
         if (morph.EntryId is not null || morph.MsaId is not null || morph.FormId is not null)
-            return $"morph:{morph.EntryId}/{morph.MsaId}/{morph.FormId}";
+            return $"morph:{CanonicalIdentity(morph.EntryId)}/{CanonicalIdentity(morph.MsaId)}/{CanonicalIdentity(morph.FormId)}";
         if (morph.MorphemeId is { } morpheme) return $"morph:#{morpheme}.{morph.AllomorphId}";
         if (!string.IsNullOrEmpty(morph.GuessedString)) return "morph:guess:" + morph.GuessedString;
         return string.IsNullOrEmpty(morph.Form) ? null : "morph:name:" + morph.Form;
     }
+
+    /// <summary>Formats a GUID identity in D format while preserving a non-GUID grammar-local key verbatim.</summary>
+    public static string? CanonicalIdentity(string? identity) =>
+        Guid.TryParse(identity, out var guid) ? guid.ToString("D") : identity;
 
     /// <summary>The identity kind PanGloss records for a step of <paramref name="type"/>, or <see langword="null"/>.</summary>
     public static string? IdentityKindOf(string type)

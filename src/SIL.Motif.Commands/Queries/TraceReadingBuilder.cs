@@ -36,8 +36,8 @@ public static class TraceReadingBuilder
         var closest = attempts.Where(IsFailure)
             .OrderByDescending(candidate => candidate.Morphs.Count(morph => !string.IsNullOrWhiteSpace(morph.Form) && morph.Form != "?"))
             .ThenByDescending(candidate => candidate.Steps.Count).ToArray();
-        var stops = closest.GroupBy(candidate => (Identity: candidate.StoppedByRuleId ?? candidate.StoppedByRule, candidate.FailureReason))
-            .Select(group => new TraceStopGroup(group.First().StoppedByRule, group.First().StoppedByRuleId,
+        var stops = closest.GroupBy(candidate => (Identity: TraceRefIds.CanonicalIdentity(candidate.StoppedByRuleId) ?? candidate.StoppedByRule, candidate.FailureReason))
+            .Select(group => new TraceStopGroup(group.First().StoppedByRule, TraceRefIds.CanonicalIdentity(group.First().StoppedByRuleId),
                 group.Key.FailureReason, group.First().Explanation, group.ToArray())
                 { RuleRefId = group.First().StoppedByRefId })
             .OrderByDescending(group => group.Count).ToArray();
@@ -57,7 +57,7 @@ public static class TraceReadingBuilder
         Collect(root);
         foreach (var attempt in attempts) steps.AddRange(attempt.Steps);
         var affixKeys = steps.Where(step => step.SourceIdentityKind == "morphRule" && step.SourceIdentityId is not null)
-            .Select(step => step.SourceIdentityId!).ToHashSet(StringComparer.Ordinal);
+            .Select(step => TraceRefIds.CanonicalIdentity(step.SourceIdentityId)!).ToHashSet(StringComparer.Ordinal);
         var morphs = analyses.SelectMany(analysis => analysis.Morphs)
             .Concat(steps.SelectMany(step => step.AttemptedMorphs))
             .Concat(attempts.SelectMany(attempt => attempt.RichMorphs));
@@ -93,7 +93,7 @@ public static class TraceReadingBuilder
             "stratum" => "stratum",
             _ => identityKind ?? "rule",
         };
-        var identity = step.SourceIdentityKind is null ? null : step.SourceIdentityId;
+        var identity = step.SourceIdentityKind is null ? null : TraceRefIds.CanonicalIdentity(step.SourceIdentityId);
         var timingKind = identity is null ? null : step.SourceIdentityKind switch
         {
             "morphRule" => "morph_rule",
@@ -115,12 +115,12 @@ public static class TraceReadingBuilder
         var quality = morph.IdentityQuality ?? TraceRefIds.UnknownQuality;
         var keyed = quality is "authored" or "grammar-local";
         var timing = !keyed ? null
-            : morph.MsaId is { } msa && affixKeys.Contains(msa) ? new TraceTimingKey("morph_rule", msa)
-            : morph.EntryId is { } entry ? new TraceTimingKey("lex_entry", entry) : null;
+            : TraceRefIds.CanonicalIdentity(morph.MsaId) is { } msa && affixKeys.Contains(msa) ? new TraceTimingKey("morph_rule", msa)
+            : TraceRefIds.CanonicalIdentity(morph.EntryId) is { } entry ? new TraceTimingKey("lex_entry", entry) : null;
         return new TraceRef(id, "morph", morph.Form ?? morph.GuessedString ?? morph.Headword ?? "?")
         {
             Gloss = morph.Gloss,
-            Identity = morph.EntryId ?? morph.FormId ?? morph.MsaId,
+            Identity = TraceRefIds.CanonicalIdentity(morph.EntryId ?? morph.FormId ?? morph.MsaId),
             IdentityQuality = quality,
             TimingKey = timing,
         };
@@ -154,8 +154,8 @@ public static class TraceReadingBuilder
         return path
         .Where(step => !string.IsNullOrWhiteSpace(step.Source) &&
             (step.Type.Contains("Rule", StringComparison.Ordinal) || step.Type.Contains("Template", StringComparison.Ordinal)))
-        .GroupBy(step => step.SourceIdentityId ?? step.Source!, StringComparer.Ordinal)
-        .Select(group => new TraceRuleReading(group.First().Source!, group.First().SourceIdentityId,
+        .GroupBy(step => TraceRefIds.CanonicalIdentity(step.SourceIdentityId) ?? step.Source!, StringComparer.Ordinal)
+        .Select(group => new TraceRuleReading(group.First().Source!, TraceRefIds.CanonicalIdentity(group.First().SourceIdentityId),
             string.Join(" · ", group.Select(step => Kind(step.Type)).Distinct(StringComparer.Ordinal)),
             group.Any(step => step.Type == "Blocked" || step.OutcomeStatus == "blocked") ? "not repeated (would feed itself)"
                 : group.Any(step => step.FailureReason is { Length: > 0 }) ? "stopped" : best.Succeeded ? "applied" : "tried",
@@ -209,9 +209,9 @@ public static class TraceReadingBuilder
         new(morph.Identity, morph.Form, morph.Headword, morph.Gloss, morph.Category, morph.Slot,
             morph.InflectionClass, morph.Features, morph.GuessedString, morph.FieldWorksLink)
         {
-            FormId = morph.FormId,
-            EntryId = morph.EntryId,
-            MsaId = morph.MsaId,
+            FormId = TraceRefIds.CanonicalIdentity(morph.FormId),
+            EntryId = TraceRefIds.CanonicalIdentity(morph.EntryId),
+            MsaId = TraceRefIds.CanonicalIdentity(morph.MsaId),
             InflTypeId = morph.InflTypeId,
             IdentityQuality = morph.IdentityQuality,
             FormWritingSystem = morph.FormWritingSystem,
@@ -265,7 +265,7 @@ public static class TraceReadingBuilder
                 {
                     Surface = node.OutputShape ?? node.InputShape ?? stopper?.InputShape,
                     StoppedByRule = stopper?.Source,
-                    StoppedByRuleId = stopper?.SourceIdentityId,
+                    StoppedByRuleId = TraceRefIds.CanonicalIdentity(stopper?.SourceIdentityId),
                     StoppedByRefId = stopper is null ? null : TraceRefIds.ForSource(
                         stopper.Type, stopper.Source, stopper.SourceIdentityKind, stopper.SourceIdentityId),
                     RichMorphs = morphs,
@@ -276,7 +276,7 @@ public static class TraceReadingBuilder
                     FailureActual = attempt?.FailureActual ?? node.FailureActual,
                     FailureEnvironment = attempt?.FailureEnvironment ?? node.FailureEnvironment,
                     SourceIdentityKind = attempt?.SourceIdentityKind ?? node.SourceIdentityKind,
-                    SourceIdentityId = attempt?.SourceIdentityId ?? node.SourceIdentityId,
+                    SourceIdentityId = TraceRefIds.CanonicalIdentity(attempt?.SourceIdentityId ?? node.SourceIdentityId),
                     SourceIdentityQuality = attempt?.SourceIdentityQuality ?? node.SourceIdentityQuality,
                     OutcomeStatus = attempt?.Status ?? node.OutcomeStatus,
                 });
@@ -361,7 +361,7 @@ public static class TraceReadingBuilder
             FailureEnvironment = node.FailureEnvironment,
             AttemptedMorphs = node.AttemptedMorphs.Select(ToMorph).ToArray(),
             SourceIdentityKind = node.SourceIdentityKind,
-            SourceIdentityId = node.SourceIdentityId,
+            SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId),
             SourceIdentityQuality = node.SourceIdentityQuality,
         };
 

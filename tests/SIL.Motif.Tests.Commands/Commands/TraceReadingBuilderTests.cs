@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -11,6 +13,71 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class TraceReadingBuilderTests
 {
+    [Fact]
+    public void AlternateGuidSpellingsShareOneRuleRef()
+    {
+        var reading = AlternateGuidReading();
+
+        var rule = Assert.Single(reading.Refs, reference => reference.Kind != "morph" &&
+            Guid.TryParse(reference.Identity, out var guid) && guid == Guid.Parse("12345678-1234-1234-abcd-123456789abc"));
+        Assert.Equal("morphRule:12345678-1234-1234-abcd-123456789abc", rule.Id);
+        Assert.Equal("12345678-1234-1234-abcd-123456789abc", rule.Identity);
+    }
+
+    [Fact]
+    public void AlternateGuidSpellingsJoinAffixMorphsToTheirRuleTiming()
+    {
+        var reading = AlternateGuidReading(mixedSpellings: false);
+        var morph = Assert.Single(reading.Analyses).Morphs[1];
+        var reference = Assert.Single(reading.Refs, item => item.Id == morph.RefId);
+
+        Assert.Equal(new TraceTimingKey("morph_rule", "12345678-1234-1234-abcd-123456789abc"), reference.TimingKey);
+    }
+
+    [Fact]
+    public void AlternateGuidSpellingsShareOneMorphRef()
+    {
+        var morph = new TraceMorph(null, "form", null, null, null, null, null, null, null, null)
+        {
+            EntryId = "12345678-1234-1234-abcd-123456789abc",
+            MsaId = "22345678-1234-1234-abcd-123456789abc",
+            FormId = "32345678-1234-1234-abcd-123456789abc",
+        };
+        var alternate = morph with
+        {
+            EntryId = "{" + morph.EntryId.ToUpperInvariant() + "}",
+            MsaId = morph.MsaId.ToUpperInvariant(),
+            FormId = "{" + morph.FormId + "}",
+        };
+
+        Assert.Equal(morph.RefId, alternate.RefId);
+        Assert.Equal("morphRule:local:Rule", TraceRefIds.ForSource("MorphologicalRuleAnalysis", null,
+            "morphRule", "local:Rule"));
+    }
+
+    private static WordTraceReading AlternateGuidReading(bool mixedSpellings = true)
+    {
+        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-kumata.json"));
+        var json = JsonNode.Parse(text.Replace("00000000-0000-0000-0000-000000000109",
+            "12345678-1234-1234-abcd-123456789abc", StringComparison.Ordinal))!;
+        var rewritten = false;
+        Rewrite(json["trace"]);
+        return WordTraceQuery.LoadDiagnostic(json.ToJsonString()).Value!.Reading!;
+
+        void Rewrite(JsonNode? node)
+        {
+            if (node is not JsonObject step) return;
+            if ((!rewritten || !mixedSpellings) && step["sourceIdentity"] is JsonObject identity && identity["id"]?.GetValue<string>() ==
+                "12345678-1234-1234-abcd-123456789abc")
+            {
+                identity["id"] = "{12345678-1234-1234-ABCD-123456789ABC}";
+                rewritten = true;
+            }
+            if (step["children"] is JsonArray children)
+                foreach (var child in children) Rewrite(child);
+        }
+    }
+
     [Fact]
     public void MatinluAttemptsKeepTheStemLookupInTheirStory()
     {
