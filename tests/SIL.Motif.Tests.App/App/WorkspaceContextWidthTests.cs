@@ -21,7 +21,7 @@ public sealed class WorkspaceContextWidthTests
         [
             typeof(string), typeof(bool), typeof(WorkspacePage), typeof(ProjectEvidence), typeof(WorkspaceBaseline),
             typeof(TimeProvider),
-            typeof(GrammarSummary), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
+            typeof(GrammarSummary), typeof(OpenInspectorRequest), typeof(ChangesViewModel), typeof(AssessViewModel), typeof(SelectionViewModel),
             typeof(SetupViewModel),
             typeof(ICommandClient), typeof(IHandoffFolderPicker), typeof(IFileDragSource), typeof(IClipboard),
             typeof(IDiagnosticFilePicker), typeof(IDiagnosticWindowDialogs),
