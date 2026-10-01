@@ -1027,7 +1027,9 @@ public sealed class MainWindowSmokeTests
 
                 Assert.True(row.IsOpen);
                 var line = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowFrame"));
+                Assert.Contains("open", body.Classes);
                 Assert.Contains("open", line.Classes);
+                Assert.DoesNotContain("hoverReveal", line.Classes);
                 Assert.True(Application.Current!.TryGetResource("Intent.Selected.Fill", ThemeVariant.Light, out var selectedFill));
                 Assert.Equal(selectedFill, line.Background);
                 Assert.Equal("motifa", workspace.Assess.Compare.SearchText);

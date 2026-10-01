@@ -257,7 +257,9 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(row.IsOpen);
                 Assert.True(card.IsEffectivelyVisible);
                 Assert.Same(row, card.FindAncestorOfType<WordRow>());
+                Assert.Contains("open", body.Classes);
                 Assert.Contains("open", Part(row, "wordRowFrame").Classes);
+                Assert.DoesNotContain("hoverReveal", Part(row, "wordRowFrame").Classes);
                 Assert.True(row.Bounds.Height > closedHeight + card.Bounds.Height - 1, "The opened row does not grow to hold its card.");
 
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
