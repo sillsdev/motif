@@ -18,7 +18,8 @@
             <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <WrapPanel Orientation="Horizontal" />
+                  <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Related}"
+                             LineSpacing="{DynamicResource Intent.Space.Compact}" />
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>

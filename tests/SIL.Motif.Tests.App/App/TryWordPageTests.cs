@@ -1,4 +1,5 @@
 using System.Globalization;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -24,6 +25,39 @@ public sealed class TryWordPageTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Fact]
+    public void RecentWordsSitApartSoTwoWordsNeverReadAsOne()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var model = new TryWordPageModel(NewContext(out _));
+            model.RecentWords.Add("kitabu");
+            model.RecentWords.Add("matinlu");
+            var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(model);
+            var window = new Window { Content = view, Width = 1240, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var list = window.GetLogicalDescendants().OfType<ItemsControl>()
+                    .Single(control => AutomationProperties.GetName(control) == "Recent words");
+                var words = list.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(text => text.Text is "kitabu" or "matinlu")
+                    .Select(text => new Rect(text.TranslatePoint(default, window)!.Value, text.Bounds.Size))
+                    .ToArray();
+                Assert.Equal(2, words.Length);
+                Assert.True(Application.Current!.TryGetResource("Intent.Space.Related", null, out var gap));
+                var apart = words[0].Top == words[1].Top ? words[1].Left - words[0].Right : words[1].Top - words[0].Bottom;
+                Assert.True(apart >= (double)gap! - 0.5, $"the two recent words are {apart:F1} px apart");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
 
     [Fact]
     public void RegistryBuildsTheTryAWordPageWithNamedLinksAndNoApprovalOutsideTheText()
