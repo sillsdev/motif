@@ -1,6 +1,7 @@
 <!--
-  The keyboard focus ring: one look for every control, in the focus colour and stroke, following the control's
-  own corners. Avalonia draws it only for Tab and arrow-key focus, so a pointer click never leaves a ring behind.
+  The cues every control shares. The keyboard focus ring: one look for every control, in the focus colour and stroke,
+  following the control's own corners; Avalonia draws it only for Tab and arrow-key focus, so a pointer click never
+  leaves a ring behind. The pressed cue: a button held down sinks in, which hover's lighter fill never does.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -15,5 +16,8 @@
   <Style Selector="Border.focusRing">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Focus}" />
+  </Style>
+  <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Pressed}" />
   </Style>
 </Styles>

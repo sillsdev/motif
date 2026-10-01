@@ -96,6 +96,8 @@
 
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue650">inset 2 0 0 #215CC7</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Inset2.Blue350">inset 2 0 0 #83ADFF</BoxShadows>
+  <BoxShadows x:Key="Primitive.Shadow.Inset0_1_3.Slate950A30">inset 0 1 3 0 #4D202833</BoxShadows>
+  <BoxShadows x:Key="Primitive.Shadow.Inset0_1_3.BlackA70">inset 0 1 3 0 #B3000000</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Drop3_10.Slate950A10">0 3 10 0 #1A202833</BoxShadows>
   <BoxShadows x:Key="Primitive.Shadow.Drop4_14.BlackA45">0 4 14 0 #73000000</BoxShadows>
 

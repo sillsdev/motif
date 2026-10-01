@@ -86,6 +86,51 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    public static TheoryData<string> ButtonThemes() => new() { "default", "OutlineButton", "SolidButton", "BorderlessButton" };
+
+    [Theory]
+    [MemberData(nameof(ButtonThemes))]
+    public void APressedButtonLooksPressedNotHovered(string theme)
+    {
+        var failures = new List<string>();
+        avalonia.Invoke(() =>
+        {
+            foreach (var variant in Themes)
+            {
+                var button = new Button { Content = "Refresh", Classes = { "Tertiary" } };
+                if (theme != "default") button.Theme = (ControlTheme)Application.Current!.FindResource(theme)!;
+                var window = new Window { Content = button, RequestedThemeVariant = variant, Width = 200, Height = 80 };
+                try
+                {
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var face = Face(button);
+                    var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+                    window.MouseMove(centre);
+                    Dispatcher.UIThread.RunJobs();
+                    var hovered = face.BoxShadow;
+                    window.MouseDown(centre, MouseButton.Left);
+                    Dispatcher.UIThread.RunJobs();
+                    if (!button.IsPressed) failures.Add($"{variant} {theme}: the press did not land");
+                    if (!Equals(Resource("Intent.Shadow.Pressed", variant), face.BoxShadow))
+                        failures.Add($"{variant} {theme}: pressed shadow is '{face.BoxShadow}', not Intent.Shadow.Pressed");
+                    if (Equals(hovered, face.BoxShadow)) failures.Add($"{variant} {theme}: pressed looks like hover");
+                    window.MouseUp(centre, MouseButton.Left);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    private static Avalonia.Controls.Presenters.ContentPresenter Face(Button button) =>
+        button.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+            .First(part => part.Name == "PART_ContentPresenter");
+
     private static (Control Content, Control Target) Build(string which)
     {
         switch (which)
