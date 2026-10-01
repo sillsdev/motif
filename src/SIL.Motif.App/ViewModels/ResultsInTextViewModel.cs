@@ -65,6 +65,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private IReadOnlyList<ResultsTokenViewModel> _allWords = [];
     private long _readStateGeneration;
     private long _readStateWriteVersion;
+    // Per Text, how many Mark read or Mark unread answers have been applied, so an older load can tell it is stale.
+    private readonly Dictionary<Guid, long> _readStateWritesApplied = [];
     private Task _readStateRefresh = Task.CompletedTask;
 
     [ObservableProperty]
@@ -647,7 +649,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
                 ReadStateRefusal = outcome.Refusal is { } refusal ? WindowRefusal.From(refusal) : null;
                 return;
             }
-            ApplyReadState(group.Key, outcome.Value!.ReadOccurrences);
+            ApplyWrittenReadState(group.Key, outcome.Value!.ReadOccurrences);
             skipped.AddRange(outcome.Value.SkippedOccurrences);
         }
         ReadStateNotice = ReadStateSkipNotice(skipped.Count);
@@ -672,7 +674,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             ReadStateRefusal = outcome.Refusal is { } refusal ? WindowRefusal.From(refusal) : null;
             return;
         }
-        ApplyReadState(text.TextId, outcome.Value!.ReadOccurrences);
+        ApplyWrittenReadState(text.TextId, outcome.Value!.ReadOccurrences);
         ReadStateNotice = ReadStateSkipNotice(outcome.Value.SkippedOccurrences.Count);
     }
 
@@ -690,9 +692,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             .Select(token => token.Occurrence!.TextId).Distinct().ToArray();
         foreach (var textId in textIds)
         {
+            var writesBefore = _readStateWritesApplied.GetValueOrDefault(textId);
             var outcome = await _commands.ReadWordStateAsync(new WordReadStateRequest(_assess.ProjectPath,
                 textId) { AssessmentIds = AssessmentIdsShownInWindow }, CancellationToken.None).ConfigureAwait(true);
             if (generation != _readStateGeneration) return;
+            // A write answered meanwhile with this Text's whole Read set, at least as new as what this load saw.
+            if (_readStateWritesApplied.GetValueOrDefault(textId) != writesBefore) continue;
             if (outcome.Succeeded) ApplyReadState(textId, outcome.Value!.ReadOccurrences);
         }
     }
@@ -702,6 +707,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             .Select(measurement => measurement.AssessmentId).Concat(result.TimingOverrideAssessmentIds)
             .Distinct(StringComparer.Ordinal).ToArray()
         : [];
+
+    private void ApplyWrittenReadState(Guid textId, IReadOnlyList<OccurrenceAnchor> readOccurrences)
+    {
+        _readStateWritesApplied[textId] = _readStateWritesApplied.GetValueOrDefault(textId) + 1;
+        ApplyReadState(textId, readOccurrences);
+    }
 
     private void ApplyReadState(Guid textId, IReadOnlyList<OccurrenceAnchor> readOccurrences)
     {
