@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.TraceAnalysesView"
+             x:DataType="vm:TraceWordViewModel">
+  <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
+  <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
+              AutomationProperties.Name="Analyses">
+    <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+    <views:CopyableTextBlock Classes="muted" Text="In the order the parser found them." TextWrapping="Wrap" />
+    <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
+          <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding WaysFoundText}"
+                                         IsVisible="{Binding HasSeveralWays}"
+                                         ToolTip.Tip="The parser reached this analysis by more than one order of steps." />
+              </Grid>
+              <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
+                                       IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
+              <ItemsControl ItemsSource="{Binding Morphs}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TraceMorphViewModel">
+                    <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" />
+                        <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
+                        <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
+                        <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
+                        <Expander Header="Full morph details" IsExpanded="False">
+                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
+                            <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
+                            <Expander Header="Raw morph record">
+                              <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
+                            </Expander>
+                            <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
+                            <HyperlinkButton Content="Open compatible FieldWorks entry"
+                                             NavigateUri="{Binding Link}"
+                                             IsVisible="{Binding HasLink}"
+                                             Padding="{DynamicResource Intent.Inset.None}"
+                                             AutomationProperties.Name="{Binding LinkName}" />
+                            <views:CopyableTextBlock Classes="muted"
+                                                     Text="Live FieldWorks navigation is unavailable for this recorded morph."
+                                                     IsVisible="{Binding HasNoLink}" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </Expander>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

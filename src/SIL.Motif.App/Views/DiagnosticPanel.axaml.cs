@@ -18,16 +18,20 @@ public sealed partial class DiagnosticPanel : UserControl
     {
     }
 
-    /// <summary>Builds the diagnostic view with its result summary optionally hidden for a page with its own summary.</summary>
+    /// <summary>
+    /// Builds the diagnostic view with its result summary and analyses optionally left to a page that shows its own.
+    /// </summary>
     /// <param name="tools">The trace to display, with the tools that copy, save, and open diagnostics beside it.</param>
     /// <param name="showResultSummary">Whether this panel displays the trace's result summary.</param>
-    public DiagnosticPanel(DiagnosticToolsViewModel tools, bool showResultSummary)
+    /// <param name="showAnalyses">Whether this panel displays the trace's analyses, ahead of its attempts.</param>
+    public DiagnosticPanel(DiagnosticToolsViewModel tools, bool showResultSummary, bool showAnalyses = true)
     {
         ArgumentNullException.ThrowIfNull(tools);
         Tools = tools;
         ShowResultSummary = showResultSummary;
         DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
+        if (showAnalyses) this.FindControl<ContentControl>("AnalysesHost")!.Content = new TraceAnalysesView();
         // Inside Try a Word the page already holds the inset and the answer, so the trace starts flush.
         if (!showResultSummary) Classes.Add("embedded");
         tools.DiagnosticOpened += opened => new DiagnosticWindow(opened, tools).Show();
