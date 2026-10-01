@@ -110,6 +110,8 @@ public sealed partial class WindowWordsTests
                 setup.OpenForConfiguration();
                 Assert.True(setup.IsEditingExistingSelection, setup.ShownRefusal?.Sentence ?? "setup did not save");
                 shown.AddRange(Steps(window, setup, "editing"));
+                Assert.Equal("This will be the project default. Parse all words will use it next time.",
+                    setup.FinishDescription);
             }
             finally
             {

@@ -179,7 +179,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         ? "Use this Selection as the project default" : "Ready for the first run?";
 
     public string FinishDescription => IsEditingExistingSelection
-        ? "This will be the project default. The next Parse all words will use it."
+        ? "This will be the project default. Parse all words will use it next time."
         : "Motif will save this Selection with the project, then parse all its words.";
 
     public IAsyncRelayCommand SkipCommand { get; }

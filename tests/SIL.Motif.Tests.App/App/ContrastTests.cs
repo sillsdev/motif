@@ -81,6 +81,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         var failures = new List<string>();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            var priorTheme = Application.Current!.RequestedThemeVariant;
             var (_, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
@@ -102,7 +103,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             }
             finally
             {
-                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                Application.Current!.RequestedThemeVariant = priorTheme;
                 window.Close();
             }
         }, TimeSpan.FromMinutes(1));
@@ -155,6 +156,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         var failures = new List<string>();
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            var priorTheme = Application.Current!.RequestedThemeVariant;
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
@@ -182,7 +184,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             }
             finally
             {
-                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                Application.Current!.RequestedThemeVariant = priorTheme;
                 window.Close();
             }
         }, TimeSpan.FromMinutes(1));
@@ -191,7 +193,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void TimingsLegendShowsEachKindBesideItsPartsColour()
+    public void TimingsLegendShowsEachKindBesideItsPartsColourInARowThatWraps()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -199,6 +201,9 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
             try
             {
+                // The width the page review and PR-06 drew.
+                window.Width = 1240;
+                window.Height = 780;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
                 var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>());
@@ -209,6 +214,9 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     .Where(border => border.Classes.Contains("swatch")).Select(border => border.Background).ToArray();
 
                 Assert.Equal(bar.Rows!.Count, swatches.Length);
+                var rows = legend.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("swatch"))
+                    .Select(border => Math.Round(border.TranslatePoint(default, legend)!.Value.Y)).Distinct().Count();
+                Assert.True(rows < swatches.Length, $"the legend is a list of {rows} rows, not a row that wraps");
                 for (var index = 0; index < swatches.Length; index++)
                     Assert.Same(parts[Math.Min(index, parts.Length - 1)], swatches[index]);
             }
@@ -218,6 +226,38 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             }
         }, TimeSpan.FromMinutes(1));
     }
+
+    // A notice's label colour is for live buttons; a disabled one must still look like every other disabled button.
+    [Fact]
+    public void ADisabledButtonInANoticeStillLooksDisabled()
+    {
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            {
+                var inNotice = new Button { Content = "Try again", IsEnabled = false };
+                var elsewhere = new Button { Content = "Try again", IsEnabled = false };
+                var panel = new StackPanel
+                {
+                    Children = { new Border { Classes = { "notice" }, Child = inNotice }, elsewhere },
+                };
+                var window = new Window { Content = panel, RequestedThemeVariant = theme, Width = 300, Height = 200 };
+                try
+                {
+                    window.Show();
+                    window.UpdateLayout();
+                    Assert.Equal(LabelColour(elsewhere), LabelColour(inNotice));
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+    }
+
+    private static Color LabelColour(Button button) => Assert.IsAssignableFrom<ISolidColorBrush>(
+        button.GetVisualDescendants().OfType<TextBlock>().First().Foreground).Color;
 
     private static void AssertReadableIn(Control content, ThemeVariant theme, string what)
     {
