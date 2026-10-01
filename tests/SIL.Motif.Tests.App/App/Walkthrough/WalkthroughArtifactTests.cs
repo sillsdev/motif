@@ -350,6 +350,31 @@ public sealed class WalkthroughArtifactTests
     }
 
     [Fact]
+    public void BaselineDimensionChangesAreReportedUnlessStrictComparisonIsRequested()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        try
+        {
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            using var bitmap = new SKBitmap(20, 20);
+            bitmap.Erase(SKColors.White);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            var actual = data.ToArray();
+            var diagnostics = new List<string>();
+            WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false, report: diagnostics.Add);
+            Assert.Single(diagnostics);
+            Assert.Contains("capture is 20x20", diagnostics[0], StringComparison.Ordinal);
+            WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false)));
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
     public void BaselineComparisonUsesAtMostOneTenthPercentChangedPixels()
     {
         var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");

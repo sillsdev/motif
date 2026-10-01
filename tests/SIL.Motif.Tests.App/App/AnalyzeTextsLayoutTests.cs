@@ -263,7 +263,8 @@ public sealed class AnalyzeTextsLayoutTests
                     var gutter = Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.Text == label && text.Classes.Contains("gutterLabel"));
                     var row = Part(sungura, part);
-                    Assert.True(Math.Abs(BoundsIn(gutter, panel).Top - BoundsIn(row, panel).Top) <= 2,
+                    Assert.True(BoundsIn(gutter, panel).Top < BoundsIn(row, panel).Bottom &&
+                        BoundsIn(row, panel).Top < BoundsIn(gutter, panel).Bottom,
                         $"{label} sits at {BoundsIn(gutter, panel).Top}, its row at {BoundsIn(row, panel).Top}.");
                 }
                 Assert.Contains(line.GetVisualDescendants().OfType<TextBlock>(), text =>

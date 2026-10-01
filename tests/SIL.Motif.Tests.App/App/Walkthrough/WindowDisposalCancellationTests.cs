@@ -111,9 +111,7 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
                 using var process = Process.GetProcessById(processId);
                 if (process.HasExited) continue;
                 var executablePath = process.MainModule?.FileName;
-                if (executablePath is null || !string.Equals(Path.GetFullPath(executablePath),
-                        Path.GetFullPath(parserPath), OperatingSystem.IsWindows()
-                            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                if (executablePath is null || !PanglossProcesses.PathsMatch(executablePath, parserPath))
                     continue;
                 process.Kill(entireProcessTree: true);
                 if (!process.WaitForExit(5000))

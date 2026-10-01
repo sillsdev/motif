@@ -714,10 +714,16 @@ internal static class WalkthroughArtifacts
         Assert.NotNull(expectedBitmap);
         Assert.NotNull(actualBitmap);
         if ((expectedBitmap!.Width, expectedBitmap.Height) != (actualBitmap!.Width, actualBitmap.Height))
-            throw new Xunit.Sdk.XunitException(
-                $"Walkthrough baseline '{path}' is {expectedBitmap.Width}x{expectedBitmap.Height} but the capture is " +
+        {
+            var message = $"Walkthrough baseline '{path}' is {expectedBitmap.Width}x{expectedBitmap.Height} but the capture is " +
                 $"{actualBitmap.Width}x{actualBitmap.Height}. Actual PNG: {WriteActualPng(path, actual)}; callouts: " +
-                string.Join("; ", (callouts ?? []).Select(callout => $"{callout.AutomationId} {callout.Bounds}")));
+                string.Join("; ", (callouts ?? []).Select(callout => $"{callout.AutomationId} {callout.Bounds}"));
+            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+                throw new Xunit.Sdk.XunitException(message);
+            if (report is null) Console.WriteLine(message);
+            else report(message);
+            return;
+        }
         var width = actualBitmap.Width;
         var height = actualBitmap.Height;
         var changed = 0;

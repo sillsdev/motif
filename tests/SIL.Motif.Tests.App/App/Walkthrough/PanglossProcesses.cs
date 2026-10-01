@@ -48,9 +48,7 @@ internal static class PanglossProcesses
             try
             {
                 var modulePath = process.MainModule?.FileName;
-                if (modulePath is not null && string.Equals(
-                        Path.GetFullPath(modulePath), Path.GetFullPath(executablePath),
-                        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                if (modulePath is not null && PathsMatch(modulePath, executablePath))
                     ids.Add(process.Id);
             }
             catch (Win32Exception)
@@ -82,4 +80,23 @@ internal static class PanglossProcesses
 
     internal static bool AnyAlive(string executablePath, IEnumerable<int> ids) =>
         Snapshot(executablePath).Intersect(ids).Any();
+
+    internal static bool PathsMatch(string first, string second) =>
+        string.Equals(CanonicalPath(first), CanonicalPath(second),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    private static string CanonicalPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (OperatingSystem.IsWindows()) return fullPath;
+        var parent = Path.GetDirectoryName(fullPath)!;
+        var root = Path.GetPathRoot(parent)!;
+        var resolved = root;
+        foreach (var segment in Path.GetRelativePath(root, parent).Split(Path.DirectorySeparatorChar))
+        {
+            resolved = Path.Combine(resolved, segment);
+            resolved = new DirectoryInfo(resolved).ResolveLinkTarget(true)?.FullName ?? resolved;
+        }
+        return Path.Combine(resolved, Path.GetFileName(fullPath));
+    }
 }
