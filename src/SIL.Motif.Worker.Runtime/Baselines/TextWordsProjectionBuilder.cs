@@ -105,7 +105,8 @@ public static class TextWordsProjectionBuilder
             chosenWordGloss, category, wordLinkTarget, occurrence.Index, wfiAnalysis?.Guid);
     }
 
-    private static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)
+    /// <summary>Captures all analyses and opinions of a wordform, including one absent from every Text.</summary>
+    public static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)
     {
         var humanApproved = wordform.HumanApprovedAnalyses.ToList();
         var humanDisapproved = wordform.HumanDisapprovedParses.ToList();

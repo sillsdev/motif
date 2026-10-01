@@ -126,10 +126,11 @@ public static class GrammarCheckQuery
                 return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
 
             LcmCache? cache = null;
+            GrammarCheckResponse response;
             try
             {
                 LcmCache Cache() => cache ??= new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
-                var response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
+                response = new GrammarCheckResponse(findings.Select(finding => WithReach(finding, Cache))
                     .ToArray(), HasBaseline: true)
                 {
                     Summary = summary,
@@ -137,13 +138,13 @@ public static class GrammarCheckQuery
                 var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var selectionSha256 = SelectionDigest(database, Cache, baselineToken);
                 new GrammarCheckRepository(database).Save(baselineToken, selectionSha256, parserStamp, response);
-                return CommandOutcome<GrammarCheckResponse>.Success(
-                    WarningWordsQuery.WithYourWords(database, project, response));
             }
             finally
             {
                 cache?.Dispose();
             }
+            return CommandOutcome<GrammarCheckResponse>.Success(
+                WarningWordsQuery.WithYourWords(database, project, response));
         });
     }
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
@@ -40,7 +41,7 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolvedReadingsByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
-    /// <summary>Stored analyses in the captured Text projection, keyed by word form.</summary>
+    /// <summary>The Selection's stored Baseline analyses, including added words, keyed by word form.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> StoredAnalysesByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
@@ -185,6 +186,34 @@ public static class CurrentEvidenceQuery
                     }).ToArray();
             foreach (var token in projected.Value.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens))
                 if (token.Form is { } form && token.WordLink is { } link) wordLinks.TryAdd(form, link);
+        }
+        var missingWords = effectiveWords.Select(word => word.Word).Where(word => !storedAnalyses.ContainsKey(word))
+            .ToHashSet(StringComparer.Ordinal);
+        if (current is not null && missingWords.Count > 0 && File.Exists(current.Baseline.FwDataPath))
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
+            var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+            foreach (var wordform in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
+            {
+                var forms = wordform.Form.AvailableWritingSystemIds.Select(ws => wordform.Form.get_String(ws)?.Text)
+                    .OfType<string>().Select(form => form.Trim().Normalize(System.Text.NormalizationForm.FormD))
+                    .Where(missingWords.Contains).Distinct(StringComparer.Ordinal).ToArray();
+                if (forms.Length == 0) continue;
+                var analyses = TextWordsProjectionBuilder.ReadWordform(cache, wordform).Analyses
+                    .Select(analysis => TextWordsQuery.ReadAnalysis(analysis, projectName))
+                    .Select(analysis => new ParserReading(analysis.Morphs)
+                    {
+                        StoredAnalysisId = analysis.StoredAnalysisId,
+                        StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+                        Identity = analysis.Identity,
+                    }).ToArray();
+                foreach (var form in forms)
+                {
+                    storedAnalyses[form] = analyses;
+                    if (FieldWorksLinks.ForTarget(projectName, FieldWorksLinks.TargetFor(cache, wordform)) is { } link)
+                        wordLinks.TryAdd(form, link);
+                }
+            }
         }
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,

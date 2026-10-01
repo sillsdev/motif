@@ -1,5 +1,7 @@
 using System.IO;
 using System.Text.Json;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
@@ -11,6 +13,7 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -57,14 +60,60 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(project.Path));
     }
 
-    private CapturedProject Capture()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AddedWordsKeepBaselineAnalysesOutsideTheChosenTexts(bool chooseOtherText)
+    {
+        var project = Capture(analysedWordOutsideText: chooseOtherText);
+        var selected = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(project.Path, "Default",
+            chooseOtherText ? [project.TextId] : [], [SeededProject.AnalysedWordForm]));
+        Assert.True(selected.Succeeded, selected.Refusal?.Message);
+        RecordAssessment(project, chooseOtherText
+            ? [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm]
+            : [SeededProject.AnalysedWordForm], parsed: false);
+        using var held = new FileStream(project.Path + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(project.Path);
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        var stored = Assert.Single(evidence.Value!.Assessment!.Words
+            .Single(word => word.Word == SeededProject.AnalysedWordForm).StoredAnalyses);
+        Assert.Equal(ReadingGrade.Approved, stored.StoredAnalysisOpinion);
+        Assert.NotNull(stored.StoredAnalysisId);
+        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), stored.Morphs[0].AllomorphId);
+        Assert.Equal(stored.StoredAnalysisId, stored.Identity!.SourceAnalysisId);
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(project.Path,
+            new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }));
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(uses.Value!.Uses!.Words).Row.Word);
+
+        var checkedNow = GrammarCheckQuery.Query(new GrammarCheckRequest(project.Path), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GrammarHealthReports.With(
+                ("allomorph", [new("MoForm", "motifa", _pristine.Seed.FirstLexemeFormId)])),
+                string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(checkedNow.Succeeded, checkedNow.Refusal?.Message);
+        Assert.Equal(SeededProject.AnalysedWordForm,
+            Assert.Single(Assert.Single(checkedNow.Value!.Findings).YourWords!.Words).Row.Word);
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(1, overview.Value!.Warnings!.YourWords!.Words);
+    }
+
+    private CapturedProject Capture(bool analysedWordOutsideText = false)
     {
         string path;
         Guid textId;
         ParseWordEvidence morphology;
         using (var cache = _pristine.NewScratch())
         {
-            textId = SeededProject.SeedText(cache, _pristine.Seed).TextId;
+            var text = SeededProject.SeedText(cache, _pristine.Seed);
+            textId = text.TextId;
+            if (analysedWordOutsideText)
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                    cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(text.TextId)
+                        .ContentsOA.ParagraphsOS.RemoveAt(0));
             var approved = Assert.Single(ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm]);
             morphology = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 1,
                 false, false, false, [new ParseAnalysis(approved.Morphs.Select(morph =>
@@ -77,17 +126,18 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         return new CapturedProject(path, textId, captured.Value!, morphology);
     }
 
-    private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words)
+    private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words, bool parsed = true)
     {
         using var database = ProjectMotifDatabase.Open(project.Path);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
             "assessment", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
             "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
             Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", "sha256:grammar",
-            "fingerprint", "pipeline", 0, words.Select(word => new AssessedWord(word, "analysed", [], 1)
+            "fingerprint", "pipeline", 0, words.Select(word => new AssessedWord(word,
+                parsed ? "analysed" : "no-analysis", [], 1)
             {
                 ProjectStanding = ProjectStanding.Approved,
-                Morphology = word == SeededProject.AnalysedWordForm ? project.Morphology : null,
+                Morphology = parsed && word == SeededProject.AnalysedWordForm ? project.Morphology : null,
             }).ToArray()));
     }
 
