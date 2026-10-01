@@ -5,7 +5,7 @@ using SIL.Motif.Host.LcmUtils;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// One blank, seeded project built and saved once for the whole run, from which each test opens a
+/// One blank, seeded project built and saved once per process, from which each test opens a
 /// cheap private copy instead of paying to create its own.
 /// </summary>
 /// <remarks>
@@ -26,11 +26,12 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <para>
 /// Copies are isolated from each other and from the master, which is never reopened after it is saved.
 /// Their directories are deleted when the collection finishes rather than per test, so a failing test
-/// leaves its project on disk to inspect.
+/// leaves its project on disk to inspect. The shared master is deleted when the process exits.
 /// </para>
 /// </remarks>
 public sealed class PristineProjectFixture : IDisposable
 {
+    private static readonly Lazy<SeededMaster> Master = new(CreateMaster);
     private readonly string _tempRoot;
     private readonly string _masterFolder;
     private readonly ConcurrentBag<string> _scratchRoots = new();
@@ -38,23 +39,38 @@ public sealed class PristineProjectFixture : IDisposable
 
     public PristineProjectFixture()
     {
-        GuardAgainstStaleWritingSystemStashFiles();
-
         _tempRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Pristine", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempRoot);
+        var master = Master.Value;
+        Seed = master.Seed;
+        _masterFolder = master.Folder;
+    }
 
-        var master = NewLangProjFixture.CreateCache(_tempRoot);
+    private static SeededMaster CreateMaster()
+    {
+        GuardAgainstStaleWritingSystemStashFiles();
+        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Pristine", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var master = NewLangProjFixture.CreateCache(root);
         try
         {
-            Seed = SeededProject.Seed(master);
+            var seed = SeededProject.Seed(master);
             new FwDataProjectLoader().Save(master);
-            _masterFolder = Path.GetDirectoryName(master.ProjectId.Path)!;
+            var folder = Path.GetDirectoryName(master.ProjectId.Path)!;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            {
+                try { Directory.Delete(root, recursive: true); }
+                catch { /* best effort: a locked native handle should not fail the run */ }
+            };
+            return new SeededMaster(folder, seed);
         }
         finally
         {
             master.Dispose();
         }
     }
+
+    private sealed record SeededMaster(string Folder, SeededProject Seed);
 
     /// <summary>Identity of everything <see cref="SeededProject"/> wrote, valid in every copy.</summary>
     public SeededProject Seed { get; }

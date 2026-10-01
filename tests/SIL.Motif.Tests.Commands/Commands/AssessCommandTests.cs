@@ -36,7 +36,7 @@ namespace SIL.Motif.Tests.Commands;
 /// recording Assessments, a second run reusing that Baseline, cancellation recording nothing, an empty
 /// Selection's refusal, and the reported progress stages.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class AssessCommandTests : IDisposable
 {
     private static readonly SelectionRequest AllWordforms = new(true, [], [], false, null);

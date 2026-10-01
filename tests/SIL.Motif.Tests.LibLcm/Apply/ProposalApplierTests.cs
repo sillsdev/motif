@@ -28,7 +28,7 @@ namespace SIL.Motif.Tests.Apply;
 /// the stable Change Set GUID, which is what makes a repeat apply a no-op instead of a duplicate
 /// entry.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ProposalApplierTests : IDisposable
 {
     private readonly string _fwDataPath;

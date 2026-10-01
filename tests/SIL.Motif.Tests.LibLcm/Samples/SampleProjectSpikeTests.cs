@@ -16,7 +16,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Samples;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
 {
     [Fact]
@@ -774,7 +774,7 @@ public sealed class SampleProjectSpikeTests(ITestOutputHelper output)
     };
 }
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class SyntheticSampleWordsTests(ITestOutputHelper output)
 {
     [RealParserFact]
@@ -782,7 +782,7 @@ public sealed class SyntheticSampleWordsTests(ITestOutputHelper output)
         new SampleProjectSpikeTests(output).SyntheticSampleWordsParseThroughMotifAssess();
 }
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class SyntheticTurkicBugVariantsTests(ITestOutputHelper output)
 {
     [RealParserFact]
@@ -790,7 +790,7 @@ public sealed class SyntheticTurkicBugVariantsTests(ITestOutputHelper output)
         new SampleProjectSpikeTests(output).SyntheticTurkicBugVariantsMatchDeclaredSymptomsAndPinParserWork();
 }
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class DuplicateOptionalPluralSlotsTests(ITestOutputHelper output)
 {
     [RealParserFact]

@@ -26,7 +26,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
 {
     [Fact]

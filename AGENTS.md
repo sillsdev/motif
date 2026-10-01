@@ -29,9 +29,10 @@ parser-dependent skips as incomplete validation.
 **`./test.ps1` runs each test project as one or more processes, with concurrency capped at a sixth of the
 available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
-worker, and parser child processes. Opening two LibLCM caches at once inside one process races, so every
-class that opens one shares the serialized `LcmCacheTestCollection` in its test assembly. Separate test
-processes cannot race, so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.csproj` is
+worker, and parser child processes. LibLCM cache startup goes through a process-wide gate in
+`FwDataProjectLoader`; cache-using test classes occupy four parallel collections, while tests that inspect
+process-wide writing-system state stay in `LcmCacheTestCollection`. Separate test processes cannot race,
+so a project that declares `<MotifTestShards>N</MotifTestShards>` in its `.csproj` is
 split by test class into N processes (`ShardedTestFramework`, driven by `MOTIF_TEST_SHARD=index/count`), and its
 LibLCM tests run N at a time. Classes go to shards by the seconds `tests/test-shard-weights.json` records
 (`MOTIF_TEST_SHARD_WEIGHTS`), heaviest first; after a full run that leaves one shard far behind the others,

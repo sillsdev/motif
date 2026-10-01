@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Runner;
 /// author -&gt; DryRun -&gt; Apply -&gt; read-back, plus the closed-payload-schema requirement (unknown
 /// properties rejected).
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class GeneratedBasicFieldOperationsTests : IDisposable
 {
     private readonly LcmCache _cache;

@@ -26,7 +26,7 @@ namespace SIL.Motif.Tests.Host;
 /// bug, since the live cache always shows its own committed state.
 /// </para>
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class SaveIsSynchronousTests : IDisposable
 {
     private readonly string _fwDataPath;

@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.Commands;
 /// before any Baseline exists, the seeded Text's identity and title once one has been captured, and that
 /// a later change to the live project never leaks into an already-captured Baseline's inventory.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class TextInventoryQueryTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

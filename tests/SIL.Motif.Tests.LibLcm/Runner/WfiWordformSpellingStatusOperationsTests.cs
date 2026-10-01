@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Runner;
 /// than silently accepted or clamped, and <c>clear</c> writes the enum's zero member (<c>Undecided</c>)
 /// rather than erasing anything.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class WfiWordformSpellingStatusOperationsTests : IDisposable
 {
     private readonly LcmCache _cache;

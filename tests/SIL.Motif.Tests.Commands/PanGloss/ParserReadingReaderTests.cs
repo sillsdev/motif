@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.PanGloss;
 /// Pins that a parser reading's identifiers become the form, gloss and category the project gives them, and
 /// that a word links to its own wordform for FieldWorks' Try a Word.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ParserReadingReaderTests : IDisposable
 {
     private readonly LcmCache _cache;

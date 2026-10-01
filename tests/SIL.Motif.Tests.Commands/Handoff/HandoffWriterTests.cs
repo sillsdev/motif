@@ -33,7 +33,7 @@ namespace SIL.Motif.Tests.Handoff;
 /// executable: the exact five-file listing, atomicity on an existing destination, cancellation and
 /// PanGloss-failure cleanup, <c>--no-assess</c>, and duplicate Text titles.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class HandoffWriterTests : IDisposable
 {
     private static readonly SelectionRequest AllWordformsAllTexts = new(true, [], [], false, null);

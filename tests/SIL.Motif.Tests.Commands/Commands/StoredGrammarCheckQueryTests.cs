@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Pins <see cref="StoredGrammarCheckQuery"/>: it answers with the grammar check stored for the current
 /// Baseline, says when there is none, and never runs the parser itself.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class StoredGrammarCheckQueryTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

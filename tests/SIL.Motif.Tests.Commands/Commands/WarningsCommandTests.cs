@@ -14,7 +14,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.WarningsCommandTests",

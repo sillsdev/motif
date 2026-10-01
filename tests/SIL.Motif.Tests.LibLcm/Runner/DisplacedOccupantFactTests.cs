@@ -32,7 +32,7 @@ namespace SIL.Motif.Tests.Runner;
 /// separately verified for each. That is why <c>create</c>-into-occupied ships with no orphan disclosure.
 /// </para>
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class DisplacedOccupantFactTests : IDisposable
 {
     private readonly LcmCache _cache;

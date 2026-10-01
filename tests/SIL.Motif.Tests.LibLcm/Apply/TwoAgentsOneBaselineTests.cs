@@ -38,7 +38,7 @@ namespace SIL.Motif.Tests.Apply;
 /// world moved because agent A applied first, exactly as the acceptance criterion describes.
 /// </para>
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class TwoAgentsOneBaselineTests : IDisposable
 {
     private readonly LcmCache _cache;

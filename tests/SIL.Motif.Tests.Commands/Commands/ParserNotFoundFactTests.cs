@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.Commands;
 /// A parser-unavailable refusal says, as a fact, when the cause is that no PanGloss executable was found, so
 /// the window can tell a missing parser from one that is there but would not run.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ParserNotFoundFactTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

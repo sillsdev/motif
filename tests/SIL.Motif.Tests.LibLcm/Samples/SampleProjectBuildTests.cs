@@ -7,7 +7,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Samples;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class SampleProjectBuildTests
 {
     [Fact]

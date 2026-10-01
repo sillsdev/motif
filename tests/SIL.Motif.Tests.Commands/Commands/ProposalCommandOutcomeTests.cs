@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Commands;
 /// <see cref="SIL.Motif.Tests.Cli.CommandsRefusalsTests"/> does not exercise, which focuses on refusals — and the source
 /// boundary the extraction into <see cref="CommandOutcome{T}"/> is meant to hold.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class ProposalCommandOutcomeTests
 {
     private const string ProductVersion = "1.0";

@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Runner;
 /// need a dispose/reload dance between DryRun and Apply (ADR 0016), because no DryRun touches the
 /// live cache at all.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class LexEntryReferenceCollectionOperationsTests : IDisposable
 {
     private const string MemberKey = "member";

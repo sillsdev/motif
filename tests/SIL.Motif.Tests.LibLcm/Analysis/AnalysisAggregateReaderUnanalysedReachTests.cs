@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Analysis;
 /// rendering in isolation; this class is the one place that proves the population it counts is built
 /// correctly from wordforms, <c>SpellingStatus</c> and a <see cref="StoredAssessment"/> together.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class AnalysisAggregateReaderUnanalysedReachTests : IDisposable
 {
     private readonly LcmCache _cache;

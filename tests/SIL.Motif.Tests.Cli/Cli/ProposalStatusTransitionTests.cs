@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.Cli;
 /// <c>supersede</c> as explicit moves, each refusing from a status it is not legal from. Nothing here
 /// authorises an apply — a Proposal is applied because it is ready, not because someone signed it.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class ProposalStatusTransitionTests
 {
     private const string ProductVersion = "1.0";

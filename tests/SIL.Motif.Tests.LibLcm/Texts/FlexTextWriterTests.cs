@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.Texts;
 /// comparer recognizes the enumerable and compares elements, one level up from where the record's own
 /// equality would have gone wrong.
 /// </remarks>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class FlexTextWriterTests : IDisposable
 {
     private readonly LcmCache _cache;

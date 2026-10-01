@@ -17,7 +17,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ProcessRunnerLauncherTests(PristineProjectFixture pristine)
 {
     private static readonly string[] RunnerVariables =

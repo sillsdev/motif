@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Parser;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class ParserSeamIntegrationTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [Fact]

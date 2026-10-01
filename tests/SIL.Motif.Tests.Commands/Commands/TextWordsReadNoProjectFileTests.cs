@@ -29,7 +29,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Baseline came from interactive capture or from the runner's refresh. It also pins the stored words against the
 /// live readers over the same Baseline bytes: forms, canonicalization, word glosses, categories, morphs and links.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class TextWordsReadNoProjectFileTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

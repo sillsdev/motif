@@ -15,7 +15,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Commands;
 
 /// <summary>Pins how grammar-health report diagnostics become Motif findings.</summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class GrammarCheckQueryTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

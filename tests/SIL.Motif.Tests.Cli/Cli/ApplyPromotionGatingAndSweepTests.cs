@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Cli;
 /// working Assessments must not take the promoted one with it. Also covers regression gating (ADR 0042
 /// decision 5) — off by default, blocking when configured, and an override recorded as a Decision.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class ApplyPromotionGatingAndSweepTests
 {
     private const string ProductVersion = "1.0";

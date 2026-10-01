@@ -3,21 +3,36 @@ using Xunit;
 namespace SIL.Motif.Tests.TestFixtures;
 
 /// <summary>
-/// Groups every test class that bootstraps a real <c>LcmCache</c> (via
-/// <see cref="SIL.Motif.Host.LcmUtils.FwDataProjectLoader"/>) into one xUnit collection so they
-/// never run concurrently with each other.
+/// Isolates tests that inspect process-wide writing-system state from the parallel cache collections.
 /// </summary>
 /// <remarks>
 /// xUnit runs distinct test classes (each its own implicit collection) in parallel by default.
-/// Concurrently bootstrapping two separate <c>LcmCache</c> instances in one process — even from two
-/// unrelated temp-copied projects — was observed to corrupt LibLCM's own project-startup pass
-/// (<c>ArgumentOutOfRangeException</c> inside <c>SIL.LCModel.DomainServices.CircularRefBreakerService
-/// .CheckForCircularRef</c>, called from <c>BackendProvider.StartupExtantLanguageProject</c>): that
-/// service is not safe to run from two threads at once in this LibLCM version. Serializing these
-/// tests via a shared collection avoids the race without touching LibLCM itself.
+/// The loader serializes cache startup. This collection also prevents a process-wide repository snapshot
+/// from racing with another class's cache disposal.
 /// </remarks>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public class LcmCacheTestCollection : ICollectionFixture<PristineProjectFixture>
 {
-    public const string Name = "LcmCache tests (serialized: LcmCache bootstrap is not concurrency-safe)";
+    public const string Name = "LcmCache process-wide state tests";
 }
+
+/// <summary>Names four collections whose cache-using classes may run alongside each other.</summary>
+public static class LcmCacheParallelCollections
+{
+    public const string Group0 = "LcmCache parallel 0";
+    public const string Group1 = "LcmCache parallel 1";
+    public const string Group2 = "LcmCache parallel 2";
+    public const string Group3 = "LcmCache parallel 3";
+}
+
+[CollectionDefinition(LcmCacheParallelCollections.Group0)]
+public sealed class LcmCacheParallelCollection0 : ICollectionFixture<PristineProjectFixture> { }
+
+[CollectionDefinition(LcmCacheParallelCollections.Group1)]
+public sealed class LcmCacheParallelCollection1 : ICollectionFixture<PristineProjectFixture> { }
+
+[CollectionDefinition(LcmCacheParallelCollections.Group2)]
+public sealed class LcmCacheParallelCollection2 : ICollectionFixture<PristineProjectFixture> { }
+
+[CollectionDefinition(LcmCacheParallelCollections.Group3)]
+public sealed class LcmCacheParallelCollection3 : ICollectionFixture<PristineProjectFixture> { }

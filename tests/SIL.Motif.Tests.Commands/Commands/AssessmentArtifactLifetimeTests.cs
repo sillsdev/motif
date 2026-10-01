@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class AssessmentArtifactLifetimeTests(PristineProjectFixture pristine)
 {
     [Theory]

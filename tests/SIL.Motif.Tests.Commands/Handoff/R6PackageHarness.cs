@@ -23,7 +23,7 @@ public sealed class HandoffPackageRequestedFactAttribute : FactAttribute
 /// Writes one Handoff folder on demand, so a reader given nothing else can be asked whether the package
 /// explains itself. Not part of the ordinary suite: it exists to produce a fixture, not to assert one.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class R6PackageHarness(PristineProjectFixture pristine) : IDisposable
 {
     internal const string OutputVariable = "MOTIF_R6_OUTPUT";

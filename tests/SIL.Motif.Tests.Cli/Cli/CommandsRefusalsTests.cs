@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.Cli;
 /// code, the closed reason, the specific message a reader must act on, its branchable facts, and that the
 /// store or draft was left byte-for-byte unchanged, not merely that the outcome was a refusal.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class CommandsRefusalsTests : IDisposable
 {
     private const string ProductVersion = "1.0";

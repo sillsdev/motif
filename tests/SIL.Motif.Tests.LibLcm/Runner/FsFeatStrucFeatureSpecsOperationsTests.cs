@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.Runner;
 /// real project -- the owning/col creation-validity precedent alongside
 /// <see cref="LexEntryLexemeFormOperationsTests"/> (owning/atomic, abstract concrete-class choice).
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class FsFeatStrucFeatureSpecsOperationsTests : IDisposable
 {
     private readonly FwDataProjectLoader _loader = new();

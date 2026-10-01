@@ -9,7 +9,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Integration;
 
 /// <summary>Covers the CLI's durable enqueue-and-kick process boundary with a competing runner owner.</summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class RunnerKickRaceTests : IDisposable
 {
     private readonly PristineProjectFixture _projects;

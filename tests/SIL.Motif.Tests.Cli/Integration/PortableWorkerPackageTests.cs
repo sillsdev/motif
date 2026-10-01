@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Integration;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, ITestOutputHelper output)
 {
     private static readonly TimeSpan PublishBound = TimeSpan.FromMinutes(10);
