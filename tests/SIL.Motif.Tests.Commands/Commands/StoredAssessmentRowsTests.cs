@@ -105,8 +105,45 @@ public sealed class StoredAssessmentRowsTests : IDisposable
             .Readings!);
         Assert.Equal(runReading.Morphs.Select(morph => (morph.Form, morph.Gloss, morph.Category)),
             storedReading.Morphs.Select(morph => (morph.Form, morph.Gloss, morph.Category)));
+        Assert.Equal(runReading.Morphs.Select(morph => (morph.AllomorphId, morph.GrammaticalInfoId)),
+            storedReading.Morphs.Select(morph => (morph.AllomorphId, morph.GrammaticalInfoId)));
+        Assert.All(storedReading.Morphs, morph => Assert.NotNull(morph.AllomorphId));
         var missed = Assert.Single(stored.Words, word => word.Word == SeededProject.AnalysedWordForm).MissedApproved!;
         Assert.Equal(SeededProject.FirstGloss, Assert.Single(missed).Morphs[0].Gloss);
+    }
+
+    [Fact]
+    public void AReopenedTextWordKeepsItsWordAnalysesLink()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default", [text.TextId], []));
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ParseTime
+            ? new AssessmentRaw.Batch(new BatchAnalysis(
+            [
+                new(0, SeededProject.AnalysedWordForm, 5, WordOutcome.NoAnalysis, "-"),
+                new(1, SeededProject.UnanalysedWordForm, 4, WordOutcome.NoAnalysis, "-"),
+            ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
+            : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+
+        var run = AssessCommand.Run(new AssessRequest(fwDataPath), NewManagedRoot(), assessor, NewInvoker(), null,
+            CancellationToken.None);
+        Assert.True(run.Succeeded, run.Refusal?.Message);
+        var read = CurrentEvidenceQuery.ReadCurrentEvidence(fwDataPath);
+        Assert.True(read.Succeeded, read.Refusal?.Message);
+
+        var runLinks = run.Value!.Words.OrderBy(word => word.Word, StringComparer.Ordinal)
+            .Select(word => (word.Word, word.TryWordLink)).ToArray();
+        Assert.Equal(2, runLinks.Length);
+        Assert.All(runLinks, link => Assert.NotNull(link.TryWordLink));
+        Assert.Equal(runLinks, read.Value!.Assessment!.Words.OrderBy(word => word.Word, StringComparer.Ordinal)
+            .Select(word => (word.Word, word.TryWordLink)));
     }
 
     [Fact]

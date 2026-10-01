@@ -44,6 +44,13 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> StoredAnalysesByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Each word form's <c>silfw:</c> link to its wordform in Word Analyses, from the captured Text projection,
+    /// keyed by word form.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> WordAnalysesLinksByWord { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingCorrectnessAssessmentId { get; init; }
 
@@ -153,6 +160,7 @@ public static class CurrentEvidenceQuery
             ? ResolveReadings(project, effectiveWords)
             : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         var storedAnalyses = new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        var wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
         if (assessment is not null && saved is { TextIds.Count: > 0 })
         {
             var projected = TextWordsQuery.Query(new TextWordsRequest(project.FullFwDataPath, saved.TextIds));
@@ -170,6 +178,8 @@ public static class CurrentEvidenceQuery
                         StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
                         Identity = analysis.Identity,
                     }).ToArray();
+            foreach (var token in projected.Value.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens))
+                if (token.Form is { } form && token.WordLink is { } link) wordLinks.TryAdd(form, link);
         }
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
@@ -180,6 +190,7 @@ public static class CurrentEvidenceQuery
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
             ResolvedReadingsByWord = resolvedReadings,
             StoredAnalysesByWord = storedAnalyses,
+            WordAnalysesLinksByWord = wordLinks,
         });
     }
 
