@@ -21,6 +21,13 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
+  <!-- A chip that cannot be chosen yet stays a chip, outline and all, rather than a floating grey label. -->
+  <Style Selector="Button.filterChip:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
   <Style Selector="Button.filterChip.compact">
     <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.CompactPadding}" />
     <Setter Property="Margin" Value="{DynamicResource Component.FilterChip.CompactMargin}" />

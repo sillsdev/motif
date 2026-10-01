@@ -91,6 +91,42 @@ public sealed class ComponentStyleTests
     }
 
     [Fact]
+    public void AnUnavailableFilterChipStillLooksLikeAChip()
+    {
+        var failures = new List<string>();
+        _avalonia.Invoke(() =>
+        {
+            foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+            {
+                var chip = Press("filterChip");
+                chip.IsEnabled = false;
+                var window = new Window { Content = chip, RequestedThemeVariant = variant, Width = 120, Height = 40 };
+                try
+                {
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var face = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(chip).OfType<Avalonia.Controls.Presenters.ContentPresenter>()
+                        .First(part => part.Name == "PART_ContentPresenter");
+                    Assert.True(Application.Current!.TryGetResource("Intent.Border", variant, out var border));
+                    Assert.True(Application.Current.TryGetResource("Intent.Stroke.Box", variant, out var stroke));
+                    Assert.True(Application.Current.TryGetResource("Intent.Clear", variant, out var clear));
+                    Assert.True(Application.Current.TryGetResource("Intent.TextMuted", variant, out var muted));
+                    if (!Equals(border, face.BorderBrush)) failures.Add($"{variant}: border is {face.BorderBrush}, not Intent.Border.");
+                    if (!Equals(stroke, face.BorderThickness)) failures.Add($"{variant}: stroke is {face.BorderThickness}, not Intent.Stroke.Box.");
+                    if (!Equals(clear, face.Background)) failures.Add($"{variant}: fill is {face.Background}, not Intent.Clear.");
+                    if (!Equals(muted, face.Foreground)) failures.Add($"{variant}: text is {face.Foreground}, not Intent.TextMuted.");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    [Fact]
     public void PanGlossDifferentAndConflictLinesUseDistinctEmphasis()
     {
         _avalonia.Invoke(() =>
