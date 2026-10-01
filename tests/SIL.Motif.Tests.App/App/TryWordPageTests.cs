@@ -122,7 +122,10 @@ public sealed class TryWordPageTests
                 [new TraceCandidate([], true, null, "Built the word", [step])],
                 new TraceStep("WordAnalysis", null, null, null, null, [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-                [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
+                [new TimingAggregateRow("Plural", 4, 1, 2, 1) { Kind = "morph_rule" }], [])
+            {
+                Words = [new TimingWordRow("dogs", 10, 2, TimingCompletion.Finished)],
+            });
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
 
             context.TryWord("dogs");
@@ -133,7 +136,11 @@ public sealed class TryWordPageTests
             Assert.Equal("Affix rule", row.Kind);
             Assert.Equal("applied", row.Outcome);
             Assert.Equal("-s · dog → dogs", row.Explanation);
-            Assert.Equal("40%", row.Share);
+            // The stored share is of the word's whole parse time in that parse, not of the rules' recorded time.
+            Assert.True(page.HasEarlierTiming);
+            Assert.Equal("SHARE OF 10 ms", page.EarlierShareHeader);
+            Assert.Equal([("Plural", "Morphological rules", "4 ms", "40%"), ("Other time", "", "6 ms", "60%")],
+                page.EarlierRuleTimes.Select(time => (time.Rule, time.KindLabel, time.TimeText, time.ShareText)));
             Assert.Equal("Open dogs in Analyze texts", page.OpenInTextsText);
             Assert.Contains("dogs", page.RecentWords);
             var request = Assert.Single(fake.TimingRequests);
@@ -164,10 +171,92 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Equal("4.0 ms", Assert.Single(page.RulesOnBestPath).StoredTime);
+            Assert.Equal("4 ms", Assert.Single(page.EarlierRuleTimes).TimeText);
             Assert.Equal("assessment-1", Assert.Single(fake.TimingRequests).AssessmentId);
         });
     }
+
+    [Fact]
+    public void TimingFromAnEarlierParseSaysWhenItRanAndThatItIsNotThisTry()
+    {
+        RunOnAvalonia(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming());
+            var parsedAt = new DateTimeOffset(2026, 9, 22, 9, 18, 0, TimeSpan.Zero);
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), parsedAt, false));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            var when = parsedAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
+            Assert.Equal($"Time from the parse of {when}", page.EarlierTimingTitle);
+            Assert.Equal("Not from this try. In that parse dogs took 10 ms; each rule's time covers that parse's " +
+                "whole search for the word, including attempts that stopped, not only the path above.",
+                page.EarlierTimingSource);
+
+            var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
+            var window = new Window { Content = view, Width = 1240, Height = 1600 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var bestPath = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
+                    AutomationProperties.GetName(border) == "Rules on this word's best path");
+                var texts = bestPath.GetLogicalDescendants().OfType<TextBlock>()
+                    .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
+                Assert.Contains("Rules on this word's best path", texts);
+                Assert.DoesNotContain(texts, text => text is not null &&
+                    (text.Contains("time", StringComparison.OrdinalIgnoreCase) || text.EndsWith('%')));
+                var earlier = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
+                    AutomationProperties.GetName(border) == "Time from an earlier parse");
+                Assert.True(earlier.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TimingIsNotShownWhenItsParseCannotBeNamed()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming());
+            // A re-run replaced some words' times, so which parse a word's time came from is no longer one answer.
+            context.PublishEvidence(new WorkspaceEvidence(Assessment() with { TimingOverrideAssessmentIds = ["rerun-1"] },
+                DateTimeOffset.UtcNow, WasRerun: true));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.False(page.HasEarlierTiming);
+            Assert.Empty(page.EarlierRuleTimes);
+        });
+    }
+
+    private static WordTraceResponse DogsTrace() => new("dogs", true, true, null, 1, null, 10,
+        [new TraceCandidate([], true, null, "Built the word", [
+            new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, []) { OutcomeStatus = "succeeded" }])],
+        new TraceStep("WordAnalysis", null, null, null, null, []));
+
+    private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
+        [new TimingAggregateRow("Plural", 4, 1, 2, 1) { Kind = "morph_rule" }], [])
+    {
+        Words = [new TimingWordRow("dogs", 10, 2, TimingCompletion.Finished)],
+    };
 
     [Fact]
     public void RuleTimingAndWordLinksRouteThroughTheWorkspaceContext()
@@ -283,11 +372,10 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            var row = Assert.Single(page.RulesOnBestPath);
-            Assert.Equal("Not recorded", row.StoredTime);
-            Assert.Equal("—", row.Share);
+            Assert.Single(page.RulesOnBestPath);
+            Assert.False(page.HasEarlierTiming);
+            Assert.Empty(page.EarlierRuleTimes);
             Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
-            Assert.Equal("—", row.Attempts);
         });
     }
 
