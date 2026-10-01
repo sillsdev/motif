@@ -1,17 +1,11 @@
 <#
   .SYNOPSIS
-  The test gate: everything build.ps1 checks, then the whole test suite.
+  Run the Unit and Integration test levels, or the full suite with -All.
 
   .DESCRIPTION
-  Use this instead of a bare `dotnet test`. It runs build.ps1 first so that a green test run always
-  implies clean comments and a clean compile -- one command whose success means the whole thing is
-  good, rather than three that have to be remembered in order.
-
-  There is no filter parameter, deliberately. This script exists so that one green run means one
-  thing, and a subset cannot mean it. The filter that used to live here excluded every test needing a
-  FieldWorks checkout, which is exactly how that dependency survived unexamined for so long: a filter
-  nobody questions is where the next one hides. Run `dotnet test --filter` directly when narrowing a
-  hunt -- knowing that it skips this gate, which is the point.
+  With no level switch, this runs Unit and Integration only for a quick developer loop. That default
+  run is not a merge gate. Pass -All for every level; CI and release validation use that mode. Unless
+  -SkipBuild is passed, the script runs build.ps1 first so the comment gate and compile precede tests.
 
   The suite needs no project or checkout from outside this repo: every LibLCM project it exercises is
   built at run time by `NewLangProjFixture` and seeded by `SeededProject`. The one external dependency
@@ -40,6 +34,15 @@
   .PARAMETER SkipBuild
   Reuse the existing binaries and skip the build gate. For re-running a suite you just built.
 
+  .PARAMETER All
+  Run Unit, Integration and System tests. This is the merge-gate mode.
+
+  .PARAMETER Project
+  Run only the named test project.
+
+  .PARAMETER Filter
+  Run only matching tests in the selected project, using the VSTest filter syntax.
+
   .PARAMETER AllowRunningTestHosts
   Proceed even though a test host from an earlier run is still alive. A stale one holds a lock on the
   build output, which stalls the build rather than failing it -- and a stalled build prints nothing, so
@@ -53,6 +56,9 @@
 param(
     [string] $Configuration = 'Debug',
     [switch] $SkipBuild,
+    [switch] $All,
+    [string] $Project,
+    [string] $Filter,
     [switch] $AllowRunningTestHosts
 )
 
@@ -76,9 +82,13 @@ $env:MOTIF_DEVELOPER_COMMANDS = '1'
 # Short-lived, oversubscribed test processes spend CPU on tiering and spinning: 4 suites used 25% less without.
 $env:DOTNET_TieredPGO = '0'
 $env:DOTNET_ThreadPool_UnfairSemaphoreSpinLimit = '0'
+$env:DOTNET_TC_CallCounting = '0'
 # Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
 $shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
 if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
+$levelSelection = if ($All) { 'All' } else { 'Unit,Integration' }
+
+if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
 
 function Write-Step {
     param([string] $Text)
@@ -137,22 +147,38 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
     $shards = 1
     if ($shardNode -and -not [int]::TryParse($shardNode.InnerText.Trim(), [ref] $shards)) { $shards = 0 }
     if ($shards -lt 1) { throw "MotifTestShards must be a positive whole number in $projectPath" }
-    $testProjects += [pscustomobject]@{ Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards }
+    $levelNode = $projectDocument.SelectSingleNode("//*[local-name()='MotifTestDefaultLevel']")
+    $defaultLevel = if ($levelNode) { $levelNode.InnerText.Trim() } else { '' }
+    if ($defaultLevel -notin @('Unit', 'Integration', 'System')) {
+        throw "MotifTestDefaultLevel must be Unit, Integration or System in $projectPath"
+    }
+    if (-not $All -and $defaultLevel -eq 'System') { continue }
+    if ($Project -and $projectFile.BaseName -ne $Project) { continue }
+    $testProjects += [pscustomobject]@{
+        Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards; DefaultLevel = $defaultLevel
+        Assembly = Join-Path (Join-Path $repoRoot "bin/$Configuration/tests") "$($projectFile.BaseName).dll"
+    }
 }
 
-if ($testProjects.Count -eq 0) { throw 'No test projects were found under tests/ and listed in Motif.sln.' }
+if ($testProjects.Count -eq 0) {
+    if ($Project) { throw "No selected test project named '$Project' was found under tests/ and listed in Motif.sln." }
+    throw 'No test projects were found under tests/ and listed in Motif.sln.'
+}
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 $availableProcessors = [Environment]::ProcessorCount
 # Sized so four suites side by side do not oversubscribe the machine; see the help text.
 $projectConcurrency = [Math]::Max(2, [int][Math]::Floor($availableProcessors / 6))
 # The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
-$testRuns = @(foreach ($project in @($testProjects | Sort-Object -Property Shards -Descending)) {
-    for ($index = 0; $index -lt $project.Shards; $index++) {
-        $label = if ($project.Shards -eq 1) { $project.Name } else { "$($project.Name).shard$index" }
+$testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property Shards -Descending)) {
+    $runShards = $testProject.Shards
+    if ($Filter) { $runShards = 1 }
+    elseif (-not $All) { $runShards = [Math]::Max(1, [int][Math]::Ceiling($runShards / 2.0)) }
+    for ($index = 0; $index -lt $runShards; $index++) {
+        $label = if ($runShards -eq 1) { $testProject.Name } else { "$($testProject.Name).shard$index" }
         [pscustomobject]@{
-            Project = $project.Name; Label = $label; Path = $project.Path
-            Shard = if ($project.Shards -eq 1) { '' } else { "$index/$($project.Shards)" }
+            Project = $testProject.Name; Label = $label; Assembly = $testProject.Assembly
+            Shard = if ($runShards -eq 1) { '' } else { "$index/$runShards" }
         }
     }
 })
@@ -166,7 +192,7 @@ if (-not $resultsRoot.StartsWith($binRoot, [StringComparison]::OrdinalIgnoreCase
 if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
-Write-Step ("dotnet test (full suite, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
+Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
     "up to $projectConcurrency at a time; $availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()
 $jobs = foreach ($run in $testRuns) {
@@ -178,13 +204,14 @@ $jobs = foreach ($run in $testRuns) {
     $inputToken = "$($run.Label)-$([guid]::NewGuid().ToString('N'))"
     [IO.File]::WriteAllText($projectInput, $inputToken)
     Start-ThreadJob -Name $run.Label -ThrottleLimit $projectConcurrency `
-        -ArgumentList $run.Label, $run.Path, $run.Shard, $Configuration, $projectResults, $projectLog, $projectErrorLog,
-            $projectInput, $inputToken -ScriptBlock {
-        param($name, $projectPath, $shard, $configuration, $projectResults, $log, $errorLog, $inputPath, $inputToken)
+        -ArgumentList $run.Label, $run.Assembly, $run.Shard, $Filter, $levelSelection, $Configuration,
+            $projectResults, $projectLog, $projectErrorLog, $projectInput, $inputToken -ScriptBlock {
+        param($name, $assemblyPath, $shard, $filter, $levels, $configuration, $projectResults, $log, $errorLog,
+            $inputPath, $inputToken)
         $projectClock = [Diagnostics.Stopwatch]::StartNew()
         $arguments = @(
             'test'
-            ('"{0}"' -f $projectPath)
+            ('"{0}"' -f $assemblyPath)
             '--configuration'
             $configuration
             '--nologo'
@@ -199,8 +226,10 @@ $jobs = foreach ($run in $testRuns) {
             '--blame-hang-dump-type'
             'none'
         )
+        if ($filter) { $arguments += @('--filter', ('"{0}"' -f $filter)) }
         # Passed to the test host alone: a thread job's own environment is shared with every other job.
         if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
+        $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
@@ -284,5 +313,6 @@ if ($failed) {
 }
 
 Write-Host ''
-Write-Host 'Tests OK: full suite.' -ForegroundColor Green
+if ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
+else { Write-Host 'Tests OK: Unit+Integration subset; default run is not a merge gate.' -ForegroundColor Green }
 exit 0

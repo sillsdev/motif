@@ -4,7 +4,8 @@
 
 ```
 ./build.ps1     # comment hygiene, then compile
-./test.ps1      # the above, then the full suite
+./test.ps1      # the above, then Unit and Integration tests for the developer loop
+./test.ps1 -All # the above, then every level; this is the merge gate
 ```
 
 **Use them every time.** `./build.ps1` runs the comment gate before it compiles, so a violation fails
@@ -12,9 +13,9 @@ in seconds rather than surviving until someone remembers to look. A bare `dotnet
 gate entirely, which is how the rules below decay into suggestions. `./test.ps1` runs the build gate
 first, so one green run means clean comments, a clean compile, and a passing suite.
 
-CI runs the same two scripts (`.github/workflows/ci.yml`), so anything they reject locally is
-rejected there too — and anything they let through is not a CI surprise. The workflow runs on Windows,
-Ubuntu 22.04, and macOS.
+The default `./test.ps1` run is not a merge gate: it selects Unit and Integration tests for the quick
+developer loop. Pass `-All` to run every level. CI and release validation use `-All`; the workflow runs
+on Windows, Ubuntu 22.04, and macOS.
 
 **`./test.ps1` needs no project or checkout from outside this repo.** Every LibLCM project the suite
 exercises is a real, blank `LcmCache` built at run time by `NewLangProjFixture` and seeded by
@@ -26,7 +27,10 @@ Tests needing it use `RealParserFactAttribute`, which skips when the parser is a
 developer machine. Release integration validation requires the pinned executable and reports any
 parser-dependent skips as incomplete validation.
 
-**`./test.ps1` runs each test project as one or more processes, with concurrency capped at a sixth of the
+**`./test.ps1` gives each test class exactly one level from its project's `MotifTestDefaultLevel`, with
+System overrides for walkthroughs and real-parser tests. With no switch it selects Unit and Integration;
+`-All` selects all three levels. A bare `dotnet test` leaves `MOTIF_TEST_LEVELS` unset and runs every test.
+It runs each selected test project as one or more processes, with concurrency capped at a sixth of the
 available processor count (rounded down, minimum two), so four suites in four worktrees can run at once.** It discovers test projects listed in `Motif.sln` under `tests/`, so
 adding a project includes it automatically. The cap leaves processor capacity for each test host's CLI,
 worker, and parser child processes. LibLCM cache startup goes through a process-wide gate in
