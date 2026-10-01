@@ -66,9 +66,6 @@
   <Style Selector="Button.overviewTile:pointerover">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
-  <Style Selector="Button.overviewTile:focus">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
-  </Style>
   <Style Selector="StackPanel.overviewTileContent">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
   </Style>

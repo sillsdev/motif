@@ -75,6 +75,22 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    // WCAG 1.4.11 asks 3:1 of a focus indicator against what surrounds it.
+    [Theory]
+    [InlineData("Intent.Surface")]
+    [InlineData("Intent.Surface.Subtle")]
+    public void TheKeyboardFocusRingStandsOutInBothThemes(string surface)
+    {
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            {
+                var ratio = Ratio(Resolve("Intent.Focus", theme), Resolve(surface, theme));
+                Assert.True(ratio >= Part, $"{theme} Intent.Focus on {surface}: {ratio:F2}:1");
+            }
+        });
+    }
+
     [Fact]
     public void TheTechDemoBannersButtonsAreLiveAndReadableInBothThemes()
     {

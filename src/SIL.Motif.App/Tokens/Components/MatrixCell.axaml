@@ -103,7 +103,7 @@
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
   </Style>
-  <Style Selector="Border.matrixCell.selected, Border.matrixCell:focus-visible">
+  <Style Selector="Border.matrixCell.selected">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.UnderlineHeavy}" />
   </Style>

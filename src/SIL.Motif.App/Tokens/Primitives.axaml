@@ -114,6 +114,7 @@
 
   <Thickness x:Key="Primitive.Inset.0_0_0_0">0</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_1">1</Thickness>
+  <Thickness x:Key="Primitive.Inset.2_2_2_2">2</Thickness>
   <Thickness x:Key="Primitive.Inset.1p2_1p2_1p2_1p2">1.2</Thickness>
   <Thickness x:Key="Primitive.Inset.16_16_16_16">16</Thickness>
   <Thickness x:Key="Primitive.Inset.14_10_14_10">14,10</Thickness>

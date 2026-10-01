@@ -48,6 +48,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HoverReveal.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Density.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Focus.axaml" />
     <!-- Last, so no owner's descendant selector restyles the words of its tooltip. -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ToolTip.axaml" />
   </Application.Styles>
