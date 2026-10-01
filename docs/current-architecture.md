@@ -39,6 +39,16 @@ Only the CLI test project adds a build-only project reference to `SIL.Motif.Work
 `ReferenceOutputAssembly="false"` and `Private="false"`. This makes the apphost available to
 sibling-process tests without adding the executable to the product CLI's references.
 
+## Reading stored evidence
+
+Stored results keep the project state and measurement time that supplied them, even after FieldWorks saves again. Parsing chosen words again changes their main answers only when the caller explicitly requests replacement; an exploratory measurement remains separate.
+
+`CurrentEvidenceQuery` selects the exact Baseline and Default Selection before creating one `AssessmentEvidenceSet`. Uses, Warnings, Overview, default Timing and reopened Assess responses consume its effective words and object times. `ReplaceAssessmentId` records the complete ParseTime run being updated; replacements must share its Baseline and stay within its word set. Each word carries a `WordMeasurementOrigin` naming its producing Assessment, invocation and measurement time. Explicit historical Timing reads retain the named run's original rows unless the caller supplies overrides, which use the same overlay policy.
+
+Stored analyses, individual opinions, expected readings and Word Analyses links come from the captured Baseline for every resolved word, including added words outside chosen Texts. Parser morphology identities are resolved there too. The scratch cache is disposed before plain records leave the read. `WordContextQuery` provides the same word context independently of Selection membership or an Assessment, with the exact Baseline token and its source-save and publication times; an expected-token mismatch or missing Baseline file is refused.
+
+Timing describes the selected measurement's Baseline relationship separately from the current project's freshness. A historical run keeps its own captured save when retained invocation evidence supplies it; it never borrows another Baseline's save time. Warning word joins likewise require the token of the Baseline whose grammar was checked.
+
 ## Process coordination and project ownership
 
 Motif uses SQLite for process-shared workflow state and coordination. A machine store tracks known projects and usage; each project's Motif database holds its workflow, jobs and retained evidence. The CLI and Worker coordinate through those stores. They do not make Motif's database a second authority for FieldWorks language data.

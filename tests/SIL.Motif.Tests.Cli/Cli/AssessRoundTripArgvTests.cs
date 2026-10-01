@@ -85,6 +85,50 @@ public sealed class AssessRoundTripArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task AssessReplacesUpdatesOnlyTheExplicitlyNamedRunsWords()
+    {
+        var project = _pristine.CopyProjectFile();
+        await CaptureBaseline(project);
+        var setup = CliInProcess.Run(_workerRoot, null, false, "selection", "set-default", "--project", project,
+            "--name", "Default", "--add-words", "motifa,motifb", "--json");
+        Assert.True(setup.ExitCode == 0, setup.FailureDetails);
+        var parser = CopyFakeParser(new
+        {
+            words = new[]
+            {
+                new { word = "motifa", outcome = "complete" },
+                new { word = "motifb", outcome = "complete" },
+            },
+        });
+        var first = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        Assert.True(first.ExitCode == 0, first.FailureDetails);
+        var firstResponse = ProjectionJson.Deserialize<AssessCommandResponse>(first.Output)!;
+        var baseId = firstResponse.Words.First().Origin!.AssessmentId;
+        var wordsPath = Path.Combine(_root, "reparse.txt");
+        File.WriteAllLines(wordsPath, ["motifa"]);
+
+        var replacement = await CliProcess.RunAsync(_workerRoot, parser, false,
+            "assess", project, "--words", wordsPath, "--replaces", baseId, "--json");
+
+        Assert.True(replacement.ExitCode == 0, replacement.FailureDetails);
+        var replacementResponse = ProjectionJson.Deserialize<AssessCommandResponse>(replacement.Output)!;
+        var replacementId = Assert.Single(replacementResponse.Words).Origin!.AssessmentId;
+        Assert.NotEqual(baseId, replacementId);
+        var timingResult = CliInProcess.Run(_workerRoot, null, false,
+            "timing", "--project", project, "--json");
+        Assert.True(timingResult.ExitCode == 0, timingResult.FailureDetails);
+        var timing = ProjectionJson.Deserialize<TimingResponse>(timingResult.Output)!;
+        Assert.Equal(baseId, timing.AssessmentId);
+        Assert.Equal(replacementId, timing.Words.Single(word => word.Word == "motifa").Origin!.AssessmentId);
+        Assert.Equal(baseId, timing.Words.Single(word => word.Word == "motifb").Origin!.AssessmentId);
+        var history = CliInProcess.Run(_workerRoot, null, false,
+            "timing", "--project", project, "--assessment", baseId, "--json");
+        Assert.True(history.ExitCode == 0, history.FailureDetails);
+        Assert.All(ProjectionJson.Deserialize<TimingResponse>(history.Output)!.Words,
+            word => Assert.Equal(baseId, word.Origin!.AssessmentId));
+    }
+
+    [Fact]
     public async Task InterruptingAssessStopsTheParserAndStoresNothing()
     {
         var project = _pristine.CopyProjectFile();

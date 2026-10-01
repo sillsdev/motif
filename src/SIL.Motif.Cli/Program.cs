@@ -981,6 +981,9 @@ try
 
         case "assess":
             if (positionals.Count != 1) return Usage(AssessUsage(), asJson);
+            flags.TryGetValue("replaces", out var assessReplaces);
+            if (assessReplaces is not null && !CanonicalId.TryParse(assessReplaces, out _))
+                return Usage(AssessUsage(), asJson);
             var assessRetryFailed = flags.ContainsKey("retry-failed");
             var hasAssessRetrySlowerThan = flags.ContainsKey("retry-slower-than");
             var hasAssessRetrySource = flags.TryGetValue("retry-source-assessment", out var assessRetrySource);
@@ -1031,7 +1034,7 @@ try
                 if (activityLease is null)
                     return RefuseActivityDuringUpdate();
                 result = RunWithConsoleCancellation(cancellationToken => RenderCommand(AssessCommand.Assess(
-                    new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap),
+                    new AssessRequest(positionals[0], assessSelection, assessTimeLimitMs, assessStepCap, assessReplaces),
                     asJson ? null : progress => error.WriteLine(progress.Message), cancellationToken)));
             }
             break;
