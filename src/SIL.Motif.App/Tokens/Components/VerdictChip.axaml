@@ -1,6 +1,6 @@
 <!--
-  One verdict, one colour: the meanings every page shares, on chips, glyphs and verdict text.
-  Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
+  One verdict, one colour: the meanings every page shares, on chips, glyphs and verdict text. A parser outcome is
+  coloured text on the plain chip; only a problem fills. Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -25,17 +25,14 @@
   <Style Selector="Border.verdictChip.compact :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
-  <Style Selector="Border.verdictChip.agrees">
-    <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
-  </Style>
   <Style Selector="Border.verdictChip.agrees :is(TextBlock), TextBlock.verdictGlyph.agrees, :is(TextBlock).verdictText.agrees">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Same}" />
   </Style>
   <Style Selector="Border.verdictChip.differs">
-    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Fill}" />
   </Style>
   <Style Selector="Border.verdictChip.differs :is(TextBlock), TextBlock.verdictGlyph.differs, :is(TextBlock).verdictText.differs">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
   </Style>
   <Style Selector="Border.verdictChip.new">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
@@ -43,11 +40,11 @@
   <Style Selector="Border.verdictChip.new :is(TextBlock), TextBlock.verdictGlyph.new, :is(TextBlock).verdictText.new">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>
-  <Style Selector="Border.verdictChip.noresult">
-    <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
-  </Style>
   <Style Selector="Border.verdictChip.noresult :is(TextBlock), TextBlock.verdictGlyph.noresult, :is(TextBlock).verdictText.noresult">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.NoParse}" />
+  </Style>
+  <Style Selector="Border.verdictChip.limit :is(TextBlock), TextBlock.verdictGlyph.limit, :is(TextBlock).verdictText.limit">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Stopped}" />
   </Style>
   <Style Selector="Border.verdictChip.several">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />

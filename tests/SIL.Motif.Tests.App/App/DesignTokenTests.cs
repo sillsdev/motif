@@ -258,6 +258,15 @@ public sealed class DesignTokenTests
             Assert.Contains($"Tokens/Components/{Path.GetFileName(file)}\"", app);
     }
 
+    // The outcome, meaning and timing keys replaced these; an alias would keep two names for one meaning.
+    [Fact]
+    public void TheMarkKeysReplacedAreGoneWithoutAliases()
+    {
+        var retired = new Regex(@"Intent\.(?:Parser|Agreement|Chart)\.");
+        Assert.DoesNotContain(IntentKeys(), key => retired.IsMatch(key));
+        Assert.DoesNotContain(AppSources("*.axaml").Concat(AppSources("*.cs")), text => retired.IsMatch(text));
+    }
+
     [Fact]
     public void NoResourceKeyKeepsTheRetiredMotifPrefix()
     {

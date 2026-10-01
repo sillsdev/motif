@@ -10,28 +10,31 @@ namespace SIL.Motif.App.Views;
 /// <param name="Brush">The brush the bar fills this kind's part with.</param>
 public sealed record TimingKindLegendEntry(TimingAggregateRow Row, IBrush? Brush);
 
-/// <summary>Draws the command's kind shares across one full-width bar, and names each part's colour for a legend.</summary>
+/// <summary>
+/// Draws the command's kind shares across one full-width bar, and names each part's colour for a legend. Each kind
+/// keeps one colour wherever it falls in the bar, so a kind looks the same however the shares sort.
+/// </summary>
 public sealed class TimingKindBar : Control
 {
     public static readonly StyledProperty<IReadOnlyList<TimingAggregateRow>?> RowsProperty =
         AvaloniaProperty.Register<TimingKindBar, IReadOnlyList<TimingAggregateRow>?>(nameof(Rows));
-    public static readonly StyledProperty<IBrush?> FirstBrushProperty =
-        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(FirstBrush));
-    public static readonly StyledProperty<IBrush?> SecondBrushProperty =
-        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(SecondBrush));
-    public static readonly StyledProperty<IBrush?> ThirdBrushProperty =
-        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(ThirdBrush));
-    public static readonly StyledProperty<IBrush?> FourthBrushProperty =
-        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(FourthBrush));
-    public static readonly StyledProperty<IBrush?> OtherBrushProperty =
-        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(OtherBrush));
+    public static readonly StyledProperty<IBrush?> MorphRuleBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(MorphRuleBrush));
+    public static readonly StyledProperty<IBrush?> PhonRuleBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(PhonRuleBrush));
+    public static readonly StyledProperty<IBrush?> LexiconBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(LexiconBrush));
+    public static readonly StyledProperty<IBrush?> RootLookupBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(RootLookupBrush));
+    public static readonly StyledProperty<IBrush?> UnattributedBrushProperty =
+        AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(UnattributedBrush));
     public static readonly DirectProperty<TimingKindBar, IReadOnlyList<TimingKindLegendEntry>> LegendProperty =
         AvaloniaProperty.RegisterDirect<TimingKindBar, IReadOnlyList<TimingKindLegendEntry>>(nameof(Legend), bar => bar.Legend);
 
     private IReadOnlyList<TimingKindLegendEntry> _legend = [];
 
-    static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, FirstBrushProperty,
-        SecondBrushProperty, ThirdBrushProperty, FourthBrushProperty, OtherBrushProperty);
+    static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, MorphRuleBrushProperty,
+        PhonRuleBrushProperty, LexiconBrushProperty, RootLookupBrushProperty, UnattributedBrushProperty);
 
     public IReadOnlyList<TimingAggregateRow>? Rows
     {
@@ -39,34 +42,39 @@ public sealed class TimingKindBar : Control
         set => SetValue(RowsProperty, value);
     }
 
-    public IBrush? FirstBrush
+    /// <summary>The part for morphological rules.</summary>
+    public IBrush? MorphRuleBrush
     {
-        get => GetValue(FirstBrushProperty);
-        set => SetValue(FirstBrushProperty, value);
+        get => GetValue(MorphRuleBrushProperty);
+        set => SetValue(MorphRuleBrushProperty, value);
     }
 
-    public IBrush? SecondBrush
+    /// <summary>The part for phonological rules.</summary>
+    public IBrush? PhonRuleBrush
     {
-        get => GetValue(SecondBrushProperty);
-        set => SetValue(SecondBrushProperty, value);
+        get => GetValue(PhonRuleBrushProperty);
+        set => SetValue(PhonRuleBrushProperty, value);
     }
 
-    public IBrush? ThirdBrush
+    /// <summary>The part for lexical entries.</summary>
+    public IBrush? LexiconBrush
     {
-        get => GetValue(ThirdBrushProperty);
-        set => SetValue(ThirdBrushProperty, value);
+        get => GetValue(LexiconBrushProperty);
+        set => SetValue(LexiconBrushProperty, value);
     }
 
-    public IBrush? FourthBrush
+    /// <summary>The part for root lookup.</summary>
+    public IBrush? RootLookupBrush
     {
-        get => GetValue(FourthBrushProperty);
-        set => SetValue(FourthBrushProperty, value);
+        get => GetValue(RootLookupBrushProperty);
+        set => SetValue(RootLookupBrushProperty, value);
     }
 
-    public IBrush? OtherBrush
+    /// <summary>The part for time no rule kind's timer accounts for, and for any kind the bar does not name.</summary>
+    public IBrush? UnattributedBrush
     {
-        get => GetValue(OtherBrushProperty);
-        set => SetValue(OtherBrushProperty, value);
+        get => GetValue(UnattributedBrushProperty);
+        set => SetValue(UnattributedBrushProperty, value);
     }
 
     /// <summary>Each kind the bar draws, in order, with the brush of its part.</summary>
@@ -76,13 +84,23 @@ public sealed class TimingKindBar : Control
         private set => SetAndRaise(LegendProperty, ref _legend, value);
     }
 
+    /// <summary>The brush for <paramref name="kind"/>, as PanGloss's statistics name it.</summary>
+    public IBrush? BrushFor(string kind) => kind switch
+    {
+        "morph_rule" => MorphRuleBrush,
+        "phon_rule" => PhonRuleBrush,
+        "lex_entry" => LexiconBrush,
+        "root_index" => RootLookupBrush,
+        _ => UnattributedBrush,
+    };
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == RowsProperty || change.Property == FirstBrushProperty ||
-            change.Property == SecondBrushProperty || change.Property == ThirdBrushProperty ||
-            change.Property == FourthBrushProperty || change.Property == OtherBrushProperty)
-            Legend = Rows is { } rows ? [.. rows.Select((row, index) => new TimingKindLegendEntry(row, BrushAt(index)))] : [];
+        if (change.Property == RowsProperty || change.Property == MorphRuleBrushProperty ||
+            change.Property == PhonRuleBrushProperty || change.Property == LexiconBrushProperty ||
+            change.Property == RootLookupBrushProperty || change.Property == UnattributedBrushProperty)
+            Legend = Rows is { } rows ? [.. rows.Select(row => new TimingKindLegendEntry(row, BrushFor(row.Kind)))] : [];
     }
 
     public override void Render(DrawingContext context)
@@ -90,22 +108,12 @@ public sealed class TimingKindBar : Control
         base.Render(context);
         if (Rows is not { Count: > 0 } || Bounds.Width <= 0) return;
         var x = 0d;
-        for (var index = 0; index < Rows.Count; index++)
+        foreach (var row in Rows)
         {
-            var width = Math.Max(0, Math.Min(Bounds.Width - x, Rows[index].ShareOfTotal * Bounds.Width));
-            if (BrushAt(index) is { } brush)
+            var width = Math.Max(0, Math.Min(Bounds.Width - x, row.ShareOfTotal * Bounds.Width));
+            if (BrushFor(row.Kind) is { } brush)
                 context.FillRectangle(brush, new Rect(x, 0, width, Bounds.Height));
             x += width;
         }
     }
-
-    // The first four kinds get their own colour; every later kind shares the Other brush.
-    private IBrush? BrushAt(int index) => index switch
-    {
-        0 => FirstBrush,
-        1 => SecondBrush,
-        2 => ThirdBrush,
-        3 => FourthBrush,
-        _ => OtherBrush,
-    };
 }

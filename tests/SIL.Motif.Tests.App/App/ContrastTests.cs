@@ -91,6 +91,38 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    // Each mark's text, then the fill it sits on; a mark with no fill of its own sits on the page or a card.
+    public static TheoryData<string, string?> MarkTexts() => new()
+    {
+        { "Intent.Outcome.Same", null },
+        { "Intent.Outcome.Different", "Intent.Outcome.Different.Fill" },
+        { "Intent.Outcome.NoParse", null },
+        { "Intent.Outcome.Stopped", null },
+        { "Intent.Outcome.NotParsed", null },
+        { "Intent.Consequence.Fine", null },
+        { "Intent.Consequence.Look", "Intent.Consequence.Look.Fill" },
+        { "Intent.Consequence.Problem", "Intent.Consequence.Problem.Fill" },
+        { "Intent.Consequence.Neutral", null },
+        { "Intent.Severity.Warning", "Intent.Severity.Warning.Fill" },
+        { "Intent.Severity.Error", null },
+        { "Intent.Severity.Info", null },
+    };
+
+    [Theory]
+    [MemberData(nameof(MarkTexts))]
+    public void AMarksTextIsReadableOnItsFillAndOnThePageInBothThemes(string text, string? fill)
+    {
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            foreach (var surface in new[] { fill, "Intent.Surface", "Intent.Surface.Raised" }.OfType<string>())
+            {
+                var ratio = Ratio(Resolve(text, theme), Resolve(surface, theme));
+                Assert.True(ratio >= Text, $"{theme} {text} on {surface}: {ratio:F2}:1, needs {Text}:1");
+            }
+        });
+    }
+
     [Fact]
     public void TheTechDemoBannersButtonsAreLiveAndReadableInBothThemes()
     {
@@ -184,13 +216,12 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     PageScreenshots.Settle(window);
                     var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>());
                     Assert.True(bar.IsEffectivelyVisible);
-                    var parts = new[] { bar.FirstBrush, bar.SecondBrush, bar.ThirdBrush, bar.FourthBrush, bar.OtherBrush }
-                        .Select(brush => Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color).ToArray();
+                    var brushes = KindBrushes(bar);
+                    var parts = brushes.Select(brush => Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color).ToArray();
                     var reserved = new[] { Resolve("Intent.Primary", theme), Resolve("Intent.Link", theme) };
                     if (parts.Distinct().Count() != parts.Length) failures.Add($"{theme}: two parts share a colour");
                     if (parts.Intersect(reserved).Any()) failures.Add($"{theme}: a part is Intent.Primary or Intent.Link");
                     var card = Backdrop(bar);
-                    var brushes = new[] { bar.FirstBrush, bar.SecondBrush, bar.ThirdBrush, bar.FourthBrush, bar.OtherBrush };
                     for (var index = 0; index < parts.Length; index++)
                     {
                         var ratio = Ratio(Painted(bar, Layer(brushes[index])), card);
@@ -225,7 +256,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>());
                 var legend = window.GetLogicalDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Timing by kind");
-                var parts = new[] { bar.FirstBrush, bar.SecondBrush, bar.ThirdBrush, bar.FourthBrush, bar.OtherBrush };
                 var swatches = legend.GetVisualDescendants().OfType<Border>()
                     .Where(border => border.Classes.Contains("swatch")).Select(border => border.Background).ToArray();
 
@@ -234,7 +264,8 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     .Select(border => Math.Round(border.TranslatePoint(default, legend)!.Value.Y)).Distinct().Count();
                 Assert.True(rows < swatches.Length, $"the legend is a list of {rows} rows, not a row that wraps");
                 for (var index = 0; index < swatches.Length; index++)
-                    Assert.Same(parts[Math.Min(index, parts.Length - 1)], swatches[index]);
+                    Assert.Same(bar.BrushFor(bar.Rows[index].Kind), swatches[index]);
+                Assert.Equal(swatches.Length, swatches.Distinct().Count());
             }
             finally
             {
@@ -242,6 +273,43 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             }
         }, TimeSpan.FromMinutes(1));
     }
+
+    [Theory]
+    [InlineData("morph_rule", "Intent.Timing.MorphRule")]
+    [InlineData("phon_rule", "Intent.Timing.PhonRule")]
+    [InlineData("lex_entry", "Intent.Timing.Lexicon")]
+    [InlineData("root_index", "Intent.Timing.RootLookup")]
+    [InlineData("anything else", "Intent.Timing.Unattributed")]
+    public void ATimingKindKeepsItsOwnColourWhereverItFallsInTheBar(string kind, string key)
+    {
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            {
+                var bar = new TimingKindBar();
+                var window = new Window { Content = bar, RequestedThemeVariant = theme, Width = 400, Height = 100 };
+                try
+                {
+                    window.Show();
+                    foreach (var order in new[] { new[] { kind, "other" }, new[] { "other", kind } })
+                    {
+                        bar.Rows = [.. order.Select(name => new SIL.Motif.Contract.Responses.TimingAggregateRow(name, 1, 0.5, 1, 1) { Kind = name })];
+                        window.UpdateLayout();
+                        var entry = Assert.Single(bar.Legend, entry => entry.Row.Kind == kind);
+                        var brush = Assert.IsAssignableFrom<ISolidColorBrush>(entry.Brush);
+                        Assert.Equal(Resolve(key, theme), brush.Color);
+                    }
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        });
+    }
+
+    private static IBrush?[] KindBrushes(TimingKindBar bar) =>
+        [bar.MorphRuleBrush, bar.PhonRuleBrush, bar.LexiconBrush, bar.RootLookupBrush, bar.UnattributedBrush];
 
     // Each owner restyles the text inside it, and a tooltip's text is its owner's logical descendant.
     public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "verdictChip", "ruleRow", "handoffQuestion" };

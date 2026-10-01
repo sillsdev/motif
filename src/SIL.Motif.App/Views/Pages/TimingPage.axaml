@@ -130,12 +130,7 @@
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Classes="section-title" Text="{Binding ScopeLabel}" />
                 <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindTiming.Aggregates}"
-                                     Height="{DynamicResource Component.Timing.BarHeight}"
-                                     FirstBrush="{DynamicResource Intent.Chart.Series1}"
-                                     SecondBrush="{DynamicResource Intent.Chart.Series2}"
-                                     ThirdBrush="{DynamicResource Intent.Chart.Series3}"
-                                     FourthBrush="{DynamicResource Intent.Chart.Series4}"
-                                     OtherBrush="{DynamicResource Intent.Chart.Other}" />
+                                     Height="{DynamicResource Component.Timing.BarHeight}" />
                 <ItemsControl ItemsSource="{Binding #KindBar.Legend}"
                               AutomationProperties.Name="Timing by kind">
                   <ItemsControl.ItemsPanel>

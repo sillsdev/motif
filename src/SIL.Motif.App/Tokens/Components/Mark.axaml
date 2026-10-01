@@ -1,0 +1,91 @@
+<!--
+  The marks every page shares, one class per kind, so no mark answers two questions.
+  An outcome is coloured text and never fills; a meaning is the only mark that fills or edges; a severity marks a
+  grammar-check finding. Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own
+  Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Mark.Padding" ResourceKey="Primitive.Inset.6_0_6_0" />
+    <StaticResource x:Key="Component.Mark.Radius" ResourceKey="Primitive.Radius.3" />
+  </Styles.Resources>
+
+  <Style Selector=":is(TextBlock).outcomeMark">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeMark.same">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Same}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeMark.different">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeMark.noParse">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.NoParse}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeMark.stopped">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Stopped}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeMark.notParsed">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.NotParsed}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+
+  <Style Selector="Border.meaningMark">
+    <Setter Property="Padding" Value="{DynamicResource Component.Mark.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Mark.Radius}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.meaningMark :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.meaningMark.fine :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Fine}" />
+  </Style>
+  <Style Selector="Border.meaningMark.look">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Look.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Look.Edge}" />
+  </Style>
+  <Style Selector="Border.meaningMark.look :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Look}" />
+  </Style>
+  <Style Selector="Border.meaningMark.problem">
+    <Setter Property="Background" Value="{DynamicResource Intent.Consequence.Problem.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Consequence.Problem.Edge}" />
+  </Style>
+  <Style Selector="Border.meaningMark.problem :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
+  </Style>
+  <Style Selector="Border.meaningMark.neutral :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Neutral}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+
+  <Style Selector="Border.severityMark">
+    <Setter Property="Padding" Value="{DynamicResource Component.Mark.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Mark.Radius}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.severityMark :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <Style Selector="Border.severityMark.warning">
+    <Setter Property="Background" Value="{DynamicResource Intent.Severity.Warning.Fill}" />
+  </Style>
+  <Style Selector="Border.severityMark.warning :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
+  </Style>
+  <Style Selector="Border.severityMark.error :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Error}" />
+  </Style>
+  <Style Selector="Border.severityMark.info :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Info}" />
+  </Style>
+</Styles>

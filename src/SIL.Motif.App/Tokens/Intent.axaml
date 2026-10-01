@@ -82,20 +82,36 @@
     Intent.Change.Fill            the background of staged analysis work
     Intent.Change.Edge            the edge of a staged analysis control
     Intent.Tooltip.Text           a tooltip's words, whatever control owns the tooltip, on Semi's tooltip fill
-    Intent.Agreement.Agreeing     a parser reading that agrees with FieldWorks
-    Intent.Agreement.Conflict     text for a parser reading that conflicts with FieldWorks
-    Intent.Agreement.Conflict.Fill the background of a conflicting parser reading
-    Intent.Agreement.Conflict.Edge the edge of a conflicting parser reading
-    Intent.Agreement.Conflict.Shadow the inset edge of a conflicting parser reading
-    Intent.Agreement.Suggestion   a parser reading FieldWorks does not hold
-    Intent.Agreement.Suggestion.Edge the edge of a suggested parser reading
-    Intent.Parser.NoReading       a completed search with no parser reading
-    Intent.Parser.SearchCapped    a search that stopped at its step limit
-    Intent.Chart.Series1          a chart's first part; Series2 to Series4 follow it, Other takes the rest
-    Intent.Chart.Series2          a chart's second part
-    Intent.Chart.Series3          a chart's third part
-    Intent.Chart.Series4          a chart's fourth part
-    Intent.Chart.Other            what a chart groups as everything else
+
+  Marks: each kind answers one question, and only a meaning fills or edges a box.
+  Parser outcome, what PanGloss built, shown as a sign and a word in coloured text:
+    Intent.Outcome.Same           = Same: PanGloss built what FieldWorks holds
+    Intent.Outcome.Different      ≠ Different: PanGloss built another analysis
+    Intent.Outcome.Different.Fill behind the differing pieces of a Different analysis
+    Intent.Outcome.Different.Marker the leading edge of a Different analysis that crosses an approved one
+    Intent.Outcome.NoParse        ∅ No parse: the search finished and built nothing
+    Intent.Outcome.Stopped        ◐ Stopped: the search reached a limit, so the result is unknown
+    Intent.Outcome.NotParsed      – Not parsed: no result for this word yet
+  Meaning, what an opinion and an outcome mean together:
+    Intent.Consequence.Fine       Fine, in text only: Kept, PanGloss confirms, Fine, Correct
+    Intent.Consequence.Look       Have a look: text on Look.Fill
+    Intent.Consequence.Look.Fill  behind a Have a look meaning
+    Intent.Consequence.Look.Edge  the edge of a Have a look meaning
+    Intent.Consequence.Problem    Problem: text on Problem.Fill, such as Lost or Built anyway
+    Intent.Consequence.Problem.Fill behind a Problem meaning
+    Intent.Consequence.Problem.Edge the edge of a Problem meaning
+    Intent.Consequence.Neutral    Unknown yet, in text only
+  Severity, what the grammar check says:
+    Intent.Severity.Warning       a warning's mark and count
+    Intent.Severity.Warning.Fill  behind a warning count
+    Intent.Severity.Error         an error's mark
+    Intent.Severity.Info          a note's mark
+  Time by kind, the same colour for a kind wherever it falls in a chart:
+    Intent.Timing.MorphRule       morphological rules
+    Intent.Timing.PhonRule        phonological rules
+    Intent.Timing.Lexicon         lexical entries
+    Intent.Timing.RootLookup      root lookup
+    Intent.Timing.Unattributed    parser time no rule's timer accounts for
 
   Spacing (double, for Spacing, and for Width and Height of gaps):
     Intent.Space.None             0
@@ -165,9 +181,11 @@
     white on ButtonSolidPrimaryPressedBackground: 7.17:1 light, 8.20:1 dark
     Link.Text on Surface.Neutral: 6.11:1 light, 6.50:1 dark
 
+  Every outcome, meaning and severity text reads at 4.5:1 on its own fill, on Surface and on Surface.Raised.
+
   WCAG contrast for a chart's parts on Surface, light then dark (AA needs 3:1):
-    Series1 6.14:1, 8.07:1 · Series2 5.43:1, 7.96:1 · Series3 4.37:1, 9.41:1
-    Series4 4.28:1, 9.48:1 · Other 4.82:1, 3.75:1
+    MorphRule 6.14:1, 8.07:1 · PhonRule 5.43:1, 7.96:1 · Lexicon 4.37:1, 9.41:1
+    RootLookup 4.28:1, 9.48:1 · Unattributed 4.82:1, 3.75:1
 
   WCAG contrast for the focus ring, light then dark (a focus indicator needs 3:1):
     Focus on Surface: 6.14:1 light, 8.07:1 dark · Focus on Surface.Subtle: 5.98:1 light, 7.47:1 dark
@@ -292,20 +310,30 @@
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue750}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
       <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue750}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue25}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue650" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue750}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose950}" />
-      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber950}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet600}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green700}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber700}" />
-      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Same" Color="{StaticResource Primitive.Color.Green800}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Different" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Different.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
+      <StaticResource x:Key="Intent.Outcome.Different.Marker" ResourceKey="Primitive.Shadow.Inset2.Blue650" />
+      <SolidColorBrush x:Key="Intent.Outcome.NoParse" Color="{StaticResource Primitive.Color.Rose950}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Stopped" Color="{StaticResource Primitive.Color.Slate700}" />
+      <SolidColorBrush x:Key="Intent.Outcome.NotParsed" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Fine" Color="{StaticResource Primitive.Color.Green800}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look" Color="{StaticResource Primitive.Color.Amber950}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look.Fill" Color="{StaticResource Primitive.Color.Amber25}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look.Edge" Color="{StaticResource Primitive.Color.Tan200}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem" Color="{StaticResource Primitive.Color.Rose950}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem.Fill" Color="{StaticResource Primitive.Color.Rose25}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem.Edge" Color="{StaticResource Primitive.Color.Rose200}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Neutral" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Severity.Warning" Color="{StaticResource Primitive.Color.Amber800}" />
+      <SolidColorBrush x:Key="Intent.Severity.Warning.Fill" Color="{StaticResource Primitive.Color.Amber25}" />
+      <SolidColorBrush x:Key="Intent.Severity.Error" Color="{StaticResource Primitive.Color.Rose950}" />
+      <SolidColorBrush x:Key="Intent.Severity.Info" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Timing.MorphRule" Color="{StaticResource Primitive.Color.Blue650}" />
+      <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet600}" />
+      <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green700}" />
+      <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber700}" />
+      <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
@@ -379,20 +407,30 @@
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue250}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
       <SolidColorBrush x:Key="Intent.Change.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Agreeing" Color="{StaticResource Primitive.Color.Slate400}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict" Color="{StaticResource Primitive.Color.Blue250}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Conflict.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <StaticResource x:Key="Intent.Agreement.Conflict.Shadow" ResourceKey="Primitive.Shadow.Inset2.Blue350" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion" Color="{StaticResource Primitive.Color.Blue250}" />
-      <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose200}" />
-      <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber200}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber300}" />
-      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Same" Color="{StaticResource Primitive.Color.Green300}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Different" Color="{StaticResource Primitive.Color.Blue250}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Different.Fill" Color="{StaticResource Primitive.Color.Blue950}" />
+      <StaticResource x:Key="Intent.Outcome.Different.Marker" ResourceKey="Primitive.Shadow.Inset2.Blue350" />
+      <SolidColorBrush x:Key="Intent.Outcome.NoParse" Color="{StaticResource Primitive.Color.Rose200}" />
+      <SolidColorBrush x:Key="Intent.Outcome.Stopped" Color="{StaticResource Primitive.Color.Slate300}" />
+      <SolidColorBrush x:Key="Intent.Outcome.NotParsed" Color="{StaticResource Primitive.Color.Slate400}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Fine" Color="{StaticResource Primitive.Color.Green300}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look" Color="{StaticResource Primitive.Color.Amber200}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look.Fill" Color="{StaticResource Primitive.Color.Amber975}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Look.Edge" Color="{StaticResource Primitive.Color.Tan800}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem" Color="{StaticResource Primitive.Color.Rose200}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem.Fill" Color="{StaticResource Primitive.Color.Rose975}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Problem.Edge" Color="{StaticResource Primitive.Color.Rose950}" />
+      <SolidColorBrush x:Key="Intent.Consequence.Neutral" Color="{StaticResource Primitive.Color.Slate400}" />
+      <SolidColorBrush x:Key="Intent.Severity.Warning" Color="{StaticResource Primitive.Color.Amber300}" />
+      <SolidColorBrush x:Key="Intent.Severity.Warning.Fill" Color="{StaticResource Primitive.Color.Amber975}" />
+      <SolidColorBrush x:Key="Intent.Severity.Error" Color="{StaticResource Primitive.Color.Rose200}" />
+      <SolidColorBrush x:Key="Intent.Severity.Info" Color="{StaticResource Primitive.Color.Slate400}" />
+      <SolidColorBrush x:Key="Intent.Timing.MorphRule" Color="{StaticResource Primitive.Color.Blue350}" />
+      <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet300}" />
+      <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green300}" />
+      <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber300}" />
+      <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

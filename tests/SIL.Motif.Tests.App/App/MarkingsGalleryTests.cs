@@ -101,15 +101,15 @@ public sealed class MarkingsGalleryTests
                 foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
                 {
                     AssertReadable("Intent.Opinion.None.Text", "Intent.Marking.Surface", variant);
-                    AssertReadable("Intent.Agreement.Agreeing", "Intent.Marking.Surface", variant);
-                    AssertReadable("Intent.Agreement.Conflict", "Intent.Agreement.Conflict.Fill", variant);
-                    AssertReadable("Intent.Agreement.Suggestion", "Intent.Marking.Surface", variant);
-                    AssertReadable("Intent.Parser.NoReading", "Intent.Marking.Surface", variant);
-                    AssertReadable("Intent.Parser.SearchCapped", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Outcome.Same", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Outcome.Different", "Intent.Outcome.Different.Fill", variant);
+                    AssertReadable("Intent.Outcome.Different", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Outcome.NoParse", "Intent.Marking.Surface", variant);
+                    AssertReadable("Intent.Outcome.Stopped", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Change.Text", "Intent.Change.Fill", variant);
                     AssertReadable("Intent.Marking.Text", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Text", "Intent.Surface", variant);
-                    AssertReadable("Intent.Agreement.Suggestion", "Intent.Surface", variant);
+                    AssertReadable("Intent.Outcome.Different", "Intent.Surface", variant);
                     AssertReadable("Intent.Opinion.Approved.Text", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Marking.Link", "Intent.Marking.Surface", variant);
                     AssertReadable("Intent.Unread.Text", "Intent.Unread.Fill", variant);
