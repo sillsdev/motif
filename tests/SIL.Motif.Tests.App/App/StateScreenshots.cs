@@ -143,7 +143,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "tile-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
             () => stage.Named<Button>("Open Speed in Timing"), "the Speed tile"));
         yield return new("overview", "history-expanded", stage => stage.Expand(WorkspacePage.Overview,
-            () => stage.Named<Expander>("Project history"), "Project history"));
+            () => stage.Named<Expander>("Project history"), "Project history"))
+        { Height = 1000 };
 
         // Texts, Matrix.
         yield return new("matrix", "chip-hover", stage => stage.Hover(WorkspacePage.Texts,
@@ -175,7 +176,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("analyze", "word-hover", stage => stage.Hover(WorkspacePage.Texts,
             () => stage.Strip("hawajafika"), "the hawajafika word strip", TextsTab.AnalyzeTexts));
         yield return new("analyze", "word-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
-            () => stage.Strip("alikula"), "the alikula word strip", TextsTab.AnalyzeTexts));
+            () => stage.Strip("Sungura"), "the Sungura word strip", TextsTab.AnalyzeTexts));
         yield return new("analyze", "disapproved-tooltip", stage => stage.Hover(WorkspacePage.Texts,
             () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
                 .First(border => border.Classes.Contains("verdictChip") && border.IsEffectivelyVisible),
@@ -227,7 +228,15 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             row.IsExpanded = true;
             await stage.Until(() => row.IsExpanded, "the expanded list row");
             return $"Expanded '{(row.DataContext as CompareWordViewModel)?.Word}' in {stage.Lists.SelectedList?.Name}.";
-        });
+        })
+        {
+            Teardown = stage =>
+            {
+                foreach (var row in stage.Visible<Expander>(expander => expander.IsExpanded &&
+                    expander.FindAncestorOfType<ListBox>() is not null)) row.IsExpanded = false;
+                return Task.CompletedTask;
+            },
+        };
         yield return new("lists", "disabled-hover", async stage =>
         {
             await stage.ChooseList();
@@ -239,6 +248,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         // Try a Word.
         yield return new("try-a-word", "tools-menu", stage => stage.OpenMenu(WorkspacePage.TryAWord,
             () => stage.Named<Button>("Try a Word tools"), "Try a Word tools"))
+        { Setup = stage => stage.TryTheSampleWord() };
+        yield return new("try-a-word", "rule-hover", stage => stage.Hover(WorkspacePage.TryAWord,
+            () => stage.Visible<Button>(button => button.Classes.Contains("ruleRow")).First(), "the first rule row"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "steps-expanded", async stage =>
         {
@@ -252,7 +264,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return $"Expanded {expanders.Count + more.Count} sections: " +
                 string.Join(", ", expanders.Concat(more).Select(expander => expander.Header).Distinct());
         })
-        { Height = 1500, Setup = stage => stage.TryTheSampleWord() };
+        { Height = 2600, Setup = stage => stage.TryTheSampleWord() };
 
         // Timing.
         yield return new("timing", "rule-hover", stage => stage.Hover(WorkspacePage.Timing,
@@ -332,11 +344,25 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         };
     }
 
+    /// <summary>
+    /// Saves the window once two frames in a row match, so an expander's chevron or a menu caught mid-transition is
+    /// never the picture. A caret that keeps blinking never matches, so the last of a bounded run of frames is kept.
+    /// </summary>
     private static void Save(MainWindow window, string path)
     {
-        PageScreenshots.Settle(window);
-        using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
-        frame.Save(path, PngBitmapEncoderOptions.Default);
+        byte[]? previous = null;
+        byte[] current = [];
+        for (var pass = 0; pass < 40; pass++)
+        {
+            PageScreenshots.Settle(window);
+            using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
+            using var encoded = new MemoryStream();
+            frame.Save(encoded, PngBitmapEncoderOptions.Default);
+            current = encoded.ToArray();
+            if (previous is not null && current.AsSpan().SequenceEqual(previous)) break;
+            previous = current;
+        }
+        File.WriteAllBytes(path, current);
     }
 
     /// <summary>The open window, the ways a state reaches into it, and the reset after each picture.</summary>
@@ -538,8 +564,10 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             Window.MouseMove(away);
             if (_pressed is not null) Window.MouseUp(away, MouseButton.Left);
             _pressed = null;
-            Window.Focus();
+            Window.FocusManager?.Focus(null, NavigationMethod.Unspecified, KeyModifiers.None);
             PageScreenshots.Settle(Window);
+            if (Window.FocusManager?.GetFocusedElement() is Control kept)
+                throw new InvalidOperationException($"Focus stayed on {kept.GetType().Name} after the reset.");
         }
 
         private Point CentreOf(Control control)

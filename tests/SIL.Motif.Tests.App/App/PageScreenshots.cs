@@ -167,6 +167,7 @@ public sealed class PageScreenshots
             ["handoff.md", "assessment.json", "texts.json", "grammar.json", "parse_grammar_texts_assessment.py"], ["assessment/one"])
         {
             InvocationId = "assessment/one",
+            HandoffMarkdown = SampleHandoffMarkdown,
         });
 
         // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
@@ -199,6 +200,14 @@ public sealed class PageScreenshots
         workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
         return (workspace, window);
     }
+
+    private const string SampleHandoffMarkdown =
+        "# AI Handoff: Sample\n\n" +
+        "These files describe how the grammar of **Sample** parsed 9 words from 2 texts.\n\n" +
+        "- `assessment.json`: every word, whether it parsed, and how long it took.\n" +
+        "- `texts.json`: the chosen texts with the analyses the project stores.\n" +
+        "- `grammar.json`: the grammar the parser used.\n\n" +
+        "Start with *hawajafika*, approved in FieldWorks as ha-wa-ja-fik-a but not parsed.\n";
 
     private static IReadOnlyList<GrammarWarning> GrammarFindings() => SeededGrammarFindings.All();
 
