@@ -37,7 +37,7 @@ namespace SIL.Motif.Tests.Composers;
 /// <see cref="TheChainedShape_TargetingAFormThisProposalMints_AppliesAndSaves"/> is the case that was
 /// blocked, and applies now.
 /// </remarks>
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
+[Collection(LcmCacheTestCollection.Name)]
 public sealed class AuthorLexemeFormEndToEndTests
 {
     private readonly SeededProject _seed;

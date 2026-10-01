@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests;
 /// <see cref="FwDataProjectLoader"/>, and the loaded project exposes a non-empty lexicon via the
 /// public <see cref="ILexEntryRepository"/>.
 /// </summary>
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
+[Collection(LcmCacheTestCollection.Name)]
 public class ProjectLoadTests
 {
     [Fact]

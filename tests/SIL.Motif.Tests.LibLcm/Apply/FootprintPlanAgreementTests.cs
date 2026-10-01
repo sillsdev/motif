@@ -25,7 +25,7 @@ namespace SIL.Motif.Tests.Apply;
 /// digest at all — the pre-flight read a target no operation had created yet and threw, so a Proposal
 /// dry-ran cleanly and then failed at apply.
 /// </remarks>
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
+[Collection(LcmCacheTestCollection.Name)]
 public sealed class FootprintPlanAgreementTests
 {
     private readonly SeededProject _seed;
