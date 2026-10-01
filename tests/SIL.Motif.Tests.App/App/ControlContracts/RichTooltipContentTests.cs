@@ -185,8 +185,12 @@ internal sealed class TooltipScenes
 
     public void Close() => Window.Close();
 
+    /// <summary>The width every scene but the collapsed sidebar is drawn at.</summary>
+    public double Width { get; set; } = 1240;
+
     public async Task Reach(TooltipScene scene)
     {
+        if (scene != TooltipScene.CollapsedSidebar) Window.Width = Width;
         switch (scene)
         {
             case TooltipScene.Overview: Show(WorkspacePage.Overview); break;
@@ -252,7 +256,7 @@ internal sealed class TooltipScenes
             case TooltipScene.OpenRecent:
                 foreach (var name in new[] { "OpenRecentButton", "ProjectMenuButton" }) Window.FindControl<Button>(name)!.Flyout!.Hide();
                 break;
-            case TooltipScene.CollapsedSidebar: Window.Width = 1240; break;
+            case TooltipScene.CollapsedSidebar: Window.Width = Width; break;
             case TooltipScene.TextPicker: Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read").IsDropDownOpen = false; break;
             case TooltipScene.WordCard: InText.CloseTokenCard(); break;
         }
@@ -327,6 +331,7 @@ internal sealed class TooltipScenes
     private async Task StageChakula()
     {
         var chakula = Token("chakula");
+        if (chakula.HasStagedChanges) return;
         var add = chakula.Marking.FixChoices.Single(choice => choice.Label == "Add as Approved");
         await chakula.StageMarkingChoiceForTokenCommand!.ExecuteAsync(add);
         await Until(() => Token("chakula").HasStagedChanges, "the staged change on chakula");

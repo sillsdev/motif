@@ -2,93 +2,158 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
-using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that a tooltip opens where it hides no other control: Refresh's tip clears Help and the notice's
-/// buttons, the AI Handoff drag tip clears the files' Copy path buttons, and a Try a Word rule row's or an AI
-/// Handoff question's tip clears the rows that follow it, at both widths the pages are drawn at.
+/// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window: the top
+/// bar's Refresh, AI Handoff's drag and question tips, Try a Word's rule rows, a disabled Apply and AI Handoff with
+/// their reasons, the word strips and their marks, a word card's links and opinion, a finding's FieldWorks link, the
+/// collapsed sidebar, the Matrix's pending mark and the Timing page, at both widths the pages are drawn at and in
+/// both themes. Each tooltip opens under the pointer, as a person meets it.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class TooltipPlacementTests
 {
-    public static TheoryData<string, int> Owners() => new()
+    private static readonly string[] Owners =
+    [
+        "refresh", "drag all files", "question to copy", "rule row", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card", "FieldWorks link on a morpheme",
+        "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
+        "completion in detailed statistics",
+    ];
+
+    // Reported placement gaps: each owner's tip still covers what is named, and must until its placement is fixed.
+    private static readonly Dictionary<string, string> Gaps = new()
     {
-        { "refresh", 1040 }, { "refresh", 1240 }, { "drag", 1040 }, { "drag", 1240 },
-        { "rule", 1040 }, { "rule", 1240 }, { "question", 1040 }, { "question", 1240 },
+        ["Apply to FieldWorks project"] = "opening to the left, it covers Check what applying does to the numbers",
+        ["collapsed sidebar entry"] = "it opens over the next page's entry",
+        ["disapproved mark on a strip"] = "it opens over the next word strips and the strip's Fix action",
+        ["pending change in a Matrix cell"] = "it opens over the Matrix cells below the cell",
+        ["word strip"] = "it opens over the next words in the text",
+        ["WORDS column"] = "it opens over the rule rows and AI Handoff below the header",
     };
 
-    [Theory]
-    [MemberData(nameof(Owners))]
-    public void ATooltipHidesNoOtherButton(string which, int width)
+    [Fact]
+    public void ATooltipClearsOtherInteractiveControlsAndItsViewport()
     {
-        var covered = new List<string>();
+        var failures = new List<string>();
+        var gapsSeen = new HashSet<string>(StringComparer.Ordinal);
+        var placed = 0;
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
-                configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
+            var scenes = await TooltipScenes.Open();
+            var prior = Application.Current!.RequestedThemeVariant;
+            var owners = TooltipOwners.All.Where(owner => Owners.Contains(owner.Key)).ToList();
+            Assert.Equal(Owners.Length, owners.Count);
             try
             {
-                window.Width = width;
-                window.Height = 780;
-                if (which == "rule")
+                foreach (var width in new[] { 1040, 1240 })
                 {
-                    workspace.Context.TryWord("matinlu");
-                    await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                    scenes.Width = width;
+                    foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
+                    {
+                        await scenes.Reach(scene);
+                        foreach (var owner in owners.Where(owner => owner.Scene == scene))
+                        foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                        {
+                            Application.Current!.RequestedThemeVariant = theme;
+                            PageScreenshots.Settle(scenes.Window);
+                            var where = $"{width} {theme} {owner.Key}";
+                            var control = scenes.RealizedOwners(failures, scene).Where(found => found.Owner == owner)
+                                .Select(found => found.Control).FirstOrDefault();
+                            if (control is null)
+                            {
+                                failures.Add($"{where}: the {scene} scene showed no such owner");
+                                continue;
+                            }
+                            if (await Hover(scenes, control) is not { } tip)
+                            {
+                                failures.Add($"{where}: the tooltip did not open under the pointer");
+                                continue;
+                            }
+                            placed++;
+                            var covered = Covered(scenes.Window, control, tip).ToList();
+                            if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
+                            else failures.AddRange(covered.Select(name => $"{where}: covers {name}"));
+                            if (!new Rect(scenes.Window.Bounds.Size).Contains(Area(tip, scenes.Window)))
+                                failures.Add($"{where}: leaves the window at {Area(tip, scenes.Window)}");
+                            ToolTip.SetIsOpen(control, false);
+                            control.ClearValue(ToolTip.ShowDelayProperty);
+                        }
+                        Application.Current!.RequestedThemeVariant = prior;
+                        scenes.Leave(scene);
+                    }
                 }
-                workspace.CurrentPage = which switch
-                {
-                    "refresh" => WorkspacePage.Overview,
-                    "rule" => WorkspacePage.TryAWord,
-                    _ => WorkspacePage.AiHandoff,
-                };
-                PageScreenshots.Settle(window);
-                var owner = which switch
-                {
-                    "refresh" => Named(window, "Refresh the project"),
-                    "drag" => Named(window, "Drag all AI Handoff files"),
-                    "rule" => Visible<Button>(window).First(button => button.Classes.Contains("ruleRow")),
-                    _ => Visible<Button>(window).First(button => button.Classes.Contains("handoffQuestion")),
-                };
-                Assert.NotNull(ToolTip.GetTip(owner));
-
-                ToolTip.SetShowDelay(owner, 0);
-                window.MouseMove(owner.TranslatePoint(new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2), window)!.Value);
-                PageScreenshots.Settle(window);
-                await Task.Yield();
-                PageScreenshots.Settle(window);
-                Assert.True(ToolTip.GetIsOpen(owner), $"the {which} tooltip did not open");
-                var tip = Assert.Single(Visible<ToolTip>(window));
-                var area = Area(tip, window);
-
-                foreach (var other in Visible<Button>(window).Where(button => button != owner &&
-                    !button.GetVisualAncestors().Contains(owner) && !owner.GetVisualAncestors().Contains(button)))
-                {
-                    var name = AutomationProperties.GetName(other) ?? other.Content as string ?? other.GetType().Name;
-                    if (Area(other, window).Intersects(area)) covered.Add(name);
-                }
-                ToolTip.SetIsOpen(owner, false);
             }
             finally
             {
-                window.Close();
+                Application.Current!.RequestedThemeVariant = prior;
+                scenes.Close();
             }
-        }, TimeSpan.FromMinutes(1));
+        }, TimeSpan.FromMinutes(3));
 
-        Assert.True(covered.Count == 0, $"the {which} tooltip at {width} covers: {string.Join(", ", covered.Distinct())}");
+        failures.AddRange(Gaps.Where(gap => !gapsSeen.Contains(gap.Key))
+            .Select(gap => $"{gap.Key}: covers nothing now, so remove its reported gap ({gap.Value})"));
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
+        Assert.Equal(2 * 2 * Owners.Length, placed);
+    }
+
+    private static async Task<ToolTip?> Hover(TooltipScenes scenes, Control owner)
+    {
+        var window = scenes.Window;
+        owner.BringIntoView();
+        PageScreenshots.Settle(window);
+        ToolTip.SetShowDelay(owner, 0);
+        window.MouseMove(new Point(4, window.Bounds.Height - 4));
+        PageScreenshots.Settle(window);
+        window.MouseMove(owner.TranslatePoint(new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2), window)!.Value);
+        PageScreenshots.Settle(window);
+        await Task.Yield();
+        PageScreenshots.Settle(window);
+        return ToolTip.GetIsOpen(owner) ? scenes.Visible<ToolTip>().SingleOrDefault() : null;
+    }
+
+    // What a person could press or type in, shown and not hidden by a scroll or a zero opacity.
+    private static IEnumerable<string> Covered(Window window, Control owner, ToolTip tip)
+    {
+        var area = Area(tip, window);
+        foreach (var other in window.GetVisualDescendants().OfType<Control>().Where(IsInteractive))
+        {
+            if (other == owner || !other.IsEffectivelyVisible || other.GetVisualAncestors().Contains(owner) ||
+                owner.GetVisualAncestors().Contains(other) || other.GetVisualAncestors().Contains(tip)) continue;
+            if (other.GetSelfAndVisualAncestors().OfType<Visual>().Any(visual => visual.Opacity == 0)) continue;
+            var shown = Shown(other, window);
+            if (shown.Width > 0 && shown.Height > 0 && shown.Intersects(area))
+                yield return NameOf(other);
+        }
+    }
+
+    private static string NameOf(Control control) =>
+        AutomationProperties.GetName(control) is { Length: > 0 } name ? name
+        : AutomationProperties.GetAutomationId(control) is { Length: > 0 } id ? id
+        : control.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text))
+            is { } words ? $"{control.GetType().Name} '{words}'"
+        : control.GetType().Name;
+
+    private static bool IsInteractive(Control control) => control is Button or TextBox or ComboBox or NumericUpDown or
+        ListBoxItem or TreeViewItem or MenuItem or Slider or MatrixCell || control is Border { Focusable: true };
+
+    // The part of a control left after every clipping ancestor, such as a scrolled list, has cut it.
+    private static Rect Shown(Control control, Window window)
+    {
+        var shown = Area(control, window);
+        foreach (var ancestor in control.GetVisualAncestors().OfType<Visual>().Where(visual => visual.ClipToBounds && visual != window))
+            shown = shown.Intersect(Area(ancestor, window));
+        return shown;
     }
 
     private static Rect Area(Visual visual, Window window) =>
-        new(visual.TranslatePoint(default, window)!.Value, visual.Bounds.Size);
-
-    private static Button Named(Window window, string name) =>
-        Visible<Button>(window).First(button => AutomationProperties.GetName(button) == name);
-
-    private static IEnumerable<T> Visible<T>(Window window) where T : Control =>
-        window.GetVisualDescendants().OfType<T>().Where(control => control.IsEffectivelyVisible);
+        new(visual.TranslatePoint(default, window) ?? default, visual.Bounds.Size);
 }
