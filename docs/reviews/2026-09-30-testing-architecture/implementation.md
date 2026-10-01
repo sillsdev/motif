@@ -123,3 +123,13 @@ The fresh helper invocation passed end to end: 3930 .NET tests passed, none fail
 Fresh screenshots for Review/Apply, Refresh, Try a Word, first setup/parse and completed Handoff files were visually inspected. The artifact run is bin/Release/documentation-validation/e19833f8a6bc439fbd6f00f8ed077e06. Transcript and timing metadata are .tmp/combined-release-a911ec3b-20261001T001300Z; its archived test-results preserve the exact accepted run. Generated site/dist remains output, not an authored documentation authority. Native dialogs, real FieldWorks save-boundary acceptance, and the archived intermittent worker wait are not claimed as established by this headless run.
 
 Further testing-speed work is stopped at the user's request. Remaining performance measurements and class weight renewal stay explicitly deferred in the existing runtime plan; the other thread owns triple-build and default-test-selection changes. This does not change the release requirement for current walkthrough media.
+
+## Status, 2026-10-01
+
+The review's planned Help, Worker, parser, and walkthrough work is integrated, with fresh validation evidence and remaining limits recorded.
+
+- Help content and generated consumers share the Help catalog (57df7a2c, b63a666b, f7d8cc96).
+- PanGloss request validation and Unix-only private capture permissions are implemented; the reusable Worker runtime is extracted (dcd685d6, 2b2a4b22).
+- Seven authored walkthroughs and the close/reopen lifetime test cover the current user flows (1ffe5c88, 1b08dd51); disposal failure cleanup is bounded (952aec21).
+- The integrated Release run used fresh screenshots, manifests, and videos (a911ec3b). Website validation and upload are opt-in through publish_website (e446e855).
+- Ordinary CI continues to run the comment and token gates, build, and full test matrix across Windows, Ubuntu, macOS ARM, and macOS Intel.
