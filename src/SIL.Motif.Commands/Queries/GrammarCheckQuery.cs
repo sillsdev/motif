@@ -144,7 +144,7 @@ public static class GrammarCheckQuery
                 cache?.Dispose();
             }
             return CommandOutcome<GrammarCheckResponse>.Success(
-                WarningWordsQuery.WithYourWords(database, project, response));
+                WarningWordsQuery.WithYourWords(database, project, response, baseline.Token));
         });
     }
 

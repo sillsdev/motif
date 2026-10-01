@@ -137,6 +137,36 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Equal("current-evidence.baseline-unavailable", evidence.Refusal!.Code);
     }
 
+    [Fact]
+    public void GrammarCheckDoesNotJoinAReplacedBaselinesWords()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm], parsed: false);
+        var result = GrammarCheckQuery.Query(new GrammarCheckRequest(project.Path), new FakeInvoker
+        {
+            Respond = _ =>
+            {
+                File.WriteAllText(project.Path, File.ReadAllText(project.Path)
+                    .Replace(SeededProject.FirstGloss, "new Baseline gloss", StringComparison.Ordinal));
+                File.SetLastWriteTimeUtc(project.Path, project.Baseline.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+                var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.Path), _root);
+                Assert.True(captured.Succeeded, captured.Refusal?.Message);
+                Assert.NotEqual(project.Baseline.Token, captured.Value!.Token);
+                RecordAssessment(project with { Baseline = captured.Value }, [SeededProject.AnalysedWordForm],
+                    parsed: false, id: "new-baseline-assessment");
+                return new PanGlossOutcome.Completed(GrammarHealthReports.With(
+                    ("allomorph", [new("MoForm", "motifa", _pristine.Seed.FirstLexemeFormId)])),
+                    string.Empty, TimeSpan.Zero);
+            },
+        }, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Null(Assert.Single(result.Value!.Findings).YourWords);
+        Assert.Null(WarningWordsQuery.Touched(result.Value.Findings));
+    }
+
     private CapturedProject Capture(bool analysedWordOutsideText = false)
     {
         string path;
