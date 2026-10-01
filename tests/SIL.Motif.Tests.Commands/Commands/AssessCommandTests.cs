@@ -340,6 +340,60 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void UsesReadsTheDefaultSelectionsStoredAnalysesAndTimingsByIdentity()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.Equal("uses.no-assessment", ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
+            Words: [SeededProject.AnalysedWordForm])).Refusal?.Code);
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], [])).Succeeded);
+        var cachePath = Path.Combine(_managedRootsParent, "uses-stats.sqlite");
+        WriteStatsCache(cachePath,
+            (SeededProject.AnalysedWordForm, 4, 0, 2, 2_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
+        var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, SeededProject.AnalysedWordForm, 9, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none"),
+                 new(1, SeededProject.UnanalysedWordForm, 15, SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")],
+                1000, seeded.FwDataPath, []) { PerWordStepLimit = StepCap.Default }),
+            AssessmentKind.ObjectTiming => new AssessmentRaw.FileCache(cachePath, cacheDigest),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), NewManagedRoot(), assessor,
+            new FakeInvoker(), null, CancellationToken.None);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        var parseAssessmentId = assessed.Value!.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId;
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath).Value!.Assessment!;
+        var first = evidence.Words.Single(word => word.Word == SeededProject.AnalysedWordForm)
+            .StoredAnalyses.Single().Morphs[0];
+        Assert.Equal(_pristine.Seed.FirstLexemeFormId.ToString("D"), first.AllomorphId, ignoreCase: true);
+
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
+            ObjectUseRef.ForMorpheme(first) with { TimingKind = "morph_rule", TimingKey = "mrule#0:Verb template" },
+            [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm, "absent"]));
+
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        Assert.Equal(parseAssessmentId, uses.Value!.AssessmentId);
+        Assert.Equal([(SeededProject.AnalysedWordForm, "Lost")],
+            uses.Value.Uses!.Words.Select(word => (word.Row.Word, word.Row.Meaning)));
+        Assert.Equal([(SeededProject.AnalysedWordForm, 2, 2_000_000L)],
+            uses.Value.RanIn!.Words.Select(word => (word.Row.Word, word.Calls, word.ElapsedNs)));
+        Assert.Empty(uses.Value.Shared!);
+        Assert.Equal(["absent"], uses.Value.UnknownWords);
+        var otherEntry = ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath,
+            new ObjectUseRef { AllomorphId = _pristine.Seed.SecondLexemeFormId.ToString("D"), GrammaticalInfoId = first.GrammaticalInfoId }));
+        Assert.Empty(otherEntry.Value!.Uses!.Words);
+        Assert.Equal("uses.invalid-request",
+            ObjectUsesQuery.Query(new ObjectUsesRequest(seeded.FwDataPath, new ObjectUseRef { Label = "kat" })).Refusal?.Code);
+    }
+
+    [Fact]
     public void TimingOverlaysRerunRowsAndLabelsTimeoutWithoutMorphology()
     {
         using var seeded = NewSeededScratch();
