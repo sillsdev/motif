@@ -5,13 +5,13 @@ using Xunit;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
-/// <summary>The standard input the test script gives each test process, instead of the one it was started with.</summary>
+/// <summary>The private standard input supplied to each process by the test script.</summary>
 /// <remarks>
 /// A test process inherits its standard input from whatever started the suite, and so does every tool it runs.
 /// On Windows every process holding one inherited pipe shares it: while any of them has a read pending on it,
 /// git and python block at startup when they inspect their standard input, so a suite started from a pipe
-/// hung on its first git or python test. The script gives each process a file of its own holding a token it
-/// also passes in <see cref="TokenVariable"/>, so no test process shares its standard input with anything.
+/// hung on its first git or python test. The script gives each process private input holding a token it
+/// also passes in <see cref="TokenVariable"/>. Windows receives a file handle; Unix receives a finite pipe.
 /// </remarks>
 public static class TestScriptStandardInput
 {
@@ -21,34 +21,31 @@ public static class TestScriptStandardInput
     /// <summary>The token the test script wrote, or <see langword="null"/> outside a test script run.</summary>
     public static string? ExpectedToken => Environment.GetEnvironmentVariable(TokenVariable);
 
-    /// <summary>
-    /// This process's standard input when it is a file, read from its start; <see langword="null"/> when it is a
-    /// pipe, a console or absent, none of which is read, since reading one could block.
-    /// </summary>
-    public static string? ReadIfFile()
+    /// <summary>Reads only the private input supplied by the test script, or null outside a script run.</summary>
+    /// <remarks>
+    /// Windows receives a file handle and reads positionally so inherited child offsets stay unchanged.
+    /// Unix receives a finite pipe from PowerShell and reads only the expected token bytes, with cancellation.
+    /// </remarks>
+    public static async Task<string?> ReadPrivateInputAsync(CancellationToken cancellationToken)
     {
-        var raw = OperatingSystem.IsWindows() ? GetStdHandle(StdInputHandle) : 0;
-        if (raw == -1 || (OperatingSystem.IsWindows() && raw == 0)) return null;
-        using var handle = new SafeFileHandle(raw, ownsHandle: false);
-        if (OperatingSystem.IsWindows() ? GetFileType(handle) != FileTypeDisk : !IsSeekable(handle)) return null;
-
-        // A positional read leaves the offset every inheriting child shares where it was.
-        var buffer = new byte[4096];
-        var length = RandomAccess.Read(handle, buffer, fileOffset: 0);
-        return Encoding.UTF8.GetString(buffer, 0, length);
-    }
-
-    private static bool IsSeekable(SafeFileHandle handle)
-    {
-        try
+        var expectedToken = ExpectedToken;
+        if (expectedToken is null) return null;
+        cancellationToken.ThrowIfCancellationRequested();
+        if (OperatingSystem.IsWindows())
         {
-            using var stream = new FileStream(handle, FileAccess.Read, bufferSize: 0);
-            return stream.CanSeek;
+            var raw = GetStdHandle(StdInputHandle);
+            if (raw == -1 || raw == 0) return null;
+            using var handle = new SafeFileHandle(raw, ownsHandle: false);
+            if (GetFileType(handle) != FileTypeDisk) return null;
+            var buffer = new byte[4096];
+            var length = RandomAccess.Read(handle, buffer, fileOffset: 0);
+            return Encoding.UTF8.GetString(buffer, 0, length);
         }
-        catch (Exception exception) when (exception is IOException or ArgumentException or UnauthorizedAccessException)
-        {
-            return false;
-        }
+
+        using var input = Console.OpenStandardInput();
+        var tokenBytes = new byte[Encoding.UTF8.GetByteCount(expectedToken)];
+        await input.ReadExactlyAsync(tokenBytes, cancellationToken).ConfigureAwait(false);
+        return Encoding.UTF8.GetString(tokenBytes);
     }
 
     private const int StdInputHandle = -10;
