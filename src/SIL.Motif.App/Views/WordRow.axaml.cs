@@ -58,6 +58,15 @@ public sealed partial class WordRow : UserControl
     public static readonly StyledProperty<object?> OpenedCommandParameterProperty =
         AvaloniaProperty.Register<WordRow, object?>(nameof(OpenedCommandParameter));
 
+    public static readonly StyledProperty<WordRowColumns> ColumnsProperty =
+        AvaloniaProperty.Register<WordRow, WordRowColumns>(nameof(Columns), WordRowColumns.All);
+
+    public static readonly StyledProperty<string?> TimeTextProperty =
+        AvaloniaProperty.Register<WordRow, string?>(nameof(TimeText));
+
+    public static readonly StyledProperty<object?> ActionsProperty =
+        AvaloniaProperty.Register<WordRow, object?>(nameof(Actions));
+
     public WordRow()
     {
         AvaloniaXamlLoader.Load(this);
@@ -69,7 +78,11 @@ public sealed partial class WordRow : UserControl
         _body.AddHandler(PointerReleasedEvent, OnBodyReleased, RoutingStrategies.Bubble, handledEventsToo: true);
         _body.KeyDown += OnBodyKeyDown;
         AddHandler(KeyDownEvent, OnRowKeyDown, handledEventsToo: false);
+        _layout = new WordRowLayout(this);
+        _layout.Apply(Columns, ShowsMeaning);
     }
+
+    private readonly WordRowLayout? _layout;
 
     private const double ClickSlop = 4;
     private readonly Border _root;
@@ -105,8 +118,8 @@ public sealed partial class WordRow : UserControl
     }
 
     /// <summary>
-    /// Whether the meaning column shows; a list whose words share one meaning hides it, with its head, and every other
-    /// column keeps its place.
+    /// Whether this list's meaning column shows now: a list whose words share one meaning hides it, with its head. It
+    /// hides only a column <see cref="Columns"/> lets the page show, and the column then takes no width or gap.
     /// </summary>
     public bool ShowsMeaning
     {
@@ -155,6 +168,36 @@ public sealed partial class WordRow : UserControl
         set => SetValue(OpenedCommandParameterProperty, value);
     }
 
+    /// <summary>
+    /// The columns this list shows. A hidden column takes no width, and the rest keep their order; the word and the
+    /// three next steps always show. A list's <see cref="WordRowHeader"/> takes the same value.
+    /// </summary>
+    public WordRowColumns Columns
+    {
+        get => GetValue(ColumnsProperty);
+        set => SetValue(ColumnsProperty, value);
+    }
+
+    /// <summary>
+    /// The list's own measure of the word's time, such as a rule's share of it, in place of the parse time the
+    /// row carries; <see langword="null"/> shows the row's. The column widens to hold it.
+    /// </summary>
+    public string? TimeText
+    {
+        get => GetValue(TimeTextProperty);
+        set => SetValue(TimeTextProperty, value);
+    }
+
+    /// <summary>
+    /// The list's own actions on this word, such as Undo, on a line under the row beside its note. They are not next
+    /// steps, so they never take a column; a click on one leaves the card as it is.
+    /// </summary>
+    public object? Actions
+    {
+        get => GetValue(ActionsProperty);
+        set => SetValue(ActionsProperty, value);
+    }
+
     /// <summary>Gives the row itself keyboard focus, with the focus ring, as Tab would.</summary>
     public void FocusRow() => _body.Focus(NavigationMethod.Tab);
 
@@ -169,6 +212,10 @@ public sealed partial class WordRow : UserControl
         else if (change.Property == ListProperty)
         {
             SetIds();
+        }
+        else if (change.Property == ColumnsProperty || change.Property == ShowsMeaningProperty)
+        {
+            _layout?.Apply(Columns, ShowsMeaning);
         }
     }
 
@@ -252,4 +299,100 @@ public sealed partial class WordRow : UserControl
         list.ScrollIntoView(next);
         list.ContainerFromIndex(next)?.GetVisualDescendants().OfType<WordRow>().FirstOrDefault()?.FocusRow();
     }
+}
+
+/// <summary>
+/// The word row's columns a list can hide. The word and the three next steps are not here: every row shows them.
+/// <see cref="Morphemes"/> shows the morphemes beside the opinion and the outcome; without it each column shows only
+/// its mark, and the outcome says its word.
+/// </summary>
+[Flags]
+public enum WordRowColumns
+{
+    None = 0,
+    Tick = 1,
+    FieldWorks = 2,
+    PanGloss = 4,
+    Morphemes = 8,
+    Meaning = 16,
+    Warnings = 32,
+    Places = 64,
+    Time = 128,
+    Read = 256,
+    All = Tick | FieldWorks | PanGloss | Morphemes | Meaning | Warnings | Places | Time | Read,
+}
+
+/// <summary>
+/// Shows only the chosen columns of a word row or its header: a hidden column's definition leaves its grid, so it
+/// takes neither width nor a column gap, and the columns left keep their order and their shared-size groups.
+/// </summary>
+internal sealed class WordRowLayout
+{
+    private readonly Control _owner;
+    private readonly Grid _line;
+    private readonly Grid _cells;
+    private readonly (ColumnDefinition Column, Control Cell)[] _lineParts;
+    private readonly (ColumnDefinition Column, Control Cell)[] _cellParts;
+
+    public WordRowLayout(Control owner)
+    {
+        _owner = owner;
+        _line = Find<Grid>("Line");
+        _cells = Find<Grid>("Cells");
+        _lineParts = [.. _line.ColumnDefinitions.Zip([Find<Control>("TickCell"), _cells, Find<Control>("NextCell")])];
+        _cellParts = [.. _cells.ColumnDefinitions.Zip(new[]
+        {
+            "WordCell", "FieldWorksCell", "PanGlossCell", "MeaningCell", "WarningsCell", "PlacesCell", "TimeCell", "ReadCell",
+        }.Select(Find<Control>))];
+        _sharedWidths = [_cellParts[1].Column.Width, _cellParts[2].Column.Width];
+    }
+
+    // The widths the FieldWorks and PanGloss columns share the free width with, as the markup gives them.
+    private readonly GridLength[] _sharedWidths;
+
+    public void Apply(WordRowColumns columns, bool showsMeaning)
+    {
+        bool Shows(WordRowColumns column) => (columns & column) == column;
+        var morphemes = Shows(WordRowColumns.Morphemes);
+        // Morphemes share the free width; marks alone size to the widest in the list, as the other columns do.
+        SetWidth(_cellParts[1].Column, morphemes, _sharedWidths[0], "WordRowFieldWorks");
+        SetWidth(_cellParts[2].Column, morphemes, _sharedWidths[1], "WordRowPanGloss");
+        foreach (var name in new[] { "FieldWorksMorphemes", "PanGlossMorphemes", "OutcomeBesideMorphemes" })
+            SetShown(name, morphemes);
+        SetShown("OutcomeAlone", !morphemes);
+        Show(_line, _lineParts, [Shows(WordRowColumns.Tick), true, true]);
+        Show(_cells, _cellParts,
+        [
+            true, Shows(WordRowColumns.FieldWorks), Shows(WordRowColumns.PanGloss), Shows(WordRowColumns.Meaning) && showsMeaning,
+            Shows(WordRowColumns.Warnings), Shows(WordRowColumns.Places), Shows(WordRowColumns.Time),
+            Shows(WordRowColumns.Read),
+        ]);
+    }
+
+    private static void SetWidth(ColumnDefinition column, bool shares, GridLength sharedWidth, string group)
+    {
+        column.Width = shares ? sharedWidth : GridLength.Auto;
+        column.SharedSizeGroup = shares ? null : group;
+    }
+
+    private static void Show(Grid grid, (ColumnDefinition Column, Control Cell)[] parts, bool[] shown)
+    {
+        grid.ColumnDefinitions.Clear();
+        foreach (var ((column, cell), visible) in parts.Zip(shown))
+        {
+            cell.IsVisible = visible;
+            if (!visible) continue;
+            Grid.SetColumn(cell, grid.ColumnDefinitions.Count);
+            grid.ColumnDefinitions.Add(column);
+        }
+    }
+
+    // The header has no morphemes or outcome marks, so those parts are optional.
+    private void SetShown(string name, bool shown)
+    {
+        if (_owner.FindControl<Control>(name) is { } part) part.IsVisible = shown;
+    }
+
+    private T Find<T>(string name) where T : Control =>
+        _owner.FindControl<T>(name) ?? throw new InvalidOperationException($"The word row has no part named {name}.");
 }

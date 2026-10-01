@@ -95,8 +95,9 @@
   <Style Selector=":is(Control).wordRowPlaces">
     <Setter Property="Width" Value="{DynamicResource Component.WordRow.PlacesWidth}" />
   </Style>
+  <!-- A list may put a longer time here, such as a rule's share of the word's, so the column widens to hold it. -->
   <Style Selector=":is(Control).wordRowTime">
-    <Setter Property="Width" Value="{DynamicResource Component.WordRow.TimeWidth}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.WordRow.TimeWidth}" />
   </Style>
   <Style Selector=":is(Control).wordRowRead">
     <Setter Property="Width" Value="{DynamicResource Component.WordRow.ReadWidth}" />
