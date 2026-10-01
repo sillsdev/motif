@@ -34,4 +34,23 @@ public sealed class CommandAvailabilityContractTests
             }
         }
     }
+
+    [Fact]
+    public async Task ChangingAnAvailabilityInputNotifiesAndRecomputesTheCommand()
+    {
+        var (_, workspace) = CommandContractCases.CreateWorkspace();
+        await using (workspace)
+        {
+            var setup = Assert.IsType<SetupViewModel>(workspace.Context.Setup);
+            var notifications = 0;
+            setup.BackCommand.CanExecuteChanged += (_, _) => notifications++;
+
+            Assert.False(setup.BackCommand.CanExecute(null));
+            setup.NextCommand.Execute(null);
+
+            Assert.Equal(1, setup.Step);
+            Assert.True(setup.BackCommand.CanExecute(null));
+            Assert.Equal(1, notifications);
+        }
+    }
 }
