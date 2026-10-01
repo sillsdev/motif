@@ -165,6 +165,91 @@ public sealed class JobRunnerHostOwnershipTests
         }
     }
 
+    [Fact]
+    public async Task SeveralQueuedJobsLeaveAtMostOneKickedWaiterBehindAnOwner()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-wake-waiters-" + Guid.NewGuid().ToString("N"));
+        var ns = "wake-waiters-" + Guid.NewGuid().ToString("N");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var path = Path.Combine(root, "busy-owner.fwdata");
+            File.WriteAllText(path, "placeholder");
+            var project = new ProjectLocator(path, "busy-owner");
+            var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, new Version(1, 0));
+            using (var database = catalog.OpenOwned(project))
+            {
+                var jobs = new JobRepository(database);
+                for (var index = 0; index < 3; index++)
+                    jobs.Create("queued-" + index, ProjectWorkspaceKey.Compute(project), "probe", "{}",
+                        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow));
+            }
+
+            using var owner = JobRunnerHost.ForNamespace(ns);
+            Assert.True(owner.TryAcquireOwnership());
+            var kicked = Enumerable.Range(0, 3).Select(_ => JobRunnerHost.ForNamespace(ns)).ToArray();
+            try
+            {
+                var clocks = kicked.Select(_ => new RetryTimeProvider(DateTimeOffset.UtcNow)).ToArray();
+                var attempts = kicked.Select((host, index) => WorkerRuntime.TryAcquireOwnershipWithRetryAsync(
+                    host, clocks[index], path, extraWaitLimit: TimeSpan.FromSeconds(10))).ToArray();
+                await Task.WhenAll(clocks.Select(clock => clock.WaitForTimerAsync()));
+                foreach (var clock in clocks) clock.Advance(TimeSpan.FromSeconds(3));
+
+                var completed = await Task.WhenAll(attempts.Select(async attempt =>
+                    await Task.WhenAny(attempt, Task.Delay(TimeSpan.FromSeconds(2))) == attempt));
+                Assert.Equal(2, completed.Count(done => done));
+                Assert.Equal(2, attempts.Count(attempt => attempt.IsCompletedSuccessfully && !attempt.Result));
+                Assert.Equal(1, attempts.Count(attempt => !attempt.IsCompleted));
+
+                owner.Dispose();
+                var waiter = Array.FindIndex(attempts, attempt => !attempt.IsCompleted);
+                clocks[waiter].Advance(TimeSpan.FromMilliseconds(50));
+                Assert.True(await attempts[waiter].WaitAsync(TimeSpan.FromSeconds(10)));
+            }
+            finally
+            {
+                owner.Dispose();
+                foreach (var host in kicked) host.Dispose();
+            }
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AContendedWakeProbeGivesUpAtTheExtraWaitBound()
+    {
+        var ns = "wake-bound-" + Guid.NewGuid().ToString("N");
+        using var owner = JobRunnerHost.ForNamespace(ns);
+        using var kicked = JobRunnerHost.ForNamespace(ns);
+        Assert.True(owner.TryAcquireOwnership());
+        var clock = new RetryTimeProvider(DateTimeOffset.UtcNow);
+        var warnings = new List<string>();
+        var attempts = 0;
+        var retrying = WorkerRuntime.TryAcquireOwnershipWithRetryAsync(kicked, clock,
+            wakeProjectPath: "unreadable.fwdata", extraWaitLimit: TimeSpan.FromSeconds(4),
+            reportWarning: warnings.Add,
+            queuedWorkProbe: _ =>
+            {
+                attempts++;
+                throw new MotifStoreLockException("persistent lock", new IOException("locked"));
+            });
+
+        await clock.WaitForTimerAsync();
+        clock.Advance(TimeSpan.FromSeconds(3));
+        await clock.WaitForSecondTimerAsync();
+        Assert.False(retrying.IsCompleted);
+        clock.Advance(TimeSpan.FromSeconds(4));
+
+        Assert.False(await retrying.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.True(attempts > 0);
+        Assert.Single(warnings);
+        Assert.Contains("queued work", warnings[0], StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class RetryTimeProvider(DateTimeOffset now) : TimeProvider
     {
         private readonly object _gate = new();
