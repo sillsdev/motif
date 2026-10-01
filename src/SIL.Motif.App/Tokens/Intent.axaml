@@ -78,6 +78,7 @@
     Intent.Change.Text            readable text for staged analysis work
     Intent.Change.Fill            the background of staged analysis work
     Intent.Change.Edge            the edge of a staged analysis control
+    Intent.Tooltip.Text           a tooltip's words, whatever control owns the tooltip, on Semi's tooltip fill
     Intent.Agreement.Agreeing     a parser reading that agrees with FieldWorks
     Intent.Agreement.Conflict     text for a parser reading that conflicts with FieldWorks
     Intent.Agreement.Conflict.Fill the background of a conflicting parser reading
@@ -220,6 +221,7 @@
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
       <StaticResource x:Key="Intent.Focus" ResourceKey="SemiColorFocusBorder" />
+      <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue700}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue50}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue500}" />
@@ -303,6 +305,7 @@
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
       <StaticResource x:Key="Intent.Focus" ResourceKey="SemiColorFocusBorder" />
+      <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey900}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue200}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue900}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue600}" />

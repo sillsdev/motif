@@ -227,6 +227,62 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         }, TimeSpan.FromMinutes(1));
     }
 
+    // Each owner restyles the text inside it, and a tooltip's text is its owner's logical descendant.
+    public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "verdictChip", "ruleRow", "handoffQuestion" };
+
+    [Theory]
+    [MemberData(nameof(TooltipOwners))]
+    public void ATooltipIsReadableWhateverItsOwnerStylesInBothThemes(string owner)
+    {
+        avalonia.Invoke(() =>
+        {
+            foreach (var theme in Themes)
+            {
+                Control control = owner switch
+                {
+                    "stagedStrip" => new Border { Classes = { "stagedStrip" }, Child = new TextBlock { Text = "Staged" } },
+                    "verdictChip" => new Border { Classes = { "verdictChip", "differs", "compact" }, Child = new TextBlock { Text = "!" } },
+                    "ruleRow" => new Button { Classes = { "ruleRow" }, Content = "lu" },
+                    "handoffQuestion" => new Button { Classes = { "handoffQuestion" }, Content = "Which words did not parse?" },
+                    _ => new Button { Content = "Refresh" },
+                };
+                ToolTip.SetTip(control, "Still fits the project.");
+                var window = new Window { Content = control, RequestedThemeVariant = theme, Width = 400, Height = 200 };
+                try
+                {
+                    window.Show();
+                    window.UpdateLayout();
+                    var text = OpenTip(control);
+                    var ratio = Effective(text);
+                    Assert.True(ratio >= Text, $"{theme} tooltip on {owner}: {ratio:F2}:1, needs {Text}:1");
+                    Assert.True(Application.Current!.TryGetResource("Intent.Type.Small", theme, out var size));
+                    Assert.Equal(size, text.FontSize);
+                }
+                finally
+                {
+                    ToolTip.SetIsOpen(control, false);
+                    window.Close();
+                }
+            }
+        });
+    }
+
+    /// <summary>Opens <paramref name="owner"/>'s tooltip and returns the text block that shows its words.</summary>
+    internal static TextBlock OpenTip(Control owner)
+    {
+        ToolTip.SetIsOpen(owner, true);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        var property = (AvaloniaProperty)typeof(ToolTip)
+            .GetField("ToolTipProperty", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetValue(null)!;
+        var tip = Assert.IsType<ToolTip>(owner.GetValue(property));
+        // The tip fades in; it is measured as it settles, fully opaque.
+        tip.Transitions = null;
+        tip.Opacity = 1;
+        tip.UpdateLayout();
+        return tip.GetVisualDescendants().OfType<TextBlock>().First(block => !string.IsNullOrEmpty(block.Text));
+    }
+
     // A notice's label colour is for live buttons; a disabled one must still look like every other disabled button.
     [Fact]
     public void ADisabledButtonInANoticeStillLooksDisabled()
