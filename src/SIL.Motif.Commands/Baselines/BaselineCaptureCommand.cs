@@ -137,9 +137,10 @@ public static class BaselineCaptureCommand
                 }
                 catch (IOException ex)
                 {
+                    var facts = Fact(("projectPath", request.ProjectPath));
+                    ProjectStoreCommand.AddPublicationFacts(facts, ex);
                     return CommandOutcome<BaselineCaptureResponse>.Refused(new Refusal(
-                        "baseline.busy", FailureReason.Busy, ex.Message,
-                        Fact(("projectPath", request.ProjectPath))));
+                        "baseline.busy", FailureReason.Busy, ex.Message, facts));
                 }
 
                 var registrationFailure = RecordKnownProject(managedRoot, project);

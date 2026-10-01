@@ -1,6 +1,7 @@
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
@@ -28,6 +29,8 @@ namespace SIL.Motif.Commands;
 /// </remarks>
 public static class ProjectStoreCommand
 {
+    private const string PublicationPhaseDataKey = "baselinePublicationPhase";
+
     /// <summary>Opens the paired store for a project, runs the verb, and translates any failure.</summary>
     /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
     /// <param name="productVersion">The worker version used for store compatibility checks.</param>
@@ -146,7 +149,7 @@ public static class ProjectStoreCommand
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
         IOException or UnauthorizedAccessException => new Refusal(
-            ioCode, FailureReason.Refused, MessageFor(exception), Fact(fwDataPath)),
+            ioCode, FailureReason.Refused, MessageFor(exception), OperationFacts(fwDataPath, exception)),
         NotSupportedException => new Refusal(
             "store.unsupported", FailureReason.Refused, exception.Message, Fact(fwDataPath)),
         InvalidDataException => new Refusal(
@@ -154,6 +157,23 @@ public static class ProjectStoreCommand
         _ => throw new ArgumentOutOfRangeException(nameof(exception), exception.GetType(),
             "The exception is not a recognized project-store failure."),
     };
+
+    internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)
+    {
+        var facts = Fact(fwDataPath);
+        AddPublicationFacts(facts, exception);
+        return facts;
+    }
+
+    internal static void AddPublicationFacts(Dictionary<string, string> facts, Exception exception)
+    {
+        if (exception.Data[PublicationPhaseDataKey] is not string phase)
+            return;
+
+        facts["baselinePublicationPhase"] = phase;
+        facts["exceptionHResult"] = "0x" + exception.HResult.ToString("X8", CultureInfo.InvariantCulture);
+        facts["exceptionType"] = exception.GetType().FullName ?? exception.GetType().Name;
+    }
 
     /// <summary>Gives the caller an actionable message after a live-project lock refusal (ADR 0030).</summary>
     internal static string ProjectInUseMessage(string fwDataPath, string verb) =>

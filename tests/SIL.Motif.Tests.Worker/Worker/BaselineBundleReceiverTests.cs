@@ -1,6 +1,9 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
@@ -411,6 +414,195 @@ public sealed class BaselineBundleReceiverTests : IDisposable
         Assert.Equal("keep", File.ReadAllText(Path.Combine(unrelated, "keep.txt")));
     }
 
+    [Fact]
+    public async Task PublishVerifiedAsync_DoesNotReclaimAnActivePublicationForTheSameRoot()
+    {
+        var target = Target();
+        var first = CreateTransfer(("project.fwdata", "first"),
+            ("WritingSystemStore/en.ldml", "<first/>"));
+        var second = CreateTransfer(("project.fwdata", "second"),
+            ("WritingSystemStore/en.ldml", "<second/>"));
+        Assert.NotEqual(first.Sha256, second.Sha256);
+        var firstIncomingReady = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseFirst = new ManualResetEventSlim();
+        var firstReceiver = new BaselineBundleReceiver(beforePublicationMove: _ =>
+        {
+            firstIncomingReady.TrySetResult(Directory.GetDirectories(
+                target.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly).Single());
+            if (!releaseFirst.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The held Baseline publication was not released.");
+        });
+        var firstTask = Task.Run(() => firstReceiver.PublishVerifiedAsync(
+            first, Token(first.Sha256), target, CancellationToken.None));
+        Task<BaselinePublication>? secondTask = null;
+        string? firstIncoming = null;
+        Exception? firstFailure = null;
+        Exception? secondFailure = null;
+
+        try
+        {
+            firstIncoming = await firstIncomingReady.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            secondTask = new BaselineBundleReceiver().PublishVerifiedAsync(
+                second, Token(second.Sha256), target, CancellationToken.None);
+
+            Assert.True(Directory.Exists(firstIncoming), "The second receiver reclaimed the active incoming directory.");
+            Assert.False(secondTask.IsCompleted, "A same-root publication completed while the first was held.");
+        }
+        finally
+        {
+            releaseFirst.Set();
+            firstFailure = await ObserveAsync(firstTask);
+            if (secondTask is not null)
+                secondFailure = await ObserveAsync(secondTask);
+        }
+
+        Assert.Null(firstFailure);
+        Assert.Null(secondFailure);
+        Assert.NotNull(firstIncoming);
+        var firstPublication = await firstTask;
+        var secondPublication = await secondTask!;
+        Assert.Equal("first", File.ReadAllText(firstPublication.FwDataPath));
+        Assert.Equal("second", File.ReadAllText(secondPublication.FwDataPath));
+        Assert.False(File.Exists(first.TemporaryPath));
+        Assert.False(File.Exists(second.TemporaryPath));
+        Assert.Empty(Directory.GetDirectories(target.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly));
+    }
+
+    [Fact]
+    public async Task PublishVerifiedAsync_CancelsAWaiterWithoutRemovingTheOwnerIncomingDirectory()
+    {
+        var target = Target();
+        var first = CreateTransfer(("project.fwdata", "first"),
+            ("WritingSystemStore/en.ldml", "<first/>"));
+        var waiting = CreateTransfer(("project.fwdata", "waiting"),
+            ("WritingSystemStore/en.ldml", "<waiting/>"));
+        var firstIncomingReady = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseFirst = new ManualResetEventSlim();
+        using var cancelWaiter = new CancellationTokenSource();
+        var firstReceiver = new BaselineBundleReceiver(beforePublicationMove: _ =>
+        {
+            firstIncomingReady.TrySetResult(Directory.GetDirectories(
+                target.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly).Single());
+            if (!releaseFirst.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The held Baseline publication was not released.");
+        });
+        var firstTask = Task.Run(() => firstReceiver.PublishVerifiedAsync(
+            first, Token(first.Sha256), target, CancellationToken.None));
+        Task<BaselinePublication>? waiterTask = null;
+        string? firstIncoming = null;
+        Exception? firstFailure = null;
+        Exception? waiterFailure = null;
+
+        try
+        {
+            firstIncoming = await firstIncomingReady.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            waiterTask = new BaselineBundleReceiver().PublishVerifiedAsync(
+                waiting, Token(waiting.Sha256), target, cancelWaiter.Token);
+            Assert.False(waiterTask.IsCompleted, "A publication waiter should remain pending while its root is owned.");
+            cancelWaiter.Cancel();
+            waiterFailure = await ObserveAsync(waiterTask);
+            Assert.True(Directory.Exists(firstIncoming), "Cancelling a waiter removed the active incoming directory.");
+        }
+        finally
+        {
+            releaseFirst.Set();
+            firstFailure = await ObserveAsync(firstTask);
+            if (waiterTask is not null && waiterFailure is null)
+                waiterFailure = await ObserveAsync(waiterTask);
+        }
+
+        Assert.Null(firstFailure);
+        Assert.IsAssignableFrom<OperationCanceledException>(waiterFailure);
+        Assert.NotNull(firstIncoming);
+        var publication = await firstTask;
+        Assert.Equal("first", File.ReadAllText(publication.FwDataPath));
+        Assert.False(File.Exists(first.TemporaryPath));
+        Assert.False(File.Exists(waiting.TemporaryPath));
+        Assert.Empty(Directory.GetDirectories(target.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly));
+    }
+
+    [Fact]
+    public async Task PublishVerifiedAsync_AllowsDifferentRootsToPublishIndependently()
+    {
+        var firstTarget = Target();
+        var secondTarget = new BaselinePublicationTarget(Path.Combine(_root, "other-managed", "baselines"),
+            "project-id");
+        var first = CreateTransfer(("project.fwdata", "first"),
+            ("WritingSystemStore/en.ldml", "<first/>"));
+        var second = CreateTransfer(("project.fwdata", "second"),
+            ("WritingSystemStore/en.ldml", "<second/>"));
+        var firstIncomingReady = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondReachedMove = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseFirst = new ManualResetEventSlim();
+        using var releaseSecond = new ManualResetEventSlim();
+        var firstReceiver = new BaselineBundleReceiver(beforePublicationMove: _ =>
+        {
+            firstIncomingReady.TrySetResult(Directory.GetDirectories(
+                firstTarget.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly).Single());
+            if (!releaseFirst.Wait(TimeSpan.FromSeconds(10)))
+                throw new TimeoutException("The held Baseline publication was not released.");
+        });
+        var firstTask = Task.Run(() => firstReceiver.PublishVerifiedAsync(
+            first, Token(first.Sha256), firstTarget, CancellationToken.None));
+        Task<BaselinePublication>? secondTask = null;
+        string? firstIncoming = null;
+        Exception? firstFailure = null;
+        Exception? secondFailure = null;
+
+        try
+        {
+            firstIncoming = await firstIncomingReady.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var secondReceiver = new BaselineBundleReceiver(beforePublicationMove: _ =>
+            {
+                secondReachedMove.TrySetResult();
+                if (!releaseSecond.Wait(TimeSpan.FromSeconds(10)))
+                    throw new TimeoutException("The second Baseline publication was not released.");
+            });
+            secondTask = Task.Run(() => secondReceiver.PublishVerifiedAsync(
+                second, Token(second.Sha256), secondTarget, CancellationToken.None));
+            await secondReachedMove.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(secondTask.IsCompleted, "The second publication hook should precede its directory move.");
+            Assert.True(Directory.Exists(firstIncoming));
+        }
+        finally
+        {
+            releaseFirst.Set();
+            releaseSecond.Set();
+            firstFailure = await ObserveAsync(firstTask);
+            if (secondTask is not null)
+                secondFailure = await ObserveAsync(secondTask);
+        }
+
+        Assert.Null(firstFailure);
+        Assert.Null(secondFailure);
+        var firstPublication = await firstTask;
+        var secondPublication = await secondTask!;
+        Assert.Equal("first", File.ReadAllText(firstPublication.FwDataPath));
+        Assert.Equal("second", File.ReadAllText(secondPublication.FwDataPath));
+        Assert.False(File.Exists(first.TemporaryPath));
+        Assert.False(File.Exists(second.TemporaryPath));
+        Assert.Empty(Directory.GetDirectories(firstTarget.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly));
+        Assert.Empty(Directory.GetDirectories(secondTarget.BaselineRoot, ".incoming-*", SearchOption.TopDirectoryOnly));
+    }
+
+    [Fact]
+    public async Task PublishVerifiedAsync_PreservesPublicationHookExceptionAndRecordsItsPhase()
+    {
+        var transfer = CreateTransfer(("project.fwdata", "model"),
+            ("WritingSystemStore/en.ldml", "<ldml/>"));
+        const int expectedHResult = unchecked((int)0x80070020);
+        var expected = new IOException("controlled publication failure", expectedHResult);
+        var receiver = new BaselineBundleReceiver(beforePublicationMove: _ => throw expected);
+
+        var actual = await Assert.ThrowsAsync<IOException>(() => receiver.PublishVerifiedAsync(
+            transfer, Token(transfer.Sha256), Target(), CancellationToken.None));
+
+        Assert.Same(expected, actual);
+        Assert.Equal(expectedHResult, actual.HResult);
+        Assert.Equal("publication-move", actual.Data["baselinePublicationPhase"]);
+        Assert.False(File.Exists(transfer.TemporaryPath));
+    }
+
     [RequiresSymbolicLinkFact]
     public async Task PublishVerifiedAsync_RefusesAReparseIncomingDirectoryWithoutLeavingItsRoot()
     {
@@ -471,4 +663,21 @@ public sealed class BaselineBundleReceiverTests : IDisposable
         "sha256:" + bundleDigest);
 
     private BaselinePublicationTarget Target() => new(Path.Combine(_root, "managed"), "project-id");
+
+    private static async Task<Exception?> ObserveAsync(Task task)
+    {
+        try
+        {
+            await task.WaitAsync(TimeSpan.FromSeconds(10));
+            return null;
+        }
+        catch (Exception exception)
+        {
+            if (exception is TimeoutException)
+                _ = task.ContinueWith(static completed => _ = completed.Exception, CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            return exception;
+        }
+    }
 }

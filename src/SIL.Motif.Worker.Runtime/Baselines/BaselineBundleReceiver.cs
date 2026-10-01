@@ -3,8 +3,10 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Worker.Baselines;
 
@@ -50,6 +52,10 @@ internal sealed class BaselineBundleReceiver
     private const uint EndOfCentralDirectorySignature = 0x06054b50;
     private const uint CentralDirectoryFileHeaderSignature = 0x02014b50;
     private const uint Zip64EndOfCentralDirectoryLocatorSignature = 0x07064b50;
+    private const string PublicationPhaseDataKey = "baselinePublicationPhase";
+    private const string PublicationOwnerPrefix = "MotifBaselinePublication-";
+    private static readonly TimeSpan PublicationOwnershipPatience = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan PublicationOwnershipPoll = TimeSpan.FromMilliseconds(25);
     private readonly int _maximumEntries;
     private readonly long _maximumExtractedBytes;
     private readonly Action? _beforeArchiveMaterialization;
@@ -88,23 +94,36 @@ internal sealed class BaselineBundleReceiver
         ArgumentNullException.ThrowIfNull(declaredToken);
         ArgumentNullException.ThrowIfNull(target);
         var temporaryDirectory = string.Empty;
+        var phase = "verification";
+        WorkerMutexOwner? publicationOwner = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             VerifyProjectIdentity(declaredToken, target);
             VerifyTransfer(transfer, declaredToken);
+            phase = "root-preparation";
             var root = PrepareManagedRoot(target.BaselineRoot);
+            phase = "ownership-wait";
+            publicationOwner = new WorkerMutexOwner(PublicationOwnerName(root));
+            await AcquirePublicationOwnerAsync(publicationOwner, cancellationToken).ConfigureAwait(false);
+            phase = "incoming-reclamation";
             ReclaimIncomingDirectories(root);
             var destination = Path.Combine(root, declaredToken.BundleDigest.Substring("sha256:".Length));
             if (Directory.Exists(destination))
+            {
+                phase = "existing-publication-validation";
                 return new BaselinePublicationOutcome(
                     ExistingPublication(destination, declaredToken, allowLiveFwDataLockMarker: true), false);
+            }
 
+            phase = "incoming-creation";
             temporaryDirectory = Path.Combine(root, ".incoming-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(temporaryDirectory);
+            phase = "archive-extraction";
             var fwDataPath = await ExtractValidatedAsync(
                 transfer.TemporaryPath, temporaryDirectory, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+            phase = "publication-move";
             try
             {
                 _beforePublicationMove?.Invoke(destination);
@@ -117,16 +136,69 @@ internal sealed class BaselineBundleReceiver
             {
                 DeleteIncoming(temporaryDirectory);
                 temporaryDirectory = string.Empty;
+                phase = "existing-publication-validation";
                 return new BaselinePublicationOutcome(
                     ExistingPublication(destination, declaredToken, allowLiveFwDataLockMarker: true), false);
             }
         }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            exception.Data[PublicationPhaseDataKey] = phase;
+            throw;
+        }
         finally
         {
-            if (temporaryDirectory.Length != 0)
-                DeleteIncoming(temporaryDirectory);
-            DeleteTransport(transfer.TemporaryPath);
+            phase = "cleanup";
+            try
+            {
+                try
+                {
+                    if (temporaryDirectory.Length != 0)
+                        DeleteIncoming(temporaryDirectory);
+                    DeleteTransport(transfer.TemporaryPath);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    exception.Data[PublicationPhaseDataKey] = phase;
+                    throw;
+                }
+            }
+            finally
+            {
+                publicationOwner?.Dispose();
+            }
         }
+    }
+
+    private static async Task AcquirePublicationOwnerAsync(
+        WorkerMutexOwner owner, CancellationToken cancellationToken)
+    {
+        var elapsed = Stopwatch.StartNew();
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (owner.TryAcquire())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return;
+            }
+
+            var remaining = PublicationOwnershipPatience - elapsed.Elapsed;
+            if (remaining <= TimeSpan.Zero)
+                throw new IOException("Timed out waiting for Baseline publication ownership.");
+            await Task.Delay(remaining < PublicationOwnershipPoll ? remaining : PublicationOwnershipPoll,
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static string PublicationOwnerName(string baselineRoot)
+    {
+        var normalizedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(baselineRoot));
+        if (OperatingSystem.IsWindows())
+            normalizedRoot = normalizedRoot.ToUpperInvariant();
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedRoot)))
+            .ToLowerInvariant();
+        return PublicationOwnerPrefix + digest;
     }
 
     internal static void DeletePublicationIfOwned(

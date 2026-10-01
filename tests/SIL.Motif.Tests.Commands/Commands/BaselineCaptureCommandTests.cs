@@ -166,6 +166,39 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.Contains("Warning:", rendered.Output, StringComparison.Ordinal);
     }
 
+    [WindowsFileLockFact]
+    public void BusyPublicationPreservesItsOriginalBaselineFactsAndSharingDiagnostics()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var managedRoot = NewManagedRoot();
+        var incoming = Path.Combine(managedRoot, "baselines", ".incoming-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(incoming);
+        var heldPath = Path.Combine(incoming, "held.txt");
+        File.WriteAllText(heldPath, "held");
+
+        var held = new FileStream(heldPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        SIL.Motif.Contract.Responses.CommandOutcome<BaselineCaptureResponse> outcome;
+        try
+        {
+            outcome = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), managedRoot);
+        }
+        finally
+        {
+            held.Dispose();
+        }
+
+        var refusal = outcome.Refusal!;
+        Assert.Equal("baseline.busy", refusal.Code);
+        Assert.Equal(FailureReason.Busy, refusal.Reason);
+        Assert.Contains(heldPath, refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(fwDataPath, refusal.Facts["projectPath"]);
+        Assert.False(refusal.Facts.ContainsKey("fwDataPath"));
+        Assert.Equal("incoming-reclamation", refusal.Facts["baselinePublicationPhase"]);
+        Assert.Equal("0x80070020", refusal.Facts["exceptionHResult"]);
+        Assert.Equal(typeof(IOException).FullName, refusal.Facts["exceptionType"]);
+        Assert.Equal(4, refusal.Facts.Count);
+    }
+
     [Fact]
     public void HumanRenderingNamesTheFreshnessAsOfFieldWorksLastSave()
     {
