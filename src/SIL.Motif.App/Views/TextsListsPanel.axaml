@@ -59,16 +59,16 @@
                 IsVisible="{Binding Lists.CanParseAgain}"
                 AutomationProperties.Name="Parse the selected list's stopped and unparsed words again"
                 AutomationProperties.HelpText="{Binding Lists.ParseAgainHelpText}"
-                ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" />
+                ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
         <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
                 Command="{Binding Lists.HandOffCheckedWordsCommand}"
                 AutomationProperties.Name="AI Handoff for ticked words in the selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
-                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" ToolTip.ShowOnDisabled="True" />
+                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
         <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 AutomationProperties.Name="AI Handoff for the whole selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" ToolTip.ShowOnDisabled="True" />
+                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
       </StackPanel>
     </DockPanel>
 
