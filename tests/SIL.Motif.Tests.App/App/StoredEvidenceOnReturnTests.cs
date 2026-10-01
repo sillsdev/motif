@@ -16,8 +16,8 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins what coming back to the window does with the stored evidence: it re-reads it and shows an Assessment
-/// recorded meanwhile, as when an agent ran one from the command line, and it never starts a run, never replaces a
-/// run this window already shows, and never reloads the words on screen when nothing new was recorded.
+/// recorded meanwhile, as when an agent ran one from the command line, and it never starts a run, preserves an identical
+/// effective run this window already shows, and never reloads the words on screen when nothing new was recorded.
 /// </summary>
 public sealed class StoredEvidenceOnReturnTests
 {
@@ -55,7 +55,7 @@ public sealed class StoredEvidenceOnReturnTests
         await workspace.Assess.RunCommand.ExecuteAsync(null);
         var shown = workspace.Context.Evidence.Assessment;
 
-        fake.ReadCurrentEvidenceCompletesWith(Stored("assessment-run", "birds", DateTimeOffset.UtcNow));
+        fake.ReadCurrentEvidenceCompletesWith(Stored("assessment-run", "birds", Saved.AddMinutes(20)));
         await workspace.CheckFreshnessAsync();
 
         Assert.Same(shown, workspace.Context.Evidence.Assessment);
@@ -98,7 +98,8 @@ public sealed class StoredEvidenceOnReturnTests
         [assessmentId], "summary")
     {
         InvocationId = "invocation/" + assessmentId,
-        Words = [new AssessmentWordResult(word, "analysed", false, "Search completed", 10, null)],
+        Words = [new AssessmentWordResult(word, "analysed", false, "Search completed", 10, null)
+        { Origin = new WordMeasurementOrigin(assessmentId, "invocation/" + assessmentId, Saved.AddMinutes(20)) }],
         Measurements = [new ProducedAssessmentReference(assessmentId, AssessmentKinds.ParseTime,
             "invocation/" + assessmentId)],
     };

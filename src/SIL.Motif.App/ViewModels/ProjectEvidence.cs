@@ -30,8 +30,8 @@ public enum NumbersFreshness
 /// when a project opens, after each Refresh and when a person comes back to the window, and a completed in-session
 /// run. A stored read replaces the Assessment on screen only when it holds a different one: a stored Assessment
 /// whose words changed, or one recorded after the run this window shows, as when an agent ran it from the command
-/// line. The store's copy of this window's own run never replaces it, since a run's rows name readings the store
-/// does not. A successful Refresh clears the in-memory Assessment, then restores stored evidence only when it
+/// line. An identical effective evidence set preserves this window's fresh result; explicit replacements
+/// change the set even when the root run is unchanged. A successful Refresh restores stored evidence only when it
 /// matches the captured Baseline and Selection.
 /// </remarks>
 public sealed class ProjectEvidence : ObservableObject
@@ -150,9 +150,14 @@ public sealed class ProjectEvidence : ObservableObject
         var sameRun = MeasurementOf(shown.Assessment, AssessmentKinds.ParseTime) ==
             MeasurementOf(stored, AssessmentKinds.ParseTime);
         return shown.IsStored
-            ? !sameRun || !shown.Assessment.TimingOverrideAssessmentIds.SequenceEqual(stored.TimingOverrideAssessmentIds)
-            : !sameRun && storedAt > shown.CompletedAt;
+            ? !sameRun || !SameEffectiveEvidence(shown.Assessment, stored)
+            : sameRun ? !SameEffectiveEvidence(shown.Assessment, stored) : storedAt > shown.CompletedAt;
     }
+
+    private static bool SameEffectiveEvidence(AssessCommandResponse left, AssessCommandResponse right) =>
+        left.TimingOverrideAssessmentIds.SequenceEqual(right.TimingOverrideAssessmentIds) &&
+        left.Words.Select(word => (word.Word, word.Origin)).SequenceEqual(
+            right.Words.Select(word => (word.Word, word.Origin)));
 
     internal void ShowRun(WorkspaceEvidence run)
     {

@@ -14,6 +14,8 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed class WarningsPageModel : PageModel
 {
+    private int _readGeneration;
+
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
         Grammar = new GrammarViewModel(context.Commands, context.Clock);
@@ -33,16 +35,31 @@ public sealed class WarningsPageModel : PageModel
     /// <summary>Checks the open project's grammar: started only by a person, since it can take a minute.</summary>
     public IAsyncRelayCommand CheckGrammarCommand { get; }
 
-    protected override void OnProjectCleared() => Grammar.Clear();
+    protected override void OnProjectCleared()
+    {
+        _readGeneration++;
+        Grammar.Clear();
+    }
 
     // Opening shows the check stored for this Baseline, and never starts one of its own.
     protected override async Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         Grammar.Clear();
+        var generation = ++_readGeneration;
         var stored = await Context.Commands
             .ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken).ConfigureAwait(true);
-        if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
+        if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
         if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check);
+    }
+
+    protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
+    {
+        if (Grammar.IsLoading || Context.ProjectPath is not { } path) return;
+        var generation = ++_readGeneration;
+        var stored = await Context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
+            .ConfigureAwait(true);
+        if (generation == _readGeneration && path == Context.ProjectPath && stored.Succeeded)
+            Grammar.LoadStored(path, stored.Value?.Check);
     }
 
     // A person asked for the new Baseline, so its grammar is checked rather than only read.

@@ -185,6 +185,67 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(clock.GetLocalNow(), handoff.Handoff.WrittenAt);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExternalReplacementRefreshesEveryDependentPage(bool reopened)
+    {
+        var (fake, workspace) = NewWorkspace();
+        var root = StoredSnapshot().MatchingAssessment! with
+        {
+            Selection = Selection.Create("Default", ["cat", "dog"]),
+            Words = [new AssessedWord("cat", "timed-out", [], 20), new AssessedWord("dog", "analysed", [], 10)],
+        };
+        var snapshot = StoredSnapshot() with { MatchingAssessment = root };
+        fake.ReadCurrentEvidenceCompletesWith(snapshot);
+        fake.OverviewCompletesWith(Overview() with { TextCoverage = new OverviewTextCoverage(1, 0, 1, 0, 0, 0) });
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([], true));
+        await workspace.SetProjectAsync(ProjectPath);
+        if (!reopened)
+        {
+            workspace.Context.PublishEvidence(new WorkspaceEvidence(snapshot.Assessment!, Saved.AddMinutes(12), false));
+            await workspace.Context.EvidencePublication;
+        }
+        var replacement = root with
+        {
+            AssessmentId = "replacement-cat", ReplacesAssessmentId = root.AssessmentId,
+            SavedUtc = Saved.AddMinutes(15).ToString("O"),
+            Selection = Selection.Create("cat", ["cat"]),
+            Words = [new AssessedWord("cat", "analysed", [], 3)],
+        };
+        var updated = snapshot with { RerunAssessments = [replacement] };
+        fake.ReadCurrentEvidenceCompletesWith(updated);
+        fake.OverviewCompletesWith(Overview() with { TextCoverage = new OverviewTextCoverage(2, 0, 0, 0, 0, 0) });
+        fake.TimingCompletesWith(new TimingResponse(root.AssessmentId, "all", "kind", 2, 3, 10, [], [], [])
+        {
+            Words = [new TimingWordRow("cat", 3, TimingCompletion.Finished)
+            { Origin = AssessmentEvidenceSet.WordsOf(replacement)[0].Origin }],
+        });
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Same grammar finding", [], [], "Same grammar finding")
+        {
+            YourWords = new WarningWords(WarningWordsMatch.Identity,
+                [new ObjectUseWord(WordRowProjection.Of(updated.Assessment!.Words.Single(word => word.Word == "cat")))], []),
+        };
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([finding], true));
+        var beforeReads = fake.StoredGrammarCheckRequests.Count;
+        await workspace.CheckFreshnessAsync();
+        var cat = workspace.Assess.Words.Find("cat")!;
+        Assert.Equal("replacement-cat", cat.WordRow.Row.Origin!.AssessmentId);
+        Assert.Equal(3, cat.WordRow.Row.ElapsedMs);
+        Assert.Equal("replacement-cat", workspace.Assess.Compare.Words.Single(word => word.Word == "cat")
+            .WordRow.Row.Origin!.AssessmentId);
+        Assert.Equal(root.AssessmentId, workspace.Assess.Words.Find("dog")!.WordRow.Row.Origin!.AssessmentId);
+        Assert.Equal(["replacement-cat"], workspace.Context.Evidence.TimingOverrideAssessmentIds);
+        var timing = workspace.PageModel<TimingPageModel>();
+        Assert.Equal("replacement-cat", Assert.Single(timing.KindTiming!.Words).Origin!.AssessmentId);
+        Assert.Equal(2, workspace.PageModel<OverviewPageModel>().Overview!.TextCoverage.ParsedWords);
+        Assert.True(fake.StoredGrammarCheckRequests.Count > beforeReads);
+        var touched = Assert.Single(workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Findings).YourWords;
+        Assert.Equal("replacement-cat", Assert.Single(touched!.Words).Row.Origin!.AssessmentId);
+        Assert.Equal(3, Assert.Single(touched.Words).Row.ElapsedMs);
+        Assert.Empty(fake.CheckGrammarRequests);
+    }
+
     private static CurrentEvidenceSnapshot StoredSnapshot() => new("one", Saved, Saved, EvidenceFreshness.Current,
         new BaselineRecord("project-1", Token, "root", ProjectPath, Saved, Saved), null, null, null,
         new AssessmentRecord("assessment-parse", null, null, "pangloss", AssessmentKind.ParseTime.ToStoredKind(),

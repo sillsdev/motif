@@ -291,10 +291,9 @@ public sealed partial class OverviewPageModel : PageModel
             await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
 
-    // Opening and Refresh already read the stored Overview, so only a run from this window makes it older.
     protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        if (evidence.Assessment is not { IsStored: false }) return;
+        if (evidence.Assessment is null) return;
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } path) await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
     }
