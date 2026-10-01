@@ -175,6 +175,21 @@ public static class AssessCommand
                     composition = composition with { Selection = composition.Selection with { Name = namedSelection } };
             }
 
+            if (request.ReplaceAssessmentId is { } replacedId)
+            {
+                AssessmentRecord? replaced;
+                try { replaced = assessments.Get(replacedId); }
+                catch (KeyNotFoundException) { replaced = null; }
+                var tokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+                if (replaced is null || replaced.Kind != AssessmentKind.ParseTime.ToStoredKind() ||
+                    replaced.ProposalId is not null || replaced.ReplacesAssessmentId is not null ||
+                    replaced.BaselineToken != tokenJson ||
+                    composition.Selection.Words.Any(word => !replaced.Selection.Words.Contains(word, StringComparer.Ordinal)))
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.invalid-replacement", FailureReason.InvalidArgument,
+                        "Parse these words again requires a complete Assessment of this Baseline containing every requested word."));
+            }
+
             AssessmentScope scope;
             var exportedCandidate = Path.GetDirectoryName(baseline.FwDataPath)!;
             IReadOnlyList<ProducedAssessment> produced;
@@ -254,7 +269,8 @@ public static class AssessCommand
                     var assessmentId = CanonicalId.Mint("assessment/").Value;
                     var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
                         proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
-                        TokeniserVersion, baselineTokenJson, composition.Selection) with { SavedUtc = savedUtc };
+                        TokeniserVersion, baselineTokenJson, composition.Selection) with
+                    { SavedUtc = savedUtc, ReplacesAssessmentId = request.ReplaceAssessmentId };
                     pendingRecords.Add(record);
                     assessmentIds.Add(assessmentId);
                     if (record.CachePath is not null)
@@ -395,6 +411,10 @@ public static class AssessCommand
                     ? warningLines : null;
                 if (words.Length > 0)
                 {
+                    var origin = new WordMeasurementOrigin(
+                        pendingRecords.Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId,
+                        invocation.InvocationId,
+                        DateTimeOffset.Parse(savedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
@@ -414,6 +434,7 @@ public static class AssessCommand
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
                         var row = word with
                         {
+                            Origin = origin,
                             Readings = readings,
                             TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
                             ReadingGrades = readingGrades,

@@ -64,6 +64,8 @@ public static class OverviewCommand
                     YourWords = warningCounts.YourWords,
                 })
             {
+                WordOrigins = assessedWords.Where(word => word.Origin is not null).ToDictionary(
+                    word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                 SelectionResolved = selection is not null,
                 WordCoveragePercent = selection is null
                     ? null : OverviewMetrics.Percent(metrics.TextCoverage.ParsedWords, words.Count),

@@ -196,7 +196,8 @@ public sealed class StoredAssessmentRowsTests : IDisposable
             word.ElapsedMs, word.ProjectStanding, string.Join(",", word.ReadingGrades ?? []), word.OccurrenceCount,
             word.FixFirst?.Category, word.FixFirst?.Rank, word.FixFirst?.Label, word.FixFirst?.Explanation,
             JsonSerializer.Serialize(word.MissedApproved), JsonSerializer.Serialize(word.StoredAnalyses),
-            JsonSerializer.Serialize(word.ExpectedAnalysis), word.TryWordLink, word.Attempts, word.Passes))
+            JsonSerializer.Serialize(word.ExpectedAnalysis), word.TryWordLink, word.Attempts, word.Passes,
+            JsonSerializer.Serialize(word.Origin)))
         .ToArray();
 
     private static FakeInvoker NewInvoker() => new()

@@ -61,6 +61,8 @@ public sealed record AssessmentWordResult(
     public int? Attempts { get; init; }
     /// <summary>How many of those attempts passed, when measured.</summary>
     public int? Passes { get; init; }
+    /// <summary>The run that measured this word; a composite result can have a different origin per word.</summary>
+    public WordMeasurementOrigin? Origin { get; init; }
     /// <summary>How many chosen Text occurrences this word represents in the run's resolved Selection.</summary>
     public int? OccurrenceCount { get; init; }
     /// <summary>The command's Fix these first priority, or <see langword="null"/> outside that panel.</summary>

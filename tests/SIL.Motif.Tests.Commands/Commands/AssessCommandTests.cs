@@ -1171,6 +1171,48 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void ExplicitReparseRecordsItsRootAndRejectsWordsOutsideIt()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(seeded.FwDataPath,
+            "Default", [seeded.Seeded.TextId], [])).Succeeded);
+        var managedRoot = NewManagedRoot();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, rawForScope: (scope, _, kind) =>
+            kind == AssessmentKind.ParseTime ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                scope.Words.Select((word, index) => new SIL.Motif.Host.Parser.WordAnalysis(index, word, 1,
+                    SIL.Motif.Host.Parser.WordOutcome.NoAnalysis, "none")).ToArray(), 1000, seeded.FwDataPath, []))
+                : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        var initial = AssessCommand.Run(new AssessRequest(seeded.FwDataPath), managedRoot,
+            assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.True(initial.Succeeded, initial.Refusal?.Message);
+        var rootId = initial.Value!.Measurements.Single(item => item.Kind == AssessmentKinds.ParseTime).AssessmentId;
+
+        var rerun = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [SeededProject.AnalysedWordForm], false, null),
+            ReplaceAssessmentId: rootId), managedRoot, assessor, NewInvoker(), null, CancellationToken.None);
+
+        Assert.True(rerun.Succeeded, rerun.Refusal?.Message);
+        var rerunId = rerun.Value!.Measurements.Single(item => item.Kind == AssessmentKinds.ParseTime).AssessmentId;
+        Assert.Equal(rootId, OpenRepository(seeded.FwDataPath).Get(rerunId).ReplacesAssessmentId);
+        var reopened = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath);
+        Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
+        Assert.Equal(rerunId, reopened.Value!.EffectiveWords.Single(word =>
+            word.Word == SeededProject.AnalysedWordForm).Origin!.AssessmentId);
+        Assert.Equal(rootId, reopened.Value.EffectiveWords.Single(word =>
+            word.Word == SeededProject.UnanalysedWordForm).Origin!.AssessmentId);
+        Assert.All(reopened.Value.Assessment!.Words, word => Assert.NotNull(word.OccurrenceCount));
+
+        var outside = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["outside-the-original-run"], false, null),
+            ReplaceAssessmentId: rootId), managedRoot, assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.False(outside.Succeeded);
+        Assert.Equal("assess.invalid-replacement", outside.Refusal!.Code);
+    }
+
+    [Fact]
     public void CancellationWhileTheAssessorIsRunningRecordsNoAssessments()
     {
         using var seeded = NewSeededScratch();

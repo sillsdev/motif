@@ -155,7 +155,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     }
 
     [Fact]
-    public void CurrentEvidenceIncludesLaterSubsetResultsForTheDefaultSelection()
+    public void ExploratorySubsetDoesNotReplaceTheDefaultSelectionsAnswers()
     {
         var fwDataPath = Path.Combine(_root, "project.fwdata");
         File.WriteAllText(fwDataPath, "synthetic project marker");

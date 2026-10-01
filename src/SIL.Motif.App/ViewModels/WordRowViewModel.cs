@@ -145,6 +145,10 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>How long the parser took, or empty for a word it did not time.</summary>
     public string ElapsedText => _row.ElapsedMs is not { } ms ? string.Empty : ms == 0 ? "<1 ms" : $"{ms:N0} ms";
 
+    /// <summary>When this word's producing measurement was recorded, independent of its neighbours.</summary>
+    public string MeasuredText => _row.Origin is { } origin
+        ? $"Measured {origin.MeasuredUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)}" : string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowUnread))]
     [NotifyPropertyChangedFor(nameof(Row))]

@@ -28,6 +28,20 @@ public sealed class WordRowViewModelTests
     private static string Fields(WordRowViewModel row) => JsonSerializer.Serialize(row.Row);
 
     [Fact]
+    public void EachWordShowsItsOwnMeasurementTime()
+    {
+        var first = DateTimeOffset.Parse("2026-09-24T11:00:00Z");
+        var second = first.AddMinutes(5);
+        var rows = new[] { first, second }.Select((stamp, index) => new WordRowViewModel(new WordRow(
+            "word" + index, WordRowOutcome.Same, "Kept", WordRowTone.Fine)
+        { Origin = new WordMeasurementOrigin("run" + index, "invocation" + index, stamp) })).ToArray();
+
+        Assert.Contains(first.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture), rows[0].MeasuredText);
+        Assert.Contains(second.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture), rows[1].MeasuredText);
+        Assert.NotEqual(rows[0].MeasuredText, rows[1].MeasuredText);
+    }
+
+    [Fact]
     public void OneWordYieldsIdenticalRowFieldsFromTheMatrixListsAndTiming()
     {
         var (words, compare, lists) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);

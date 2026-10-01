@@ -24,6 +24,10 @@ public sealed record OverviewResponse(
     OverviewTiming Timing,
     OverviewWarningsSummary? Warnings)
 {
+    /// <summary>The producing run and measurement time for each word contributing to these composite metrics.</summary>
+    public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
+        new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);
+
     /// <summary>Whether the default Selection resolved against the current Baseline.</summary>
     public bool SelectionResolved { get; init; }
 

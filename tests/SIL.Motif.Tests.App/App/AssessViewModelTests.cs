@@ -102,12 +102,14 @@ public sealed class AssessViewModelTests
     {
         var (fake, selection, assess) = NewViewModel();
         selection.PerWordStepLimit = 250000;
-        fake.AssessCompletesWith(NewResponse());
+        fake.AssessCompletesWith(NewResponse() with
+        { Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime, "invocation/one")] });
 
         await assess.RunCommand.ExecuteAsync(null);
         await assess.RerunAsync(["kitabu"], 45000);
 
         Assert.Equal(new StepCap(250000), fake.AssessRequests[1].Selection!.PerWordStepLimit);
+        Assert.Equal("assessment/one", fake.AssessRequests[1].ReplaceAssessmentId);
     }
 
     [Fact]

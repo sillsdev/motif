@@ -27,6 +27,8 @@ public sealed record AssessedWord(
     public int? Attempts { get; init; }
     /// <summary>The word's passing attempt count from the statistics of its producing run.</summary>
     public int? Passes { get; init; }
+    /// <summary>The producing run, attached when its stored words are selected as evidence.</summary>
+    public SIL.Motif.Contract.Responses.WordMeasurementOrigin? Origin { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
     public string? ProjectStanding { get; init; }
     public int? OccurrenceCount { get; init; }

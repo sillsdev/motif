@@ -113,6 +113,8 @@ public sealed record NewAssessmentRecord(
     string? CacheDigest = null,
     string? SavedUtc = null)
 {
+    /// <summary>The complete Assessment whose main answers this explicit reparse replaces.</summary>
+    public string? ReplacesAssessmentId { get; init; }
     public BatchInvocationEvidence? Invocation { get; init; }
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
@@ -145,6 +147,8 @@ public sealed record AssessmentRecord(
     string? CacheDigest = null,
     IReadOnlyList<AssessedWord>? Words = null)
 {
+    /// <summary>The complete Assessment whose main answers this explicit reparse replaces.</summary>
+    public string? ReplacesAssessmentId { get; init; }
     public BatchInvocationEvidence? Invocation { get; init; }
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
@@ -336,6 +340,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             command.CommandText = HeaderSelectSql + """
                  WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
                    AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
+                   AND ReplacesAssessmentId IS NULL
                  ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
                 """;
             command.Parameters.AddWithValue("$kind", kind);
@@ -504,12 +509,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 (AssessmentId, SelectionName, SelectionWordsJson, SelectionSha256, SelectionProvenanceJson,
                  OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint, Pipeline,
                  DiagnosticCount, SavedUtc, ProposalId, ProposalIntentDigest, Assessor, Kind,
-                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId)
+                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId, ReplacesAssessmentId)
             VALUES
                 ($id, $selectionName, $selectionWords, $selectionSha, $selectionProvenance,
                  $outcomeDigest, $semanticDigest, $grammarSha, $modelFingerprint, $pipeline,
                  $diagnosticCount, $savedUtc, $proposalId, $proposalIntentDigest, $assessor, $kind,
-                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest, $invocationId);
+                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest, $invocationId, $replacesAssessmentId);
             """;
         command.Parameters.AddWithValue("$id", assessment.AssessmentId);
         command.Parameters.AddWithValue("$selectionName", assessment.Selection.Name);
@@ -537,6 +542,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Parameters.AddWithValue("$cachePath", (object?)assessment.CachePath ?? DBNull.Value);
         command.Parameters.AddWithValue("$cacheDigest", (object?)assessment.CacheDigest ?? DBNull.Value);
         command.Parameters.AddWithValue("$invocationId", (object?)assessment.Invocation?.InvocationId ?? DBNull.Value);
+        command.Parameters.AddWithValue("$replacesAssessmentId", (object?)assessment.ReplacesAssessmentId ?? DBNull.Value);
         command.ExecuteNonQuery();
     }
 
@@ -696,7 +702,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                TokeniserName, TokeniserVersion, BaselineToken, SelectionName, SelectionWordsJson, SelectionSha256,
                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
                Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest,
-               (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId)
+               (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId),
+               ReplacesAssessmentId
         FROM Assessments
         """;
 
@@ -742,7 +749,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             CachePath: reader.IsDBNull(21) ? null : reader.GetString(21),
             CacheDigest: reader.IsDBNull(22) ? null : reader.GetString(22))
         {
-            Invocation = reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23))
+            Invocation = reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23)),
+            ReplacesAssessmentId = reader.IsDBNull(24) ? null : reader.GetString(24)
         };
     }
 

@@ -46,6 +46,7 @@ public static class WordRowProjection
             PanGlossReadingCount = word.Morphology?.Analyses.Count ?? word.Readings?.Count ?? 0,
             Places = facts?.Places ?? word.OccurrenceCount,
             ElapsedMs = word.Outcome == "skipped" ? null : word.ElapsedMs,
+            Origin = word.Origin,
             IsUnread = facts?.IsUnread,
             WordAnalysesLink = word.TryWordLink,
         };

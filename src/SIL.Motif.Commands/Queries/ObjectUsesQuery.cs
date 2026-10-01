@@ -41,13 +41,15 @@ public static class ObjectUsesQuery
                 return CommandOutcome<ObjectUsesResponse>.Refused(new Refusal(
                     "uses.no-assessment", FailureReason.NotFound,
                     "No stored Assessment matches the current Baseline and default Selection."));
-            var timings = TimingsAfterReruns(record, snapshot.RerunAssessments);
+            var timings = snapshot.EffectiveObjectTimings;
             var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
                 ? FactsOf(asked, baseline, project) : null;
             return CommandOutcome<ObjectUsesResponse>.Success(
                 Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words) with
                 {
                     AssessmentId = record.AssessmentId,
+                    WordOrigins = snapshot.EffectiveWords.Where(word => word.Origin is not null).ToDictionary(
+                        word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                     IsStale = snapshot.Freshness == EvidenceFreshness.Stale,
                     Facts = facts,
                 });
@@ -172,20 +174,6 @@ public static class ObjectUsesQuery
                 ? new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
                     target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!)
                 : null);
-    }
-
-    // A word a later subset run measured again keeps that run's timings, as its outcome does.
-    private static IReadOnlyList<AssessmentObjectTiming> TimingsAfterReruns(
-        AssessmentRecord assessment, IReadOnlyList<AssessmentRecord> reruns)
-    {
-        var timings = assessment.ObjectTimings.ToList();
-        foreach (var rerun in reruns)
-        {
-            var measured = (rerun.Words ?? []).Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-            timings.RemoveAll(row => measured.Contains(row.Word));
-            timings.AddRange(rerun.ObjectTimings);
-        }
-        return timings;
     }
 
     // A disapproved analysis is one the linguist says the word is not, so it is no use of its morphs.

@@ -57,13 +57,16 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>The per-rule timing measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingObjectTimingAssessmentId { get; init; }
 
-    /// <summary>The current word outcomes after later subset runs replace their earlier answers.</summary>
-    public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
-        MatchingAssessment?.Words ?? [], RerunAssessments);
+    /// <summary>The selected component runs and their effective measurements, projected once.</summary>
+    public AssessmentEvidenceSet? EvidenceSet { get; init; }
+
+    /// <summary>The current word outcomes after explicit reparses replace their earlier answers.</summary>
+    public IReadOnlyList<AssessedWord> EffectiveWords => EvidenceSet?.Words ??
+        (MatchingAssessment is { } assessment ? AssessmentEvidenceSet.Create(assessment, RerunAssessments).Words : []);
 
     /// <summary>The object times recorded for <see cref="EffectiveWords"/>, each from the run that timed its word.</summary>
-    public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => MatchingAssessment is { } assessment
-        ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : [];
+    public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => EvidenceSet?.ObjectTimings ??
+        (MatchingAssessment is { } assessment ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : []);
 
     /// <summary>
     /// The matching Assessment as an <c>assess</c> run returns it: its words after later subset runs, worded by
@@ -140,14 +143,8 @@ public static class CurrentEvidenceQuery
                     correctnessAssessmentId = SameInvocation(AssessmentKind.Correctness);
                     objectTimingAssessmentId = SameInvocation(AssessmentKind.ObjectTiming);
                 }
-                var original = assessment.Selection.Words.ToHashSet(StringComparer.Ordinal);
-                reruns = new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
-                    .Where(candidate => candidate.BaselineToken == tokenJson &&
-                        string.CompareOrdinal(candidate.SavedUtc, assessment.SavedUtc) > 0 &&
-                        candidate.Selection.Words.Count < original.Count &&
-                        candidate.Selection.Words.All(original.Contains))
-                    .OrderBy(candidate => candidate.SavedUtc, StringComparer.Ordinal)
-                    .ThenBy(candidate => candidate.AssessmentId, StringComparer.Ordinal).ToArray();
+                reruns = AssessmentWordOverlay.ReplacementsFor(assessment,
+                    new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
                 resolvedSelection = resolvedSelection with
                 {
                     Selection = resolvedSelection.Selection with { Provenance = assessment.Selection.Provenance },
@@ -159,7 +156,8 @@ public static class CurrentEvidenceQuery
             selection = resolvedSelection;
         }
 
-        var effectiveWords = assessment is null ? [] : AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns);
+        var evidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns);
+        var effectiveWords = evidenceSet?.Words ?? [];
         IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> resolvedReadings =
             new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
@@ -193,6 +191,7 @@ public static class CurrentEvidenceQuery
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
             RerunAssessments = reruns,
+            EvidenceSet = evidenceSet,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
             ResolvedReadingsByWord = resolvedReadings,

@@ -137,6 +137,9 @@
         <ContentControl Classes="wordRowActions" Content="{Binding #Self.Actions}" DataContext="{Binding #Self.DataContext}"
                         Margin="{DynamicResource Component.WordRow.CardPadding}"
                         IsVisible="{Binding #Self.Actions, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <views:CopyableTextBlock Classes="wordRowNote" Text="{Binding MeasuredText}"
+                   Margin="{DynamicResource Component.WordRow.CardPadding}"
+                   IsVisible="{Binding MeasuredText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <Border x:Name="CardHost" Classes="wordRowCard" IsVisible="{Binding #Self.IsOpen}">
           <ContentControl Content="{Binding #Self.Card}" DataContext="{Binding #Self.DataContext}" />
         </Border>
