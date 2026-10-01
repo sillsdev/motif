@@ -19,20 +19,16 @@ public static class TraceReadingBuilder
         var signatures = document.Signature.Split(';');
         var analyses = document.Analyses.Select((analysis, index) => ToAnalysis(analysis) with
         {
-            Signature = signatures.Length == document.Analyses.Count ? signatures[index] : AnalysisSignature(analysis),
+            Signature = signatures.Length == document.Analyses.Count && signatures[index].Length > 0 ? signatures[index] : null,
         }).ToArray();
-        var distinct = analyses.GroupBy(analysis => analysis.Signature, StringComparer.Ordinal)
-            .Select(group => group.First() with
-            {
-                FoundWays = group.Count(),
-                ProducerAnalysisIds = group.Select(analysis => analysis.AnalysisId).OfType<string>().ToArray(),
-            }).ToArray();
-        return Summarize(document.Word, root, attempts, distinct);
+        return Summarize(document.Word, root, attempts, analyses);
     }
 
     /// <summary>Reads responses with no producer document, including a search interrupted before any evidence returned.</summary>
-    public static WordTraceReading Build(WordTraceResponse response) => response.Reading ??
-        Summarize(response.Word, response.Root, response.Candidates, response.Analyses);
+    public static WordTraceReading Build(WordTraceResponse response) => response.Reading is { } reading &&
+        ReferenceEquals(reading.Root, response.Root) && ReferenceEquals(reading.Attempts, response.Candidates) &&
+        ReferenceEquals(reading.Analyses, response.Analyses) ? reading
+            : Summarize(response.Word, response.Root, response.Candidates, response.Analyses);
 
     internal static WordTraceReading Summarize(string word, TraceStep root,
         IReadOnlyList<TraceCandidate> attempts, IReadOnlyList<TraceAnalysis> analyses)
@@ -46,16 +42,27 @@ public static class TraceReadingBuilder
             .OrderByDescending(group => group.Count).ToArray();
         var best = attempts.FirstOrDefault(candidate => candidate.Succeeded) ?? closest.FirstOrDefault();
         var rules = best is null ? [] : Rules(best);
-        return new WordTraceReading(word, root, attempts, analyses, stops, closest, rules);
+        return new WordTraceReading(word, root, attempts, DistinctAnalyses(analyses), stops, closest, rules);
     }
 
-    private static string AnalysisSignature(PanGlossTraceAnalysis analysis) =>
+    private static TraceAnalysis[] DistinctAnalyses(IReadOnlyList<TraceAnalysis> analyses) => analyses
+        .GroupBy(analysis => analysis.Signature ?? AnalysisSignature(analysis), StringComparer.Ordinal)
+        .Select(group => group.First() with
+        {
+            Signature = group.Key,
+            FoundWays = group.Sum(analysis => analysis.FoundWays),
+            ProducerAnalysisIds = group.SelectMany(analysis => analysis.ProducerAnalysisIds.Count > 0
+                ? analysis.ProducerAnalysisIds : analysis.AnalysisId is { } id ? [id] : Array.Empty<string>()).ToArray(),
+        }).ToArray();
+
+    private static string AnalysisSignature(TraceAnalysis analysis) =>
         JsonSerializer.Serialize(new { analysis.LegacyMorphemes, analysis.Surface,
-            Morphs = analysis.Morphs.Select(morph => new { morph.FormId, morph.EntryId, morph.MsaId,
+            Morphs = analysis.Morphs.Select(morph => new { morph.Identity, morph.Form, morph.Headword, morph.Gloss,
+                morph.Category, morph.FormId, morph.EntryId, morph.MsaId,
                 morph.InflTypeId, morph.MorphemeId, morph.AllomorphId, morph.GuessedString }) });
 
     private static bool IsFailure(TraceCandidate candidate) => !candidate.Succeeded &&
-        candidate.OutcomeStatus != "blocked" && !candidate.Steps.Any(step => step.Type == "Blocked" && step == candidate.Steps.LastOrDefault()) &&
+        candidate.OutcomeStatus != "blocked" && candidate.Steps.LastOrDefault()?.Type != "Blocked" &&
         (candidate.OutcomeStatus is "failed" or "failure" || candidate.FailureReason is { Length: > 0 } ||
          candidate.ContextualFailure is { Length: > 0 } || candidate.Steps.Any(step => step.FailureReason is { Length: > 0 }));
 
@@ -96,10 +103,13 @@ public static class TraceReadingBuilder
                     .FirstOrDefault(form => !string.IsNullOrEmpty(form));
             }
             if (string.IsNullOrEmpty(input) || input == output) continue;
-            var prefix = output.EndsWith(input, StringComparison.Ordinal) ? output[..^input.Length] : null;
-            var suffix = output.StartsWith(input, StringComparison.Ordinal) ? output[input.Length..] : null;
-            var affix = prefix == step.Source ? prefix + "-" : suffix == step.Source ? "-" + suffix : null;
-            return (affix is null ? "" : affix + " · ") + $"{input} → {output}";
+            var reversed = step.Type.Contains("Analysis", StringComparison.Ordinal) && input.Length >= output.Length;
+            var (before, after) = reversed ? (output, input) : (input, output);
+            var prefix = after.EndsWith(before, StringComparison.Ordinal) ? after[..^before.Length] : null;
+            var suffix = after.StartsWith(before, StringComparison.Ordinal) ? after[before.Length..] : null;
+            var affix = step.Type.Contains("MorphologicalRule", StringComparison.Ordinal)
+                ? prefix is { Length: > 0 } ? prefix + "-" : suffix is { Length: > 0 } ? "-" + suffix : null : null;
+            return (affix is null ? "" : affix + " · ") + $"{before} → {after}";
         }
         return steps.Select(step => step.Output ?? step.Input).FirstOrDefault(form => !string.IsNullOrEmpty(form)) ?? "—";
     }

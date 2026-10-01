@@ -92,9 +92,11 @@ internal static class TraceDiagnosticCapture
             Candidates = response.Candidates.Select(ResolveCandidate).ToArray(),
             Root = ResolveStep(response.Root),
         };
+        var reading = TraceReadingBuilder.Summarize(resolved.Word, resolved.Root, resolved.Candidates, resolved.Analyses);
         return resolved with
         {
-            Reading = TraceReadingBuilder.Summarize(resolved.Word, resolved.Root, resolved.Candidates, resolved.Analyses),
+            Analyses = reading.Analyses,
+            Reading = reading,
         };
     }
 

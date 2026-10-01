@@ -103,6 +103,19 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
+    public void APhonologicalContractionKeepsItsRecordedBuildingDirection()
+    {
+        var tree = """
+            {"type":"WordAnalysis","children":[
+              {"type":"PhonologicalRuleSynthesis","source":"Contraction","inputShape":"kuma","outputShape":"kum","children":[
+                {"type":"Successful","outputShape":"kum","children":[]}]}]}
+            """;
+        var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("", tree)));
+
+        Assert.Equal("kuma → kum", Assert.Single(reading.RulesOnBestPath).Explanation);
+    }
+
+    [Fact]
     public void SavingAndLoadingKeepsEveryStepIdAndItsOriginalTreeLocation()
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
