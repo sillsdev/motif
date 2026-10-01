@@ -107,7 +107,10 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.Click("Open Text coverage in Texts");
             var comparedWord = walkthrough.Workspace.Assess.Compare.Words.First().Word;
             walkthrough.ShowTextsTab(TextsTab.Matrix);
-            var tick = walkthrough.Find<CheckBox>($"Tick {comparedWord}");
+            // Lists offers the same tick on its own tab, so name the Matrix's list of words.
+            var matrixWords = walkthrough.Find<ListBox>("Words in the chosen cells");
+            var tick = matrixWords.GetVisualDescendants().OfType<CheckBox>().Single(box =>
+                AutomationProperties.GetName(box) == $"Tick {comparedWord}");
             HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord}");
             Assert.True(tick.IsChecked);
             walkthrough.ShowPage(WorkspacePage.Timing);
