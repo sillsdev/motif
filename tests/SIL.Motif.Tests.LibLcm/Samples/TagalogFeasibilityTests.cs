@@ -18,7 +18,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Samples;
 
-[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
+[Collection(LcmCacheTestCollection.Name)]
 public sealed class TagalogFeasibilityTests
 {
     private const string ParserParametersXml =
