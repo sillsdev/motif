@@ -21,6 +21,15 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
+  <!-- Semi repaints the face under the pointer and on a press; a chip keeps its outline, and a chosen one its fill. -->
+  <Style Selector="Button.filterChip:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.filterChip:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <Style Selector="Button.filterChip.active:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.filterChip.active:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
+  </Style>
   <!-- A chip that cannot be chosen yet stays a chip, outline and all, rather than a floating grey label. -->
   <Style Selector="Button.filterChip:disabled /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />

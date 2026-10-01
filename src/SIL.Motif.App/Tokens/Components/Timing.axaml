@@ -44,12 +44,18 @@
     <Setter Property="Padding" Value="{DynamicResource Component.Timing.RowPadding}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
-  <Style Selector="Button.timingRuleRow:pointerover">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
-  </Style>
-  <!-- After hover, so the chosen rule keeps its own fill under the pointer. -->
   <Style Selector="Button.timingRuleRow.chosen">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+  </Style>
+  <!-- Semi repaints the face under the pointer and on a press, so the row's hover fill and divider go there too. -->
+  <Style Selector="Button.timingRuleRow:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.timingRuleRow:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <!-- After hover, so the chosen rule keeps its own fill under the pointer, with the hover ring on top. -->
+  <Style Selector="Button.timingRuleRow.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.timingRuleRow.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
   </Style>
   <Style Selector="Grid.timingColumns">
     <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Group}" />

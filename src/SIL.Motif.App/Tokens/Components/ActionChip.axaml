@@ -20,11 +20,16 @@
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.actionChip:pointerover">
-    <Setter Property="Background" Value="{DynamicResource Intent.Marking.Hover}" />
-  </Style>
   <Style Selector="Button.actionChip.primary">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <!-- Semi repaints the face under the pointer and on a press, so the chip's hover fill and outline go there too. -->
+  <Style Selector="Button.actionChip:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.actionChip:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Marking.Hover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Marking.Border}" />
+  </Style>
+  <Style Selector="Button.actionChip.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.actionChip.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
   </Style>
 </Styles>

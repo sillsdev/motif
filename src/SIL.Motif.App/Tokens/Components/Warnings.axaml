@@ -50,6 +50,11 @@
   <Style Selector="Button.findingGroup.chosen">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
+  <!-- Semi repaints the face under the pointer and on a press; the chosen group keeps its fill, ringed for hover. -->
+  <Style Selector="Button.findingGroup.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.findingGroup.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource Intent.Shadow.Hover}" />
+  </Style>
   <Style Selector="Button.findingGroup TextBlock.groupName">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
     <Setter Property="FontWeight" Value="Normal" />

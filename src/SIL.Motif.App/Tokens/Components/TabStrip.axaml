@@ -21,4 +21,8 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
   </Style>
+  <!-- Semi clears the face's edge under the pointer and on a press; the chosen tab keeps its underline. -->
+  <Style Selector="Button.tab.active:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.tab.active:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+  </Style>
 </Styles>

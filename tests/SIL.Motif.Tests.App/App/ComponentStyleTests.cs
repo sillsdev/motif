@@ -84,7 +84,9 @@ public sealed partial class ComponentStyleTests
                 window.MouseMove(CentreOf(chip, window));
                 Dispatcher.UIThread.RunJobs();
                 Assert.True(Application.Current!.TryGetResource("Intent.Marking.Hover", ThemeVariant.Light, out var expected));
-                Assert.Equal(expected, chip.Background);
+                var face = Assert.IsType<Avalonia.Controls.Presenters.ContentPresenter>(
+                    ComponentStateContractCases.PartOf(chip, StatePart.Face));
+                Assert.Equal(expected, face.Background);
             }
             finally
             {
