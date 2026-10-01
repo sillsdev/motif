@@ -237,6 +237,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The publication to the pages under way, or a completed task when none is.</summary>
     internal Task EvidencePublication { get; private set; } = Task.CompletedTask;
 
+    /// <summary>Whether a project open is still running its stages, the stored evidence read among them.</summary>
+    internal bool IsOpeningProject => Volatile.Read(ref _openCancellation) is not null;
+
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
     internal void Attach(PageModel page)
     {
