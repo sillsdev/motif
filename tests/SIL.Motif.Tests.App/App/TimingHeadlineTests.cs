@@ -185,6 +185,7 @@ public sealed class TimingHeadlineTests
             request.By == "kind" ? [new TimingAggregateRow("Morphological rules", "Morphological rules", 800, 1, 9)] : [], [])
         {
             Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion)).ToArray(),
+            Attribution = new WordTimeAttribution(9, 800, 800, 0, 0, 0, false),
         };
 
     private static AssessCommandResponse Assessment() => new(

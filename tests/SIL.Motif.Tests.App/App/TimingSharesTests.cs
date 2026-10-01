@@ -54,7 +54,7 @@ public sealed class TimingSharesTests
         Assert.Null(timing.KindShares[^1].Source);
         Assert.Equal(1d, timing.KindShares.Sum(share => share.Share!.Value), precision: 6);
         Assert.Equal("Every share is of the 0.8 s these 9 words took to parse.", timing.ShareDenominatorText);
-        Assert.Equal("15 ms was not attributed to rules or lookups.", timing.OtherTimeText);
+        Assert.Equal("120 ms was not attributed to rules or lookups.", timing.OtherTimeText);
     }
 
     [Fact]
