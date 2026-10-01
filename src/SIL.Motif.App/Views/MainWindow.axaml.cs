@@ -49,9 +49,19 @@ public sealed partial class MainWindow : Window
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        if (this.FindControl<StackPanel>("TopBarActions") is { } actions)
+            foreach (var action in actions.Children.OfType<Button>())
+                action.AddHandler(ToolTip.ToolTipOpeningEvent, (_, _) => PlaceBesideTopBarActions(actions, action));
         if (!rememberBounds) return;
         RestoreBounds();
         Closing += (_, _) => SaveBounds();
+    }
+
+    // The tip opens left of the whole group, so it hides neither the action's neighbours nor the notice below.
+    private static void PlaceBesideTopBarActions(StackPanel actions, Button action)
+    {
+        if (actions.TranslatePoint(default, action) is { } groupStart)
+            ToolTip.SetHorizontalOffset(action, groupStart.X - actions.Spacing);
     }
 
     /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>

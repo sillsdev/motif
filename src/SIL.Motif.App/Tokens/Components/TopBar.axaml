@@ -22,6 +22,11 @@
   <Style Selector="StackPanel.topBarGroup">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
+  <!-- An action's tip opens beside the group, not below it, where it would hide the notice's buttons. -->
+  <Style Selector="StackPanel.topBarGroup > Button">
+    <Setter Property="ToolTip.Placement" Value="Left" />
+    <Setter Property="ToolTip.VerticalOffset" Value="0" />
+  </Style>
   <Style Selector="StackPanel.brand">
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.AfterGroup}" />
   </Style>
