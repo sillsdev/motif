@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -16,6 +17,7 @@ public sealed record PanGlossTraceAnalysis(
 {
     public string? ProjectionStatus { get; init; }
     public string? ProjectionError { get; init; }
+    public string? ProjectionErrorCode { get; init; }
 }
 
 public sealed record PanGlossTraceMorph(
@@ -71,7 +73,10 @@ public sealed record PanGlossTraceAttempt(
     string? SourceIdentityId,
     string? SourceIdentityQuality,
     IReadOnlyList<PanGlossTraceMorph> Morphs,
-    JsonElement Raw);
+    JsonElement Raw)
+{
+    public TraceFailureEvidence? FailureEvidence { get; init; }
+}
 
 public sealed record PanGlossTraceDiagnosticDocument(
     string SchemaVersion,
@@ -196,6 +201,7 @@ public static class PanGlossTraceDiagnosticReader
         {
             ProjectionStatus = projectionStatus,
             ProjectionError = projectionError,
+            ProjectionErrorCode = projection ? OptionalString(projectionElement, "errorCode") : null,
         };
     }
 
@@ -225,7 +231,7 @@ public static class PanGlossTraceDiagnosticReader
                     node.SourceIdentityId,
                     node.SourceIdentityQuality,
                     node.AttemptedMorphs,
-                    default));
+                    default) { FailureEvidence = node.FailureEvidence });
             }
 
             foreach (var child in node.Children) Walk(child);
@@ -336,6 +342,7 @@ public static class PanGlossTraceDiagnosticReader
             FailureRequired = ReadContextField(element, "required"),
             FailureActual = ReadContextField(element, "actual"),
             FailureEnvironment = ReadContextField(element, "environment"),
+            FailureEvidence = ReadFailureEvidence(element),
             SourceIdentityKind = ReadIdentityField(element, "kind"),
             SourceIdentityId = ReadIdentityField(element, "id"),
             SourceIdentityQuality = ReadIdentityField(element, "quality"),
@@ -344,6 +351,20 @@ public static class PanGlossTraceDiagnosticReader
         return node;
     }
     private static bool IsTerminalOutcome(string? status) => status is "successful" or "succeeded" or "success" or "failed" or "failure" or "blocked";
+
+    private static TraceFailureEvidence? ReadFailureEvidence(JsonElement owner)
+    {
+        if (!owner.TryGetProperty("failureContext", out var context) || context.ValueKind != JsonValueKind.Object)
+            return null;
+        return new TraceFailureEvidence(OptionalString(context, "kind"), OptionalString(context, "source"),
+            OptionalString(context, "reasonCode"), OptionalString(context, "status"),
+            OptionalString(context, "unavailableReason"), OptionalString(context, "reason"),
+            RecordedValue(context, "required"), RecordedValue(context, "actual"), RecordedValue(context, "environment"));
+    }
+
+    private static string? RecordedValue(JsonElement owner, string name) =>
+        !owner.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null ? null
+            : value.ValueKind == JsonValueKind.String ? value.GetString() : value.GetRawText();
 
     private static string? ReadContext(JsonElement owner)
     {

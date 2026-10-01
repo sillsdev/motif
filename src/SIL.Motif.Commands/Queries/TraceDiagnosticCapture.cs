@@ -62,14 +62,8 @@ internal static class TraceDiagnosticCapture
                 link = FieldWorksLinks.For(cache, projectName, found);
             return morph with { FieldWorksLink = link };
         }
-        string? RuleName(string? id, string? fallback) =>
-            projectMatches && Guid.TryParse(id, out var guid) && repository.TryGetObject(guid, out var rule)
-                ? NameOf(rule) ?? fallback
-                : fallback;
         TraceStep ResolveStep(TraceStep step) => step with
         {
-            Source = step.SourceIdentityKind is "morphRule" or "phonRule" or "compoundingRule" or "affixTemplate"
-                ? RuleName(step.SourceIdentityId, step.Source) : step.Source,
             AttemptedMorphs = step.AttemptedMorphs.Select(Resolve).ToArray(),
             Children = step.Children.Select(ResolveStep).ToArray(),
         };
@@ -80,41 +74,42 @@ internal static class TraceDiagnosticCapture
             {
                 RichMorphs = morphs,
                 Morphs = morphs.Length > 0 ? morphs.Select(TraceReadingBuilder.ToReadingMorph).ToArray() : candidate.Morphs,
-                StoppedByRule = RuleName(candidate.StoppedByRuleId, candidate.StoppedByRule),
                 Steps = candidate.Steps.Select(ResolveStep).ToArray(),
             };
         }
-        var json = JsonNode.Parse(response.DiagnosticJson, documentOptions: new JsonDocumentOptions { MaxDepth = 512 })!.AsObject();
-        var host = json["hostCapture"] as JsonObject ?? new JsonObject();
-        var captured = JsonSerializer.SerializeToNode(capture, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!.AsObject();
-        foreach (var field in captured) host[field.Key] = field.Value?.DeepClone();
-        if (json["hostCapture"] is not JsonObject) json["hostCapture"] = host;
-        var resolved = response with
-        {
-            HostCapture = capture,
-            Provenance = comparison,
-            DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
-            Analyses = response.Analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(Resolve).ToArray() }).ToArray(),
-            Candidates = response.Candidates.Select(ResolveCandidate).ToArray(),
-            Root = ResolveStep(response.Root),
-        };
-        var reading = TraceReadingBuilder.Summarize(resolved.Word, resolved.Root, resolved.Candidates, resolved.Analyses);
+        var reading = TraceReadingBuilder.Summarize(response.Word, ResolveStep(response.Reading.Root),
+            response.Reading.Attempts.Select(ResolveCandidate).ToArray(),
+            response.Reading.Analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(Resolve).ToArray() }).ToArray());
         TraceRef Link(TraceRef reference)
         {
-            if (!comparison.CanNavigate || reference.IdentityQuality != "authored" ||
-                !Guid.TryParse(reference.Identity, out var id) || !repository.TryGetObject(id, out var found) ||
-                FieldWorksLinks.TargetFor(cache, found) is not { } target)
+            if (reference.IdentityQuality != "authored" ||
+                !Guid.TryParse(reference.Identity, out var id) || !repository.TryGetObject(id, out var found))
                 return reference;
+            reference = reference with { CapturedFieldWorksLabel = NameOf(found) };
+            if (!comparison.CanNavigate || FieldWorksLinks.TargetFor(cache, found) is not { } target) return reference;
             return reference with
             {
                 FieldWorks = new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
                     target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!),
             };
         }
-        return resolved with
+        reading = reading with { Refs = reading.Refs.Select(Link).ToArray() };
+        capture = capture with
         {
-            Analyses = reading.Analyses,
-            Reading = reading with { Refs = reading.Refs.Select(Link).ToArray() },
+            TraceLabels = reading.Refs.Where(reference => reference.CapturedFieldWorksLabel is not null)
+                .Select(reference => new TraceCapturedLabel(reference.Id, reference.CapturedFieldWorksLabel!)).ToArray(),
+        };
+        var json = JsonNode.Parse(response.DiagnosticJson, documentOptions: new JsonDocumentOptions { MaxDepth = 512 })!.AsObject();
+        var host = json["hostCapture"] as JsonObject ?? new JsonObject();
+        var captured = JsonSerializer.SerializeToNode(capture, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!.AsObject();
+        foreach (var field in captured) host[field.Key] = field.Value?.DeepClone();
+        if (json["hostCapture"] is not JsonObject) json["hostCapture"] = host;
+        return response with
+        {
+            HostCapture = capture,
+            Provenance = comparison,
+            DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
+            Reading = reading,
         };
     }
 

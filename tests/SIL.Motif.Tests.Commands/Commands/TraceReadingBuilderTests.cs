@@ -96,7 +96,7 @@ public sealed class TraceReadingBuilderTests
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
 
-        Assert.All(response.Candidates, candidate =>
+        Assert.All(response.Reading.Attempts, candidate =>
             Assert.Contains(candidate.Steps, step => step.Type == "LexicalLookup"));
     }
 
@@ -113,7 +113,7 @@ public sealed class TraceReadingBuilderTests
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
 
-        var analysis = Assert.Single(response.Analyses);
+        var analysis = Assert.Single(response.Reading.Analyses);
         Assert.Equal(2, analysis.FoundWays);
         Assert.Equal(["analysis-0", "analysis-1"], analysis.ProducerAnalysisIds);
     }
@@ -122,7 +122,7 @@ public sealed class TraceReadingBuilderTests
     public void UnavailableFeaturesNeverBecomeRawJsonInAMorph()
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
-        var morphs = response.Candidates.SelectMany(candidate => candidate.RichMorphs).ToArray();
+        var morphs = response.Reading.Attempts.SelectMany(candidate => candidate.RichMorphs).ToArray();
 
         Assert.NotEmpty(morphs);
         Assert.All(morphs.Where(morph => morph.FeaturesStatus == "unavailable"),
@@ -133,7 +133,7 @@ public sealed class TraceReadingBuilderTests
     public void EveryRecordedStepHasAChildIndexPath()
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
-        using var serialized = JsonDocument.Parse(JsonSerializer.Serialize(response.Candidates));
+        using var serialized = JsonDocument.Parse(JsonSerializer.Serialize(response.Reading.Attempts));
 
         Assert.All(serialized.RootElement.EnumerateArray(), candidate =>
             Assert.All(candidate.GetProperty("Steps").EnumerateArray(), step =>
@@ -204,11 +204,11 @@ public sealed class TraceReadingBuilderTests
         {
             File.WriteAllText(path, response.DiagnosticJson);
             var loaded = WordTraceQuery.LoadDiagnostic(File.ReadAllText(path)).Value!;
-            Assert.Equal(response.Candidates.SelectMany(candidate => candidate.Steps).Select(step => step.StepId),
-                loaded.Candidates.SelectMany(candidate => candidate.Steps).Select(step => step.StepId));
-            foreach (var step in loaded.Candidates.SelectMany(candidate => candidate.Steps))
+            Assert.Equal(response.Reading.Attempts.SelectMany(candidate => candidate.Steps).Select(step => step.StepId),
+                loaded.Reading.Attempts.SelectMany(candidate => candidate.Steps).Select(step => step.StepId));
+            foreach (var step in loaded.Reading.Attempts.SelectMany(candidate => candidate.Steps))
             {
-                var node = loaded.Root;
+                var node = loaded.Reading.Root;
                 foreach (var index in step.StepId.Split('.').Skip(1)) node = node.Children[int.Parse(index)];
                 Assert.Equal(step.StepId, node.StepId);
                 Assert.Equal(step.Type, node.Type);

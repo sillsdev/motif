@@ -119,8 +119,7 @@ public sealed class TryWordPageTests
                 OutcomeStatus = "succeeded",
             };
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-                [new TraceCandidate([], true, null, "Built the word", [step])],
-                new TraceStep("WordAnalysis", null, null, null, null, [])));
+                TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [step])], [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
                 [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
             {
@@ -133,7 +132,7 @@ public sealed class TryWordPageTests
 
             var row = Assert.Single(page.RulesOnBestPath);
             Assert.Equal("Plural", row.Rule);
-            Assert.Equal("Affix rule", row.Kind);
+            Assert.Equal("Morphological rule", row.Kind);
             Assert.Equal("applied", row.Outcome);
             Assert.Equal("-s · dog → dogs", row.Explanation);
             // The stored share is of the word's whole parse time in that parse, not of the rules' recorded time.
@@ -160,9 +159,8 @@ public sealed class TryWordPageTests
             context.Assess.ProjectPath = ProjectPath;
             var page = new TryWordPageModel(context);
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-                [new TraceCandidate([], true, null, "Built the word", [
-                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
-                new TraceStep("WordAnalysis", null, null, null, null, [])));
+                TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])], [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
                 [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1)], []));
 
@@ -248,9 +246,9 @@ public sealed class TryWordPageTests
     }
 
     private static WordTraceResponse DogsTrace() => new("dogs", true, true, null, 1, null, 10,
-        [new TraceCandidate([], true, null, "Built the word", [
-            new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, []) { OutcomeStatus = "succeeded" }])],
-        new TraceStep("WordAnalysis", null, null, null, null, []));
+        TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []),
+            [new TraceCandidate([], true, null, "Built the word", [
+                new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, []) { OutcomeStatus = "succeeded" }])], []));
 
     private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
         [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
@@ -271,10 +269,9 @@ public sealed class TryWordPageTests
             var texts = new TextsPageModel(context);
             var handoff = new AiHandoffPageModel(context);
             fake.TraceWordCompletesWith(new WordTraceResponse("typed-only", false, true, null, 1, null, 1,
-                [new TraceCandidate([], false, "failure", "Stopped", [
+                TraceReadingBuilder.Build("typed-only", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], false, "failure", "Stopped", [
                     new TraceStep("MorphologicalRule", "Plural", "typed-only", null, "failure", [])
-                    { OutcomeStatus = "failed" }])],
-                new TraceStep("WordAnalysis", null, null, null, null, [])));
+                    { OutcomeStatus = "failed" }])], [])));
 
             context.TryWord("typed-only");
             await page.Trace.TryCommand.ExecutionTask!;
@@ -304,10 +301,9 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(context);
             var timing = new TimingPageModel(context);
             fake.TraceWordCompletesWith(new WordTraceResponse("verb", true, true, null, 1, null, 1,
-                [new TraceCandidate([], true, null, "Built the word", [
+                TraceReadingBuilder.Build("verb", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
                     new TraceStep("MorphologicalRule", "Verb template", "stem", "verb", null, [])
-                    { OutcomeStatus = "succeeded" }])],
-                new TraceStep("WordAnalysis", null, null, null, null, [])));
+                    { OutcomeStatus = "succeeded" }])], [])));
 
             context.TryWord("verb");
             await page.Trace.TryCommand.ExecutionTask!;
@@ -361,9 +357,8 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(context);
             var effort = new TraceEffort("Morphology", 3, 1, 0, 0, 0, 2, 8);
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
-                [new TraceCandidate([], true, null, "Built the word", [
-                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
-                new TraceStep("WordAnalysis", null, null, null, null, []))
+                TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
+                    new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])], []))
             {
                 Effort = [effort],
             });
@@ -403,8 +398,7 @@ public sealed class TryWordPageTests
             Assert.True(page.Trace.HasResult);
             Assert.Equal(2, Assert.Single(page.Trace.Analyses).WaysFound);
             Assert.Equal("Parsed: 1 analysis, found 2 ways", page.Trace.AnalysesHeading);
-            // The word parsed, so every rule on its best path applied; one attempt is left to show, in the singular.
-            Assert.All(page.RulesOnBestPath, row => Assert.Equal("applied", row.Outcome));
+            Assert.All(page.RulesOnBestPath, row => Assert.Equal("tried", row.Outcome));
             // The rules read in building order, outward from the stem, each with the affix's own form.
             Assert.Equal(["ma", "lu"], page.RulesOnBestPath.Select(row => row.Rule));
             Assert.Equal("ma- · tin → matin", page.RulesOnBestPath[0].Explanation);
@@ -449,7 +443,7 @@ public sealed class TryWordPageTests
         Assert.Contains("Further derivation is prohibited after a final template.", unfolded);
         foreach (var texts in new[] { visible, unfolded })
         {
-            Assert.Contains("Affix rule", texts);
+            Assert.Contains("Morphological rule", texts);
             Assert.DoesNotContain("unknown morpheme", texts);
             // The parser's own morpheme names are its detail, kept for the tooltip.
             Assert.DoesNotContain(texts, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));

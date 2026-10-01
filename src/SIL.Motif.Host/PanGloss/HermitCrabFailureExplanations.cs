@@ -42,30 +42,14 @@ public static class HermitCrabFailureExplanations
     };
 
     /// <summary>
-    /// The plain-English explanation for <paramref name="failureReason"/>, or a generic sentence built from
-    /// the reason's own name when it names none of the 23 catalogued reasons (a future PanGloss addition).
+    /// The catalogued explanation for <paramref name="failureReason"/>, or <see langword="null"/> when its
+    /// meaning is unknown. The caller can show the recorded code without claiming an unrecorded cause.
     /// </summary>
-    public static string Explain(string failureReason)
+    public static string? Explain(string failureReason)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(failureReason);
         if (Exact.TryGetValue(failureReason, out var exact)) return exact;
         if (Paraphrased.TryGetValue(failureReason, out var paraphrased)) return paraphrased;
-        return "The parser refused this step: " + Humanize(failureReason) + ".";
-    }
-
-    // "SurfaceFormMismatch" -> "surface form mismatch", for a reason this module does not yet catalogue.
-    private static string Humanize(string pascalCase)
-    {
-        var words = new List<string>();
-        var start = 0;
-        for (var index = 1; index <= pascalCase.Length; index++)
-        {
-            if (index == pascalCase.Length || char.IsUpper(pascalCase[index]))
-            {
-                words.Add(pascalCase[start..index]);
-                start = index;
-            }
-        }
-        return string.Join(' ', words).ToLowerInvariant();
+        return null;
     }
 }

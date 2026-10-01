@@ -66,12 +66,13 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var loaded = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
         var window = WordTraceQuery.LoadDiagnostic(File.ReadAllText(path)).Value!;
         using var json = JsonDocument.Parse(result.Output);
-        Assert.Equal(JsonValueKind.Object, json.RootElement.GetProperty("root").ValueKind);
-        Assert.Equal(JsonValueKind.Array, json.RootElement.GetProperty("candidates").ValueKind);
-        Assert.Equal(JsonValueKind.Array, json.RootElement.GetProperty("analyses").ValueKind);
-        Assert.Equal(ProjectionJson.Serialize(window.Root), ProjectionJson.Serialize(loaded.Root));
-        Assert.Equal(ProjectionJson.Serialize(window.Candidates), ProjectionJson.Serialize(loaded.Candidates));
-        Assert.Equal(ProjectionJson.Serialize(window.Analyses), ProjectionJson.Serialize(loaded.Analyses));
+        Assert.False(json.RootElement.TryGetProperty("root", out _));
+        Assert.False(json.RootElement.TryGetProperty("candidates", out _));
+        Assert.False(json.RootElement.TryGetProperty("analyses", out _));
+        var authority = json.RootElement.GetProperty("reading");
+        Assert.Equal(JsonValueKind.Object, authority.GetProperty("root").ValueKind);
+        Assert.Equal(JsonValueKind.Array, authority.GetProperty("attempts").ValueKind);
+        Assert.Equal(JsonValueKind.Array, authority.GetProperty("analyses").ValueKind);
         Assert.Equal(ProjectionJson.Serialize(window.Reading!), ProjectionJson.Serialize(loaded.Reading!));
         Assert.NotEmpty(loaded.Reading!.Refs);
     }

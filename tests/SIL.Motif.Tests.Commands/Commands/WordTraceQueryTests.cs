@@ -97,20 +97,18 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal(1, response.Effort[1].NoRoot);
         Assert.Null(response.Effort[1].SelfMs);
         Assert.Equal("ed_suffix", response.DeepestRule);
-        Assert.Equal("WordAnalysis", response.Root.Type);
-        Assert.Equal(4, response.Root.Children.Count);
-        Assert.Same(response.Root, response.Reading!.Root);
-        Assert.Same(response.Candidates, response.Reading.Attempts);
+        Assert.Equal("WordAnalysis", response.Reading.Root.Type);
+        Assert.Equal(4, response.Reading.Root.Children.Count);
 
-        Assert.Equal(2, response.Candidates.Count);
-        var succeeded = response.Candidates[0];
+        Assert.Equal(2, response.Reading.Attempts.Count);
+        var succeeded = response.Reading.Attempts[0];
         Assert.True(succeeded.Succeeded);
         Assert.Null(succeeded.FailureReason);
         Assert.Null(succeeded.Explanation);
         Assert.Empty(succeeded.Morphs);
         Assert.Equal("Successful", succeeded.Steps[^1].Type);
 
-        var failed = response.Candidates[1];
+        var failed = response.Reading.Attempts[1];
         Assert.False(failed.Succeeded);
         // The ed_suffix step that failed beside the Failed node is what stopped it, not the generic PartialParse.
         Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", failed.FailureReason);
@@ -143,7 +141,7 @@ public sealed class WordTraceQueryTests : IDisposable
             new WordTraceRequest(fwDataPath, "xyz"), new PanGlossTracer(invoker), CancellationToken.None);
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
-        var bySource = outcome.Value!.Candidates.ToDictionary(candidate => candidate.Steps[1].Source!);
+        var bySource = outcome.Value!.Reading.Attempts.ToDictionary(candidate => candidate.Steps[1].Source!);
         Assert.Empty(bySource["first"].Morphs);
         Assert.Empty(bySource["second"].Morphs);
         Assert.Contains(bySource["first"].Steps, step => step.Type == "LexicalLookup");
@@ -166,9 +164,9 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var response = outcome.Value!;
         Assert.False(response.Parsed);
-        Assert.Empty(response.Candidates);
-        Assert.Equal("NoTrace", response.Root.Type);
-        Assert.Empty(response.Root.Children);
+        Assert.Empty(response.Reading.Attempts);
+        Assert.Equal("NoTrace", response.Reading.Root.Type);
+        Assert.Empty(response.Reading.Root.Children);
     }
 
     [Fact]

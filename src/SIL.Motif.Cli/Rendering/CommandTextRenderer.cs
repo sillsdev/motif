@@ -515,7 +515,7 @@ public static class CommandTextRenderer
     // The reading the window shows, in the same order: the answer, why attempts stopped, the path, then every name.
     private static string RenderTrace(WordTraceResponse response)
     {
-        var reading = response.Reading ?? TraceReadingBuilder.Build(response);
+        var reading = response.Reading;
         var text = new StringBuilder();
         var analyses = reading.Analyses.Count;
         text.AppendLine(response.Parsed

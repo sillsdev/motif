@@ -16,7 +16,6 @@ internal static class TraceDiagnosticProjection
         complete = complete && document.Details.SearchCompleted;
         var reading = TraceReadingBuilder.Build(document);
         var candidates = reading.Attempts;
-        var root = reading.Root;
         var searchStatus = document.Details.InvalidShape
             ? "invalid-shape"
             : complete ? "complete" : "incomplete";
@@ -28,8 +27,7 @@ internal static class TraceDiagnosticProjection
             document.Root is null ? 0 : CountNodes(document.Root),
             DeriveDeepestRule(document.Root),
             elapsedMs,
-            candidates,
-            root)
+            reading)
         {
             ParserSteps = document.Details.Steps,
             ParserElapsedMs = document.Details.ElapsedNs / 1_000_000.0,
@@ -39,8 +37,6 @@ internal static class TraceDiagnosticProjection
             DiagnosticFormat = document.SchemaVersion,
             SearchStatus = searchStatus,
             InvalidShape = document.Details.InvalidShape,
-            Analyses = reading.Analyses,
-            Reading = reading,
         };
         return WithProducerProvenance(response, document.RawJson);
     }
@@ -53,10 +49,23 @@ internal static class TraceDiagnosticProjection
         if (root.TryGetProperty("hostCapture", out var host) && host.ValueKind == JsonValueKind.Object)
         {
             capture = host.Deserialize<TraceHostCapture>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true, MaxDepth = 512 });
-            if (capture is not null) capture = capture with { WritingSystems = capture.WritingSystems ?? [] };
+            if (capture is not null) capture = capture with
+            {
+                WritingSystems = capture.WritingSystems ?? [],
+                TraceLabels = capture.TraceLabels ?? [],
+            };
         }
+        var labels = capture?.TraceLabels.Where(label => label is not null && !string.IsNullOrEmpty(label.RefId))
+            .ToLookup(label => label.RefId, StringComparer.Ordinal);
         return response with
         {
+            Reading = response.Reading with
+            {
+                Refs = response.Reading.Refs.Select(reference => reference with
+                {
+                    CapturedFieldWorksLabel = labels?[reference.Id].FirstOrDefault()?.Label,
+                }).ToArray(),
+            },
             HostCapture = capture,
             Provenance = TraceDiagnosticCapture.Compare(capture, null),
             ParserName = NestedString(root, "provenance", "parser", "name"),

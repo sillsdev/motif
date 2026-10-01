@@ -43,7 +43,7 @@ public static class TraceStepKinds
     /// <summary>Why the parser refused a step, in words, for a reason code no sentence was recorded for.</summary>
     /// <param name="reasonCode">The parser's own reason code.</param>
     public static string ExplainReason(string reasonCode) =>
-        $"The parser stopped here: {Humanise(reasonCode).ToLowerInvariant()}.";
+        $"Explanation not recorded (reason code: {reasonCode}).";
 
     // "SomeFutureStepKind" reads "Some future step kind".
     internal static string Humanise(string pascalCase)

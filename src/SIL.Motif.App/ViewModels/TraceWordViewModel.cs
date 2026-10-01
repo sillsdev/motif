@@ -93,12 +93,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
-        _reading = value is null ? null : TraceReadingBuilder.Build(value);
+        _reading = value?.Reading;
         _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions)).ToArray() ?? [];
         _analyses = _reading?.Analyses.Select((analysis, index) => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions, index + 1)).ToArray() ?? [];
-        var candidateViews = new Dictionary<TraceCandidate, TraceCandidateViewModel>(ReferenceEqualityComparer.Instance);
-        for (var index = 0; index < _candidates.Count; index++) candidateViews.Add(_reading!.Attempts[index], _candidates[index]);
-        _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate]).ToArray() ?? [];
+        var candidateViews = _candidates.ToDictionary(candidate => candidate.AttemptId!, StringComparer.Ordinal);
+        _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate.AttemptId!]).ToArray() ?? [];
         ShowDroppedPaths = false;
         Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
@@ -181,7 +180,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     };
 
     public TraceStepViewModel? Root =>
-        Result is { } result ? new TraceStepViewModel(result.Root, result.DeepestRule, WritingSystemsById(result)) : null;
+        Result is { } result ? new TraceStepViewModel(result.Reading.Root, result.DeepestRule, WritingSystemsById(result)) : null;
 
     public IReadOnlyList<TraceStepViewModel> Roots => Root is { } root ? [root] : [];
 
@@ -363,7 +362,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private void RebuildStopGroups()
     {
         _stopGroups = _reading?.StopGroups.Select(group => new TraceStopGroupViewModel(
-            group.Rule, group.ReasonCode, group.Explanation, group.Count, group.RuleId)).ToArray() ?? [];
+            group.Rule, group.ReasonCode, group.Explanation, group.Count, group.RuleId,
+            group.Attempts.Select(attempt => attempt.AttemptId!).ToHashSet(StringComparer.Ordinal))).ToArray() ?? [];
         var largest = _stopGroups.Count == 0 ? 0 : _stopGroups.Max(group => group.Count);
         foreach (var group in _stopGroups) group.SetShare(largest);
         SelectedStopGroup = null;
@@ -890,10 +890,12 @@ public sealed class TraceMorphViewModel
 /// </summary>
 public sealed partial class TraceStopGroupViewModel : ObservableObject
 {
-    public TraceStopGroupViewModel(string? rule, string? reasonCode, string? explanation, int count, string? ruleId = null)
+    public TraceStopGroupViewModel(string? rule, string? reasonCode, string? explanation, int count,
+        string? ruleId = null, IReadOnlySet<string>? attemptIds = null)
     {
         Rule = rule;
         RuleId = ruleId;
+        _attemptIds = attemptIds;
         ReasonCode = reasonCode;
         Explanation = explanation;
         Count = count;
@@ -938,10 +940,10 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         OnPropertyChanged(nameof(Share));
     }
 
+    private readonly IReadOnlySet<string>? _attemptIds;
+
     internal bool Matches(TraceCandidateViewModel candidate) =>
-        (RuleId is null ? string.Equals(candidate.StoppedByRule, Rule, StringComparison.Ordinal)
-            : string.Equals(candidate.StoppedByRuleId, RuleId, StringComparison.Ordinal)) &&
-        string.Equals(candidate.FailureReason, ReasonCode, StringComparison.Ordinal);
+        candidate.AttemptId is { } id && _attemptIds?.Contains(id) == true;
 }
 
 /// <summary>One candidate attempt, kept separate from recorded analyses.</summary>

@@ -63,13 +63,21 @@ For every category, retain `attempts`, `work`, `outputs`, `notApplied`, `noRoot`
 
 ### Host capture, portability, and navigation
 
-Motif adds `hostCapture.projectIdentity`, `grammarHash`, `grammarHashSemantics`, `bundleDigest`, `capturedUtc`, `wallElapsedMs`, and ordered `writingSystems`. A writing system has `id`, `name`, `isVernacular`, `isDefault`, `direction`, and `font`. Missing direction or font uses a display fallback without changing the saved evidence.
+Motif adds `hostCapture.projectIdentity`, `grammarHash`, `grammarHashSemantics`, `bundleDigest`, `capturedUtc`, `wallElapsedMs`, ordered `writingSystems`, and `traceLabels`. A writing system has `id`, `name`, `isVernacular`, `isDefault`, `direction`, and `font`. Missing direction or font uses a display fallback without changing the saved evidence. Each captured label has a document-local `refId` and the Baseline's FieldWorks `label`; it supplements the producer's original name without replacing it and is replayed without opening a project.
 
 Grammar hashes are comparable only when their semantics match. A Motif bundle digest, a semantic snapshot digest, a PanGloss semantic grammar hash, and a hash of XML bytes are different identities. A matching hex string from different hash schemes is not evidence of compatibility.
 
 Loading needs no project, parser, or rerun. Standalone views retain capture-time values and cannot establish current-project compatibility. When a current capture is available, compare project identity, same-kind grammar hashes, and writing-system order; report mismatches and unknowns separately. Never replace captured labels with current project labels.
 
 FieldWorks links are live actions, not trusted document data. Motif resolves authored object IDs through its existing object lookup and link builder for a compatible project. Loaded JSON must not authorize arbitrary URI navigation.
+
+### Motif's display response
+
+`motif trace --json` serializes the complete `WordTraceResponse` with one authoritative `reading`. The tree, attempts, and analyses live at `reading.root`, `reading.attempts`, and `reading.analyses`; they have no duplicate top-level fields. `diagnosticJson` retains the complete producer envelope, while `reading` is its display projection. Saving or copying the diagnostic exports the envelope, not the display response.
+
+Reading refs use canonical GUIDs or exact typed grammar-local identities. Missing identities use occurrence addresses scoped to this diagnostic, never labels. `stepId` and a morph's `occurrenceId` are local addresses, not portable project identities. `rulesOnBestPath` keeps every rule event in traversal order, including repeated applications, and derives each outcome from that event alone. Stop groups share a typed rule ref and reason; an unidentifiable stopping occurrence remains separate.
+
+The typed display projection retains `projectionErrorCode` on analyses and `failureEvidence` on steps and attempts. Failure evidence includes the owner's `kind`, `source`, `reasonCode`, `status`, `unavailableReason`, `reason`, `required`, `actual`, and `environment`. Structured operands are retained as diagnostic JSON text, not translated into authored notation. An unknown reason code has no inferred explanation.
 
 ### Version 1
 

@@ -45,6 +45,30 @@ public sealed class TraceRefsTests : IDisposable
     }
 
     [Fact]
+    public void CapturedFieldWorksLabelsRoundTripWithoutChangingProducerNames()
+    {
+        var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), _managedRoot).Succeeded);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(SagdTrace(identity: (phonRule, affixMsa))
+                .Replace("Vowel harmony", "Producer name", StringComparison.Ordinal), string.Empty, TimeSpan.FromMilliseconds(4)),
+        };
+        var response = WordTraceQuery.Query(new WordTraceRequest(fwDataPath, "sagd"), new PanGlossTracer(invoker),
+            CancellationToken.None).Value!;
+        var live = Assert.Single(response.Reading!.Refs, reference => reference.Kind == "phonologicalRule");
+        Assert.Equal("Producer name", live.Label);
+        using var serialized = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(live));
+        Assert.Equal("Vowel harmony", serialized.RootElement.GetProperty("capturedFieldWorksLabel").GetString());
+        var reopened = WordTraceQuery.LoadDiagnostic(response.DiagnosticJson).Value!;
+        var saved = Assert.Single(reopened.Reading!.Refs, reference => reference.Id == live.Id);
+        using var savedJson = System.Text.Json.JsonDocument.Parse(ProjectionJson.Serialize(saved));
+        Assert.Equal("Vowel harmony", savedJson.RootElement.GetProperty("capturedFieldWorksLabel").GetString());
+        Assert.Equal(live.Label, saved.Label);
+        Assert.Null(saved.FieldWorks);
+    }
+
+    [Fact]
     public void AReplacementProjectAtTheSamePathCannotReceiveRecordedTraceLinks()
     {
         var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
@@ -60,7 +84,7 @@ public sealed class TraceRefsTests : IDisposable
         Assert.Equal("mismatch", response.Provenance.ProjectIdentityStatus);
         Assert.All(response.Reading!.Refs, reference => Assert.Null(reference.FieldWorks));
         Assert.NotEmpty(response.Reading.Refs);
-        Assert.All(response.Candidates.SelectMany(candidate => candidate.RichMorphs), morph => Assert.Null(morph.FieldWorksLink));
+        Assert.All(response.Reading.Attempts.SelectMany(candidate => candidate.RichMorphs), morph => Assert.Null(morph.FieldWorksLink));
     }
 
     [Theory]
@@ -147,18 +171,24 @@ public sealed class TraceRefsTests : IDisposable
     }
 
     [Fact]
-    public void ATraceWithNoRecordedIdentityNamesItsRulesByLabelAndClaimsNoIdentity()
+    public void ATraceWithNoRecordedIdentityNamesRuleOccurrencesAndClaimsNoIdentity()
     {
         var reading = WordTraceQuery.LoadDiagnostic(SagdTrace(identity: null)).Value!.Reading!;
 
-        var rule = Assert.Single(reading.Refs, reference => reference.Kind == "morphologicalRule");
-        Assert.Equal("morphRule:name:ed_suffix", rule.Id);
-        Assert.Null(rule.Identity);
-        Assert.Equal(TraceRefIds.UnknownQuality, rule.IdentityQuality);
-        Assert.Null(rule.TimingKey);
+        var rules = reading.Refs.Where(reference => reference.Kind == "morphologicalRule").ToArray();
+        Assert.Equal(3, rules.Length);
+        Assert.Equal(3, rules.Select(rule => rule.Id).Distinct().Count());
+        Assert.All(rules, rule =>
+        {
+            Assert.StartsWith("morphRule:step:", rule.Id);
+            Assert.Equal("ed_suffix", rule.Label);
+            Assert.Null(rule.Identity);
+            Assert.Equal(TraceRefIds.UnknownQuality, rule.IdentityQuality);
+            Assert.Null(rule.TimingKey);
+        });
         var stop = Assert.Single(reading.StopGroups);
-        Assert.Equal(rule.Id, stop.RuleRefId);
-        Assert.Equal(rule.Id, Assert.Single(stop.Attempts).StoppedByRefId);
+        Assert.Contains(rules, rule => rule.Id == stop.RuleRefId);
+        Assert.Equal(stop.RuleRefId, Assert.Single(stop.Attempts).StoppedByRefId);
     }
 
     [Fact]
