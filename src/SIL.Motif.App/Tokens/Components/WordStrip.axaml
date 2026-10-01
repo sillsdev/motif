@@ -17,6 +17,8 @@
     <StaticResource x:Key="Component.WordStrip.ActionPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
     <StaticResource x:Key="Component.WordStrip.StagedWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.WordStrip.GutterWidth" ResourceKey="Primitive.Size.60" />
+    <!-- A short word's rows keep at least this width, so its strip stays wide enough to aim at. -->
+    <StaticResource x:Key="Component.WordStrip.RowsMinWidth" ResourceKey="Primitive.Size.70" />
     <StaticResource x:Key="Component.WordStrip.GutterMargin" ResourceKey="Primitive.Inset.0_1_6_0" />
     <StaticResource x:Key="Component.WordStrip.GutterType" ResourceKey="Primitive.Type.9" />
     <StaticResource x:Key="Component.WordStrip.GutterWordPadding" ResourceKey="Primitive.Inset.0_5_0_0" />
@@ -58,6 +60,9 @@
   </Style>
   <Style Selector="StackPanel.stripRows">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.stripStack">
+    <Setter Property="MinWidth" Value="{DynamicResource Component.WordStrip.RowsMinWidth}" />
   </Style>
   <Style Selector="StackPanel.stripActionRow">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />

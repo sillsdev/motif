@@ -296,6 +296,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "Different from FieldWorks");
 
+                var rowsMinWidth = (double)Application.Current!.FindResource("Component.WordStrip.RowsMinWidth")!;
                 foreach (var strip in Strips(panel))
                 {
                     var form = ((ResultsTokenViewModel)strip.Tag!).Form;
@@ -312,6 +313,10 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);
 
                     Assert.Empty(strip.GetVisualDescendants().OfType<HyperlinkButton>());
+                    var rows = Assert.Single(strip.GetVisualDescendants().OfType<StackPanel>(),
+                        panel => panel.Classes.Contains("stripStack"));
+                    Assert.True(rows.Bounds.Width >= rowsMinWidth,
+                        $"{form}'s rows are {rows.Bounds.Width} wide, under {rowsMinWidth}.");
                 }
 
                 var alikula = StripOf(panel, "alikula");
