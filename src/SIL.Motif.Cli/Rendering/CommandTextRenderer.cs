@@ -68,6 +68,7 @@ public static class CommandTextRenderer
             GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
             TimingResponse r => RenderTiming(r),
+            ObjectUsesResponse r => RenderUses(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
@@ -397,6 +398,43 @@ public static class CommandTextRenderer
 
     private static string FormatCalls(long? calls, string? kind) => calls is { } value
         ? $"{value:N0} {(kind is { Length: > 0 } ? kind + " " : string.Empty)}calls" : "calls not counted";
+
+    // The words that use the object, the words it ran in, then what the asked-about words share.
+    private static string RenderUses(ObjectUsesResponse response)
+    {
+        var text = new StringBuilder();
+        var name = response.Ref?.Label ?? response.Ref?.TimingKey ?? response.Ref?.GrammaticalInfoId ?? response.Ref?.AllomorphId;
+        text.AppendLine(name is null ? $"Uses ({response.AssessmentId})" : $"Uses of {name} ({response.AssessmentId})");
+        if (response.IsStale)
+            text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
+        if (response.Uses is { } uses)
+            AppendUseWords(text, "Your words that use it", uses);
+        if (response.RanIn is { } ranIn)
+            AppendUseWords(text, "Words it ran in", ranIn);
+        if (response.Shared is { } shared)
+        {
+            text.AppendLine(shared.Count == 0 ? "  These words share no morpheme." : "  What these words share:");
+            foreach (var morpheme in shared)
+                text.AppendLine($"    {morpheme.Morpheme.Form} {morpheme.Morpheme.Gloss}: {CountLabel(morpheme.Count, "word", "words")} " +
+                    $"({string.Join(", ", morpheme.Words)})");
+        }
+        if (response.UnknownWords.Count > 0)
+            text.AppendLine("  Not in this Assessment: " + string.Join(", ", response.UnknownWords));
+        return text.ToString();
+    }
+
+    private static void AppendUseWords(StringBuilder text, string heading, ObjectUseWords words)
+    {
+        text.AppendLine($"  {heading}: {CountLabel(words.Words.Count, "word", "words")}" + (words.ByMeaning.Count == 0 ? "" :
+            " (" + string.Join(", ", words.ByMeaning.Select(meaning => $"{meaning.Meaning} {meaning.Words:N0}")) + ")"));
+        foreach (var word in words.Words)
+        {
+            var timing = word.Calls is null && word.ElapsedNs is null ? "" :
+                $", {CountLabel(word.Calls, "call", "calls")}, " +
+                (word.ElapsedNs is { } ns ? (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
+            text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
+        }
+    }
 
     private static string CountLabel(int? count, string singular, string plural) => count is { } value
         ? $"{value:N0} {(value == 1 ? singular : plural)}"

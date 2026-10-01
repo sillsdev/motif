@@ -1094,6 +1094,31 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
+    public async Task OpenInspectorShowsTheObjectBesideThePageAndANewProjectClosesIt()
+    {
+        var context = NewContext();
+        await context.OpenProjectAsync(ProjectPath);
+        context.OpenPage(WorkspacePage.Timing);
+        var kat = ObjectUseRef.ForMorpheme(new ParserReadingMorph("kat", "cut", "v", null, false, null)
+        {
+            AllomorphId = "form-kat", GrammaticalInfoId = "msa-kat",
+        });
+        var changed = new List<string?>();
+        context.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        context.OpenInspector(kat);
+
+        Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
+        Assert.Equal(new OpenInspectorRequest(kat), context.Inspector);
+        Assert.Contains(nameof(WorkspaceContext.Inspector), changed);
+        context.CloseInspector();
+        Assert.Null(context.Inspector);
+        context.OpenInspector(kat);
+        await context.OpenProjectAsync(OtherProjectPath);
+        Assert.Null(context.Inspector);
+    }
+
+    [Fact]
     public void EveryRegisteredPageBuildsItsModelFromTheContext()
     {
         var context = NewContext();

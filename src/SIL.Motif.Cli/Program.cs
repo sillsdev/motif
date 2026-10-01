@@ -860,6 +860,27 @@ try
                 timingBy, flags.GetValueOrDefault("rule"), timingTop, explicitTimingWords)));
             break;
 
+        case "uses":
+            var usesFlags = new[] { "allomorph", "grammatical-info", "timing", "words" };
+            if (!flags.TryGetValue("project", out var usesProject) || positionals.Count != 0 ||
+                usesFlags.Any(name => flags.TryGetValue(name, out var value) && (value == "true" || string.IsNullOrWhiteSpace(value))) ||
+                flags.TryGetValue("timing", out var usesTiming) && usesTiming.IndexOf(':') is <= 0)
+                return Usage("Usage: motif " + UsageLineFor("uses"), asJson);
+            var usesTimingParts = flags.GetValueOrDefault("timing")?.Split(':', 2);
+            var usesRef = flags.ContainsKey("allomorph") || flags.ContainsKey("grammatical-info") || usesTimingParts is not null
+                ? new ObjectUseRef
+                {
+                    AllomorphId = flags.GetValueOrDefault("allomorph"),
+                    GrammaticalInfoId = flags.GetValueOrDefault("grammatical-info"),
+                    TimingKind = usesTimingParts?[0],
+                    TimingKey = usesTimingParts?[1],
+                }
+                : null;
+            var usesWords = flags.GetValueOrDefault("words")
+                ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            result = RenderCommand(ObjectUsesQuery.Query(new ObjectUsesRequest(usesProject, usesRef, usesWords)));
+            break;
+
         case "trace":
             if (flags.TryGetValue("load", out var tracePath))
             {

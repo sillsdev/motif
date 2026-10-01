@@ -60,6 +60,13 @@ public sealed record GrammarSummary(string SummaryText, bool ShowFindings, strin
 public abstract record PageRequest(WorkspacePage Page);
 
 /// <summary>
+/// A request to show one object in the inspector beside the page: a morpheme, rule or other name, by identity.
+/// Unlike a <see cref="PageRequest"/> it leaves the page where it is.
+/// </summary>
+/// <param name="Ref">The object to show.</param>
+public sealed record OpenInspectorRequest(ObjectUseRef Ref);
+
+/// <summary>
 /// The project and evidence published to the window's pages, their shared Assessment and Selection, pending
 /// changes, and navigation actions.
 /// </summary>
@@ -229,6 +236,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     [ObservableProperty]
     private WorkspacePage _currentPage;
 
+    /// <summary>The object the inspector shows, or <see langword="null"/> while it is closed.</summary>
+    [ObservableProperty]
+    private OpenInspectorRequest? _inspector;
+
     private readonly List<PageModel> _pages = [];
     private readonly List<IProjectStateParticipant> _projectParticipants = [];
     private CancellationTokenSource? _openCancellation;
@@ -281,6 +292,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Evidence.Clear();
         GrammarSummary = null;
         CurrentPage = WorkspacePage.Overview;
+        Inspector = null;
         ProjectPath = null;
         Assess.ProjectPath = null;
     }
@@ -510,6 +522,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
     public void TryWord(string word) => Open(new TryWordRequest(word));
+
+    /// <summary>Opens the inspector on <paramref name="reference"/>, beside the page the window is showing.</summary>
+    public void OpenInspector(ObjectUseRef reference) =>
+        Inspector = new OpenInspectorRequest(reference ?? throw new ArgumentNullException(nameof(reference)));
+
+    /// <summary>Closes the inspector.</summary>
+    public void CloseInspector() => Inspector = null;
 
     /// <summary>Opens the Timing page on <paramref name="words"/>, filtered to <paramref name="rule"/> when named.</summary>
     public void OpenTiming(IReadOnlyList<string> words, string? rule) => Open(new OpenTimingRequest(words, rule));

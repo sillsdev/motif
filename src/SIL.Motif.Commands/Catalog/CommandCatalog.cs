@@ -18,8 +18,8 @@ namespace SIL.Motif.Commands.Catalog;
 /// <see cref="Assess.AssessCommand"/>, <see cref="Assess.StatsCommand"/>, <see cref="SelectionCommands"/>,
 /// <see cref="ProjectSetupCommands"/>, <see cref="Queries.TextInventoryQuery"/>, <see cref="OverviewCommand"/>,
 /// <see cref="TimingCommand"/>, <see cref="Queries.GrammarCheckQuery"/>, <see cref="HandoffCommand"/>,
-/// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>, and
-/// <see cref="Queries.WordTraceQuery"/>.
+/// <see cref="JobCommands"/>, <see cref="PendingChangesWorkflow"/>, <see cref="ReadStateCommands"/>,
+/// <see cref="Queries.WordTraceQuery"/>, and <see cref="Queries.ObjectUsesQuery"/>.
 /// </summary>
 /// <remarks>
 /// The report list reaches <see cref="ReportCommands.ListKinds"/>, waited Dry Runs reach
@@ -126,6 +126,9 @@ public static class CommandCatalog
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released),
         new CommandDescriptor("grammar check", typeof(GrammarCheckRequest), typeof(GrammarCheckResponse), CommandSurface.Released),
         new CommandDescriptor("timing", typeof(TimingRequest), typeof(TimingResponse), CommandSurface.Released),
+
+        // ObjectUsesQuery: the words that use an object, the words it ran in, and what a set of words shares
+        new CommandDescriptor("uses", typeof(ObjectUsesRequest), typeof(ObjectUsesResponse), CommandSurface.Developer),
 
         // WordTraceQuery: one word's trace, live or from a saved file, as Try a Word reads it
         new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Developer),

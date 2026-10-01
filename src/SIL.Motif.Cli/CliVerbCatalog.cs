@@ -245,6 +245,14 @@ public static class CliVerbCatalog
                 "timing --project <fwdata> [--assessment <id>] [--words <set>] [--word <word,word>] " +
                 "[--by kind|rule] [--rule <name>] [--top N] [--json]",
             }),
+        new CliVerbDescriptor(
+            "Project", "uses", "uses",
+            new[]
+            {
+                "uses --project <fwdata> [--allomorph <guid>] [--grammatical-info <guid>] [--timing <kind>:<key>] " +
+                "[--words <word,word>] [--json]",
+                "Name an object, some words, or both; objects and morphemes are matched by identity, never by spelling.",
+            }),
 
         new CliVerbDescriptor(
             "Trace", "trace", "trace",
