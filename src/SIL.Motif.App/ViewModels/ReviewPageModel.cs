@@ -16,7 +16,7 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed class ReviewPageModel : PageModel
 {
-    private const string NumbersPrompt = "See what applying does to the numbers.";
+    private const string NumbersPrompt = "Check these changes to see how many of the words you changed keep their approved analyses.";
     private CancellationTokenSource? _measurementCancellation;
     private CancellationTokenSource? _applyCancellation;
 

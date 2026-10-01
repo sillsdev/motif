@@ -236,7 +236,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
         var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
-        var prompt = "See what applying does to the numbers.";
+        var prompt = "Check these changes to see how many of the words you changed keep their approved analyses.";
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
