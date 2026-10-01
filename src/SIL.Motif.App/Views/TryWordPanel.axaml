@@ -94,11 +94,15 @@
         </Grid>
       </Border>
 
+      <views:TraceAnalysesView DataContext="{Binding Trace}" />
+
       <Border Classes="card bestPath" IsVisible="{Binding HasRulesOnBestPath}"
               AutomationProperties.Name="Rules on this word's best path">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="Rules on this word's best path, with where its time went"
                      FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <TextBlock Classes="muted" Text="{Binding TakingApartText}" TextWrapping="Wrap"
+                     FontSize="{DynamicResource Intent.Type.Small}" IsVisible="{Binding HasTakingApart}" />
           <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*,Auto"
                 ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
