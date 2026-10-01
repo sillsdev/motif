@@ -244,7 +244,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
         using var worker = StartWorker(runner.Options with { IdleTimeout = TimeSpan.FromMinutes(5) });
         try
         {
-            await WaitForPendingProposalAnchorAsync(path, added.Value.DraftId!, process);
+            await WaitForPendingProposalAnchorAsync(path, added.Value.DraftId!, process, errorTask);
             try
             {
                 await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
@@ -300,7 +300,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
     }
 
     private static async Task WaitForPendingProposalAnchorAsync(
-        string projectPath, string proposalId, Process process)
+        string projectPath, string proposalId, Process process, Task<string> errorTask)
     {
         while (!PendingProposalHasAnchor(projectPath, proposalId))
         {
@@ -308,7 +308,8 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             {
                 if (PendingProposalHasAnchor(projectPath, proposalId)) return;
                 throw new InvalidOperationException(
-                    $"The CLI exited with code {process.ExitCode} before writing the pending Proposal's Dry Run anchor.");
+                    $"The CLI exited with code {process.ExitCode} before writing the pending Proposal's Dry Run " +
+                    $"anchor. stderr: {await errorTask}");
             }
             await Task.Delay(100);
         }
