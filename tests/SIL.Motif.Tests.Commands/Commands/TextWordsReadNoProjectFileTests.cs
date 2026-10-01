@@ -146,6 +146,10 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         Assert.Equal(FieldWorksLinks.For(baseline, projectName, wordform), glossed.WordLink);
         Assert.Equal(JsonSerializer.Serialize(expectedMorphs), JsonSerializer.Serialize(glossed.Analysis!.Morphs));
         Assert.NotNull(expectedMorphs[1].FieldWorksLink);
+        Assert.Equal(analysis.MorphBundlesOS.Select(bundle => bundle.MorphRA?.Guid.ToString("D")),
+            glossed.Analysis.Morphs.Select(morph => morph.AllomorphId));
+        Assert.Equal(analysis.MorphBundlesOS.Select(bundle => bundle.MsaRA?.Guid.ToString("D")),
+            glossed.Analysis.Morphs.Select(morph => morph.GrammaticalInfoId));
         Assert.Equal(string.Join(" ", expectedMorphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
             glossed.Gloss);
 
