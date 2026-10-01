@@ -1,5 +1,7 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -222,6 +224,53 @@ public sealed class WalkthroughScriptLoaderTests
 
         Assert.Equal(48, script.RootElement.GetProperty("steps").EnumerateArray().Last()
             .GetProperty("cropPadding").GetInt32());
+    }
+
+    [Fact]
+    public void EveryDiscoveredScriptHasExactlyOneRunnableReplayWrapper()
+    {
+        var root = FindRepositoryRoot();
+        var discoveredIds = WalkthroughScriptLoader.Discover(root)
+            .Select(path =>
+            {
+                var id = WalkthroughScriptLoader.Load(path).Id;
+                Assert.Equal($"{id}.walkthrough.json", Path.GetFileName(path));
+                return id;
+            })
+            .ToArray();
+        var registrations = typeof(WalkthroughScriptLoaderTests).Assembly.GetTypes()
+            .Select(type => (Type: type,
+                Registration: type.GetCustomAttribute<AuthoredWalkthroughIdAttribute>(inherit: false)))
+            .Where(item => item.Registration is not null)
+            .Select(item => (item.Type, Registration: item.Registration!))
+            .ToArray();
+        var registeredIds = registrations.Select(item => item.Registration.ScriptId).ToArray();
+
+        Assert.Equal(discoveredIds.Length,
+            discoveredIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(registeredIds.Length,
+            registeredIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            discoveredIds.OrderBy(id => id, StringComparer.Ordinal),
+            registeredIds.OrderBy(id => id, StringComparer.Ordinal));
+        Assert.All(registrations, item =>
+        {
+            Assert.True(item.Type.IsClass && item.Type.IsPublic && !item.Type.IsAbstract &&
+                !item.Type.ContainsGenericParameters, $"{item.Type.FullName} is not a runnable wrapper.");
+            Assert.True(item.Type.Name.EndsWith("WalkthroughReplayTests", StringComparison.Ordinal),
+                $"{item.Type.Name} is not selected by the authored media filter.");
+            var collection = item.Type.CustomAttributes
+                .Single(attribute => attribute.AttributeType == typeof(CollectionAttribute));
+            var collectionName = Assert.IsType<string>(collection.ConstructorArguments.Single().Value);
+            Assert.Equal(LcmCacheTestCollection.Name, collectionName);
+            var fact = Assert.Single(item.Type.GetMethods(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
+                .Where(method => method.CustomAttributes.Any(attribute =>
+                    attribute.AttributeType == typeof(FactAttribute))));
+            Assert.Empty(fact.GetParameters());
+            Assert.False(fact.IsGenericMethod);
+            Assert.Null(fact.GetCustomAttribute<FactAttribute>(inherit: false)?.Skip);
+        });
     }
 
     [Fact]

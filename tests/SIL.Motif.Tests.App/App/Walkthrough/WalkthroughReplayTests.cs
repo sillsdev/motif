@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Avalonia;
 using Avalonia.Media;
@@ -24,13 +25,8 @@ using Xunit.Abstractions;
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITestOutputHelper output)
+public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
 {
-    private static readonly DateTimeOffset CaptureTime = new(2026, 4, 2, 12, 0, 0, TimeSpan.Zero);
-
-    public static IEnumerable<object[]> Scripts => WalkthroughScriptLoader.Discover(FindRepositoryRoot())
-        .Select(path => new object[] { path });
-
     [Theory]
     [InlineData(-30, 10, 20, 20, false)]
     [InlineData(-5, 10, 20, 20, false)]
@@ -76,7 +72,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         WalkthroughTestFiles.DeleteDirectory(managedRoot);
         using var project = new WalkthroughProject(pristine, managedRoot);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
-        var clock = new FixedClock(CaptureTime, TimeZoneInfo.Utc);
+        var clock = new FixedClock(WalkthroughReplayTestSupport.CaptureTime, TimeZoneInfo.Utc);
         var projectContext = new WalkthroughProjectContext(
             project.ManagedRoot, project.FwDataPath, project.TextId, null);
         await WalkthroughFixtureSeeder.SeedAsync("try-word-ready", projectContext, clock, parserPath);
@@ -112,7 +108,8 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath, timeProvider: clock);
             walkthrough.Show();
-            WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline, FindRepositoryRoot());
+            WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline,
+                WalkthroughReplayTestSupport.FindRepositoryRoot());
 
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordInput));
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordResult));
@@ -135,18 +132,112 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
+}
 
-    [Theory]
-    [MemberData(nameof(Scripts))]
-    public async Task EveryWalkthroughRunsAgainstTheComposedWindow(string scriptPath)
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+internal sealed class AuthoredWalkthroughIdAttribute(string scriptId) : Attribute
+{
+    public string ScriptId { get; } = scriptId;
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("annotate-control")]
+public sealed class AnnotateControlWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("explained-word-card")]
+public sealed class ExplainedWordCardWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("first-run-setup-parse")]
+public sealed class FirstRunSetupParseWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("handoff-cancel-retry")]
+public sealed class HandoffCancelRetryWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("open-project-overview")]
+public sealed class OpenProjectOverviewWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("review-apply-refresh-parse")]
+public sealed class ReviewApplyRefreshParseWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("try-word-typing")]
+public sealed class TryWordTypingWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+internal static class WalkthroughReplayTestSupport
+{
+    internal static readonly DateTimeOffset CaptureTime = new(2026, 4, 2, 12, 0, 0, TimeSpan.Zero);
+
+    internal static string FindRepositoryRoot()
     {
-        var root = FindRepositoryRoot();
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Motif.sln")))
+            directory = directory.Parent;
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Motif.sln.");
+    }
+}
+
+internal static class WalkthroughReplayTestRunner
+{
+    public static async Task RunAsync(
+        Type wrapperType, PristineProjectFixture pristine, ITestOutputHelper output)
+    {
+        var registration = wrapperType.GetCustomAttribute<AuthoredWalkthroughIdAttribute>(inherit: false)
+            ?? throw new InvalidOperationException($"{wrapperType.FullName} has no authored walkthrough ID.");
+        var root = WalkthroughReplayTestSupport.FindRepositoryRoot();
+        var scriptPath = Path.Combine(root, "walkthroughs", $"{registration.ScriptId}.walkthrough.json");
         var script = WalkthroughScriptLoader.Load(scriptPath);
         var help = WalkthroughHelpContent.Load(root, script.Id, "en");
         var managedRoot = WalkthroughTestFiles.EngineRoot(script.Id);
         WalkthroughTestFiles.DeleteDirectory(managedRoot);
-        var clock = new FixedClock(CaptureTime, TimeZoneInfo.Utc);
-        var (projectLifetime, project) = await CreateProjectAsync(script.Fixture, managedRoot);
+        var clock = new FixedClock(WalkthroughReplayTestSupport.CaptureTime, TimeZoneInfo.Utc);
+        var (projectLifetime, project) = await CreateProjectAsync(pristine, script.Fixture, managedRoot);
         using (projectLifetime)
         {
             var parserPath = project.ParserPath ??
@@ -221,8 +312,8 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
         }
     }
 
-    private async Task<(IDisposable Lifetime, WalkthroughProjectContext Project)> CreateProjectAsync(
-        string fixture, string managedRoot)
+    private static async Task<(IDisposable Lifetime, WalkthroughProjectContext Project)> CreateProjectAsync(
+        PristineProjectFixture pristine, string fixture, string managedRoot)
     {
         if (fixture == "explained-word-card")
         {
@@ -235,14 +326,6 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine, ITes
             new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc));
         return (ordinary, new WalkthroughProjectContext(
             ordinary.ManagedRoot, ordinary.FwDataPath, ordinary.TextId, null));
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Motif.sln")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Motif.sln.");
     }
 
     private static void AssertExplainedWordCard(WalkthroughWindow walkthrough)
