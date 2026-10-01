@@ -46,7 +46,6 @@ public static class InspectorSubjectResolver
         });
     }
 
-    // PanGloss keys a phonological rule by itself, an affix by its grammatical info, a compound rule by itself.
     private static (InspectorResolution, ObjectUseRef?) Rule(LcmCache cache, InspectorSubject subject)
     {
         if (subject.TimingKey is not { } key) return (InspectorResolution.NotInBaseline, null);
@@ -57,6 +56,7 @@ public static class InspectorSubjectResolver
         {
             "phon_rule" => found is IPhSegmentRule,
             "morph_rule" => found is IMoCompoundRule || found is IMoMorphSynAnalysis and not IMoStemMsa,
+            "lex_entry" => found is ILexEntry,
             _ => false,
         };
         return fits

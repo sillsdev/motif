@@ -40,8 +40,18 @@ public sealed class InspectQueryTests
     {
         var key = new TraceTimingKey("phon_rule", "rule-1");
 
-        Assert.Equal(["rule", "cant tell"],
+        Assert.Equal(["rule"],
             InspectQuery.WarningsNaming(Findings, InspectorSubject.Rule(key, "Vowel harmony"), key).Select(finding => finding.CodeLabel));
+    }
+
+    [Fact]
+    public void AnAuthoredTimingGuidStillMatchesAWarningNamingThatObject()
+    {
+        const string id = "aaaaaaaa-0000-0000-0000-000000000001";
+        var key = new TraceTimingKey("lex_entry", id);
+        var finding = Finding("entry", new WarningReach(WarningWordsPath.CantTell), guid: "{" + id.ToUpperInvariant() + "}");
+
+        Assert.Equal([finding], InspectQuery.WarningsNaming([finding], InspectorSubject.Rule(key), key));
     }
 
     [Fact]

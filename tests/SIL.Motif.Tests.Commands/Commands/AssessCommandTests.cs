@@ -411,6 +411,27 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void InspectResolvesAnAuthoredLexicalEntryFromTimingToItsBaselineFacts()
+    {
+        using var seeded = NewSeededScratch();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(seeded.FwDataPath), NewManagedRoot()).Succeeded);
+        var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
+        var key = new TraceTimingKey("lex_entry", entryKey);
+
+        var inspected = InspectQuery.Query(new InspectRequest(seeded.FwDataPath,
+            InspectorSubject.Rule(key, identityQuality: "authored")));
+
+        Assert.True(inspected.Succeeded, inspected.Refusal?.Message);
+        var response = inspected.Value!;
+        Assert.Equal(InspectorResolution.Resolved, response.Resolution);
+        Assert.Equal(InspectorSectionStatus.Available, response.Facts.Status);
+        Assert.Equal(entryKey, response.Facts.Value!.Entry!.Id);
+        Assert.Equal(SeededProject.FirstForm, response.Facts.Value.Entry.Headword);
+        Assert.Equal("Lexicon Edit", response.Facts.Value.Entry.FieldWorks!.ToolName);
+        Assert.Equal(key, response.TimingKey);
+    }
+
+    [Fact]
     public void InspectReadsAMorphemesBaselineFactsBeforeAnyParseAllWords()
     {
         using var seeded = NewSeededScratch();

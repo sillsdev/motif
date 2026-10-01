@@ -1275,7 +1275,7 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
     {
         "rule" => given.Split(':', 2) is [{ Length: > 0 } kind, { Length: > 0 } key]
             ? InspectorSubject.Rule(new TraceTimingKey(kind, key),
-                identityQuality: flags.ContainsKey("structural") ? "structural" : "authored")
+                identityQuality: flags.ContainsKey("structural") ? "structural" : Guid.TryParse(key, out _) ? "authored" : "unknown")
             : null,
         "slot" => new InspectorSubject(InspectorSubjectKind.Slot) { ObjectId = given },
         "environment" => new InspectorSubject(InspectorSubjectKind.Environment) { ObjectId = given },

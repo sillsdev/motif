@@ -56,7 +56,7 @@ public sealed record InspectorSubject(InspectorSubjectKind Kind)
     public string? WarningCode { get; init; }
 
     /// <summary>How far the identity can be trusted: <c>authored</c>, <c>structural</c>, <c>synthetic</c> or <c>unknown</c>.</summary>
-    public string IdentityQuality { get; init; } = "authored";
+    public string IdentityQuality { get; init; } = "unknown";
 
     /// <summary>What the window calls the subject; display only.</summary>
     public string? Label { get; init; }
@@ -80,7 +80,7 @@ public sealed record InspectorSubject(InspectorSubjectKind Kind)
         morph is null ? null : Morpheme(morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, morph.Gloss);
 
     /// <summary>A rule by the kind and key PanGloss's statistics record it under, with how far that key can be trusted.</summary>
-    public static InspectorSubject Rule(TraceTimingKey key, string? label = null, string identityQuality = "authored") =>
+    public static InspectorSubject Rule(TraceTimingKey key, string? label = null, string identityQuality = "unknown") =>
         new(InspectorSubjectKind.Rule) { TimingKey = key, Label = label, IdentityQuality = identityQuality };
 }
 
@@ -171,12 +171,16 @@ public sealed record InspectResponse(InspectorSubject Subject, InspectorResoluti
     /// </summary>
     public string? BaselineDigest { get; init; }
 
-    /// <summary>The stored Assessment the words and timings come from, or <see langword="null"/> when none matches.</summary>
+    /// <summary>
+    /// The base Assessment matching the Baseline and Selection, or <see langword="null"/> when none matches.
+    /// Words and timings include later subset reruns, so this id alone does not identify all contributing runs.
+    /// </summary>
     public string? AssessmentId { get; init; }
 
     /// <summary>
     /// The kind and key PanGloss times the subject under, read from the Baseline for a morpheme;
-    /// <see langword="null"/> for a subject PanGloss does not time, which then has no timing section.
+    /// <see langword="null"/> when no timing identity could be resolved. For a morpheme or rule, <see cref="RanIn"/>
+    /// is then absent with a reason; other subject kinds have an unsupported timing section.
     /// </summary>
     public TraceTimingKey? TimingKey { get; init; }
 

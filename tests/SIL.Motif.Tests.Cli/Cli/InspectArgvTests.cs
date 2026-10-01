@@ -10,10 +10,27 @@ namespace SIL.Motif.Tests.Cli;
 /// Pins <c>motif inspect</c> on the command line: arguments that name no subject or two, and the text and JSON it
 /// prints, where every section says whether it was read and, if not, why.
 /// </summary>
-public sealed class InspectArgvTests : IDisposable
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
+public sealed class InspectArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _managedRoot = Path.Combine(
         Path.GetTempPath(), "motif-inspect-argv-" + Guid.NewGuid().ToString("N"));
+
+    [Theory]
+    [InlineData("opaque-rule-key", false, "unknown")]
+    [InlineData("6f1d2c3b-0000-4000-8000-000000000001", false, "authored")]
+    [InlineData("6f1d2c3b-0000-4000-8000-000000000001", true, "structural")]
+    public async Task RuleIdentityQualityUsesAGuidOrTheExplicitStructuralFlag(string key, bool structural, string expected)
+    {
+        var project = pristine.CopyProjectFile();
+        var arguments = new List<string> { "inspect", "--project", project, "--rule", "phon_rule:" + key, "--json" };
+        if (structural) arguments.Add("--structural");
+
+        var result = await CliProcess.RunAsync(_managedRoot, null, true, arguments.ToArray());
+
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
+        Assert.Equal(expected, ProjectionJson.Deserialize<InspectResponse>(result.Output)!.Subject.IdentityQuality);
+    }
 
     [Theory]
     [InlineData("inspect", "--allomorph", "6f1d2c3b-0000-4000-8000-000000000001")]

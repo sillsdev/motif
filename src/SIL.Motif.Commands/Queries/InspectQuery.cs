@@ -38,7 +38,7 @@ public static class InspectQuery
 
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
+            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
             if (!current.Succeeded) return CommandOutcome<InspectResponse>.Refused(current.Refusal!);
             var snapshot = current.Value!;
 
@@ -93,8 +93,9 @@ public static class InspectQuery
             return findings.Where(finding => finding.Code == subject.WarningCode &&
                 (subject.ObjectId is null || finding.Subject.Any(part => Same(part.SubjectGuid, subject.ObjectId) ||
                     Same(part.FieldWorksGuid, subject.ObjectId)))).ToArray();
-        var ids = new[] { subject.AllomorphId, subject.GrammaticalInfoId, subject.ObjectId, timingKey?.Key }
+        var ids = new[] { subject.AllomorphId, subject.GrammaticalInfoId, subject.ObjectId }
             .Where(id => id is { Length: > 0 }).Select(id => IdKey(id!)).ToHashSet(StringComparer.Ordinal);
+        if (Guid.TryParse(timingKey?.Key, out var timedGuid)) ids.Add(timedGuid.ToString("D"));
         bool Names(GrammarWarningPart part) =>
             new[] { part.SubjectGuid, part.FieldWorksGuid }.Any(id => id is { Length: > 0 } && ids.Contains(IdKey(id))) ||
             part.Reach is { } reach && (
