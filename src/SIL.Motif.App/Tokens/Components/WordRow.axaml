@@ -15,12 +15,12 @@
     <StaticResource x:Key="Component.WordRow.MorphPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
     <StaticResource x:Key="Component.WordRow.MorphRadius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordRow.TickWidth" ResourceKey="Primitive.Size.28" />
-    <StaticResource x:Key="Component.WordRow.WordWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.WordRow.WordWidth" ResourceKey="Primitive.Size.92" />
     <StaticResource x:Key="Component.WordRow.PanGlossWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.WordRow.MeaningWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.WordRow.WarningsWidth" ResourceKey="Primitive.Size.28" />
-    <StaticResource x:Key="Component.WordRow.PlacesWidth" ResourceKey="Primitive.Size.40" />
-    <StaticResource x:Key="Component.WordRow.TimeWidth" ResourceKey="Primitive.Size.60" />
+    <StaticResource x:Key="Component.WordRow.PlacesWidth" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.WordRow.TimeWidth" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.WordRow.ReadWidth" ResourceKey="Primitive.Size.14" />
     <StaticResource x:Key="Component.WordRow.CardLabelWidth" ResourceKey="Primitive.Size.90" />
   </Styles.Resources>

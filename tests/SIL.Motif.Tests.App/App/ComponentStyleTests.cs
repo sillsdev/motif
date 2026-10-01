@@ -427,6 +427,13 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Consequence.Look");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
             Border.WidthProperty, "Component.MatrixCell.CompactWidth");
+        yield return new("MorphemeRow", "a form that is its own link",
+            host => Add(host, With(new HyperlinkButton { Content = "kul" }, ["morphForm", "morphFormLink"])),
+            HyperlinkButton.FontSizeProperty, "Intent.Type.Body");
+        yield return new("MorphemeRow", "a form link's arrow", host => Add(host, Text("morphLinkMark")),
+            TextBlock.FontSizeProperty, "Intent.Type.Label");
+        yield return new("MorphemeRow", "a form link's words", host => Add(host, Stack("morphFormLinkWords")),
+            StackPanel.SpacingProperty, "Intent.Space.Minimal");
         yield return new("MorphemeRow", "a morpheme edge", host => Add(host, Box("morphEdge")), Border.BorderBrushProperty, "Intent.Border");
 
         yield return new("DifferencePanel", "a move row", DenseListRow,

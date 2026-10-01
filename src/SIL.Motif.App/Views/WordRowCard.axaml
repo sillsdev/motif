@@ -21,7 +21,7 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
-      <views:MorphemeRow Morphs="{Binding WordRow.FieldWorksMorphemes}" ShowCategory="False"
+      <views:MorphemeRow Morphs="{Binding WordRow.FieldWorksMorphemes}" ShowCategory="False" FormLinks="True"
                          IsVisible="{Binding HasFieldWorksAnalysis}" />
       <views:CopyableTextBlock Classes="muted" Text="FieldWorks holds no analysis of this word."
                                IsVisible="{Binding !HasFieldWorksAnalysis}" />
@@ -34,7 +34,7 @@
       <ItemsControl ItemsSource="{Binding Readings}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
-            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
+            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" FormLinks="True" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
@@ -48,7 +48,7 @@
       <ItemsControl ItemsSource="{Binding MissedApproved}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
-            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" />
+            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" FormLinks="True" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

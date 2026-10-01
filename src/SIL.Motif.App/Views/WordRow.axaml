@@ -9,6 +9,8 @@
   <Border x:Name="Root" Classes="wordRowFrame" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
     <Border Classes="wordRowEdge">
       <StackPanel>
+        <Border x:Name="Body" Classes="wordRowBody" Focusable="True" IsTabStop="True"
+                ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
         <Grid Classes="wordRowLine">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
@@ -21,9 +23,7 @@
                       AutomationProperties.Name="{Binding Word, StringFormat='Tick {0}'}" />
           </Panel>
 
-          <Border x:Name="Body" Grid.Column="1" Classes="wordRowBody" Focusable="True" IsTabStop="True"
-                  ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
-            <Grid Classes="wordRowCells">
+            <Grid Grid.Column="1" Classes="wordRowCells">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
                 <ColumnDefinition Width="*" />
@@ -108,7 +108,6 @@
                          ToolTip.Tip="{Binding UnreadText}" AutomationProperties.Name="{Binding UnreadText}" />
               </Panel>
             </Grid>
-          </Border>
 
           <StackPanel Grid.Column="2" Classes="wordRowNext" Orientation="Horizontal" VerticalAlignment="Center">
             <HyperlinkButton x:Name="OpenInText" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
@@ -121,6 +120,7 @@
                              ToolTip.Tip="{Binding WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
           </StackPanel>
         </Grid>
+        </Border>
 
         <views:CopyableTextBlock Classes="wordRowNote" Text="{Binding #Self.Note}" TextTrimming="CharacterEllipsis"
                    Margin="{DynamicResource Component.WordRow.CardPadding}"

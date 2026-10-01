@@ -29,12 +29,16 @@ public sealed class MorphemeRow : WrapPanel
     public static readonly StyledProperty<bool> RevealLinksProperty =
         AvaloniaProperty.Register<MorphemeRow, bool>(nameof(RevealLinks));
 
+    public static readonly StyledProperty<bool> FormLinksProperty =
+        AvaloniaProperty.Register<MorphemeRow, bool>(nameof(FormLinks));
+
     static MorphemeRow()
     {
         MorphsProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         ShowCategoryProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         SeparatorsProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         RevealLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
+        FormLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
     }
 
     public MorphemeRow() => Orientation = Orientation.Horizontal;
@@ -67,6 +71,16 @@ public sealed class MorphemeRow : WrapPanel
         set => SetValue(RevealLinksProperty, value);
     }
 
+    /// <summary>
+    /// Whether each linked morpheme's form is itself the link into FieldWorks, marked with a small arrow, instead of a
+    /// separate link under it; for a row where many morphemes would otherwise each repeat the tool's name.
+    /// </summary>
+    public bool FormLinks
+    {
+        get => GetValue(FormLinksProperty);
+        set => SetValue(FormLinksProperty, value);
+    }
+
     private void Rebuild()
     {
         Children.Clear();
@@ -78,13 +92,14 @@ public sealed class MorphemeRow : WrapPanel
     private Control BlockFor(ParserReadingMorphViewModel morph, bool last)
     {
         var column = new StackPanel();
-        column.Children.Add(new CopyableTextBlock
+        var formIsLink = FormLinks && morph.HasLink;
+        column.Children.Add(formIsLink ? FormLink(morph) : new CopyableTextBlock
             { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
         column.Children.Add(new CopyableTextBlock
             { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
         if (ShowCategory && morph.Category is { Length: > 0 })
             column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
-        if (morph.HasLink) column.Children.Add(Link(morph, RevealLinks));
+        if (morph.HasLink && !formIsLink) column.Children.Add(Link(morph, RevealLinks));
 
         var block = new Border { Child = column, Classes = { "morph" }, Focusable = true };
         if (last) block.Classes.Add("last");
@@ -126,6 +141,22 @@ public sealed class MorphemeRow : WrapPanel
         if (morph.HasLink)
             content.Children.Add(Link(morph, reveal: true));
         return new Border { Classes = { "card", "hoverReveal" }, Child = content };
+    }
+
+    private static HyperlinkButton FormLink(ParserReadingMorphViewModel morph)
+    {
+        var words = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "morphFormLinkWords" } };
+        words.Children.Add(new TextBlock { Text = morph.Form, Classes = { "morphFormText" } });
+        words.Children.Add(new TextBlock { Text = "↗", Classes = { "morphLinkMark" } });
+        var button = new HyperlinkButton
+        {
+            Content = words,
+            NavigateUri = morph.Link,
+            Classes = { "morphForm", "morphFormLink", "morphLink" },
+        };
+        AutomationProperties.SetName(button, morph.LinkName);
+        ToolTip.SetTip(button, morph.FormLinkTip);
+        return button;
     }
 
     private static HyperlinkButton Link(ParserReadingMorphViewModel morph, bool reveal)

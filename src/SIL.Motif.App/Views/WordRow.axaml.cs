@@ -2,6 +2,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -181,7 +182,9 @@ public sealed partial class WordRow : UserControl
     private void OnBodyPressed(object? sender, PointerPressedEventArgs e)
     {
         var point = e.GetCurrentPoint(_body);
-        _pressedAt = point.Properties.IsLeftButtonPressed && e.ClickCount == 1 ? point.Position : null;
+        var onControl = e.Source is Visual source && source.GetSelfAndVisualAncestors()
+            .TakeWhile(visual => !ReferenceEquals(visual, _body)).Any(visual => visual is Button or ToggleButton);
+        _pressedAt = point.Properties.IsLeftButtonPressed && e.ClickCount == 1 && !onControl ? point.Position : null;
     }
 
     private void OnBodyReleased(object? sender, PointerReleasedEventArgs e)
@@ -197,6 +200,8 @@ public sealed partial class WordRow : UserControl
 
     private void OnBodyKeyDown(object? sender, KeyEventArgs e)
     {
+        // The tick and the next steps inside the row keep their own keys.
+        if (!ReferenceEquals(e.Source, _body)) return;
         switch (e.Key)
         {
             case Key.Enter or Key.Space:

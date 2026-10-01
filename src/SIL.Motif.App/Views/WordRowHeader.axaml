@@ -6,6 +6,7 @@
              x:Name="Self">
   <Border Classes="wordRowHeader">
     <Border Classes="wordRowEdge">
+      <Border Classes="wordRowHeadCells">
       <Grid Classes="wordRowHeadLine">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
@@ -13,8 +14,7 @@
           <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowNext" />
         </Grid.ColumnDefinitions>
         <Panel Classes="wordRowTick" />
-        <Border Grid.Column="1" Classes="wordRowHeadCells">
-          <Grid Classes="wordRowCells">
+          <Grid Grid.Column="1" Classes="wordRowCells">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowWord" />
               <ColumnDefinition Width="*" />
@@ -35,9 +35,9 @@
             <views:CopyableTextBlock Grid.Column="6" Classes="wordRowTime wordRowHeading" Text="TIME" TextAlignment="Right" />
             <Panel Grid.Column="7" Classes="wordRowRead" />
           </Grid>
-        </Border>
         <views:CopyableTextBlock Grid.Column="2" Classes="wordRowHeading" Text="NEXT" />
       </Grid>
+      </Border>
     </Border>
   </Border>
 </UserControl>

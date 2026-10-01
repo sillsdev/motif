@@ -250,7 +250,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void TabReachesTheTickTheRowAndEachNextStep()
+    public void TabReachesTheRowThenItsTickAndEachNextStep()
     {
         avalonia.Invoke(() =>
         {
@@ -262,19 +262,126 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 window.UpdateLayout();
                 var row = Rows(window, MatrixList).Single();
-                var tick = Assert.IsType<CheckBox>(Part(row, "wordRowTick").GetVisualDescendants().OfType<CheckBox>().Single());
-                tick.Focus(NavigationMethod.Tab);
+                Body(row).Focus(NavigationMethod.Tab);
 
-                var reached = new List<string?>();
-                for (var press = 0; press < 3; press++)
+                var reached = new List<string?> { Focused(window) };
+                for (var press = 0; press < 4; press++)
                 {
                     window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                    var focused = (Control)window.FocusManager!.GetFocusedElement()!;
-                    reached.Add(AutomationProperties.GetAutomationId(focused) ?? focused.GetType().Name);
+                    reached.Add(Focused(window));
                 }
 
-                Assert.Equal(["motif-word-row-matrix-kitabu-row", "motif-word-row-matrix-kitabu-open-in-text",
-                    "motif-word-row-matrix-kitabu-try-a-word"], reached);
+                Assert.Equal(["row", "tick", "open-in-text", "try-a-word", "word-analyses"],
+                    reached.Select(id => id?.Replace("motif-word-row-matrix-kitabu-", string.Empty, StringComparison.Ordinal)));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TheFocusRingSpansTheWholeRow_FromTheTickToTheNextSteps()
+    {
+        avalonia.Invoke(() =>
+        {
+            var (row, window) = Show(new WordRowViewModel(Alikula()));
+            try
+            {
+                Body(row).Focus(NavigationMethod.Tab);
+                window.UpdateLayout();
+
+                var ring = Assert.IsAssignableFrom<Control>(ControlContracts.ComponentStateContractCases.RingAround(Body(row)));
+                var around = BoundsIn(ring, window);
+                var parts = new List<Control> { Part(row, "wordRowTick") };
+                parts.AddRange(NextSteps(row));
+                Assert.All(parts, part => Assert.True(around.Contains(BoundsIn(part, window)),
+                    $"The focus ring {around} does not surround {AutomationProperties.GetName(part) ?? part.GetType().Name} " +
+                    $"at {BoundsIn(part, window)}."));
+
+                row.IsOpen = true;
+                window.UpdateLayout();
+                var frame = BoundsIn(Part(row, "wordRowEdge"), window);
+                Assert.All(parts, part => Assert.True(frame.Contains(BoundsIn(part, window))));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AtTheNarrowWindowEveryColumnHeadFitsItsColumn_AndNoneTouchesTheNext()
+    {
+        avalonia.Invoke(() =>
+        {
+            var header = new WordRowHeader();
+            var row = new WordRow { Row = new WordRowViewModel(Alikula()), List = "matrix" };
+            var host = new StackPanel { Children = { header, row } };
+            Grid.SetIsSharedSizeScope(host, true);
+            // A 1040 px window leaves the list about this wide, beside the collapsed sidebar and the page's insets.
+            var window = new Window { Content = host, Width = 940, Height = 300, RequestedThemeVariant = ThemeVariant.Light };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var heads = header.GetVisualDescendants().OfType<TextBlock>().Where(text => !string.IsNullOrEmpty(text.Text))
+                    .OrderBy(text => BoundsIn(text, window).X).ToArray();
+                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING", "PLACES", "TIME", "NEXT"],
+                    heads.Select(text => text.Text!).Where(text => text.All(char.IsLetter)));
+                Assert.All(heads, text => Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5,
+                    $"'{text.Text}' needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#} px but has {text.Bounds.Width:0.#}."));
+                foreach (var (left, right) in heads.Zip(heads.Skip(1)))
+                {
+                    var end = BoundsIn(left, window).X + left.TextLayout.WidthIncludingTrailingWhitespace;
+                    Assert.True(end + 4 <= BoundsIn(right, window).X, $"'{left.Text}' runs into '{right.Text}'.");
+                }
+                var tops = heads.Select(text => BoundsIn(text, window).Y).ToArray();
+                Assert.True(tops.Max() - tops.Min() < 1, "The column heads do not share one line.");
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void InTheOpenCardEachMorphemesFormIsItsLinkToFieldWorks()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([new AssessWordRowViewModel(new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 3, null)
+            {
+                ProjectStanding = ProjectStanding.NotPresent,
+                Readings = [new ParserReading([new ParserReadingMorph("ki-", "7", "n", null, false, LexiconLink),
+                    new ParserReadingMorph("tabu", "book", "n", null, false, LexiconLink)])],
+                Morphology = new ParseWordEvidence("v1", 0, "kitabu", 3, false, false, false, [new ParseAnalysis([])], []),
+            })]);
+            var window = new Window { Content = new ComparePanel(compare), Width = 1400, Height = 1000 };
+            try
+            {
+                window.Show();
+                compare.Words.Single().IsExpanded = true;
+                window.UpdateLayout();
+
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
+                var links = card.GetVisualDescendants().OfType<HyperlinkButton>().Where(link => link.IsEffectivelyVisible).ToArray();
+                Assert.Equal(["ki-", "tabu"], links.Select(link => link.GetVisualDescendants().OfType<TextBlock>().First().Text));
+                Assert.All(links, link =>
+                {
+                    Assert.Contains("morphLink", link.Classes);
+                    Assert.Equal(new Uri(LexiconLink), link.NavigateUri);
+                });
+                Assert.Equal(["Open ki- in Lexicon Edit", "Open tabu in Lexicon Edit"], links.Select(link => ToolTip.GetTip(link)));
+                var morphs = compare.Words.Single().Readings.Single().Morphs;
+                Assert.Equal(morphs.Select(morph => morph.LinkName), links.Select(AutomationProperties.GetName));
+                Assert.DoesNotContain(card.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("Lexicon Edit") == true);
             }
             finally
             {
@@ -336,6 +443,14 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
             }
         });
     }
+
+    private const string LexiconLink = "silfw://localhost/link?database%3dp%26tool%3dlexiconEdit";
+
+    private static string? Focused(Window window) =>
+        AutomationProperties.GetAutomationId((Control)window.FocusManager!.GetFocusedElement()!);
+
+    private static Rect BoundsIn(Control control, Visual root) =>
+        new(control.TranslatePoint(default, root)!.Value, control.Bounds.Size);
 
     private const string AnalysesLink = "silfw://localhost/link?database%3dp%26tool%3dAnalyses";
 

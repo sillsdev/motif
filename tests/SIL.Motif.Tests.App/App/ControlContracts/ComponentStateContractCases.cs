@@ -466,6 +466,11 @@ internal static class TooltipOwners
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
+        new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,
+            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink"))
+        {
+            Pending = "no tooltip scene opens a word row's card",
+        },
         new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
         new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
