@@ -60,8 +60,6 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
                 var button = SourceButton(name);
                 Assert.False(button.IsEffectivelyEnabled);
                 Assert.Equal(reason, AutomationProperties.GetHelpText(button));
-                Assert.Contains(walkthrough.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == reason);
             }
 
             walkthrough.Type("Words picked by hand", $"   {Environment.NewLine}   ");

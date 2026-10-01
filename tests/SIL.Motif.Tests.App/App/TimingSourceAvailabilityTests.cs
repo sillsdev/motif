@@ -1,5 +1,7 @@
 using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
@@ -13,6 +15,56 @@ namespace SIL.Motif.Tests.App;
 public sealed class TimingSourceAvailabilityTests
 {
     private const string ProjectPath = @"C:\projects\reading.fwdata";
+
+    [Fact]
+    public void WordSourcesShareOneLabeledRowAndOneHintBelowIt()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var (workspace, window) = FakeComposedWindow.Create(fake);
+            try
+            {
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+                workspace.Context.ProjectPath = ProjectPath;
+                workspace.Assess.ProjectPath = ProjectPath;
+                workspace.Assess.Result = Assessment();
+                workspace.Context.OpenPage(WorkspacePage.Timing);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+
+                var row = Assert.Single(window.GetVisualDescendants().OfType<WrapPanel>(),
+                    panel => AutomationProperties.GetName(panel) == "Timing word picker row");
+                var hint = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    block => AutomationProperties.GetName(block) == "Timing word picker hint");
+
+                Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
+                Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "List from Texts");
+                Assert.Equal(2, row.GetVisualDescendants().OfType<ComboBox>().Count());
+                AssertPickerLabelBesideControl(row, "Matrix cell", "Matrix cell from Texts");
+                AssertPickerLabelBesideControl(row, "List from Texts", "List from Texts");
+                Assert.True(hint.Bounds.Top >= row.Bounds.Bottom);
+                Assert.Equal("Choose a preset, a cell, a Texts list, or words entered below.", hint.Text);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    private static void AssertPickerLabelBesideControl(WrapPanel row, string labelText, string controlName)
+    {
+        var label = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == labelText);
+        var control = Assert.Single(row.GetVisualDescendants().OfType<ComboBox>(),
+            combo => AutomationProperties.GetName(combo) == controlName);
+
+        Assert.True(label.Bounds.Right <= control.Bounds.Left);
+        Assert.True(label.Bounds.Top < control.Bounds.Bottom && control.Bounds.Top < label.Bounds.Bottom);
+    }
 
     [Fact]
     public void ACancelledAssessmentDisablesTimingSourcesThatLostTheirWords()
