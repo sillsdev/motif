@@ -51,7 +51,7 @@ public static class TimingAggregation
     {
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(rule);
-        if (rows.Any(row => StringComparer.Ordinal.Equals(row.Key, rule))) return [rule];
+        if (rows.FirstOrDefault(row => SameKey(row.Key, rule)) is { } keyed) return [keyed.Key];
         return rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule)).Select(row => row.Key)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
@@ -94,7 +94,7 @@ public static class TimingAggregation
             .ThenBy(row => row.Key, StringComparer.Ordinal).ToArray();
         var costliest = rule is null
             ? Array.Empty<WordRuleTiming>()
-            : measured.Where(row => StringComparer.Ordinal.Equals(row.Key, rule))
+            : measured.Where(row => SameKey(row.Key, rule))
                 .GroupBy(row => row.Word, StringComparer.Ordinal)
                 .Select(group => (Word: group.Key, Rows: group.ToArray()))
                 .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
@@ -143,6 +143,10 @@ public static class TimingAggregation
             recorded ? notAttributed : null, recorded && wordTime > 0 ? notAttributed / wordTime : null,
             overrun, overrun > 0);
     }
+
+    private static bool SameKey(string left, string right) =>
+        Guid.TryParse(left, out var leftGuid) && Guid.TryParse(right, out var rightGuid)
+            ? leftGuid == rightGuid : StringComparer.Ordinal.Equals(left, right);
 
     // Calls are summed within one kind only; an uncounted row leaves the total unknown only if none counted.
     private static long? Calls(IReadOnlyList<AssessmentObjectTiming> rows) =>

@@ -216,6 +216,29 @@ public sealed class CatalogAggregationTests
         Assert.Equal(60, result.Attribution.NotAttributedMs);
     }
 
+    [Theory]
+    [InlineData("12345678-1234-1234-ABCD-123456789ABC")]
+    [InlineData("{12345678-1234-1234-abcd-123456789abc}")]
+    public void ARuleGuidResolvesAndFiltersByValue(string requested)
+    {
+        const string key = "12345678-1234-1234-abcd-123456789abc";
+        AssessmentObjectTiming[] rows = [Row("morph_rule", key, "Plural", "a", 10)];
+
+        Assert.Equal([key], TimingAggregation.ResolveRule(rows, requested));
+        var detail = TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", requested, top: 10);
+        Assert.Equal("a", Assert.Single(detail.CostliestWords).Word);
+        Assert.Equal(10, detail.CostliestWords[0].SelfMs);
+    }
+
+    [Fact]
+    public void AStructuralTimingKeyKeepsOrdinalIdentity()
+    {
+        AssessmentObjectTiming[] rows = [Row("morph_rule", "local/Rule", "Plural", "a", 10)];
+
+        Assert.Empty(TimingAggregation.ResolveRule(rows, "local/rule"));
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", "local/rule", 10).CostliestWords);
+    }
+
     [Fact]
     public void WithNoObjectTimeRecordedNoTimeIsCalledNotAttributed()
     {
