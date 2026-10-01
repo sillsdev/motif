@@ -35,6 +35,10 @@
   <Style Selector="Button.stopGroup.chosen">
     <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
   </Style>
+  <!-- Semi repaints the face under the pointer and on a press, so the chosen group keeps its fill there. -->
+  <Style Selector="Button.stopGroup.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.stopGroup.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
+  </Style>
   <Style Selector="Button.stopGroup TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
   </Style>

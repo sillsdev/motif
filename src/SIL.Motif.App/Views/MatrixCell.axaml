@@ -15,7 +15,7 @@
     <DockPanel LastChildFill="True">
       <Ellipse DockPanel.Dock="Right" Classes="matrixPending" IsVisible="{Binding HasPendingChanges}"
                Margin="{DynamicResource Component.MatrixCell.MarkerMargin}"
-               ToolTip.Tip="{Binding PendingChangeStatus}" />
+               ToolTip.Tip="{Binding PendingChangeStatus}" views:ClearTipPlacement.IsEnabled="True" />
       <StackPanel VerticalAlignment="Center">
         <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" />
         <TextBlock Classes="matrixCellLabel" Text="{Binding Label}" IsVisible="{Binding ShowsLabel}"

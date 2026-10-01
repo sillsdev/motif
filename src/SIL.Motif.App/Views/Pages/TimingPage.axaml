@@ -161,7 +161,8 @@
                   <views:CopyableTextBlock Grid.Column="2" Text="TIME" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Grid.Column="3" Text="{Binding RuleShareHeader}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Grid.Column="4" Text="WORDS" TextWrapping="Wrap"
-                                           ToolTip.Tip="How many of these words the parser recorded time for this rule in" />
+                                           ToolTip.Tip="How many of these words the parser recorded time for this rule in"
+                                           views:ClearTipPlacement.IsEnabled="True" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding RuleRows}"
                               AutomationProperties.Name="Timing by rule">

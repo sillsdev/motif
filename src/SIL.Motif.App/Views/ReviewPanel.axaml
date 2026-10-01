@@ -243,7 +243,7 @@
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
                   ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
-                  ToolTip.Placement="Left" ToolTip.VerticalOffset="0"
+                  views:ClearTipPlacement.IsEnabled="True"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" IsVisible="{Binding Changes.HasItems}" />
           <views:CopyableTextBlock Classes="reviewSmall"

@@ -63,8 +63,10 @@
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
   </Style>
-  <Style Selector="Button.overviewTile:pointerover">
+  <!-- Semi repaints the face under the pointer and on a press, so the tile's hover fill and outline go there too. -->
+  <Style Selector="Button.overviewTile:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.overviewTile:pressed /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
   </Style>
   <Style Selector="StackPanel.overviewTileContent">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />

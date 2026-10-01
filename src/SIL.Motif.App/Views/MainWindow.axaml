@@ -190,6 +190,7 @@
               </Style>
               <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="ToolTip.Tip" Value="{Binding Title}" />
+                <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
               </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
