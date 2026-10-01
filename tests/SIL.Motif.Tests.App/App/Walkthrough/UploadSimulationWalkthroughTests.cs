@@ -51,6 +51,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
 
                 var validation = receiver.Validate();
                 Assert.Empty(validation.Failures);
+                Assert.Empty(validation.Findings);
                 Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
