@@ -429,7 +429,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
     /// <summary>The ratio between a text's painted colour and the colour painted behind it.</summary>
-    private static double Effective(TextBlock text)
+    internal static double Effective(TextBlock text)
     {
         var foreground = Assert.IsAssignableFrom<ISolidColorBrush>(text.Foreground);
         return Ratio(Painted(text, Layer(foreground)), Painted(text, default));

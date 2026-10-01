@@ -3,7 +3,11 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using Avalonia.Controls.Shapes;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 
 namespace SIL.Motif.Tests.App.ControlContracts;
 
@@ -307,4 +311,124 @@ internal static class ComponentStateContractCases
         ((IPseudoClasses)tip.Classes).Set(":open", true);
         return (new Border { Classes = { "stagedStrip" }, Child = tip }, words);
     }
+}
+
+/// <summary>A state of the sample window in which a group of tooltip owners shows.</summary>
+internal enum TooltipScene
+{
+    Overview,
+    OpenRecent,
+    CollapsedSidebar,
+    Matrix,
+    Reader,
+    TextPicker,
+    WordCard,
+    Lists,
+    TryAWord,
+    Timing,
+    Statistics,
+    Warnings,
+    Handoff,
+    ReaderStaged,
+    MatrixStaged,
+    ListsStaged,
+    ReviewStaged,
+}
+
+/// <summary>
+/// One tooltip the views declare: where it is declared, as the declaration spells its content, the scene of the sample
+/// window that shows it, and how to tell its owner from every other control. <see cref="Pending"/> names what the
+/// sample cannot yet reach, so an owner is either checked or visibly unchecked.
+/// </summary>
+internal sealed record TooltipOwner(string Key, string Source, string Declaration, TooltipScene Scene, Func<Control, bool> Is)
+{
+    public string? Pending { get; init; }
+
+    /// <summary>A reported product gap: the owner is reached but its tip shows no words, for this reason.</summary>
+    public string? Gap { get; init; }
+
+    public override string ToString() => $"{Key} ({Source}: {Declaration})";
+}
+
+/// <summary>Every tooltip owner the views declare, so a realized tooltip that matches none, or an owner never seen, fails.</summary>
+internal static class TooltipOwners
+{
+    internal static IReadOnlyList<TooltipOwner> All { get; } =
+    [
+        new("parse all words", "Views/MainWindow.axaml", "Parse the words you chose.", TooltipScene.Overview,
+            control => control is Button && Name(control) == "Parse all words")
+        {
+            Pending = "the sample has just parsed and saved no default choice of words, so the button is hidden",
+        },
+        new("refresh", "Views/MainWindow.axaml", "Capture a new Baseline from FieldWorks' last save.", TooltipScene.Overview,
+            control => control is Button && Name(control) == "Refresh the project"),
+        new("collapsed sidebar entry", "Views/MainWindow.axaml", "{Binding Title}", TooltipScene.CollapsedSidebar,
+            control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
+                list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
+        new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
+            control => control is MenuItem),
+        new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
+            control => control is Ellipse && control.Classes.Contains("matrixPending")),
+        new("pending change on a fix-first word", "Views/ComparePanel.axaml", "{Binding Word.PendingChangeStatus}",
+            TooltipScene.MatrixStaged, control => control is Ellipse && control.DataContext is CompareFixFirstViewModel)
+        {
+            Pending = "the sample's words have no fix-first entry",
+        },
+        new("compact Matrix cell", "Views/MiniMatrix.axaml", "{Binding AccessibleName}", TooltipScene.Matrix,
+            control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is not null)
+        {
+            Pending = "the sample has one parse, so What changed draws no before-and-after Matrix",
+        },
+        new("text to read", "Views/ResultsInTextPanel.axaml", "{Binding Title}", TooltipScene.TextPicker,
+            control => control is TextBlock && control.DataContext is ResultsTextViewModel),
+        new("word strip", "Views/ResultsInTextPanel.axaml", "{Binding HoverSummary}", TooltipScene.Reader,
+            control => control is Border { Name: "WordStrip" }),
+        new("disapproved mark on a strip", "Views/ResultsInTextPanel.axaml", "{Binding DisapprovedTip}", TooltipScene.Reader,
+            control => control is MarkChip && control.GetVisualAncestors().OfType<Border>().Any(border => border.Name == "WordStrip")),
+        new("staged change", "Views/ResultsInTextPanel.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
+            control => control is Border && control.Classes.Contains("stagedStrip")),
+        new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
+            control => control is OpinionMark),
+        new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
+            control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
+        new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
+            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null)
+        {
+            Pending = "the staged change moves chakula to Unknown and built something else, a cell no word list holds",
+        },
+        new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
+            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in the selected list"),
+        new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListDisabledReason}",
+            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for the whole selected list")
+        {
+            Gap = "while the list can go to AI Handoff its reason is empty, and an empty tooltip still opens",
+        },
+        new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
+            control => control is Button && Name(control) == "Apply to FieldWorks project"),
+        new("rule row", "Views/TryWordPanel.axaml", "Open stored Timing for this rule and word", TooltipScene.TryAWord,
+            control => control is Button && control.Classes.Contains("ruleRow")),
+        new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWord,
+            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface),
+        new("several ways", "Views/TraceAnalysesView.axaml", "The parser reached this analysis by more than one order of steps.",
+            TooltipScene.TryAWord,
+            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.WaysFoundText),
+        new("analysis that could not be shown", "Views/TraceAnalysesView.axaml", "{Binding ProjectionError}", TooltipScene.TryAWord,
+            control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text &&
+                text.Text == analysis.ProjectionErrorText),
+        new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded time for this rule in",
+            TooltipScene.Timing, control => control is CopyableTextBlock { Text: "WORDS" }),
+        new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
+            control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
+        new("a finding's problem", "Views/GrammarPanel.axaml", "{Binding Text}", TooltipScene.Warnings,
+            control => control is GrammarWarningPartsBlock),
+        new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
+            "$\"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in {tool}\"", TooltipScene.Warnings,
+            control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
+        new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
+            TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),
+        new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,
+            control => control is Button && control.Classes.Contains("handoffQuestion")),
+    ];
+
+    private static string? Name(Control control) => Avalonia.Automation.AutomationProperties.GetName(control);
 }

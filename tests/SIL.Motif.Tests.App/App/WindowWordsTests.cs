@@ -212,7 +212,7 @@ public sealed partial class WindowWordsTests
         return shown;
     }
 
-    private static void AssertWindowWords(IEnumerable<string> shown)
+    internal static void AssertWindowWords(IEnumerable<string> shown)
     {
         var retired = shown.Where(text => FileName().Replace(text, string.Empty) is var prose &&
                 (RetiredWord().IsMatch(prose) || LowerCaseOpinion().IsMatch(prose) || FieldWorksClassName().IsMatch(prose)))
