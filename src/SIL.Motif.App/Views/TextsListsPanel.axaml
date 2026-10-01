@@ -52,12 +52,12 @@
                 Command="{Binding Lists.HandOffCheckedWordsCommand}" VerticalAlignment="Top"
                 AutomationProperties.Name="AI Handoff for ticked words in the selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
-                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" />
+                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" ToolTip.ShowOnDisabled="True" />
         <Button Grid.Column="2" Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 VerticalAlignment="Top"
                 AutomationProperties.Name="AI Handoff for the whole selected list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
-                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" />
+                ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" ToolTip.ShowOnDisabled="True" />
         <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Classes="muted" Text="{Binding Lists.HandOffListDisabledReason}"
                                    IsVisible="{Binding Lists.HandOffListUnavailable}" TextWrapping="Wrap" />
