@@ -51,6 +51,7 @@ public sealed class ReviewScreenshots
                 var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
                 Assert.All(review.ApplyBlockers, blocker => Assert.Contains(blocker.Sentence, visibleTexts));
+                AssertSidePanelCardsHaveVisibleBody(window);
                 var visibleButtons = window.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.IsEffectivelyVisible).ToArray();
                 var measureButton = Assert.Single(visibleButtons,
@@ -66,6 +67,8 @@ public sealed class ReviewScreenshots
                 SaveAll(window, folder, "review-blocked");
 
                 review.ShowReconciliationNeeded();
+                window.UpdateLayout();
+                AssertSidePanelCardsHaveVisibleBody(window);
                 SaveAll(window, folder, "review-unconfirmed-apply");
                 review.ClearReconciliationNeeded();
 
@@ -79,6 +82,23 @@ public sealed class ReviewScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void AssertSidePanelCardsHaveVisibleBody(MainWindow window)
+    {
+        var sidePanel = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
+            panel => panel.Classes.Contains("reviewRight") && panel.IsEffectivelyVisible);
+        var cards = sidePanel.Children.OfType<Border>()
+            .Where(card => card.Classes.Contains("card") && card.IsEffectivelyVisible).ToArray();
+        Assert.NotEmpty(cards);
+        Assert.All(cards, card =>
+        {
+            var hasBody = card.GetVisualDescendants().Any(control => control.IsEffectivelyVisible &&
+                (control is Button || control is ItemsControl ||
+                 control is CopyableTextBlock text && !text.Classes.Contains("section-title") &&
+                 !string.IsNullOrWhiteSpace(text.Text)));
+            Assert.True(hasBody, "A visible Review side-panel card has only its title.");
+        });
     }
 
     private static void SaveAll(MainWindow window, string folder, string name)
