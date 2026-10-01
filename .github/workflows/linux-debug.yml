@@ -16,6 +16,7 @@ jobs:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
+      ICU_RID: linux-x64
     steps:
       - uses: actions/checkout@v4
 
@@ -23,17 +24,129 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install LibLCM ICU (Ubuntu)
+      - name: Read pinned SIL ICU source revision
+        if: runner.os == 'macOS'
+        id: sil-icu-source
         shell: bash
         run: |
-          wget -qO - http://linux.lsdev.sil.org/downloads/sil-testing.gpg | sudo tee /etc/apt/trusted.gpg.d/linux-lsdev-sil-org.asc
-          sudo add-apt-repository "deb http://linux.lsdev.sil.org/ubuntu $(lsb_release -sc)-experimental main"
+          commit=$(jq -r --arg rid "$ICU_RID" '.rids[$rid].source.commit' tools/icu-payload.json)
+          printf 'commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch SIL ICU runtime (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          payload=tools/icu-payload.json
+          root="$RUNNER_TEMP/sil-icu/linux-x64"
+          mkdir -p "$root/debs" "$root/extracted"
+          repository=$(jq -r '.rids["linux-x64"].sources[0].repository' "$payload")
+          while IFS=$'\t' read -r path checksum ships size; do
+            deb="$root/debs/$(basename "$path")"
+            curl --fail --location --retry 3 "$repository/$path" --output "$deb"
+            printf '%s  %s\n' "$checksum" "$deb" | sha256sum --check --status
+            if [[ -n "$size" && "$(stat -c '%s' "$deb")" != "$size" ]]; then
+              echo "Unexpected size for $deb" >&2
+              exit 1
+            fi
+            if [[ "$ships" == true ]]; then
+              dpkg-deb --extract "$deb" "$root/extracted"
+            fi
+          done < <(jq -r '.rids["linux-x64"].sources[] | [.path, .sha256, .ships, (.size // "")] | @tsv' "$payload")
           sudo apt-get update
-          sudo apt-get install -y icu-fw
+          sudo apt-get install --yes patchelf
+          find "$root/extracted" \( -type f -o -type l \) -name 'libicu*.so*' -print0 |
+            while IFS= read -r -d '' library; do
+              cp --archive "$library" "$root/"
+            done
+          find "$root" -maxdepth 1 -type f -name 'libicu*.so.*' -print0 |
+            while IFS= read -r -d '' library; do
+              patchelf --set-rpath '$ORIGIN' "$library"
+            done
+          printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$root" >> "$GITHUB_ENV"
+
+      - name: Cache SIL ICU source build (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/sil-icu/${{ matrix.icu_rid }}/install
+          key: sil-icu-${{ matrix.icu_rid }}-${{ steps.sil-icu-source.outputs.commit }}-${{ hashFiles('tools/patches/sil-icu-macos-malloc-header.patch') }}
+
+      - name: Build SIL ICU from source (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          payload=tools/icu-payload.json
+          runtime=$(jq -r --arg rid "$ICU_RID" '.rids[$rid]' "$payload")
+          commit=$(jq -r '.source.commit' <<< "$runtime")
+          repository=$(jq -r '.source.repository' <<< "$runtime")
+          source_directory=$(jq -r '.source.sourceDirectory' <<< "$runtime")
+          root="$RUNNER_TEMP/sil-icu/$ICU_RID"
+          source_root="$root/source"
+          prefix="$root/install"
+          case "$ICU_RID:$(uname -m)" in
+            osx-arm64:arm64|osx-x64:x86_64) ;;
+            *) echo "Runner architecture $(uname -m) does not match $ICU_RID" >&2; exit 1 ;;
+          esac
+          if [[ ! -f "$prefix/lib/libicuuc.70.dylib" ]]; then
+            mkdir -p "$root"
+            if [[ ! -d "$source_root/.git" ]]; then
+              git init "$source_root"
+              git -C "$source_root" remote add origin "$repository"
+            fi
+            git -C "$source_root" fetch --depth=1 origin "$commit"
+            git -C "$source_root" checkout --detach FETCH_HEAD
+            patch=$(jq -r '.buildPatches[] | select(.id == "silmods-macos-malloc-header") | .path' "$GITHUB_WORKSPACE/$payload")
+            git -C "$source_root" apply --check "$GITHUB_WORKSPACE/$patch"
+            git -C "$source_root" apply "$GITHUB_WORKSPACE/$patch"
+            cd "$source_root/$source_directory"
+            ./runConfigureICU MacOSX --prefix="$prefix" --enable-shared --enable-static=no --with-data-packaging=library
+            make -j"$(sysctl -n hw.ncpu)"
+            make install
+            for library in "$prefix"/lib/libicu*.70.dylib; do
+              [[ -f "$library" ]] || continue
+              while IFS= read -r dependency; do
+                case "$dependency" in
+                  "$prefix"/lib/*)
+                    install_name_tool -change "$dependency" "@loader_path/$(basename "$dependency")" "$library"
+                    ;;
+                esac
+              done < <(otool -L "$library" | awk 'NR > 1 { print $1 }' | grep '\.dylib$' || true)
+              install_name_tool -add_rpath '@loader_path' "$library" 2>/dev/null || true
+              codesign --force --sign - "$library"
+            done
+          fi
+          printf 'MOTIF_SIL_ICU_STAGE=%s\n' "$prefix/lib" >> "$GITHUB_ENV"
 
       - name: Build
         shell: pwsh
         run: ./build.ps1 -Configuration Release
+
+      - name: Stage SIL ICU beside Motif and test hosts
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          payload=tools/icu-payload.json
+          destination=$(jq -r --arg rid "$ICU_RID" '.rids[$rid].nativeOutputDirectory' "$payload")
+          product="bin/Release/$destination"
+          tests="bin/Release/tests/$destination"
+          mkdir -p "$product" "$tests"
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.so*; do
+              [[ -e "$library" || -L "$library" ]] || continue
+              cp -a "$library" "$product/"
+              cp -a "$library" "$tests/"
+            done
+          else
+            for library in "$MOTIF_SIL_ICU_STAGE"/libicu*.dylib; do
+              [[ -e "$library" || -L "$library" ]] || continue
+              cp -a "$library" "$product/"
+              cp -a "$library" "$tests/"
+            done
+          fi
+          while IFS= read -r library; do
+            [[ -e "$product/$library" ]] || { echo "Missing staged ICU library: $product/$library" >&2; exit 1; }
+            [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
+          done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
 
       - name: Run the selected tests
         shell: pwsh
