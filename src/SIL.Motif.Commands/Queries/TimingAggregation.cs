@@ -5,6 +5,11 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>Pure aggregations over stored Assessment timing facts.</summary>
+/// <remarks>
+/// Every share divides by the total word time of the same words: a group's object time and the words' parse
+/// times are each added up before dividing, never averaged as per-word percentages. Object time recorded in a word
+/// that has no parse time is left out, so the numerator never covers words the denominator does not.
+/// </remarks>
 public static class TimingAggregation
 {
     /// <summary>Builds median, nearest-rank 95th percentile, and the requested slowest words.</summary>
@@ -30,42 +35,116 @@ public static class TimingAggregation
         return new OverviewTiming(median, percentile95, slowest, stepLimited) { MeasuredWordCount = durations.Length };
     }
 
-    /// <summary>Groups object timing rows by kind or object and finds the most costly words for one object.</summary>
-    public static (IReadOnlyList<TimingAggregateRow> Aggregates, IReadOnlyList<WordRuleTiming> CostliestWords)
-        Aggregate(IReadOnlyList<AssessmentObjectTiming> rows, string by, string? rule, int top)
+    /// <summary>Adds the split of the words' total word time by kind, and its residual, to the word summary.</summary>
+    public static OverviewTiming SummarizeWords(IReadOnlyList<AssessedWord> words,
+        IReadOnlyList<AssessmentObjectTiming> objectTimings, int top = 3)
     {
+        var byKind = Aggregate(words, objectTimings, "kind", rule: null, top: 1);
+        return SummarizeWords(words, top) with { Kinds = byKind.Aggregates, Attribution = byKind.Attribution };
+    }
+
+    /// <summary>
+    /// The keys of the parser objects <paramref name="rule"/> names: the one whose key it is, or else every object
+    /// whose label it is. More than one key means the label is shared and does not name one object.
+    /// </summary>
+    public static IReadOnlyList<string> ResolveRule(IReadOnlyList<AssessmentObjectTiming> rows, string rule)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(rule);
+        if (rows.Any(row => StringComparer.Ordinal.Equals(row.Key, rule))) return [rule];
+        return rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule)).Select(row => row.Key)
+            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// Groups object timing rows by kind or by object identity, shares each group's time of the words' total word
+    /// time, and finds the words where the object keyed <paramref name="rule"/> took longest.
+    /// </summary>
+    public static (IReadOnlyList<TimingAggregateRow> Aggregates, IReadOnlyList<WordRuleTiming> CostliestWords,
+        WordTimeAttribution Attribution) Aggregate(IReadOnlyList<AssessedWord> words,
+        IReadOnlyList<AssessmentObjectTiming> rows, string by, string? rule, int top)
+    {
+        ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(rows);
         if (by is not ("kind" or "rule")) throw new ArgumentException("Grouping must be 'kind' or 'rule'.", nameof(by));
         if (top <= 0) throw new ArgumentOutOfRangeException(nameof(top));
-        Func<AssessmentObjectTiming, string> key = by == "kind" ? row => row.Kind : row => row.Object;
-        var timedRows = rows.Where(row => row.ElapsedNs is not null).ToArray();
-        var total = timedRows.Sum(row => row.ElapsedMs!.Value);
-        var aggregates = rows.GroupBy(key, StringComparer.Ordinal)
-            .Select(group => (Name: group.Key, Rows: group.ToArray(),
-                TimedRows: group.Where(row => row.ElapsedNs is not null).ToArray()))
-            .Where(group => group.TimedRows.Length != 0)
+        var wordTimes = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var word in words)
+            if (WordTimeMs(word) is { } time) wordTimes.TryAdd(word.Word, time);
+        var measured = rows.Where(row => wordTimes.ContainsKey(row.Word)).ToArray();
+        var attribution = Attribute(wordTimes, measured);
+        double? ShareOf(double selfMs) => attribution.WordTimeMs > 0 ? selfMs / attribution.WordTimeMs : null;
+
+        var aggregates = measured.GroupBy(row => by == "kind" ? (row.Kind, Key: row.Kind) : (row.Kind, row.Key))
+            .Select(group => (Group: group.Key, Rows: group.ToArray()))
+            .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
             .Select(group =>
             {
-                var elapsed = group.TimedRows.Sum(row => row.ElapsedMs!.Value);
-                return new TimingAggregateRow(group.Name, elapsed, total == 0 ? 0 : elapsed / total,
-                    group.Rows.Sum(row => row.Attempts ?? 0),
-                    group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
+                var self = group.Rows.Sum(row => row.ElapsedMs ?? 0);
+                var first = group.Rows[0];
+                return new TimingAggregateRow(group.Group.Key, by == "kind" ? first.Kind : first.Object, self,
+                    ShareOf(self), group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
                 {
-                    Kind = by == "kind" ? group.Name : group.Rows[0].Kind,
+                    Kind = first.Kind,
+                    IdentityQuality = by == "kind" ? string.Empty : first.IdentityQuality,
+                    Calls = Calls(group.Rows),
                 };
             })
-            .OrderByDescending(row => row.ElapsedMs).ThenBy(row => row.Name, StringComparer.Ordinal).ToArray();
+            .OrderByDescending(row => row.SelfMs).ThenBy(row => row.Name, StringComparer.Ordinal)
+            .ThenBy(row => row.Key, StringComparer.Ordinal).ToArray();
         var costliest = rule is null
             ? Array.Empty<WordRuleTiming>()
-            : rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule))
+            : measured.Where(row => StringComparer.Ordinal.Equals(row.Key, rule))
                 .GroupBy(row => row.Word, StringComparer.Ordinal)
                 .Select(group => (Word: group.Key, Rows: group.ToArray()))
                 .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
-                .Select(group => new WordRuleTiming(group.Word,
-                    group.Rows.Where(row => row.ElapsedNs is not null).Sum(row => row.ElapsedMs!.Value),
-                    group.Rows.Sum(row => row.Attempts ?? 0)))
-                .OrderByDescending(row => row.ElapsedMs).ThenBy(row => row.Word, StringComparer.Ordinal)
+                .Select(group =>
+                {
+                    var self = group.Rows.Sum(row => row.ElapsedMs ?? 0);
+                    var whole = wordTimes[group.Word];
+                    return new WordRuleTiming(group.Word, self, Calls(group.Rows))
+                    {
+                        WordTimeMs = whole,
+                        ShareOfWordTime = whole > 0 ? self / whole : null,
+                    };
+                })
+                .OrderByDescending(row => row.SelfMs).ThenBy(row => row.Word, StringComparer.Ordinal)
                 .Take(top).ToArray();
-        return (aggregates, costliest);
+        return (aggregates, costliest, attribution);
     }
+
+    /// <summary>
+    /// A word's parse time in milliseconds: the statistics cache's nanoseconds when it recorded them, since the
+    /// per-word millisecond is rounded and a fast word's object time could exceed it; otherwise the millisecond.
+    /// </summary>
+    public static double? WordTimeMs(AssessedWord word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        return word.ElapsedNs is > 0 and var ns ? ns / 1_000_000d : word.ElapsedMs;
+    }
+
+    private static WordTimeAttribution Attribute(IReadOnlyDictionary<string, double> wordTimes,
+        IReadOnlyList<AssessmentObjectTiming> rows)
+    {
+        var objectTimes = rows.Where(row => row.ElapsedNs is not null)
+            .GroupBy(row => row.Word, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Sum(row => row.ElapsedMs!.Value), StringComparer.Ordinal);
+        var wordTime = wordTimes.Values.Sum();
+        var attributed = objectTimes.Values.Sum();
+        double notAttributed = 0, overrun = 0;
+        foreach (var (word, time) in wordTimes)
+        {
+            var left = time - objectTimes.GetValueOrDefault(word);
+            if (left >= 0) notAttributed += left;
+            else overrun -= left;
+        }
+        var recorded = objectTimes.Count > 0;
+        return new WordTimeAttribution(wordTimes.Count, wordTime, attributed,
+            recorded ? notAttributed : null, recorded && wordTime > 0 ? notAttributed / wordTime : null,
+            overrun, overrun > 0);
+    }
+
+    // Calls are summed within one kind only; an uncounted row leaves the total unknown only if none counted.
+    private static long? Calls(IReadOnlyList<AssessmentObjectTiming> rows) =>
+        rows.Any(row => row.Attempts is not null) ? rows.Sum(row => (long)(row.Attempts ?? 0)) : null;
 }

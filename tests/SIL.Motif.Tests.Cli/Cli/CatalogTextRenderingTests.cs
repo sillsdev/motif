@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -107,6 +109,51 @@ public sealed class CatalogTextRenderingTests
         var rendered = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false);
 
         Assert.Contains("FieldWorks has changed since the current Baseline", rendered.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OverviewTextSplitsTotalWordTimeByKindWithNotAttributedBeside()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new OverviewResponse(
+            "Aweti", DateTimeOffset.Parse("2026-09-24T12:00:00Z"), null, 2, 1, 0, 2, 2, 0, 0, "assessment/1",
+            DateTimeOffset.Parse("2026-09-24T11:30:00Z"), 0.8, null, null,
+            new OverviewTextCoverage(2, 0, 0, 0, 2, 2), new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
+            new OverviewTiming(400, 500, [], 0)
+            {
+                MeasuredWordCount = 2,
+                Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 600, 0.75, 2) { Kind = "morph_rule" }],
+                Attribution = new WordTimeAttribution(2, 800, 600, 200, 0.25, 0, false),
+            },
+            null);
+
+        var output = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("2 words, 0.8 s total word time: morph_rule 75.0%, not attributed 25.0%", output,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TimingTextSharesEveryRowOfTotalWordTimeAndCountsCallsPerKind()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var response = new TimingResponse("assessment/1", "all", "rule", 2, 8, 400, [],
+            [
+                new TimingAggregateRow("guid-1", "Plural", 300, 0.375, 2) { Kind = "morph_rule", Calls = 40 },
+                new TimingAggregateRow("guid-2", "Plural", 200, 0.25, 1) { Kind = "lex_entry" },
+            ], [])
+        {
+            Attribution = new WordTimeAttribution(2, 800, 500, 302, 0.3775, 2, true),
+        };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+
+        Assert.Contains("Total word time: 800.00 ms for 2 measured word(s)", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [guid-1]: 300.00 ms (37.5%), 40 morph_rule calls, 2 words", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [guid-2]: 200.00 ms (25.0%), calls not counted, 1 words", output, StringComparison.Ordinal);
+        Assert.Contains("Not attributed: 302.00 ms (37.8%)", output, StringComparison.Ordinal);
+        Assert.Contains("recorded 2.00 ms more than their words' own time", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("attempts", output, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -208,7 +208,7 @@ public sealed partial class TimingPageModel : PageModel
         get
         {
             if (!HasHeadline || KindTiming is not { Aggregates.Count: > 0 } kinds) return string.Empty;
-            var recorded = kinds.Aggregates.Sum(row => row.ElapsedMs);
+            var recorded = kinds.Aggregates.Sum(row => row.SelfMs);
             var other = MeasuredTotalMs - recorded;
             if (other >= TimingShare.SmallestShownMs)
                 return $"The parser recorded {(recorded / MeasuredTotalMs).ToString("P0", CultureInfo.CurrentCulture)} " +
@@ -222,8 +222,8 @@ public sealed partial class TimingPageModel : PageModel
     }
 
     private IReadOnlyList<TimingShare> SharesOf(IReadOnlyList<TimingAggregateRow>? rows, bool byKind) => rows is null ? [] :
-        [.. rows.Select(row => new TimingShare(byKind ? TimingShare.KindName(row.Name) : row.Name, row.Kind, row.ElapsedMs,
-            HasHeadline && MeasuredTotalMs > 0 ? row.ElapsedMs / MeasuredTotalMs : null, row.WordsTouched, row))];
+        [.. rows.Select(row => new TimingShare(byKind ? TimingShare.KindName(row.Name) : row.Name, row.Kind, row.SelfMs,
+            HasHeadline && MeasuredTotalMs > 0 ? row.SelfMs / MeasuredTotalMs : null, row.WordsTouched, row))];
     public bool HasSelectedWords => KindTiming?.WordCount > 0;
     public bool ShowEmptySelection => KindTiming is { WordCount: 0 };
     public bool ShowStaleTiming => HasTiming && Context.Evidence.IsStale;
@@ -240,22 +240,26 @@ public sealed partial class TimingPageModel : PageModel
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? "No words in this selection have recorded parse time." :
         $"Median {KindTiming.MedianMs:N1} ms · 95th percentile {KindTiming.Percentile95Ms:N1} ms";
+    /// <summary>The chosen parser object's key, or the name another page asked for until the rules are read.</summary>
     public string? SelectedRule { get; private set; }
-    public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => row.Name == SelectedRule);
+    public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => row.Key == SelectedRule);
+
+    /// <summary>The chosen rule's label, for the side card's title.</summary>
+    public string? SelectedRuleName => SelectedRuleRow?.Name ?? SelectedRule;
 
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
-        [.. RuleShares.Select(share => new TimingRuleRow(share, share.Source?.Name == SelectedRule))];
+        [.. RuleShares.Select(share => new TimingRuleRow(share, share.Source?.Key == SelectedRule))];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
     /// <summary>The selected rule's time in each of its costliest words, beside that word's whole parse time.</summary>
     public IReadOnlyList<TimingRuleWord> CostliestRuleWordTimes => [.. CostliestRuleWords.Select(word =>
         new TimingRuleWord(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
-            ? $"{SpeedText.PerWord(word.ElapsedMs)} of its {SpeedText.PerWord(whole)}"
-            : SpeedText.PerWord(word.ElapsedMs)))];
+            ? $"{SpeedText.PerWord(word.SelfMs)} of its {SpeedText.PerWord(whole)}"
+            : SpeedText.PerWord(word.SelfMs)))];
 
     /// <summary>The selected rule's time, its share of the chosen words' whole parse time, and its words.</summary>
-    public string RuleSummary => RuleShares.FirstOrDefault(share => share.Source?.Name == SelectedRule) is not { } rule
+    public string RuleSummary => RuleShares.FirstOrDefault(share => share.Source?.Key == SelectedRule) is not { } rule
         ? string.Empty
         : (rule.Share is null ? rule.TimeText : $"{rule.TimeText} · {rule.ShareText} of {MeasuredWordsPhrase}' {HeadlineTotal}") +
             $" · recorded in {SpeedText.Count(rule.Words, "word", "words")}";
@@ -581,8 +585,10 @@ public sealed partial class TimingPageModel : PageModel
         if (generation != _loadGeneration || Context.ProjectPath != projectPath) return;
         RuleTiming = rule.Succeeded ? rule.Value : null;
         TimingRefusal = rule.Succeeded || rule.Refusal is null ? null : WindowRefusal.From(rule.Refusal);
-        if (RuleTiming is null || RuleTiming.Aggregates.All(row => row.Name != SelectedRule))
-            SelectedRule = RuleTiming?.Aggregates.FirstOrDefault()?.Name;
+        // A rule another page names by its label becomes the key of the first object carrying that label.
+        SelectedRule = (RuleTiming?.Aggregates.FirstOrDefault(row => row.Key == SelectedRule) ??
+            RuleTiming?.Aggregates.FirstOrDefault(row => row.Name == SelectedRule) ??
+            RuleTiming?.Aggregates.FirstOrDefault())?.Key;
         RaiseTimingState();
         if (SelectedRule is not null) await LoadRuleDetailAsync(projectPath, assessmentId, generation);
     }
@@ -592,7 +598,7 @@ public sealed partial class TimingPageModel : PageModel
         using var usageAction = Context.Commands.BeginUsageAction("timing",
             UsageArgumentShape.Text("rule"));
         if (row is null || Context.ProjectPath is not { } projectPath) return;
-        SelectedRule = row.Name;
+        SelectedRule = row.Key;
         RuleDetail = null;
         RaiseTimingState();
         await LoadRuleDetailAsync(projectPath, CurrentAssessmentId, _loadGeneration);
@@ -692,7 +698,7 @@ public sealed partial class TimingPageModel : PageModel
         {
             nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingRefusal),
             nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
-            nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
+            nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(SelectedWords),
             nameof(SlowestWords), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),

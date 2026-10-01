@@ -285,7 +285,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(2, timing.Value!.WordCount);
         Assert.Equal("Verb template", Assert.Single(timing.Value.Aggregates).Name);
         Assert.Equal("morph_rule", Assert.Single(timing.Value.Aggregates).Kind);
-        Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Attempts);
+        Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Calls);
         Assert.Single(timing.Value.CostliestWords);
         Assert.Contains(timing.Value.Words, word => word.Word == SeededProject.AnalysedWordForm &&
             word.Completion == "Step limit");
@@ -388,7 +388,63 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(10, timing.Value.Words.Single(word => word.Word == "motifa").ElapsedMs);
         Assert.Equal("Time limit", timing.Value.Words.Single(word => word.Word == "motifb").Completion);
         Assert.Equal(30, timing.Value.MedianMs);
-        Assert.Equal(11, Assert.Single(timing.Value.Aggregates).ElapsedMs);
+        Assert.Equal(11, Assert.Single(timing.Value.Aggregates).SelfMs);
+    }
+
+    [Fact]
+    public void TimingKeepsTwoObjectsWithOneLabelApartAndRefusesTheSharedLabelAsARule()
+    {
+        using var seeded = NewSeededScratch();
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
+        {
+            AssessmentKind.ParseTime => new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, "motifa", 10, SIL.Motif.Host.Parser.WordOutcome.Analysed, "finished")],
+                1000, seeded.FwDataPath, [])),
+            AssessmentKind.ObjectTiming => TimingCache(),
+            _ => new AssessmentRaw.WordMeasurements([]),
+        })
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+        };
+        AssessmentRaw TimingCache()
+        {
+            var path = Path.Combine(_managedRootsParent, "timing-shared-label.sqlite");
+            WriteStatsCache(path, 8_000_000L, ("motifa", 4, 1, 2, 2_000_000));
+            using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    INSERT INTO object VALUES (2, 'mrule#1:Verb template', 'morph_rule', 'Verb template', 'structural');
+                    INSERT INTO fact SELECT word_id, 2, 'analysis', 3, 4000000 FROM word WHERE form = 'motifa';
+                    """;
+                command.ExecuteNonQuery();
+            }
+            return new AssessmentRaw.FileCache(path, BatchInvocationEvidence.DigestFile(path));
+        }
+        var assessed = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], ["motifa"], false, null)), NewManagedRoot(),
+            assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        var parseId = assessed.Value!.Measurements.Single(row => row.Kind == "ParseTime").AssessmentId;
+
+        var byRule = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule"));
+        var shared = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule",
+            Rule: "Verb template"));
+        var keyed = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule",
+            Rule: "mrule#1:Verb template"));
+
+        Assert.True(byRule.Succeeded, byRule.Refusal?.Message);
+        Assert.Equal(["mrule#1:Verb template", "mrule#0:Verb template"], byRule.Value!.Aggregates.Select(row => row.Key));
+        Assert.Equal([0.5, 0.25], byRule.Value.Aggregates.Select(row => row.ShareOfWordTime!.Value));
+        Assert.Equal(8, byRule.Value.Attribution.WordTimeMs);
+        Assert.Equal(2, byRule.Value.Attribution.NotAttributedMs);
+        Assert.False(shared.Succeeded);
+        Assert.Equal("timing.ambiguous-rule", shared.Refusal!.Code);
+        Assert.Contains("mrule#0:Verb template", shared.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(keyed.Succeeded, keyed.Refusal?.Message);
+        Assert.Equal(4, Assert.Single(keyed.Value!.CostliestWords).SelfMs);
     }
 
     [Fact]
@@ -510,6 +566,17 @@ public sealed class AssessCommandTests : IDisposable
             Assert.Equal(measurement.InvocationId, record.Invocation!.InvocationId);
             Assert.Null(record.SemanticDigest);
         }
+
+        // Object self times nest without overlap, so with each word's own nanoseconds they never exceed it.
+        var parseId = response.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+        var timing = TimingCommand.Timing(new TimingRequest(cache.ProjectId.Path, parseId, By: "kind"));
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        var attribution = timing.Value!.Attribution;
+        Assert.Equal(3, attribution.MeasuredWordCount);
+        Assert.True(attribution.AttributedMs > 0);
+        Assert.False(attribution.Overrun, $"objects overran their words by {attribution.OverrunMs} ms");
+        Assert.Equal(1, timing.Value.Aggregates.Sum(row => row.ShareOfWordTime!.Value) +
+            attribution.NotAttributedShare!.Value, precision: 9);
     }
 
     [Fact]

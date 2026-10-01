@@ -85,7 +85,8 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         await context.OpenProjectAsync(projectPath);
 
         var expectedTotal = SpeedText.Duration(totalMs);
-        Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} in {expectedTotal}",
+        // The total is the words' parse times added up, not how long the run took, so it never reads "in".
+        Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} · {expectedTotal} total word time",
             overview.SpeedMain);
         Assert.True(timing.HasHeadline, timing.TimingRefusal?.Sentence ?? "Timing read no stored words");
         Assert.Equal(expectedTotal, timing.HeadlineTotal);

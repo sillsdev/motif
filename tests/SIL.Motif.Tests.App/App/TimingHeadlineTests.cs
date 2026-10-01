@@ -182,9 +182,9 @@ public sealed class TimingHeadlineTests
     private static TimingResponse Response(TimingRequest request) =>
         new(request.AssessmentId ?? "assessment-parse", request.WordSet, request.By, NineWords.Length, 9, 700,
             [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)],
-            request.By == "kind" ? [new TimingAggregateRow("Morphological rules", 800, 1, 10, 9)] : [], [])
+            request.By == "kind" ? [new TimingAggregateRow("Morphological rules", "Morphological rules", 800, 1, 9)] : [], [])
         {
-            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, 1, word.Completion)).ToArray(),
+            Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion)).ToArray(),
         };
 
     private static AssessCommandResponse Assessment() => new(

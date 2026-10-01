@@ -107,17 +107,17 @@ public sealed class TimingStatisticsRefreshTests
     private static TimingResponse Timing(string by) => new("assessment-parse", "all", by, 3, 5, 8,
         [new SlowWordTiming("motifa", 9), new SlowWordTiming("motifb", 7), new SlowWordTiming("mofita", 5)],
         [
-            new TimingAggregateRow("Plural", 12, 0.5, 30, 3),
-            new TimingAggregateRow("Stem", 8, 0.3, 20, 3),
-            new TimingAggregateRow("Suffix", 4, 0.2, 10, 2),
+            new TimingAggregateRow("Plural", "Plural", 12, 0.5, 3),
+            new TimingAggregateRow("Stem", "Stem", 8, 0.3, 3),
+            new TimingAggregateRow("Suffix", "Suffix", 4, 0.2, 2),
         ],
         [new WordRuleTiming("motifa", 6, 10)])
     {
         Words =
         [
-            new TimingWordRow("motifa", 9, 10, "Finished"),
-            new TimingWordRow("motifb", 7, 8, "Finished"),
-            new TimingWordRow("mofita", 5, 6, "Finished"),
+            new TimingWordRow("motifa", 9, "Finished"),
+            new TimingWordRow("motifb", 7, "Finished"),
+            new TimingWordRow("mofita", 5, "Finished"),
         ],
     };
 

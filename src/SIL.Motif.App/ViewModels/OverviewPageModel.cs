@@ -137,12 +137,13 @@ public sealed partial class OverviewPageModel : PageModel
     public string LexemeCountText => Overview?.LexemeCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>
-    /// The speed headline: how many words PanGloss timed and their summed parse time, both as stored. There is
-    /// no comparison with another parser, because Motif does not measure one.
+    /// The speed headline: how many words PanGloss timed and their total word time, each word's parse time added
+    /// up rather than how long the run took. There is no comparison with another parser, because Motif does not
+    /// measure one.
     /// </summary>
     public string SpeedMain => Overview is
         { Timing.MeasuredWordCount: > 0 and var measured, AssessmentElapsedSeconds: { } seconds }
-        ? $"{SpeedText.Count(measured, "word", "words")} in {SpeedText.Duration(seconds * 1000)}"
+        ? $"{SpeedText.Count(measured, "word", "words")} · {SpeedText.Duration(seconds * 1000)} total word time"
         : "No parse times recorded";
 
     /// <summary>The stored median and 95th percentile per-word parse time.</summary>

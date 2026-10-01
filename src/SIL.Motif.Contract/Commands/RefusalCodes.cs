@@ -139,6 +139,9 @@ public static class RefusalCodes
     /// <summary>Reading a Text's words failed in the window's own adapter rather than in a command.</summary>
     public const string TextsWordsQueryFailed = "texts.words-query-failed";
 
+    /// <summary>A rule was named by a label that more than one parser object carries; its key names one.</summary>
+    public const string TimingAmbiguousRule = "timing.ambiguous-rule";
+
     public const string TimingInvalidOverride = "timing.invalid-override";
     public const string TimingNoAssessment = "timing.no-assessment";
     public const string TimingNoBaseline = "timing.no-baseline";

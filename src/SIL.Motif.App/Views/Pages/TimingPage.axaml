@@ -212,7 +212,7 @@
                       Spacing="{DynamicResource Intent.Space.Group}">
             <Border Classes="card" IsVisible="{Binding HasRule}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRule}" />
+                <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRuleName}" />
                 <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Classes="muted" Text="Words where this rule took longest"
                                          TextWrapping="Wrap" />

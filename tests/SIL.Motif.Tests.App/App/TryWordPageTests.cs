@@ -122,9 +122,9 @@ public sealed class TryWordPageTests
                 [new TraceCandidate([], true, null, "Built the word", [step])],
                 new TraceStep("WordAnalysis", null, null, null, null, [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-                [new TimingAggregateRow("Plural", 4, 1, 2, 1) { Kind = "morph_rule" }], [])
+                [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
             {
-                Words = [new TimingWordRow("dogs", 10, 2, TimingCompletion.Finished)],
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished)],
             });
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
 
@@ -164,7 +164,7 @@ public sealed class TryWordPageTests
                     new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])],
                 new TraceStep("WordAnalysis", null, null, null, null, [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-                [new TimingAggregateRow("Plural", 4, 0.4, 2, 1)], []));
+                [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1)], []));
 
             await context.PublishCurrentEvidenceAsync(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
                 EvidenceFreshness.Current, null, null, null, null, StoredAssessment()));
@@ -253,9 +253,9 @@ public sealed class TryWordPageTests
         new TraceStep("WordAnalysis", null, null, null, null, []));
 
     private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
-        [new TimingAggregateRow("Plural", 4, 1, 2, 1) { Kind = "morph_rule" }], [])
+        [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
     {
-        Words = [new TimingWordRow("dogs", 10, 2, TimingCompletion.Finished)],
+        Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished)],
     };
 
     [Fact]

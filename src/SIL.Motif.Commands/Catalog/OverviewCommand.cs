@@ -34,8 +34,7 @@ public static class OverviewCommand
             var assessment = evidence.MatchingAssessment;
             var assessedWords = evidence.EffectiveWords;
             var metrics = OverviewMetrics.Build(words, occurrenceSnapshot, assessedWords);
-            int? elapsedMs = assessment is null ? null : assessedWords.Where(word => word.ElapsedMs is not null)
-                .Sum(word => word.ElapsedMs!.Value);
+            var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
             var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
@@ -48,11 +47,10 @@ public static class OverviewCommand
                 summary?.LexemeCount ?? 0, assessment?.AssessmentId,
                 assessment is null ? null : DateTimeOffset.Parse(
                     assessment.SavedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                elapsedMs is null ? null : elapsedMs.Value / 1000d,
+                assessment is null ? null : timing.Attribution.WordTimeMs / 1000d,
                 assessment?.GrammarSourceSha256, selection?.Selection.Sha256,
                 metrics.TextCoverage, metrics.Accuracy,
-                assessment is null ? TimingAggregation.SummarizeWords(Array.Empty<AssessedWord>())
-                    : TimingAggregation.SummarizeWords(assessedWords),
+                timing,
                 Warnings: storedCheck is null ? null : new OverviewWarningsSummary(
                     warningCounts.TotalCount, warningCounts.WarningCount, largestKind?.GroupName,
                     largestKind?.Count)

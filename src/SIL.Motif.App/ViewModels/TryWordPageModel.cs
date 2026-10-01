@@ -302,14 +302,14 @@ public sealed class TryWordPageModel : PageModel
                 ? (elapsed / whole).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
             foreach (var rule in timing.Aggregates.Take(EarlierRuleLimit))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),
-                    SpeedText.PerWord(rule.ElapsedMs), ShareOf(rule.ElapsedMs), IsOtherTime: false));
+                    SpeedText.PerWord(rule.SelfMs), ShareOf(rule.SelfMs), IsOtherTime: false));
             if (timing.Aggregates.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
             {
-                var restMs = rest.Sum(rule => rule.ElapsedMs);
+                var restMs = rest.Sum(rule => rule.SelfMs);
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(SpeedText.Count(rest.Length, "other rule", "other rules"),
                     string.Empty, SpeedText.PerWord(restMs), ShareOf(restMs), IsOtherTime: false));
             }
-            if (wordMs - timing.Aggregates.Sum(rule => rule.ElapsedMs) is double other && other >= TimingShare.SmallestShownMs)
+            if (wordMs - timing.Aggregates.Sum(rule => rule.SelfMs) is double other && other >= TimingShare.SmallestShownMs)
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Other time", string.Empty,
                     SpeedText.PerWord(other), ShareOf(other), IsOtherTime: true));
             EarlierTimingTitle = $"Time from the parse of {ranAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
