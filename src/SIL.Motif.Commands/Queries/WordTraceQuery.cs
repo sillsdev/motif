@@ -135,7 +135,7 @@ public static class WordTraceQuery
             FailureRequired = node.FailureRequired,
             FailureActual = node.FailureActual,
             FailureEnvironment = node.FailureEnvironment,
-            AttemptedMorphs = node.AttemptedMorphs.Select(TraceDiagnosticProjection.ToMorph).ToArray(),
+            AttemptedMorphs = node.AttemptedMorphs.Select(TraceReadingBuilder.ToMorph).ToArray(),
             SourceIdentityId = node.SourceIdentityId,
         };
 }

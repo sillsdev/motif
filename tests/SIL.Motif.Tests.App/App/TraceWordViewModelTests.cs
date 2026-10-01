@@ -14,6 +14,20 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class TraceWordViewModelTests
 {
+    [Fact]
+    public void ABlockedStepSaysWhyItWasNotRepeated()
+    {
+        var step = new TraceStepViewModel(new TraceStep("Blocked", "rule", null, null, null, [])
+        {
+            OutcomeStatus = "blocked",
+        }, null);
+
+        Assert.Equal("not repeated (would feed itself)", step.StatusText);
+        Assert.Equal("not repeated (would feed itself)", step.KindText);
+        Assert.Equal("not repeated (would feed itself): rule", step.Label);
+        Assert.False(step.IsFailure);
+    }
+
     private const string ProjectPath = @"C:\projects\one.fwdata";
 
     private static TraceStep Leaf(string type, string? source = null, string? failure = null) =>

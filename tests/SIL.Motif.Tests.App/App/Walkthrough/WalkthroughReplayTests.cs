@@ -114,7 +114,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordInput));
             Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordResult));
             var trace = walkthrough.Workspace.PageModel<TryWordPageModel>().Trace;
-            var traceResponse = Assert.IsType<SIL.Motif.Commands.Queries.WordTraceResponse>(trace.Result);
+            var traceResponse = Assert.IsType<SIL.Motif.Contract.Responses.WordTraceResponse>(trace.Result);
             Assert.Equal("Parsed", trace.AnswerText);
             var displayedAnalysis = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                 .SingleOrDefault(control => control.Text == "Analysis 1");
@@ -608,7 +608,7 @@ internal static class WalkthroughReplay
                 break;
             case "try-word-typing":
                 var trace = window.Workspace.PageModel<TryWordPageModel>().Trace;
-                var traceResponse = Assert.IsType<SIL.Motif.Commands.Queries.WordTraceResponse>(trace.Result);
+                var traceResponse = Assert.IsType<SIL.Motif.Contract.Responses.WordTraceResponse>(trace.Result);
                 Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordInput));
                 Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordResult));
                 Assert.True(traceResponse.Parsed && traceResponse.Complete);

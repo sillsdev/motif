@@ -36,6 +36,9 @@ public sealed record PanGlossTraceMorph(
     public string? MsaId { get; init; }
     public string? InflTypeId { get; init; }
     public string? IdentityQuality { get; init; }
+    public int? MorphemeId { get; init; }
+    public int? AllomorphId { get; init; }
+    public IReadOnlyList<string?> SourceFormIds { get; init; } = [];
     public string? FormWritingSystem { get; init; }
     public string? HeadwordWritingSystem { get; init; }
     public string? GlossWritingSystem { get; init; }
@@ -261,8 +264,10 @@ public static class PanGlossTraceDiagnosticReader
         var entryId = OptionalString(identityElement, "entryId");
         var msaId = OptionalString(identityElement, "msaId");
         var inflTypeId = OptionalString(identityElement, "inflTypeId");
-        var featureText = Text(featuresElement, "value") ?? Text(featuresElement, "text") ??
-            (featuresElement.ValueKind == JsonValueKind.Object ? featuresElement.GetRawText() : Text(value, "features"));
+        var featureText = OptionalString(featuresElement, "status") == "unavailable" ? null
+            : Text(featuresElement, "value") ?? Text(featuresElement, "text") ??
+                (featuresElement.ValueKind == JsonValueKind.Object && !featuresElement.TryGetProperty("status", out _)
+                    ? featuresElement.GetRawText() : featuresElement.ValueKind == JsonValueKind.Object ? null : Text(value, "features"));
         return new PanGlossTraceMorph(
             formId ?? entryId ?? OptionalString(identityElement, "id") ?? OptionalString(value, "id"),
             Text(value, "form"),
@@ -278,6 +283,11 @@ public static class PanGlossTraceDiagnosticReader
             OptionalString(value, "fieldWorksLink"),
             value.Clone())
         {
+            MorphemeId = OptionalInt(identityElement, "morphemeId"),
+            AllomorphId = OptionalInt(identityElement, "allomorphId"),
+            SourceFormIds = identityElement.ValueKind == JsonValueKind.Object &&
+                identityElement.TryGetProperty("sourceFormIds", out var sourceIds) && sourceIds.ValueKind == JsonValueKind.Array
+                    ? sourceIds.EnumerateArray().Select(id => id.ValueKind == JsonValueKind.String ? id.GetString() : null).ToArray() : [],
             FormId = formId,
             EntryId = entryId,
             MsaId = msaId,

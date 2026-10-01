@@ -209,62 +209,16 @@ public sealed class TryWordPageModel : PageModel
         ShowEarlierTiming(null, null);
         RulesOnBestPath.Clear();
         TakingApartText = string.Empty;
-        if (result is not null)
-        {
-            var attempt = result.Parsed
-                ? Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded)
-                : Trace.ClosestAttempts.FirstOrDefault();
-            if (attempt is not null)
-            {
-                TakingApartText = TakingApart(attempt.Steps);
-                foreach (var rule in attempt.Steps
-                             .Where(step => !string.IsNullOrWhiteSpace(step.Source))
-                             .GroupBy(step => step.Source!, StringComparer.Ordinal)
-                             .OrderBy(rule => BuildingPlace(rule, attempt.Steps)))
-                {
-                    var steps = rule.ToArray();
-                    RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Key,
-                        string.Join(" · ", steps.Select(step => step.KindText).Distinct(StringComparer.Ordinal)),
-                        steps.Any(step => step.IsFailure) ? "stopped"
-                            : attempt.Succeeded || steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
-                        Explain(rule.Key, steps, attempt.Steps),
-                        () => Context.OpenTiming([result.Word], rule.Key)));
-                }
-            }
-        }
+        var attempt = Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded) ?? Trace.ClosestAttempts.FirstOrDefault();
+        if (attempt is not null) TakingApartText = TakingApart(attempt.Steps);
+        foreach (var rule in Trace.Reading?.RulesOnBestPath ?? [])
+            RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Rule, rule.Kind, rule.Outcome,
+                rule.Explanation, () => Context.OpenTiming([result!.Word], rule.Rule)));
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
         OnPropertyChanged(nameof(TakingApartText));
         OnPropertyChanged(nameof(HasTakingApart));
         OnPropertyChanged(nameof(TimingLinkText));
-    }
-
-    // Rules the parser rebuilt come in the order it rebuilt them; those only taken off follow, innermost first.
-    private static (int Pass, int Place) BuildingPlace(IEnumerable<TraceStepViewModel> rule, IReadOnlyList<TraceStepViewModel> path)
-    {
-        var places = rule.Select(step => (Step: step, Place: IndexOf(path, step))).ToArray();
-        return places.FirstOrDefault(place => !TakesApart(place.Step)) is { Step: not null } built
-            ? (0, built.Place)
-            : (1, -places.Max(place => place.Place));
-    }
-
-    // One plain line per rule: why it stopped the word, else the affix and the form it built, in building order.
-    private static string Explain(string rule, IReadOnlyList<TraceStepViewModel> steps, IReadOnlyList<TraceStepViewModel> path)
-    {
-        if (steps.FirstOrDefault(step => step.IsFailure) is { } failed)
-            return failed.ContextualFailure ??
-                (failed.FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code) : "stopped here");
-        // Building runs from the shorter form to the longer, whichever pass recorded the step.
-        foreach (var step in steps.OrderBy(TakesApart))
-        {
-            if (step.Output is not { Length: > 0 } output) continue;
-            var input = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
-            if (input is null || string.Equals(input, output, StringComparison.Ordinal)) continue;
-            var reversed = input.Length != output.Length ? input.Length > output.Length : TakesApart(step);
-            var (before, after) = reversed ? (output, input) : (input, output);
-            return $"{AffixForm(before, after) ?? rule} · {before} → {after}";
-        }
-        return steps.Select(step => step.Output ?? step.Input).FirstOrDefault(text => text is { Length: > 0 }) ?? "—";
     }
 
     private static string TakingApart(IReadOnlyList<TraceStepViewModel> path)

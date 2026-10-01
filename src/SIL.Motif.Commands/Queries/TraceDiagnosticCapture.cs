@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Responses;
 using System;
 using System.IO;
 using System.Linq;
@@ -72,7 +73,7 @@ internal static class TraceDiagnosticCapture
             return candidate with
             {
                 RichMorphs = morphs,
-                Morphs = morphs.Length > 0 ? morphs.Select(TraceDiagnosticProjection.ToReadingMorph).ToArray() : candidate.Morphs,
+                Morphs = morphs.Length > 0 ? morphs.Select(TraceReadingBuilder.ToReadingMorph).ToArray() : candidate.Morphs,
                 StoppedByRule = RuleName(candidate.StoppedByRuleId, candidate.StoppedByRule),
                 Steps = candidate.Steps.Select(ResolveStep).ToArray(),
             };
@@ -82,7 +83,7 @@ internal static class TraceDiagnosticCapture
         var captured = JsonSerializer.SerializeToNode(capture, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!.AsObject();
         foreach (var field in captured) host[field.Key] = field.Value?.DeepClone();
         if (json["hostCapture"] is not JsonObject) json["hostCapture"] = host;
-        return response with
+        var resolved = response with
         {
             HostCapture = capture,
             Provenance = comparison,
@@ -90,6 +91,12 @@ internal static class TraceDiagnosticCapture
             Analyses = response.Analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(Resolve).ToArray() }).ToArray(),
             Candidates = response.Candidates.Select(ResolveCandidate).ToArray(),
             Root = ResolveStep(response.Root),
+        };
+        var reading = TraceReadingBuilder.Summarize(resolved.Word, resolved.Root, resolved.Candidates, resolved.Analyses);
+        return resolved with
+        {
+            Analyses = reading.Analyses,
+            Reading = reading,
         };
     }
 

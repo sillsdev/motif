@@ -112,6 +112,12 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.Equal("Successful", document.Attempts[0].EventType);
         Assert.True(document.Attempts[0].Succeeded);
         Assert.Equal(3, document.Attempts[0].Morphs.Count);
+        var morph = document.Attempts[0].Morphs[0];
+        Assert.Equal(0, morph.MorphemeId);
+        Assert.Equal(0, morph.AllomorphId);
+        Assert.Null(Assert.Single(morph.SourceFormIds));
+        Assert.Equal("unavailable", morph.FeaturesStatus);
+        Assert.Null(morph.Features);
         Assert.Contains("\"allomorphId\":0", document.Attempts[0].Morphs[0].Raw.GetRawText(), StringComparison.Ordinal);
         Assert.Equal("failed", document.Attempts[1].Status);
         Assert.Equal("PartialParse", document.Attempts[1].FailureReason);
