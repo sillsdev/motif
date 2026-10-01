@@ -1113,6 +1113,8 @@ public sealed class AssessCommandTests : IDisposable
     public void AttemptsAndPassesComeFromBatchStatisticsForEverySelectedWord()
     {
         using var seeded = NewSeededScratch();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(seeded.FwDataPath,
+            "Default", [], [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm])).Succeeded);
         var cachePath = Path.Combine(_managedRootsParent, "attempts-passes.bin");
         WriteStatsCache(cachePath,
             (SeededProject.AnalysedWordForm, 42, 7, 4, 3_000_000L),
@@ -1140,6 +1142,10 @@ public sealed class AssessCommandTests : IDisposable
         var unanalysed = outcome.Value.Words.Single(word => word.Word == SeededProject.UnanalysedWordForm);
         Assert.Equal(3, unanalysed.Attempts);
         Assert.Equal(0, unanalysed.Passes);
+        var reopened = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath);
+        Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
+        Assert.Equal(outcome.Value.Words.Select(word => (word.Word, word.Attempts, word.Passes)),
+            reopened.Value!.Assessment!.Words.Select(word => (word.Word, word.Attempts, word.Passes)));
         Assert.Empty(invoker.Requests);
     }
 

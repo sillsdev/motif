@@ -23,6 +23,10 @@ public sealed record AssessedWord(
     public SIL.Motif.Contract.Responses.ParseWordEvidence? Morphology { get; init; }
     /// <summary>The exact whole-word elapsed time recorded in the PanGloss statistics cache.</summary>
     public long? ElapsedNs { get; init; }
+    /// <summary>The word's attempt count from the statistics of its producing run.</summary>
+    public int? Attempts { get; init; }
+    /// <summary>The word's passing attempt count from the statistics of its producing run.</summary>
+    public int? Passes { get; init; }
     public SIL.Motif.Contract.Responses.WordCorrectness? Correctness { get; init; }
     public string? ProjectStanding { get; init; }
     public int? OccurrenceCount { get; init; }

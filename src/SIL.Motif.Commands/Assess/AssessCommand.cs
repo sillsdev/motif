@@ -350,6 +350,8 @@ public static class AssessCommand
                         return word with
                         {
                             ElapsedNs = stats?.ElapsedNs,
+                            Attempts = stats?.Attempts,
+                            Passes = stats?.Passes,
                             Morphology = word.Morphology is { } morphology && stats is not null
                                 ? morphology with { Attempts = stats.Attempts }
                                 : word.Morphology,
@@ -407,21 +409,8 @@ public static class AssessCommand
                         var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
                         var rejected = wordContext.Rejected.GetValueOrDefault(word.Word) ??
                             Array.Empty<ApprovedMorphology>();
-                        var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: ReadingGrade.Candidate))
-                            .Concat(rejected.Select(analysis => (Analysis: analysis, Opinion: ReadingGrade.Disapproved)))
-                            .ToArray();
-                        var storedAnalyses = approved.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Approved))
-                            .Concat(rejected.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Disapproved)))
-                            .Concat(candidates.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Candidate)))
-                            .ToArray();
-                        var expectedAnalysis = approved.FirstOrDefault() is { } approvedAnalysis
-                            ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, ReadingGrade.Approved)
-                            : nonApproved.Length == 1
-                                ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
-                                : null;
+                        var storedAnalyses = BaselineWordContext.ReadAnalyses(namingCache, projectName,
+                            approved, rejected, candidates);
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
                         var row = word with
                         {
@@ -432,7 +421,7 @@ public static class AssessCommand
                             OccurrenceCount = wordContext.HasTextSelection
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = missedApproved,
-                            ExpectedAnalysis = expectedAnalysis,
+                            ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(storedAnalyses),
                             StoredAnalyses = storedAnalyses,
                             Attempts = stats?.Attempts,
                             Passes = stats?.Passes,
@@ -549,7 +538,7 @@ public static class AssessCommand
             : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? ReadingGrade.Candidate
             : ReadingGrade.NoOpinion).ToArray();
 
-    private static ParserReading ReadStoredAnalysis(
+    internal static ParserReading ReadStoredAnalysis(
         LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion)
     {
         var morphs = analysis.Morphs.Select(morph =>

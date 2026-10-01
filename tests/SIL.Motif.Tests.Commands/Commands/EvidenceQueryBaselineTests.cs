@@ -101,6 +101,42 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Equal(1, overview.Value!.Warnings!.YourWords!.Words);
     }
 
+    [Fact]
+    public void StaleSourceKeepsTheAssessmentsBaselineReadings()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm]);
+        File.WriteAllText(project.Path, File.ReadAllText(project.Path)
+            .Replace(SeededProject.FirstGloss, "changed live gloss", StringComparison.Ordinal));
+        File.SetLastWriteTimeUtc(project.Path, project.Baseline.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+        using var held = new FileStream(project.Path + ".lock", FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(project.Path);
+
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        Assert.Equal(EvidenceFreshness.Stale, evidence.Value!.Freshness);
+        var row = Assert.Single(evidence.Value.Assessment!.Words);
+        Assert.Equal(SeededProject.FirstGloss, Assert.Single(row.Readings!).Morphs[0].Gloss);
+        Assert.Equal(SeededProject.FirstGloss, Assert.Single(row.StoredAnalyses).Morphs[0].Gloss);
+    }
+
+    [Fact]
+    public void MissingAssessmentBaselineRefusesInsteadOfDroppingReadings()
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm]);
+        File.Delete(project.Baseline.FwDataPath);
+
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(project.Path);
+
+        Assert.False(evidence.Succeeded);
+        Assert.Equal("current-evidence.baseline-unavailable", evidence.Refusal!.Code);
+    }
+
     private CapturedProject Capture(bool analysedWordOutsideText = false)
     {
         string path;
@@ -126,11 +162,12 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         return new CapturedProject(path, textId, captured.Value!, morphology);
     }
 
-    private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words, bool parsed = true)
+    private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words, bool parsed = true,
+        string id = "assessment")
     {
         using var database = ProjectMotifDatabase.Open(project.Path);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
-            "assessment", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
+            id, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
             "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
             Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", "sha256:grammar",
             "fingerprint", "pipeline", 0, words.Select(word => new AssessedWord(word,

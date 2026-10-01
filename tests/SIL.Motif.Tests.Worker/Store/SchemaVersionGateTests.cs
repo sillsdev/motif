@@ -20,7 +20,7 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void AnOlderBuildIsRefusedWithSomethingTheUserCanActOn()
     {
-        Assert.Equal(31, MotifSchema.CurrentSchema);
+        Assert.Equal(32, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "project.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

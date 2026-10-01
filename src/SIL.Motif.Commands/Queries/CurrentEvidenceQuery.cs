@@ -2,7 +2,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
@@ -161,58 +160,32 @@ public static class CurrentEvidenceQuery
         }
 
         var effectiveWords = assessment is null ? [] : AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns);
-        var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current && current is not null
-            ? ResolveReadings(current.Baseline.FwDataPath,
-                Path.GetFileNameWithoutExtension(project.FullFwDataPath), effectiveWords)
-            : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        var storedAnalyses = new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        var wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (assessment is not null && saved is { TextIds.Count: > 0 })
+        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> resolvedReadings =
+            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
+            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        IReadOnlyDictionary<string, string> wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (assessment is not null && current is not null)
         {
-            var projected = TextWordsQuery.Query(new TextWordsRequest(project.FullFwDataPath, saved.TextIds));
-            if (!projected.Succeeded)
-                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(projected.Refusal!);
-            if (!projected.Value!.HasBaseline)
-                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
-                    "current-evidence.text-words-unavailable", FailureReason.Refused,
-                    "The stored Text analyses are unavailable for this Assessment."));
-            foreach (var word in projected.Value.Words)
-                storedAnalyses[word.Form] = word.Analyses.Select(analysis =>
-                    new ParserReading(analysis.Morphs)
-                        {
-                        StoredAnalysisId = analysis.StoredAnalysisId,
-                        StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
-                        Identity = analysis.Identity,
-                    }).ToArray();
-            foreach (var token in projected.Value.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens))
-                if (token.Form is { } form && token.WordLink is { } link) wordLinks.TryAdd(form, link);
-        }
-        var missingWords = effectiveWords.Select(word => word.Word).Where(word => !storedAnalyses.ContainsKey(word))
-            .ToHashSet(StringComparer.Ordinal);
-        if (current is not null && missingWords.Count > 0 && File.Exists(current.Baseline.FwDataPath))
-        {
-            using var cache = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
-            var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-            foreach (var wordform in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
+            if (!File.Exists(current.Baseline.FwDataPath))
             {
-                var forms = wordform.Form.AvailableWritingSystemIds.Select(ws => wordform.Form.get_String(ws)?.Text)
-                    .OfType<string>().Select(form => form.Trim().Normalize(System.Text.NormalizationForm.FormD))
-                    .Where(missingWords.Contains).Distinct(StringComparer.Ordinal).ToArray();
-                if (forms.Length == 0) continue;
-                var analyses = TextWordsProjectionBuilder.ReadWordform(cache, wordform).Analyses
-                    .Select(analysis => TextWordsQuery.ReadAnalysis(analysis, projectName))
-                    .Select(analysis => new ParserReading(analysis.Morphs)
-                    {
-                        StoredAnalysisId = analysis.StoredAnalysisId,
-                        StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
-                        Identity = analysis.Identity,
-                    }).ToArray();
-                foreach (var form in forms)
-                {
-                    storedAnalyses[form] = analyses;
-                    if (FieldWorksLinks.ForTarget(projectName, FieldWorksLinks.TargetFor(cache, wordform)) is { } link)
-                        wordLinks.TryAdd(form, link);
-                }
+                if (includeResolvedReadings)
+                    return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
+                        "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
+                        "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
+            }
+            else
+            {
+                using var cache = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
+                var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+                var context = BaselineWordContext.Read(cache, projectName, effectiveWords.Select(word => word.Word).ToArray());
+                storedAnalyses = context.Analyses;
+                wordLinks = context.WordLinks;
+                if (includeResolvedReadings)
+                    resolvedReadings = effectiveWords.Where(word => word.Morphology is not null).ToDictionary(
+                        word => word.Word,
+                        word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
+                        StringComparer.Ordinal);
             }
         }
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
@@ -226,19 +199,6 @@ public static class CurrentEvidenceQuery
             StoredAnalysesByWord = storedAnalyses,
             WordAnalysesLinksByWord = wordLinks,
         });
-    }
-
-    private static IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolveReadings(
-        string baselinePath, string projectName, IReadOnlyList<AssessedWord> words)
-    {
-        var resolvable = words.Where(word => word.Morphology is { Analyses.Count: > 0 }).ToArray();
-        if (resolvable.Length == 0 || !File.Exists(baselinePath))
-            return new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baselinePath);
-        return resolvable.ToDictionary(word => word.Word,
-            word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
-            StringComparer.Ordinal);
     }
 
     /// <summary>Resolves one saved Selection from the project inventory captured with its Baseline.</summary>
