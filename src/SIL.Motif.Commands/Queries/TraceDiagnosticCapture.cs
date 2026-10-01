@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml;
 using SIL.LCModel;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
@@ -34,14 +35,19 @@ internal static class TraceDiagnosticCapture
         var capture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
             response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow,
             response.ElapsedMs, systems);
-        // A token names the FieldWorks project by its GUID; the store's identity is only the file's name.
-        var projectMatches = StringComparer.OrdinalIgnoreCase.Equals(
-            baseline.Token.ProjectIdentity, cache.LangProject.Guid.ToString("D"));
-        var comparison = new TraceProvenanceComparison(projectMatches ? "match" : "mismatch",
+        var sourceIdentity = ReadSourceIdentity(project.FullFwDataPath);
+        var baselineMatches = Guid.TryParse(baseline.Token.ProjectIdentity, out var baselineIdentity) &&
+            baselineIdentity == cache.LangProject.Guid;
+        var projectStatus = sourceIdentity is null ? "unknown"
+            : baselineMatches && sourceIdentity == baselineIdentity ? "match" : "mismatch";
+        var projectMatches = projectStatus == "match";
+        var comparison = new TraceProvenanceComparison(projectStatus,
             "unknown", "unknown", false,
             projectMatches
                 ? "Recorded baseline evidence is shown. Current project grammar and writing systems have not been compared."
-                : "The captured baseline belongs to a different project; live navigation is unavailable.")
+                : projectStatus == "unknown"
+                    ? "Current project identity could not be verified; recorded baseline evidence is shown and live navigation is unavailable."
+                    : "The captured baseline belongs to a different project; live navigation is unavailable.")
         {
             CanNavigate = projectMatches,
         };
@@ -110,6 +116,33 @@ internal static class TraceDiagnosticCapture
             Analyses = reading.Analyses,
             Reading = reading with { Refs = reading.Refs.Select(Link).ToArray() },
         };
+    }
+
+    // A saved-file read avoids taking the live project's LibLCM lock just to authorize navigation.
+    private static Guid? ReadSourceIdentity(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+            });
+            Guid? identity = null;
+            while (reader.Read())
+            {
+                if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "rt" ||
+                    reader.GetAttribute("class") != "LangProject") continue;
+                if (identity is not null || !Guid.TryParse(reader.GetAttribute("guid"), out var guid)) return null;
+                identity = guid;
+            }
+            return identity;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
+        {
+            return null;
+        }
     }
 
     // An affix rule is known by its entry, as FieldWorks shows it: headword, then the sense gloss if any.

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -41,6 +42,80 @@ public sealed class TraceRefsTests : IDisposable
     {
         try { Directory.Delete(_managedRoot, recursive: true); }
         catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    [Fact]
+    public void AReplacementProjectAtTheSamePathCannotReceiveRecordedTraceLinks()
+    {
+        var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), _managedRoot).Succeeded);
+        var source = XDocument.Load(fwDataPath);
+        source.Descendants("rt").Single(element => (string?)element.Attribute("class") == "LangProject")
+            .SetAttributeValue("guid", Guid.NewGuid().ToString("D"));
+        source.Save(fwDataPath);
+
+        var response = QueryCaptured(fwDataPath, phonRule, affixMsa);
+
+        Assert.False(response.Provenance!.CanNavigate);
+        Assert.Equal("mismatch", response.Provenance.ProjectIdentityStatus);
+        Assert.All(response.Reading!.Refs, reference => Assert.Null(reference.FieldWorks));
+        Assert.NotEmpty(response.Reading.Refs);
+        Assert.All(response.Candidates.SelectMany(candidate => candidate.RichMorphs), morph => Assert.Null(morph.FieldWorksLink));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    [InlineData("no-identity")]
+    [InlineData("truncated-after-identity")]
+    public void AnUnverifiableSourceCannotReceiveRecordedTraceLinks(string condition)
+    {
+        var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), _managedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var evidence = captured.Value!;
+        var baseline = new BaselineRecord("trace", evidence.Token, Path.GetDirectoryName(evidence.FwDataPath)!,
+            evidence.FwDataPath, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        var original = File.ReadAllText(fwDataPath);
+        if (condition == "missing") File.Delete(fwDataPath);
+        else if (condition == "truncated-after-identity")
+            File.WriteAllText(fwDataPath, original[..original.LastIndexOf("</languageproject>", StringComparison.Ordinal)]);
+        else File.WriteAllText(fwDataPath, condition == "malformed" ? "<languageproject>" : "<languageproject />");
+
+        var traced = WordTraceQuery.LoadDiagnostic(SagdTrace(identity: (phonRule, affixMsa))).Value!;
+        var response = TraceDiagnosticCapture.Attach(traced, baseline, new ProjectLocator(fwDataPath, "trace"));
+
+        Assert.False(response.Provenance!.CanNavigate);
+        Assert.Equal("unknown", response.Provenance.ProjectIdentityStatus);
+        Assert.All(response.Reading!.Refs, reference => Assert.Null(reference.FieldWorks));
+        Assert.NotEmpty(response.Reading.Refs);
+    }
+
+    [Fact]
+    public void SourceIdentityVerificationRequiresOnlyReadAccess()
+    {
+        var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), _managedRoot).Succeeded);
+        using var source = new FileStream(fwDataPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+
+        var response = QueryCaptured(fwDataPath, phonRule, affixMsa);
+
+        Assert.True(response.Provenance!.CanNavigate);
+        Assert.NotNull(Assert.Single(response.Reading!.Refs, reference => reference.Kind == "phonologicalRule").FieldWorks);
+        Assert.False(File.Exists(fwDataPath + ".lock"));
+    }
+
+    private WordTraceResponse QueryCaptured(string path, Guid phonRule, Guid affixMsa)
+    {
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(
+                SagdTrace(identity: (phonRule, affixMsa)), string.Empty, TimeSpan.FromMilliseconds(4)),
+        };
+        var outcome = WordTraceQuery.Query(new WordTraceRequest(path, "sagd"), new PanGlossTracer(invoker),
+            CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        return outcome.Value!;
     }
 
     [Fact]
