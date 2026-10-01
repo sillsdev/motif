@@ -114,7 +114,10 @@ public sealed record ObjectFacts
     /// <summary>The grammatical info, or <see langword="null"/> when the ref names none and its entry has no one.</summary>
     public ObjectFactsGrammaticalInfo? GrammaticalInfo { get; init; }
 
-    /// <summary>The entry's allomorphs: its lexeme form first, then its other forms in the order FieldWorks tries them.</summary>
+    /// <summary>
+    /// The entry's allomorphs as Lexicon Edit lists them: its lexeme form first, then its other forms in order.
+    /// This is display order, not the order a parser tries them in.
+    /// </summary>
     public IReadOnlyList<ObjectFactsAllomorph> Allomorphs { get; init; } = [];
 
     /// <summary>The rule, when the ref names one PanGloss runs: a phonological rule, a compound rule or an affix.</summary>
