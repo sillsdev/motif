@@ -63,23 +63,10 @@ public sealed class MotifUpdateGateTests
         Directory.CreateDirectory(scratch);
         var readyFile = Path.Combine(scratch, "ready");
         var releaseFile = Path.Combine(scratch, "release");
-        var childStart = new ProcessStartInfo("dotnet")
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        childStart.ArgumentList.Add("test");
-        childStart.ArgumentList.Add(Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.LibLcm",
-            "SIL.Motif.Tests.LibLcm.csproj"));
-        childStart.ArgumentList.Add("--configuration");
-        childStart.ArgumentList.Add(new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name
-            ?? throw new InvalidOperationException("The test configuration directory is missing."));
-        childStart.ArgumentList.Add("--no-build");
-        childStart.ArgumentList.Add("--no-restore");
-        childStart.ArgumentList.Add("--filter");
-        childStart.ArgumentList.Add("FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
+        var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.LibLcm",
+            "SIL.Motif.Tests.LibLcm.csproj");
+        var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
+            "FullyQualifiedName=SIL.Motif.Tests.LibLcm.Installation.MotifUpdateGateTests.ActivitiesCanShareTheGateAcrossProcesses");
         // The child runs one named test, so it must not inherit this process's shard, which may exclude it.
         childStart.Environment.Remove(ShardedTestFramework.ShardVariable);
         childStart.Environment.Remove(ShardedTestFramework.WeightsVariable);
