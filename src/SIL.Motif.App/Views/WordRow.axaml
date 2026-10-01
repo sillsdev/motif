@@ -6,10 +6,10 @@
              x:Class="SIL.Motif.App.Views.WordRow"
              x:DataType="views:WordRow"
              x:Name="Self">
-  <Border x:Name="Root" Classes="wordRowFrame hoverReveal" Classes.open="{Binding #Self.IsOpen}" x:DataType="vm:WordRowViewModel">
+  <Border x:Name="Root" Classes="wordRowFrame" x:DataType="vm:WordRowViewModel">
     <Border Classes="wordRowEdge">
       <StackPanel>
-        <Border x:Name="Body" Classes="wordRowBody" Focusable="True" IsTabStop="True"
+        <Border x:Name="Body" Classes="wordRowBody hoverReveal" Classes.open="{Binding #Self.IsOpen}" Focusable="True" IsTabStop="True"
                 ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
         <Grid x:Name="Line" Classes="wordRowLine">
           <Grid.ColumnDefinitions>

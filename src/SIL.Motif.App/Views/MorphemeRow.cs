@@ -172,6 +172,7 @@ public sealed class MorphemeRow : WrapPanel
         {
             button.Classes.Add("revealControl");
             button.Classes.Add("revealLink");
+            button.Classes.Add("revealOnHover");
         }
         AutomationProperties.SetName(button, morph.LinkName);
         ToolTip.SetTip(button, morph.LinkName);

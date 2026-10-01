@@ -319,7 +319,7 @@
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>
                   <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                    <Border Classes="card wordCard hoverReveal open" Focusable="True" KeyDown="OnTokenCardKeyDown"
+                    <Border Classes="card wordCard" Focusable="True" KeyDown="OnTokenCardKeyDown"
                             AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
                       <StackPanel>
                         <Border Classes="wordCardHead hoverReveal">
@@ -397,7 +397,7 @@
                                       Command="{Binding Actions.StagePrimaryMarkingActionForTokenCommand}" CommandParameter="{Binding}"
                                       IsVisible="{Binding HasPrimaryAction}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Button Classes="wordCardAction revealOnHover" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
+                              <Button Classes="wordCardAction" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
                                 <Button.Flyout>
                                   <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel Classes="menu">
