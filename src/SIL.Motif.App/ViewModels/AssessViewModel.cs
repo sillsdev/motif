@@ -19,6 +19,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
     private readonly TimeProvider _timeProvider;
+    private bool _keepShownThroughRun;
 
     public AssessViewModel(ICommandClient commandClient, SelectionViewModel selection, TimeProvider? timeProvider = null)
     {
@@ -90,6 +91,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     internal void Restore(WorkspaceEvidence evidence)
     {
+        _keepShownThroughRun = false;
         _previous = null;
         _previousAt = null;
         _rerunDescription = null;
@@ -101,6 +103,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     // The result is cleared as a run starts, so the one a re-run folds into is kept here first.
     protected override Task<bool> PrepareRunAsync()
     {
+        _keepShownThroughRun = true;
         _mergeInto = _rerunWords is not null ? Result : null;
         if (Result is not null) (_previous, _previousAt) = (Result, CompletedAt);
         LastRunWasRerun = _rerunWords is not null;
@@ -108,9 +111,15 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         return Task.FromResult(true);
     }
 
+    protected override void OnRunStarting() => _keepShownThroughRun = false;
+
     protected override void OnReset()
     {
+        _keepShownThroughRun = false;
         (_previous, _previousAt, _rerunDescription) = (null, null, null);
+        Words.Load(null, null);
+        Compare.Load(null);
+        OnPropertyChanged(nameof(ShowsEarlierResults));
         Difference.Load(null, null, string.Empty, string.Empty);
     }
 
@@ -198,13 +207,34 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     [ObservableProperty]
     private DateTimeOffset? _completedAt;
 
+    /// <summary>
+    /// Whether the words and the Matrix still show the last finished parse because a newer one is running or was
+    /// refused, so the page can dim them and say they are from before.
+    /// </summary>
+    public bool ShowsEarlierResults => Result is null && Compare.HasWords && (IsActive || Refusal is not null);
+
+    /// <summary>The line above results kept from before, saying why they are not this parse's.</summary>
+    public string EarlierResultsNote => IsActive
+        ? "These are the results from before. The new ones replace them when parsing finishes."
+        : "These are the results from before this parse.";
+
+    /// <summary>Whether the last parse was refused rather than cancelled, so the page offers Report a problem.</summary>
+    public bool OffersProblemReport => !IsActive && Refusal is { Reason: not FailureReason.Cancelled };
+
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(Result) or nameof(State) or nameof(Refusal))
+        {
+            OnPropertyChanged(nameof(ShowsEarlierResults));
+            OnPropertyChanged(nameof(EarlierResultsNote));
+            OnPropertyChanged(nameof(OffersProblemReport));
+        }
         if (e.PropertyName != nameof(Result)) return;
         if (Result is not null) CompletedAt = _timeProvider.GetLocalNow();
+        // A run clears the result as it starts; the words and the Matrix wait for the new result rather than empty.
+        if (Result is null && _keepShownThroughRun) return;
         Words.Load(Result?.Words, TextWords is { } textWords ? word => LookUpOccurrences(textWords, word) : null);
         Compare.Load(Result is null ? null : Words.AllRows);
-        // A run clears the result as it starts; the comparison waits for the new result rather than emptying.
         if (Result is null) return;
         var before = _previous?.Words.Select(word => new AssessWordRowViewModel(word)).ToArray();
         Difference.Load(before, before is null ? null : Words.AllRows,

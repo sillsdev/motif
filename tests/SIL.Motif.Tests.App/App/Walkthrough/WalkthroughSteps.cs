@@ -131,7 +131,7 @@ internal static class WalkthroughSteps
                 throw new XunitException("The slow Assessment finished before its cancellable state appeared.");
 
             return walkthrough.Workspace.Assess.State == RunState.Running &&
-                walkthrough.Find<Button>("Cancel parsing").IsEffectivelyEnabled;
+                walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled;
         }, Remaining(deadline), "the slow Assessment did not reach its cancellable Running state");
     }
 
@@ -150,7 +150,7 @@ internal static class WalkthroughSteps
                 Remaining(deadline), "the held Assessment did not reach Running");
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
             Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
-            Assert.True(walkthrough.Find<Button>("Cancel parsing").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
             holdingGate.ReleaseAssess();
         }
     }

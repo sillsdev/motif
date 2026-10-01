@@ -44,28 +44,23 @@
                   CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="What changed tab" />
           </StackPanel>
         </DockPanel>
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
-              Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}"
-              IsVisible="{Binding ShowAssessStatus}">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-            <views:CopyableTextBlock Text="{Binding Assess.Progress.Message}"
-                                     IsVisible="{Binding Assess.IsActive}" />
-            <ProgressBar IsVisible="{Binding Assess.IsActive}"
-                         IsIndeterminate="{Binding Assess.IsIndeterminate}"
-                         Minimum="0" Maximum="1" Value="{Binding Assess.ProgressFraction}"
-                         AutomationProperties.Name="Parsing progress"
-                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssessmentProgress}" />
-            <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
-          </StackPanel>
-          <Button Grid.Column="1" Content="Cancel" Command="{Binding Assess.CancelCommand}"
-                  IsVisible="{Binding Assess.IsActive}" VerticalAlignment="Center"
-                  AutomationProperties.Name="Cancel parsing" />
-        </Grid>
+        <!-- The top bar carries the run's one progress bar and Cancel; this line says what the page still shows. -->
+        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}"
+                    Margin="{DynamicResource Component.TextsPage.AssessmentStatusPadding}"
+                    IsVisible="{Binding ShowAssessStatus}">
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Assess.EarlierResultsNote}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Assess.ShowsEarlierResults}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.EarlierResultsNote}" />
+          <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
+          <HyperlinkButton Classes="reviewLink" Content="Report a problem" NavigateUri="{Binding ReportProblemUri}"
+                           IsVisible="{Binding Assess.OffersProblemReport}"
+                           AutomationProperties.Name="Report a problem with parsing" />
+        </StackPanel>
       </StackPanel>
     </Border>
 
     <Panel Grid.Row="1">
-      <Panel IsVisible="{Binding ShowMatrixContent}">
+      <Panel IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
         <ContentControl x:Name="CompareHost" />
         <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose the words to parse on Analyze texts, then parse them."
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -91,7 +86,7 @@
           <ContentControl x:Name="WordListHost" Grid.Row="2" IsVisible="{Binding ShowWordList}" />
         </Grid>
       </Grid>
-      <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" />
+      <ContentControl x:Name="ListsHost" IsVisible="{Binding ShowLists}" Classes.waiting="{Binding Assess.IsActive}" />
       <ContentControl x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChanged}" />
       <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
                       HorizontalAlignment="Center" VerticalAlignment="Center" />

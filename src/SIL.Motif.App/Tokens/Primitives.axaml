@@ -277,6 +277,7 @@
   </collections:AvaloniaList>
 
   <x:Double x:Key="Primitive.Opacity.35">0.35</x:Double>
+  <x:Double x:Key="Primitive.Opacity.60">0.6</x:Double>
   <x:Double x:Key="Primitive.Opacity.0">0</x:Double>
   <x:Double x:Key="Primitive.Opacity.100">1</x:Double>
 </ResourceDictionary>

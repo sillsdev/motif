@@ -144,6 +144,7 @@
 
   Opacity (double):
     Intent.Opacity.Dimmed         something shown but set aside
+    Intent.Opacity.Waiting        results kept on screen from before while a newer parse runs
 
   WCAG contrast for text, light then dark (AA needs 4.5:1):
     Approved.Text on Approved.Fill: 5.84:1 light, 8.21:1 dark
@@ -212,6 +213,7 @@
 
 
   <StaticResource x:Key="Intent.Opacity.Dimmed" ResourceKey="Primitive.Opacity.35" />
+  <StaticResource x:Key="Intent.Opacity.Waiting" ResourceKey="Primitive.Opacity.60" />
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">

@@ -42,4 +42,8 @@
     <StaticResource x:Key="Component.TextsPage.AddedWordsHeight" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.TextsPage.ReaderLineNumberWidth" ResourceKey="Primitive.Size.28" />
   </Styles.Resources>
+  <!-- The last results stay readable, set back, while a newer parse runs. -->
+  <Style Selector=":is(Panel).waiting, ContentControl.waiting">
+    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Waiting}" />
+  </Style>
 </Styles>

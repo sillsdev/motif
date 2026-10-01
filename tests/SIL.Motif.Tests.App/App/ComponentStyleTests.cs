@@ -452,6 +452,9 @@ public sealed class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
             TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("TextsPage", "results kept while a parse runs", host => Add(host, Stack("waiting")),
+            Visual.OpacityProperty, "Intent.Opacity.Waiting");
+
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
             Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),

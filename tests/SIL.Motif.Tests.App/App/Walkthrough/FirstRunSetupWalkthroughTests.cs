@@ -85,8 +85,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.False(walkthrough.SetupDialogIsShown);
             Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);
             Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.Context.CurrentPage);
-            Assert.True(walkthrough.Find<ProgressBar>("Parsing progress").IsEffectivelyVisible);
-            walkthrough.Click("Cancel parsing");
+            Assert.True(walkthrough.Find<ProgressBar>("Parse all words progress").IsEffectivelyVisible);
+            walkthrough.Click("Cancel parsing all words");
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Cancelled,
                 TimeSpan.FromSeconds(30), "the held first run did not cancel");

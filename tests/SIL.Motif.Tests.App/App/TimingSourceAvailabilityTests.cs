@@ -67,7 +67,7 @@ public sealed class TimingSourceAvailabilityTests
     }
 
     [Fact]
-    public void ACancelledAssessmentDisablesTimingSourcesThatLostTheirWords()
+    public void ACancelledParseKeepsTimingSourcesOnTheEarlierWords()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -105,13 +105,10 @@ public sealed class TimingSourceAvailabilityTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal(RunState.Cancelled, workspace.Assess.State);
-                Assert.False(chosenWords.IsEffectivelyEnabled);
-                Assert.Equal("Tick words in Texts first.",
-                    AutomationProperties.GetHelpText(chosenWords));
-                Assert.False(useList.IsEffectivelyEnabled);
-                Assert.Null(timing.SelectedTextsList);
-                Assert.Equal("Choose a word list above first.",
-                    AutomationProperties.GetHelpText(useList));
+                Assert.True(workspace.Assess.ShowsEarlierResults);
+                Assert.True(chosenWords.IsEffectivelyEnabled);
+                Assert.True(useList.IsEffectivelyEnabled);
+                Assert.NotNull(timing.SelectedTextsList);
             }
             finally
             {
