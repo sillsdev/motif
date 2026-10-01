@@ -78,6 +78,63 @@ public sealed class HelpPopupViewModelTests
         });
     }
 
+    [Theory]
+    [InlineData(WorkspacePage.Overview)]
+    [InlineData(WorkspacePage.Texts)]
+    [InlineData(WorkspacePage.TryAWord)]
+    [InlineData(WorkspacePage.Timing)]
+    [InlineData(WorkspacePage.Warnings)]
+    [InlineData(WorkspacePage.Review)]
+    [InlineData(WorkspacePage.AiHandoff)]
+    public void PageHelpSaysItsTitleAndOpeningOnce(WorkspacePage page)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), HelpCatalog.Load());
+
+            viewModel.ShowForPage(page);
+
+            Assert.False(viewModel.ShowsDescription);
+            Assert.DoesNotMatch(@"^\s*# ", viewModel.Markdown);
+            Assert.DoesNotContain("# " + viewModel.Title + "\n", viewModel.Markdown.ReplaceLineEndings("\n"));
+            Assert.StartsWith(OpeningWords(viewModel.Description), StripMarks(viewModel.Markdown.TrimStart()));
+        });
+    }
+
+    [Fact]
+    public void CommandHelpDropsThePageHeadingAndKeepsThePageOpening()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), HelpCatalog.Load());
+
+            viewModel.LinkCommand.Execute(new LinkClickedEventArgs(TestLinkClickEvent, new Link(), new Uri("cmd:assess")));
+
+            Assert.Equal("Measure a Selection", viewModel.Title);
+            Assert.False(viewModel.ShowsDescription);
+            Assert.StartsWith("`assess` sends a Selection", viewModel.Markdown.TrimStart());
+            Assert.Contains("## When to use it", viewModel.Markdown);
+        });
+    }
+
+    [Fact]
+    public void TermHelpWithoutAPageShowsItsDescription()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var catalog = HelpCatalog.Load();
+            var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), catalog);
+
+            viewModel.LinkCommand.Execute(new LinkClickedEventArgs(TestLinkClickEvent, new Link(), new Uri("term:baseline")));
+
+            var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Term, "baseline"));
+            Assert.Null(entry.HelpPage);
+            Assert.Equal(entry.Description, viewModel.Description);
+            Assert.True(viewModel.ShowsDescription);
+            Assert.Empty(viewModel.Markdown);
+        });
+    }
+
     [Fact]
     public void GuideImagesRenderTheirAltText()
     {
@@ -111,6 +168,13 @@ public sealed class HelpPopupViewModelTests
             Assert.DoesNotContain("shot:explained-word-card/approved-agrees", viewModel.Markdown);
         });
     }
+
+    private static string OpeningWords(string text) => string.Join(' ', text.Split(' ').Take(6));
+
+    private static string StripMarks(string markdown) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            System.Text.RegularExpressions.Regex.Replace(markdown, @"\[(?<text>[^\]]+)\]\([^)]+\)", "${text}"),
+            @"[*_`]", string.Empty);
 
     private sealed class RecordingUriLauncher : IUriLauncher
     {

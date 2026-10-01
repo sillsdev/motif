@@ -34,7 +34,11 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     [ObservableProperty]
     private string _description = string.Empty;
 
-    /// <summary>The rendered Markdown source of the current help entry.</summary>
+    /// <summary>Whether the header shows the description; a page's own opening paragraph already says it.</summary>
+    [ObservableProperty]
+    private bool _showsDescription;
+
+    /// <summary>The Markdown of the current help entry, less the heading the header shows.</summary>
     [ObservableProperty]
     private string _markdown = string.Empty;
 
@@ -78,6 +82,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         Title = page.Title;
         Description = page.Description;
         Markdown = page.Markdown;
+        ShowsDescription = string.IsNullOrWhiteSpace(page.Markdown);
         OnlineUrl = page.Url;
     }
 
@@ -87,6 +92,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     {
         private static readonly Regex ShotImage = new(
             @"!\[(?<alt>[^\]]*)\]\(shot:[^)]+\)", RegexOptions.CultureInvariant);
+        private static readonly Regex OpeningHeading = new(@"\A\s*# [^\n]*\n?", RegexOptions.CultureInvariant);
         private readonly HelpCatalog _catalog;
 
         public HelpContentSource(HelpCatalog catalog) => _catalog = catalog;
@@ -156,7 +162,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         }
 
         private static string PrepareMarkdown(string markdown) =>
-            ShotImage.Replace(markdown, "${alt}");
+            ShotImage.Replace(OpeningHeading.Replace(markdown, string.Empty), "${alt}");
 
         private static string PageCode(WorkspacePage page) => page switch
         {

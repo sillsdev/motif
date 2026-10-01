@@ -66,11 +66,11 @@ public sealed class MainWindowSmokeTests
                 var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
                 Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
-                Assert.Contains("Timing shows where recorded parse time went",
-                    helpDescription?.Text ?? string.Empty);
+                Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
                 const string expectedSentence = "More time does not fix a search that reached its step limit";
                 const string expectedSection = "Slowest words in Timing";
+                const string expectedOpening = "shows where recorded parse time went";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bool TimingIsRendered()
                 {
@@ -91,6 +91,9 @@ public sealed class MainWindowSmokeTests
                 var renderedText = string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString()));
                 Assert.Contains(expectedSentence, renderedText);
                 Assert.Contains(expectedSection, renderedText);
+                Assert.Equal(2, renderedText.Split(expectedOpening).Length);
+                Assert.DoesNotContain(renderedTextProjection.Buffers,
+                    buffer => buffer.Text.ToString().Trim() == "Timing");
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);

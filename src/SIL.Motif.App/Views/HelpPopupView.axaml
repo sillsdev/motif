@@ -7,17 +7,19 @@
   <Border Classes="card"
           Width="{DynamicResource Component.Shell.HelpWidth}"
           MaxHeight="{DynamicResource Component.Shell.HelpHeight}">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <TextBlock x:Name="HelpTitle" Classes="section-title" Text="{Binding Title}"
-                   FontSize="{DynamicResource Intent.Type.Title}" TextWrapping="Wrap" />
-        <Button x:Name="OpenOnlineButton" Grid.Column="1" Content="Open online"
-                Command="{Binding OpenOnlineCommand}" AutomationProperties.Name="Open this help page online" />
-      </Grid>
-      <TextBlock x:Name="HelpDescription" Grid.Row="1" Classes="muted"
-                 Text="{Binding Description}" FontSize="{DynamicResource Intent.Type.Small}"
-                 TextWrapping="Wrap" />
-      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+    <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+          <TextBlock x:Name="HelpTitle" Classes="section-title" Text="{Binding Title}"
+                     FontSize="{DynamicResource Intent.Type.Title}" TextWrapping="Wrap" />
+          <Button x:Name="OpenOnlineButton" Grid.Column="1" Content="Open online"
+                  Command="{Binding OpenOnlineCommand}" AutomationProperties.Name="Open this help page online" />
+        </Grid>
+        <TextBlock x:Name="HelpDescription" Classes="muted"
+                   Text="{Binding Description}" IsVisible="{Binding ShowsDescription}"
+                   FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" />
+      </StackPanel>
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
         <md:MarkdownRenderer MarkdownBuilder="{Binding Markdown, Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}"
                              LinkCommand="{Binding LinkCommand}" />
       </ScrollViewer>
