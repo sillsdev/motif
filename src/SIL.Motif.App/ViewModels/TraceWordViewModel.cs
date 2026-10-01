@@ -89,7 +89,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
         _candidates = value?.Candidates.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions)).ToArray() ?? [];
-        _analyses = value?.Analyses.Select(analysis => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions)).ToArray() ?? [];
+        _analyses = value is null ? [] : TraceAnalysisViewModel.Distinct(value.Analyses, allowLiveLinks, directions);
+        ShowDroppedPaths = false;
         Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
         OnPropertyChanged(nameof(HasEffort));
@@ -101,7 +102,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(HasStopReason));
         OnPropertyChanged(nameof(Analyses));
         OnPropertyChanged(nameof(HasAnalyses));
+        OnPropertyChanged(nameof(HasNoAnalyses));
+        OnPropertyChanged(nameof(AnalysesHeading));
         OnPropertyChanged(nameof(FailedAttemptCount));
+        OnPropertyChanged(nameof(HasDroppedPaths));
+        OnPropertyChanged(nameof(DroppedPathsText));
         RebuildStopGroups();
         OnPropertyChanged(nameof(SearchStatusText));
         OnPropertyChanged(nameof(AnswerText));
@@ -171,10 +176,51 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public IReadOnlyList<TraceStepViewModel> Roots => Root is { } root ? [root] : [];
 
-    /// <summary>Only analyses explicitly recorded by the diagnostic producer, in producer order.</summary>
+    /// <summary>
+    /// The analyses the diagnostic producer recorded, in its order, each once: the traced search is unmerged, so it
+    /// can report one analysis once for every order it found it in.
+    /// </summary>
     public IReadOnlyList<TraceAnalysisViewModel> Analyses => _analyses;
 
     public bool HasAnalyses => _analyses.Count > 0;
+
+    /// <summary>Whether a result is shown that recorded no analysis at all.</summary>
+    public bool HasNoAnalyses => HasResult && !HasAnalyses;
+
+    /// <summary>Over the analyses: the answer and how many there are, such as "Parsed: 1 analysis, found 2 ways".</summary>
+    public string AnalysesHeading
+    {
+        get
+        {
+            var ways = _analyses.Sum(analysis => analysis.WaysFound);
+            var count = _analyses.Count == 1 ? "1 analysis" : $"{_analyses.Count:N0} analyses";
+            if (ways > _analyses.Count) count += $", found {ways:N0} ways";
+            return Result is { Parsed: true } ? $"Parsed: {count}" : count;
+        }
+    }
+
+    /// <summary>
+    /// Whether the word parsed and other attempts stopped. Those are the search's normal tidying up, not a fault, so
+    /// they wait folded under <see cref="DroppedPathsText"/>.
+    /// </summary>
+    public bool HasDroppedPaths => Result is { Parsed: true } && FailedAttemptCount > 0;
+
+    /// <summary>The fold over a parsed word's stopped attempts, saying how many there are and that they are normal.</summary>
+    public string DroppedPathsText => FailedAttemptCount == 1
+        ? "1 other path the parser tried and dropped (normal)"
+        : $"{FailedAttemptCount:N0} other paths the parser tried and dropped (normal)";
+
+    /// <summary>Whether a parsed word's dropped paths are unfolded; a new answer folds them again.</summary>
+    [ObservableProperty]
+    private bool _showDroppedPaths;
+
+    partial void OnShowDroppedPathsChanged(bool value) => RaiseAttempts();
+
+    /// <summary>Whether the stop groups are on screen: always for a word that failed, unfolded for one that parsed.</summary>
+    public bool ShowsStopGroups => HasStopGroups && (!HasDroppedPaths || ShowDroppedPaths);
+
+    /// <summary>Whether the closest attempts are on screen, folded with the stop groups for a word that parsed.</summary>
+    public bool ShowsClosestAttempts => HasClosestAttempts && (!HasDroppedPaths || ShowDroppedPaths);
 
     public int FailedAttemptCount => _candidates.Count(candidate => candidate.IsFailure);
 
@@ -328,6 +374,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ClosestAttempts));
         OnPropertyChanged(nameof(HasClosestAttempts));
+        OnPropertyChanged(nameof(ShowsStopGroups));
+        OnPropertyChanged(nameof(ShowsClosestAttempts));
         OnPropertyChanged(nameof(MoreAttemptsText));
         OnPropertyChanged(nameof(HasMoreAttempts));
         RaiseComparison();
@@ -624,6 +672,32 @@ public sealed partial class TraceWordViewModel : ObservableObject
 /// <summary>One recorded parser analysis, kept distinct from trace attempts.</summary>
 public sealed class TraceAnalysisViewModel
 {
+    /// <summary>
+    /// The recorded analyses in producer order with duplicates merged, numbered from 1, each counting the ways the
+    /// search found it. Two records are one analysis when their surface, the parser's morphemes and every morph's
+    /// form, gloss and FieldWorks identity agree.
+    /// </summary>
+    public static IReadOnlyList<TraceAnalysisViewModel> Distinct(IEnumerable<TraceAnalysis> analyses, bool allowLiveLinks,
+        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
+    {
+        ArgumentNullException.ThrowIfNull(analyses);
+        return analyses.GroupBy(Signature, StringComparer.Ordinal)
+            .Select((group, position) => new TraceAnalysisViewModel(group.First(), allowLiveLinks, directions)
+            {
+                Position = position + 1,
+                WaysFound = group.Count(),
+            })
+            .ToArray();
+    }
+
+    // The unit separator cannot occur in a form or an identity, so no two different analyses join to the same key.
+    private static string Signature(TraceAnalysis analysis) => string.Join('\u001f',
+        new[] { analysis.Surface, analysis.LegacyMorphemes }.Concat(analysis.Morphs.SelectMany(morph => new[]
+        {
+            morph.Identity, morph.Form, morph.Headword, morph.Gloss, morph.Category,
+            morph.FormId, morph.EntryId, morph.MsaId, morph.InflTypeId,
+        })).Select(value => value ?? string.Empty));
+
     public TraceAnalysisViewModel(TraceAnalysis analysis, bool allowLiveLinks, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
     {
         ArgumentNullException.ThrowIfNull(analysis);
@@ -649,7 +723,20 @@ public sealed class TraceAnalysisViewModel
     /// <summary>The parser's own names for the analysis's morphemes, kept for the tooltip on its surface form.</summary>
     public string? LegacyMorphemesTip => HasLegacyMorphemes ? $"The parser's morphemes: {LegacyMorphemes}" : null;
     public IReadOnlyList<TraceMorphViewModel> Morphs { get; }
-    public string Label => Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
+
+    /// <summary>The analysis's place among the distinct analyses, from 1, once duplicates are merged.</summary>
+    public int? Position { get; private init; }
+
+    /// <summary>How many times the search recorded this analysis, each by a different order of steps.</summary>
+    public int WaysFound { get; private init; } = 1;
+
+    public bool HasSeveralWays => WaysFound > 1;
+
+    /// <summary>"Found 2 ways" for an analysis recorded more than once, otherwise empty.</summary>
+    public string WaysFoundText => HasSeveralWays ? $"Found {WaysFound:N0} ways" : string.Empty;
+
+    public string Label => Position is { } position ? $"Analysis {position}"
+        : Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
     public bool HasProjectionError => ProjectionError is { Length: > 0 };
 
     /// <summary>

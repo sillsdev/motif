@@ -132,7 +132,7 @@ public sealed class TryWordPageTests
             Assert.Equal("Plural", row.Rule);
             Assert.Equal("Affix rule", row.Kind);
             Assert.Equal("applied", row.Outcome);
-            Assert.Equal("dog → dogs", row.Explanation);
+            Assert.Equal("-s · dog → dogs", row.Explanation);
             Assert.Equal("40%", row.Share);
             Assert.Equal("Open dogs in Analyze texts", page.OpenInTextsText);
             Assert.Contains("dogs", page.RecentWords);
@@ -300,6 +300,8 @@ public sealed class TryWordPageTests
     public void TheSeededTraceOfMatinluReadsInPlainWords()
     {
         var visible = new List<string>();
+        var unfolded = new List<string>();
+        double analysesTop = 0, rulesTop = 0;
         RunOnAvalonia(async () =>
         {
             var (context, fake) = NewContext();
@@ -313,9 +315,12 @@ public sealed class TryWordPageTests
             Assert.True(page.Trace.HasResult);
             // The word parsed, so every rule on its best path applied; one attempt is left to show, in the singular.
             Assert.All(page.RulesOnBestPath, row => Assert.Equal("applied", row.Outcome));
-            // Each rule reads as the form before it and the form it left, taken from the step it follows.
-            Assert.Equal("matinlu → matin", page.RulesOnBestPath.Single(row => row.Rule == "lu").Explanation);
-            Assert.Equal("matin → tin", page.RulesOnBestPath.Single(row => row.Rule == "ma").Explanation);
+            // The rules read in building order, outward from the stem, each with the affix's own form.
+            Assert.Equal(["ma", "lu"], page.RulesOnBestPath.Select(row => row.Rule));
+            Assert.Equal("ma- · tin → matin", page.RulesOnBestPath[0].Explanation);
+            Assert.Equal("-lu · matin → matinlu", page.RulesOnBestPath[1].Explanation);
+            // The parser's taking-apart pass is one line, the pieces in the word's own order.
+            Assert.Equal("Taking the word apart found ma- · tin · -lu", page.TakingApartText);
             Assert.Equal("Show the other attempt", page.Trace.MoreAttemptsText);
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
@@ -323,14 +328,16 @@ public sealed class TryWordPageTests
             try
             {
                 window.Show();
-                for (var pass = 0; pass < 3; pass++)
-                {
-                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                    window.UpdateLayout();
-                }
-                visible.AddRange(view.GetVisualDescendants().OfType<TextBlock>()
-                    .Where(block => block.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(block.Text))
-                    .Select(block => block.Text!.Trim()));
+                Settle(window);
+                visible.AddRange(VisibleTexts(view));
+                analysesTop = TopOf(view, "Parsed: 1 analysis, found 2 ways", window);
+                rulesTop = view.GetLogicalDescendants().OfType<Border>().Single(border =>
+                        AutomationProperties.GetName(border) == "Rules on this word's best path")
+                    .TranslatePoint(default, window)!.Value.Y;
+
+                page.Trace.ShowDroppedPaths = true;
+                Settle(window);
+                unfolded.AddRange(VisibleTexts(view));
             }
             finally
             {
@@ -338,13 +345,44 @@ public sealed class TryWordPageTests
             }
         });
 
-        Assert.Contains("Affix rule", visible);
-        Assert.DoesNotContain("unknown morpheme", visible);
-        Assert.Contains("Further derivation is prohibited after a final template.", visible);
-        // The parser's own morpheme names are its detail, kept for the tooltip.
-        Assert.DoesNotContain(visible, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));
-        Assert.DoesNotContain(visible, text => EngineWords.IsMatch(text));
+        // A parsed word leads with its one analysis; the paths the parser dropped wait, folded, under a count.
+        Assert.Contains("Parsed: 1 analysis, found 2 ways", visible);
+        Assert.Contains("4 other paths the parser tried and dropped (normal)", visible);
+        Assert.True(analysesTop < rulesTop, $"the analyses sit at {analysesTop:F0} px, below the rules at {rulesTop:F0} px");
+        Assert.DoesNotContain("Why the other attempts stopped", visible);
+        Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
+        Assert.Single(visible, text => text == "Analysis 1");
+        Assert.DoesNotContain("Analysis 2", visible);
+        Assert.Contains("Taking the word apart found ma- · tin · -lu", visible);
+
+        Assert.Contains("Why the other attempts stopped", unfolded);
+        Assert.Contains("Further derivation is prohibited after a final template.", unfolded);
+        foreach (var texts in new[] { visible, unfolded })
+        {
+            Assert.Contains("Affix rule", texts);
+            Assert.DoesNotContain("unknown morpheme", texts);
+            // The parser's own morpheme names are its detail, kept for the tooltip.
+            Assert.DoesNotContain(texts, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));
+            Assert.DoesNotContain(texts, text => EngineWords.IsMatch(text));
+        }
     }
+
+    private static void Settle(Window window)
+    {
+        for (var pass = 0; pass < 3; pass++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+        }
+    }
+
+    private static IEnumerable<string> VisibleTexts(Control view) => view.GetVisualDescendants().OfType<TextBlock>()
+        .Where(block => block.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(block.Text))
+        .Select(block => block.Text!.Trim()).ToArray();
+
+    private static double TopOf(Control view, string text, Window window) => view.GetVisualDescendants()
+        .OfType<TextBlock>().Single(block => block.IsEffectivelyVisible && block.Text == text)
+        .TranslatePoint(default, window)!.Value.Y;
 
     private static void RunOnAvalonia(Func<Task> work) =>
         AvaloniaHeadlessFixture.RunUntilComplete(work, TimeSpan.FromSeconds(10));

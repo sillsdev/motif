@@ -59,8 +59,14 @@
                                  Text="No attempt got far enough to record, which usually means no lexicon entry matched a part of this word. The full derivation below lists every step the parser took." />
       </Border>
 
+      <ContentControl x:Name="AnalysesHost" />
+
+      <!-- A parsed word's stopped attempts are the search tidying up, so they wait folded under their count. -->
+      <Expander Header="{Binding DroppedPathsText}" IsExpanded="{Binding ShowDroppedPaths, Mode=TwoWay}"
+                IsVisible="{Binding HasDroppedPaths}" AutomationProperties.Name="Paths the parser dropped" />
+
       <!-- Why it did not parse: every failed attempt grouped by the rule that stopped it. -->
-      <Border Classes="card" IsVisible="{Binding HasStopGroups}" AutomationProperties.Name="Why it did not parse">
+      <Border Classes="card" IsVisible="{Binding ShowsStopGroups}" AutomationProperties.Name="Why it did not parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
@@ -95,7 +101,7 @@
       </Border>
 
       <!-- The attempts that came closest, each as its own story. -->
-      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasClosestAttempts}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding ShowsClosestAttempts}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Text="Attempts that got furthest" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before they stopped." />
@@ -152,64 +158,9 @@
       <views:RefusalBlock x:Name="ErrorRefusal" DataContext="{Binding $parent[views:DiagnosticPanel].Tools.Error}"
                           AutomationProperties.Name="Diagnostic file error" />
 
-      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasResult}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasNoAnalyses}">
         <views:CopyableTextBlock Text="Analyses" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted" Text="In the order the parser found them." TextWrapping="Wrap"
-                   IsVisible="{Binding HasAnalyses}" />
-        <views:CopyableTextBlock Classes="muted" Text="The parser found no analysis." IsVisible="{Binding HasAnalyses, Converter={x:Static conv:BoolConverters.Not}}" />
-        <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
-              <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
-                <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                    <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-                    <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
-                  </Grid>
-                  <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
-                             IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
-                  <ItemsControl ItemsSource="{Binding Morphs}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TraceMorphViewModel">
-                        <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
-                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold" />
-                            <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
-                            <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
-                            <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
-                            <Expander Header="Full morph details" IsExpanded="False">
-                              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                                <views:CopyableTextBlock Text="{Binding Details}" TextWrapping="Wrap" />
-                                <views:CopyableTextBlock Text="{Binding MsaDetails}" TextWrapping="Wrap" />
-                                <Expander Header="Raw morph record">
-                                  <views:CopyableTextBlock Text="{Binding RawDetails}" Classes="muted" TextWrapping="Wrap" />
-                                </Expander>
-                                <views:CopyableTextBlock Text="{Binding Identity}" Classes="muted" TextWrapping="Wrap" />
-                                <HyperlinkButton Content="Open compatible FieldWorks entry"
-                                                 NavigateUri="{Binding Link}"
-                                                 IsVisible="{Binding HasLink}"
-                                                 Padding="{DynamicResource Intent.Inset.None}"
-                                                 AutomationProperties.Name="{Binding LinkName}" />
-                                <views:CopyableTextBlock Classes="muted"
-                                           Text="Live FieldWorks navigation is unavailable for this recorded morph."
-                                           IsVisible="{Binding HasNoLink}" TextWrapping="Wrap" />
-                              </StackPanel>
-                            </Expander>
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <views:CopyableTextBlock Classes="muted" Text="The parser found no analysis." />
       </StackPanel>
 
       <Expander Header="Full derivation" IsExpanded="False" AutomationProperties.Name="Full derivation tree">

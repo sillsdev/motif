@@ -60,8 +60,19 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Recently traced words, newest first.</summary>
     public ObservableCollection<string> RecentWords { get; } = [];
 
-    /// <summary>Unique named rules on the successful or furthest recorded attempt, in path order.</summary>
+    /// <summary>
+    /// Unique named rules on the successful or furthest recorded attempt, in building order: outward from the stem,
+    /// as a linguist builds the word, not in the order the parser took it apart.
+    /// </summary>
     public ObservableCollection<TryWordRuleRowViewModel> RulesOnBestPath { get; } = [];
+
+    /// <summary>
+    /// The parser's taking-apart pass on that attempt in one line, its pieces in the word's own order, such as
+    /// "Taking the word apart found ma- · tin · -lu"; empty when a step's forms do not split into affix and rest.
+    /// </summary>
+    public string TakingApartText { get; private set; } = string.Empty;
+
+    public bool HasTakingApart => TakingApartText.Length > 0;
 
     /// <summary>Whether the current trace has named rules on its successful or furthest attempt.</summary>
     public bool HasRulesOnBestPath => RulesOnBestPath.Count > 0;
@@ -176,6 +187,7 @@ public sealed class TryWordPageModel : PageModel
         _timingGeneration++;
         foreach (var row in RulesOnBestPath) row.SetTiming(null);
         RulesOnBestPath.Clear();
+        TakingApartText = string.Empty;
         if (result is not null)
         {
             var attempt = result.Parsed
@@ -183,40 +195,86 @@ public sealed class TryWordPageModel : PageModel
                 : Trace.ClosestAttempts.FirstOrDefault();
             if (attempt is not null)
             {
+                TakingApartText = TakingApart(attempt.Steps);
                 foreach (var rule in attempt.Steps
                              .Where(step => !string.IsNullOrWhiteSpace(step.Source))
-                             .GroupBy(step => step.Source!, StringComparer.Ordinal))
+                             .GroupBy(step => step.Source!, StringComparer.Ordinal)
+                             .OrderBy(rule => BuildingPlace(rule, attempt.Steps)))
                 {
                     var steps = rule.ToArray();
                     RulesOnBestPath.Add(new TryWordRuleRowViewModel(rule.Key,
                         string.Join(" · ", steps.Select(step => step.KindText).Distinct(StringComparer.Ordinal)),
                         steps.Any(step => step.IsFailure) ? "stopped"
                             : attempt.Succeeded || steps.Any(step => step.IsSuccessful) ? "applied" : "tried",
-                        Explain(steps, attempt.Steps),
+                        Explain(rule.Key, steps, attempt.Steps),
                         () => Context.OpenTiming([result.Word], rule.Key)));
                 }
             }
         }
         OnPropertyChanged(nameof(RulesOnBestPath));
         OnPropertyChanged(nameof(HasRulesOnBestPath));
+        OnPropertyChanged(nameof(TakingApartText));
+        OnPropertyChanged(nameof(HasTakingApart));
         OnPropertyChanged(nameof(HasWordShare));
         OnPropertyChanged(nameof(TimingLinkText));
     }
 
-    // One plain line per rule: why it stopped the word, else the form it met and the form it left.
-    private static string Explain(IReadOnlyList<TraceStepViewModel> steps, IReadOnlyList<TraceStepViewModel> path)
+    // Rules the parser rebuilt come in the order it rebuilt them; those only taken off follow, innermost first.
+    private static (int Pass, int Place) BuildingPlace(IEnumerable<TraceStepViewModel> rule, IReadOnlyList<TraceStepViewModel> path)
+    {
+        var places = rule.Select(step => (Step: step, Place: IndexOf(path, step))).ToArray();
+        return places.FirstOrDefault(place => !TakesApart(place.Step)) is { Step: not null } built
+            ? (0, built.Place)
+            : (1, -places.Max(place => place.Place));
+    }
+
+    // One plain line per rule: why it stopped the word, else the affix and the form it built, in building order.
+    private static string Explain(string rule, IReadOnlyList<TraceStepViewModel> steps, IReadOnlyList<TraceStepViewModel> path)
     {
         if (steps.FirstOrDefault(step => step.IsFailure) is { } failed)
             return failed.ContextualFailure ??
                 (failed.FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code) : "stopped here");
-        foreach (var step in steps)
+        // Building runs from the shorter form to the longer, whichever pass recorded the step.
+        foreach (var step in steps.OrderBy(TakesApart))
         {
             if (step.Output is not { Length: > 0 } output) continue;
             var input = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
-            if (input is not null && !string.Equals(input, output, StringComparison.Ordinal)) return $"{input} → {output}";
+            if (input is null || string.Equals(input, output, StringComparison.Ordinal)) continue;
+            var reversed = input.Length != output.Length ? input.Length > output.Length : TakesApart(step);
+            var (before, after) = reversed ? (output, input) : (input, output);
+            return $"{AffixForm(before, after) ?? rule} · {before} → {after}";
         }
         return steps.Select(step => step.Output ?? step.Input).FirstOrDefault(text => text is { Length: > 0 }) ?? "—";
     }
+
+    private static string TakingApart(IReadOnlyList<TraceStepViewModel> path)
+    {
+        var prefixes = new List<string>();
+        var suffixes = new List<string>();
+        string? stem = null;
+        var affixSteps = path.Where(step =>
+            TakesApart(step) && step.Type.StartsWith("MorphologicalRule", StringComparison.Ordinal));
+        foreach (var step in affixSteps)
+        {
+            var whole = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
+            if (whole is null || step.Output is not { Length: > 0 } rest || AffixForm(rest, whole) is not { } affix)
+                return string.Empty;
+            // Each affix comes off the outside, so prefixes arrive left to right and suffixes right to left.
+            if (affix.EndsWith('-')) prefixes.Add(affix);
+            else suffixes.Insert(0, affix);
+            stem = rest;
+        }
+        return stem is null ? string.Empty : $"Taking the word apart found {string.Join(" · ", [.. prefixes, stem, .. suffixes])}";
+    }
+
+    // The affix a step added, written as FieldWorks writes it: "ma-" before the form, "-lu" after it.
+    private static string? AffixForm(string before, string after) =>
+        after.Length <= before.Length ? null
+        : after.EndsWith(before, StringComparison.Ordinal) ? $"{after[..^before.Length]}-"
+        : after.StartsWith(before, StringComparison.Ordinal) ? $"-{after[before.Length..]}"
+        : null;
+
+    private static bool TakesApart(TraceStepViewModel step) => step.Type.Contains("Analysis", StringComparison.Ordinal);
 
     // A rule step records only the form it left; the form it met is the one the step before it on the path holds.
     private static string? FormBefore(TraceStepViewModel step, IReadOnlyList<TraceStepViewModel> path)

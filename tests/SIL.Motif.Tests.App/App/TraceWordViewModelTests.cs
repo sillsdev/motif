@@ -118,6 +118,9 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(Verdict.NoResult, trace.AnswerVerdict);
         // The busiest rule leads, and the bar is drawn against it.
         Assert.Equal(["-a", "-ja-"], trace.StopGroups.Select(group => group.RuleText));
+        // A word that failed leads with why, so its attempts are never folded away.
+        Assert.False(trace.HasDroppedPaths);
+        Assert.True(trace.ShowsStopGroups);
         Assert.Equal([4, 1], trace.StopGroups.Select(group => group.Count));
         Assert.Equal(1.0, trace.StopGroups[0].Share);
         Assert.Equal(0.25, trace.StopGroups[1].Share);
@@ -600,4 +603,60 @@ public sealed class TraceWordViewModelTests
 
         Assert.False(Assert.Single(Assert.Single(trace.Analyses).Morphs).HasLink);
     }
+
+    [Fact]
+    public void AParsedWordLeadsWithItsAnalysesOnceEachAndFoldsThePathsTheParserDropped()
+    {
+        var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = MatinluTrace() };
+
+        // PanGloss reports MA+TIN+LU twice, once for each order it stripped the affixes in: one analysis, two ways.
+        var analysis = Assert.Single(trace.Analyses);
+        Assert.Equal("Analysis 1", analysis.Label);
+        Assert.Equal(2, analysis.WaysFound);
+        Assert.Equal("Found 2 ways", analysis.WaysFoundText);
+        Assert.Equal("Parsed: 1 analysis, found 2 ways", trace.AnalysesHeading);
+
+        // The four attempts that stopped are the search's normal tidying up, so they start folded.
+        Assert.True(trace.HasDroppedPaths);
+        Assert.Equal("4 other paths the parser tried and dropped (normal)", trace.DroppedPathsText);
+        Assert.False(trace.ShowsStopGroups);
+        Assert.False(trace.ShowsClosestAttempts);
+
+        trace.ShowDroppedPaths = true;
+        Assert.True(trace.ShowsStopGroups);
+        Assert.True(trace.ShowsClosestAttempts);
+
+        // A new answer folds them again.
+        trace.Result = MatinluTrace();
+        Assert.False(trace.ShowDroppedPaths);
+        Assert.False(trace.ShowsStopGroups);
+    }
+
+    [Fact]
+    public void DistinctAnalysesKeepTheirOrderAndCountTheWaysEachWasFound()
+    {
+        static TraceAnalysis Analysis(int index, string morphemes) =>
+            new($"analysis-{index}", index, "kitabu", "available", []) { LegacyMorphemes = morphemes };
+        var trace = new TraceWordViewModel
+        {
+            Result = new WordTraceResponse(
+                "kitabu", Parsed: true, Complete: true, StopReason: null, StepCount: 3, DeepestRule: null, ElapsedMs: 1,
+                [new TraceCandidate([], Succeeded: true, null, null, [])], Leaf("WordAnalysis"))
+            {
+                Analyses = [Analysis(0, "KI+TABU"), Analysis(1, "KITABU"), Analysis(2, "KI+TABU")],
+            },
+        };
+
+        Assert.Equal(["Analysis 1", "Analysis 2"], trace.Analyses.Select(analysis => analysis.Label));
+        Assert.Equal([2, 1], trace.Analyses.Select(analysis => analysis.WaysFound));
+        Assert.False(trace.Analyses[1].HasSeveralWays);
+        Assert.Equal("Parsed: 2 analyses, found 3 ways", trace.AnalysesHeading);
+        Assert.False(trace.HasDroppedPaths);
+
+        trace.Result = trace.Result! with { Analyses = [Analysis(0, "KITABU")] };
+        Assert.Equal("Parsed: 1 analysis", trace.AnalysesHeading);
+    }
+
+    private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
 }
