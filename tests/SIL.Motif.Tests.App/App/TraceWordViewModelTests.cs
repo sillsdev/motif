@@ -469,6 +469,25 @@ public sealed class TraceWordViewModelTests
         Assert.Empty(trace.Roots);
     }
 
+    [Theory]
+    [InlineData("The parser stopped at its step cap after 1,000,000 steps, so this trace is not the whole search.")]
+    [InlineData("The parser stopped at its own time limit, so this trace is not the whole search.")]
+    [InlineData(null)]
+    public void AWordStoppedAtALimitReadsAsStoppedAndTakingTooLong(string? stopReason)
+    {
+        var response = new WordTraceResponse(
+            "kitabu", Parsed: false, Complete: false, StopReason: stopReason, StepCount: 5,
+            DeepestRule: null, ElapsedMs: 12, [], Leaf("WordAnalysis"))
+        {
+            SearchStatus = "incomplete",
+        };
+        var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = response };
+
+        Assert.StartsWith("Stopped: taking too long.", trace.SearchStatusText, StringComparison.Ordinal);
+        Assert.DoesNotContain("incomplete", trace.SearchStatusText, StringComparison.OrdinalIgnoreCase);
+        if (stopReason is not null) Assert.EndsWith(stopReason, trace.SearchStatusText, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RichResultPutsAnalysesFirstAndKeepsFailedAttemptsCollapsedByDefault()
     {
@@ -497,7 +516,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("book", trace.Analyses[0].Morphs[0].Gloss);
         Assert.Equal("N", trace.Analyses[0].Morphs[0].Category);
         Assert.Equal(1, trace.FailedAttemptCount);
-        Assert.Equal("Search incomplete: The search reached its limit.", trace.SearchStatusText);
+        Assert.Equal("Stopped: taking too long. The search reached its limit.", trace.SearchStatusText);
         Assert.Equal("4", trace.Effort[0].Uses);
         Assert.Equal("2", trace.Effort[0].Work);
         Assert.Equal("stopped", trace.Candidates[1].StatusText);
