@@ -401,6 +401,8 @@ public sealed class TryWordPageTests
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;
             Assert.True(page.Trace.HasResult);
+            Assert.Equal(2, Assert.Single(page.Trace.Analyses).WaysFound);
+            Assert.Equal("Parsed: 1 analysis, found 2 ways", page.Trace.AnalysesHeading);
             // The word parsed, so every rule on its best path applied; one attempt is left to show, in the singular.
             Assert.All(page.RulesOnBestPath, row => Assert.Equal("applied", row.Outcome));
             // The rules read in building order, outward from the stem, each with the affix's own form.

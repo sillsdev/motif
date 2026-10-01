@@ -99,6 +99,8 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal("ed_suffix", response.DeepestRule);
         Assert.Equal("WordAnalysis", response.Root.Type);
         Assert.Equal(4, response.Root.Children.Count);
+        Assert.Same(response.Root, response.Reading!.Root);
+        Assert.Same(response.Candidates, response.Reading.Attempts);
 
         Assert.Equal(2, response.Candidates.Count);
         var succeeded = response.Candidates[0];
@@ -117,7 +119,7 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.NotNull(failed.Explanation);
         Assert.Empty(failed.Morphs);
         Assert.Equal("Failed", failed.Steps[^1].Type);
-        Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
+        Assert.Equal(["MorphologicalRuleSynthesis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
     }
 
     [Fact]
@@ -144,7 +146,7 @@ public sealed class WordTraceQueryTests : IDisposable
         var bySource = outcome.Value!.Candidates.ToDictionary(candidate => candidate.Steps[1].Source!);
         Assert.Empty(bySource["first"].Morphs);
         Assert.Empty(bySource["second"].Morphs);
-        Assert.DoesNotContain(bySource["first"].Steps, step => step.Type == "LexicalLookup");
+        Assert.Contains(bySource["first"].Steps, step => step.Type == "LexicalLookup");
         Assert.DoesNotContain(bySource["second"].Steps, step => step.Type == "LexicalLookup");
     }
 

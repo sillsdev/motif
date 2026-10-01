@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Responses;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,6 +34,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private int _generation;
     private CancellationTokenSource? _running;
     private IReadOnlyList<TraceCandidateViewModel> _candidates = [];
+    private IReadOnlyList<TraceCandidateViewModel> _closestAttempts = [];
+    private WordTraceReading? _reading;
     private IReadOnlyList<TraceAnalysisViewModel> _analyses = [];
     private IReadOnlyList<TraceStepViewModel> _filteredRoots = [];
     private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
@@ -84,13 +87,18 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private TraceStepViewModel? _selectedStep;
 
     public IReadOnlyList<TraceCandidateViewModel> Candidates => _candidates;
+    public WordTraceReading? Reading => _reading;
 
     partial void OnResultChanged(WordTraceResponse? value)
     {
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
-        _candidates = value?.Candidates.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions)).ToArray() ?? [];
-        _analyses = value is null ? [] : TraceAnalysisViewModel.Distinct(value.Analyses, allowLiveLinks, directions);
+        _reading = value is null ? null : TraceReadingBuilder.Build(value);
+        _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions)).ToArray() ?? [];
+        _analyses = _reading?.Analyses.Select((analysis, index) => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions, index + 1)).ToArray() ?? [];
+        var candidateViews = new Dictionary<TraceCandidate, TraceCandidateViewModel>(ReferenceEqualityComparer.Instance);
+        for (var index = 0; index < _candidates.Count; index++) candidateViews.Add(_reading!.Attempts[index], _candidates[index]);
+        _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate]).ToArray() ?? [];
         ShowDroppedPaths = false;
         Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
@@ -349,20 +357,13 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     private const int ClosestShown = 3;
 
-    private IEnumerable<TraceCandidateViewModel> MatchingAttempts() => _candidates
-        .Where(candidate => candidate.IsFailure)
-        .Where(candidate => SelectedStopGroup is not { } group || group.Matches(candidate))
-        .OrderByDescending(candidate => candidate.Morphs.Count)
-        .ThenByDescending(candidate => candidate.Steps.Count);
+    private IEnumerable<TraceCandidateViewModel> MatchingAttempts() => _closestAttempts
+        .Where(candidate => SelectedStopGroup is not { } group || group.Matches(candidate));
 
     private void RebuildStopGroups()
     {
-        _stopGroups = _candidates.Where(candidate => candidate.IsFailure)
-            .GroupBy(candidate => (candidate.StoppedByRule, candidate.FailureReason))
-            .Select(group => new TraceStopGroupViewModel(group.Key.StoppedByRule, group.Key.FailureReason,
-                group.First().Explanation, group.Count()))
-            .OrderByDescending(group => group.Count)
-            .ToArray();
+        _stopGroups = _reading?.StopGroups.Select(group => new TraceStopGroupViewModel(
+            group.Rule, group.ReasonCode, group.Explanation, group.Count, group.RuleId)).ToArray() ?? [];
         var largest = _stopGroups.Count == 0 ? 0 : _stopGroups.Max(group => group.Count);
         foreach (var group in _stopGroups) group.SetShare(largest);
         SelectedStopGroup = null;
@@ -676,33 +677,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 /// <summary>One recorded parser analysis, kept distinct from trace attempts.</summary>
 public sealed class TraceAnalysisViewModel
 {
-    /// <summary>
-    /// The recorded analyses in producer order with duplicates merged, numbered from 1, each counting the ways the
-    /// search found it. Two records are one analysis when their surface, the parser's morphemes and every morph's
-    /// form, gloss and FieldWorks identity agree.
-    /// </summary>
-    public static IReadOnlyList<TraceAnalysisViewModel> Distinct(IEnumerable<TraceAnalysis> analyses, bool allowLiveLinks,
-        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
-    {
-        ArgumentNullException.ThrowIfNull(analyses);
-        return analyses.GroupBy(Signature, StringComparer.Ordinal)
-            .Select((group, position) => new TraceAnalysisViewModel(group.First(), allowLiveLinks, directions)
-            {
-                Position = position + 1,
-                WaysFound = group.Count(),
-            })
-            .ToArray();
-    }
-
-    // The unit separator cannot occur in a form or an identity, so no two different analyses join to the same key.
-    private static string Signature(TraceAnalysis analysis) => string.Join('\u001f',
-        new[] { analysis.Surface, analysis.LegacyMorphemes }.Concat(analysis.Morphs.SelectMany(morph => new[]
-        {
-            morph.Identity, morph.Form, morph.Headword, morph.Gloss, morph.Category,
-            morph.FormId, morph.EntryId, morph.MsaId, morph.InflTypeId,
-        })).Select(value => value ?? string.Empty));
-
-    public TraceAnalysisViewModel(TraceAnalysis analysis, bool allowLiveLinks, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
+    public TraceAnalysisViewModel(TraceAnalysis analysis, bool allowLiveLinks, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, int? position = null)
     {
         ArgumentNullException.ThrowIfNull(analysis);
         AnalysisId = analysis.AnalysisId;
@@ -712,6 +687,8 @@ public sealed class TraceAnalysisViewModel
         ProjectionStatus = analysis.ProjectionStatus;
         ProjectionError = analysis.ProjectionError;
         LegacyMorphemes = analysis.LegacyMorphemes;
+        WaysFound = analysis.FoundWays;
+        Position = position;
         Morphs = analysis.Morphs.Select(morph => new TraceMorphViewModel(morph, allowLiveLinks, directions)).ToArray();
     }
 
@@ -913,9 +890,10 @@ public sealed class TraceMorphViewModel
 /// </summary>
 public sealed partial class TraceStopGroupViewModel : ObservableObject
 {
-    public TraceStopGroupViewModel(string? rule, string? reasonCode, string? explanation, int count)
+    public TraceStopGroupViewModel(string? rule, string? reasonCode, string? explanation, int count, string? ruleId = null)
     {
         Rule = rule;
+        RuleId = ruleId;
         ReasonCode = reasonCode;
         Explanation = explanation;
         Count = count;
@@ -928,6 +906,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 
     /// <summary>The rule as the project names it, or <see langword="null"/> when no rule was to blame.</summary>
     public string? Rule { get; }
+    public string? RuleId { get; }
 
     /// <summary>The parser's own reason code, kept for matching the group to its attempts.</summary>
     public string? ReasonCode { get; }
@@ -960,7 +939,8 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
     }
 
     internal bool Matches(TraceCandidateViewModel candidate) =>
-        string.Equals(candidate.StoppedByRule, Rule, StringComparison.Ordinal) &&
+        (RuleId is null ? string.Equals(candidate.StoppedByRule, Rule, StringComparison.Ordinal)
+            : string.Equals(candidate.StoppedByRuleId, RuleId, StringComparison.Ordinal)) &&
         string.Equals(candidate.FailureReason, ReasonCode, StringComparison.Ordinal);
 }
 
@@ -982,7 +962,8 @@ public sealed class TraceCandidateViewModel
         FailureRequired = candidate.FailureRequired;
         FailureActual = candidate.FailureActual;
         FailureEnvironment = candidate.FailureEnvironment;
-        IsFailure = !candidate.Succeeded && (candidate.OutcomeStatus is "failed" or "failure" or "blocked" || candidate.FailureReason is { Length: > 0 } || candidate.ContextualFailure is { Length: > 0 } || candidate.Steps.Any(step => step.FailureReason is { Length: > 0 }));
+        IsBlocked = candidate.OutcomeStatus == "blocked" || candidate.Steps.LastOrDefault()?.Type == "Blocked";
+        IsFailure = !candidate.Succeeded && !IsBlocked && (candidate.OutcomeStatus is "failed" or "failure" || candidate.FailureReason is { Length: > 0 } || candidate.ContextualFailure is { Length: > 0 } || candidate.Steps.Any(step => step.FailureReason is { Length: > 0 }));
         SourceIdentity = candidate.SourceIdentityId is { Length: > 0 }
             ? $"{candidate.SourceIdentityKind ?? "source"}: {candidate.SourceIdentityId} ({candidate.SourceIdentityQuality ?? "quality not recorded"})"
             : "Source identity not recorded";
@@ -991,6 +972,7 @@ public sealed class TraceCandidateViewModel
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
         Surface = candidate.Surface;
         StoppedByRule = candidate.StoppedByRule;
+        StoppedByRuleId = candidate.StoppedByRuleId;
         StopHeadline = Succeeded ? "Built the word"
             : StoppedByRule is { Length: > 0 } rule ? $"Stopped by {rule}"
             : "Stopped";
@@ -1011,6 +993,7 @@ public sealed class TraceCandidateViewModel
 
     /// <summary>The rule whose step failed just before the attempt ended, by its FieldWorks name when known.</summary>
     public string? StoppedByRule { get; }
+    public string? StoppedByRuleId { get; }
 
     /// <summary>What ended the attempt, in a few words: which rule, or that the attempt simply stopped.</summary>
     public string StopHeadline { get; }
@@ -1031,6 +1014,7 @@ public sealed class TraceCandidateViewModel
     public string? FailureActual { get; }
     public string? FailureEnvironment { get; }
     public bool IsFailure { get; }
+    public bool IsBlocked { get; }
     public string SourceIdentity { get; }
     public string FailureContext => string.Join(" · ", new[] { ContextualFailure, FailureReason, Explanation }.Where(value => !string.IsNullOrWhiteSpace(value))) is { Length: > 0 } text
         ? text
@@ -1038,7 +1022,7 @@ public sealed class TraceCandidateViewModel
     public IReadOnlyList<TraceStepViewModel> Steps { get; }
     public string Text { get; }
     public string Gloss { get; }
-    public string StatusText => Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
+    public string StatusText => IsBlocked ? "not repeated (would feed itself)" : Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
 
     /// <summary>How this attempt ended: it built the word, a rule refused it, or it was only tried.</summary>
     public Mark StepMark => Mark.Of(Succeeded ? TraceStepMark.Built : IsFailure ? TraceStepMark.Refused : TraceStepMark.Tried);
@@ -1175,18 +1159,20 @@ public sealed class TraceStepViewModel
     /// <summary>Legacy fact retained for existing candidate consumers; neutral nodes remain textual attempts.</summary>
     public bool Passed => !HasFailureReason;
 
-    public bool IsFailure => HasFailureReason ||
-        IsStatus(OutcomeStatus, "failure", "failed", "blocked", "error") ||
+    public bool IsBlocked => Type == "Blocked" || IsStatus(OutcomeStatus, "blocked");
+
+    public bool IsFailure => !IsBlocked && (HasFailureReason ||
+        IsStatus(OutcomeStatus, "failure", "failed", "error") ||
         Type.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
         Type.Contains("failure", StringComparison.OrdinalIgnoreCase) ||
-        Type.Contains("blocked", StringComparison.OrdinalIgnoreCase);
+        Type.Contains("blocked", StringComparison.OrdinalIgnoreCase));
 
     public bool IsSuccessful => IsStatus(OutcomeStatus, "success", "succeeded", "successful") ||
         Type.Contains("successful", StringComparison.OrdinalIgnoreCase) ||
         Type.Contains("success", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>What happened at the step, in the words a linguist uses: applied, stopped, or only tried.</summary>
-    public string StatusText => IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
+    public string StatusText => IsBlocked ? "not repeated (would feed itself)" : IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
 
     /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
     public string KindText => TraceStepKinds.Describe(Type);
