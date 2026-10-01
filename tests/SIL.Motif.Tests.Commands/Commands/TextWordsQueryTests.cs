@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Commands;
 /// captured, and — over a hand-built second Text — occurrences of the same form carrying different chosen
 /// analyses, analyses equal by content despite a different sense, and the project's disapproved analyses.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class TextWordsQueryTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

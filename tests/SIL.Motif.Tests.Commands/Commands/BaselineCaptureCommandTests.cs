@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Commands;
 /// idempotent recapture of unchanged bytes, a genuinely new capture after a save, the lock-file
 /// observation, and both renderings of the typed response.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class BaselineCaptureCommandTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

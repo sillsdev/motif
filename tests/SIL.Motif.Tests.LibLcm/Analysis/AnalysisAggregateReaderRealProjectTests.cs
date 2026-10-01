@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Analysis;
 /// already established by <c>GeneratedSlice3OperationsTests</c> and <c>SaveIsSynchronousTests</c> rather
 /// than inventing a new one.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class AnalysisAggregateReaderRealProjectTests : IDisposable
 {
     private readonly LcmCache _cache;

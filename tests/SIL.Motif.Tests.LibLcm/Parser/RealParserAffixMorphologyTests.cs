@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Parser;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class RealParserAffixMorphologyTests(PristineProjectFixture pristine)
 {
     [RealParserFact]

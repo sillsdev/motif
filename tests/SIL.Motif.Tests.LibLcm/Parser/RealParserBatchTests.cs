@@ -11,7 +11,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Parser;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class RealParserBatchTests(PristineProjectFixture pristine)
 {
     [RealParserFact]

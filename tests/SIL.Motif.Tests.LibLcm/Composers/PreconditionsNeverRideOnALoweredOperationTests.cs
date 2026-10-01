@@ -30,7 +30,7 @@ namespace SIL.Motif.Tests.Composers;
 /// edit ever admitted a conditional field into one of these payloads, this test would start failing
 /// the moment that field's name was also added to the payload's own allow-list.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class PreconditionsNeverRideOnALoweredOperationTests : IDisposable
 {
     private static readonly string[] ConditionShapedPropertyNames =

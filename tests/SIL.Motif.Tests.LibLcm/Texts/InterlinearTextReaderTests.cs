@@ -10,7 +10,7 @@ namespace SIL.Motif.Tests.Texts;
 /// two paragraphs, an approved analysis with two ordered morph bundles, a punctuation form, and one
 /// unanalysed wordform — every occurrence kind the projection has to tell apart.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class InterlinearTextReaderTests : IDisposable
 {
     private readonly LcmCache _cache;

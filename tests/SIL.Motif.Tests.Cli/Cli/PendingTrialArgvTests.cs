@@ -23,7 +23,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
 {
     [Fact]

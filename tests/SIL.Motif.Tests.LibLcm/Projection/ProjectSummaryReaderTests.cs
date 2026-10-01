@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Projection;
 /// reads <c>ILexEntryRepository</c> directly, so it is proved against a real seeded project rather
 /// than a hand-built record like the other surfaces in <see cref="ProjectionRenderingTests"/>.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class ProjectSummaryReaderTests
 {
     private readonly PristineProjectFixture _pristine;

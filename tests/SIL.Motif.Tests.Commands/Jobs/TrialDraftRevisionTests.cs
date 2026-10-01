@@ -7,7 +7,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Jobs;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class TrialDraftRevisionTests
 {
     private const string ProductVersion = "1.0";

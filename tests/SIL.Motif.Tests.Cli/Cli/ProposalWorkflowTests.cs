@@ -40,7 +40,7 @@ namespace SIL.Motif.Tests.Cli;
 /// so <see cref="RunDryRun"/> stands in for the real runner: it records a Baseline pointing at this
 /// project's own saved file and drains exactly one queued job through the real <see cref="DryRunJobHandler"/>.
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class ProposalWorkflowTests : IDisposable
 {
     private const string ProductVersion = "1.0";

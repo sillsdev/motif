@@ -24,7 +24,7 @@ namespace SIL.Motif.Tests.WritingSystems;
 /// report starts lying in the one direction that matters.
 /// </para>
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class WritingSystemInventoryTests : IDisposable
 {
     private readonly LcmCache _cache;

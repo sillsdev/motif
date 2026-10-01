@@ -26,7 +26,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine) : IDisposable
 {
     private const string ProductVersion = "1.0";

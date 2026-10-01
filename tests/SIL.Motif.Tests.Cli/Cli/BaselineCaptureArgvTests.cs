@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Cli;
 /// Drives the real <c>motif</c> apphost for <c>baseline capture</c>: a successful capture's exit code, its
 /// human and JSON renderings, and the usage/refusal shape of a malformed or absent invocation.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class BaselineCaptureArgvTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

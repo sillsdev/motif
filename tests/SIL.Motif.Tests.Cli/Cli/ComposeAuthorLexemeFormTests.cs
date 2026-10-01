@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Cli;
 /// operations, appends them to a draft the agent never enumerated by hand, and carries the intent
 /// forward as non-hashed provenance rather than dropping it or folding it into the digest.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class ComposeAuthorLexemeFormTests
 {
     private const string ProductVersion = "1.0";

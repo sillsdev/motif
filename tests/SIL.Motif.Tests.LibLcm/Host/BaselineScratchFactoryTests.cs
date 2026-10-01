@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Host;
 /// <c>.fwdata</c> recorded inside an already-published Baseline directory directly — never copying
 /// it — and that directory survives any number of Dry Runs byte-for-byte unchanged.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class BaselineScratchFactoryTests : IDisposable
 {
     private readonly string _root =

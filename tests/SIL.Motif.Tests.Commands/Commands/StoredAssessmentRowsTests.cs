@@ -24,7 +24,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Pins that reopening a project shows the words a run returned: <see cref="CurrentEvidenceQuery"/> returns the
 /// stored Assessment in the shape <see cref="AssessCommand"/> returns it, built by the same row function.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class StoredAssessmentRowsTests : IDisposable
 {
     private static readonly IReadOnlyList<AssessmentKind> CollectedKinds =

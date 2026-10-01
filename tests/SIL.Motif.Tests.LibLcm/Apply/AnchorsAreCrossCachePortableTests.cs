@@ -32,7 +32,7 @@ namespace SIL.Motif.Tests.Apply;
 /// directly, across two caches, on a reference field as well as a text one.
 /// </para>
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class AnchorsAreCrossCachePortableTests : IDisposable
 {
     private readonly string _tempRoot;

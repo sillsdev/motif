@@ -25,7 +25,7 @@ namespace SIL.Motif.Tests.Cli;
 /// Drives the typed command surfaces end to end to verify project data. A single explicit renderer assertion
 /// keeps the text and JSON projection aligned.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class ReportProjectionIntegrationTests
 {
     private static string Hash(char digit) => "sha256:" + new string(digit, 64);

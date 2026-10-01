@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Commands;
 /// last-write time beside it, the live lock-file observation either way, and that reading never captures,
 /// publishes, or otherwise changes anything.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class CurrentBaselineQueryTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

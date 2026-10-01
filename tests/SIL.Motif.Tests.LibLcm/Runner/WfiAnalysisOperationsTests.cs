@@ -24,7 +24,7 @@ using ContractIntentDigest = SIL.Motif.Contract.Canonicalization.IntentDigest;
 
 namespace SIL.Motif.Tests.Runner;
 
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class WfiAnalysisOperationsTests : IDisposable
 {
     private readonly LcmCache _cache;
@@ -717,7 +717,7 @@ public sealed class WfiAnalysisPayloadTests
     }
 }
 
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class WfiAnalysisSeededProjectTests(PristineProjectFixture pristine)
 {
     [Fact]

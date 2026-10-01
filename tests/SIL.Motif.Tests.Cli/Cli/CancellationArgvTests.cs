@@ -9,7 +9,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class CancellationArgvTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-cli-cancellation-" + Guid.NewGuid().ToString("N"));

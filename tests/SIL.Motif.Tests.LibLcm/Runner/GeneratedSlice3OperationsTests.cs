@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Runner;
 /// and <c>rel/seq</c> (<c>MoInflAffixTemplate.PrefixSlots</c>) — the same shapes already proved on the
 /// lexical-entry family, now exercised on grammar classes as well.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class GeneratedSlice3OperationsTests : IDisposable
 {
     private readonly LcmCache _cache;

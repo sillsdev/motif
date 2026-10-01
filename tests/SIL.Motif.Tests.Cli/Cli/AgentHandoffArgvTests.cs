@@ -5,7 +5,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class AgentHandoffArgvTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-agent-handoff-" + Guid.NewGuid().ToString("N"));

@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.Composers;
 /// <see cref="AuthorLexemeFormEndToEndTests"/>; this class is about the shape of what
 /// <see cref="AuthorLexemeFormComposer.Build"/> returns, not about running it.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class AuthorLexemeFormComposerTests : IDisposable
 {
     private readonly LcmCache _cache;

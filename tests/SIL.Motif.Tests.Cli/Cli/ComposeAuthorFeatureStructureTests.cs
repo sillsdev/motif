@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Cli;
 /// <see cref="SIL.Motif.Runner.Composers.AuthorFeatureStructureComposer"/>'s one operation, and carries
 /// the intent forward as non-hashed provenance.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ComposeAuthorFeatureStructureTests
 {
     private const string ProductVersion = "1.0";

@@ -26,7 +26,7 @@ namespace SIL.Motif.Tests.Composers;
 /// a specification to. Starts from an already-created feature structure and an existing feature: value
 /// population is separate, later work against the created structure's own identity.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class AuthorFeatureValueEndToEndTests
 {
     private readonly SeededProject _seed;

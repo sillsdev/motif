@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Pins <see cref="ProjectHistoryQuery"/>: an empty history before anything happened, one Baseline entry
 /// once one is captured, one Assessment entry per <c>assess</c> run, and every entry newest first.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class ProjectHistoryQueryTests : IDisposable
 {
     private static readonly SelectionRequest PastedWord = new(false, [], ["motifa"], false, null);

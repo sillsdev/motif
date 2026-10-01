@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Composers;
 /// round trip lives in <see cref="AuthorFeatureStructureEndToEndTests"/>; this class is about the shape
 /// of what <see cref="AuthorFeatureStructureComposer.Build"/> returns, not about running it.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class AuthorFeatureStructureComposerTests : IDisposable
 {
     private readonly LcmCache _cache;

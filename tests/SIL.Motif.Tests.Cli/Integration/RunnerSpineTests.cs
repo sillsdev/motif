@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Integration;
 /// a test. It is slow by the standards of this suite and cheap by the standards of what it replaces —
 /// finding out after shipping.
 /// </remarks>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class RunnerSpineTests : IDisposable
 {
     private readonly PristineProjectFixture _projects;

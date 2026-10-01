@@ -15,7 +15,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Host;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class BaselineBundleTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.BaselineBundleTests", Guid.NewGuid().ToString("N"));

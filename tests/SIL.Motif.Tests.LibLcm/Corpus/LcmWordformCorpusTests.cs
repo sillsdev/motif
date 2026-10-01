@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.Corpus;
 /// from a real corpus: this utility only needs wordforms to exist, not corpus scale, and every test below
 /// seeds exactly the ones its own assertion depends on.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class LcmWordformCorpusTests : IDisposable
 {
     private readonly LcmCache _cache;

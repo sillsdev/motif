@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Runner;
 /// equivalence checks here means a regression in either strategy fails the suite rather than waiting for
 /// someone to re-run a spike.
 /// </remarks>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public class ScratchCacheEquivalenceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;

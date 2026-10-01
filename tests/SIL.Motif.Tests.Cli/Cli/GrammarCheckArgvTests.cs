@@ -12,7 +12,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class GrammarCheckArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _managedRoot = Path.Combine(

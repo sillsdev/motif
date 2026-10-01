@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Composers;
 /// and parsed": that needs an external executable this environment does not run (see the skipped
 /// <c>ParserSeamIntegrationTests</c>).
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class AuthorFeatureStructureEndToEndTests
 {
     private readonly SeededProject _seed;

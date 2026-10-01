@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Composers;
 /// <see cref="AuthorFeatureValueEndToEndTests"/>; this class is about the shape of what
 /// <see cref="AuthorFeatureValueComposer.Build"/> returns, not about running it.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class AuthorFeatureValueComposerTests : IDisposable
 {
     private readonly LcmCache _cache;

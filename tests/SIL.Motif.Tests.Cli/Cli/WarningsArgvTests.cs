@@ -15,7 +15,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class WarningsArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-warnings-argv-" + Guid.NewGuid().ToString("N"));

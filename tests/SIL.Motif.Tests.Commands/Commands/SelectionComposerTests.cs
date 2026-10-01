@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Commands;
 /// Pins <see cref="SelectionComposer"/> against each of the four agreed sources (design decision 4) in
 /// isolation, their union, and both of its Refusal codes.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class SelectionComposerTests : IDisposable
 {
     private static readonly SelectionRequest NoSources = new(false, [], [], false, null);

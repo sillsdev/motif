@@ -32,7 +32,7 @@ namespace SIL.Motif.Tests.Commands;
 /// success case asserts it by name rather than letting the filter quietly hide it.
 /// </para>
 /// </remarks>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class SourceProjectIsNeverWrittenTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

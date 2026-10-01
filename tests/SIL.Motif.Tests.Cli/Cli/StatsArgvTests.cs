@@ -25,7 +25,7 @@ namespace SIL.Motif.Tests.Cli;
 /// resolution, and <see cref="SIL.Motif.Host.PanGloss.PanGlossInvoker"/>'s own forwarding — preserves
 /// argument boundaries, order, duplicates, casing, and values that themselves begin with a dash.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class StatsArgvTests : IDisposable
 {
     // Kept in step with FakePanGloss's own Program.ArgvFileName; the fake is launched, never referenced.

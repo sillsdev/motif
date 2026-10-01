@@ -29,7 +29,7 @@ namespace SIL.Motif.Tests.Runner;
 /// those derived caches, so each round-trip had to dispose and reload the project between DryRun and
 /// Apply. The DryRun now runs on a throwaway copy, so it does not — see ADR 0016.
 /// </remarks>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class LexEntryLexemeFormOperationsTests : IDisposable
 {
     private readonly FwDataProjectLoader _loader = new();

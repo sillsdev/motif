@@ -27,7 +27,7 @@ namespace SIL.Motif.Tests.Commands;
 /// forwarding to the invocation module preserves argument order exactly and appends <c>--format jsonl</c>
 /// only for JSON rows, and that every non-completed outcome the invoker returns becomes its own refusal.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class StatsCommandTests : IDisposable
 {
     private readonly PristineProjectFixture _pristine;

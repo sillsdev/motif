@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Runner;
 /// the DryRun runs on a throwaway copy and never mutates this cache, so no dispose/reload is needed
 /// between DryRun and Apply (ADR 0016).
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class MoFormMorphTypeOperationsTests : IDisposable
 {
     private const string RefKey = "ref";

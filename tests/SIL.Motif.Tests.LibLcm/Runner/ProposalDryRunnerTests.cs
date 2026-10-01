@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.Runner;
 /// happens, so a before/after snapshot diff taken inside the still-open, never-committed unit of
 /// work sees the true cascaded state without needing to replay or predict it.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class ProposalDryRunnerTests : IDisposable
 {
     private readonly string _tempRoot;

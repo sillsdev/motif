@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.Corpus;
 /// carrying a manual analysis") and <see cref="WordQueryResolver.AllWordformsQueryText"/>, plus the refusal
 /// that closes off anything else.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group2)]
 public sealed class WordQueryResolverTests : IDisposable
 {
     private readonly LcmCache _cache;

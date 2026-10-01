@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Runner;
 /// <c>IOperationHandler.ReadCurrentFootprint</c>, which <see cref="FootprintProbe"/> calls before Apply
 /// opens any unit of work. Both tests assert the refusal happens before mutation: nothing is committed.
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class TargetResolutionRefusalsTests : IDisposable
 {
     private readonly LcmCache _cache;

@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.Parser;
 /// write back into a directory that must remain byte-for-byte immutable.
 /// Pinned by `ExportAsync_RefusesACandidateBackedByAPublishedBaselineDirectory_AndLeavesItByteForByteUnchanged`.
 /// </remarks>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class PanGlossCandidateExportTests : IDisposable
 {
     private readonly string _root =

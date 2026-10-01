@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Commands;
 /// typed Refusal, a completed trace maps to a successful and a failed candidate with the failure explained
 /// in FieldWorks' own words, and a declined parser is a typed Refusal rather than an exception.
 /// </summary>
-[Collection(LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class WordTraceQueryTests : IDisposable
 {
     /// The same real capture <see cref="SIL.Motif.Tests.PanGloss.PanGlossTracerTests"/> pins at the reader level.

@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Cli;
 /// object/ref split — so <c>reopen</c> + re-<c>finalize</c> (an amend) can move that pointer to a new
 /// revision without ever mutating the previous one (ADR 0004, decision 2).
 /// </summary>
-[Collection(TestFixtures.LcmCacheTestCollection.Name)]
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class ReopenAmendTests
 {
     private const string ProductVersion = "1.0";
