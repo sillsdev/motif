@@ -76,16 +76,16 @@ public sealed class OverviewTimingScreenshots
             by == "kind"
                 ?
                 [
-                    new TimingAggregateRow("Morphological rules", 512, 0.64, 3500, 9),
-                    new TimingAggregateRow("Phonological rules", 176, 0.22, 1200, 7),
-                    new TimingAggregateRow("Lexical entries", 72, 0.09, 400, 9),
-                    new TimingAggregateRow("Root lookup", 40, 0.05, 200, 9),
+                    new TimingAggregateRow("morph_rule", 512, 0.64, 3500, 9) { Kind = "morph_rule" },
+                    new TimingAggregateRow("phon_rule", 176, 0.22, 1200, 7) { Kind = "phon_rule" },
+                    new TimingAggregateRow("lex_entry", 72, 0.09, 400, 9) { Kind = "lex_entry" },
+                    new TimingAggregateRow("root_index", 40, 0.05, 200, 9) { Kind = "root_index" },
                 ]
                 :
                 [
-                    new TimingAggregateRow("Subject agreement", 288, 0.36, 2100, 6) { Kind = "Morphological rules" },
-                    new TimingAggregateRow("Past tense li-", 152, 0.19, 900, 3) { Kind = "Morphological rules" },
-                    new TimingAggregateRow("Vowel harmony", 120, 0.15, 800, 7) { Kind = "Phonological rules" },
+                    new TimingAggregateRow("Subject agreement", 288, 0.36, 2100, 6) { Kind = "morph_rule" },
+                    new TimingAggregateRow("Past tense li-", 152, 0.19, 900, 3) { Kind = "morph_rule" },
+                    new TimingAggregateRow("Vowel harmony", 120, 0.15, 800, 7) { Kind = "phon_rule" },
                 ],
             by == "kind" ? [] : [new WordRuleTiming("mwalimu", 180, 900), new WordRuleTiming("hawajafika", 34, 200)])
         {

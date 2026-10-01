@@ -265,6 +265,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(rows < swatches.Length, $"the legend is a list of {rows} rows, not a row that wraps");
                 for (var index = 0; index < swatches.Length; index++)
                     Assert.Same(bar.BrushFor(bar.Rows[index].Kind), swatches[index]);
+                Assert.Equal(swatches.Length, swatches.Distinct().Count());
             }
             finally
             {
