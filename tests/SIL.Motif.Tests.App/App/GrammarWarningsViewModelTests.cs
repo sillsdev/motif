@@ -129,7 +129,8 @@ public sealed class GrammarWarningsViewModelTests
 
         var group = table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind.Name == "Unresolved grammatical info");
         Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
-        Assert.True(group.HasGuidance);
+        Assert.Equal("Choose the entry's grammatical info again in FieldWorks.", table.Rows
+            .Cast<GrammarWarningRowViewModel>().Single(row => row.GroupName == group.Name).Advice);
         Assert.Equal("No form in the lexicon uses this phoneme.",
             table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).Description);
     }

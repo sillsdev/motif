@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -146,7 +147,6 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
                          rows.Sum(row => row.RepeatCount),
                          rows.Select(row => row.HasMeaning ? row.Meaning : row.Description)
                              .FirstOrDefault(text => text.Length > 0),
-                         rows.Select(row => row.Guidance).FirstOrDefault(text => text.Length > 0),
                          rows.Any(row => row.HasMeaning)))
                      .OrderByDescending(group => group.Count)
                      .ThenBy(group => group.Name, StringComparer.CurrentCulture))
@@ -250,7 +250,7 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 {
     public GrammarFindingGroupViewModel(
         string code, string name, GrammarDiagnosticLevel level, int count, string? description = null,
-        string? guidance = null, bool isKnown = false)
+        bool isKnown = false)
     {
         IsKnown = isKnown;
         Code = code;
@@ -258,7 +258,6 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
         Level = level;
         Count = count;
         Description = description;
-        Guidance = guidance;
     }
 
     public string Code { get; }
@@ -274,11 +273,7 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     public int Count { get; }
     /// <summary>What the selected diagnostic code means, when PanGloss supplied a description.</summary>
     public string? Description { get; }
-    /// <summary>What usually helps with this diagnostic code, when PanGloss supplied guidance.</summary>
-    public string? Guidance { get; }
     public bool HasDescription => Description is not null;
-    public bool HasGuidance => Guidance is not null;
-    public bool HasDetails => HasDescription || HasGuidance;
     /// <summary>Whether a finding signals a difference or an informational limit, which chooses its colour.</summary>
     public Verdict Meaning => IsWarning || IsError ? Verdict.Differs : Verdict.Limit;
 
@@ -292,10 +287,16 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 /// <summary>One diagnostic row with its subjects and text ready for display, search, and sorting.</summary>
 /// <remarks>
 /// The row leads with Motif's plain meaning for the warning's code, and keeps the parser's own sentence to show
-/// small beneath it, since that sentence is what an AI Handoff or a bug report quotes.
+/// small beneath it, since that sentence is what an AI Handoff or a bug report quotes. Opened, it shows PanGloss's
+/// advice for the code, whose FieldWorks places read "In Lexicon &gt; Lexicon Edit, …".
 /// </remarks>
 public sealed class GrammarWarningRowViewModel
 {
+    // An area or menu, " > ", a tool, to the clause's end; a lone "." ends it, a command's "..." does not.
+    private static readonly Regex FieldWorksPlace = new(
+        @"\b(?:Lexicon|Grammar|Lists|Words|Texts|Notebook|Tools|File) > [^,;]+?(?=[,;]|(?<!\.)\.(?!\.)|$)",
+        RegexOptions.CultureInvariant);
+
     public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WarningMeanings? meanings = null)
     {
         ArgumentNullException.ThrowIfNull(warning);
@@ -316,7 +317,39 @@ public sealed class GrammarWarningRowViewModel
         Meaning = meaning.Meaning ?? string.Empty;
         KindLabel = table.KindLabel(warning.Subject.FirstOrDefault(part => part.FieldWorksKind is { Length: > 0 })?.FieldWorksKind
             ?? (warning.Subject.Count > 0 ? "Unknown" : null));
+        Places = [.. FieldWorksPlace.Matches(Guidance).Select(match => match.Value.Trim()).Distinct(StringComparer.Ordinal)];
     }
+
+    /// <summary>What to do about this finding in FieldWorks: PanGloss's advice, or why there is none.</summary>
+    public string Advice => HasAdvice ? Guidance.Trim()
+        : IsInfo ? "Nothing to change in FieldWorks: this note says how PanGloss reads your grammar."
+        : "PanGloss gives no advice for this kind of finding.";
+
+    public bool HasAdvice => !string.IsNullOrWhiteSpace(Guidance);
+
+    /// <summary>Whether the row shows the steps that confirm a fix, which a note with nothing to fix does not.</summary>
+    public bool ShowsFixSteps => HasAdvice || !IsInfo;
+
+    /// <summary>Whether PanGloss names no object for this finding, so nothing on the row opens FieldWorks.</summary>
+    public bool NamesNoItem => !HasWhere;
+
+    /// <summary>What a finding that names nothing costs the person reading it.</summary>
+    public string NoItemText =>
+        "PanGloss doesn't name one item in your project for this finding, so Motif can't open it in FieldWorks " +
+        "for you. The parser's line above may still mention a form or letter to search for.";
+
+    /// <summary>The FieldWorks places the advice names, as one sentence saying where to look.</summary>
+    public string WhereToLookText => Places.Count switch
+    {
+        0 => "PanGloss doesn't say where in FieldWorks to look.",
+        _ => $"Look in {JoinPlaces(Places)}{(Places[^1].EndsWith('.') ? string.Empty : ".")}",
+    };
+
+    /// <summary>Each FieldWorks area and tool the advice names, such as "Lexicon &gt; Lexicon Edit", once.</summary>
+    public IReadOnlyList<string> Places { get; }
+
+    private static string JoinPlaces(IReadOnlyList<string> places) => places.Count == 1 ? places[0]
+        : $"{string.Join(", ", places.Take(places.Count - 1))} and {places[^1]}";
 
     /// <summary>The kind's plain title, from Motif's table or, for a code it lacks, the parser's own name.</summary>
     public string GroupName { get; }

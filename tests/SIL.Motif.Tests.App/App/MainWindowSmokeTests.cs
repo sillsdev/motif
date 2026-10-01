@@ -556,11 +556,15 @@ public sealed class MainWindowSmokeTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
-                    block => block.Text == "Restore the missing item in FieldWorks.");
-
                 var grammar = window.GetVisualDescendants().OfType<DataGrid>()
                     .Single(grid => AutomationProperties.GetName(grid) == "Grammar warnings");
+                grammar.SelectedItem = grammarModel.Warnings.Rows.Cast<object>().Single();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    block => block.Text == "Restore the missing item in FieldWorks." && block.IsEffectivelyVisible);
                 AssertSelectableCells(grammar);
                 Assert.Contains(grammar.GetVisualDescendants().OfType<HyperlinkButton>(), link =>
                     link.Classes.Contains("warningObjectLink") && link.IsEffectivelyVisible);
