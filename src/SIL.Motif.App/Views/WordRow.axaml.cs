@@ -190,7 +190,7 @@ public sealed partial class WordRow : UserControl
         _pressedAt = null;
         var moved = e.GetPosition(_body) - start;
         if (Math.Abs(moved.X) > ClickSlop || Math.Abs(moved.Y) > ClickSlop) return;
-        if (_body.GetVisualDescendants().OfType<SelectableTextBlock>().Any(text => text.SelectedText.Length > 0)) return;
+        if (e.Source is SelectableTextBlock { SelectedText.Length: > 0 }) return;
         _body.Focus(NavigationMethod.Pointer);
         Toggle();
     }
