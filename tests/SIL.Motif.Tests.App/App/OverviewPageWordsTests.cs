@@ -30,15 +30,15 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("142 words in 38 s", page.SpeedMain);
+        Assert.Equal("142 words · 38 s total word time", page.SpeedMain);
         Assert.Equal("median 6.4 ms a word · 95th percentile 48 ms", page.SpeedMedian);
         Assert.Equal("3 stopped at the step limit · slowest: mwalimu 700 ms, hawajafika 48 ms", page.SpeedDetails);
     }
 
     [Theory]
-    [InlineData(1, 0.045, "1 word in 45 ms")]
-    [InlineData(9, 0.8, "9 words in 0.8 s")]
-    [InlineData(1318, 612.4, "1,318 words in 612 s")]
+    [InlineData(1, 0.045, "1 word · 45 ms total word time")]
+    [InlineData(9, 0.8, "9 words · 0.8 s total word time")]
+    [InlineData(1318, 612.4, "1,318 words · 612 s total word time")]
     public async Task TheSpeedHeadlineReadsInTheUnitThatSuitsTheTotal(int words, double seconds, string expected)
     {
         var (fake, context) = NewContext();
@@ -267,7 +267,7 @@ public sealed class OverviewPageWordsTests
 
             var shown = VisibleText(page);
 
-            Assert.Contains("142 words in 38 s", shown);
+            Assert.Contains("142 words · 38 s total word time", shown);
             Assert.DoesNotContain(shown, text => text.Contains("cccccccc", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("dddddddd", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("grammar ", StringComparison.Ordinal) &&
