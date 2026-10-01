@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
@@ -11,7 +9,6 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
 {
-    private const string TextIdValue = "explained-word-card";
     private readonly string _root;
 
     private ExplainedWordCardWalkthroughProject(string root, string projectPath, Guid textId)
@@ -35,33 +32,20 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
     public static async Task<ExplainedWordCardWalkthroughProject> CreateAsync(string root)
     {
         WalkthroughTestFiles.DeleteDirectory(root);
-        Directory.CreateDirectory(root);
         try
         {
-            var repository = RepositoryRoot();
-            var sourcePath = Path.Combine(repository, "samples", "synthetic-turkic", "sample.json");
-            var sample = JsonNode.Parse(await File.ReadAllTextAsync(sourcePath))!.AsObject();
-            sample["stems"]!.AsArray().Add(new JsonObject
-            {
-                ["id"] = "explained-ev",
-                ["form"] = "ev",
-                ["partOfSpeech"] = "noun",
-                ["gloss"] = "house",
-            });
-            sample["texts"] = new JsonArray(new JsonObject
-            {
-                ["id"] = TextIdValue,
-                ["title"] = "Round 3 word examples",
-                ["sentences"] = new JsonArray(
-                    JsonValue.Create("geldi"), JsonValue.Create("evler"), JsonValue.Create("kediye"),
-                    JsonValue.Create("adamlarında"), JsonValue.Create("günler"), JsonValue.Create("okullarında")),
-            });
-
-            var specPath = Path.Combine(root, "sample.json");
+            var fixture = BuildOutput.ExplainedWordCardFixtureDirectory;
+            using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(fixture, "fixture.json")));
+            var relativeProjectPath = manifest.RootElement.GetProperty("projectPath").GetString()
+                ?? throw new InvalidDataException("The prepared walkthrough fixture has no project path.");
+            var textId = Guid.Parse(manifest.RootElement.GetProperty("textId").GetString()
+                ?? throw new InvalidDataException("The prepared walkthrough fixture has no Text id."));
             var outputPath = Path.Combine(root, "sample-output");
-            await File.WriteAllTextAsync(specPath, sample.ToJsonString());
-            var build = await BuildProjectAsync(specPath, outputPath);
-            var project = new ExplainedWordCardWalkthroughProject(root, build.ProjectPath, build.TextId);
+            WalkthroughTestFiles.CopyDirectory(fixture, outputPath);
+            var projectPath = Path.GetFullPath(Path.Combine(outputPath, relativeProjectPath));
+            if (!File.Exists(projectPath))
+                throw new FileNotFoundException("The prepared walkthrough project is missing.", projectPath);
+            var project = new ExplainedWordCardWalkthroughProject(root, projectPath, textId);
             project.SetParserBehavior(project.SeedReadings());
             return project;
         }
@@ -73,36 +57,6 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
     }
 
     public void Dispose() => WalkthroughTestFiles.DeleteDirectory(_root);
-
-    private static async Task<(string ProjectPath, Guid TextId)> BuildProjectAsync(string specPath, string outputPath)
-    {
-        var builderPath = Path.Combine(BuildOutput.ProductDirectory,
-            OperatingSystem.IsWindows() ? "SIL.Motif.SampleProjects.exe" : "SIL.Motif.SampleProjects");
-        var start = new ProcessStartInfo(builderPath)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        start.ArgumentList.Add("build");
-        start.ArgumentList.Add(specPath);
-        start.ArgumentList.Add(outputPath);
-        using var process = Process.Start(start)
-            ?? throw new InvalidOperationException("The synthetic word-card project builder did not start.");
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        var standardOutput = await output;
-        var standardError = await error;
-        if (process.ExitCode != 0)
-            throw new InvalidOperationException($"The synthetic word-card project did not build: {standardError}");
-
-        using var result = JsonDocument.Parse(standardOutput);
-        var projectPath = result.RootElement.GetProperty("projectPath").GetString()!;
-        var textId = Guid.Parse(result.RootElement.GetProperty("texts")[0].GetProperty("guid").GetString()!);
-        return (projectPath, textId);
-    }
 
     private IReadOnlyDictionary<string, IReadOnlyList<MorphReference>> SeedReadings()
     {
@@ -223,14 +177,6 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
                 },
             },
         });
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Motif.sln")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate Motif.sln.");
     }
 
     private sealed record MorphReference(IMoForm Form, IMoMorphSynAnalysis Msa, ILexSense Sense);
