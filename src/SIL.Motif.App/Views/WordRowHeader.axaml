@@ -26,7 +26,7 @@
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowRead" />
             </Grid.ColumnDefinitions>
             <views:CopyableTextBlock Classes="wordRowWord wordRowHeading" Text="WORD" />
-            <views:CopyableTextBlock Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS ANALYSIS" />
+            <views:CopyableTextBlock Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS" />
             <views:CopyableTextBlock Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS" />
             <views:CopyableTextBlock Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING" />
             <views:CopyableTextBlock Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
@@ -36,7 +36,7 @@
             <Panel Grid.Column="7" Classes="wordRowRead" />
           </Grid>
         </Border>
-        <views:CopyableTextBlock Grid.Column="2" Classes="wordRowHeading" Text="NEXT" HorizontalAlignment="Right" />
+        <views:CopyableTextBlock Grid.Column="2" Classes="wordRowHeading" Text="NEXT" />
       </Grid>
     </Border>
   </Border>

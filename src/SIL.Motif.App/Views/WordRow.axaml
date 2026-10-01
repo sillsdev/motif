@@ -43,8 +43,8 @@
                            IsVisible="{Binding #Self.StagedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
 
-              <WrapPanel Grid.Column="1" Classes="wordRowFieldWorks" VerticalAlignment="Center">
-                <controls:OpinionMark Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
+              <DockPanel Grid.Column="1" Classes="wordRowFieldWorks" VerticalAlignment="Center">
+                <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
                                       VerticalAlignment="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                                       AutomationProperties.Name="{Binding OpinionLabel}" />
                 <ItemsControl ItemsSource="{Binding FieldWorksMorphemes}">
@@ -64,11 +64,12 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </WrapPanel>
+              </DockPanel>
 
-              <WrapPanel Grid.Column="2" Classes="wordRowPanGloss" VerticalAlignment="Center">
-                <views:MarkChip Mark="{Binding OutcomeMark}" Text="{Binding OutcomeLabel}" Compact="True"
-                                Classes="wordRowOutcome" VerticalAlignment="Top" />
+              <DockPanel Grid.Column="2" Classes="wordRowPanGloss" VerticalAlignment="Center">
+                <views:MarkChip DockPanel.Dock="Left" Mark="{Binding OutcomeMark}" Text="{Binding OutcomeLabel}"
+                                Compact="True" Classes="wordRowOutcome" VerticalAlignment="Top"
+                                HorizontalAlignment="Left" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -86,7 +87,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </WrapPanel>
+              </DockPanel>
 
               <Panel Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center">
                 <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
