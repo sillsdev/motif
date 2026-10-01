@@ -13,6 +13,17 @@ internal static class WalkthroughTestFiles
     internal static string DiagnosticsDirectory { get; } =
         Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs", ProcessFolder);
 
+    internal static void CopyDirectory(string source, string destination)
+    {
+        if (!Directory.Exists(source))
+            throw new DirectoryNotFoundException("The prepared walkthrough fixture is missing: " + source);
+        Directory.CreateDirectory(destination);
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)));
+    }
+
     internal static void DeleteDirectory(string path)
     {
         try

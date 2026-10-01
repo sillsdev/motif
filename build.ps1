@@ -1,6 +1,6 @@
 <#
   .SYNOPSIS
-  The build gate: comment hygiene, then design-token hygiene, then compile. Stops at the first step that fails.
+  The build gate: hygiene, then solution compile. Stops at the first failure.
 
   .DESCRIPTION
   Use this instead of a bare `dotnet build`. The difference is the hygiene gate, and the reason it is

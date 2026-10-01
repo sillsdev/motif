@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Threading;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
@@ -121,23 +122,10 @@ public sealed class MachinePanGlossQueueTests
         Directory.CreateDirectory(scratch);
         var readyFile = Path.Combine(scratch, "ready");
         var releaseFile = Path.Combine(scratch, "release");
-        var childStart = new ProcessStartInfo("dotnet")
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        childStart.ArgumentList.Add("test");
-        childStart.ArgumentList.Add(Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
-            "SIL.Motif.Tests.Worker.csproj"));
-        childStart.ArgumentList.Add("--configuration");
-        childStart.ArgumentList.Add(new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name
-            ?? throw new InvalidOperationException("The test configuration directory is missing."));
-        childStart.ArgumentList.Add("--no-build");
-        childStart.ArgumentList.Add("--no-restore");
-        childStart.ArgumentList.Add("--filter");
-        childStart.ArgumentList.Add("FullyQualifiedName=SIL.Motif.Tests.Worker.MachinePanGlossQueueTests.RunAsync_AcrossProcessesWaitsUntilAMachineSlotIsReleased");
+        var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
+            "SIL.Motif.Tests.Worker.csproj");
+        var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
+            "FullyQualifiedName=SIL.Motif.Tests.Worker.MachinePanGlossQueueTests.RunAsync_AcrossProcessesWaitsUntilAMachineSlotIsReleased");
         childStart.Environment[ChildSlotVariable] = slotNames[0];
         childStart.Environment[ChildReadyPathVariable] = readyFile;
         childStart.Environment[ChildReleasePathVariable] = releaseFile;

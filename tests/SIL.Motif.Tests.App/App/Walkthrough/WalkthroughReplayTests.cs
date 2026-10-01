@@ -151,8 +151,8 @@ public sealed class AnnotateControlWalkthroughReplayTests(
 }
 
 [Collection(LcmCacheTestCollection.Name)]
-[AuthoredWalkthroughId("explained-word-card")]
 [Trait("MotifTestLevel", "System")]
+[AuthoredWalkthroughId("explained-word-card")]
 public sealed class ExplainedWordCardWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
 {

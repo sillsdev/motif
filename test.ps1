@@ -196,7 +196,7 @@ if ($All) {
     $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
     if (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf) {
         Write-Step 'prepare all-level test artifacts'
-        & $prepareTestArtifacts
+        & $prepareTestArtifacts -Configuration $Configuration
         if ($LASTEXITCODE -ne 0) {
             throw "Prepare-TestArtifacts.ps1 failed with exit code $LASTEXITCODE."
         }

@@ -1,29 +1,26 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Integration;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 [Trait("MotifTestLevel", "System")]
-public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, ITestOutputHelper output)
+public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
 {
-    private static readonly TimeSpan PublishBound = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ProcessCleanupBound = TimeSpan.FromSeconds(10);
 
     [Fact]
     public async Task PortablePackageRunsCliAndSiblingWorkerWithTheRuntimeLibrary()
     {
-        var workspace = Path.Combine(Path.GetTempPath(), "motif-portable-worker-" + Guid.NewGuid().ToString("N"));
-        var workspacePath = Path.GetFullPath(workspace);
+        var workspacePath = Path.GetFullPath(Path.Combine(Path.GetTempPath(),
+            "motif-portable-worker-" + Guid.NewGuid().ToString("N")));
         var package = Path.Combine(workspacePath, "package");
         var suffix = OperatingSystem.IsWindows() ? ".exe" : "";
         var workerHost = Path.Combine(package, "SIL.Motif.Worker" + suffix);
@@ -34,71 +31,22 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
             "SIL.Motif.Worker.deps.json",
             "SIL.Motif.Worker.runtimeconfig.json",
         };
-        var sharedWorkerAssets = CaptureSharedWorkerAssets(workerAssets);
         var ownerNamespace = "portable-" + Guid.NewGuid().ToString("N");
         Exception? testFailure = null;
 
         try
         {
             Directory.CreateDirectory(workspacePath);
-            var workerPublish = Path.Combine(workspacePath, "worker-publish");
-            var intermediateRoot = Path.Combine(workspacePath, "intermediate");
-            var motifBinRoot = Path.Combine(workspacePath, "build") + Path.DirectorySeparatorChar;
-            Directory.CreateDirectory(package);
-
+            CopyDirectory(BuildOutput.RequirePreparedDirectory(BuildOutput.PortableWorkerPackageDirectory,
+                "The portable Worker package"), package);
+            var validationPath = BuildOutput.RequirePreparedFile(BuildOutput.PortableWorkerPackageValidation,
+                "Portable Worker package validation");
+            AssertPortablePackageValidation(validationPath);
+            foreach (var asset in workerAssets)
+                Assert.True(File.Exists(Path.Combine(package, asset)), "The portable package is missing " + asset + ".");
             var repoRoot = FindRepoRoot();
             var rid = RuntimeIdentifier();
-            var totalPublishStopwatch = Stopwatch.StartNew();
-            try
-            {
-                await PublishMeasuredAsync(output, "App",
-                    Path.Combine(repoRoot, "src", "SIL.Motif.App", "SIL.Motif.App.csproj"),
-                    package, rid, intermediateRoot, motifBinRoot);
-                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "App publish");
-                Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
-                    "The App publish did not include the reusable Worker runtime library.");
-                await PublishMeasuredAsync(output, "CLI",
-                    Path.Combine(repoRoot, "src", "SIL.Motif.Cli", "SIL.Motif.Cli.csproj"),
-                    package, rid, intermediateRoot, motifBinRoot);
-                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "CLI publish");
-                Assert.True(File.Exists(Path.Combine(package, "SIL.Motif.Worker.Runtime.dll")),
-                    "The CLI publish did not include the reusable Worker runtime library.");
-                var icuPayload = ReadIcuPayload(repoRoot, rid);
-                if (!OperatingSystem.IsWindows()) StageIcuPayload(package, icuPayload);
-                AssertIcuPayload(package, icuPayload);
-                await PublishMeasuredAsync(output, "Worker",
-                    Path.Combine(repoRoot, "src", "SIL.Motif.Worker", "SIL.Motif.Worker.csproj"),
-                    workerPublish, rid, intermediateRoot, motifBinRoot);
-                AssertSharedWorkerAssetsUnchanged(sharedWorkerAssets, "Worker publish");
-            }
-            finally
-            {
-                totalPublishStopwatch.Stop();
-                output.WriteLine("All portable publishes elapsed: " + totalPublishStopwatch.Elapsed);
-            }
-
-            foreach (var frontEndExcludedAsset in new[]
-            {
-                "SIL.Motif.Worker" + suffix,
-                "SIL.Motif.Worker.dll",
-                "SIL.Motif.Worker.deps.json",
-                "SIL.Motif.Worker.runtimeconfig.json",
-            })
-                Assert.False(File.Exists(Path.Combine(package, frontEndExcludedAsset)),
-                    "A front-end publish unexpectedly included " + frontEndExcludedAsset + ".");
-            Assert.True(File.Exists(Path.Combine(workerPublish, "SIL.Motif.Worker.Runtime.dll")),
-                "The Worker publish did not include its runtime library dependency.");
-            foreach (var asset in workerAssets)
-            {
-                var source = Path.Combine(workerPublish, asset);
-                Assert.True(File.Exists(source), "The Worker publish is missing " + asset + ".");
-                var destination = Path.Combine(package, asset);
-                File.Copy(source, destination, overwrite: true);
-                if (asset == "SIL.Motif.Worker" + suffix && !OperatingSystem.IsWindows())
-                    File.SetUnixFileMode(destination, UnixFileMode.UserRead | UnixFileMode.UserWrite |
-                        UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
-                        UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
-            }
+            AssertIcuPayload(package, ReadIcuPayload(repoRoot, rid));
 
             var appHost = Path.Combine(package, "SIL.Motif.App" + suffix);
             var cliHost = Path.Combine(package, "motif" + suffix);
@@ -136,70 +84,6 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
             catch (Exception exception) { cleanupFailure ??= exception; }
             if (testFailure is null && cleanupFailure is not null)
                 throw cleanupFailure;
-        }
-    }
-
-    private static async Task PublishAsync(string projectPath, string outputPath, string rid,
-        string intermediateRoot, string motifBinRoot)
-    {
-        Directory.CreateDirectory(outputPath);
-        var start = new ProcessStartInfo("dotnet")
-        {
-            WorkingDirectory = FindRepoRoot(),
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        var arguments = new List<string>
-        {
-            "publish", projectPath, "--configuration", "Release", "--runtime", rid,
-            "--self-contained", "true", "--output", outputPath,
-            "-p:MotifPortablePackage=true", "--nologo",
-        };
-        arguments.Add("-p:MotifBinRoot=" + motifBinRoot);
-        foreach (var argument in arguments)
-            start.ArgumentList.Add(argument);
-        start.Environment["MOTIF_PACKAGE_INTERMEDIATE_ROOT"] = intermediateRoot;
-        start.Environment["MSBUILDDISABLENODEREUSE"] = "1";
-        start.Environment["UseSharedCompilation"] = "false";
-        start.Environment["AVALONIA_TELEMETRY_OPTOUT"] = "1";
-
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("dotnet publish did not start.");
-        var standardOutput = process.StandardOutput.ReadToEndAsync();
-        var standardError = process.StandardError.ReadToEndAsync();
-        try
-        {
-            await process.WaitForExitAsync().WaitAsync(PublishBound);
-        }
-        catch (TimeoutException)
-        {
-            var cleanup = await StopProcessAndDrainAsync(process, standardOutput, standardError);
-            throw new Xunit.Sdk.XunitException(
-                "Portable publish exceeded " + PublishBound + "." + Environment.NewLine +
-                cleanup.StandardOutput + Environment.NewLine + cleanup.StandardError +
-                (cleanup.Exited ? "" : Environment.NewLine + "The publish process did not exit after termination."));
-        }
-
-        var output = await standardOutput;
-        var error = await standardError;
-        Assert.True(process.ExitCode == 0,
-            "dotnet publish failed for " + Path.GetFileName(projectPath) + "." + Environment.NewLine +
-            output + Environment.NewLine + error);
-    }
-
-    private static async Task PublishMeasuredAsync(ITestOutputHelper output, string publishName,
-        string projectPath, string outputPath, string rid, string intermediateRoot, string motifBinRoot)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        try
-        {
-            await PublishAsync(projectPath, outputPath, rid, intermediateRoot, motifBinRoot);
-        }
-        finally
-        {
-            stopwatch.Stop();
-            output.WriteLine(publishName + " publish elapsed: " + stopwatch.Elapsed);
         }
     }
 
@@ -419,26 +303,49 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
         ? Path.GetFileNameWithoutExtension(executable)
         : Path.GetFileName(executable);
 
-    private static IReadOnlyDictionary<string, string> CaptureSharedWorkerAssets(string[] assets)
+    private static void AssertPortablePackageValidation(string validationPath)
     {
-        var fingerprints = new Dictionary<string, string>();
-        foreach (var asset in assets)
+        using var document = JsonDocument.Parse(File.ReadAllText(validationPath));
+        var root = document.RootElement;
+        Assert.Equal(RuntimeIdentifier(), root.GetProperty("runtimeIdentifier").GetString());
+
+        var frontEndPublishes = root.GetProperty("frontEndPublishes").EnumerateArray().ToArray();
+        Assert.Equal(new[] { "App", "CLI" }, frontEndPublishes
+            .Select(publish => publish.GetProperty("name").GetString()).ToArray());
+        Assert.All(frontEndPublishes, publish =>
         {
-            var path = Path.Combine(BuildOutput.ProductDirectory, asset);
-            Assert.True(File.Exists(path), "The shared build is missing Worker asset " + asset + " before publish.");
-            fingerprints[asset] = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
-        }
-        return fingerprints;
+            Assert.True(publish.GetProperty("workerRuntimeLibraryIncluded").GetBoolean());
+            Assert.True(publish.GetProperty("workerHostAssetsExcluded").GetBoolean());
+            Assert.True(publish.GetProperty("sharedWorkerAssetsUnchanged").GetBoolean());
+        });
+
+        var workerPublish = root.GetProperty("workerPublish");
+        Assert.True(workerPublish.GetProperty("workerRuntimeLibraryIncluded").GetBoolean());
+        Assert.True(workerPublish.GetProperty("workerHostAssetsIncluded").GetBoolean());
+        Assert.True(workerPublish.GetProperty("sharedWorkerAssetsUnchanged").GetBoolean());
+
+        var before = root.GetProperty("sharedWorkerAssetsBefore").EnumerateObject()
+            .Select(asset => new KeyValuePair<string, string>(asset.Name, asset.Value.GetString()!))
+            .OrderBy(asset => asset.Key, StringComparer.Ordinal).ToArray();
+        var after = root.GetProperty("sharedWorkerAssetsAfter").EnumerateObject()
+            .Select(asset => new KeyValuePair<string, string>(asset.Name, asset.Value.GetString()!))
+            .OrderBy(asset => asset.Key, StringComparer.Ordinal).ToArray();
+        Assert.NotEmpty(before);
+        Assert.Equal(before, after);
     }
 
-    private static void AssertSharedWorkerAssetsUnchanged(IReadOnlyDictionary<string, string> fingerprints,
-        string publishName)
+    private static void CopyDirectory(string source, string destination)
     {
-        foreach (var (asset, fingerprint) in fingerprints)
+        Directory.CreateDirectory(destination);
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
-            var path = Path.Combine(BuildOutput.ProductDirectory, asset);
-            Assert.True(File.Exists(path), "The " + publishName + " removed shared Worker asset " + asset + ".");
-            Assert.Equal(fingerprint, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))));
+            var relative = Path.GetRelativePath(source, directory);
+            Directory.CreateDirectory(Path.Combine(destination, relative));
+        }
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(source, file);
+            File.Copy(file, Path.Combine(destination, relative));
         }
     }
 
@@ -457,25 +364,6 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects, 
         Assert.NotEmpty(libraries);
         Assert.All(libraries, library => Assert.Equal(Path.GetFileName(library), library));
         return new IcuPayload(outputDirectory!, libraries);
-    }
-
-    private static void StageIcuPayload(string package, IcuPayload payload)
-    {
-        var sourceDirectories = new List<string>();
-        var configuredStage = Environment.GetEnvironmentVariable("MOTIF_SIL_ICU_STAGE");
-        if (!string.IsNullOrWhiteSpace(configuredStage)) sourceDirectories.Add(configuredStage);
-        sourceDirectories.Add(Path.Combine(BuildOutput.ProductDirectory, payload.NativeOutputDirectory));
-        sourceDirectories.Add(Path.Combine(BuildOutput.ProductDirectory, "tests", payload.NativeOutputDirectory));
-
-        var source = sourceDirectories.FirstOrDefault(directory => payload.Libraries.All(library =>
-            File.Exists(Path.Combine(directory, library))));
-        Assert.True(source is not null,
-            "No staged SIL ICU payload contains every manifest library: " + string.Join(", ", sourceDirectories));
-
-        var destination = Path.Combine(package, payload.NativeOutputDirectory);
-        Directory.CreateDirectory(destination);
-        foreach (var library in payload.Libraries)
-            File.Copy(Path.Combine(source!, library), Path.Combine(destination, library), overwrite: true);
     }
 
     private static void AssertIcuPayload(string package, IcuPayload payload)
