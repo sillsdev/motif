@@ -18,7 +18,8 @@ internal sealed record CommandContract(
     object? Parameter,
     bool CanExecute,
     string SideEffectOwner,
-    string? AliasOf = null)
+    string? AliasOf = null,
+    Func<WorkspaceShellViewModel, object?>? ParameterFactory = null)
 {
     public string Key => $"{OwnerType.Name}.{PropertyName}";
 }
@@ -91,8 +92,42 @@ internal static class CommandContractCases
             "AssessViewModelTests.CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode"),
         new(typeof(AssessViewModel), nameof(AssessViewModel.CancelCommand), null, null, false,
             "AssessViewModelTests.CancellingWhileRunningReachesCancelledWithTheCommandsOwnRefusalCode"),
+        new(typeof(AssessWordsViewModel), nameof(AssessWordsViewModel.SetFilterCommand),
+            typeof(ResultsWordFilter), ResultsWordFilter.All, true,
+            "AssessWordsViewModelTests.EachFilterChipIsItsOwnBucketNotAPartitionOfTheOthers"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.ClearSelectionCommand), null, null, true,
+            "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.FocusFixFirstCommand),
+            typeof(CompareFixFirstViewModel), null, true,
+            "CompareViewModelTests.FocusingAFixFirstWordMatchesTheExactForm"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.HandOffCommand), null, null, false,
+            "CompareActionsTests.HandingOffPassesTheListedWords"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.OpenWordCommand),
+            typeof(CompareWordViewModel), null, true,
+            "CompareViewModelTests.OpeningAListedWordHandsItToTheWordsView"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.ProposeCommand), typeof(string),
+            "incorrect-spelling", false, "CompareActionsTests.MarkingCheckedSpellingsRecordsOneActionForAllWords"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.RerunCommand), null, null, false,
+            "CompareActionsTests.RerunningHandsTheWordsAndTheLongerLimitToItsOwner"),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.SelectColumnCommand),
+            typeof(CompareColumnViewModel), null, true,
+            "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt",
+            ParameterFactory: workspace => workspace.Context.Assess.Compare.Columns[0]),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.SelectPresetCommand),
+            typeof(ComparePresetViewModel), null, true,
+            "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt",
+            ParameterFactory: workspace => workspace.Context.Assess.Compare.Presets[0]),
+        new(typeof(CompareViewModel), nameof(CompareViewModel.SelectRowCommand),
+            typeof(CompareRowViewModel), null, true,
+            "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt",
+            ParameterFactory: workspace => workspace.Context.Assess.Compare.Rows[0]),
         new(typeof(ChangesViewModel), nameof(ChangesViewModel.RemoveCommand), typeof(ChangeViewModel), null,
             true, "ReviewUndoRealClientTests.RemoveAnalysisStagesAsRemovedAndUndoUsesTheRealClient"),
+        new(typeof(DifferenceViewModel), nameof(DifferenceViewModel.ClearCommand), null, null, true,
+            "DifferenceViewModelTests.ARerunIsComparedWithTheRunItFoldedInto"),
+        new(typeof(DifferenceViewModel), nameof(DifferenceViewModel.OpenWordCommand),
+            typeof(MovedWordViewModel), null, true,
+            "DifferenceViewModelTests.ChoosingAMoveOutlinesItsCellsInBothMatrices"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.SkipCommand), null, null, true,
             "WorkspaceShellViewModelTests.SkippingFirstSetupDoesNotSaveADefaultSelection"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.BackCommand), null, null, false,
@@ -101,6 +136,17 @@ internal static class CommandContractCases
             "WorkspaceShellViewModelTests.FirstRunCannotStartBeforeTheLastSetupStep"),
         new(typeof(SetupViewModel), nameof(SetupViewModel.FinishCommand), null, null, false,
             "WorkspaceShellViewModelTests.FirstRunSavesTheSelectionAndUsesItWithTheChosenStepLimit"),
+        new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.CancelCommand), null, null, false,
+            "TraceWordViewModelTests.ChoosingAnotherWordCancelsTheTraceStillRunning"),
+        new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SelectStopGroupCommand),
+            typeof(TraceStopGroupViewModel), null, true,
+            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThemClosestFirstAndFilterable"),
+        new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SetViewCommand), typeof(TraceView),
+            TraceView.Candidates, true, "TraceWordViewModelTests.SetWordFillsTheBoxWithoutStartingATrace"),
+        new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.ShowEveryAttemptCommand), null, null, true,
+            "TraceWordViewModelTests.FailedAttemptsAreGroupedByTheRuleThatStoppedThemClosestFirstAndFilterable"),
+        new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.TryCommand), null, null, false,
+            "TraceWordViewModelTests.WithNoProjectTheCommandCannotRun"),
     ];
 
     public static (FakeCommandClient Client, WorkspaceShellViewModel Workspace) CreateWorkspace()
@@ -130,7 +176,12 @@ internal static class CommandContractCases
             workspace.Context.Changes,
             workspace.Context.Selection,
             workspace.Context.Setup!,
-        };
+        }
+            .Concat(workspace.Pages)
+            .Append(workspace.Context.Assess.Compare)
+            .Append(workspace.Context.Assess.Words)
+            .Append(workspace.Context.Assess.Difference)
+            .Append(workspace.Context.Assess.Trace);
 
         return owners.SelectMany(owner => owner.GetType()
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)

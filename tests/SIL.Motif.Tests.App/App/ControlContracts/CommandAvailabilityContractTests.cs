@@ -30,7 +30,10 @@ public sealed class CommandAvailabilityContractTests
                 var contract = contracts[command.Key];
                 Assert.Equal(contract.ParameterType, command.ParameterType);
                 Assert.False(string.IsNullOrWhiteSpace(contract.SideEffectOwner));
-                var canExecute = command.Command.CanExecute(contract.Parameter);
+                var parameter = contract.ParameterFactory?.Invoke(workspace) ?? contract.Parameter;
+                Assert.True(parameter is null || contract.ParameterType?.IsInstanceOfType(parameter) == true,
+                    $"{command.Key} has an untyped {parameter?.GetType().Name ?? "null"} parameter.");
+                var canExecute = command.Command.CanExecute(parameter);
                 Assert.True(contract.CanExecute == canExecute,
                     $"{command.Key} expected CanExecute={contract.CanExecute}, got {canExecute}.");
                 if (contract.AliasOf is { } alias)
