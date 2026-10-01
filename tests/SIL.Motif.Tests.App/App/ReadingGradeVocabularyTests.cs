@@ -11,17 +11,17 @@ namespace SIL.Motif.Tests.App;
 public sealed class ReadingGradeVocabularyTests
 {
     [Fact]
-    public void ARejectedReadingReadsRejectedInAnalyzeTexts()
+    public void ADisapprovedReadingReadsDisapprovedInAnalyzeTexts()
     {
         var inText = new ResultsReadingViewModel("kitabu ‘book’", ReadingGrade.Disapproved, isStoredHere: false);
 
-        Assert.Equal("Rejected", inText.GradeLabel);
+        Assert.Equal("Disapproved", inText.GradeLabel);
     }
 
     [Theory]
     [InlineData(ReadingGrade.Approved, "Approved")]
-    [InlineData(ReadingGrade.Disapproved, "Rejected")]
-    [InlineData(ReadingGrade.Candidate, "Candidate")]
+    [InlineData(ReadingGrade.Disapproved, "Disapproved")]
+    [InlineData(ReadingGrade.Candidate, "Unknown")]
     [InlineData(ReadingGrade.NoOpinion, "Not present")]
     [InlineData(null, "")]
     public void EveryGradeHasOneWindowLabel(string? grade, string label) =>

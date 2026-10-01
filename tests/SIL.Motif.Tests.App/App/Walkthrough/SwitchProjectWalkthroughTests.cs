@@ -45,7 +45,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
 
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
 
-            walkthrough.Click("Cancel the running Assessment");
+            walkthrough.Click("Cancel parsing");
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);

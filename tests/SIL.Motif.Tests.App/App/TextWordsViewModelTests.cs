@@ -131,9 +131,9 @@ public sealed class TextWordsViewModelTests
     }
 
     [Theory]
-    [InlineData(2, 0, false, WordProjectStatus.Candidate, "Candidate")]
-    [InlineData(0, 1, false, WordProjectStatus.Rejected, "Rejected")]
-    [InlineData(1, 1, false, WordProjectStatus.Candidate, "Candidate")]
+    [InlineData(2, 0, false, WordProjectStatus.Candidate, "Unknown")]
+    [InlineData(0, 1, false, WordProjectStatus.Rejected, "Disapproved")]
+    [InlineData(1, 1, false, WordProjectStatus.Candidate, "Unknown")]
     [InlineData(1, 0, true, WordProjectStatus.IncorrectSpelling, "Incorrect spelling")]
     public async Task AWordWithoutAnApprovedAnalysisTakesTheBestStandingItHas(
         int candidates, int rejected, bool incorrectSpelling, WordProjectStatus expected, string label)

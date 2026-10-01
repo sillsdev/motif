@@ -76,7 +76,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             OccurrenceVerdict.NoParse => "no parse",
             OccurrenceVerdict.Limit => "parser stopped at a limit",
             _ when result?.Outcome == "skipped" => "skipped: a character the grammar does not define",
-            _ => "not in this Assessment",
+            _ => "not in the last parse",
         };
         FieldWorksAnalyses = Marking.FieldWorksAnalyses
             .Select(analysis => new FieldWorksAnalysisDisplayViewModel(analysis)).ToArray();
@@ -324,11 +324,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         _ => ViewModels.Verdict.Limit,
     };
 
-    /// <summary>Whether the parser also produced a reading the project has rejected for this word.</summary>
+    /// <summary>Whether the parser also produced a reading FieldWorks has disapproved for this word.</summary>
     public bool HasDisapprovedReading => Readings.Any(reading => reading.IsDisapproved);
 
     /// <summary>What the disapproved marker says when a reader stops on it.</summary>
-    public string DisapprovedTip => $"The parser also produced a reading the project has rejected for {Text}.";
+    public string DisapprovedTip => $"The parser also produced a reading FieldWorks has disapproved for {Text}.";
 
     /// <summary>Whether the active filter passes over this word, so it recedes rather than disappears.</summary>
     [ObservableProperty]

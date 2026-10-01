@@ -13,6 +13,9 @@
     A size or gap only one component uses belongs in that component's file, not here.
     Views not yet converted still name Semi keys and literals; they are converted page by page.
 
+  Semi's solid primary button (ButtonSolidPrimary*) is too light in the dark theme to carry its white label, so both
+  theme dictionaries replace those brushes with primitives. No view or component names them; Semi's theme does.
+
   Theme brushes and shadows:
     Intent.Surface                the window's own background (Semi's Background0)
     Intent.Surface.Subtle         a panel set just apart from the window, such as the sidebar
@@ -36,6 +39,7 @@
     Intent.Primary                a new reading, and an active filter (Semi's Primary)
     Intent.Primary.Fill           behind Intent.Primary (Semi's PrimaryLight)
     Intent.Link                   several readings (Semi's Link)
+    Intent.Link.Text              small text in the Link colour on a tinted fill
     Intent.Success                agrees: bars, underlines, glyphs (Semi's Success)
     Intent.Success.Fill           behind agreeing text (Semi's SuccessLight)
     Intent.Success.Text           small text saying all is well, such as "Current"
@@ -44,6 +48,7 @@
     Intent.Warning.Text           small text saying something is out of date
     Intent.Danger                 differs, and errors (Semi's Danger)
     Intent.Danger.Fill            behind differing text (Semi's DangerLight)
+    Intent.Danger.Text            small text saying something differs, on Intent.Danger.Fill
     Intent.Unread.Text            readable label for an Unread occurrence
     Intent.Unread.Fill            background behind the Unread label
     Intent.Approved.Fill          behind an approved analysis (Motif's cyan palette)
@@ -82,6 +87,11 @@
     Intent.Agreement.Suggestion.Edge the edge of a suggested parser reading
     Intent.Parser.NoReading       a completed search with no parser reading
     Intent.Parser.SearchCapped    a search that stopped at its step limit
+    Intent.Chart.Series1          a chart's first part; Series2 to Series4 follow it, Other takes the rest
+    Intent.Chart.Series2          a chart's second part
+    Intent.Chart.Series3          a chart's third part
+    Intent.Chart.Series4          a chart's fourth part
+    Intent.Chart.Other            what a chart groups as everything else
 
   Spacing (double, for Spacing, and for Width and Height of gaps):
     Intent.Space.None             0
@@ -141,6 +151,14 @@
     Emphasis.Text on Emphasis.Fill: 5.00:1 light, 5.08:1 dark
     Success.Text on Surface: 6.60:1 light, 9.41:1 dark
     Warning.Text on Surface: 5.93:1 light, 9.48:1 dark
+    white on ButtonSolidPrimaryBackground: 5.00:1 light, 5.08:1 dark
+    white on ButtonSolidPrimaryPointeroverBackground: 5.08:1 light, 7.17:1 dark
+    white on ButtonSolidPrimaryPressedBackground: 7.17:1 light, 8.20:1 dark
+    Link.Text on Surface.Neutral: 6.11:1 light, 6.50:1 dark
+
+  WCAG contrast for a chart's parts on Surface, light then dark (AA needs 3:1):
+    Series1 6.14:1, 8.07:1 · Series2 5.43:1, 7.96:1 · Series3 4.37:1, 9.41:1
+    Series4 4.28:1, 9.48:1 · Other 4.82:1, 3.75:1
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -210,6 +228,13 @@
       <StaticResource x:Key="Intent.Primary" ResourceKey="SemiColorPrimary" />
       <StaticResource x:Key="Intent.Primary.Fill" ResourceKey="SemiColorPrimaryLight" />
       <StaticResource x:Key="Intent.Link" ResourceKey="SemiColorLink" />
+      <SolidColorBrush x:Key="Intent.Link.Text" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryBackground" Color="{StaticResource Primitive.Color.Blue500}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryBorderBrush" Color="{StaticResource Primitive.Color.Blue500}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPointeroverBackground" Color="{StaticResource Primitive.Color.Blue600}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPointeroverBorderBrush" Color="{StaticResource Primitive.Color.Blue600}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPressedBackground" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPressedBorderBrush" Color="{StaticResource Primitive.Color.Blue700}" />
       <StaticResource x:Key="Intent.Success" ResourceKey="SemiColorSuccess" />
       <StaticResource x:Key="Intent.Success.Fill" ResourceKey="SemiColorSuccessLight" />
       <SolidColorBrush x:Key="Intent.Success.Text" Color="{StaticResource Primitive.Color.Green800}" />
@@ -220,6 +245,7 @@
       <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet25}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
+      <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose950}" />
       <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan50}" />
       <SolidColorBrush x:Key="Intent.Approved.Text" Color="{StaticResource Primitive.Color.Cyan800}" />
       <SolidColorBrush x:Key="Intent.Approved.Accent" Color="{StaticResource Primitive.Color.Cyan500}" />
@@ -256,6 +282,11 @@
       <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose950}" />
       <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber950}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue650}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet600}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green700}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber700}" />
+      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
@@ -280,6 +311,13 @@
       <StaticResource x:Key="Intent.Primary" ResourceKey="SemiColorPrimary" />
       <StaticResource x:Key="Intent.Primary.Fill" ResourceKey="SemiColorPrimaryLight" />
       <StaticResource x:Key="Intent.Link" ResourceKey="SemiColorLink" />
+      <SolidColorBrush x:Key="Intent.Link.Text" Color="{StaticResource Primitive.Color.Blue350}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryBackground" Color="{StaticResource Primitive.Color.Blue600}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryBorderBrush" Color="{StaticResource Primitive.Color.Blue600}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPointeroverBackground" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPointeroverBorderBrush" Color="{StaticResource Primitive.Color.Blue700}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPressedBackground" Color="{StaticResource Primitive.Color.Blue775}" />
+      <SolidColorBrush x:Key="ButtonSolidPrimaryPressedBorderBrush" Color="{StaticResource Primitive.Color.Blue775}" />
       <StaticResource x:Key="Intent.Success" ResourceKey="SemiColorSuccess" />
       <StaticResource x:Key="Intent.Success.Fill" ResourceKey="SemiColorSuccessLight" />
       <SolidColorBrush x:Key="Intent.Success.Text" Color="{StaticResource Primitive.Color.Green300}" />
@@ -290,6 +328,7 @@
       <SolidColorBrush x:Key="Intent.Unread.Fill" Color="{StaticResource Primitive.Color.Violet975}" />
       <StaticResource x:Key="Intent.Danger" ResourceKey="SemiColorDanger" />
       <StaticResource x:Key="Intent.Danger.Fill" ResourceKey="SemiColorDangerLight" />
+      <SolidColorBrush x:Key="Intent.Danger.Text" Color="{StaticResource Primitive.Color.Rose200}" />
       <SolidColorBrush x:Key="Intent.Approved.Fill" Color="{StaticResource Primitive.Color.Cyan900}" />
       <SolidColorBrush x:Key="Intent.Approved.Text" Color="{StaticResource Primitive.Color.Cyan200}" />
       <SolidColorBrush x:Key="Intent.Approved.Accent" Color="{StaticResource Primitive.Color.Cyan400}" />
@@ -326,6 +365,11 @@
       <SolidColorBrush x:Key="Intent.Agreement.Suggestion.Edge" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Parser.NoReading" Color="{StaticResource Primitive.Color.Rose200}" />
       <SolidColorBrush x:Key="Intent.Parser.SearchCapped" Color="{StaticResource Primitive.Color.Amber200}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series1" Color="{StaticResource Primitive.Color.Blue350}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series2" Color="{StaticResource Primitive.Color.Violet300}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series3" Color="{StaticResource Primitive.Color.Green300}" />
+      <SolidColorBrush x:Key="Intent.Chart.Series4" Color="{StaticResource Primitive.Color.Amber300}" />
+      <SolidColorBrush x:Key="Intent.Chart.Other" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

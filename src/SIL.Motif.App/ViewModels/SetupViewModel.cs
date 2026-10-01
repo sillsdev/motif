@@ -105,7 +105,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             if (estimate is null) return "No step limit. Motif will not apply a per-word time limit.";
             var source = estimate.IsTypicalMachine
                 ? " The estimate uses a typical machine."
-                : " The estimate uses the latest Assessment's parser statistics.";
+                : " The estimate uses the parser statistics from the last parse.";
             if (estimate.PerWordTimeLimitMs is not { } limitMs || limitMs > int.MaxValue)
                 return $"At this limit a word takes up to about {FormatEstimate(estimate.EstimatedMilliseconds)}. " +
                     $"Motif will not apply a per-word time limit.{source}";
@@ -179,8 +179,8 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
         ? "Use this Selection as the project default" : "Ready for the first run?";
 
     public string FinishDescription => IsEditingExistingSelection
-        ? "This will be the project default. The next Assessment will use it."
-        : "Motif will save this Selection with the project, then assess the stored Default Selection.";
+        ? "This will be the project default. Parse all words will use it next time."
+        : "Motif will save this Selection with the project, then parse all its words.";
 
     public IAsyncRelayCommand SkipCommand { get; }
     public IRelayCommand BackCommand { get; }

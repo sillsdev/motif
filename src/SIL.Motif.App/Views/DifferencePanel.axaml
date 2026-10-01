@@ -131,7 +131,7 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <views:CopyableTextBlock Text="Reading a move" FontWeight="SemiBold" />
           <views:CopyableTextBlock FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap"
-                                   Text="Regressions come first: a word that now breaks a decision, or lost its analysis. A word leaving a timeout is settled, never a regression, unless it settles as a violation." />
+                                   Text="Regressions come first: a word that now breaks a decision, or lost its analysis. A word that no longer runs out of time is settled, never a regression, unless its new result breaks a decision." />
         </StackPanel>
       </Border>
     </StackPanel>

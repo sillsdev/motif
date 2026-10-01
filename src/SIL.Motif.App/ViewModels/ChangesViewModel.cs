@@ -40,10 +40,10 @@ public static class ChangeKinds
     public static string LabelOf(string kind) => kind switch
     {
         Approve => "Approve",
-        Reject => "Reject",
-        Candidate => "Back to candidate",
+        Reject => "Disapprove",
+        Candidate => "Make Unknown",
         IncorrectSpelling => "Incorrect spelling",
-        AddCandidate => "Add as candidate",
+        AddCandidate => "Add as Unknown",
         RemoveAnalysis => "Remove analysis",
         _ => kind,
     };

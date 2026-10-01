@@ -13,4 +13,8 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Notice.Radius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Notice.Padding}" />
   </Style>
+  <!-- Semi's default button label is too light on the notice's tint; a solid primary button keeps its own. -->
+  <Style Selector="Border.notice Button:not(.Primary)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+  </Style>
 </Styles>

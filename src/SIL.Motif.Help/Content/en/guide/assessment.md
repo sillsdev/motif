@@ -1,7 +1,7 @@
-# Assessment
+# Parse all words
 
-An [Assessment](term:assessment) is one saved measurement of a FieldWorks project. In the desktop workflow, Motif asks PanGloss to parse the selected words and stores the result against the Baseline and Selection used for that run.
+**Parse all words** asks PanGloss to parse the words you chose and saves the result against the [Baseline](term:baseline) and the words used for that run.
 
-An Assessment can tell you which words parsed, which approved analyses were reproduced, and how much time parsing took. An interrupted or limited search is recorded as incomplete; it should not be read as a completed “no parse.” The **Overview** and **Texts** pages read stored Assessment results. Opening either page does not run PanGloss.
+The result tells you which words parsed, which approved analyses PanGloss built again, and how much time parsing took. A search that was interrupted or stopped at a limit is saved as not finished; it should not be read as a completed “no parse.” The **Overview** and **Texts** pages read the saved result. Opening either page does not run PanGloss.
 
-Choose **Refresh** in the window to capture the saved project and measure its [Default Selection](term:default-selection). An Assessment is evidence about a run, not a verdict that the grammar is good or bad.
+Choose **Parse all words** in the top bar to parse your [Default Selection](term:default-selection) again, or **Refresh** to capture the saved project first. A parse is evidence about one run, not a verdict that the grammar is good or bad.

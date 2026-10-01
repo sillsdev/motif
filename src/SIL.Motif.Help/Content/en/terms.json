@@ -26,7 +26,12 @@
   },
   "overview": {
     "title": "The latest stored evidence",
-    "description": "The Overview presents project counts and measurements already recorded by Motif. Reading it does not start a Refresh or Assessment.",
+    "description": "The Overview presents project counts and measurements already recorded by Motif. Reading it does not start a Refresh or a parse.",
+    "source": "Hand-written from CONTEXT.md."
+  },
+  "parse-all-words": {
+    "title": "Parse every chosen word",
+    "description": "Parse all words asks PanGloss to parse the words you chose and saves the result against the Baseline. A search stopped at a limit is saved as not finished, never as a word that cannot parse.",
     "source": "Hand-written from CONTEXT.md."
   },
   "preflight": {

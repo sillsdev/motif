@@ -5,7 +5,12 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>Draws the command's kind shares across one full-width bar.</summary>
+/// <summary>One kind in a <see cref="TimingKindBar"/>'s legend, with the brush its part is drawn in.</summary>
+/// <param name="Row">The kind and its share of the time.</param>
+/// <param name="Brush">The brush the bar fills this kind's part with.</param>
+public sealed record TimingKindLegendEntry(TimingAggregateRow Row, IBrush? Brush);
+
+/// <summary>Draws the command's kind shares across one full-width bar, and names each part's colour for a legend.</summary>
 public sealed class TimingKindBar : Control
 {
     public static readonly StyledProperty<IReadOnlyList<TimingAggregateRow>?> RowsProperty =
@@ -20,6 +25,10 @@ public sealed class TimingKindBar : Control
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(FourthBrush));
     public static readonly StyledProperty<IBrush?> OtherBrushProperty =
         AvaloniaProperty.Register<TimingKindBar, IBrush?>(nameof(OtherBrush));
+    public static readonly DirectProperty<TimingKindBar, IReadOnlyList<TimingKindLegendEntry>> LegendProperty =
+        AvaloniaProperty.RegisterDirect<TimingKindBar, IReadOnlyList<TimingKindLegendEntry>>(nameof(Legend), bar => bar.Legend);
+
+    private IReadOnlyList<TimingKindLegendEntry> _legend = [];
 
     static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, FirstBrushProperty,
         SecondBrushProperty, ThirdBrushProperty, FourthBrushProperty, OtherBrushProperty);
@@ -60,18 +69,43 @@ public sealed class TimingKindBar : Control
         set => SetValue(OtherBrushProperty, value);
     }
 
+    /// <summary>Each kind the bar draws, in order, with the brush of its part.</summary>
+    public IReadOnlyList<TimingKindLegendEntry> Legend
+    {
+        get => _legend;
+        private set => SetAndRaise(LegendProperty, ref _legend, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == RowsProperty || change.Property == FirstBrushProperty ||
+            change.Property == SecondBrushProperty || change.Property == ThirdBrushProperty ||
+            change.Property == FourthBrushProperty || change.Property == OtherBrushProperty)
+            Legend = Rows is { } rows ? [.. rows.Select((row, index) => new TimingKindLegendEntry(row, BrushAt(index)))] : [];
+    }
+
     public override void Render(DrawingContext context)
     {
         base.Render(context);
         if (Rows is not { Count: > 0 } || Bounds.Width <= 0) return;
-        var brushes = new[] { FirstBrush, SecondBrush, ThirdBrush, FourthBrush, OtherBrush };
         var x = 0d;
         for (var index = 0; index < Rows.Count; index++)
         {
             var width = Math.Max(0, Math.Min(Bounds.Width - x, Rows[index].ShareOfTotal * Bounds.Width));
-            if (brushes[Math.Min(index, brushes.Length - 1)] is { } brush)
+            if (BrushAt(index) is { } brush)
                 context.FillRectangle(brush, new Rect(x, 0, width, Bounds.Height));
             x += width;
         }
     }
+
+    // The first four kinds get their own colour; every later kind shares the Other brush.
+    private IBrush? BrushAt(int index) => index switch
+    {
+        0 => FirstBrush,
+        1 => SecondBrush,
+        2 => ThirdBrush,
+        3 => FourthBrush,
+        _ => OtherBrush,
+    };
 }

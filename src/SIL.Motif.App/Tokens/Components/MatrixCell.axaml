@@ -6,7 +6,6 @@
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
-    <StaticResource x:Key="Component.MatrixCell.SelectedOpacity" ResourceKey="Primitive.Opacity.100" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
@@ -57,20 +56,20 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Success.Fill}" />
   </Style>
   <Style Selector="Border.matrixCell.good :is(TextBlock), Border.matrixCell.fine :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success.Text}" />
   </Style>
   <Style Selector="Border.matrixCell.violation">
     <Setter Property="Background" Value="{DynamicResource Intent.Danger.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />
   </Style>
   <Style Selector="Border.matrixCell.violation :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
   </Style>
   <Style Selector="Border.matrixCell.review">
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
   </Style>
   <Style Selector="Border.matrixCell.review :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
   </Style>
   <Style Selector="Border.matrixCell.new">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
@@ -82,7 +81,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
   </Style>
   <Style Selector="Border.matrixCell.nobody :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
   </Style>
   <Style Selector="Border.matrixCell.none">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
@@ -91,10 +90,15 @@
     <Setter Property="Cursor" Value="Arrow" />
   </Style>
   <Style Selector="Border.matrixCell.none :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextFaint}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
+  <!-- A zero drops its family's tint rather than fading, so its words stay readable; after the families to win. -->
   <Style Selector="Border.matrixCell.empty">
-    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+  </Style>
+  <Style Selector="Border.matrixCell.empty :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="Border.matrixCell:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
@@ -102,7 +106,6 @@
   <Style Selector="Border.matrixCell.selected, Border.matrixCell:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.UnderlineHeavy}" />
-    <Setter Property="Opacity" Value="{DynamicResource Component.MatrixCell.SelectedOpacity}" />
   </Style>
   <Style Selector="Ellipse.matrixPending">
     <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.MarkerSize}" />

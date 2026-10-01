@@ -53,13 +53,13 @@
             <ProgressBar IsVisible="{Binding Assess.IsActive}"
                          IsIndeterminate="{Binding Assess.IsIndeterminate}"
                          Minimum="0" Maximum="1" Value="{Binding Assess.ProgressFraction}"
-                         AutomationProperties.Name="Assessment progress"
+                         AutomationProperties.Name="Parsing progress"
                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssessmentProgress}" />
             <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
           </StackPanel>
           <Button Grid.Column="1" Content="Cancel" Command="{Binding Assess.CancelCommand}"
                   IsVisible="{Binding Assess.IsActive}" VerticalAlignment="Center"
-                  AutomationProperties.Name="Cancel the running Assessment" />
+                  AutomationProperties.Name="Cancel parsing" />
         </Grid>
       </StackPanel>
     </Border>
@@ -67,7 +67,7 @@
     <Panel Grid.Row="1">
       <Panel IsVisible="{Binding ShowMatrixContent}">
         <ContentControl x:Name="CompareHost" />
-        <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose what to assess on Analyze texts, then run."
+        <views:CopyableTextBlock Classes="muted" Text="No results yet. Choose the words to parse on Analyze texts, then parse them."
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Panel>
       <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"

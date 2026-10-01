@@ -19,8 +19,9 @@ namespace SIL.Motif.App.ViewModels;
 /// <para>
 /// <see cref="Details"/> holds the command's message and facts, folded away but still on screen once
 /// expanded, so it keeps to the window's words too: it leaves out a sentence or fact that names a Proposal,
-/// a Draft, a Preflight or a Dry Run, and a sentence that tells the reader to run a command line, which a
-/// person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
+/// a Draft, a Preflight or a Dry Run, a sentence that names an Assessment or the Assessor (its facts stay, since
+/// a problem report needs an id such as <c>assessmentId</c>), and a sentence that tells the reader to run a
+/// command line, which a person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
 /// rest of its message in Details.
 /// </para>
 /// </remarks>
@@ -90,12 +91,12 @@ public sealed partial record WindowRefusal
 
         [C.ChangeAnalysisIdentityRequired] = "Choose an analysis before adding this change.",
         [C.ChangeAnalysisOwnerInvalid] = "Motif could not find the word that owns this analysis. Refresh and choose it again.",
-        [C.ChangeAssessmentIncomplete] = "This Assessment did not finish for every selected word. Run it again before accepting the new set.",
-        [C.ChangeAssessmentKind] = "Accept the new set requires an Assessment that parses every word. Run a complete Assessment first.",
-        [C.ChangeAssessmentMissing] = "This Assessment is no longer available. Run it again before adding the change.",
-        [C.ChangeAssessmentRequired] = "Run an Assessment before adding this change.",
-        [C.ChangeAssessmentStale] = "This Assessment is from an older Baseline. Run a new Assessment first.",
-        [C.ChangeAssessmentWordMissing] = "This Assessment does not include the selected word. Run it for that selection again.",
+        [C.ChangeAssessmentIncomplete] = "Parsing did not finish for every selected word. Parse all words again before accepting the new set.",
+        [C.ChangeAssessmentKind] = "Accept the new set needs every word parsed. Parse all words first.",
+        [C.ChangeAssessmentMissing] = "Those parse results are no longer stored. Parse all words again before adding the change.",
+        [C.ChangeAssessmentRequired] = "Parse all words before adding this change.",
+        [C.ChangeAssessmentStale] = "These parse results are from an older Baseline. Parse all words again first.",
+        [C.ChangeAssessmentWordMissing] = "The last parse did not include the selected word. Parse all words again.",
         [C.ChangeBaselineMissing] = "Capture a Baseline before collecting changes.",
         [C.ChangeCannotCompose] = "This change could not be added. Refresh the changes and try again.",
         [C.ChangeInvalidIdentity] = "This change could not be added. Select the word again and retry.",
@@ -104,7 +105,7 @@ public sealed partial record WindowRefusal
         [C.ChangeOccurrenceUnavailable] = "The selected word occurrence is unavailable. Refresh and select it again.",
         [C.ChangeOccurrenceWordformMismatch] = "The selected occurrence belongs to a different word.",
         [C.ChangeProjectSaving] = "FieldWorks is saving the project. Try again in a moment.",
-        [C.ChangeReadingMissing] = "That parser reading is no longer available. Run the Assessment again.",
+        [C.ChangeReadingMissing] = "That parser reading is no longer available. Parse all words again.",
         [C.ChangeReconfirmNotAllowed] = "This decision no longer fits the project and cannot be checked again.",
         [C.ChangeReconfirmUnneeded] = "This change does not need another check.",
         [C.ChangeRefreshRequired] = "Refresh the project before checking the changes again.",
@@ -284,7 +285,8 @@ public sealed partial record WindowRefusal
     }
 
     private static string WindowSafe(string text) => string.Join(" ", SentenceBreak().Split(text.Trim())
-        .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence)));
+        .Where(sentence => sentence.Length > 0 && !CommandLine().IsMatch(sentence) && !CliTerm().IsMatch(sentence) &&
+            !AssessmentWord().IsMatch(sentence)));
 
     [GeneratedRegex(@"(?<=[.!?])\s+")]
     private static partial Regex SentenceBreak();
@@ -296,4 +298,8 @@ public sealed partial record WindowRefusal
     // The CLI's names for pending changes and their checks, which ADR 0046 decision 3 keeps off the screen.
     [GeneratedRegex(@"proposal|draft|preflight|dry[\s-]?run", RegexOptions.IgnoreCase)]
     private static partial Regex CliTerm();
+
+    // The CLI's words for a parse run, kept out of prose only: a fact such as assessmentId is what a report needs.
+    [GeneratedRegex(@"\bassess\w*", RegexOptions.IgnoreCase)]
+    private static partial Regex AssessmentWord();
 }

@@ -65,8 +65,8 @@ public sealed class AiHandoffPageModel : PageModel
         if (pasted > 0) sources.Add(pasted == 1 ? "1 pasted word" : $"{pasted} pasted words");
         var from = sources.Count > 0 ? " from " + string.Join(" and ", sources) : string.Empty;
         return at is { } when
-            ? $"Covers the Assessment of {when.ToLocalTime():ddd d MMM, h:mm tt}: {words}{from}."
-            : $"Covers the latest Assessment: {words}{from}.";
+            ? $"Covers the words parsed on {when.ToLocalTime():ddd d MMM, h:mm tt}: {words}{from}."
+            : $"Covers the latest parse: {words}{from}.";
     }
 
     private void OnHandoffPropertyChanged(object? sender, PropertyChangedEventArgs e) =>

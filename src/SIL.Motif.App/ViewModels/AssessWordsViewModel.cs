@@ -229,7 +229,7 @@ public sealed class AssessWordRowViewModel
         VsProject = MissedApproved.Count > 0 ? (Result == "Skipped" ? "Not tried" : IsIncomplete ? "Not reached" : "Missed")
             : Readings.Any(reading => reading.Grade == ReadingGrade.Disapproved) ? "Disapproved"
             : Readings.Any(reading => reading.Grade == ReadingGrade.Approved) ? "Approved"
-            : Readings.Any(reading => reading.Grade == ReadingGrade.Candidate) ? "Candidate"
+            : Readings.Any(reading => reading.Grade == ReadingGrade.Candidate) ? "Unknown"
             : Readings.Count > 0 && grades is not null ? ReadingGradeLabels.NotPresent
             : "—";
 
@@ -297,7 +297,7 @@ public sealed class AssessWordRowViewModel
     {
         "Approved" => Verdict.Agrees,
         "Disapproved" => Verdict.Differs,
-        "Candidate" => Verdict.Candidate,
+        "Unknown" => Verdict.Candidate,
         ReadingGradeLabels.NotPresent => Verdict.New,
         "Missed" => Verdict.NoResult,
         _ => Verdict.Limit,

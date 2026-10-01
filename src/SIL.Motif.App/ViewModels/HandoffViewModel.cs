@@ -94,7 +94,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     /// <summary>The sentence the AI Handoff page shows when the files are stale.</summary>
     public string OutOfDateText => LatestAssessmentAt is { } assessed && WrittenAt is { } written
-        ? $"The Assessment was run again at {assessed.ToLocalTime():t}, after these files were written at " +
+        ? $"The words were parsed again at {assessed.ToLocalTime():t}, after these files were written at " +
           $"{written.ToLocalTime():t}. Write the AI Handoff again to include the new results."
         : string.Empty;
 
@@ -165,7 +165,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public bool HasChosenWords => ChosenWords is { Count: > 0 };
 
     public string ChosenWordsText => ChosenWords is { } words
-        ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, assessed again for these files."
+        ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
         : string.Empty;
 
     /// <summary>Hands off <paramref name="words"/> rather than the whole Assessment.</summary>

@@ -697,7 +697,7 @@ public sealed class WorkspaceContextTests
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         Assert.Equal("invocation/one", handoff.Handoff.InvocationId);
-        Assert.StartsWith("Covers the Assessment of ", handoff.Handoff.CoverageText);
+        Assert.StartsWith("Covers the words parsed on ", handoff.Handoff.CoverageText);
 
         context.ClearProject();
         Assert.Null(handoff.Handoff.InvocationId);

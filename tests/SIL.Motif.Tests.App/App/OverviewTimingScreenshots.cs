@@ -29,15 +29,7 @@ public sealed class OverviewTimingScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
-            {
-                fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
-                fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));
-                fake.AssessCompletesWith(assessment with
-                {
-                    Measurements = [new ProducedAssessmentReference("assessment/one", "ParseTime", "assessment/one")],
-                });
-            });
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: ReadOverviewAndTiming);
             try
             {
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
@@ -65,6 +57,17 @@ public sealed class OverviewTimingScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    /// <summary>Gives the sample data a read Overview and stored parse times.</summary>
+    internal static void ReadOverviewAndTiming(FakeCommandClient fake, AssessCommandResponse assessment)
+    {
+        fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));
+        fake.AssessCompletesWith(assessment with
+        {
+            Measurements = [new ProducedAssessmentReference("assessment/one", "ParseTime", "assessment/one")],
+        });
     }
 
     private static TimingResponse Timing(string by) =>
