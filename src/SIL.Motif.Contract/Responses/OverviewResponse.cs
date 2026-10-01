@@ -95,6 +95,12 @@ public sealed record OverviewTiming(
 {
     /// <summary>The number of words with a recorded parse time, which the percentiles are taken over.</summary>
     public int MeasuredWordCount { get; init; }
+
+    /// <summary>The measured words' object time by kind, each a share of their total word time.</summary>
+    public IReadOnlyList<TimingAggregateRow> Kinds { get; init; } = [];
+
+    /// <summary>The measured words' total word time and the part of it no parser object recorded.</summary>
+    public WordTimeAttribution Attribution { get; init; } = WordTimeAttribution.None;
 }
 
 /// <summary>A word among the slowest measured words.</summary>

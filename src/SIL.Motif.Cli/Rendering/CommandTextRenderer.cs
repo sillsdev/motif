@@ -308,6 +308,15 @@ public static class CommandTextRenderer
         var slowest = response.Timing.SlowestWords.FirstOrDefault();
         text.AppendLine($"Timing     median {FormatMs(response.Timing.MedianMs)}  p95 {FormatMs(response.Timing.Percentile95Ms)}  " +
             (slowest is null ? "slowest (none)" : $"slowest {slowest.Word} {slowest.ElapsedMs:N0} ms"));
+        if (response.Timing.Attribution.MeasuredWordCount > 0)
+        {
+            var attribution = response.Timing.Attribution;
+            var split = response.Timing.Kinds.Select(kind => $"{kind.Name} {FormatShare(kind.ShareOfWordTime)}");
+            if (attribution.NotAttributedShare is { } notAttributed)
+                split = split.Append($"not attributed {FormatShare(notAttributed)}");
+            text.AppendLine($"           {attribution.MeasuredWordCount:N0} words, {attribution.WordTimeMs / 1000:N1} s " +
+                $"total word time: {string.Join(", ", split)}");
+        }
         if (response.Warnings is not null)
             text.AppendLine($"Warnings   {response.Warnings.Count?.ToString("N0") ?? "unknown"} findings " +
                 $"({CountLabel(response.Warnings.ErrorCount, "error", "errors")}, " +
@@ -360,18 +369,34 @@ public static class CommandTextRenderer
         if (response.IsStale)
             text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
         text.AppendLine($"  Median: {FormatMs(response.MedianMs)}  p95: {FormatMs(response.Percentile95Ms)}");
+        var attribution = response.Attribution;
+        text.AppendLine($"  Total word time: {attribution.WordTimeMs:N2} ms for {attribution.MeasuredWordCount:N0} " +
+            "measured word(s); every share below is of this total");
         text.AppendLine($"  By {response.By}:");
         foreach (var row in response.Aggregates)
-            text.AppendLine($"    {row.Name}: {row.ElapsedMs:N2} ms ({row.ShareOfTotal:P1}), " +
-                $"{row.Attempts:N0} attempts, {row.WordsTouched:N0} words");
+            text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Key}]" : string.Empty)}: " +
+                $"{row.SelfMs:N2} ms ({FormatShare(row.ShareOfWordTime)}), {FormatCalls(row.Calls, row.Kind)}, " +
+                $"{row.WordsTouched:N0} words");
+        if (attribution.NotAttributedMs is { } notAttributed)
+            text.AppendLine($"    Not attributed: {notAttributed:N2} ms ({FormatShare(attribution.NotAttributedShare)})");
+        if (attribution.Overrun)
+            text.AppendLine($"  Warning: objects recorded {attribution.OverrunMs:N2} ms more than their words' own time.");
         if (response.CostliestWords.Count > 0)
         {
             text.AppendLine("  Costliest words:");
             foreach (var word in response.CostliestWords)
-                text.AppendLine($"    {word.Word}: {word.ElapsedMs:N2} ms, {word.Attempts:N0} attempts");
+                text.AppendLine($"    {word.Word}: {word.SelfMs:N2} ms" + (word.WordTimeMs is { } whole
+                    ? $" ({FormatShare(word.ShareOfWordTime)} of its {whole:N2} ms)" : string.Empty) +
+                    $", {FormatCalls(word.Calls, null)}");
         }
         return text.ToString();
     }
+
+    private static string FormatShare(double? share) => share is { } value
+        ? value.ToString("P1", CultureInfo.CurrentCulture) : "no word time";
+
+    private static string FormatCalls(long? calls, string? kind) => calls is { } value
+        ? $"{value:N0} {(kind is { Length: > 0 } ? kind + " " : string.Empty)}calls" : "calls not counted";
 
     private static string CountLabel(int? count, string singular, string plural) => count is { } value
         ? $"{value:N0} {(value == 1 ? singular : plural)}"

@@ -114,9 +114,9 @@ public sealed class WorkspaceContextTests
         var calls = 0;
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse(request.AssessmentId!, request.WordSet, request.By, 1, ++calls, calls, [],
-                request.By == "rule" ? [new TimingAggregateRow("Fresh rule", 1, 1, 1, 1)] : [], [])
+                request.By == "rule" ? [new TimingAggregateRow("Fresh rule", "Fresh rule", 1, 1, 1)] : [], [])
             {
-                Words = [new TimingWordRow("dogs", 1, 1, calls > 3 ? "Finished" : "Step limit")],
+                Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : "Step limit")],
             })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -141,7 +141,7 @@ public sealed class WorkspaceContextTests
         var refreshed = false;
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-parse", request.WordSet, request.By, 1, 1, 1, [],
-                request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", 1, 1, 1, 1)] : [], []))));
+                request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", refreshed ? "New rule" : "Old rule", 1, 1, 1)] : [], []))));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
         Assert.Equal("Old rule", timing.SelectedRule);
@@ -320,7 +320,7 @@ public sealed class WorkspaceContextTests
                 return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
                     "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Verb template", 1, 1, 1, 1)] : [];
+                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1)] : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
         });
@@ -421,7 +421,7 @@ public sealed class WorkspaceContextTests
                 return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
                     "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Verb template", 1, 1, 1, 1)] : [];
+                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1)] : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
         });
@@ -444,8 +444,8 @@ public sealed class WorkspaceContextTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
-        var kindRows = new[] { new TimingAggregateRow("morph_rule", 12, 1, 30, 2) };
-        var ruleRows = new[] { new TimingAggregateRow("Verb template", 10, 10d / 12, 26, 2)
+        var kindRows = new[] { new TimingAggregateRow("morph_rule", "morph_rule", 12, 1, 2) };
+        var ruleRows = new[] { new TimingAggregateRow("Verb template", "Verb template", 10, 10d / 12, 2)
             { Kind = "morph_rule" } };
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-1", request.WordSet, request.By, 2, 5, 8, [],
@@ -470,7 +470,7 @@ public sealed class WorkspaceContextTests
         fake.OnTiming((request, _) =>
         {
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Subject agreement", 3, 0.6, 9, 2), new TimingAggregateRow("Past tense li-", 2, 0.4, 5, 1)]
+                ? [new TimingAggregateRow("Subject agreement", "Subject agreement", 3, 0.6, 2), new TimingAggregateRow("Past tense li-", "Past tense li-", 2, 0.4, 1)]
                 : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
@@ -502,7 +502,7 @@ public sealed class WorkspaceContextTests
             new WordRuleTiming($"word{index}", 10 - index, index)).ToArray();
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-1", request.WordSet, request.By, 6, 5, 8, [],
-                request.By == "rule" ? [new TimingAggregateRow("Verb template", 10, 1, 20, 6)] : [],
+                request.By == "rule" ? [new TimingAggregateRow("Verb template", "Verb template", 10, 1, 6)] : [],
                 request.Rule is null ? [] : costliest))));
         await context.OpenProjectAsync(ProjectPath);
 
@@ -521,8 +521,8 @@ public sealed class WorkspaceContextTests
         var handoff = new AiHandoffPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, 2, "Finished"),
-                new TimingWordRow("cats", 8, 4, "Step limit")],
+            Words = [new TimingWordRow("dogs", 5, "Finished"),
+                new TimingWordRow("cats", 8, "Step limit")],
         });
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -619,8 +619,8 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, 2, "Step limit"),
-                new TimingWordRow("cats", 8, 4, "Finished")],
+            Words = [new TimingWordRow("dogs", 5, "Step limit"),
+                new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessCompletesWith(Assessment());
         await context.OpenProjectAsync(ProjectPath);
@@ -661,7 +661,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 1, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, 2, "Finished")],
+            Words = [new TimingWordRow("dogs", 5, "Finished")],
         });
         await context.OpenProjectAsync(ProjectPath);
         context.Assess.ProjectPath = ProjectPath;
@@ -686,8 +686,8 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, 2, "Step limit"),
-                new TimingWordRow("cats", 8, 4, "Finished")],
+            Words = [new TimingWordRow("dogs", 5, "Step limit"),
+                new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));
         await context.OpenProjectAsync(ProjectPath);
@@ -983,7 +983,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var result = new TimingResponse("assessment-1", "all", "kind", 1, 5, 5, [],
-            [new TimingAggregateRow("Affix template", 5, 1, 2, 1)], []);
+            [new TimingAggregateRow("Affix template", "Affix template", 5, 1, 1)], []);
         fake.TimingCompletesWith(result);
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -1007,7 +1007,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var result = new TimingResponse("assessment-1", "all", "rule", 1, 5, 5, [],
-            [new TimingAggregateRow("Plural", 5, 1, 2, 1)], [new WordRuleTiming("dogs", 5, 2)]);
+            [new TimingAggregateRow("Plural", "Plural", 5, 1, 1)], [new WordRuleTiming("dogs", 5, 2)]);
         fake.TimingCompletesWith(result);
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));

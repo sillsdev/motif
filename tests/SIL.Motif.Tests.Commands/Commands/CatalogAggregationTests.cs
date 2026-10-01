@@ -42,8 +42,24 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
-    public void ObjectTimingAggregationGroupsAndRanksTheSelectedRuleWords()
+    public void OverviewTimingSplitsTotalWordTimeByKindWithTheResidualBeside()
     {
+        AssessedWord[] words = [Timed("a", 500), Timed("b", 300)];
+        AssessmentObjectTiming[] rows =
+            [Row("morph_rule", "rule-r", "R", "a", 300), Row("phon_rule", "rule-p", "P", "b", 100)];
+
+        var result = TimingAggregation.SummarizeWords(words, rows);
+
+        Assert.Equal(["morph_rule", "phon_rule"], result.Kinds.Select(kind => kind.Key));
+        Assert.Equal(0.375, result.Kinds[0].ShareOfWordTime!.Value, precision: 6);
+        Assert.Equal(800, result.Attribution.WordTimeMs);
+        Assert.Equal(400, result.Attribution.NotAttributedMs);
+    }
+
+    [Fact]
+    public void ObjectTimingAggregationGroupsByKindAndRanksTheSelectedRuleWords()
+    {
+        AssessedWord[] words = [Timed("a", 30), Timed("b", 20)];
         AssessmentObjectTiming[] rows =
         [
             new("affix", "affix-a", "authored", "analysis", "Verb template", "a", 20, null, 4_000_000),
@@ -52,22 +68,169 @@ public sealed class CatalogAggregationTests
             new("phonology", "phon-rule", "authored", "analysis", "Nasal harmony", "a", 4, null, 2_000_000),
         ];
 
-        var byKind = TimingAggregation.Aggregate(rows, "kind", rule: null, top: 10);
-        Assert.Equal(["affix", "phonology"], byKind.Aggregates.Select(row => row.Name));
-        Assert.Equal(10, byKind.Aggregates[0].ElapsedMs);
-        Assert.Equal(10d / 12d, byKind.Aggregates[0].ShareOfTotal, precision: 6);
-        Assert.Equal(36, byKind.Aggregates[0].Attempts);
+        var byKind = TimingAggregation.Aggregate(words, rows, "kind", rule: null, top: 10);
+        Assert.Equal(["affix", "phonology"], byKind.Aggregates.Select(row => row.Key));
+        Assert.Equal(["affix", "phonology"], byKind.Aggregates.Select(row => row.Kind));
+        Assert.Equal(10, byKind.Aggregates[0].SelfMs);
+        Assert.Equal(10d / 50d, byKind.Aggregates[0].ShareOfWordTime!.Value, precision: 6);
+        Assert.Equal(36, byKind.Aggregates[0].Calls);
         Assert.Equal(2, byKind.Aggregates[0].WordsTouched);
-        Assert.Equal("affix", byKind.Aggregates[0].Kind);
 
-        var byRule = TimingAggregation.Aggregate(rows, "rule", "Verb template", top: 1);
+        var byRule = TimingAggregation.Aggregate(words, rows, "rule", "affix-a", top: 1);
         Assert.Equal(["Verb template", "Nasal harmony"], byRule.Aggregates.Select(row => row.Name));
-        Assert.Equal(["affix", "phonology"], byRule.Aggregates.Select(row => row.Kind));
+        Assert.Equal(["affix-a", "phon-rule"], byRule.Aggregates.Select(row => row.Key));
+        Assert.Equal(["authored", "authored"], byRule.Aggregates.Select(row => row.IdentityQuality));
         var costliest = Assert.Single(byRule.CostliestWords);
         Assert.Equal("b", costliest.Word);
-        Assert.Equal(6, costliest.ElapsedMs);
-        Assert.Equal(16, costliest.Attempts);
+        Assert.Equal(6, costliest.SelfMs);
+        Assert.Equal(16, costliest.Calls);
+        Assert.Equal(20, costliest.WordTimeMs);
+        Assert.Equal(6d / 20d, costliest.ShareOfWordTime!.Value, precision: 6);
     }
+
+    [Fact]
+    public void ARulesShareIsOfTotalWordTimeNotOfTheTimeRulesRecorded()
+    {
+        AssessedWord[] words = [Timed("a", 500), Timed("b", 300)];
+        AssessmentObjectTiming[] rows =
+        [
+            Row("morph_rule", "rule-r", "R", "a", 300),
+            Row("phon_rule", "rule-p", "P", "b", 300),
+        ];
+
+        var result = TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10);
+
+        Assert.Equal(0.375, result.Aggregates.Single(row => row.Key == "rule-r").ShareOfWordTime!.Value, precision: 6);
+        Assert.Equal(800, result.Attribution.WordTimeMs);
+        Assert.Equal(600, result.Attribution.AttributedMs);
+        Assert.Equal(200, result.Attribution.NotAttributedMs);
+        Assert.Equal(0.25, result.Attribution.NotAttributedShare!.Value, precision: 6);
+        Assert.False(result.Attribution.Overrun);
+    }
+
+    [Fact]
+    public void ASelectionShareAddsTheTimesBeforeDividingRatherThanAveragingEachWordsShare()
+    {
+        AssessedWord[] words = [Timed("a", 700), Timed("b", 48)];
+        AssessmentObjectTiming[] rows =
+            [Row("morph_rule", "rule-r", "R", "a", 180), Row("morph_rule", "rule-r", "R", "b", 20)];
+
+        var share = Assert.Single(TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10).Aggregates)
+            .ShareOfWordTime!.Value;
+
+        Assert.Equal(200d / 748d, share, precision: 6);
+        Assert.Equal(0.267, share, precision: 3);
+    }
+
+    [Fact]
+    public void AStoppedWordsTimeIsWhatItSpentBeforeTheLimit()
+    {
+        AssessedWord[] words =
+        [
+            Timed("stopped", 900) with { Outcome = "capped", IsIncomplete = true },
+            Timed("finished", 100),
+        ];
+        AssessmentObjectTiming[] rows =
+            [Row("morph_rule", "rule-r", "R", "stopped", 300), Row("morph_rule", "rule-r", "R", "finished", 50)];
+
+        var result = TimingAggregation.Aggregate(words, rows, "kind", rule: null, top: 10);
+
+        Assert.Equal(1000, result.Attribution.WordTimeMs);
+        Assert.Equal(0.35, Assert.Single(result.Aggregates).ShareOfWordTime!.Value, precision: 6);
+    }
+
+    [Fact]
+    public void AnOverrunIsAFlagAndNeverANegativeOrHiddenResidual()
+    {
+        AssessedWord[] words = [Timed("over", 10), Timed("under", 20)];
+        AssessmentObjectTiming[] rows =
+            [Row("morph_rule", "rule-r", "R", "over", 12), Row("morph_rule", "rule-r", "R", "under", 5)];
+
+        var attribution = TimingAggregation.Aggregate(words, rows, "kind", rule: null, top: 10).Attribution;
+
+        Assert.True(attribution.Overrun);
+        Assert.Equal(2, attribution.OverrunMs, precision: 6);
+        Assert.Equal(15, attribution.NotAttributedMs!.Value, precision: 6);
+    }
+
+    [Fact]
+    public void WordTimeKeepsNanosecondsSoASubMillisecondWordStillHasADenominator()
+    {
+        AssessedWord[] words = [new("quick", "analysed", [], 0) { ElapsedNs = 400_000 }];
+        AssessmentObjectTiming[] rows = [new("morph_rule", "rule-r", "authored", "analysis", "R", "quick", 1, null, 300_000)];
+
+        var result = TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10);
+
+        Assert.Equal(0.4, result.Attribution.WordTimeMs, precision: 9);
+        Assert.Equal(0.75, Assert.Single(result.Aggregates).ShareOfWordTime!.Value, precision: 6);
+        Assert.Equal(0.1, result.Attribution.NotAttributedMs!.Value, precision: 9);
+    }
+
+    [Fact]
+    public void TwoObjectsSharingALabelStayTwoRowsAndUncountedCallsStayUnknown()
+    {
+        AssessedWord[] words = [Timed("a", 100)];
+        AssessmentObjectTiming[] rows =
+        [
+            new("morph_rule", "guid-1", "authored", "analysis", "Plural", "a", 3, null, 10_000_000),
+            new("morph_rule", "guid-2", "authored", "analysis", "Plural", "a", 5, null, 20_000_000),
+            new("lex_entry", "entry-1", "authored", "analysis", "dog", "a", null, null, 5_000_000),
+        ];
+
+        var byRule = TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10);
+        var byKind = TimingAggregation.Aggregate(words, rows, "kind", rule: null, top: 10);
+
+        Assert.Equal(["guid-2", "guid-1", "entry-1"], byRule.Aggregates.Select(row => row.Key));
+        Assert.Equal(["Plural", "Plural", "dog"], byRule.Aggregates.Select(row => row.Name));
+        Assert.Equal([5L, 3L, null], byRule.Aggregates.Select(row => row.Calls));
+        Assert.Equal([8L, null], byKind.Aggregates.Select(row => row.Calls));
+    }
+
+    [Fact]
+    public void ARuleIsNamedByItsKeyOrByALabelOnlyOneObjectCarries()
+    {
+        AssessmentObjectTiming[] rows =
+        [
+            new("morph_rule", "guid-1", "authored", "analysis", "Plural", "a", 3, null, 10_000_000),
+            new("morph_rule", "guid-2", "authored", "analysis", "Plural", "a", 5, null, 20_000_000),
+            new("phon_rule", "guid-3", "authored", "analysis", "Nasal harmony", "a", 1, null, 1_000_000),
+        ];
+
+        Assert.Equal(["guid-1"], TimingAggregation.ResolveRule(rows, "guid-1"));
+        Assert.Equal(["guid-3"], TimingAggregation.ResolveRule(rows, "Nasal harmony"));
+        Assert.Equal(["guid-1", "guid-2"], TimingAggregation.ResolveRule(rows, "Plural"));
+        Assert.Empty(TimingAggregation.ResolveRule(rows, "Missing"));
+    }
+
+    [Fact]
+    public void ObjectTimeInAWordWithoutAParseTimeIsLeftOutOfEveryShare()
+    {
+        AssessedWord[] words = [Timed("timed", 100), new("untimed", "skipped", [], null)];
+        AssessmentObjectTiming[] rows =
+            [Row("morph_rule", "rule-r", "R", "timed", 40), Row("morph_rule", "rule-r", "R", "untimed", 60)];
+
+        var result = TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10);
+
+        Assert.Equal(40, Assert.Single(result.Aggregates).SelfMs);
+        Assert.Equal(1, result.Attribution.MeasuredWordCount);
+        Assert.Equal(60, result.Attribution.NotAttributedMs);
+    }
+
+    [Fact]
+    public void WithNoObjectTimeRecordedNoTimeIsCalledNotAttributed()
+    {
+        var attribution = TimingAggregation.Aggregate([Timed("a", 10)], [], "kind", rule: null, top: 10).Attribution;
+
+        Assert.Equal(10, attribution.WordTimeMs);
+        Assert.Null(attribution.NotAttributedMs);
+        Assert.Null(attribution.NotAttributedShare);
+    }
+
+    private static AssessedWord Timed(string word, int ms) =>
+        new(word, "analysed", [], ms) { ElapsedNs = ms * 1_000_000L };
+
+    private static AssessmentObjectTiming Row(string kind, string key, string label, string word, int ms) =>
+        new(kind, key, "authored", "analysis", label, word, 1, null, ms * 1_000_000L);
 
     [Fact]
     public void TimedOutApprovedWordIsUnknownRatherThanAViolation()

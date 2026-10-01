@@ -73,20 +73,30 @@ public static class TimingCommand
             var selectedWords = selected.Value!;
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
             var objectRows = objectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
-            var aggregates = TimingAggregation.Aggregate(objectRows, request.By, request.Rule, request.Top);
+            string? ruleKey = null;
+            if (request.Rule is { } rule)
+            {
+                var keys = TimingAggregation.ResolveRule(objectRows, rule);
+                if (keys.Count > 1)
+                    return CommandOutcome<TimingResponse>.Refused(new Refusal("timing.ambiguous-rule",
+                        FailureReason.InvalidArgument, $"{keys.Count} parser objects are labelled '{rule}'. " +
+                        $"Name one by its key: {string.Join(", ", keys)}."));
+                ruleKey = keys.Count == 1 ? keys[0] : rule;
+            }
+            var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, ruleKey, request.Top);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
-            var attempts = objectRows.GroupBy(row => row.Word, StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.Sum(row => row.Attempts ?? 0), StringComparer.Ordinal);
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
                 aggregates.Aggregates, aggregates.CostliestWords)
             {
                 IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
+                Attribution = aggregates.Attribution,
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
-                    attempts.GetValueOrDefault(word.Word), IsStepLimited(word) ? TimingCompletion.StepLimit :
+                    IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
-                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? TimingCompletion.Skipped : TimingCompletion.Finished)).ToArray(),
+                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? TimingCompletion.Skipped : TimingCompletion.Finished)
+                    { ElapsedNs = word.ElapsedNs }).ToArray(),
             });
         });
     }

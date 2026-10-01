@@ -30,15 +30,15 @@ public sealed class TimingSharesTests
 
     private static readonly TimingAggregateRow[] Kinds =
     [
-        new("morph_rule", 480, 480d / 680, 3500, 9),
-        new("phon_rule", 160, 160d / 680, 1200, 7),
-        new("root_index", 40, 40d / 680, 200, 9),
+        new("morph_rule", "morph_rule", 480, 480d / 800, 9),
+        new("phon_rule", "phon_rule", 160, 160d / 800, 7),
+        new("root_index", "root_index", 40, 40d / 800, 9),
     ];
 
     private static readonly TimingAggregateRow[] Rules =
     [
-        new("Subject agreement", 288, 288d / 680, 2100, 6) { Kind = "morph_rule" },
-        new("Vowel harmony", 120, 120d / 680, 800, 7) { Kind = "phon_rule" },
+        new("Subject agreement", "Subject agreement", 288, 288d / 800, 6) { Kind = "morph_rule" },
+        new("Vowel harmony", "Vowel harmony", 120, 120d / 800, 7) { Kind = "phon_rule" },
     ];
 
     [Fact]
@@ -74,6 +74,26 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
+    public async Task TwoRulesWithOneLabelAreChosenApartByTheirKeys()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        TimingAggregateRow[] rules =
+        [
+            new("guid-1", "Plural", 200, 0.25, 4) { Kind = "morph_rule" },
+            new("guid-2", "Plural", 100, 0.125, 2) { Kind = "morph_rule" },
+        ];
+        var timing = await LoadedTiming(NineWords, Kinds, rules);
+
+        Assert.Equal("guid-1", timing.SelectedRule);
+        await timing.ChooseRuleCommand.ExecuteAsync(rules[1]);
+
+        Assert.Equal("guid-2", timing.SelectedRule);
+        Assert.Equal("Plural", timing.SelectedRuleName);
+        Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
+        Assert.StartsWith("100 ms", timing.RuleSummary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ARulesCostliestWordsSayTheyAreTheRulesTimeNotTheWordsWholeTime()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -89,7 +109,7 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming([("dogs", 10), ("cats", 2)],
-            [new TimingAggregateRow("morph_rule", 12.6, 1, 4, 2)], []);
+            [new TimingAggregateRow("morph_rule", "morph_rule", 12.6, 1, 2)], []);
 
         Assert.DoesNotContain(timing.KindShares, share => share.IsOtherTime);
         Assert.Equal("105%", timing.KindShares.Single().ShareText);
@@ -147,7 +167,7 @@ public sealed class TimingSharesTests
             new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, 9, 700, [],
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
-                Words = words.Select(word => new TimingWordRow(word.Word, word.Ms, 1, TimingCompletion.Finished))
+                Words = words.Select(word => new TimingWordRow(word.Word, word.Ms, TimingCompletion.Finished))
                     .ToArray(),
             })));
         await context.OpenProjectAsync(ProjectPath);

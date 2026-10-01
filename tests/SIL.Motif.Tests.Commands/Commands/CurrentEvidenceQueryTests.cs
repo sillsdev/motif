@@ -131,6 +131,30 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     }
 
     [Fact]
+    public void LaterSubsetAssessmentReplacesOnlyItsWordsObjectTimes()
+    {
+        static AssessmentObjectTiming Row(string word, long ns) =>
+            new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
+        var baseline = new AssessmentRecord("base", null, null, "pangloss",
+            AssessmentKind.ParseTime.ToStoredKind(), "{}", "scope", "whitespace", "1", "token",
+            Selection.Create("Default", ["cat", "dog"]), null, null, "grammar", null, null, null,
+            "2026-09-24T12:00:00Z", Words: [new AssessedWord("cat", "timed-out", []),
+                new AssessedWord("dog", "analysed", [])])
+        { ObjectTimings = [Row("cat", 9), Row("dog", 5)] };
+        var rerun = baseline with
+        {
+            AssessmentId = "rerun",
+            Selection = Selection.Create("subset", ["cat", "bird"]),
+            Words = [new AssessedWord("cat", "analysed", []), new AssessedWord("bird", "analysed", [])],
+            ObjectTimings = [Row("cat", 2), Row("bird", 7)],
+        };
+
+        var effective = AssessmentWordOverlay.ApplyObjectTimings(baseline, [rerun]);
+
+        Assert.Equal([("dog", 5L), ("cat", 2L)], effective.Select(row => (row.Word, row.ElapsedNs!.Value)));
+    }
+
+    [Fact]
     public void CurrentEvidenceIncludesLaterSubsetResultsForTheDefaultSelection()
     {
         var fwDataPath = Path.Combine(_root, "project.fwdata");

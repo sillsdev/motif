@@ -61,6 +61,10 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
         MatchingAssessment?.Words ?? [], RerunAssessments);
 
+    /// <summary>The object times recorded for <see cref="EffectiveWords"/>, each from the run that timed its word.</summary>
+    public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => MatchingAssessment is { } assessment
+        ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : [];
+
     /// <summary>
     /// The matching Assessment as an <c>assess</c> run returns it: its words after later subset runs, worded by
     /// the same row builder a run uses, with its completion summary and its measurements by kind.
