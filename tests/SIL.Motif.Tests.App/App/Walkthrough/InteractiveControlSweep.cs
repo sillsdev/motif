@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -13,32 +14,42 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal static class InteractiveControlSweep
 {
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> CriticalActions =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        {
+            ["no project selected"] = [AutomationIds.ProjectMenu],
+            ["first project setup"] = [AutomationIds.SetupNext, AutomationIds.SkipSetup],
+            ["completed Overview"] = [AutomationIds.RefreshProject],
+            ["completed Compare Matrix"] = [AutomationIds.RunAssessment],
+            ["pending changes in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
+            ["pending change in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
+            ["Review receipt"] = [AutomationIds.ApplyReceipt],
+            ["Apply receipt"] = [AutomationIds.ApplyReceipt],
+            ["stale Review values"] = [AutomationIds.RefreshProject],
+            ["completed Timing"] = [AutomationIds.RefreshProject],
+            ["completed Warnings"] = [AutomationIds.RefreshProject],
+            ["completed Analyze texts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
+            ["word card with a reading"] = [AutomationIds.AnalyzeTextsTab],
+            ["opened diagnostic window"] = [AutomationIds.TryWordInput, AutomationIds.TryWordRun],
+            ["completed Handoff"] = [AutomationIds.WriteHandoff],
+            ["older store refused"] = [AutomationIds.ProjectMenu],
+            ["ready to assess pasted words"] = [AutomationIds.RunAssessment],
+            ["Assessment running"] = [AutomationIds.CancelAssessment],
+            ["Assessment cancelled"] = [AutomationIds.RunAssessment],
+        };
+
     public static void AssertScene(
         WalkthroughWindow walkthrough,
         string scene,
         params InteractiveControlFamily[] expectedFamilies)
     {
-        AssertSceneCore(walkthrough, scene, expectedFamilies, []);
-    }
-
-    public static void AssertSceneWithReportedGaps(
-        WalkthroughWindow walkthrough,
-        string scene,
-        string test,
-        params InteractiveControlFamily[] expectedFamilies)
-    {
-        var gaps = InteractiveControlManifest.ReportedSceneGaps
-            .Where(gap => gap.Test == test && gap.Scene == scene)
-            .ToArray();
-        Assert.NotEmpty(gaps);
-        AssertSceneCore(walkthrough, scene, expectedFamilies, gaps);
+        AssertSceneCore(walkthrough, scene, expectedFamilies);
     }
 
     private static void AssertSceneCore(
         WalkthroughWindow walkthrough,
         string scene,
-        InteractiveControlFamily[] expectedFamilies,
-        ReportedSceneGap[] gaps)
+        InteractiveControlFamily[] expectedFamilies)
     {
         Assert.NotEmpty(expectedFamilies);
         var roots = CollectRoots(walkthrough);
@@ -68,22 +79,31 @@ internal static class InteractiveControlSweep
         }
 
         var observedFamilies = discovered.Keys.ToHashSet();
-        var expected = expectedFamilies.ToHashSet();
-        var gapFamilies = gaps.Select(gap => gap.Family).ToHashSet();
-        var missing = expected.Except(observedFamilies).Order().ToArray();
-        var missingGaps = gaps.Where(gap => !observedFamilies.Contains(gap.Family)).ToArray();
-        var unexpected = observedFamilies.Except(expected).Except(gapFamilies).Order().ToArray();
+        var missing = MissingRequiredFamilies(expectedFamilies, observedFamilies);
+        var criticalActions = CriticalActions.TryGetValue(scene, out var requiredActions)
+            ? requiredActions
+            : throw new Xunit.Sdk.XunitException($"Scene '{scene}' has no authored critical AutomationId contract.");
+        var currentPageId = AutomationIds.ForPage(walkthrough.Workspace.CurrentPage);
+        var observedAutomationIds = controls.Select(entry => AutomationProperties.GetAutomationId(entry.Control))
+            .Where(id => !string.IsNullOrWhiteSpace(id)).Cast<string>().ToArray();
+        var missingAutomationIds = MissingCriticalAutomationIds(
+            [currentPageId, .. criticalActions], observedAutomationIds);
         var observed = string.Join("; ", discovered.OrderBy(pair => pair.Key)
-            .Select(pair => $"{pair.Key} ({pair.Value.Count}): " + (unexpected.Contains(pair.Key)
-                ? string.Join(" | ", pair.Value.Take(6))
-                : pair.Value[0])));
-        Assert.True(missing.Length == 0 && missingGaps.Length == 0 && unexpected.Length == 0 && unknown.Count == 0,
-            $"Scene '{scene}' family mismatch. Missing=[{string.Join(", ", missing)}]; " +
-            $"reported gaps no longer present=[{string.Join(" | ", missingGaps.Select(gap => $"{gap.Family}: {gap.Reason}"))}]; " +
-            $"unexpected=[{string.Join(", ", unexpected)}]; " +
+            .Select(pair => $"{pair.Key} ({pair.Value.Count}): {pair.Value[0]}"));
+        Assert.True(missing.Count == 0 && missingAutomationIds.Count == 0 && unknown.Count == 0,
+            $"Scene '{scene}' contract mismatch. Missing required families=[{string.Join(", ", missing)}]; " +
+            $"missing critical AutomationIds=[{string.Join(", ", missingAutomationIds)}]; " +
             $"unknown peers ({unknown.Count})=[{string.Join(" | ", unknown.Take(12))}]. " +
             $"Observed=[{observed}].");
     }
+
+    internal static IReadOnlyList<InteractiveControlFamily> MissingRequiredFamilies(
+        IEnumerable<InteractiveControlFamily> required, IEnumerable<InteractiveControlFamily> observed) =>
+        required.Except(observed).Distinct().Order().ToArray();
+
+    internal static IReadOnlyList<string> MissingCriticalAutomationIds(
+        IEnumerable<string> required, IEnumerable<string> observed) =>
+        required.Except(observed, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
 
     private static IReadOnlyList<(Control Root, string Label)> CollectRoots(WalkthroughWindow walkthrough)
     {
@@ -207,9 +227,7 @@ internal static class InteractiveControlSweep
 
     private static string SourceFor(InteractiveControlFamily family)
     {
-        var sources = InteractiveControlManifest.MarkupDeclarations
-            .Where(declaration => InteractiveControlManifest.MarkupFamilies[declaration.MarkupType] == family)
-            .Select(declaration => declaration.Source)
+        var sources = InteractiveMarkupContracts.TypesForFamily(family)
             .Concat(InteractiveControlManifest.GeneratedFamilies
                 .Where(generated => generated.Family == family)
                 .Select(generated => generated.Source))

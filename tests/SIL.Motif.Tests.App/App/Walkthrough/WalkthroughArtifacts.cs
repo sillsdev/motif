@@ -164,7 +164,7 @@ internal static class WalkthroughArtifacts
     public static void Write(
         string repositoryRoot, WalkthroughScript script, WalkthroughHelpContent help,
         IReadOnlyList<WalkthroughCapture> captures, IReadOnlyList<WalkthroughClipSegment>? clipSegments = null,
-        Action<string>? reportBaselineMismatch = null)
+        Action<string>? reportBaselineMismatch = null, bool strictBaselineComparison = false)
     {
         var updateBaselines = Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_UPDATE_BASELINES") == "1";
         var prepared = captures.Select(capture =>
@@ -175,9 +175,9 @@ internal static class WalkthroughArtifacts
             var baselineRoot = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets",
                 "WalkthroughBaselines", script.Id);
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}.png"), capture.Png, updateBaselines,
-                capture.Callouts, reportBaselineMismatch);
+                capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
             CheckBaseline(Path.Combine(baselineRoot, $"{capture.Id}-annotated.png"), annotated, updateBaselines,
-                capture.Callouts, reportBaselineMismatch);
+                capture.Callouts, reportBaselineMismatch, strictBaselineComparison);
             using var screenshot = SKBitmap.Decode(capture.Png)
                 ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
             using var annotatedImage = SKBitmap.Decode(annotated)
@@ -697,7 +697,7 @@ internal static class WalkthroughArtifacts
 
     internal static void CheckBaseline(
         string path, byte[] actual, bool update, IReadOnlyList<WalkthroughCaptureCallout>? callouts = null,
-        Action<string>? report = null)
+        Action<string>? report = null, bool strictBaselineComparison = false)
     {
         if (update)
         {
@@ -715,10 +715,13 @@ internal static class WalkthroughArtifacts
         Assert.NotNull(actualBitmap);
         if ((expectedBitmap!.Width, expectedBitmap.Height) != (actualBitmap!.Width, actualBitmap.Height))
         {
+            using var dimensionDiff = CreateDimensionDiff(expectedBitmap, actualBitmap!);
+            var actualPath = WriteActualPng(path, actual);
+            var diffPath = WriteDiffPng(path, dimensionDiff);
             var message = $"Walkthrough baseline '{path}' is {expectedBitmap.Width}x{expectedBitmap.Height} but the capture is " +
-                $"{actualBitmap.Width}x{actualBitmap.Height}. Actual PNG: {WriteActualPng(path, actual)}; callouts: " +
+                $"{actualBitmap.Width}x{actualBitmap.Height}. Actual PNG: {actualPath}; Diff PNG: {diffPath}; callouts: " +
                 string.Join("; ", (callouts ?? []).Select(callout => $"{callout.AutomationId} {callout.Bounds}"));
-            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+            if (strictBaselineComparison || Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
                 throw new Xunit.Sdk.XunitException(message);
             if (report is null) Console.WriteLine(message);
             else report(message);
@@ -775,7 +778,7 @@ internal static class WalkthroughArtifacts
             var message =
                 $"Walkthrough baseline '{path}' differs in {changed:N0} pixels ({calloutChanged:N0} in callouts); " +
                 $"tolerance is {allowed:N0} pixels. Actual PNG: {actualPath}; Diff PNG: {diffPath}";
-            if (Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
+            if (strictBaselineComparison || Environment.GetEnvironmentVariable(StrictComparisonVariable) == "1")
                 throw new Xunit.Sdk.XunitException(message);
             if (report is null) Console.WriteLine(message);
             else report(message);
@@ -825,6 +828,31 @@ internal static class WalkthroughArtifacts
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         File.WriteAllBytes(path, data.ToArray());
         return path;
+    }
+
+    private static SKBitmap CreateDimensionDiff(SKBitmap expected, SKBitmap actual)
+    {
+        var diff = new SKBitmap(
+            Math.Max(expected.Width, actual.Width), Math.Max(expected.Height, actual.Height),
+            SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        diff.Erase(new SKColor(0, 0, 0, 0));
+        for (var y = 0; y < diff.Height; y++)
+        for (var x = 0; x < diff.Width; x++)
+        {
+            var outsideExpected = x >= expected.Width || y >= expected.Height;
+            var outsideActual = x >= actual.Width || y >= actual.Height;
+            var differs = outsideExpected || outsideActual;
+            if (!differs)
+            {
+                var before = expected.GetPixel(x, y);
+                var after = actual.GetPixel(x, y);
+                differs = Math.Abs(before.Red - after.Red) > ChannelTolerance ||
+                    Math.Abs(before.Green - after.Green) > ChannelTolerance ||
+                    Math.Abs(before.Blue - after.Blue) > ChannelTolerance || before.Alpha != after.Alpha;
+            }
+            if (differs) diff.SetPixel(x, y, new SKColor(255, 0, 128));
+        }
+        return diff;
     }
 
     private static string DiagnosticPngPath(string baselinePath, string suffix)

@@ -123,8 +123,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             walkthrough.ShowPage(WorkspacePage.Overview);
             walkthrough.WaitUntil(() => walkthrough.Workspace.PageModel<OverviewPageModel>().Overview is not null,
                 StepTimeout(deadline), "Overview did not load");
-            InteractiveControlSweep.AssertSceneWithReportedGaps(walkthrough, "completed Overview",
-                nameof(AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun),
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Overview",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
                 InteractiveControlFamily.Disclosure,

@@ -14,6 +14,16 @@ namespace SIL.Motif.Tests.App.WalkthroughHelpers;
 public sealed class WalkthroughArtifactTests
 {
     [Fact]
+    public void BaselineDiagnosticsStayUnderTheTestResultsArtifactRoot()
+    {
+        var configurationRoot = new DirectoryInfo(AppContext.BaseDirectory).Parent!.FullName;
+        var expected = Path.Combine(configurationRoot, "test-results", "walkthrough-diffs",
+            WalkthroughTestFiles.ProcessFolder);
+
+        Assert.Equal(expected, WalkthroughTestFiles.DiagnosticsDirectory);
+    }
+
+    [Fact]
     public void WriteProducesSiteShapedAssetsAndParsableCaptions()
     {
         var root = Path.Combine(Path.GetTempPath(), $"walkthrough-output-{Guid.NewGuid():N}");
@@ -355,6 +365,10 @@ public sealed class WalkthroughArtifactTests
     public void BaselineDimensionChangesAreReportedUnlessStrictComparisonIsRequested()
     {
         var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        var actualPath = Path.Combine(WalkthroughTestFiles.DiagnosticsDirectory,
+            Path.GetFileNameWithoutExtension(baselinePath) + "-actual.png");
+        var diffPath = Path.Combine(WalkthroughTestFiles.DiagnosticsDirectory,
+            Path.GetFileNameWithoutExtension(baselinePath) + "-diff.png");
         try
         {
             File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
@@ -365,14 +379,19 @@ public sealed class WalkthroughArtifactTests
             var actual = data.ToArray();
             var diagnostics = new List<string>();
             WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false, report: diagnostics.Add);
-            Assert.Single(diagnostics);
-            Assert.Contains("capture is 20x20", diagnostics[0], StringComparison.Ordinal);
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Contains("capture is 20x20", diagnostic, StringComparison.Ordinal);
+            Assert.Contains("; Diff PNG: ", diagnostic, StringComparison.Ordinal);
+            Assert.True(File.Exists(actualPath), diagnostic);
+            Assert.True(File.Exists(diffPath), diagnostic);
             WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
                 WalkthroughArtifacts.CheckBaseline(baselinePath, actual, update: false)));
         }
         finally
         {
             File.Delete(baselinePath);
+            File.Delete(actualPath);
+            File.Delete(diffPath);
         }
     }
 

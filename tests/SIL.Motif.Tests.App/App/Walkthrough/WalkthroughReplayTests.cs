@@ -293,7 +293,8 @@ internal static class WalkthroughReplayTestRunner
             Assert.Equal(script.Steps.Count(step => step.Kind == WalkthroughStepKind.Capture), captures.Count);
             Assert.Equal(captures.Count,
                 clipSegments.Count(segment => segment.Kind == WalkthroughClipSegmentKind.Capture));
-            WalkthroughArtifacts.Write(root, script, help, captures, clipSegments, output.WriteLine);
+            WalkthroughArtifacts.Write(root, script, help, captures, clipSegments, output.WriteLine,
+                strictBaselineComparison: script.Id == "explained-word-card" && OperatingSystem.IsWindows());
         }
     }
 

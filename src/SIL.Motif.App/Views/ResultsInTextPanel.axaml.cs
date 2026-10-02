@@ -86,6 +86,7 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
     {
+        if (sender is not Control card || e.Source is Control source && !ReferenceEquals(source, card)) return;
         if (e.Key == Key.Escape)
         {
             CloseCardOntoItsWord();

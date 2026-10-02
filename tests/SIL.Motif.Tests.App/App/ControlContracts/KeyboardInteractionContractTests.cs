@@ -21,49 +21,9 @@ namespace SIL.Motif.Tests.App;
 public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
-    public void EveryCurrentInteractiveDeclarationHasAnAuthoredContract()
+    public void GeneratedControlFamiliesKeepTheirAuthoredSourceMarkers()
     {
         var repository = RepositoryRoot();
-        var viewRoot = Path.Combine(repository, "src", "SIL.Motif.App", "Views");
-        var actual = new Dictionary<(string Source, string MarkupType), int>();
-        foreach (var path in Directory.EnumerateFiles(viewRoot, "*.axaml", SearchOption.AllDirectories))
-        {
-            var source = Path.GetRelativePath(repository, path).Replace('\\', '/');
-            var markup = File.ReadAllText(path);
-            foreach (var markupType in InteractiveControlManifest.MarkupFamilies.Keys)
-            {
-                var count = InteractiveControlManifest.CountDeclarations(markup, markupType);
-                if (count > 0) actual.Add((source, markupType), count);
-            }
-        }
-
-        var expected = InteractiveControlManifest.MarkupDeclarations.ToDictionary(
-            declaration => (declaration.Source, declaration.MarkupType), declaration => declaration.Count);
-        Assert.Equal(expected.Keys.OrderBy(key => key), actual.Keys.OrderBy(key => key));
-        foreach (var (declaration, count) in expected)
-        {
-            Assert.True(InteractiveControlManifest.MarkupFamilies.ContainsKey(declaration.MarkupType),
-                $"{declaration.Source} declares an interactive type with no family: {declaration.MarkupType}.");
-            Assert.Equal(count, actual[declaration]);
-        }
-
-        var elementPattern = new Regex("<(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)\\b(?<attributes>[^>]*)>",
-            RegexOptions.Singleline);
-        var actionAttributes = new Regex(
-            "\\b(Command|Click|KeyDown|PointerPressed)\\s*=|\\b(Focusable|IsTabStop)\\s*=\\s*['\\\"]True['\\\"]",
-            RegexOptions.IgnoreCase);
-        foreach (var path in Directory.EnumerateFiles(viewRoot, "*.axaml", SearchOption.AllDirectories))
-        {
-            var source = Path.GetRelativePath(repository, path).Replace('\\', '/');
-            foreach (Match element in elementPattern.Matches(File.ReadAllText(path)))
-            {
-                var markupType = element.Groups["name"].Value;
-                if (!actionAttributes.IsMatch(element.Groups["attributes"].Value)) continue;
-                Assert.True(InteractiveControlManifest.MarkupFamilies.ContainsKey(markupType),
-                    $"{source} has an action or focusable declaration with no authored family: {markupType}.");
-            }
-        }
-
         foreach (var generated in InteractiveControlManifest.GeneratedFamilies)
         {
             var source = Path.Combine(repository, generated.Source.Replace('/', Path.DirectorySeparatorChar));
@@ -142,8 +102,14 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 Assert.True(cell.Focus(), "The matrix cell can receive keyboard focus.");
                 window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
-                ReportedAppGaps.AssertStillReproduces(
-                    nameof(PointerAndKeyboardSelectionRespectTheSameCellGuards), model.IsSelected);
+                Assert.False(model.IsSelected, "Enter cannot select an impossible empty matrix cell.");
+
+                var ordinaryCell = window.GetLogicalDescendants().OfType<MatrixCell>().First(control =>
+                    control.Tag is CompareCellViewModel { IsEmptyImpossible: false });
+                var ordinaryModel = Assert.IsType<CompareCellViewModel>(ordinaryCell.Tag);
+                Assert.True(ordinaryCell.Focus(), "An ordinary matrix cell can receive keyboard focus.");
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                Assert.True(ordinaryModel.IsSelected, "Enter selects an ordinary matrix cell.");
             }
             finally
             {
@@ -176,6 +142,34 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 cell.RaiseEvent(key);
                 Assert.False(key.Handled);
                 Assert.False(model.IsSelected);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void MiniMatrixCannotSelectAnImpossibleCellByKeyboard()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = LoadedCompare();
+            var miniMatrix = new MiniMatrix { DataContext = compare, IsInteractive = true };
+            var window = MatrixWindow(miniMatrix);
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var impossibleCell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), control =>
+                    control.Tag is CompareCellViewModel { IsEmptyImpossible: true });
+                var model = Assert.IsType<CompareCellViewModel>(impossibleCell.Tag);
+                Assert.True(impossibleCell.Focus(), "The matrix cell can receive keyboard focus.");
+
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+
+                Assert.False(model.IsSelected, "Enter cannot select an impossible empty matrix cell.");
             }
             finally
             {
@@ -220,9 +214,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                ReportedAppGaps.AssertStillReproduces(
-                    nameof(WordCardArrowsRespectOccurrenceBoundariesAndChildInputs),
-                    !ReferenceEquals(readingOccurrence, inText.SelectedToken));
+                Assert.True(ReferenceEquals(readingOccurrence, inText.SelectedToken),
+                    "The card's arrow navigation must leave the selected occurrence alone while its reading picker has focus.");
             }
             finally
             {

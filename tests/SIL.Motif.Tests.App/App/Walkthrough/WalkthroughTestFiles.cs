@@ -9,9 +9,10 @@ internal static class WalkthroughTestFiles
     internal static string EngineRoot(string scriptId) =>
         Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "engine", ProcessFolder, scriptId);
 
-    /// <summary>Where this process writes the actual and diff images of a baseline that did not match.</summary>
-    internal static string DiagnosticsDirectory { get; } =
-        Path.Combine(Path.GetTempPath(), "SIL.Motif.WalkthroughDiffs", ProcessFolder);
+    /// <summary>Where this process writes actual and diff images for the CI test-results artifact.</summary>
+    internal static string DiagnosticsDirectory { get; } = Path.Combine(
+        new DirectoryInfo(AppContext.BaseDirectory).Parent!.FullName,
+        "test-results", "walkthrough-diffs", ProcessFolder);
 
     internal static void CopyDirectory(string source, string destination)
     {

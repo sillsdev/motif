@@ -29,6 +29,34 @@ public sealed class ReviewScreenshots
     private const string ProjectPath = @"C:\Users\linguist\FieldWorks\Projects\Sample\Sample.fwdata";
     private static readonly Guid Story = Guid.Parse("11111111-0000-0000-0000-000000000001");
 
+    [Fact]
+    public void ReviewLayoutKeepsActionsAndCardBodiesVisibleWithoutScreenshotCapture()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(Blocked());
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                AssertSidePanelCardsHaveVisibleBody(window);
+                var action = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == "motif-measure-changes");
+                Assert.True(action.IsEffectivelyVisible);
+                Assert.True(action.Bounds.Width > 0 && action.Bounds.Height > 0);
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [ScreenshotFact]
     public void CaptureReviewStates()
     {

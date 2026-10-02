@@ -38,7 +38,8 @@ public sealed partial class ComparePanel : UserControl
 
     private void OnCellKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Space) || sender is not Control { Tag: CompareCellViewModel cell }) return;
+        if (e.Key is not (Key.Enter or Key.Space) ||
+            sender is not Control { Tag: CompareCellViewModel { IsEmptyImpossible: false } cell }) return;
         Compare.Toggle(cell, additive: e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Shift));
         e.Handled = true;
     }
