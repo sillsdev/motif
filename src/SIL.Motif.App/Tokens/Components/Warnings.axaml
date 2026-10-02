@@ -3,133 +3,98 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Warnings.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Warnings.EmptyMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
-    <StaticResource x:Key="Component.Warnings.ActionMargin" ResourceKey="Primitive.Inset.10_0_0_0" />
-    <StaticResource x:Key="Component.Warnings.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
-    <StaticResource x:Key="Component.Warnings.HeadingMargin" ResourceKey="Primitive.Inset.8_12_8_12" />
-    <StaticResource x:Key="Component.Warnings.CellMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
-    <StaticResource x:Key="Component.Warnings.PartMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
-    <StaticResource x:Key="Component.Warnings.GroupPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
+    <StaticResource x:Key="Component.Warnings.RowMargin" ResourceKey="Primitive.Inset.0_0_0_4" />
+    <StaticResource x:Key="Component.Warnings.RowPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
+    <StaticResource x:Key="Component.Warnings.SummaryPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
-    <StaticResource x:Key="Component.Warnings.KindWidth" ResourceKey="Primitive.Size.280" />
-    <StaticResource x:Key="Component.Warnings.ParserLineFont" ResourceKey="Primitive.Font.Mono" />
-    <StaticResource x:Key="Component.Warnings.RowDetailMargin" ResourceKey="Primitive.Inset.10_10_10_10" />
-    <StaticResource x:Key="Component.Warnings.NotePadding" ResourceKey="Primitive.Inset.10_8_10_8" />
-    <StaticResource x:Key="Component.Warnings.StepMarkSize" ResourceKey="Primitive.Size.18" />
-    <StaticResource x:Key="Component.Warnings.StepMarkRadius" ResourceKey="Primitive.Radius.9" />
+    <StaticResource x:Key="Component.Warnings.WorkflowPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.Warnings.PartMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
   </Styles.Resources>
+
   <Style Selector="Grid.warningPanel">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PageMargin}" />
   </Style>
-  <Style Selector="Border.warningEmpty">
+
+  <Style Selector="StackPanel.warningEmpty">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.EmptyMargin}" />
   </Style>
-  <Style Selector="Button.warningAction">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.ActionMargin}" />
+
+  <Style Selector="Border.warningRow">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.RowPadding}" />
+    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.RowMargin}" />
   </Style>
-  <Style Selector=":is(TextBlock).warningSeverity">
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningSeverity.warning">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningSeverity.error">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningSeverity.info">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
-  </Style>
-  <Style Selector="Button.findingGroup">
+
+  <Style Selector="Button.warningSummary">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.GroupPadding}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.SummaryPadding}" />
   </Style>
-  <Style Selector="Button.findingGroup.chosen">
-    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+
+  <Style Selector="Button.warningSummary:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.warningSummary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
   </Style>
-  <!-- Semi repaints the face under the pointer and on a press, so the chosen group keeps its fill there. -->
-  <Style Selector="Button.findingGroup.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.findingGroup.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
-  </Style>
-  <Style Selector="Button.findingGroup TextBlock.groupName">
+
+  <Style Selector=":is(TextBlock).warningMessage">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
-    <Setter Property="FontWeight" Value="Normal" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.GroupMargin}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningHeading">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.HeadingMargin}" />
   </Style>
-  <Style Selector="ScrollViewer.warningKinds">
-    <Setter Property="MinWidth" Value="{DynamicResource Component.Warnings.KindWidth}" />
+
+  <Style Selector=":is(TextBlock).warningState">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
+
+  <Style Selector=":is(TextBlock).warningReach">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="Border.warningRow :is(Control).warningHoverTitle">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
+  <Style Selector="Border.warningRow:pointerover :is(Control).warningHoverTitle, Border.warningRow:focus-within :is(Control).warningHoverTitle">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+
   <Style Selector="Border.warningDetail">
     <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
   </Style>
-  <!-- An opened row: its advice and the steps after a fix, on the page's surface rather than the selection fill. -->
-  <Style Selector="Grid.warningRowDetail">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.RowDetailMargin}" />
-  </Style>
-  <Style Selector="Border.warningRowCard">
-    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
-    <Setter Property="VerticalAlignment" Value="Top" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.DetailPadding}" />
-  </Style>
-  <Style Selector="Border.warningUnnamed">
+
+  <Style Selector="Border.warningWorkflow">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.NotePadding}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Warnings.WorkflowPadding}" />
   </Style>
-  <Style Selector="Border.stepMark.warningStep">
-    <Setter Property="Width" Value="{DynamicResource Component.Warnings.StepMarkSize}" />
-    <Setter Property="Height" Value="{DynamicResource Component.Warnings.StepMarkSize}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Component.Warnings.StepMarkRadius}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningCell">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.CellMargin}" />
-  </Style>
-  <Style Selector="StackPanel.warningCell">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.CellMargin}" />
-  </Style>
-  <Style Selector=":is(SelectableTextBlock).warningPart">
+
+  <Style Selector=":is(Control).warningPart">
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
   </Style>
-  <Style Selector=":is(SelectableTextBlock).warningObject">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-  <Style Selector=":is(SelectableTextBlock).warningMissing">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-  </Style>
-  <Style Selector=":is(SelectableTextBlock).warningValue">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
-  </Style>
-  <!-- The parser's own sentence under the plain meaning: small and fixed-width, for quoting in a bug report. -->
-  <Style Selector=":is(WrapPanel).parserLine :is(SelectableTextBlock)">
-    <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-    <Setter Property="FontWeight" Value="Normal" />
-  </Style>
-  <Style Selector=":is(WrapPanel).parserLine HyperlinkButton">
-    <Setter Property="FontFamily" Value="{DynamicResource Component.Warnings.ParserLineFont}" />
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
-  </Style>
-  <Style Selector=":is(TextBlock).warningSeen">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-    <Setter Property="HorizontalAlignment" Value="Right" />
-  </Style>
+
   <Style Selector="HyperlinkButton.warningObjectLink">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
+  </Style>
+
+  <Style Selector=":is(SelectableTextBlock).warningObject">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector=":is(SelectableTextBlock).warningMissing">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector=":is(SelectableTextBlock).warningValue">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Success}" />
   </Style>
 </Styles>

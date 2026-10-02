@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -19,6 +20,15 @@ public sealed class WarningsPageModel : PageModel
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
         Grammar = new GrammarViewModel(context.Commands, context.Clock);
+        Grammar.Warnings.ConfigureActions(
+            row => Context.HandOffWarning(WordsFor(row), new WarningHandoffScope(
+                row.Message, row.GroupCode, row.AttributionState, row.IsPartialReach)),
+            row => Context.Assess.RerunAsync(WordsFor(row), 30_000),
+            new WordRowRoutes
+            {
+                OpenInText = Context.OpenWord,
+                TryWord = Context.TryWord,
+            });
         CheckGrammarCommand = new AsyncRelayCommand(CheckGrammarAsync, () => Context.HasProject && !Grammar.IsLoading);
         Grammar.PropertyChanged += OnGrammarChanged;
         Grammar.Warnings.PropertyChanged += OnGrammarChanged;
@@ -75,6 +85,17 @@ public sealed class WarningsPageModel : PageModel
         if (Context.ProjectPath is not { } path) return;
         await Grammar.SetProjectAsync(path).ConfigureAwait(true);
         await Context.PublishGrammarCheckedAsync().ConfigureAwait(true);
+    }
+
+    private static IReadOnlyList<string> WordsFor(GrammarWarningRowViewModel row)
+    {
+        var rows = row.AttributionState switch
+        {
+            WarningDisplayState.MembershipCandidates => row.MembershipCandidateRows,
+            WarningDisplayState.SpellingCandidates => row.SpellingCandidateRows,
+            _ => row.WordRows,
+        };
+        return rows.Select(word => word.Word).Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private void OnGrammarChanged(object? sender, PropertyChangedEventArgs e)

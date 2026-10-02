@@ -557,12 +557,14 @@ public sealed partial class ComponentStyleTests
 
         yield return new("Warnings", "the page", host => Add(host, With(new Grid(), ["warningPanel"])),
             Grid.MarginProperty, "Component.Warnings.PageMargin");
-        yield return new("Warnings", "the empty state", host => Add(host, Box("warningEmpty")),
-            Border.MarginProperty, "Component.Warnings.EmptyMargin");
-        yield return new("Warnings", "a selected kind", host => Add(host, Press("findingGroup", "chosen")),
-            Button.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Warnings", "warning severity", host => Add(host, Text("warningSeverity", "warning")),
-            TextBlock.ForegroundProperty, "Intent.Warning");
+        yield return new("Warnings", "the empty state", host => Add(host, Stack("warningEmpty")),
+            StackPanel.MarginProperty, "Component.Warnings.EmptyMargin");
+        yield return new("Warnings", "a finding row", host => Add(host, Box("warningRow")),
+            Border.BackgroundProperty, "Intent.Surface");
+        yield return new("Warnings", "a finding summary", host => Add(host, Press("warningSummary")),
+            Button.BackgroundProperty, "Intent.Clear");
+        yield return new("Warnings", "finding details", host => Add(host, Box("warningDetail")),
+            Border.PaddingProperty, "Component.Warnings.DetailPadding");
         yield return new("Review", "a group of changes", host => Add(host, Box("reviewGroup")),
             Border.BorderBrushProperty, "Intent.Border");
         yield return new("Review", "the no longer fits group", host => Add(host, Box("reviewGroup", "noLongerFits")),

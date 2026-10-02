@@ -65,6 +65,8 @@ internal static class ComponentStateContractCases
         new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
+        new("Border.warningRow:pointerover :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndHidesItsFieldWorksLinkUntilHoverOrFocus)),
+        new("Border.warningRow:focus-within :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndHidesItsFieldWorksLinkUntilHoverOrFocus)),
     ];
 
     /// <summary>
@@ -254,14 +256,12 @@ internal static class ComponentStateContractCases
             yield return new($"Button.stopGroup.chosen:{how}" + face, $"selected and {how}",
                 () => Alone(Press("stopGroup", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
                 "Intent.Danger.Fill");
-        yield return new("Button.findingGroup.chosen", "selected", () => Alone(Press("findingGroup", "chosen")), StateStimulus.None,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
-        foreach (var (how, stimulus) in Hovers)
-            yield return new($"Button.findingGroup.chosen:{how}" + face, $"selected and {how}",
-                () => Alone(Press("findingGroup", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
-                "Intent.Selected.Fill");
-        yield return new("Button.findingGroup.chosen", "selected and keyboard focus", () => Alone(Press("findingGroup", "chosen")),
-            StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+        const string warningSummaryHover = "Button.warningSummary:pointerover" + face;
+        yield return new(warningSummaryHover, "hover", () => Alone(Press("warningSummary")), StateStimulus.Pointer,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
+        const string warningSummaryPressed = "Button.warningSummary:pressed" + face;
+        yield return new(warningSummaryPressed, "pressed", () => Alone(Press("warningSummary")), StateStimulus.Press,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
 
         yield return new("Border.wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
@@ -614,10 +614,8 @@ internal static class TooltipOwners
             control => control is TextBlock && Name(control) == "Rule identity warning"),
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
-        new("a finding's problem", "Views/GrammarPanel.axaml", "{Binding Text}", TooltipScene.Warnings,
-            control => control is GrammarWarningPartsBlock),
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
-            "$\"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in {tool}\"", TooltipScene.Warnings,
+            "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
         new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
             TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),

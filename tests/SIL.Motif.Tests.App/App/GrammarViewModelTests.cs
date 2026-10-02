@@ -107,7 +107,7 @@ public sealed class GrammarViewModelTests
         await grammar.SetProjectAsync(ProjectPath);
 
         Assert.True(grammar.ShowNoFindings);
-        Assert.Equal("No findings", grammar.SummaryText);
+        Assert.Equal("No grammar findings were reported.", grammar.SummaryText);
     }
 
     [Fact]

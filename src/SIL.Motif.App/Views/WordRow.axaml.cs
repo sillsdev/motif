@@ -357,6 +357,13 @@ public static class WordRowColumnSets
     public static readonly WordRowColumns WhatChanged = WordRowColumns.PanGloss | WordRowColumns.Places;
 
     /// <summary>
+    /// Warnings asks how each related word fares and where it occurs. It shows the FieldWorks mark, PanGloss outcome
+    /// and places; resolved parser morphemes were not requested for these rows, as their typed availability records.
+    /// </summary>
+    public static readonly WordRowColumns Warnings = WordRowColumns.FieldWorks | WordRowColumns.PanGloss |
+        WordRowColumns.Places;
+
+    /// <summary>
     /// Analyze texts' Word list asks what FieldWorks holds for each word of the Selection, ticked for AI Handoff: the
     /// opinion and FieldWorks' morphemes, PanGloss's outcome, places and read state. The meaning is the Matrix's
     /// question and the time Timing's, and both are in the card or a click away; warnings join once they name words.

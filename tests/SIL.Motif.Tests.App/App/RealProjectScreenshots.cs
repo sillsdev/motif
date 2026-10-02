@@ -340,16 +340,16 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private const int RerunBudget = 12;
     private const int RerunLimitMs = 20_000;
 
-    // The largest kind of finding chosen, so its own view is reviewed as well as the whole list.
+    // One finding opened in place, so its detail is reviewed as well as the quiet list.
     private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
     {
         var warnings = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
-        var kind = warnings.WarningGroups.Concat(warnings.InformationGroups).MaxBy(group => group.Count);
-        if (kind is null) return;
-        warnings.SelectGroupCommand.Execute(kind);
+        var row = warnings.Rows.Cast<GrammarWarningRowViewModel>().MaxBy(finding => finding.RepeatCount);
+        if (row is null) return;
+        row.IsOpen = true;
         walkthrough.Workspace.CurrentPage = WorkspacePage.Warnings;
         Save(walkthrough.Window, Path.Combine(folder, "5b-warnings-kind-light.png"));
-        warnings.SelectGroupCommand.Execute(kind);
+        row.IsOpen = false;
     }
 
     // The empty state a person meets after unchecking every Text, which a run over Texts never shows.

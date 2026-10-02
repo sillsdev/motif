@@ -166,19 +166,27 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     [NotifyPropertyChangedFor(nameof(ChosenWordsText))]
     private WordTraceResponse? _selectedTrace;
 
+    private WarningHandoffScope? _warningScope;
+
     public bool HasChosenWords => ChosenWords is { Count: > 0 };
 
     public string ChosenWordsText => SelectedTrace is { } trace
         ? $"Keeps the displayed trace for {trace.Word} and the Baseline captured with it."
         : ChosenWords is { } words
-            ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
+            ? _warningScope is not null
+                ? words.Count > 0
+                    ? $"{words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} selected from this PanGloss finding."
+                    : "No words were selected from this PanGloss finding; its message and attribution limits will be included."
+                : $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
             : string.Empty;
 
     /// <summary>Hands off <paramref name="words"/> rather than the whole Assessment.</summary>
-    public void UseWords(IReadOnlyList<string> words)
+    public void UseWords(IReadOnlyList<string> words, WarningHandoffScope? warningScope = null)
     {
         SelectedTrace = null;
-        ChosenWords = words.Count > 0 ? words : null;
+        _warningScope = warningScope;
+        ChosenWords = warningScope is not null || words.Count > 0 ? words : null;
+        OnPropertyChanged(nameof(ChosenWordsText));
     }
 
     /// <summary>Keeps the trace already displayed on Try a Word with the Baseline recorded in its capture.</summary>
@@ -186,6 +194,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     {
         ArgumentNullException.ThrowIfNull(trace);
         SelectedTrace = trace;
+        _warningScope = null;
         ChosenWords = [trace.Word];
         InvocationId = null;
         LatestAssessmentAt = null;
@@ -196,6 +205,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     {
         SelectedTrace = null;
         ChosenWords = null;
+        _warningScope = null;
     }
 
     partial void OnChosenWordsChanged(IReadOnlyList<string>? value) => RunCommand.NotifyCanExecuteChanged();
@@ -224,7 +234,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
                 SelectedTrace = trace,
             }
             : ChosenWords is { } words
-                ? new HandoffRequest(ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], words, false, null), true)
+                ? new HandoffRequest(ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], words, false, null),
+                    words.Count > 0, WarningScope: _warningScope)
             : new HandoffRequest(
                 ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], [], false, null), true, InvocationId);
         return _commandClient.HandoffAsync(request, this, cancellationToken);
@@ -245,6 +256,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         InvocationId = null;
         ChosenWords = null;
         SelectedTrace = null;
+        _warningScope = null;
         CoverageText = null;
         LatestAssessmentAt = null;
         WrittenAt = null;

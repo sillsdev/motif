@@ -1,302 +1,418 @@
 using System.Linq;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>Pins the grammar-warning table's per-column search over rows already in memory.</summary>
+/// <summary>Pins the Warnings page's finding rows, word evidence, filters and refresh state.</summary>
 public sealed class GrammarWarningsViewModelTests
 {
     private static readonly GrammarWarning EntryWarning = new(
-        GrammarDiagnosticLevel.Warning, "Entry",
-        [new("lex entry", GrammarWarningPartRole.Text), new("kuona", GrammarWarningPartRole.Object, "e", "Entry", "silfw://localhost/link?x")],
-        [new("msa", GrammarWarningPartRole.Text), new("0c686afa-8d21-4e3b-bc0e-41812150cf4c", GrammarWarningPartRole.Missing),
-         new("does not resolve within this entry", GrammarWarningPartRole.Text)],
-        "warning: hc-unresolved-morph-type: msa does not resolve within this entry")
+        GrammarDiagnosticLevel.Warning,
+        "Entry",
+        [new("lex entry", GrammarWarningPartRole.Text), new("kuona", GrammarWarningPartRole.Object,
+            "11111111-1111-1111-1111-111111111111", "Entry", "silfw://localhost/link?x")],
+        [new("does not resolve within this entry", GrammarWarningPartRole.Text)],
+        "warning: future.entry: does not resolve within this entry")
     {
-        Group = "Unresolved morph type",
-        Explanation = "The morph type reference could not be resolved.",
-        Code = "hc-unresolved-morph-type",
+        Group = "PanGloss entry group",
+        Code = "future.entry",
+        Description = "PanGloss says the entry's grammatical info cannot be read.",
+        Guidance = "Choose the entry's grammatical info in FieldWorks.",
         Origin = GrammarFindingOrigin.Import,
     };
 
     private static readonly GrammarWarning PhonemeWarning = new(
-        GrammarDiagnosticLevel.Information, "Phoneme",
-        [new("phoneme", GrammarWarningPartRole.Text), new("ng", GrammarWarningPartRole.Object, "p", "Phoneme")],
+        GrammarDiagnosticLevel.Information,
+        "Phoneme",
+        [new("phoneme", GrammarWarningPartRole.Text), new("ng", GrammarWarningPartRole.Object,
+            "22222222-2222-2222-2222-222222222222", "Phoneme")],
         [new("is not modelled", GrammarWarningPartRole.Text)],
-        "info: hc-unused-phoneme: is not modelled")
+        "info: future.phoneme: is not modelled")
     {
-        Group = "Unused phoneme",
-        Code = "hc-unused-phoneme",
+        Group = "PanGloss phoneme group",
+        Code = "future.phoneme",
+        Description = "PanGloss says the phoneme is not modelled.",
         Origin = GrammarFindingOrigin.Check,
     };
 
     [Fact]
-    public void TypedTraceOperandsAreVisibleInRecordedDetails()
-    {
-        var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory,
-            "TestFixtures", "trace-details-v3-numobel.json"));
-        var result = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(raw);
-        Assert.True(result.Succeeded, result.Refusal?.Message);
-        var step = Steps(result.Value!.Reading.Root).First(item => item.FailureEvidence?.Kind == "mprFeatures");
-        Assert.Contains("mpr1", new TraceStepViewModel(step, null).RecordedRejectionText, System.StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("step-11")]
-    [InlineData("step-12")]
-    public void SelectedCompoundStepShowsUnknownCauseAndRecordedCode(string producerId)
-    {
-        var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory,
-            "TestFixtures", "trace-details-v3-kumata.json"));
-        var reading = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(raw).Value!.Reading;
-        var step = Steps(reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
-        var selected = new TraceStepViewModel(step, null);
-        Assert.Equal("Pattern", selected.RecordedReasonText);
-        Assert.Equal("Explanation not recorded", selected.RecordedExplanationText);
-        Assert.Contains("owner-payload-not-captured", selected.RecordedRejectionText, System.StringComparison.Ordinal);
-        Assert.DoesNotContain("did not match", selected.ContextText, System.StringComparison.Ordinal);
-    }
-
-    private static System.Collections.Generic.IEnumerable<TraceStep> Steps(TraceStep root) =>
-        new[] { root }.Concat(root.Children.SelectMany(Steps));
-
-    [Fact]
-    public void ProducerAdviceAndPlacesReplaceTheConsumerCatalogAndProseParsing()
-    {
-        var warning = System.Text.Json.JsonSerializer.Deserialize<GrammarWarning>("""
-            {"Severity":"warning","kind":"Producer title","Subject":[],"Problem":[],"Text":"producer line",
-             "Code":"fwdata.unknown-morph-type-guid","Group":"Producer title","Description":"description",
-             "Explanation":"Producer explanation in its locale","Guidance":"Producer guidance without a menu path",
-             "HelpBody":"# Producer background","FieldWorksPlaces":[{"Tool":"lexiconEdit","Field":"Morph Type"}]}
-            """);
-        var row = new GrammarWarningRowViewModel(warning!);
-        Assert.Equal("Producer title", row.GroupName);
-        Assert.Equal("Producer explanation in its locale", row.Meaning);
-        Assert.Equal("Producer guidance without a menu path", row.Advice);
-        Assert.Equal("Lexicon Edit > Morph Type", Assert.Single(row.Places));
-    }
-
-    [Fact]
-    public void LoadingShowsEveryRowAndCountsThem()
-    {
-        var table = new GrammarWarningsViewModel();
-
-        table.Load([EntryWarning, PhonemeWarning]);
-
-        Assert.True(table.HasAny);
-        Assert.Equal(2, table.Rows.Count);
-        Assert.Equal("2 findings", table.CountSummary);
-    }
-
-    [Fact]
-    public void SeverityFiltersRemainAvailableWhenOtherBucketsAreSelected()
+    public void TheRowUsesPanGlossTextAndDoesNotInventAdvice()
     {
         var table = new GrammarWarningsViewModel();
         table.Load([EntryWarning, PhonemeWarning]);
 
-        Assert.False(table.HasReportedErrors);
-        Assert.True(table.HasReportedWarnings);
-        Assert.True(table.HasReportedInformation);
+        var row = Assert.IsType<GrammarWarningRowViewModel>(table.Rows
+            .Cast<GrammarWarningRowViewModel>().Single(item => item.GroupCode == EntryWarning.Code));
 
-        table.SetBucketCommand.Execute(GrammarFindingBucket.Warnings);
-
-        Assert.True(table.HasReportedInformation);
-        Assert.Equal(1, table.InformationCount);
-
-        table.Load([EntryWarning]);
-
-        Assert.True(table.HasReportedWarnings);
-        Assert.False(table.HasReportedInformation);
+        Assert.Equal("PanGloss entry group", row.PanGlossTitle);
+        Assert.Equal("PanGloss says the entry's grammatical info cannot be read.", row.Message);
+        Assert.Equal("Choose the entry's grammatical info in FieldWorks.", row.PanGlossGuidance);
+        Assert.False(row.HasExplanation);
+        Assert.False(row.HasHelp);
     }
 
     [Fact]
-    public void ErrorFindingsHaveTheirOwnBucketAndSeverity()
+    public void NoGroupOrDescriptionDoesNotGetMotifFallbackText()
     {
-        var error = EntryWarning with
+        var warning = EntryWarning with { Group = null, Title = null, CodeLabel = "", Description = string.Empty, Guidance = null };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal(string.Empty, row.PanGlossTitle);
+        Assert.Equal(string.Empty, row.Message);
+        Assert.False(row.HasGuidance);
+        Assert.False(row.HasExplanation);
+    }
+
+    [Fact]
+    public void ProblemDetailsStaySeparateOnlyWhenTheyAddEvidenceBeyondTheDescription()
+    {
+        const string description = "PanGloss's full description.";
+        var warning = EntryWarning with
         {
-            Severity = GrammarDiagnosticLevel.Error,
-            Text = "error: hc-unresolved-morph-type: msa does not resolve within this entry",
+            Description = description,
+            Problem = [new GrammarWarningPart(description, GrammarWarningPartRole.Text)],
         };
-        var table = new GrammarWarningsViewModel();
 
+        Assert.False(new GrammarWarningRowViewModel(warning).HasProblemParts);
+        Assert.True(new GrammarWarningRowViewModel(warning with
+        {
+            Problem = [new GrammarWarningPart("Typed or separate evidence", GrammarWarningPartRole.Text)],
+        }).HasProblemParts);
+    }
+
+    [Fact]
+    public void SeverityCountsAndBucketsFollowTheReportLevel()
+    {
+        var error = EntryWarning with { Code = "future.entry.error", Severity = GrammarDiagnosticLevel.Error };
+        var table = new GrammarWarningsViewModel();
         table.Load([EntryWarning, error, PhonemeWarning]);
 
         Assert.Equal(1, table.ErrorCount);
-        Assert.Single(table.ErrorGroups);
+        Assert.Equal(1, table.WarningCount);
+        Assert.Equal(1, table.InformationCount);
+
         table.SetBucketCommand.Execute(GrammarFindingBucket.Errors);
+
         var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
         Assert.Equal("error", row.Severity);
         Assert.True(row.IsError);
         Assert.Equal("1 error, 1 warning, 1 information finding.", table.BreakdownText);
+        Assert.Equal(Mark.Error, Assert.Single(table.Rows.Cast<GrammarWarningRowViewModel>()).SeverityMark);
     }
 
     [Fact]
-    public void AnExactlyRepeatedReportIsOneRowWithItsCount()
+    public void TouchYourWordsShowsExactUsesAndLeavesSpellingMatchesOut()
     {
-        var table = new GrammarWarningsViewModel();
-
-        table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
-
-        // Counts stay in reports, so the stage badge and the table agree; the table shows two rows.
-        Assert.Equal(2, table.Rows.Count);
-        Assert.Equal("3 findings", table.CountSummary);
-        var repeated = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.RepeatCount == 2);
-        Assert.Equal("2×", repeated.SeenText);
-    }
-
-    [Fact]
-    public void ChoosingAKindCountsThatKindRatherThanAFilterMatch()
-    {
-        var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning, EntryWarning, PhonemeWarning]);
-
-        var kind = table.WarningGroups.Concat(table.InformationGroups).MaxBy(group => group.Count)!;
-        table.SelectGroupCommand.Execute(kind);
-
-        Assert.Equal("2 findings of this kind", table.CountSummary);
-        table.WhereFilter = "nothing matches this";
-        Assert.Equal("0 of 3 findings match the filters", table.CountSummary);
-    }
-
-    [Fact]
-    public void AKindTheTableDoesNotKnowCarriesTheParsersDescriptionAndGuidance()
-    {
-        var named = EntryWarning with
+        var exact = WithWords(EntryWarning with { Code = "grammar.exact" }, WarningWordsMatch.Identity,
+            "exact-one", "exact-two");
+        var spelling = WithWords(PhonemeWarning with { Code = "grammar.spelling" }, WarningWordsMatch.Spelling,
+            "spelling-one");
+        var noWords = EntryWarning with
         {
-            Code = "grammar.future.unresolved-info",
-            Group = "Unresolved grammatical info",
-            Description = "The entry points at grammatical info it does not own.",
-            Explanation = "The entry points at grammatical info it does not own.",
-            Guidance = "Choose the entry's grammatical info again in FieldWorks.",
+            Code = "grammar.none",
+            YourWords = new WarningWords(WarningWordsMatch.Identity, [], []),
         };
         var table = new GrammarWarningsViewModel();
+        table.Load([exact, spelling, noWords]);
 
-        table.Load([named, PhonemeWarning]);
+        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToDictionary(row => row.GroupCode);
+        Assert.Equal(WarningDisplayState.ExactUses, rows["grammar.exact"].AttributionState);
+        Assert.Equal("2 of your words", rows["grammar.exact"].ReachSummaryText);
+        Assert.Equal(WarningDisplayState.SpellingCandidates, rows["grammar.spelling"].AttributionState);
+        Assert.Equal("1 spelling match", rows["grammar.spelling"].ReachSummaryText);
+        Assert.Equal("The spelling matches, but that does not confirm the phoneme was used",
+            rows["grammar.spelling"].ReachStateText);
+        Assert.Equal(WarningDisplayState.NoneInSelection, rows["grammar.none"].AttributionState);
+        Assert.Equal("No words in this Selection", rows["grammar.none"].ReachSummaryText);
 
-        var group = table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind.Name == "Unresolved grammatical info");
-        Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
-        Assert.Equal("Choose the entry's grammatical info again in FieldWorks.", table.Rows
-            .Cast<GrammarWarningRowViewModel>().Single(row => row.GroupName == group.Name).Advice);
-        Assert.Null(table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).Description);
+        table.TouchYourWords = true;
+
+        Assert.Equal(["grammar.exact"], table.Rows.Cast<GrammarWarningRowViewModel>().Select(row => row.GroupCode));
     }
 
     [Fact]
-    public void EachColumnFiltersOnItsOwnText()
+    public void MembershipCandidatesStaySeparateFromExactUsesAndTheTouchYourWordsFilter()
     {
+        var membership = WithWords(EntryWarning with { Code = "grammar.membership" },
+            WarningWordsMatch.Membership, "member-only");
         var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning, PhonemeWarning]);
+        table.Load([membership]);
 
-        table.WhereFilter = "phon";
-        Assert.Equal("ng", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).SubjectParts[1].Text);
-        Assert.Equal("1 of 2 findings match the filters", table.CountSummary);
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal(WarningDisplayState.MembershipCandidates, row.AttributionState);
+        Assert.Empty(row.WordRows);
+        Assert.Equal("member-only", Assert.Single(row.MembershipCandidateRows).Row.Word);
+        Assert.Null(row.YourWordsCount);
 
-        table.WhereFilter = string.Empty;
-        table.WhereFilter = "kuona";
-        Assert.Equal("Unresolved morph type", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
+        table.TouchYourWords = true;
 
-        table.WhereFilter = string.Empty;
-        table.ProblemFilter = "not modelled";
-        Assert.Equal("Unused phoneme", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
-    }
-
-    [Fact]
-    public void TheProblemFilterAlsoMatchesTheOriginalLine_SoAPastedIdentifierFindsItsRow()
-    {
-        var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning, PhonemeWarning]);
-
-        table.ProblemFilter = "0c686afa";
-
-        Assert.Equal("warning", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).Severity);
-    }
-
-    [Fact]
-    public void LoadingNothingClearsTheTable()
-    {
-        var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning]);
-
-        table.Load(null);
-
-        Assert.False(table.HasAny);
         Assert.Empty(table.Rows);
     }
 
     [Fact]
-    public void AProducerExplanationStaysDistinctFromTheDescription()
+    public void MissingAndUnresolvedSubjectsUsePlainStateWords()
     {
+        var missing = EntryWarning with
+        {
+            Code = "grammar.missing",
+            YourWords = new WarningWords(WarningWordsMatch.MissingObject, [], [])
+            {
+                Reason = WarningAttributionReason.StaleGuid,
+                Paths = [WarningWordsPath.MissingObject],
+            },
+        };
+        var noSubject = EntryWarning with
+        {
+            Code = "grammar.no-subject",
+            Subject = [],
+        };
         var table = new GrammarWarningsViewModel();
+        var unresolved = EntryWarning with
+        {
+            Code = "grammar.unresolved",
+            Subject = [new GrammarWarningPart("unknown entry", GrammarWarningPartRole.Object, "not-a-guid", "LexEntry")
+            {
+                Reach = new WarningReach(WarningWordsPath.UnresolvedIdentity)
+                { Reason = WarningAttributionReason.NamedWithoutProjectGuid },
+            }],
+        };
+        table.Load([missing, noSubject, unresolved]);
 
-        table.Load([EntryWarning, PhonemeWarning]);
-
-        var row = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.GroupCode == "hc-unresolved-morph-type");
-        Assert.Equal("Unresolved morph type", row.GroupName);
-        Assert.True(row.HasMeaning);
-        Assert.Equal("The morph type reference could not be resolved.", row.Meaning);
-        Assert.Equal("msa 0c686afa-8d21-4e3b-bc0e-41812150cf4c does not resolve within this entry", row.Problem);
-        var group = table.WarningGroups.Single(group => group.Code == "hc-unresolved-morph-type");
-        Assert.Equal("Unresolved morph type", group.Name);
-        Assert.Equal(row.Meaning, group.Description);
+        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToDictionary(row => row.GroupCode);
+        Assert.Equal(WarningDisplayState.MissingObject, rows["grammar.missing"].AttributionState);
+        Assert.Equal("The item PanGloss named is not in this FieldWorks project", rows["grammar.missing"].ReachStateText);
+        Assert.Equal("Named item missing", rows["grammar.missing"].ReachSummaryText);
+        Assert.Equal(WarningDisplayState.NoSubject, rows["grammar.no-subject"].AttributionState);
+        Assert.Equal("PanGloss did not name a subject for this finding", rows["grammar.no-subject"].ReachStateText);
+        Assert.Equal(WarningDisplayState.UnresolvedIdentity, rows["grammar.unresolved"].AttributionState);
+        Assert.Equal("Identity unavailable", rows["grammar.unresolved"].ReachSummaryText);
     }
 
     [Fact]
-    public void AnUnknownCodeKeepsTheParsersGroupAndSentence()
+    public void AReportedObjectWithoutStoredReachIsUnresolvedRatherThanNoSubject()
     {
-        var future = EntryWarning with
+        var warning = EntryWarning with
         {
-            Code = "grammar.future.thing", Group = "Future thing could not be loaded", Explanation = null,
-            Description = "The future thing could not be loaded.",
+            Code = "grammar.unreached",
+            Subject = [new GrammarWarningPart("named entry", GrammarWarningPartRole.Object,
+                "44444444-4444-4444-4444-444444444444", "LexEntry")],
+            YourWords = null,
+        };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal(WarningDisplayState.UnresolvedIdentity, row.AttributionState);
+        Assert.Equal("Identity unavailable", row.ReachSummaryText);
+        Assert.DoesNotContain("did not name a subject", row.ReachStateText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProjectWideResourcesSayTheyHaveNoWordAttribution()
+    {
+        var warning = EntryWarning with
+        {
+            Code = "grammar.project-wide",
+            Subject = [new GrammarWarningPart("feature system", GrammarWarningPartRole.Object,
+                "55555555-5555-5555-5555-555555555555", "FsFeatureSystem")
+            {
+                Reach = new WarningReach(WarningWordsPath.ProjectWide)
+                { Reason = WarningAttributionReason.NoWordAttribution },
+            }],
+        };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal(WarningDisplayState.ProjectWide, row.AttributionState);
+        Assert.Equal("No word attribution for this resource", row.ReachSummaryText);
+        Assert.Equal("This project-wide resource has no word attribution", row.ReachStateText);
+    }
+
+    [Fact]
+    public void AnIdentifiedUnsupportedSubjectIsNamedWithAndWithoutWordEvidence()
+    {
+        const string guid = "33333333-3333-3333-3333-333333333333";
+        var named = EntryWarning with
+        {
+            Code = "grammar.unsupported",
+            Subject = [new GrammarWarningPart("Verb template", GrammarWarningPartRole.Object, guid,
+                "MoInflAffixTemplate", "silfw://localhost/link?tool=InflAffixTemplateEdit")
+            {
+                SubjectGuid = guid,
+                FieldWorksGuid = guid,
+                LinkStatus = FieldWorksLinkStatus.Available,
+                Reach = new WarningReach(WarningWordsPath.UnresolvedIdentity)
+                { Reason = WarningAttributionReason.UnsupportedKind },
+            }],
+        };
+        var withEvidence = named with { YourWords = WarningWordsQuery.YourWordsOf(named, [], []) };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([withEvidence, named with { Code = "grammar.unsupported.no-assessment" }]);
+
+        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToDictionary(row => row.GroupCode);
+        foreach (var row in rows.Values)
+        {
+            Assert.Equal(WarningDisplayState.NamedUnsupportedRoute, row.AttributionState);
+            Assert.Equal("Named item; word route unavailable", row.ReachSummaryText);
+            Assert.Contains("does not follow this type to words", row.ReachStateText, StringComparison.Ordinal);
+            Assert.Equal("Verb template", row.SubjectParts.Single().Text);
+        }
+        Assert.Equal(WarningWordsMatch.UnresolvedIdentity, rows["grammar.unsupported"].YourWords!.Match);
+        Assert.Null(rows["grammar.unsupported.no-assessment"].YourWords);
+    }
+
+    [Fact]
+    public void MissingWordEvidenceDoesNotLookLikeZeroWords()
+    {
+        var warning = EntryWarning with
+        {
+            Subject = [new GrammarWarningPart("entry", GrammarWarningPartRole.Object, "g", "LexEntry")
+            {
+                Reach = new WarningReach(WarningWordsPath.Uses),
+            }],
+            YourWords = null,
+        };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal(WarningDisplayState.EvidenceUnavailable, row.AttributionState);
+        Assert.Equal("Word evidence unavailable", row.ReachSummaryText);
+        Assert.Equal("Word evidence is not available", row.ReachStateText);
+    }
+
+    [Fact]
+    public void MostYourWordsFirstSortsByExactWordCountAndKeepsInputOrderForTies()
+    {
+        var one = WithWords(EntryWarning with { Code = "grammar.one" }, WarningWordsMatch.Identity, "one");
+        var three = WithWords(EntryWarning with { Code = "grammar.three" }, WarningWordsMatch.Identity,
+            "three-one", "three-two", "three-three");
+        var spelling = WithWords(PhonemeWarning with { Code = "grammar.spelling" }, WarningWordsMatch.Spelling,
+            "candidate-one", "candidate-two", "candidate-three", "candidate-four");
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([one, three, spelling]);
+
+        Assert.Equal(["grammar.three", "grammar.one", "grammar.spelling"],
+            table.Rows.Cast<GrammarWarningRowViewModel>().Select(row => row.GroupCode));
+        table.MostYourWordsFirst = false;
+        Assert.Equal(["grammar.one", "grammar.three", "grammar.spelling"],
+            table.Rows.Cast<GrammarWarningRowViewModel>().Select(row => row.GroupCode));
+    }
+
+    [Fact]
+    public void AFindingRemovedByRefreshRemainsVisibleAsGoneForOneRefresh()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([WithWords(EntryWarning, WarningWordsMatch.Identity, "one")]);
+
+        table.Load([], preserveResolved: true);
+
+        var gone = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.True(gone.IsGone);
+        Assert.Equal("Gone after Refresh", gone.StatusText);
+        Assert.True(gone.CanParseAgain);
+
+        table.Load([], preserveResolved: true);
+
+        Assert.Empty(table.Rows);
+    }
+
+    [Fact]
+    public void AChangedPanGlossMessageKeepsTheSameFindingWhenItsTypedSubjectIdentityIsStable()
+    {
+        var table = new GrammarWarningsViewModel();
+        table.Load([EntryWarning]);
+
+        table.Load([EntryWarning with { Description = "The value changed; the same entry remains invalid." }],
+            preserveResolved: true);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.False(row.IsGone);
+        Assert.Equal("The value changed; the same entry remains invalid.", row.Description);
+    }
+
+    [Fact]
+    public void AReplacementSubjectWithTheSameMessageDoesNotKeepTheEarlierFindingAlive()
+    {
+        var original = EntryWarning;
+        var replacementPart = original.Subject[1] with
+        {
+            ObjectId = "44444444-4444-4444-4444-444444444444",
+            SubjectGuid = "44444444-4444-4444-4444-444444444444",
+        };
+        var replacement = original with { Subject = [original.Subject[0], replacementPart] };
+        var table = new GrammarWarningsViewModel();
+        table.Load([original]);
+
+        table.Load([replacement], preserveResolved: true);
+
+        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.Contains(rows, row => row.IsGone && row.Warning.Subject[1].ObjectId == original.Subject[1].ObjectId);
+        Assert.Contains(rows, row => !row.IsGone && row.Warning.Subject[1].ObjectId == replacementPart.ObjectId);
+    }
+
+    [Fact]
+    public void HomonymousSubjectsRemainSeparateRowsAndUnidentifiedRefreshLinesStayNeutral()
+    {
+        var first = EntryWarning;
+        var secondPart = first.Subject[1] with
+        {
+            ObjectId = "55555555-5555-5555-5555-555555555555",
+            SubjectGuid = "55555555-5555-5555-5555-555555555555",
         };
         var table = new GrammarWarningsViewModel();
 
-        table.Load([future]);
+        table.Load([first, first with { Subject = [first.Subject[0], secondPart] }]);
 
-        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
-        Assert.Equal("Future thing could not be loaded", row.GroupName);
-        Assert.False(row.HasMeaning);
-        Assert.Equal("The future thing could not be loaded.", Assert.Single(table.WarningGroups).Description);
+        Assert.Equal(2, table.Rows.Cast<GrammarWarningRowViewModel>().Count());
+        Assert.All(table.Rows.Cast<GrammarWarningRowViewModel>(), row => Assert.Equal("kuona", row.SubjectParts[1].Text));
+
+        var unidentified = first with
+        {
+            Subject = [new GrammarWarningPart("kuona", GrammarWarningPartRole.Object, "legacy-id", "Entry")],
+        };
+        table.Load([unidentified]);
+        table.Load([], preserveResolved: true);
+
+        var old = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.False(old.IsGone);
+        Assert.Equal("Earlier line could not be matched after Refresh", old.StatusText);
     }
 
     [Fact]
-    public void EachRowNamesItsObjectsKindOrSaysItIsGrammarWide()
+    public void NotRequestedReadingAvailabilitySurvivesTheJsonRoundTrip()
     {
-        var environment = new GrammarWarning(GrammarDiagnosticLevel.Warning, string.Empty,
-            [new GrammarWarningPart("e2 (/ _ [C])", GrammarWarningPartRole.Object, "g", "PhEnvironment", "silfw://localhost/link?tool=EnvironmentEdit")],
-            [new GrammarWarningPart("unknown natural class \"C\"; treated as absent", GrammarWarningPartRole.Text)],
-            "warning: grammar.environment.invalid: unknown natural class")
-        { Code = "grammar.environment.invalid", Group = "Invalid phonological environment" };
-        var nowhere = environment with { Subject = [], Text = "warning: grammar.environment.invalid: failed validation" };
-        var table = new GrammarWarningsViewModel();
+        var word = new SIL.Motif.Contract.Responses.WordRow("motifa", WordRowOutcome.Same, "Fine", WordRowTone.Fine)
+        {
+            PanGlossReadingAvailability = WordRowReadingAvailability.NotRequested,
+        };
 
-        table.Load([environment, nowhere]);
+        var json = ProjectionJson.Serialize(word);
+        var restored = ProjectionJson.Deserialize<SIL.Motif.Contract.Responses.WordRow>(json);
 
-        var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToList();
-        Assert.Equal(["Environment", "Grammar-wide"], rows.Select(row => row.KindLabel).Order(StringComparer.Ordinal));
-        Assert.Equal("1×", rows[0].SeenText);
+        Assert.Contains("\"panGlossReadingAvailability\": \"not_requested\"", json, StringComparison.Ordinal);
+        Assert.Equal(WordRowReadingAvailability.NotRequested, restored!.PanGlossReadingAvailability);
     }
 
-    [Fact]
-    public void TheLevelColumnIsNeededOnlyWhenTheShownRowsMixLevels()
-    {
-        var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning, PhonemeWarning]);
-
-        Assert.True(table.AnyShownLevelsDiffer);
-        table.SetBucketCommand.Execute(GrammarFindingBucket.Warnings);
-        Assert.False(table.AnyShownLevelsDiffer);
-    }
-
-    [Fact]
-    public void TheProblemFilterAlsoMatchesThePlainMeaning()
-    {
-        var table = new GrammarWarningsViewModel();
-        table.Load([EntryWarning, PhonemeWarning]);
-
-        table.ProblemFilter = "reference could not";
-
-        Assert.Equal("hc-unresolved-morph-type",
-            Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupCode);
-    }
+    private static GrammarWarning WithWords(GrammarWarning warning, WarningWordsMatch match, params string[] forms) =>
+        warning with
+        {
+            YourWords = new WarningWords(match,
+                forms.Select(form => new ObjectUseWord(
+                    new SIL.Motif.Contract.Responses.WordRow(form, WordRowOutcome.Same, "Fine", WordRowTone.Fine)
+                    { Places = 2 })).ToArray(), []),
+        };
 }

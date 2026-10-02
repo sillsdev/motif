@@ -215,6 +215,58 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(File.Exists(Path.Combine(destination, "assessment.json")));
     }
 
+    [Fact]
+    public void WarningScopedHandoffCarriesTheRawParserMessageAndMatchKind()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-warning-scope");
+        var selection = new SelectionRequest(false, [], ["motifa"], false, null);
+        var scope = new WarningHandoffScope(
+            "PanGloss warning text.\nA second parser line.", "parser.warning", WarningDisplayState.SpellingCandidates,
+            HasUnfollowedConnections: true);
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, selection, true, WarningScope: scope),
+            NewManagedRoot(), NewAssessor(), invoker, onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var markdown = File.ReadAllText(Path.Combine(destination, "handoff.md"));
+        Assert.Contains("## PanGloss warning", markdown, StringComparison.Ordinal);
+        Assert.Contains("Code: `parser.warning`.", markdown, StringComparison.Ordinal);
+        Assert.Contains("Spelling matches only; use is not confirmed", markdown, StringComparison.Ordinal);
+        Assert.Contains("Some named connections could not be followed", markdown, StringComparison.Ordinal);
+        Assert.Contains("> PanGloss warning text.\n> A second parser line.", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("What to do in FieldWorks", markdown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EmptyWarningScopeCanBeHandedOffWithoutAnAssessmentAndKeepsItsUnfollowedLimit()
+    {
+        using var seeded = NewSeededScratch();
+        using var invoker = NewInvoker();
+        var destination = Path.Combine(_root, "handoff-warning-empty");
+        var scope = new WarningHandoffScope(
+            "PanGloss named a template whose word route is unavailable.", "grammar.template.unfollowed",
+            WarningDisplayState.NoFollowedRouteMatch, HasUnfollowedConnections: true);
+
+        var outcome = HandoffCommand.Run(
+            new HandoffRequest(seeded.FwDataPath, destination, new SelectionRequest(false, [], [], false, null),
+                Assess: false, WarningScope: scope),
+            NewManagedRoot(), NewAssessor(), invoker, onProgress: null, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Empty(outcome.Value!.AssessmentIds);
+        Assert.Empty(outcome.Value.Selection.Words);
+        var markdown = File.ReadAllText(Path.Combine(destination, "handoff.md"));
+        Assert.Contains("No words matched through routes Motif could follow", markdown, StringComparison.Ordinal);
+        Assert.Contains("other named connections remain unchecked", markdown, StringComparison.Ordinal);
+        Assert.Contains("no word conclusion is made about those routes", markdown, StringComparison.Ordinal);
+        Assert.Contains("> PanGloss named a template whose word route is unavailable.", markdown,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("No words in this Selection use the named item", markdown, StringComparison.Ordinal);
+    }
+
     // Complete must arrive once, at the end: the nested Assessment reports its own part way through.
     [Fact]
     public void ProgressReachesCompleteOnlyOnceTheFolderIsActuallyWritten()

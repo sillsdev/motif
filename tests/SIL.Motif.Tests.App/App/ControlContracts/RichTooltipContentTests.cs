@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -170,6 +171,8 @@ internal sealed class TooltipScenes
 
     private TextsListsViewModel Lists => Workspace.PageModel<TextsPageModel>().TextsLists;
 
+    private GrammarViewModel Grammar => Workspace.PageModel<WarningsPageModel>().Grammar;
+
     public static async Task<TooltipScenes> Open()
     {
         FakeCommandClient? client = null;
@@ -178,6 +181,7 @@ internal sealed class TooltipScenes
             OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);
             client = fake;
         });
+        await workspace.Context.EvidencePublication;
         window.Width = 1240;
         window.Height = 780;
         PageScreenshots.Settle(window);
@@ -265,7 +269,35 @@ internal sealed class TooltipScenes
                 statistics.IsExpanded = true;
                 await Until(() => Visible<StatisticsPanel>().Any(), "Detailed statistics");
                 break;
-            case TooltipScene.Warnings: Show(WorkspacePage.Warnings); break;
+            case TooltipScene.Warnings:
+                Show(WorkspacePage.Warnings);
+                await Until(() => !Grammar.IsLoading && Grammar.HasChecked && Visible<Button>().Any(HasNamedSourceSubject),
+                    "the completed grammar check with a named source subject");
+                var warningSummary = Visible<Button>().First(HasNamedSourceSubject);
+                var warningRow = Assert.IsType<GrammarWarningRowViewModel>(warningSummary.DataContext);
+                var namedSubject = warningRow.SubjectParts.First(part =>
+                    part.Role == GrammarWarningPartRole.Object && part.Status == GrammarSubjectStatus.Object &&
+                    part.FieldWorksLink is not null);
+                if (!warningRow.IsOpen) warningRow.ToggleOpenCommand.Execute(null);
+                PageScreenshots.Settle(Window);
+                await Until(() => Visible<Border>().Any(border =>
+                    border.Classes.Contains("warningSubjects") && border.GetVisualDescendants()
+                        .OfType<HyperlinkButton>().Any(button => button.Content is TextBlock text &&
+                            text.Text == namedSubject.Text)), $"the finding's subject region for '{namedSubject.Text}'");
+                var subjectRegion = Visible<Border>().First(border =>
+                    border.Classes.Contains("warningSubjects") && border.GetVisualDescendants()
+                        .OfType<HyperlinkButton>().Any(button => button.Content is TextBlock text &&
+                            text.Text == namedSubject.Text));
+                var subjectLink = subjectRegion.GetVisualDescendants().OfType<HyperlinkButton>().Single(button =>
+                    button.Content is TextBlock text && text.Text == namedSubject.Text);
+                Assert.Equal(0, subjectLink.Opacity);
+                Window.MouseMove(subjectRegion.TranslatePoint(
+                    new Point(subjectRegion.Bounds.Width / 2, subjectRegion.Bounds.Height / 2), Window)!.Value);
+                PageScreenshots.Settle(Window);
+                await Until(() => Visible<HyperlinkButton>().Any(button =>
+                    button.Classes.Contains("warningObjectLink") && button.Content is TextBlock text &&
+                    text.Text == namedSubject.Text), $"the finding's named FieldWorks item '{namedSubject.Text}'");
+                break;
             case TooltipScene.Handoff: Show(WorkspacePage.AiHandoff); break;
             case TooltipScene.ReviewStaged: Show(WorkspacePage.Review); break;
         }
@@ -350,6 +382,11 @@ internal sealed class TooltipScenes
 
     private ResultsTokenViewModel Token(string form) =>
         InText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.Form == form);
+
+    private static bool HasNamedSourceSubject(Button button) => button.Classes.Contains("warningSummary") &&
+        button.DataContext is GrammarWarningRowViewModel row && row.SubjectParts.Any(part =>
+            part.Role == GrammarWarningPartRole.Object && part.Status == GrammarSubjectStatus.Object &&
+            part.FieldWorksLink is not null);
 
     // The staged scenes, which come last, show a pending change; it is chakula's, as the state captures stage it.
     private async Task StageChakula()

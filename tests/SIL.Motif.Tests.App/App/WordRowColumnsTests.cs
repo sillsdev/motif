@@ -150,6 +150,37 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void WarningsRowsShowMarksAndPlacesWithoutImplyingParserMorphemesWereRead()
+    {
+        var columns = WordRowColumnSets.Warnings;
+        Assert.Equal(WordRowColumns.FieldWorks | WordRowColumns.PanGloss | WordRowColumns.Places, columns);
+
+        avalonia.Invoke(() =>
+        {
+            var (_, row, window) = Show(new WordRow
+            {
+                Row = new WordRowViewModel(Alikula()),
+                Columns = columns,
+            }, columns);
+            try
+            {
+                var visible = VisibleTexts(row);
+                Assert.Contains("A", visible);
+                Assert.Contains("≠", visible);
+                Assert.Contains("Different", visible);
+                Assert.Contains("×3", visible);
+                Assert.DoesNotContain("ku-", visible);
+                Assert.DoesNotContain("kul", visible);
+                Assert.Contains("Different", visible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ThePagesActionsShowUnderTheRow_AndAClickOnOneLeavesTheCardShut()
     {
         avalonia.Invoke(() =>

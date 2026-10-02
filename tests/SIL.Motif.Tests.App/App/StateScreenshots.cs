@@ -548,10 +548,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         { Height = 1300 };
 
         // Warnings.
-        yield return new("warnings", "part-link-hover", stage => stage.Hover(WorkspacePage.Warnings,
-            () => stage.Visible<Button>(button => ToolTip.GetTip(button) is string tip && tip.StartsWith("Open this")).First(),
-            "a FieldWorks link in a finding"));
-        yield return new("warnings", "warning-row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
+        yield return new("warnings", "part-link-hover", stage => stage.HoverWarningPartLink());
+        yield return new("warnings", "row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
         { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
         yield return new("warnings", "unnamed-row-opened",
             stage => stage.OpenWarningRow("grammar.msa.no-rule-form-allomorphs", named: false))
@@ -904,18 +902,35 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public async Task<string> OpenWarningRow(string code, bool named)
         {
             Open(WorkspacePage.Warnings);
-            var grid = Named<DataGrid>("Grammar warnings");
-            var row = grid.ItemsSource!.OfType<GrammarWarningRowViewModel>()
-                .First(candidate => candidate.GroupCode == code && candidate.NamesNoItem != named);
-            grid.SelectedItem = row;
-            grid.ScrollIntoView(row, null);
-            await Until(() => Visible<TextBlock>(block => block.Text == "What to do in FieldWorks").Any(), "the row's advice");
-            return $"Opened the {row.GroupName} row{(named ? $" for {row.Where}" : ", which names no item")}.";
+            var row = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Rows
+                .Cast<GrammarWarningRowViewModel>()
+                .First(candidate => candidate.GroupCode == code && (candidate.Warning.Subject.Count > 0) == named);
+            row.IsOpen = true;
+            var container = Visible<Border>(border => border.Classes.Contains("warningRow") && border.DataContext == row).Single();
+            container.BringIntoView();
+            await Until(() => Visible<TextBlock>(block => block.Text == "PanGloss explanation").Any()
+                && Visible<TextBlock>(block => block.Text == "PanGloss guidance").Any()
+                && Visible<TextBlock>(block => block.Text == "FieldWorks places").Any(),
+                "the finding's PanGloss explanation, guidance, and FieldWorks places");
+            return $"Opened the {row.PanGlossTitle} finding{(named ? " with a named item" : ", which names no item")}.";
+        }
+
+        public Task<string> HoverWarningPartLink()
+        {
+            Open(WorkspacePage.Warnings);
+            var row = Workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Rows
+                .Cast<GrammarWarningRowViewModel>().First(candidate => candidate.Warning.Subject.Any(part => part.FieldWorksLink is not null));
+            row.IsOpen = true;
+            PageScreenshots.Settle(Window);
+            var link = Visible<HyperlinkButton>(button => button.Classes.Contains("warningObjectLink")).First();
+            return Hover(null, () => link, "a FieldWorks link in a finding");
         }
 
         public Task CloseWarningRow()
         {
-            Named<DataGrid>("Grammar warnings").SelectedItem = null;
+            foreach (var row in Workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Rows
+                .Cast<GrammarWarningRowViewModel>())
+                row.IsOpen = false;
             PageScreenshots.Settle(Window);
             return Task.CompletedTask;
         }

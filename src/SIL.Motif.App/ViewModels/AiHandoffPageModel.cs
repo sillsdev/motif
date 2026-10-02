@@ -1,12 +1,15 @@
 using System.ComponentModel;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands.Handoff;
 
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>Opens the AI Handoff page with some words as the ones it will write.</summary>
 /// <param name="Words">The words to hand off.</param>
 /// <param name="SelectedTrace">The displayed trace and Baseline to preserve, when this request came from Try a Word.</param>
-public sealed record HandOffRequest(IReadOnlyList<string> Words, WordTraceResponse? SelectedTrace = null)
+/// <param name="WarningScope">The PanGloss finding that selected these words, when opened from Warnings.</param>
+public sealed record HandOffRequest(
+    IReadOnlyList<string> Words, WordTraceResponse? SelectedTrace = null, WarningHandoffScope? WarningScope = null)
     : PageRequest(WorkspacePage.AiHandoff);
 
 /// <summary>The AI Handoff page's model: the action that writes the files, and which Assessment they cover.</summary>
@@ -60,7 +63,7 @@ public sealed class AiHandoffPageModel : PageModel
     {
         if (request is not HandOffRequest handOff) return;
         if (handOff.SelectedTrace is { } trace) Handoff.UseSelectedTrace(trace);
-        else Handoff.UseWords(handOff.Words);
+        else Handoff.UseWords(handOff.Words, handOff.WarningScope);
     }
 
     // What an AI Handoff written now would cover, so the reader knows which run the chat model will see.

@@ -154,8 +154,11 @@ internal static class InteractiveControlSweep
         OpinionMark or UnreadMark or MarkChip => InteractiveControlFamily.Mark,
         HyperlinkButton => InteractiveControlFamily.Link,
         SplitButton => InteractiveControlFamily.Action,
-        CheckBox => InteractiveControlFamily.Check,
         RadioButton => InteractiveControlFamily.Radio,
+        CheckBox => InteractiveControlFamily.Check,
+        ToggleButton toggle when toggle.Name == "ExpanderHeader" &&
+            toggle.GetVisualAncestors().OfType<Expander>().Any() => InteractiveControlFamily.Disclosure,
+        ToggleButton => InteractiveControlFamily.Check,
         Button => InteractiveControlFamily.Action,
         TextBox => InteractiveControlFamily.TextEntry,
         NumericUpDown => InteractiveControlFamily.TextEntry,

@@ -534,6 +534,7 @@ public sealed class MainWindowSmokeTests
                 {
                     Group = "Dropped item",
                     Code = "fwdata.dropped-item",
+                    Description = "PanGloss reports a dropped item.",
                     Guidance = "Restore the missing item in FieldWorks.",
                 };
                 const string projectPath = @"C:\projects\aweti.fwdata";
@@ -553,24 +554,31 @@ public sealed class MainWindowSmokeTests
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 Assert.Equal(projectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
-                grammarModel.Warnings.SelectGroupCommand.Execute(
-                    Assert.Single(grammarModel.Warnings.WarningGroups));
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                var grammar = window.GetVisualDescendants().OfType<DataGrid>()
-                    .Single(grid => AutomationProperties.GetName(grid) == "Grammar warnings");
-                grammar.SelectedItem = grammarModel.Warnings.Rows.Cast<object>().Single();
+                var findings = window.GetVisualDescendants().OfType<ItemsControl>()
+                    .Single(control => AutomationProperties.GetName(control) == "Grammar findings");
+                var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammarModel.Warnings.Rows));
+                row.ToggleOpenCommand.Execute(null);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
                 Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
                     block => block.Text == "Restore the missing item in FieldWorks." && block.IsEffectivelyVisible);
-                AssertSelectableCells(grammar);
-                Assert.Contains(grammar.GetVisualDescendants().OfType<HyperlinkButton>(), link =>
-                    link.Classes.Contains("warningObjectLink") && link.IsEffectivelyVisible);
+                var link = Assert.Single(findings.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
+                    button.Classes.Contains("warningObjectLink"));
+                window.MouseMove(new Avalonia.Point(-100, -100));
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var warningRow = Assert.Single(findings.GetVisualDescendants().OfType<Border>(),
+                    border => border.Classes.Contains("warningRow"));
+                Assert.False(warningRow.IsPointerOver);
+                Assert.False(warningRow.IsKeyboardFocusWithin);
+                Assert.Equal(0, link.Opacity);
+                link.Focus(NavigationMethod.Tab);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal(1, link.Opacity);
             }
             finally
             {
@@ -650,12 +658,12 @@ public sealed class MainWindowSmokeTests
     }
 
     [Theory]
-    [InlineData("PhEnvironment", "EnvironmentEdit", "Open this environment in Environments")]
-    [InlineData("MoForm", "lexiconEdit", "Open this allomorph in Lexicon Edit")]
-    [InlineData("PhRegularRule", "PhonologicalRuleEdit", "Open this phonological rule in Phonological Rules")]
-    [InlineData("MoInflAffixSlot", "posEdit", "Open this template slot in Category Edit")]
+    [InlineData("PhEnvironment", "EnvironmentEdit", "Open this item in Environments")]
+    [InlineData("MoForm", "lexiconEdit", "Open this item in Lexicon Edit")]
+    [InlineData("PhRegularRule", "PhonologicalRuleEdit", "Open this item in Phonological Rules")]
+    [InlineData("MoInflAffixSlot", "posEdit", "Open this item in Category Edit")]
     [InlineData(null, null, "Open this item in FieldWorks")]
-    public void AGrammarWarningLinkNamesItsKindAndTheToolItOpens(string? kind, string? tool, string tip)
+    public void AGrammarWarningLinkNamesTheToolItOpens(string? kind, string? tool, string tip)
     {
         _avalonia.Invoke(() =>
         {

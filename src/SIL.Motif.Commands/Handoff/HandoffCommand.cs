@@ -31,11 +31,20 @@ public sealed record HandoffRequest(
     string OutputDirectory,
     SelectionRequest Selection,
     bool Assess,
-    string? InvocationId = null)
+    string? InvocationId = null,
+    WarningHandoffScope? WarningScope = null)
 {
     /// <summary>The displayed one-word trace to keep with the Baseline recorded in its capture.</summary>
     public WordTraceResponse? SelectedTrace { get; init; }
 }
+
+/// <summary>The PanGloss finding that selected the words in a warning-scoped Handoff.</summary>
+/// <param name="Message">The finding's message from PanGloss.</param>
+/// <param name="Code">The parser's stable finding code, when present.</param>
+/// <param name="State">The finding's word-attribution state.</param>
+/// <param name="HasUnfollowedConnections">Whether some named connections could not be followed.</param>
+public sealed record WarningHandoffScope(
+    string Message, string? Code, WarningDisplayState State, bool HasUnfollowedConnections);
 
 /// <summary>
 /// Writes the core AI Handoff files (ADR 0045) by composing the commands that already exist:
@@ -344,8 +353,16 @@ public static class HandoffCommand
                     var composed = SelectionComposer.Compose(
                         sourceReader.Cache, request.Selection, new AssessmentRepository(database));
                     if (!composed.Succeeded)
-                        return CommandOutcome<HandoffCommandResponse>.Refused(composed.Refusal!);
-                    selectionProjection = composed.Value!.Projection;
+                    {
+                        if (request.Assess || request.WarningScope is null ||
+                            !StringComparer.Ordinal.Equals(composed.Refusal?.Code, "selection.empty"))
+                            return CommandOutcome<HandoffCommandResponse>.Refused(composed.Refusal!);
+                        selectionProjection = new SelectionProjection([], []);
+                    }
+                    else
+                    {
+                        selectionProjection = composed.Value!.Projection;
+                    }
                     languageName = LanguageNameOf(sourceReader.Cache);
                     projectName = sourceReader.Cache.ProjectId.Name;
                 }
@@ -430,7 +447,7 @@ public static class HandoffCommand
                         (selectionProjection.Words.Count > 0 ? selectionProjection.Words[0] : "word");
                     var handoffMarkdown = HandoffWriter.BuildHandoffMarkdown(
                         request.Assess, sampleTextKey ?? "text", sampleWord, handoffTrace is not null,
-                        request.SelectedTrace is not null);
+                        request.SelectedTrace is not null, request.WarningScope);
                     File.WriteAllText(Path.Combine(incoming, HandoffWriter.HandoffMarkdownFileName), handoffMarkdown);
 
                     return null;

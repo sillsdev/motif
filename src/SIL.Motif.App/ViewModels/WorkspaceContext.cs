@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -580,10 +581,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public void OpenTiming(IReadOnlyList<string> words, TraceTimingKey? rule, string? label = null) => Open(new OpenTimingRequest(words, rule, label));
 
     /// <summary>Opens the AI Handoff page with <paramref name="words"/> as the words it will write.</summary>
-    public void HandOff(IReadOnlyList<string> words) => HandOff(words, null);
+    public void HandOff(IReadOnlyList<string> words) => Open(new HandOffRequest(words));
 
     public void HandOff(IReadOnlyList<string> words, WordTraceResponse? selectedTrace) =>
         Open(new HandOffRequest(words, selectedTrace));
+
+    /// <summary>Opens the AI Handoff page with warning context for the chosen words.</summary>
+    public void HandOffWarning(IReadOnlyList<string> words, WarningHandoffScope warningScope) =>
+        Open(new HandOffRequest(words, WarningScope: warningScope));
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

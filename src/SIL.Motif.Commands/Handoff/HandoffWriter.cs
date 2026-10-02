@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Texts;
 
 namespace SIL.Motif.Commands.Handoff;
@@ -258,7 +259,7 @@ public static class HandoffWriter
     /// </summary>
     internal static string BuildHandoffMarkdown(
         bool hasAssessment, string sampleTextKey, string sampleWord, bool hasTrace = false,
-        bool selectedTrace = false)
+        bool selectedTrace = false, WarningHandoffScope? warningScope = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
@@ -322,6 +323,8 @@ public static class HandoffWriter
                 or did not parse; run an Assessment and hand off again to get one.
                 """;
 
+        var warningSection = warningScope is null ? string.Empty : WarningSection(warningScope);
+
         var markdown = $"""
             # Handoff
 
@@ -378,9 +381,50 @@ public static class HandoffWriter
             ```
             {assessmentSection}
             {traceSection}
+            {warningSection}
             """;
 
         return NormalizeNewlines(markdown);
+    }
+
+    private static string WarningSection(WarningHandoffScope scope)
+    {
+        var reach = scope.State switch
+        {
+            WarningDisplayState.ExactUses when scope.HasUnfollowedConnections =>
+                "The listed words use the item PanGloss named on routes Motif could follow",
+            WarningDisplayState.ExactUses => "The words use the item PanGloss named",
+            WarningDisplayState.MembershipCandidates =>
+                "The listed words use members of the named resource; selection of the resource is not confirmed",
+            WarningDisplayState.SpellingCandidates => "Spelling matches only; use is not confirmed",
+            WarningDisplayState.NoneInSelection => "No words in this Selection use the named item",
+            WarningDisplayState.NoFollowedRouteMatch =>
+                "No words matched through routes Motif could follow; other named connections remain unchecked",
+            WarningDisplayState.NoSubject => "PanGloss supplied no subject for this finding",
+            WarningDisplayState.NamedUnsupportedRoute =>
+                "PanGloss named an item, but Motif has no word route for its kind",
+            WarningDisplayState.ProjectWide => "The named resource has no word attribution",
+            WarningDisplayState.MissingObject => "The named item is missing from the FieldWorks project",
+            WarningDisplayState.UnresolvedIdentity => "The named subject's identity or word reach is unavailable",
+            _ => "Word evidence is unavailable",
+        };
+        var codeLine = string.IsNullOrWhiteSpace(scope.Code) ? string.Empty : $"Code: `{scope.Code}`.\n\n";
+        var lowerBound = scope.HasUnfollowedConnections
+            ? scope.State is WarningDisplayState.NoFollowedRouteMatch or
+                WarningDisplayState.NamedUnsupportedRoute
+                ? "Some named connections could not be followed; no word conclusion is made about those routes.\n\n"
+                : "Some named connections could not be followed, so this word list is a lower bound.\n\n"
+            : string.Empty;
+        var quotedMessage = string.Join('\n', scope.Message.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n').Split('\n').Select(line => $"> {line}"));
+        return $"""
+
+            ## PanGloss warning
+
+            {codeLine}Word reach: {reach}. {lowerBound}PanGloss reported:
+
+            {quotedMessage}
+            """;
     }
 
     /// <summary>

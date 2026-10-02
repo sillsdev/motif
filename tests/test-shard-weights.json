@@ -224,7 +224,6 @@
   "SIL.Motif.Tests.Cli.StoreDerivedFromProjectTests": 6.9,
   "SIL.Motif.Tests.Cli.StoreOtherVersionRefusalTests": 0.3,
   "SIL.Motif.Tests.Cli.UsageRecordingTests": 0.3,
-  "SIL.Motif.Tests.Cli.WarningMeaningsTests": 0.1,
   "SIL.Motif.Tests.Cli.WarningsArgvTests": 2.8,
   "SIL.Motif.Tests.Cli.WordReadStateArgvTests": 2.5,
   "SIL.Motif.Tests.Commands.AbandonedSldrMutexTests": 0.0,

@@ -1,12 +1,38 @@
-using System.Collections.ObjectModel;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Help;
-using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
+
+internal static class WarningFindingIdentity
+{
+    public static string? Of(GrammarWarning warning)
+    {
+        if (string.IsNullOrWhiteSpace(warning.Code)) return null;
+        var subjects = warning.Subject
+            .Where(part => part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)
+            .Select(SubjectIdentityOf)
+            .ToArray();
+        if (subjects.Length == 0 || subjects.Any(subject => subject is null)) return null;
+
+        var fields = new[] { warning.Origin.ToString(), warning.Code }
+            .Concat(subjects.Cast<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+        return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
+    }
+
+    private static string? SubjectIdentityOf(GrammarWarningPart part)
+    {
+        if (string.IsNullOrWhiteSpace(part.FieldWorksKind)) return null;
+        var ids = new[] { part.SubjectGuid, part.FieldWorksGuid, part.ObjectId }
+            .Where(value => Guid.TryParse(value, out _))
+            .Select(value => Guid.Parse(value!).ToString("D"))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return ids.Length == 1 ? $"{part.FieldWorksKind}:{ids[0]}" : null;
+    }
+}
 
 /// <summary>Which grammar-health report levels the Warnings page displays.</summary>
 public enum GrammarFindingBucket
@@ -18,9 +44,8 @@ public enum GrammarFindingBucket
 }
 
 /// <summary>
-/// The mark each grammar finding level wears on the Warnings page, on its filter chip and beside each kind's count
-/// alike: a warning is the sidebar's own triangle, an error a circled !, and a note a circled i. None is a parser
-/// outcome's sign, and none is ×, which already means "crossed with" and "times".
+/// The mark each grammar finding level wears on its filter chip and row. These marks do not replace PanGloss's
+/// outcome marks in a word row.
 /// </summary>
 public static class GrammarLevelMarks
 {
@@ -37,43 +62,32 @@ public static class GrammarLevelMarks
     };
 }
 
-/// <summary>The Warnings page groups diagnostics by report level and shows the selected group's rows.</summary>
-/// <remarks>
-/// <see cref="Rows"/> is the grid's own collection view, so a header sort survives filtering.
-/// Buckets come from PanGloss's structured level field, independent of diagnostic wording.
-/// </remarks>
+/// <summary>The Warnings page shows PanGloss findings and the words the stored evidence can attribute.</summary>
 public sealed partial class GrammarWarningsViewModel : ObservableObject
 {
-    internal static readonly Lazy<WarningMeanings> DefaultMeanings = new(() => WarningMeanings.Load());
     private readonly List<GrammarWarningRowViewModel> _all = [];
-    private readonly WarningMeanings _meanings;
+    private Func<GrammarWarningRowViewModel, Task>? _reparseWords;
+    private Action<GrammarWarningRowViewModel>? _handOffWords;
+    private WordRowRoutes? _wordRoutes;
 
-    /// <summary>Builds the page's table with localized FieldWorks kind labels from <paramref name="meanings"/>.</summary>
-    /// <param name="meanings">The FieldWorks label table, or the one for the current UI culture when omitted.</param>
-    public GrammarWarningsViewModel(WarningMeanings? meanings = null)
+    public GrammarWarningsViewModel()
     {
-        _meanings = meanings ?? DefaultMeanings.Value;
         Rows = new DataGridCollectionView(_all) { Filter = Matches };
         SetBucketCommand = new RelayCommand<GrammarFindingBucket>(bucket => Bucket = bucket);
-        // Selecting the active group again clears it, so the same control narrows and widens the table.
-        SelectGroupCommand = new RelayCommand<GrammarFindingGroupViewModel?>(group =>
-            SelectedGroup = ReferenceEquals(group, SelectedGroup) ? null : group);
+        HandOffCommand = new RelayCommand<GrammarWarningRowViewModel>(row =>
+        {
+            if (row is not null) _handOffWords?.Invoke(row);
+        });
+        ReparseCommand = new AsyncRelayCommand<GrammarWarningRowViewModel>(row =>
+            row is not null && row.CanParseAgain && _reparseWords is not null
+                ? _reparseWords(row)
+                : Task.CompletedTask,
+            row => row is not null && row.CanParseAgain && _reparseWords is not null);
     }
 
-    public ObservableCollection<GrammarFindingGroupViewModel> WarningGroups { get; } = [];
-    public ObservableCollection<GrammarFindingGroupViewModel> ErrorGroups { get; } = [];
-    public ObservableCollection<GrammarFindingGroupViewModel> InformationGroups { get; } = [];
-
-    public bool HasWarningGroups => WarningGroups.Count > 0 &&
-        Bucket is not (GrammarFindingBucket.Errors or GrammarFindingBucket.Information);
-    public bool HasInformationGroups => InformationGroups.Count > 0 &&
-        Bucket is not (GrammarFindingBucket.Errors or GrammarFindingBucket.Warnings);
-    public bool HasErrorGroups => ErrorGroups.Count > 0 &&
-        Bucket is not (GrammarFindingBucket.Information or GrammarFindingBucket.Warnings);
-
-    public bool HasReportedErrors => _all.Any(row => row.Level == GrammarDiagnosticLevel.Error);
-    public bool HasReportedWarnings => _all.Any(row => row.Level == GrammarDiagnosticLevel.Warning);
-    public bool HasReportedInformation => _all.Any(row => row.Level == GrammarDiagnosticLevel.Information);
+    public bool HasReportedErrors => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Error);
+    public bool HasReportedWarnings => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Warning);
+    public bool HasReportedInformation => VisibleFindings().Any(row => row.Level == GrammarDiagnosticLevel.Information);
 
     public int ErrorCount => VisibleFindings()
         .Where(row => row.Level == GrammarDiagnosticLevel.Error).Sum(row => row.RepeatCount);
@@ -88,43 +102,22 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         $"{InformationCount} {CountWord(InformationCount, "information finding", "information findings")}.";
 
     public IRelayCommand<GrammarFindingBucket> SetBucketCommand { get; }
-    public IRelayCommand<GrammarFindingGroupViewModel?> SelectGroupCommand { get; }
+    public IRelayCommand<GrammarWarningRowViewModel> HandOffCommand { get; }
+    public IAsyncRelayCommand<GrammarWarningRowViewModel> ReparseCommand { get; }
+
+    public void ConfigureActions(Action<GrammarWarningRowViewModel> handOffWords,
+        Func<GrammarWarningRowViewModel, Task> reparseWords, WordRowRoutes wordRoutes)
+    {
+        _handOffWords = handOffWords;
+        _reparseWords = reparseWords;
+        _wordRoutes = wordRoutes;
+        ReparseCommand.NotifyCanExecuteChanged();
+    }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasErrorGroups))]
-    [NotifyPropertyChangedFor(nameof(HasWarningGroups))]
-    [NotifyPropertyChangedFor(nameof(HasInformationGroups))]
     private GrammarFindingBucket _bucket = GrammarFindingBucket.All;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedGroup))]
-    [NotifyPropertyChangedFor(nameof(SelectedGroupTitle))]
-    [NotifyPropertyChangedFor(nameof(CountSummary))]
-    private GrammarFindingGroupViewModel? _selectedGroup;
-
-    public bool HasSelectedGroup => SelectedGroup is not null;
-
-    public string SelectedGroupTitle => SelectedGroup?.Name ?? Bucket switch
-    {
-        GrammarFindingBucket.Errors => "Errors",
-        GrammarFindingBucket.Warnings => "Warnings",
-        GrammarFindingBucket.Information => "Information",
-        _ => "Every finding",
-    };
-
-    partial void OnBucketChanged(GrammarFindingBucket value)
-    {
-        if (SelectedGroup is { } group && !InBucket(group.Level)) SelectedGroup = null;
-        OnPropertyChanged(nameof(SelectedGroupTitle));
-        Refresh();
-    }
-
-    partial void OnSelectedGroupChanged(GrammarFindingGroupViewModel? value)
-    {
-        foreach (var group in ErrorGroups.Concat(WarningGroups).Concat(InformationGroups))
-            group.IsSelected = ReferenceEquals(group, value);
-        Refresh();
-    }
+    partial void OnBucketChanged(GrammarFindingBucket value) => Refresh();
 
     private bool InBucket(GrammarDiagnosticLevel level) => Bucket switch
     {
@@ -134,46 +127,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         _ => true,
     };
 
-    private void RebuildGroups()
-    {
-        ErrorGroups.Clear();
-        WarningGroups.Clear();
-        InformationGroups.Clear();
-        foreach (var group in VisibleFindings()
-                     .GroupBy(row => (row.GroupCode, row.GroupName, row.Level))
-                     .Select(rows => new GrammarFindingGroupViewModel(
-                         rows.Key.GroupCode,
-                         rows.Key.GroupName,
-                         rows.Key.Level,
-                         rows.Sum(row => row.RepeatCount),
-                         rows.Select(row => row.HasMeaning ? row.Meaning : row.Description)
-                             .FirstOrDefault(text => text.Length > 0),
-                         rows.Any(row => row.HasMeaning)))
-                     .OrderByDescending(group => group.Count)
-                     .ThenBy(group => group.Name, StringComparer.CurrentCulture))
-        {
-            var groups = group.Level switch
-            {
-                GrammarDiagnosticLevel.Error => ErrorGroups,
-                GrammarDiagnosticLevel.Warning => WarningGroups,
-                _ => InformationGroups,
-            };
-            groups.Add(group);
-        }
-        SelectedGroup = null;
-        OnPropertyChanged(nameof(HasErrorGroups));
-        OnPropertyChanged(nameof(HasWarningGroups));
-        OnPropertyChanged(nameof(HasInformationGroups));
-        OnPropertyChanged(nameof(HasReportedErrors));
-        OnPropertyChanged(nameof(HasReportedWarnings));
-        OnPropertyChanged(nameof(HasReportedInformation));
-        OnPropertyChanged(nameof(ErrorCount));
-        OnPropertyChanged(nameof(WarningCount));
-        OnPropertyChanged(nameof(InformationCount));
-        OnPropertyChanged(nameof(BreakdownText));
-    }
-
-    /// <summary>The diagnostics in the grid's view, preserving its sort when filters change.</summary>
+    /// <summary>The findings in the page's filtered view.</summary>
     public DataGridCollectionView Rows { get; }
 
     [ObservableProperty]
@@ -186,46 +140,86 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private int _shownCount;
 
     [ObservableProperty]
-    private string _whereFilter = string.Empty;
+    private bool _touchYourWords;
 
     [ObservableProperty]
-    private string _problemFilter = string.Empty;
+    private bool _mostYourWordsFirst = true;
 
-    public bool HasAny => TotalCount > 0;
-
-    public bool AnyShownWhere => VisibleFindings().Any(row => row.HasWhere && Matches(row));
-
-    /// <summary>Whether the rows now shown hold more than one level, so the table needs its Level column.</summary>
-    public bool AnyShownLevelsDiffer => VisibleFindings().Where(Matches).Select(row => row.Level).Distinct().Skip(1).Any();
+    public bool HasAny => _all.Count > 0;
 
     public string CountSummary => ShownCount == TotalCount
         ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
-        : SelectedGroup is { } group && ShownCount == group.Count
-            ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
-            : $"{ShownCount} of {TotalCount} findings match the filters";
+        : $"{ShownCount} of {TotalCount} findings match the filters";
 
     /// <summary>The complete projected findings, including the effective words each finding touches.</summary>
     public IReadOnlyList<GrammarWarning> Findings { get; private set; } = [];
 
     /// <summary>Replaces the displayed report, or clears the page when the check has no report.</summary>
-    public void Load(IReadOnlyList<GrammarWarning>? warnings)
+    public void Load(IReadOnlyList<GrammarWarning>? warnings, bool preserveResolved = false)
     {
         Findings = warnings ?? [];
         OnPropertyChanged(nameof(Findings));
-        _all.Clear();
+        var previous = _all.ToArray();
+        var next = new List<GrammarWarningRowViewModel>();
         if (warnings is not null)
         {
-            _all.AddRange(warnings
-            .GroupBy(warning => (warning.Text, warning.Origin, warning.Code, warning.Severity))
-                .Select(rows => new GrammarWarningRowViewModel(rows.First(), rows.Count(), _meanings)));
+            var identified = warnings.Select((warning, index) =>
+                (Warning: warning, Index: index, Identity: WarningFindingIdentity.Of(warning)));
+            foreach (var group in identified.GroupBy(item =>
+                         (item.Identity, UnidentifiedIndex: item.Identity is null ? item.Index : -1)))
+            {
+                next.Add(new GrammarWarningRowViewModel(group.First().Warning, group.Count(), _wordRoutes)
+                {
+                    SourceOrder = next.Count,
+                });
+            }
         }
-        TotalCount = _all.Sum(row => row.RepeatCount);
-        RebuildGroups();
+        var resolved = new List<GrammarWarningRowViewModel>();
+        if (preserveResolved)
+        {
+            var current = next.Where(row => row.FindingIdentity is not null)
+                .Select(row => row.FindingIdentity!).ToHashSet(StringComparer.Ordinal);
+            foreach (var row in previous.Where(row => !row.HasRefreshStatus))
+            {
+                if (row.FindingIdentity is null) row.MarkNotMatched();
+                else if (current.Contains(row.FindingIdentity)) continue;
+                else row.MarkGone();
+                resolved.Add(row);
+            }
+        }
+
+        _all.Clear();
+        _all.AddRange(next);
+        _all.AddRange(resolved);
+        ApplySort();
+        TotalCount = next.Sum(row => row.RepeatCount);
+        OnPropertyChanged(nameof(HasReportedErrors));
+        OnPropertyChanged(nameof(HasReportedWarnings));
+        OnPropertyChanged(nameof(HasReportedInformation));
+        OnPropertyChanged(nameof(ErrorCount));
+        OnPropertyChanged(nameof(WarningCount));
+        OnPropertyChanged(nameof(InformationCount));
+        OnPropertyChanged(nameof(BreakdownText));
+        OnPropertyChanged(nameof(HasAny));
         Refresh();
     }
 
-    partial void OnWhereFilterChanged(string value) => Refresh();
-    partial void OnProblemFilterChanged(string value) => Refresh();
+    partial void OnTouchYourWordsChanged(bool value) => Refresh();
+    partial void OnMostYourWordsFirstChanged(bool value)
+    {
+        ApplySort();
+        Refresh();
+    }
+
+    private void ApplySort()
+    {
+        var sorted = MostYourWordsFirst
+            ? _all.OrderBy(row => row.IsGone).ThenByDescending(row => row.YourWordsCount ?? -1)
+                .ThenBy(row => row.SourceOrder).ToArray()
+            : _all.OrderBy(row => row.IsGone).ThenBy(row => row.SourceOrder).ToArray();
+        _all.Clear();
+        _all.AddRange(sorted);
+    }
 
     private void Refresh()
     {
@@ -236,150 +230,175 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private bool Matches(object item) =>
         item is GrammarWarningRowViewModel row
         && InBucket(row.Level)
-        && (SelectedGroup is not { } group ||
-            (group.Code == row.GroupCode && group.Level == row.Level))
-        && Contains(row.Where, WhereFilter)
-        && (Contains(row.Meaning, ProblemFilter) || Contains(row.Problem, ProblemFilter) ||
-            Contains(row.Text, ProblemFilter));
+        && (!TouchYourWords || row.AttributionState == WarningDisplayState.ExactUses);
 
-    private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => _all;
-
-    private static bool Contains(string text, string filter) =>
-        string.IsNullOrWhiteSpace(filter) || text.Contains(filter.Trim(), StringComparison.CurrentCultureIgnoreCase);
+    private IEnumerable<GrammarWarningRowViewModel> VisibleFindings() => _all.Where(row => !row.IsGone);
 
     private static string CountWord(int count, string singular, string plural) => count == 1 ? singular : plural;
 
 }
 
-/// <summary>One report code grouped by name and level in the Warnings page.</summary>
-public sealed partial class GrammarFindingGroupViewModel : ObservableObject
+/// <summary>One PanGloss finding with its own text, guidance, subjects, and word evidence.</summary>
+public sealed partial class GrammarWarningRowViewModel : ObservableObject
 {
-    public GrammarFindingGroupViewModel(
-        string code, string name, GrammarDiagnosticLevel level, int count, string? description = null,
-        bool isKnown = false)
-    {
-        IsKnown = isKnown;
-        Code = code;
-        Name = name;
-        Level = level;
-        Count = count;
-        Description = description;
-    }
-
-    public string Code { get; }
-    public string Name { get; }
-
-    /// <summary>Whether PanGloss supplied an explanation for this code.</summary>
-    public bool IsKnown { get; }
-    /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
-    public GrammarDiagnosticLevel Level { get; }
-    public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
-    public bool IsError => Level == GrammarDiagnosticLevel.Error;
-    /// <summary>The number of diagnostics with this code, name, and level.</summary>
-    public int Count { get; }
-    /// <summary>What the selected diagnostic code means, when PanGloss supplied a description.</summary>
-    public string? Description { get; }
-    public bool HasDescription => Description is not null;
-    /// <summary>The level's own mark, the one its filter chip wears.</summary>
-    public Mark Mark => Mark.Of(Level);
-
-    [ObservableProperty]
-    private bool _isSelected;
-}
-
-/// <summary>One diagnostic row with its subjects and text ready for display, search, and sorting.</summary>
-/// <remarks>
-/// The row keeps PanGloss's explanation, description and advice distinct. Verified FieldWorks places come from
-/// structured producer fields, independently of how its guidance is worded or localized.
-/// </remarks>
-public sealed class GrammarWarningRowViewModel
-{
-    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WarningMeanings? meanings = null)
+    public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WordRowRoutes? wordRoutes = null)
     {
         ArgumentNullException.ThrowIfNull(warning);
-        var table = meanings ?? GrammarWarningsViewModel.DefaultMeanings.Value;
+        var panGloss = PanGlossWarningText.From(warning);
+        Warning = warning;
         RepeatCount = repeatCount;
-        Description = warning.Description;
-        Guidance = warning.Guidance ?? string.Empty;
         Level = warning.Severity;
         Severity = Level.ToWireValue();
         SubjectParts = warning.Subject;
         ProblemParts = warning.Problem;
-        Where = PlainText(warning.Subject);
-        Problem = PlainText(warning.Problem);
         Text = warning.Text;
+        Message = panGloss.Description;
+        PanGlossTitle = panGloss.Title;
+        PanGlossExplanation = panGloss.Explanation;
+        PanGlossGuidance = panGloss.Guidance;
+        PanGlossFieldWorksPlaces = panGloss.FieldWorksPlaces;
+        PanGlossHelp = panGloss.HelpBody;
+        PanGlossReference = panGloss.HelpUrl;
         GroupCode = warning.Code ?? string.Empty;
-        GroupName = warning.Title ?? warning.Group ?? warning.CodeLabel;
-        Meaning = warning.Explanation ?? string.Empty;
-        HelpBody = warning.HelpBody ?? string.Empty;
-        HelpUrl = warning.HelpUrl is { } helpUrl ? new Uri(helpUrl) : null;
-        KindLabel = table.KindLabel(warning.Subject.FirstOrDefault(part => part.FieldWorksKind is { Length: > 0 })?.FieldWorksKind
-            ?? (warning.Subject.Count > 0 ? "Unknown" : null));
-        Places = warning.FieldWorksPlaces.Select(place => $"{FieldWorksLinks.ToolName(place.Tool)} > {place.Field}")
-            .Distinct(StringComparer.Ordinal).ToArray();
+        GroupName = panGloss.Title;
+        FindingIdentity = WarningFindingIdentity.Of(warning);
+        YourWords = warning.YourWords;
+        AttributionState = WarningAttribution.From(warning);
+        IsPartialReach = WarningAttribution.HasUnfollowedConnections(warning);
+        var evidence = warning.YourWords;
+        var exactWords = evidence?.Match == WarningWordsMatch.Identity ? evidence.Words : [];
+        var membershipWords = (evidence?.Match == WarningWordsMatch.Membership ? evidence.Words : [])
+            .Concat(evidence?.MembershipCandidates ?? []);
+        var spellingWords = (evidence?.Match == WarningWordsMatch.Spelling ? evidence.Words : [])
+            .Concat(evidence?.SpellingCandidates ?? []);
+        WordRows = [.. exactWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        MembershipCandidateRows = [.. membershipWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        SpellingCandidateRows = [.. spellingWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        ToggleOpenCommand = new RelayCommand(() => IsOpen = !IsOpen);
     }
 
-    /// <summary>What to do about this finding in FieldWorks: PanGloss's advice, or why there is none.</summary>
-    public string Advice => HasAdvice ? Guidance : "PanGloss gives no advice for this kind of finding.";
-
-    public bool HasAdvice => !string.IsNullOrWhiteSpace(Guidance);
-
-    /// <summary>Whether the row shows the steps that confirm a fix, which a note with nothing to fix does not.</summary>
-    public bool ShowsFixSteps => HasAdvice || !IsInfo;
-
-    /// <summary>Whether PanGloss names no object for this finding, so nothing on the row opens FieldWorks.</summary>
-    public bool NamesNoItem => !HasWhere;
-
-    /// <summary>What a finding that names nothing costs the person reading it.</summary>
-    public string NoItemText =>
-        "PanGloss doesn't name one item in your project for this finding, so Motif can't open it in FieldWorks " +
-        "for you. The parser's line above may still mention a form or letter to search for.";
-
-    /// <summary>The FieldWorks places the advice names, as one sentence saying where to look.</summary>
-    public string WhereToLookText => Places.Count switch
+    public GrammarWarning Warning { get; }
+    public WarningWords? YourWords { get; }
+    public IReadOnlyList<WordRowViewModel> WordRows { get; }
+    public IReadOnlyList<WordRowViewModel> MembershipCandidateRows { get; }
+    public IReadOnlyList<WordRowViewModel> SpellingCandidateRows { get; }
+    public bool HasYourWords => AttributionState == WarningDisplayState.ExactUses && WordRows.Count > 0;
+    public bool HasExactRows => WordRows.Count > 0;
+    public bool HasMembershipCandidates => MembershipCandidateRows.Count > 0;
+    public bool HasSpellingCandidates => SpellingCandidateRows.Count > 0;
+    public bool HasAnyWordRows => HasExactRows || HasMembershipCandidates || HasSpellingCandidates;
+    public int? YourWordsCount => AttributionState == WarningDisplayState.ExactUses ? WordRows.Count : null;
+    public WarningDisplayState AttributionState { get; }
+    public string ReachStateText => AttributionState switch
     {
-        0 => "PanGloss doesn't say where in FieldWorks to look.",
-        _ => $"Look in {JoinPlaces(Places)}{(Places[^1].EndsWith('.') ? string.Empty : ".")}",
+        WarningDisplayState.ExactUses => IsPartialReach
+            ? "Some of your words use the item PanGloss named; other named connections could not be followed"
+            : "Uses the item PanGloss named",
+        WarningDisplayState.SpellingCandidates => IsPartialReach
+            ? "These spellings match; other named connections could not be followed"
+            : "The spelling matches, but that does not confirm the phoneme was used",
+        WarningDisplayState.MembershipCandidates => IsPartialReach
+            ? "These words use members of the named resource; other named connections could not be followed"
+            : "These words use members of the named resource; selection of the resource is not confirmed",
+        WarningDisplayState.NoneInSelection => "No words matched the items PanGloss named",
+        WarningDisplayState.NoFollowedRouteMatch =>
+            "No words matched through the routes Motif could follow; other named connections could not be followed",
+        WarningDisplayState.NoSubject => "PanGloss did not name a subject for this finding",
+        WarningDisplayState.NamedUnsupportedRoute =>
+            "PanGloss named an item, but Motif does not follow this type to words",
+        WarningDisplayState.ProjectWide => "This project-wide resource has no word attribution",
+        WarningDisplayState.MissingObject => "The item PanGloss named is not in this FieldWorks project",
+        WarningDisplayState.UnresolvedIdentity => "The named subject's identity or word reach is unavailable",
+        WarningDisplayState.EvidenceUnavailable when IsPartialReach =>
+            "Word evidence is unavailable; other named connections could not be followed",
+        _ => "Word evidence is not available",
     };
+    public string ReachSummaryText => AttributionState switch
+    {
+        WarningDisplayState.ExactUses => CountText(WordRows.Count, "of your words"),
+        WarningDisplayState.MembershipCandidates => CandidateCountText(MembershipCandidateRows.Count,
+            "membership candidate"),
+        WarningDisplayState.SpellingCandidates => CandidateCountText(SpellingCandidateRows.Count, "spelling match"),
+        WarningDisplayState.NoneInSelection => "No words in this Selection",
+        WarningDisplayState.NoFollowedRouteMatch => "No matches on followed routes",
+        WarningDisplayState.NoSubject => "No subject supplied",
+        WarningDisplayState.NamedUnsupportedRoute => "Named item; word route unavailable",
+        WarningDisplayState.ProjectWide => "No word attribution for this resource",
+        WarningDisplayState.MissingObject => "Named item missing",
+        WarningDisplayState.UnresolvedIdentity => "Identity unavailable",
+        _ => "Word evidence unavailable",
+    };
+    public string LineSummaryText => HasRefreshStatus ? StatusText : ReachSummaryText;
+    public bool IsPartialReach { get; }
+    public bool HasPartialCount => IsPartialReach && AttributionState is
+        WarningDisplayState.ExactUses or WarningDisplayState.MembershipCandidates or
+        WarningDisplayState.SpellingCandidates;
+    public bool CanParseAgain => IsGone && HasYourWords;
+    public string Message { get; }
+    public string PanGlossTitle { get; }
+    public string PanGlossExplanation { get; }
+    public string PanGlossGuidance { get; }
+    public string PanGlossFieldWorksPlaces { get; }
+    public string PanGlossHelp { get; }
+    public Uri? PanGlossReference { get; }
+    public bool HasExplanation => PanGlossExplanation.Length > 0;
+    public bool HasGuidance => PanGlossGuidance.Length > 0;
+    public bool HasFieldWorksPlaces => PanGlossFieldWorksPlaces.Length > 0;
+    public bool HasHelp => PanGlossHelp.Length > 0;
+    public bool HasPanGlossReference => PanGlossReference is not null;
+    public bool HasMessage => Message.Length > 0;
+    public string YourWordsText => ReachSummaryText;
 
-    /// <summary>Each FieldWorks area and tool the advice names, such as "Lexicon &gt; Lexicon Edit", once.</summary>
-    public IReadOnlyList<string> Places { get; }
+    private string CountText(int count, string noun) =>
+        $"{(HasPartialCount ? "At least " : string.Empty)}{count} {noun}";
 
-    private static string JoinPlaces(IReadOnlyList<string> places) => places.Count == 1 ? places[0]
-        : $"{string.Join(", ", places.Take(places.Count - 1))} and {places[^1]}";
+    private string CandidateCountText(int count, string kind) =>
+        $"{(HasPartialCount ? "At least " : string.Empty)}{count} {kind}{(count == 1 ? string.Empty : "s")}";
 
-    /// <summary>The producer's title for this kind of diagnostic.</summary>
     public string GroupName { get; }
     public string GroupCode { get; }
+    public int SourceOrder { get; init; }
     public GrammarDiagnosticLevel Level { get; }
     public bool IsWarning => Level == GrammarDiagnosticLevel.Warning;
     public bool IsError => Level == GrammarDiagnosticLevel.Error;
     public int RepeatCount { get; }
-
-    /// <summary>How often the parser reported this warning, as the Seen column shows it.</summary>
     public string SeenText => $"{RepeatCount:N0}×";
-
-    /// <summary>What PanGloss says the warning means, or empty when no explanation was supplied.</summary>
-    public string Meaning { get; }
-    public bool HasMeaning => Meaning.Length > 0;
-
-    /// <summary>The FieldWorks name for the kind of object the warning names, or "Grammar-wide" for none.</summary>
-    public string KindLabel { get; }
-    public bool HasWhere => SubjectParts.Count > 0;
-    public string Description { get; }
-    public string Guidance { get; }
-    public string HelpBody { get; }
-    public bool HasHelpBody => HelpBody.Length > 0;
-    public Uri? HelpUrl { get; }
-    public bool HasHelpUrl => HelpUrl is not null;
+    public string Description => Message;
     public string Severity { get; }
+    public Mark SeverityMark => Mark.Of(Level);
     public bool IsInfo => Level == GrammarDiagnosticLevel.Information;
-    public string Where { get; }
-    public string Problem { get; }
     public string Text { get; }
     public IReadOnlyList<GrammarWarningPart> SubjectParts { get; }
     public IReadOnlyList<GrammarWarningPart> ProblemParts { get; }
+    public bool HasProblemParts => ProblemParts.Count > 0 &&
+        (ProblemParts.Count != 1 || ProblemParts[0].Role != GrammarWarningPartRole.Text ||
+            !string.Equals(ProblemParts[0].Text, Message, StringComparison.Ordinal));
+    internal string? FindingIdentity { get; }
+    public IRelayCommand ToggleOpenCommand { get; }
 
-    private static string PlainText(IReadOnlyList<GrammarWarningPart> parts) =>
-        string.Join(" ", parts.Select(part => part.Text));
+    [ObservableProperty]
+    private bool _isOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText))]
+    [NotifyPropertyChangedFor(nameof(CanParseAgain))]
+    [NotifyPropertyChangedFor(nameof(LineSummaryText))]
+    [NotifyPropertyChangedFor(nameof(HasRefreshStatus))]
+    private bool _isGone;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText))]
+    [NotifyPropertyChangedFor(nameof(LineSummaryText))]
+    [NotifyPropertyChangedFor(nameof(HasRefreshStatus))]
+    private bool _isNotMatchedAfterRefresh;
+
+    public bool HasRefreshStatus => IsGone || IsNotMatchedAfterRefresh;
+
+    public string StatusText => IsGone
+        ? "Gone after Refresh"
+        : IsNotMatchedAfterRefresh ? "Earlier line could not be matched after Refresh" : string.Empty;
+
+    public void MarkGone() => IsGone = true;
+
+    public void MarkNotMatched() => IsNotMatchedAfterRefresh = true;
 }

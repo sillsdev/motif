@@ -72,6 +72,8 @@ public sealed class WarningWordsQueryTests
         Assert.Equal(WarningWordsMatch.Identity, found.Match);
         Assert.Equal([WarningWordsPath.Uses], found.Paths);
         Assert.Equal(["walikata", "anakata"], found.Words.Select(word => word.Row.Word));
+        Assert.All(found.Words, word => Assert.Equal(
+            WordRowReadingAvailability.NotRequested, word.Row.PanGlossReadingAvailability));
         Assert.Equal([("Lost", 2)], found.ByMeaning.Select(meaning => (meaning.Meaning, meaning.Words)));
     }
 

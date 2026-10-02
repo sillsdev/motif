@@ -293,12 +293,11 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
                 InteractiveControlFamily.Filter,
-                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Check,
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Mark,
-                InteractiveControlFamily.Grid,
                 InteractiveControlFamily.Collection);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);

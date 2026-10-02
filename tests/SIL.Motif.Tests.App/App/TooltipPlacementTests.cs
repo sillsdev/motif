@@ -118,6 +118,14 @@ public sealed class TooltipPlacementTests
         ToolTip.SetShowDelay(owner, 0);
         window.MouseMove(new Point(4, window.Bounds.Height - 4));
         PageScreenshots.Settle(window);
+        if (owner.Classes.Contains("warningObjectLink") &&
+            owner.GetVisualAncestors().OfType<Border>().FirstOrDefault(border =>
+                border.Classes.Contains("warningSubjects")) is { } subjects)
+        {
+            window.MouseMove(subjects.TranslatePoint(
+                new Point(subjects.Bounds.Width / 2, subjects.Bounds.Height / 2), window)!.Value);
+            PageScreenshots.Settle(window);
+        }
         var point = owner.Classes.Contains("wordRowHeading")
             ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
             : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);

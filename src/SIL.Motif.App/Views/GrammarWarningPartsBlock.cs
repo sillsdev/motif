@@ -91,11 +91,11 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
             NavigateUri = new Uri(link),
         };
         button.Classes.Add("warningObjectLink");
-        var kind = part.FieldWorksKind is { Length: > 0 } fieldWorksKind
-            ? GrammarWarningsViewModel.DefaultMeanings.Value.KindLabel(fieldWorksKind)
-            : "Item";
+        button.Classes.Add("revealControl");
+        button.Classes.Add("revealOnHover");
+        button.Classes.Add("revealLink");
         var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link));
-        ToolTip.SetTip(button, $"Open this {kind.ToLower(System.Globalization.CultureInfo.CurrentCulture)} in {tool}");
+        ToolTip.SetTip(button, $"Open this item in {tool}");
         return button;
     }
 }

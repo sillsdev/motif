@@ -1,19 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
-             xmlns:md="clr-namespace:LiveMarkdown.Avalonia;assembly=LiveMarkdown.Avalonia"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.GrammarPanel"
              x:DataType="views:GrammarPanel">
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
-
     <views:CopyableTextBlock Classes="muted"
-               Text="What PanGloss reported about the grammar, with its explanation and advice."
-               TextWrapping="Wrap" />
+                              Text="PanGloss findings from a check of the whole grammar."
+                              TextWrapping="Wrap" />
 
     <Panel Grid.Row="1">
-
       <StackPanel IsVisible="{Binding Grammar.ShowLoading}" Spacing="{DynamicResource Intent.Space.Related}">
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
           <views:CopyableTextBlock Text="Checking the grammar..." FontWeight="SemiBold" />
@@ -38,229 +35,166 @@
         <views:CopyableTextBlock Classes="muted" Text="Capture a Baseline before the grammar can be checked." TextWrapping="Wrap" />
       </StackPanel>
 
-      <StackPanel IsVisible="{Binding Grammar.ShowNoFindings}" Spacing="{DynamicResource Intent.Space.Related}" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <views:CopyableTextBlock Text="No findings" FontWeight="SemiBold" HorizontalAlignment="Center" />
-        <views:CopyableTextBlock Classes="muted" Text="The parser loaded the grammar without warnings." HorizontalAlignment="Center" />
+      <StackPanel Classes="warningEmpty" IsVisible="{Binding Grammar.ShowNoFindings}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center">
+        <views:CopyableTextBlock Text="No grammar findings were reported." FontWeight="SemiBold" HorizontalAlignment="Center" />
         <Button Content="Check the grammar again" HorizontalAlignment="Center"
                 Command="{Binding Grammar.CheckCommand}" AutomationProperties.Name="Check the grammar again" />
       </StackPanel>
 
-      <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Grammar.ShowFindings}">
-        <DockPanel LastChildFill="False">
-          <WrapPanel DockPanel.Dock="Left">
-            <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}" />
-            <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Mark="{x:Static vm:Mark.Error}"
-                              IsVisible="{Binding Grammar.Warnings.HasReportedErrors}"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}" />
-            <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Mark="{x:Static vm:Mark.Warning}"
-                              IsVisible="{Binding Grammar.Warnings.HasReportedWarnings}"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}" />
-            <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Mark="{x:Static vm:Mark.Information}"
-                              IsVisible="{Binding Grammar.Warnings.HasReportedInformation}"
-                              IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
-                              Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}" />
-          </WrapPanel>
-          <Button DockPanel.Dock="Right" Content="Check the grammar again"
-                  Command="{Binding Grammar.CheckCommand}"
-                  AutomationProperties.Name="Check the grammar again" />
-        </DockPanel>
+      <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+            IsVisible="{Binding Grammar.ShowFindings}">
+        <WrapPanel Classes="warningControls">
+          <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
+                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
+                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <views:FilterChip Label="Errors" Count="{Binding Grammar.Warnings.ErrorCount}" Mark="{x:Static vm:Mark.Error}"
+                            IsVisible="{Binding Grammar.Warnings.HasReportedErrors}"
+                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Errors}}"
+                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Errors}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <views:FilterChip Label="Warnings" Count="{Binding Grammar.Warnings.WarningCount}" Mark="{x:Static vm:Mark.Warning}"
+                            IsVisible="{Binding Grammar.Warnings.HasReportedWarnings}"
+                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Warnings}}"
+                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Warnings}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <views:FilterChip Label="Information" Count="{Binding Grammar.Warnings.InformationCount}" Mark="{x:Static vm:Mark.Information}"
+                            IsVisible="{Binding Grammar.Warnings.HasReportedInformation}"
+                            IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
+                            Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <ToggleButton Content="Touch your words" IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
+                        AutomationProperties.Name="Show findings with exact uses in your words"
+                        Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <ToggleButton Content="Most of your words first" IsChecked="{Binding Grammar.Warnings.MostYourWordsFirst, Mode=TwoWay}"
+                        AutomationProperties.Name="Sort by exact uses in your words"
+                        Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}"
+                                    VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <Button Content="Check the grammar again" Command="{Binding Grammar.CheckCommand}"
+                  AutomationProperties.Name="Check the grammar again" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+        </WrapPanel>
 
-        <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Section}">
+        <ScrollViewer Grid.Row="1">
+          <ItemsControl ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                <Border Classes="warningRow hoverReveal">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+                    <Button Classes="warningSummary" Command="{Binding ToggleOpenCommand}"
+                            AutomationProperties.Name="{Binding Message}">
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                        <views:MarkChip Classes="warningLevelMark" Mark="{Binding SeverityMark}" Compact="True"
+                                        VerticalAlignment="Center" />
+                        <views:CopyableTextBlock Grid.Column="1" Classes="warningMessage" Text="{Binding Message}"
+                                                  TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <views:CopyableTextBlock Grid.Column="2" Classes="muted warningReach"
+                                                  Text="{Binding LineSummaryText}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Button>
+                    <views:CopyableTextBlock Classes="muted warningHoverTitle" Text="{Binding PanGlossTitle}"
+                                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
 
-          <!-- Left: every kind of finding, the ones where the parser left something out first. -->
-          <ScrollViewer Grid.Column="0" Classes="warningKinds">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Classes="muted warningHeading"
-                         Text="{Binding Grammar.Warnings.ErrorCount, StringFormat='ERRORS · {0}'}"
-                         IsVisible="{Binding Grammar.Warnings.HasErrorGroups}" />
-              <ItemsControl ItemsSource="{Binding Grammar.Warnings.ErrorGroups}" IsVisible="{Binding Grammar.Warnings.HasErrorGroups}"
-                            AutomationProperties.Name="Kinds of errors">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
-                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
-                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
-                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                      <DockPanel>
-                        <views:MarkChip DockPanel.Dock="Right" Mark="{Binding Mark}" Text="{Binding Count}" Compact="True" />
-                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                      </DockPanel>
-                    </Button>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="muted warningHeading"
-                         Text="{Binding Grammar.Warnings.WarningCount, StringFormat='WARNINGS · {0}'}"
-                         IsVisible="{Binding Grammar.Warnings.HasWarningGroups}" />
-              <ItemsControl ItemsSource="{Binding Grammar.Warnings.WarningGroups}" IsVisible="{Binding Grammar.Warnings.HasWarningGroups}"
-                            AutomationProperties.Name="Kinds of warning">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
-                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
-                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
-                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                      <DockPanel>
-                        <views:MarkChip DockPanel.Dock="Right" Mark="{Binding Mark}" Text="{Binding Count}" Compact="True" />
-                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                      </DockPanel>
-                    </Button>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <views:CopyableTextBlock Classes="muted warningHeading"
-                         Text="{Binding Grammar.Warnings.InformationCount, StringFormat='INFORMATION · {0}'}"
-                         IsVisible="{Binding Grammar.Warnings.HasInformationGroups}" />
-              <ItemsControl ItemsSource="{Binding Grammar.Warnings.InformationGroups}" IsVisible="{Binding Grammar.Warnings.HasInformationGroups}"
-                            AutomationProperties.Name="Kinds of information">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:GrammarFindingGroupViewModel">
-                    <Button Classes="findingGroup" Classes.chosen="{Binding IsSelected}"
-                            Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.SelectGroupCommand}"
-                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Name}">
-                      <DockPanel>
-                        <views:MarkChip DockPanel.Dock="Right" Mark="{Binding Mark}" Text="{Binding Count}" Compact="True" />
-                        <TextBlock Classes="groupName" Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                      </DockPanel>
-                    </Button>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-          </ScrollViewer>
+                    <StackPanel IsVisible="{Binding IsOpen}" Spacing="{DynamicResource Intent.Space.Related}">
+                      <Border Classes="card warningDetail">
+                        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                          <views:CopyableTextBlock Classes="warningGroup" Text="{Binding PanGlossTitle}"
+                                                    FontWeight="SemiBold"
+                                                    IsVisible="{Binding PanGlossTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                          <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}" TextWrapping="Wrap" />
+                          <StackPanel IsVisible="{Binding HasMessage}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="PanGloss description" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Classes="warningFullDescription" Text="{Binding Message}"
+                                                      TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="PanGloss explanation" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding PanGlossExplanation}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="PanGloss problem details" FontWeight="SemiBold" />
+                            <Border Classes="hoverReveal warningProblem">
+                              <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
+                            </Border>
+                          </StackPanel>
+                          <Border Classes="hoverReveal warningSubjects">
+                            <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
+                          </Border>
+                          <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="PanGloss guidance" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding PanGlossGuidance}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasFieldWorksPlaces}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="FieldWorks places" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding PanGlossFieldWorksPlaces}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasHelp}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="muted" Text="PanGloss help" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Text="{Binding PanGlossHelp}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <HyperlinkButton Classes="revealControl revealLink" Content="PanGloss reference"
+                                           NavigateUri="{Binding PanGlossReference}"
+                                           IsVisible="{Binding HasPanGlossReference}" />
+                        </StackPanel>
+                      </Border>
 
-          <!-- Right: the chosen kind's findings, each with the objects it names linked into FieldWorks. -->
-          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
-                <views:CopyableTextBlock Classes="section-title" Text="{Binding Grammar.Warnings.SelectedGroupTitle}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}" VerticalAlignment="Center" />
-              </StackPanel>
-              <views:CopyableTextBlock Classes="muted" Text="Choose a finding to see what to do in FieldWorks." TextWrapping="Wrap" />
-            </StackPanel>
-        <!-- What the chosen kind means; what to do about it sits on each row, since the advice names that row's item. -->
-        <Border Grid.Row="1" Classes="card warningDetail"
-                IsVisible="{Binding Grammar.Warnings.SelectedGroup.HasDescription, FallbackValue=False}">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-            <views:CopyableTextBlock Text="What it means" FontWeight="SemiBold" />
-            <views:CopyableTextBlock Text="{Binding Grammar.Warnings.SelectedGroup.Description, FallbackValue=''}" TextWrapping="Wrap" />
-          </StackPanel>
-        </Border>
-        <Grid Grid.Row="2" ColumnDefinitions="*,2*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-          <TextBox Grid.Column="0" Text="{Binding Grammar.Warnings.WhereFilter}"
-                   PlaceholderText="Where..." AutomationProperties.Name="Filter grammar warnings by where they apply" />
-          <TextBox Grid.Column="1" Text="{Binding Grammar.Warnings.ProblemFilter}"
-                   PlaceholderText="What it means..." AutomationProperties.Name="Filter grammar warnings by problem" />
-        </Grid>
-        <DataGrid x:Name="FindingsGrid" Grid.Row="3" ItemsSource="{Binding Grammar.Warnings.Rows}"
-                  IsReadOnly="True"
-                  CanUserSortColumns="True"
-                  CanUserResizeColumns="True"
-                  GridLinesVisibility="Horizontal"
-                  ClipboardCopyMode="IncludeHeader"
-                  RowDetailsVisibilityMode="VisibleWhenSelected"
-                  AutomationProperties.Name="Grammar warnings">
-          <!-- A chosen finding opens on PanGloss's advice for it and the steps that show whether the fix worked. -->
-          <DataGrid.RowDetailsTemplate>
-            <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-              <Grid Classes="warningRowDetail" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
-                <Border Classes="card warningRowCard">
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Text="What to do in FieldWorks" FontWeight="SemiBold" />
-                    <views:CopyableTextBlock Text="{Binding Advice}" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Text="{Binding WhereToLookText}" TextWrapping="Wrap" IsVisible="{Binding HasAdvice}" />
-                    <Expander Header="Learn more" IsVisible="{Binding HasHelpBody}">
-                      <md:MarkdownRenderer MarkdownBuilder="{Binding HelpBody, Converter={x:Static md:ValueConverters.ToObservableStringBuilder}}" />
-                    </Expander>
-                    <HyperlinkButton Content="PanGloss reference" NavigateUri="{Binding HelpUrl}" IsVisible="{Binding HasHelpUrl}" />
-                    <Border Classes="warningUnnamed" IsVisible="{Binding NamesNoItem}">
-                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding NoItemText}" TextWrapping="Wrap" />
-                        <views:CopyableTextBlock Text="{Binding WhereToLookText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="Your words" FontWeight="SemiBold" />
+                        <Grid IsSharedSizeScope="True" RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
+                          <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                          <ItemsControl Grid.Row="1" ItemsSource="{Binding WordRows}" IsVisible="{Binding HasExactRows}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:WordRowViewModel">
+                                <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Grid>
                       </StackPanel>
-                    </Border>
+                      <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Classes="muted" Text="Words matched by membership; selection is not confirmed" />
+                        <ItemsControl ItemsSource="{Binding MembershipCandidateRows}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WordRowViewModel">
+                              <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                      <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Classes="muted" Text="Words matched by spelling; use is not confirmed" />
+                        <ItemsControl ItemsSource="{Binding SpellingCandidateRows}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WordRowViewModel">
+                              <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                        <Button Content="Hand off this finding" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
+                                CommandParameter="{Binding}" />
+                        <Button Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
+                                Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"
+                                CommandParameter="{Binding}" />
+                      </StackPanel>
+
+                      <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
+                        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                          <views:CopyableTextBlock Text="Motif workflow" FontWeight="SemiBold" />
+                          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                                    Text="Save in FieldWorks, press Refresh, then parse these words again to see the current results." />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
                   </StackPanel>
                 </Border>
-                <Border Grid.Column="1" Classes="card warningRowCard" IsVisible="{Binding ShowsFixSteps}">
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Text="After you fix it" FontWeight="SemiBold" />
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="1" /></Border>
-                      <views:CopyableTextBlock Grid.Column="1" Text="Save your change in FieldWorks." TextWrapping="Wrap" />
-                    </Grid>
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="2" /></Border>
-                      <views:CopyableTextBlock Grid.Column="1" TextWrapping="Wrap"
-                                               Text="Press Refresh at the top of this window. Motif reads the saved project and checks the grammar again." />
-                    </Grid>
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-                      <Border Classes="stepMark warningStep"><views:CopyableTextBlock Text="3" /></Border>
-                      <views:CopyableTextBlock Grid.Column="1" TextWrapping="Wrap"
-                                               Text="If the fix worked, this finding is gone. Parse all words again to see how your words parse now." />
-                    </Grid>
-                  </StackPanel>
-                </Border>
-              </Grid>
-            </DataTemplate>
-          </DataGrid.RowDetailsTemplate>
-          <DataGrid.Columns>
-            <!-- A DataGridColumn's Binding has no compiled-binding item scope of its own (unlike a
-                 DataTemplate); ReflectionBinding is the documented per-binding opt-out. -->
-            <DataGridTemplateColumn Header="Level" Width="Auto" SortMemberPath="Severity"
-                                    ClipboardContentBinding="{ReflectionBinding Severity}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="warningSeverity warningCell" Classes.error="{Binding IsError}"
-                             Classes.warning="{Binding IsWarning}" Classes.info="{Binding IsInfo}"
-                             Text="{Binding Severity}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Kind" Width="Auto" SortMemberPath="KindLabel"
-                                    ClipboardContentBinding="{ReflectionBinding KindLabel}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="muted warningCell" Text="{Binding KindLabel}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Where" Width="*" SortMemberPath="Where"
-                                    ClipboardContentBinding="{ReflectionBinding Where}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <StackPanel Classes="warningCell" Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" IsVisible="{Binding HasWhere}" />
-                    <views:CopyableTextBlock Classes="muted" Text="no single place" IsVisible="{Binding !HasWhere}" />
-                  </StackPanel>
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="What it means" Width="2*" SortMemberPath="GroupName"
-                                    ClipboardContentBinding="{ReflectionBinding Text}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <StackPanel Classes="warningCell" Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Text="{Binding Meaning}" TextWrapping="Wrap" IsVisible="{Binding HasMeaning}" />
-                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" Classes.parserLine="{Binding HasMeaning}"
-                                                    ToolTip.Tip="{Binding Text}" />
-                  </StackPanel>
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Seen" Width="Auto" SortMemberPath="RepeatCount"
-                                    ClipboardContentBinding="{ReflectionBinding RepeatCount}">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
-                  <TextBlock Classes="warningCell warningSeen" Text="{Binding SeenText}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-            </DataGridTemplateColumn>
-          </DataGrid.Columns>
-        </DataGrid>
-          </Grid>
-        </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
       </Grid>
     </Panel>
   </Grid>

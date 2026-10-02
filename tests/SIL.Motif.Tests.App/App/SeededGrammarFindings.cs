@@ -3,17 +3,12 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// A synthetic grammar check in the shape PanGloss reports: real warning codes and group names, the parser's own
-/// sentences, and named FieldWorks objects carrying their links. The screenshots and the Warnings page's word
-/// tests share it, so the pictures show what the tests pin.
+/// A synthetic schema 4 grammar check with PanGloss text, structured FieldWorks places, and linked subjects.
+/// The screenshots and Warnings page tests share it, so the pictures show what the tests pin.
 /// </summary>
 internal static class SeededGrammarFindings
 {
     private const string Link = "silfw://localhost/link?database=Sample&tool=";
-
-    /// <summary>PanGloss's advice for an allomorph it cannot split into phonemes.</summary>
-    public const string SpellingGuidance =
-        "In Lexicon > Lexicon Edit, check the named allomorph's spelling and the project's phoneme inventory.";
 
     /// <summary>The objects each finding names that FieldWorks can open.</summary>
     public static int LinkedSubjectCount => All().Where(finding => finding.Subject.Any(part => part.FieldWorksLink is not null))
@@ -22,50 +17,59 @@ internal static class SeededGrammarFindings
     public static IReadOnlyList<GrammarWarning> All()
     {
         var findings = new List<GrammarWarning>();
-        void Add(string code, string group, GrammarWarningPart? subject, string problem, int count, string guidance,
+        void Add(string code, string group, GrammarWarningPart? subject, string problem, int count,
             GrammarFindingOrigin origin = GrammarFindingOrigin.Import)
         {
             var text = $"warning: {code}: " + (subject is null ? problem : $"{subject.Text}: {problem}");
+            var words = code == "conversion.unsegmentable-form"
+                ? new WarningWords(WarningWordsMatch.Identity,
+                    [new ObjectUseWord(new WordRow("kat", WordRowOutcome.Different, "Lost", WordRowTone.Problem)
+                    {
+                        Opinion = "Approved",
+                        Places = 3,
+                        PanGlossReadingAvailability = WordRowReadingAvailability.NotRequested,
+                    })], [])
+                    { Paths = [WarningWordsPath.ThroughAllomorphs] }
+                : null;
             for (var index = 0; index < count; index++)
             {
                 findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, group,
                     subject is null ? [] : [subject], [new GrammarWarningPart(problem, GrammarWarningPartRole.Text)], text)
                 {
-                    Group = group, Title = group, Code = code, Description = problem,
-                    Explanation = "PanGloss could not use this part of the grammar as authored.",
-                    Guidance = guidance, Origin = origin,
-                    FieldWorksPlaces = subject?.FieldWorksTool is { } tool ? [new(tool, "Form")] : [],
+                    Group = group,
+                    Code = code,
+                    Title = group,
+                    Description = problem,
+                    Explanation = $"PanGloss explanation for {group}.",
+                    Guidance = "PanGloss guidance supplied for this finding.",
+                    FieldWorksPlaces = PlacesFor(code),
+                    Origin = origin,
+                    YourWords = words,
                 });
             }
         }
 
         Add("grammar.environment.invalid", "Invalid phonological environment", null,
-            "environment representation failed validation", 7,
-            "In Grammar > Environments, correct the expression for phonological environment 'the item'.");
+            "environment representation failed validation", 7);
         Add("grammar.environment.invalid", "Invalid phonological environment",
             Named("e2 (/ _ [C])", "PhEnvironment", "EnvironmentEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d01"),
-            "unknown natural class \"C\"; treated as absent", 5,
-            "In Grammar > Environments, correct the expression for phonological environment 'e2 (/ _ [C])'.");
+            "unknown natural class \"C\"; treated as absent", 5);
         Add("conversion.unsegmentable-form", "Allomorph form cannot be segmented",
             Named("kat", "MoForm", "lexiconEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d02"),
-            "cannot segment \"kat\": no character definition matches at position 0; skipped", 3, SpellingGuidance);
+            "cannot segment \"kat\": no character definition matches at position 0; skipped", 3);
         Add("grammar.msa.no-rule-form-allomorphs", "Analysis has no usable affix form", null,
-            "MSA has zero loadable allomorphs for this stratum bucket", 2,
-            "In Lexicon > Lexicon Edit, add a usable affix allomorph to the named analysis.");
+            "MSA has zero loadable allomorphs for this stratum bucket", 2);
         Add("grammar.phoneme.nfd-collision", "Phoneme representation collision",
             Named("ng'", "PhPhoneme", "phonemeEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d03"),
-            "representation collides with an earlier phoneme/boundary; skipped", 1,
-            "In Grammar > Phonemes, change the named phoneme's representation so it is unique.");
+            "representation collides with an earlier phoneme/boundary; skipped", 1);
         Add("migration.inferred-segment-with-feature-rule", "Character is not listed as a phoneme", null,
-            "inferred segment \"ŋ\" carries no authored feature values, so it satisfies every feature-based natural class", 2,
-            "In Grammar > Phonemes, add the named character as a phoneme before assigning its feature values.");
+            "inferred segment \"ŋ\" carries no authored feature values, so it satisfies every feature-based natural class", 2);
         var entry = 10;
         foreach (var name in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
         {
             Add("hc-stem-no-grammatical-category", "Stem has no category",
                 Named(name, "LexEntry", "lexiconEdit", $"5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d{entry++}"),
-                $"Lexical entry '{name}' has no grammatical category.", 1,
-                "In Lexicon > Lexicon Edit, open the entry and set Grammatical Info. > Category.", GrammarFindingOrigin.Check);
+                $"Lexical entry '{name}' has no grammatical category.", 1, GrammarFindingOrigin.Check);
         }
         return findings;
     }
@@ -73,7 +77,16 @@ internal static class SeededGrammarFindings
     private static GrammarWarningPart Named(string title, string kind, string tool, string guid) =>
         new(title, GrammarWarningPartRole.Object, guid, kind, $"{Link}{tool}&guid={guid}")
         {
-            Title = title, SubjectGuid = guid, FieldWorksGuid = guid, FieldWorksTool = tool,
+            Title = title, Status = GrammarSubjectStatus.Object, SubjectGuid = guid, FieldWorksGuid = guid, FieldWorksTool = tool,
             LinkStatus = FieldWorksLinkStatus.Available,
         };
+
+    private static IReadOnlyList<GrammarFieldWorksPlace> PlacesFor(string code) => code switch
+    {
+        "grammar.environment.invalid" => [new("EnvironmentEdit", "Representation")],
+        "conversion.unsegmentable-form" => [new("lexiconEdit", "Form")],
+        "grammar.msa.no-rule-form-allomorphs" => [new("lexiconEdit", "Morphology")],
+        "grammar.phoneme.nfd-collision" => [new("phonemeEdit", "Representation")],
+        _ => [],
+    };
 }

@@ -1,14 +1,17 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System.Text.RegularExpressions;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -76,6 +79,47 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
         Assert.False(bar.Focusable);
         Assert.False(bar.IsTabStop);
+    }
+
+    [Fact]
+    public async Task WarningsFilterToggleRespondsToSpace()
+    {
+        var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Finding", [], [], "warning: finding")
+        {
+            Title = "Finding",
+            Description = "Finding description",
+            Code = "finding",
+        };
+        var fake = new FakeCommandClient();
+        fake.OnCheckGrammar((_, _) => Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(
+            new GrammarCheckResponse([warning], HasBaseline: true))));
+        var grammar = new GrammarViewModel(fake);
+        await grammar.SetProjectAsync(@"C:\projects\sample.fwdata");
+
+        avalonia.Invoke(() =>
+        {
+            var panel = new GrammarPanel(grammar);
+            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var toggle = Assert.Single(panel.GetVisualDescendants().OfType<ToggleButton>(),
+                    button => Equals(button.Content, "Touch your words"));
+                Assert.True(toggle.Focus());
+
+                var topLevel = TopLevel.GetTopLevel(toggle)!;
+                topLevel.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                topLevel.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.True(grammar.Warnings.TouchYourWords);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
     }
 
     [Fact]

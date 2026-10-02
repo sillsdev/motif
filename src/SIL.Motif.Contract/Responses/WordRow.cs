@@ -33,6 +33,19 @@ public enum WordRowTone
     Neutral,
 }
 
+/// <summary>Whether a word row includes PanGloss's resolved morpheme details.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WordRowReadingAvailability>))]
+public enum WordRowReadingAvailability
+{
+    /// <summary>The query includes resolved details; an empty list can be a recorded no-reading result.</summary>
+    [JsonStringEnumMemberName("included")]
+    Included,
+
+    /// <summary>The query deliberately omits resolved details, so an empty list does not mean no reading exists.</summary>
+    [JsonStringEnumMemberName("not_requested")]
+    NotRequested,
+}
+
 /// <summary>
 /// One word as every page's word row shows it: what FieldWorks holds, what PanGloss built, what the two mean
 /// together, and where the word occurs. Every page builds its row from the same projection, so a word reads the
@@ -52,6 +65,10 @@ public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning
 
     /// <summary>A second line qualifying the headline, or empty when none is needed.</summary>
     public string MeaningDetail { get; init; } = string.Empty;
+
+    /// <summary>Whether <see cref="PanGlossMorphemes"/> contains resolved parser details.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public WordRowReadingAvailability PanGlossReadingAvailability { get; init; }
 
     /// <summary>The FieldWorks analysis's glosses, morph by morph, or empty when FieldWorks holds none.</summary>
     public string Gloss { get; init; } = string.Empty;

@@ -20,25 +20,31 @@ public static class WarningWordsQuery
     internal static GrammarCheckResponse WithYourWords(MotifDatabase database, ProjectLocator project,
         GrammarCheckResponse check, BaselineToken checkedBaseline)
     {
-        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
+        var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
         var navigation = current.Succeeded && current.Value!.Baseline?.Token == checkedBaseline
             ? current.Value.Navigation : null;
         check = (navigation ?? SavedProjectNavigation.Read(project.FullFwDataPath, checkedBaseline.ProjectIdentity)).Verify(check);
         if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
             current.Value.Assessment is not { } assessment)
             return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
-        return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings);
+        return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings,
+            includeResolvedReadings: true);
     }
 
     /// <summary><paramref name="check"/> with each finding's words in <paramref name="words"/>.</summary>
     public static GrammarCheckResponse WithYourWords(GrammarCheckResponse check,
         IReadOnlyList<AssessmentWordResult> words, IReadOnlyList<AssessmentObjectTiming> timings)
+        => WithYourWords(check, words, timings, includeResolvedReadings: false);
+
+    private static GrammarCheckResponse WithYourWords(GrammarCheckResponse check,
+        IReadOnlyList<AssessmentWordResult> words, IReadOnlyList<AssessmentObjectTiming> timings,
+        bool includeResolvedReadings)
     {
         ArgumentNullException.ThrowIfNull(check);
         return check with
         {
             Findings = check.Findings.Select(finding =>
-                finding with { YourWords = YourWordsOf(finding, words, timings) }).ToArray(),
+                finding with { YourWords = YourWordsOf(finding, words, timings, includeResolvedReadings) }).ToArray(),
         };
     }
 
@@ -48,6 +54,10 @@ public static class WarningWordsQuery
     /// </summary>
     public static WarningWords? YourWordsOf(GrammarWarning finding, IReadOnlyList<AssessmentWordResult> words,
         IReadOnlyList<AssessmentObjectTiming> timings)
+        => YourWordsOf(finding, words, timings, includeResolvedReadings: false);
+
+    private static WarningWords? YourWordsOf(GrammarWarning finding, IReadOnlyList<AssessmentWordResult> words,
+        IReadOnlyList<AssessmentObjectTiming> timings, bool includeResolvedReadings)
     {
         ArgumentNullException.ThrowIfNull(finding);
         ArgumentNullException.ThrowIfNull(words);
@@ -80,14 +90,14 @@ public static class WarningWordsQuery
                 .Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray();
             var paths = routes.Select(reach => reach.Path);
             if (exactRoutes.Length > 0)
-                return Found(WarningWordsMatch.Identity, words, exact, paths) with
+                return Found(WarningWordsMatch.Identity, words, exact, paths, includeResolvedReadings) with
                 {
-                    MembershipCandidates = Found(WarningWordsMatch.Membership, words, members, []).Words,
+                    MembershipCandidates = Found(WarningWordsMatch.Membership, words, members, [], includeResolvedReadings).Words,
                     SpellingCandidates = spelled,
                 };
             if (membershipRoutes.Length > 0)
-                return Found(WarningWordsMatch.Membership, words, members, paths) with { SpellingCandidates = spelled };
-            return Found(WarningWordsMatch.Spelling, words, spelled, paths);
+                return Found(WarningWordsMatch.Membership, words, members, paths, includeResolvedReadings) with { SpellingCandidates = spelled };
+            return Found(WarningWordsMatch.Spelling, words, spelled, paths, includeResolvedReadings);
         }
 
         var unattributed = WarningReach.Unattributed(reaches);
@@ -168,11 +178,20 @@ public static class WarningWordsQuery
     }
 
     private static WarningWords Found(WarningWordsMatch match, IReadOnlyList<AssessmentWordResult> words,
-        IEnumerable<ObjectUseWord> found, IEnumerable<WarningWordsPath> paths)
+        IEnumerable<ObjectUseWord> found, IEnumerable<WarningWordsPath> paths, bool includeResolvedReadings)
     {
         var order = words.Select((word, index) => (word.Word, index))
             .ToDictionary(pair => pair.Word, pair => pair.index, StringComparer.Ordinal);
-        var split = ObjectUsesQuery.Split(found.OrderBy(word => order[word.Row.Word]).ToArray());
+        var rows = found.Select(word => word with
+        {
+            Row = word.Row with
+            {
+                PanGlossReadingAvailability = includeResolvedReadings
+                    ? WordRowReadingAvailability.Included
+                    : WordRowReadingAvailability.NotRequested,
+            },
+        });
+        var split = ObjectUsesQuery.Split(rows.OrderBy(word => order[word.Row.Word]).ToArray());
         return new WarningWords(match, split.Words, split.ByMeaning) { Paths = paths.Distinct().ToArray() };
     }
 

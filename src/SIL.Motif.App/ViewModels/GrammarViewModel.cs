@@ -101,13 +101,28 @@ public sealed partial class GrammarViewModel : ObservableObject
         : !HasChecked ? "Not checked yet"
         : !HasBaseline ? "Capture a Baseline first"
         : Warnings.HasAny ? (Warnings.TotalCount == 1 ? "1 finding" : $"{Warnings.TotalCount} findings")
-        : "No findings";
+        : "No grammar findings were reported.";
 
     /// <summary>Sets the project to check and immediately checks it, discarding whatever was shown before.</summary>
     public async Task SetProjectAsync(string? fwDataPath, CancellationToken cancellationToken = default)
     {
-        ResetProject(fwDataPath);
-        if (fwDataPath is not null) await CheckAsync(cancellationToken).ConfigureAwait(true);
+        var preserveResolved = HasChecked && string.Equals(_projectPath, fwDataPath, StringComparison.Ordinal);
+        if (preserveResolved)
+        {
+            _projectPath = fwDataPath;
+            _generation++;
+            IsLoading = false;
+            Refusal = null;
+            HasBaseline = false;
+            HasChecked = false;
+            CheckCommand.NotifyCanExecuteChanged();
+        }
+        else
+        {
+            ResetProject(fwDataPath);
+        }
+        if (fwDataPath is not null)
+            await CheckAsync(cancellationToken, preserveResolved).ConfigureAwait(true);
     }
 
     /// <summary>Forgets the previous project's grammar while the next project opens.</summary>
@@ -135,7 +150,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         CheckCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task CheckAsync(CancellationToken cancellationToken = default)
+    private async Task CheckAsync(CancellationToken cancellationToken = default, bool preserveResolved = false)
     {
         if (_projectPath is not { } path) return;
 
@@ -160,7 +175,7 @@ public sealed partial class GrammarViewModel : ObservableObject
         // The table is filled before the state flips, so no view ever sees "checked" with an empty table.
         if (outcome.Succeeded)
         {
-            Warnings.Load(outcome.Value!.Findings);
+            Warnings.Load(outcome.Value!.Findings, preserveResolved);
             HasBaseline = outcome.Value.HasBaseline;
         }
         else

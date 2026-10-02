@@ -39,7 +39,7 @@ public static class InspectQuery
 
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
-            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
+            var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
             if (!current.Succeeded) return CommandOutcome<InspectResponse>.Refused(current.Refusal!);
             var snapshot = current.Value!;
 
