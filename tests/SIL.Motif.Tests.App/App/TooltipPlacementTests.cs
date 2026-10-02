@@ -11,11 +11,11 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window: the top
-/// bar's Refresh, AI Handoff's drag and question tips, Try a Word's rule rows, a disabled Apply and AI Handoff with
-/// their reasons, the word strips and their marks, a word card's links and opinion, a finding's FieldWorks link, the
-/// collapsed sidebar, the Matrix's pending mark and the Timing page, at both widths the pages are drawn at and in
-/// both themes. Each tooltip opens under the pointer, as a person meets it.
+/// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window. The test
+/// opens the top bar's Refresh, the selected list's column headings, Compare's rerun, AI Handoff's drag and question
+/// tips, Try a Word's rule rows, a disabled Apply and AI Handoff with their reasons, the word strips and their marks,
+/// a word card's links and opinion, a finding's FieldWorks link, the collapsed sidebar, the Matrix's pending mark and
+/// the Timing page at both widths and in both themes. Each tooltip opens under the pointer, as a person meets it.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
@@ -24,6 +24,7 @@ public sealed class TooltipPlacementTests
     private static readonly string[] Owners =
     [
         "refresh", "drag all files", "question to copy", "rule row", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card", "FieldWorks link on a morpheme",
         "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
         "completion in detailed statistics",
@@ -71,7 +72,15 @@ public sealed class TooltipPlacementTests
                             }
                             if (await Hover(scenes, control) is not { } tip)
                             {
-                                failures.Add($"{where}: the tooltip did not open under the pointer");
+                                var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
+                                    .Where(ancestor => !ancestor.IsHitTestVisible)
+                                    .Select(ancestor => ancestor.GetType().Name));
+                                var underPointer = string.Join(", ", scenes.Window.GetVisualDescendants().OfType<Control>()
+                                    .Where(candidate => candidate.IsPointerOver)
+                                    .Select(candidate => $"{candidate.GetType().Name} '{NameOf(candidate)}'"));
+                                failures.Add($"{where}: the tooltip did not open under the pointer at {Area(control, scenes.Window)}; " +
+                                    $"owner hit testing is {control.IsHitTestVisible}; pointer is over: {underPointer}; " +
+                                    $"blocked ancestors: {blocked}; tip: {ToolTip.GetTip(control)}");
                                 continue;
                             }
                             placed++;
@@ -109,7 +118,10 @@ public sealed class TooltipPlacementTests
         ToolTip.SetShowDelay(owner, 0);
         window.MouseMove(new Point(4, window.Bounds.Height - 4));
         PageScreenshots.Settle(window);
-        window.MouseMove(owner.TranslatePoint(new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2), window)!.Value);
+        var point = owner.Classes.Contains("wordRowHeading")
+            ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
+            : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);
+        window.MouseMove(owner.TranslatePoint(point, window)!.Value);
         PageScreenshots.Settle(window);
         await Task.Yield();
         PageScreenshots.Settle(window);

@@ -474,6 +474,17 @@ internal static class TooltipOwners
             control => control is MenuItem),
         new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
             control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is null),
+        new("Parse stopped words again", "Views/ComparePanel.axaml", "Parse the stopped and unparsed words again",
+            TooltipScene.Matrix,
+            control => control is SplitButton && Name(control) == "Parse the stopped and unparsed words again"),
+        new("FieldWorks column heading", "Views/WordRowHeader.axaml", "FieldWorks", TooltipScene.Lists,
+            control => control is CopyableTextBlock && Name(control) == "FieldWorks" &&
+                control.Classes.Contains("wordRowHeading") && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&
+                control.FindAncestorOfType<WordRowHeader>() is not null),
+        new("PanGloss column heading", "Views/WordRowHeader.axaml", "PanGloss", TooltipScene.Lists,
+            control => control is CopyableTextBlock && Name(control) == "PanGloss" &&
+                control.Classes.Contains("wordRowHeading") && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&
+                control.FindAncestorOfType<WordRowHeader>() is not null),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,

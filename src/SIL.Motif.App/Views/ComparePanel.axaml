@@ -239,6 +239,7 @@
             <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
                          IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
                          ToolTip.Tip="Parse the stopped and unparsed words again"
+                         views:ClearTipPlacement.IsEnabled="True"
                          AutomationProperties.Name="Parse the stopped and unparsed words again">
               <SplitButton.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
