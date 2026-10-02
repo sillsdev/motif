@@ -84,6 +84,22 @@ public sealed class ComposeAuthorLexemeFormTests
             });
 
     [Fact]
+    public void ComposerReadsTheSavedProjectWhileItsOriginalIsHeld()
+    {
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "held", null).Succeeded);
+        var bytes = System.IO.File.ReadAllBytes(_fwDataPath);
+        var saved = System.IO.File.GetLastWriteTimeUtc(_fwDataPath);
+        using var owner = new FieldWorksSimulator(_fwDataPath).Hold();
+        var result = ComposeAuthorLexemeForm(_fwDataPath, ProductVersion, "held",
+            IntentJson(CanonicalId.FromGuid(_seed.FirstEntryId).Value, includeGloss: true));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(2, result.Value!.OperationCount);
+        Assert.True(System.IO.File.Exists(_fwDataPath + ".lock"));
+        Assert.Equal(bytes, System.IO.File.ReadAllBytes(_fwDataPath));
+        Assert.Equal(saved, System.IO.File.GetLastWriteTimeUtc(_fwDataPath));
+    }
+
+    [Fact]
     public void ComposeAuthorLexemeForm_AppendsTheResolvedOperations_NotOneTheAgentEnumerated()
     {
         var entryId = CanonicalId.FromGuid(_seed.FirstEntryId).Value;

@@ -1048,18 +1048,8 @@ public static class PendingChanges
     }
 
     private static T WithFitCache<T>(ProjectLocator project, BaselineRecord? baseline,
-        long liveLastWriteTicks, Func<LcmCache, long, T> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        var baselineLastWriteTicks = baseline?.SourceLastWriteUtc.UtcDateTime.Ticks;
-        if (baseline is not null && liveLastWriteTicks == baselineLastWriteTicks)
-        {
-            using var cache = LoadBaselineCache(baseline.FwDataPath);
-            return action(cache, liveLastWriteTicks);
-        }
-        return WithLiveProjectCopy(project, (copy, cache) =>
-            action(cache, copy.SourceLastWriteUtc.UtcDateTime.Ticks));
-    }
+        long liveLastWriteTicks, Func<LcmCache, long, T> action) =>
+        ProjectReadCache.ReadCurrent(project, baseline, liveLastWriteTicks, action);
 
     private static LcmCache LoadBaselineCache(string path)
     {
@@ -1070,34 +1060,6 @@ public static class PendingChanges
         catch (LcmFileLockedException)
         {
             throw new ProjectBaselineBusyException();
-        }
-    }
-
-    private static T WithLiveProjectCopy<T>(ProjectLocator project,
-        Func<SavedProjectFilesCopy, LcmCache, T> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        var directory = Path.Combine(Path.GetTempPath(), "SIL.Motif.PendingChanges", Guid.NewGuid().ToString("N"));
-        try
-        {
-            SavedProjectFilesCopy copy;
-            try
-            {
-                copy = new SavedProjectFileCopier().CopyAsync(project.FullFwDataPath, directory,
-                    CancellationToken.None).GetAwaiter().GetResult();
-            }
-            catch (InvalidDataException)
-            {
-                throw new ProjectSavingException();
-            }
-            using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
-            return action(copy, cache);
-        }
-        finally
-        {
-            try { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
         }
     }
 

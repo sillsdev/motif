@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Worker.Store;
@@ -50,6 +51,14 @@ public static class PendingChangesWorkflow
             return RefuseApply("apply.change-no-longer-fits",
                 "One or more changes no longer fit the project. Remove those changes first.");
         var resolvedRequest = request with { DraftId = draftId, Revision = snapshot.Revision };
+
+        // Original ownership is required before Apply finalizes changes or queues its Dry Run.
+        var released = ProjectStoreCommand.Run(request.ProjectPath, version, (_, project) =>
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+            return CommandOutcome<PendingChangesSnapshot>.Success(snapshot);
+        });
+        if (!released.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(released.Refusal!);
 
         var finalized = ProposalCommands.Finalize(new FinalizeRequest(
             request.ProjectPath, version, PendingChanges.DraftName, snapshot.Revision));

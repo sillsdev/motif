@@ -415,10 +415,8 @@ public static partial class ProposalCommands
                 using var intentDocument = JsonDocument.Parse(request.IntentJson);
                 var intent = AuthorLexemeFormIntentParser.Parse(intentDocument.RootElement);
 
-                var loader = new FwDataProjectLoader();
-                IReadOnlyList<SIL.Motif.Contract.Model.OperationEnvelope> operations;
-                using (var cache = loader.LoadCache(project.FullFwDataPath))
-                    operations = AuthorLexemeFormComposer.Build(cache, intent);
+                var operations = ProjectReadCache.ReadSaved(project, (_, cache) =>
+                    AuthorLexemeFormComposer.Build(cache, intent));
 
                 foreach (var operation in operations)
                 {
@@ -469,10 +467,8 @@ public static partial class ProposalCommands
                 using var intentDocument = JsonDocument.Parse(request.IntentJson);
                 var intent = AuthorFeatureStructureIntentParser.Parse(intentDocument.RootElement);
 
-                var loader = new FwDataProjectLoader();
-                IReadOnlyList<SIL.Motif.Contract.Model.OperationEnvelope> operations;
-                using (var cache = loader.LoadCache(project.FullFwDataPath))
-                    operations = AuthorFeatureStructureComposer.Build(cache, intent);
+                var operations = ProjectReadCache.ReadSaved(project, (_, cache) =>
+                    AuthorFeatureStructureComposer.Build(cache, intent));
 
                 foreach (var operation in operations)
                 {
@@ -1621,16 +1617,15 @@ public static partial class ProposalCommands
         try
         {
             var fullFwDataPath = ResolveProjectPath(fwDataPath);
-            var loader = new FwDataProjectLoader();
-            using var cache = loader.LoadCache(fullFwDataPath);
-
-            var diagnostics = new List<string>();
-            var entries = ProjectAppliedLog.ReadAll(
-                cache,
-                (name, error) => diagnostics.Add($"  [unparseable Motif entry] name='{name}' error='{error}'"));
-
-            return CommandOutcome<AppliedLogProjection>.Success(
-                AppliedLogProjectionBuilder.Build(fullFwDataPath, entries, diagnostics));
+            var project = new ProjectLocator(fullFwDataPath, Path.GetFileNameWithoutExtension(fullFwDataPath));
+            return ProjectReadCache.ReadSaved(project, (_, cache) =>
+            {
+                var diagnostics = new List<string>();
+                var entries = ProjectAppliedLog.ReadAll(cache,
+                    (name, error) => diagnostics.Add($"  [unparseable Motif entry] name='{name}' error='{error}'"));
+                return CommandOutcome<AppliedLogProjection>.Success(
+                    AppliedLogProjectionBuilder.Build(fullFwDataPath, entries, diagnostics));
+            });
         }
         catch (Exception ex)
         {

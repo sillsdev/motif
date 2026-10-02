@@ -63,6 +63,23 @@ public sealed class ComposeAuthorFeatureStructureTests
     }
 
     [Fact]
+    public void ComposerReadsTheSavedProjectWhileItsOriginalIsHeld()
+    {
+        var msa = FirstMsaId();
+        Assert.True(NewDraft(_fwDataPath, ProductVersion, "held", null).Succeeded);
+        var bytes = System.IO.File.ReadAllBytes(_fwDataPath);
+        var saved = System.IO.File.GetLastWriteTimeUtc(_fwDataPath);
+        using var owner = new FieldWorksSimulator(_fwDataPath).Hold();
+        var result = ComposeAuthorFeatureStructure(_fwDataPath, ProductVersion, "held",
+            JsonSerializer.Serialize(new { msa }));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(1, result.Value!.OperationCount);
+        Assert.True(System.IO.File.Exists(_fwDataPath + ".lock"));
+        Assert.Equal(bytes, System.IO.File.ReadAllBytes(_fwDataPath));
+        Assert.Equal(saved, System.IO.File.GetLastWriteTimeUtc(_fwDataPath));
+    }
+
+    [Fact]
     public void ComposeAuthorFeatureStructure_AppendsTheResolvedOperation_NotOneTheAgentEnumerated()
     {
         var msaId = FirstMsaId();
