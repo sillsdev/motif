@@ -181,13 +181,6 @@ public static class CommandTextRenderer
                 else
                     sb.AppendLine("    Approved expectations were not collected.");
                 sb.AppendLine($"    Parser readings: {evidence.Analyses.Count}");
-                if (evidence.Analyses.Count == 0 && !evidence.InvalidShape && !evidence.Capped && !evidence.TimedOut &&
-                    projection.GrammarWarnings is { Count: > 0 } findings)
-                {
-                    sb.AppendLine($"    The search finished without readings, and the parser reported " +
-                        $"{findings.Count} load message(s) for this grammar (below). Parts of the grammar it could not " +
-                        $"read were dropped, so this may be a grammar it could not load rather than a word it rejects.");
-                }
                 foreach (var analysis in evidence.Analyses)
                     sb.AppendLine("      " + string.Join(" -> ", analysis.Morphs.Select(morph =>
                         $"Form={morph.Form}; MSA={morph.Msa}; InflType={morph.InflType ?? "absent"}; guessed={morph.GuessedString ?? "absent"}")));
@@ -198,8 +191,7 @@ public static class CommandTextRenderer
         if (projection.GrammarWarnings is { Count: > 0 } warnings)
         {
             sb.AppendLine();
-            sb.AppendLine($"Parser load messages: {warnings.Count}");
-            sb.AppendLine("The parser drops what it cannot read and parses on, so these can explain an empty result.");
+            sb.AppendLine($"PanGloss messages: {warnings.Count}");
             foreach (var warning in warnings)
                 sb.AppendLine($"  {warning}");
         }

@@ -158,6 +158,30 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void LearnGuidesKeepLanguageEducationWithoutMotifAuthoredParserAdvice()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var modelling = catalog.GetHelpPage(
+            HelpEntryKind.Guide, "learn/modelling-a-grammar-the-parser-can-use");
+        var parser = catalog.GetHelpPage(HelpEntryKind.Guide, "learn/what-the-parser-knows");
+
+        Assert.DoesNotContain("cannot fully use", modelling, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("first phoneme set", modelling, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("A slot with no usable affix disappears", modelling, StringComparison.Ordinal);
+        Assert.DoesNotContain("reports inflectional affixes that have no slot", modelling,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("does not yet run some things FieldWorks lets you model", modelling,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("silently repair a rule", parser, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("## Allomorph order", modelling, StringComparison.Ordinal);
+        Assert.Contains("Features, their values, and inflection classes link by reference, not by name:",
+            modelling, StringComparison.Ordinal);
+        Assert.Contains("[Timing](cmd:timing)", modelling, StringComparison.Ordinal);
+        Assert.Contains("choose **Refresh**", modelling, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PartialGuideTranslationsFallBackToEnglishForEachMissingField()
     {
         var englishPages = new[]

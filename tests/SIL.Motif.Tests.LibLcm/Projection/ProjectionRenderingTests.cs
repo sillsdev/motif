@@ -15,20 +15,29 @@ namespace SIL.Motif.Tests.Projection;
 public sealed class ProjectionRenderingTests
 {
     [Fact]
-    public void AssessmentTextLabelsParserDiagnosticsAsLoadMessages()
+    public void AssessmentTextKeepsMessagesWithoutExplainingParserBehavior()
     {
         var projection = new AnalysisAggregateProjection(
             "Assessment complete", System.Array.Empty<WordFormAnalysisView>())
         {
+            AssessmentCases =
+            [
+                new AssessmentAnalysisCase(
+                    new ParseWordEvidence("test", 0, "word", 1, false, false, false,
+                        System.Array.Empty<ParseAnalysis>(), System.Array.Empty<string>()), null),
+            ],
             GrammarWarnings = ["warning: dropped rule", "capability: ignored feature"],
         };
 
         var text = CommandTextRenderer.Render(projection);
 
-        Assert.Contains("Parser load messages: 2", text);
-        Assert.DoesNotContain("Grammar findings reported by the parser", text);
-        Assert.Contains("warning: dropped rule", text);
-        Assert.Contains("capability: ignored feature", text);
+        Assert.Contains("PanGloss messages: 2\n  warning: dropped rule\n  capability: ignored feature",
+            text.ReplaceLineEndings("\n"));
+        var emptyCase = text[text.IndexOf("Case 0", System.StringComparison.Ordinal)..
+            text.IndexOf("PanGloss messages", System.StringComparison.Ordinal)];
+        Assert.Contains("Parser readings: 0", emptyCase);
+        Assert.DoesNotContain("message", emptyCase, System.StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("The parser drops what it cannot read", text);
     }
 
     [Fact]

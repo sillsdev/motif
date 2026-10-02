@@ -166,7 +166,6 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 PerWordStepLimit = evidence.PerWordStepLimit,
             };
-            // Retained on the evidence, not just the run, so a later reader can still say why a word found nothing.
             var recorded = evidence with
             {
                 GrammarWarnings = warnings.Length == 0 ? null : string.Join("\n", warnings),

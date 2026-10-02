@@ -212,7 +212,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void AnEmptyResultCarriesTheGrammarFindingsThatMayExplainIt()
+    public void AnEmptyResultRetainsTheRawGrammarMessages()
     {
         var word = CorrectnessFixture.Word("dkat", matched: false);
         var assessment = new StoredAssessment(
@@ -244,7 +244,7 @@ public sealed class ReportProjectionIntegrationTests
     }
 
     [Fact]
-    public void AQuietGrammarAddsNoFindingsBlockAndExplainsNothingAway()
+    public void NoGrammarMessagesAddNoFindingsBlock()
     {
         var word = CorrectnessFixture.Word("quiet", matched: false);
         var assessment = new StoredAssessment(
