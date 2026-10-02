@@ -46,6 +46,7 @@ public static class WordRowProjection
             PanGlossReadingCount = word.Morphology?.Analyses.Count ?? word.Readings?.Count ?? 0,
             Places = facts?.Places ?? word.OccurrenceCount,
             ElapsedMs = word.Outcome == "skipped" ? null : word.ElapsedMs,
+            Origin = word.Origin,
             IsUnread = facts?.IsUnread,
             WordAnalysesLink = word.TryWordLink,
         };
@@ -112,8 +113,7 @@ public static class WordRowProjection
     // The approved analysis, else the only one FieldWorks holds, the same choice the run makes for its expectation.
     private static ParserReading? FieldWorksAnalysisOf(AssessmentWordResult word) =>
         word.ExpectedAnalysis
-        ?? word.StoredAnalyses.FirstOrDefault(reading => reading.StoredAnalysisOpinion == ReadingGrade.Approved)
-        ?? (word.StoredAnalyses.Count == 1 ? word.StoredAnalyses[0] : null);
+        ?? SIL.Motif.Commands.Assess.AssessmentWordRows.ExpectedAnalysis(word.StoredAnalyses);
 
     // The reading sharing most morphemes with FieldWorks' analysis, the parser's first on a tie.
     private static ParserReading? ClosestReading(IReadOnlyList<ParserReadingMorph> fieldWorks,

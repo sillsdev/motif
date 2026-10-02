@@ -113,6 +113,8 @@ public sealed record NewAssessmentRecord(
     string? CacheDigest = null,
     string? SavedUtc = null)
 {
+    /// <summary>The complete Assessment whose main answers this explicit reparse replaces.</summary>
+    public string? ReplacesAssessmentId { get; init; }
     public BatchInvocationEvidence? Invocation { get; init; }
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
@@ -145,6 +147,8 @@ public sealed record AssessmentRecord(
     string? CacheDigest = null,
     IReadOnlyList<AssessedWord>? Words = null)
 {
+    /// <summary>The complete Assessment whose main answers this explicit reparse replaces.</summary>
+    public string? ReplacesAssessmentId { get; init; }
     public BatchInvocationEvidence? Invocation { get; init; }
     public IReadOnlyList<AssessmentObjectTiming> ObjectTimings { get; init; } = Array.Empty<AssessmentObjectTiming>();
 }
@@ -336,6 +340,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             command.CommandText = HeaderSelectSql + """
                  WHERE Kind = $kind AND ProposalId IS NULL AND BaselineToken = $baseline
                    AND SelectionSha256 = $selectionSha AND SelectionWordsJson = $selectionWords
+                   AND ReplacesAssessmentId IS NULL
                  ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT 1;
                 """;
             command.Parameters.AddWithValue("$kind", kind);
@@ -504,12 +509,12 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 (AssessmentId, SelectionName, SelectionWordsJson, SelectionSha256, SelectionProvenanceJson,
                  OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint, Pipeline,
                  DiagnosticCount, SavedUtc, ProposalId, ProposalIntentDigest, Assessor, Kind,
-                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId)
+                 ScopeJson, ScopeDigest, TokeniserName, TokeniserVersion, BaselineToken, CachePath, CacheDigest, InvocationId, ReplacesAssessmentId)
             VALUES
                 ($id, $selectionName, $selectionWords, $selectionSha, $selectionProvenance,
                  $outcomeDigest, $semanticDigest, $grammarSha, $modelFingerprint, $pipeline,
                  $diagnosticCount, $savedUtc, $proposalId, $proposalIntentDigest, $assessor, $kind,
-                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest, $invocationId);
+                 $scopeJson, $scopeDigest, $tokeniserName, $tokeniserVersion, $baselineToken, $cachePath, $cacheDigest, $invocationId, $replacesAssessmentId);
             """;
         command.Parameters.AddWithValue("$id", assessment.AssessmentId);
         command.Parameters.AddWithValue("$selectionName", assessment.Selection.Name);
@@ -537,6 +542,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Parameters.AddWithValue("$cachePath", (object?)assessment.CachePath ?? DBNull.Value);
         command.Parameters.AddWithValue("$cacheDigest", (object?)assessment.CacheDigest ?? DBNull.Value);
         command.Parameters.AddWithValue("$invocationId", (object?)assessment.Invocation?.InvocationId ?? DBNull.Value);
+        command.Parameters.AddWithValue("$replacesAssessmentId", (object?)assessment.ReplacesAssessmentId ?? DBNull.Value);
         command.ExecuteNonQuery();
     }
 
@@ -550,10 +556,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
             INSERT INTO AssessedWords
                 (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson, CorrectnessJson,
                  ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, MissedApprovedJson,
-                 IsIncomplete)
+                 IsIncomplete, Attempts, Passes)
             VALUES
                 ($id, $ordinal, $word, $outcome, $elapsed, $elapsedNs, $signature, $morphology, $correctness,
-                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete);
+                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete, $attempts, $passes);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
@@ -570,6 +576,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var missedParam = insertWord.Parameters.Add("$missed", SqliteType.Integer);
         var missedReadingsParam = insertWord.Parameters.Add("$missedReadings", SqliteType.Text);
         var incompleteParam = insertWord.Parameters.Add("$incomplete", SqliteType.Integer);
+        var attemptsParam = insertWord.Parameters.Add("$attempts", SqliteType.Integer);
+        var passesParam = insertWord.Parameters.Add("$passes", SqliteType.Integer);
 
         using var lastRowId = connection.CreateCommand();
         lastRowId.Transaction = transaction;
@@ -609,6 +617,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             missedReadingsParam.Value = word.MissedApproved is null ? DBNull.Value
                 : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions);
             incompleteParam.Value = word.IsIncomplete ? 1 : 0;
+            attemptsParam.Value = (object?)word.Attempts ?? DBNull.Value;
+            passesParam.Value = (object?)word.Passes ?? DBNull.Value;
             insertWord.ExecuteNonQuery();
 
             var assessedWordId = (long)lastRowId.ExecuteScalar()!;
@@ -692,7 +702,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                TokeniserName, TokeniserVersion, BaselineToken, SelectionName, SelectionWordsJson, SelectionSha256,
                SelectionProvenanceJson, OutcomeDigest, SemanticDigest, GrammarSourceSha256, ModelFingerprint,
                Pipeline, DiagnosticCount, SavedUtc, CachePath, CacheDigest,
-               (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId)
+               (SELECT EvidenceJson FROM AssessmentInvocations ai WHERE ai.InvocationId = Assessments.InvocationId),
+               ReplacesAssessmentId
         FROM Assessments
         """;
 
@@ -738,7 +749,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             CachePath: reader.IsDBNull(21) ? null : reader.GetString(21),
             CacheDigest: reader.IsDBNull(22) ? null : reader.GetString(22))
         {
-            Invocation = reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23))
+            Invocation = reader.IsDBNull(23) ? null : ReadInvocation(reader.GetString(23)),
+            ReplacesAssessmentId = reader.IsDBNull(24) ? null : reader.GetString(24)
         };
     }
 
@@ -766,7 +778,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson
+                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -792,6 +804,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
         int? currentMissedApprovedCount = null;
         IReadOnlyList<ParserReading>? currentMissedApproved = null;
         bool currentIncomplete = false;
+        int? currentAttempts = null;
+        int? currentPasses = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
         using var reader = command.ExecuteReader();
@@ -805,7 +819,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
-                        MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
+                        MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
+                        Attempts = currentAttempts, Passes = currentPasses });
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
@@ -825,6 +840,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 currentIncomplete = reader.GetInt32(17) != 0;
                 currentMissedApproved = reader.IsDBNull(18) ? null
                     : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(18), ParseMorphEvidence.JsonOptions);
+                currentAttempts = reader.IsDBNull(19) ? null : reader.GetInt32(19);
+                currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
                 currentAnalyses = [];
             }
 
@@ -843,7 +860,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
-                MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete });
+                MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
+                        Attempts = currentAttempts, Passes = currentPasses });
         return words;
     }
 }

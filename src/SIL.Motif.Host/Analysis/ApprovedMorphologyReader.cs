@@ -45,19 +45,23 @@ public static class ApprovedMorphologyReader
         var result = new Dictionary<string, List<ApprovedMorphology>>(StringComparer.Ordinal);
         foreach (var word in cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances())
         {
-            var form = word.Form.VernacularDefaultWritingSystem?.Text ?? string.Empty;
-            if (!result.TryGetValue(form, out var expected)) result[form] = expected = [];
-            foreach (var analysis in select(word))
+            foreach (var ws in word.Form.AvailableWritingSystemIds.Order())
             {
-                expected.Add(new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
-                    bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
-                    bundle.Form.AvailableWritingSystemIds.Select(ws => bundle.Form.get_String(ws)?.Text)
-                        .OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray())).ToArray())
+                var form = word.Form.get_String(ws)?.Text?.Normalize(System.Text.NormalizationForm.FormD);
+                if (string.IsNullOrEmpty(form)) continue;
+                if (!result.TryGetValue(form, out var expected)) result[form] = expected = [];
+                foreach (var analysis in select(word))
                 {
-                    SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
-                    SourceWordformGuid = word.Guid.ToString("D"),
-                    WritingSystem = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
-                });
+                    expected.Add(new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
+                        bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
+                        bundle.Form.AvailableWritingSystemIds.Select(bundleWs => bundle.Form.get_String(bundleWs)?.Text)
+                            .OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray())).ToArray())
+                    {
+                        SourceAnalysisId = CanonicalId.FromGuid(analysis.Guid).Value,
+                        SourceWordformGuid = word.Guid.ToString("D"),
+                        WritingSystem = cache.WritingSystemFactory.GetStrFromWs(ws),
+                    });
+                }
             }
         }
         return result.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<ApprovedMorphology>)pair.Value, StringComparer.Ordinal);

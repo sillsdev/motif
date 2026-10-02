@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 31;
+    public const int CurrentSchema = 33;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -296,7 +296,8 @@ public static class MotifSchema
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
-        "Assessments" => [new("AssessmentInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE"),
+        "Assessments" => [new("Assessments", "ReplacesAssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("AssessmentInvocations", "InvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE"),
             new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "RetainedInvocations" => [new("AssessmentInvocations", "ArtifactInvocationId", "InvocationId", "NO ACTION", "NO ACTION", "NONE")],
         "RetainedInvocationMembers" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
@@ -353,14 +354,15 @@ public static class MotifSchema
             C("SavedUtc", "TEXT", true), C("ProposalId", "TEXT"), C("ProposalIntentDigest", "TEXT"),
             C("Assessor", "TEXT", true), C("Kind", "TEXT", true), C("ScopeJson", "TEXT", true),
             C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT", true), C("TokeniserVersion", "TEXT", true),
-            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT")],
+            C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT")],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
             C("RawSignature", "TEXT"),
             C("MorphologyJson", "TEXT"), C("CorrectnessJson", "TEXT"), C("ProjectStanding", "TEXT"),
             C("OccurrenceCount", "INTEGER"), C("ReadingGradesJson", "TEXT"), C("MissedApprovedCount", "INTEGER"),
-            C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0")],
+            C("MissedApprovedJson", "TEXT"), C("IsIncomplete", "INTEGER", true, defaultValue: "0"),
+            C("Attempts", "INTEGER"), C("Passes", "INTEGER")],
         "AssessmentObjectTimings" =>
         [C("AssessmentId", "TEXT", true, 1), C("OrdinalIndex", "INTEGER", true, 2), C("Kind", "TEXT", true),
             C("Key", "TEXT", true), C("IdentityQuality", "TEXT", true), C("Direction", "TEXT", true),
@@ -589,7 +591,8 @@ public static class MotifSchema
             BaselineToken TEXT NOT NULL,
             CachePath TEXT NULL,
             CacheDigest TEXT NULL,
-            InvocationId TEXT NULL REFERENCES AssessmentInvocations(InvocationId)
+            InvocationId TEXT NULL REFERENCES AssessmentInvocations(InvocationId),
+            ReplacesAssessmentId TEXT NULL REFERENCES Assessments(AssessmentId)
         );
         CREATE INDEX IX_Assessments_Proposal ON Assessments(ProposalId);
         CREATE INDEX IX_Assessments_Kind ON Assessments(Kind);
@@ -610,7 +613,9 @@ public static class MotifSchema
             ReadingGradesJson TEXT NULL,
             MissedApprovedCount INTEGER NULL,
             MissedApprovedJson TEXT NULL,
-            IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1))
+            IsIncomplete INTEGER NOT NULL DEFAULT 0 CHECK (IsIncomplete IN (0, 1)),
+            Attempts INTEGER NULL,
+            Passes INTEGER NULL
         );
         CREATE INDEX IX_AssessedWords_Assessment ON AssessedWords(AssessmentId);
         CREATE INDEX IX_AssessedWords_Word ON AssessedWords(AssessmentId, Word);

@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host;
 using System;
 using System.Collections.Generic;
@@ -164,8 +165,9 @@ public static class AssessCommand
             onProgress?.Invoke(new AssessmentProgress(
                 AssessmentStage.SelectingWords, 0, null, "Composing the Selection..."));
             SelectionComposition composition;
-            using (var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath))
+            using (var reader = BaselineReadCache.Open(baseline.FwDataPath))
             {
+                var cache = reader.Cache;
                 var composed = SelectionComposer.Compose(
                     cache, selectionRequest, assessments, JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions()));
                 if (!composed.Succeeded)
@@ -173,6 +175,21 @@ public static class AssessCommand
                 composition = composed.Value!;
                 if (namedSelection is not null)
                     composition = composition with { Selection = composition.Selection with { Name = namedSelection } };
+            }
+
+            if (request.ReplaceAssessmentId is { } replacedId)
+            {
+                AssessmentRecord? replaced;
+                try { replaced = assessments.Get(replacedId); }
+                catch (KeyNotFoundException) { replaced = null; }
+                var tokenJson = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
+                if (replaced is null || replaced.Kind != AssessmentKind.ParseTime.ToStoredKind() ||
+                    replaced.ProposalId is not null || replaced.ReplacesAssessmentId is not null ||
+                    replaced.BaselineToken != tokenJson ||
+                    composition.Selection.Words.Any(word => !replaced.Selection.Words.Contains(word, StringComparer.Ordinal)))
+                    return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
+                        "assess.invalid-replacement", FailureReason.InvalidArgument,
+                        "Parse these words again requires a complete Assessment of this Baseline containing every requested word."));
             }
 
             AssessmentScope scope;
@@ -254,7 +271,8 @@ public static class AssessCommand
                     var assessmentId = CanonicalId.Mint("assessment/").Value;
                     var record = AssessmentMaterial.ToRecord(item, assessmentId, proposalId: null,
                         proposalIntentDigest: null, assessor.Name, scopeJson, scopeDigest, TokeniserName,
-                        TokeniserVersion, baselineTokenJson, composition.Selection) with { SavedUtc = savedUtc };
+                        TokeniserVersion, baselineTokenJson, composition.Selection) with
+                    { SavedUtc = savedUtc, ReplacesAssessmentId = request.ReplaceAssessmentId };
                     pendingRecords.Add(record);
                     assessmentIds.Add(assessmentId);
                     if (record.CachePath is not null)
@@ -327,10 +345,12 @@ public static class AssessCommand
 
                 if (cancellationToken.IsCancellationRequested)
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-                using var namingCache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                using var namingReader = BaselineReadCache.Open(baseline.FwDataPath);
+                var namingCache = namingReader.Cache;
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
+                var storedContext = BaselineWordContext.Read(namingCache, projectName, composition.Selection.Words);
                 // Named once and recorded, so a later read of the stored words glosses them as this run does.
                 var namedMissed = new Dictionary<string, ParserReading[]?>(StringComparer.Ordinal);
                 ParserReading[]? NameMissed(string word, WordCorrectness? correctness)
@@ -350,6 +370,8 @@ public static class AssessCommand
                         return word with
                         {
                             ElapsedNs = stats?.ElapsedNs,
+                            Attempts = stats?.Attempts,
+                            Passes = stats?.Passes,
                             Morphology = word.Morphology is { } morphology && stats is not null
                                 ? morphology with { Attempts = stats.Attempts }
                                 : word.Morphology,
@@ -393,6 +415,10 @@ public static class AssessCommand
                     ? warningLines : null;
                 if (words.Length > 0)
                 {
+                    var origin = new WordMeasurementOrigin(
+                        pendingRecords.Single(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind()).AssessmentId,
+                        invocation.InvocationId,
+                        DateTimeOffset.Parse(savedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
@@ -403,36 +429,19 @@ public static class AssessCommand
                             wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>());
                         var projectStanding = wordContext.Standings.GetValueOrDefault(word.Word);
                         var missedApproved = NameMissed(word.Word, word.Correctness);
-                        var candidates = wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
-                        var approved = wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>();
-                        var rejected = wordContext.Rejected.GetValueOrDefault(word.Word) ??
-                            Array.Empty<ApprovedMorphology>();
-                        var nonApproved = candidates.Select(candidate => (Analysis: candidate, Opinion: ReadingGrade.Candidate))
-                            .Concat(rejected.Select(analysis => (Analysis: analysis, Opinion: ReadingGrade.Disapproved)))
-                            .ToArray();
-                        var storedAnalyses = approved.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Approved))
-                            .Concat(rejected.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Disapproved)))
-                            .Concat(candidates.Select(analysis =>
-                                ReadStoredAnalysis(namingCache, projectName, analysis, ReadingGrade.Candidate)))
-                            .ToArray();
-                        var expectedAnalysis = approved.FirstOrDefault() is { } approvedAnalysis
-                            ? ReadStoredAnalysis(namingCache, projectName, approvedAnalysis, ReadingGrade.Approved)
-                            : nonApproved.Length == 1
-                                ? ReadStoredAnalysis(namingCache, projectName, nonApproved[0].Analysis, nonApproved[0].Opinion)
-                                : null;
+                        var storedAnalyses = storedContext.Analyses[word.Word];
                         var stats = wordStats is not null && wordStats.TryGetValue(word.Word, out var found) ? found : null;
                         var row = word with
                         {
+                            Origin = origin,
                             Readings = readings,
-                            TryWordLink = FieldWorksLinks.ForWordform(namingCache, projectName, word.Word),
+                            TryWordLink = storedContext.WordLinks.GetValueOrDefault(word.Word),
                             ReadingGrades = readingGrades,
                             ProjectStanding = projectStanding,
                             OccurrenceCount = wordContext.HasTextSelection
                                 ? wordContext.OccurrencesByWord.GetValueOrDefault(word.Word) : null,
                             MissedApproved = missedApproved,
-                            ExpectedAnalysis = expectedAnalysis,
+                            ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(storedAnalyses),
                             StoredAnalyses = storedAnalyses,
                             Attempts = stats?.Attempts,
                             Passes = stats?.Passes,
@@ -549,7 +558,7 @@ public static class AssessCommand
             : candidates.Any(expected => MorphologyCorrectness.Matches(analysis, expected)) ? ReadingGrade.Candidate
             : ReadingGrade.NoOpinion).ToArray();
 
-    private static ParserReading ReadStoredAnalysis(
+    internal static ParserReading ReadStoredAnalysis(
         LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion)
     {
         var morphs = analysis.Morphs.Select(morph =>

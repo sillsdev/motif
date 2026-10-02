@@ -448,7 +448,18 @@ public static class CommandTextRenderer
     {
         var text = new StringBuilder();
         text.AppendLine($"Timing for {response.WordCount:N0} word(s) from {response.WordSet} ({response.AssessmentId})");
-        if (response.IsStale)
+        text.AppendLine("  " + (response.EvidenceRelation switch
+        {
+            TimingEvidenceRelation.Current => "Current Baseline",
+            TimingEvidenceRelation.Historical => "Historical Baseline",
+            TimingEvidenceRelation.SavedSince => "FieldWorks saved since the measured Baseline",
+            _ => "Baseline relationship unknown",
+        }));
+        if (response.SourceLastWriteUtc is { } capturedSave)
+            text.AppendLine($"  Measured FieldWorks save: {capturedSave:O}");
+        if (response.Baseline is { } baseline)
+            text.AppendLine($"  Baseline captured: {baseline.CapturedUtc}");
+        if (response.CurrentProjectIsStale)
             text.AppendLine("  Warning: FieldWorks has changed since the current Baseline.");
         text.AppendLine($"  Median: {FormatMs(response.MedianMs)}  p95: {FormatMs(response.Percentile95Ms)}");
         var attribution = response.Attribution;

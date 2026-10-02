@@ -8,6 +8,16 @@ namespace SIL.Motif.Tests.App;
 // Unconfigured queries return an empty value or a refusal, depending on the query.
 public sealed partial class FakeCommandClient
 {
+    public Func<WordContextRequest, CancellationToken, Task<CommandOutcome<WordContextResponse>>>? WordContextHandler
+        { get; set; }
+    public List<WordContextRequest> WordContextRequests { get; } = [];
+    public Task<CommandOutcome<WordContextResponse>> ReadWordContextAsync(
+        WordContextRequest request, CancellationToken cancellationToken)
+    {
+        WordContextRequests.Add(request);
+        return WordContextHandler?.Invoke(request, cancellationToken) ?? Completed(new WordContextResponse(request.Word, false));
+    }
+
     private Func<OverviewRequest, CancellationToken, Task<CommandOutcome<OverviewResponse>>>
         _overview = (_, _) => Refused<OverviewResponse>(
             new Refusal("overview.not-configured", FailureReason.Refused, "No Overview configured."));

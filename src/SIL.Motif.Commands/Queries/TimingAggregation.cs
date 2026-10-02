@@ -51,7 +51,7 @@ public static class TimingAggregation
     {
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(rule);
-        if (rows.Any(row => StringComparer.Ordinal.Equals(row.Key, rule))) return [rule];
+        if (rows.FirstOrDefault(row => SameKey(row.Key, rule)) is { } keyed) return [keyed.Key];
         return rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule)).Select(row => row.Key)
             .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     }
@@ -68,9 +68,9 @@ public static class TimingAggregation
         ArgumentNullException.ThrowIfNull(rows);
         if (by is not ("kind" or "rule")) throw new ArgumentException("Grouping must be 'kind' or 'rule'.", nameof(by));
         if (top <= 0) throw new ArgumentOutOfRangeException(nameof(top));
-        var wordTimes = new Dictionary<string, double>(StringComparer.Ordinal);
+        var wordTimes = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var word in words)
-            if (WordTimeMs(word) is { } time) wordTimes.TryAdd(word.Word, time);
+            if (WordTimeNs(word) is { } time) wordTimes.TryAdd(word.Word, time);
         var measured = rows.Where(row => wordTimes.ContainsKey(row.Word)).ToArray();
         var attribution = Attribute(wordTimes, measured);
         double? ShareOf(double selfMs) => attribution.WordTimeMs > 0 ? selfMs / attribution.WordTimeMs : null;
@@ -80,7 +80,7 @@ public static class TimingAggregation
             .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
             .Select(group =>
             {
-                var self = group.Rows.Sum(row => row.ElapsedMs ?? 0);
+                var self = group.Rows.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
                 var first = group.Rows[0];
                 return new TimingAggregateRow(group.Group.Key, by == "kind" ? first.Kind : first.Object, self,
                     ShareOf(self), group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
@@ -94,14 +94,14 @@ public static class TimingAggregation
             .ThenBy(row => row.Key, StringComparer.Ordinal).ToArray();
         var costliest = rule is null
             ? Array.Empty<WordRuleTiming>()
-            : measured.Where(row => StringComparer.Ordinal.Equals(row.Key, rule))
+            : measured.Where(row => SameKey(row.Key, rule))
                 .GroupBy(row => row.Word, StringComparer.Ordinal)
                 .Select(group => (Word: group.Key, Rows: group.ToArray()))
                 .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
                 .Select(group =>
                 {
-                    var self = group.Rows.Sum(row => row.ElapsedMs ?? 0);
-                    var whole = wordTimes[group.Word];
+                    var self = group.Rows.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
+                    var whole = wordTimes[group.Word] / 1_000_000d;
                     return new WordRuleTiming(group.Word, self, Calls(group.Rows))
                     {
                         WordTimeMs = whole,
@@ -120,18 +120,21 @@ public static class TimingAggregation
     public static double? WordTimeMs(AssessedWord word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        return word.ElapsedNs is > 0 and var ns ? ns / 1_000_000d : word.ElapsedMs;
+        return WordTimeNs(word) is { } ns ? ns / 1_000_000d : null;
     }
 
-    private static WordTimeAttribution Attribute(IReadOnlyDictionary<string, double> wordTimes,
+    private static long? WordTimeNs(AssessedWord word) =>
+        word.ElapsedNs is > 0 and var ns ? ns : word.ElapsedMs is { } ms ? ms * 1_000_000L : null;
+
+    private static WordTimeAttribution Attribute(IReadOnlyDictionary<string, long> wordTimes,
         IReadOnlyList<AssessmentObjectTiming> rows)
     {
         var objectTimes = rows.Where(row => row.ElapsedNs is not null)
             .GroupBy(row => row.Word, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.Sum(row => row.ElapsedMs!.Value), StringComparer.Ordinal);
+            .ToDictionary(group => group.Key, group => group.Sum(row => row.ElapsedNs!.Value), StringComparer.Ordinal);
         var wordTime = wordTimes.Values.Sum();
         var attributed = objectTimes.Values.Sum();
-        double notAttributed = 0, overrun = 0;
+        long notAttributed = 0, overrun = 0;
         foreach (var (word, time) in wordTimes)
         {
             var left = time - objectTimes.GetValueOrDefault(word);
@@ -139,10 +142,15 @@ public static class TimingAggregation
             else overrun -= left;
         }
         var recorded = objectTimes.Count > 0;
-        return new WordTimeAttribution(wordTimes.Count, wordTime, attributed,
-            recorded ? notAttributed : null, recorded && wordTime > 0 ? notAttributed / wordTime : null,
-            overrun, overrun > 0);
+        return new WordTimeAttribution(wordTimes.Count, wordTime / 1_000_000d, attributed / 1_000_000d,
+            recorded ? notAttributed / 1_000_000d : null,
+            recorded && wordTime > 0 ? notAttributed / (double)wordTime : null,
+            overrun / 1_000_000d, overrun > 0);
     }
+
+    private static bool SameKey(string left, string right) =>
+        Guid.TryParse(left, out var leftGuid) && Guid.TryParse(right, out var rightGuid)
+            ? leftGuid == rightGuid : StringComparer.Ordinal.Equals(left, right);
 
     // Calls are summed within one kind only; an uncounted row leaves the total unknown only if none counted.
     private static long? Calls(IReadOnlyList<AssessmentObjectTiming> rows) =>

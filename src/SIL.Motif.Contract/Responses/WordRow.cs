@@ -83,6 +83,8 @@ public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning
 
     /// <summary>How long the parser took over the word, or <see langword="null"/> when it was not measured.</summary>
     public int? ElapsedMs { get; init; }
+    /// <summary>The producing measurement, independent of the other words shown beside this one.</summary>
+    public WordMeasurementOrigin? Origin { get; init; }
 
     /// <summary>
     /// Whether some place the word occurs has not been marked read, or <see langword="null"/> when its read state is

@@ -21,7 +21,7 @@ public static class OverviewCommand
         ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project,
-                includeResolvedReadings: false);
+                includeResolvedReadings: false, includeWordContext: false);
             if (!current.Succeeded)
                 return CommandOutcome<OverviewResponse>.Refused(current.Refusal!);
             var evidence = current.Value!;
@@ -37,8 +37,8 @@ public static class OverviewCommand
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
             var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
-            if (storedCheck is not null && evidence.Assessment is { } stored)
-                storedCheck = WarningWordsQuery.WithYourWords(storedCheck, stored.Words, evidence.EffectiveObjectTimings);
+            if (storedCheck is { Findings.Count: > 0 } && evidence.Baseline is { } checkedBaseline)
+                storedCheck = WarningWordsQuery.WithYourWords(database, project, storedCheck, checkedBaseline.Token);
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
             var largestKind = warningCounts.ByKind.FirstOrDefault();
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
@@ -64,6 +64,8 @@ public static class OverviewCommand
                     YourWords = warningCounts.YourWords,
                 })
             {
+                WordOrigins = assessedWords.Where(word => word.Origin is not null).ToDictionary(
+                    word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                 SelectionResolved = selection is not null,
                 WordCoveragePercent = selection is null
                     ? null : OverviewMetrics.Percent(metrics.TextCoverage.ParsedWords, words.Count),

@@ -8,6 +8,10 @@ namespace SIL.Motif.App.Services;
 
 public sealed partial class CommandClient
 {
+    public Task<CommandOutcome<WordContextResponse>> ReadWordContextAsync(
+        WordContextRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => WordContextQuery.Query(request), cancellationToken);
+
     public Task<CommandOutcome<OverviewResponse>> OverviewAsync(
         OverviewRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => OverviewCommand.Overview(request));

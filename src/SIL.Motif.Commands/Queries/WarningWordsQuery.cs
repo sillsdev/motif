@@ -2,6 +2,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -12,14 +13,16 @@ namespace SIL.Motif.Commands.Queries;
 public static class WarningWordsQuery
 {
     /// <summary>
-    /// <paramref name="check"/> with each finding's words, from the stored Parse all words matching the current
-    /// Baseline and default Selection; unchanged when none matches.
+    /// <paramref name="check"/> with each finding's words from stored Parse all words matching the checked
+    /// Baseline and default Selection; words remain unknown when matching context is unavailable.
     /// </summary>
     internal static GrammarCheckResponse WithYourWords(MotifDatabase database, ProjectLocator project,
-        GrammarCheckResponse check)
+        GrammarCheckResponse check, BaselineToken checkedBaseline)
     {
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
-        if (!current.Succeeded || current.Value!.Assessment is not { } assessment) return check;
+        if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
+            current.Value.Assessment is not { } assessment)
+            return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
         return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings);
     }
 

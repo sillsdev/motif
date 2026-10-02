@@ -62,6 +62,10 @@ public sealed record ObjectUseRef
 /// <param name="AssessmentId">The stored Assessment the words and timings come from.</param>
 public sealed record ObjectUsesResponse(string AssessmentId)
 {
+    /// <summary>The producing run and measurement time for each word supplying this query's evidence.</summary>
+    public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
+        new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);
+
     /// <summary>Whether FieldWorks has been saved since the Baseline this Assessment measured.</summary>
     public bool IsStale { get; init; }
 

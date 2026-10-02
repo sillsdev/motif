@@ -124,6 +124,18 @@ public sealed class AssessArgvTests : IDisposable
     }
 
     [Fact]
+    public void MalformedReplacementAssessmentIsAUsageFailureBeforeProjectAccess()
+    {
+        var missing = Path.Combine(_workerRoot, "absent.fwdata");
+
+        var result = Run($"assess \"{missing}\" --replaces malformed");
+
+        Assert.True(result.ExitCode == 1, result.Error);
+        Assert.Contains("Usage: motif assess <project>", result.Error, StringComparison.Ordinal);
+        Assert.Contains("--replaces <assessment-id>", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AMissingWordsFileIsAUsageFailureNotAStoreInconsistency()
     {
         var missingProject = Path.Combine(_workerRoot, "absent.fwdata");

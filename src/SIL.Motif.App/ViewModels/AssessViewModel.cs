@@ -278,7 +278,9 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
         var rerun = new AssessRequest(ProjectPath!,
             new SelectionRequest(false, [], words, false, null,
-                PerWordStepLimit: stepLimit ?? _selection.BuildRequest().PerWordStepLimit), limitMs);
+                PerWordStepLimit: stepLimit ?? _selection.BuildRequest().PerWordStepLimit), limitMs,
+            ReplaceAssessmentId: into?.Measurements.FirstOrDefault(measurement =>
+                measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId);
         var outcome = await _commandClient.AssessAsync(rerun, this, cancellationToken).ConfigureAwait(true);
         return outcome.Succeeded && into is not null
             ? CommandOutcome<AssessCommandResponse>.Success(Merge(into, outcome.Value!))

@@ -36,7 +36,7 @@ public static class StoredGrammarCheckQuery
             var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
             var check = new GrammarCheckRepository(database).GetLatest(token);
             return CommandOutcome<StoredGrammarCheckResponse>.Success(
-                new(check is null ? null : WarningWordsQuery.WithYourWords(database, project, check)));
+                new(check is null ? null : WarningWordsQuery.WithYourWords(database, project, check, baseline.Token)));
         });
     }
 }

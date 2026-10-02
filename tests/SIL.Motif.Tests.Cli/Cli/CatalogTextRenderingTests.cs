@@ -123,12 +123,38 @@ public sealed class CatalogTextRenderingTests
         Assert.DoesNotContain("0%", rendered.Output);
     }
 
+    [Theory]
+    [InlineData(TimingEvidenceRelation.Historical, false, "Historical Baseline")]
+    [InlineData(TimingEvidenceRelation.Historical, true, "Historical Baseline")]
+    [InlineData(TimingEvidenceRelation.Current, false, "Current Baseline")]
+    [InlineData(TimingEvidenceRelation.SavedSince, true, "FieldWorks saved since the measured Baseline")]
+    [InlineData(TimingEvidenceRelation.Unknown, false, "Baseline relationship unknown")]
+    public void TimingTextKeepsSelectedProvenanceSeparateFromCurrentFreshness(
+        TimingEvidenceRelation relation, bool currentStale, string expected)
+    {
+        var response = new TimingResponse("assessment/1", "all", "rule", 1, 8, 400, [], [], [])
+        {
+            EvidenceRelation = relation,
+            CurrentProjectIsStale = currentStale,
+            IsStale = relation is TimingEvidenceRelation.Historical or TimingEvidenceRelation.SavedSince,
+            SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-24T12:00:00Z"),
+        };
+        var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+        Assert.Contains(expected, output, StringComparison.Ordinal);
+        Assert.Contains("2026-09-24T12:00:00", output, StringComparison.Ordinal);
+        Assert.Equal(currentStale, output.Contains("FieldWorks has changed since the current Baseline", StringComparison.Ordinal));
+        if (relation == TimingEvidenceRelation.Historical)
+            Assert.DoesNotContain("FieldWorks saved since the measured Baseline", output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TimingTextWarnsWhenTheProjectIsStale()
     {
         var response = new TimingResponse("assessment/1", "all", "rule", 1, 8, 400, [], [], [])
         {
             IsStale = true,
+            EvidenceRelation = TimingEvidenceRelation.SavedSince,
+            CurrentProjectIsStale = true,
         };
 
         var rendered = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false);

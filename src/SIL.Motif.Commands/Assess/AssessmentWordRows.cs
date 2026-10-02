@@ -82,6 +82,9 @@ internal static class AssessmentWordRows
             ProjectStanding = word.ProjectStanding,
             OccurrenceCount = word.OccurrenceCount,
             MissedApproved = word.MissedApproved,
+            Attempts = word.Attempts,
+            Passes = word.Passes,
+            Origin = word.Origin,
         };
         return row with { FixFirst = FixFirst(row) };
     }
@@ -97,7 +100,7 @@ internal static class AssessmentWordRows
         {
             var row = FromRecorded(word);
             row = snapshot.StoredAnalysesByWord.TryGetValue(word.Word, out var stored)
-                ? row with { StoredAnalyses = stored } : row;
+                ? row with { StoredAnalyses = stored, ExpectedAnalysis = ExpectedAnalysis(stored) } : row;
             row = snapshot.WordAnalysesLinksByWord.TryGetValue(word.Word, out var link)
                 ? row with { TryWordLink = link } : row;
             return snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
@@ -126,4 +129,9 @@ internal static class AssessmentWordRows
             TimingOverrideAssessmentIds = snapshot.RerunAssessments.Select(item => item.AssessmentId).ToArray(),
         };
     }
+
+    /// <summary>The first approved analysis, else the sole analysis without an approved opinion.</summary>
+    internal static ParserReading? ExpectedAnalysis(IReadOnlyList<ParserReading> analyses) =>
+        analyses.FirstOrDefault(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved)
+        ?? (analyses.Count == 1 ? analyses[0] : null);
 }

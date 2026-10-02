@@ -6,6 +6,8 @@
 
 Use this when an Assessment shows slow parsing and you want to identify which rules or kinds account for the time. Name an Assessment when the project has more than one measurement.
 
+Without `--assessment`, Timing reads the Default Selection's current results, including explicit replacements made with `assess --replaces`. Naming an Assessment reads its original words and times. Explicit timing overrides replace only words that run measured; they cannot add other words to it.
+
 ## Example
 
 ```powershell
@@ -19,6 +21,8 @@ The command prints the selected words' total word time: each word's parse time, 
 A word that stopped at a limit counts the time it spent before stopping. Calls are counted per kind of rule, because a call to one kind is not a call to another; they are never added across kinds.
 
 With `--by rule`, each row shows its key in brackets, so two rules with the same name stay apart. `--rule` takes that key, or a name only one rule carries. `--json` returns rows and totals as structured data for further analysis.
+
+JSON identifies each word's producing Assessment, invocation and measurement time. It also records the selected run's Baseline and captured FieldWorks save, when available. Its evidence relationship distinguishes Current, Historical, SavedSince and Unknown; current-project freshness is reported separately, so a new Baseline does not make an old measurement current.
 
 ## Related commands
 

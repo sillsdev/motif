@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Queries;
@@ -46,18 +47,52 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 
-    [Fact]
-    public void StoredRowsEqualTheRunRows()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StoredRowsEqualTheRunRows(bool mixedSelection, bool secondaryForm)
     {
         using var cache = _pristine.NewScratch();
-        SeededProject.SeedText(cache, _pristine.Seed);
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(word => word.Form.VernacularDefaultWritingSystem.Text == SeededProject.AnalysedWordForm);
+            if (secondaryForm)
+            {
+                cache.ServiceLocator.WritingSystemManager.GetOrSet("es", out var writingSystem);
+                wordform.Form.set_String(writingSystem.Handle, "beta");
+            }
+            var approvedAnalysis = wordform.HumanApprovedAnalyses.Single();
+            foreach (var opinion in new[] { Opinions.disapproves, Opinions.noopinion })
+            {
+                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(analysis);
+                analysis.CategoryRA = approvedAnalysis.CategoryRA;
+                foreach (var source in approvedAnalysis.MorphBundlesOS)
+                {
+                    var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                    analysis.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = source.MorphRA;
+                    bundle.MsaRA = source.MsaRA;
+                }
+                cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, opinion);
+            }
+            if (mixedSelection)
+                cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(text.TextId)
+                    .ContentsOA.ParagraphsOS.RemoveAt(0);
+        });
         new FwDataProjectLoader().Save(cache);
         var fwDataPath = cache.ProjectId.Path;
         var approvedReadings = ApprovedMorphologyReader.Read(cache)[SeededProject.AnalysedWordForm];
         var approved = Assert.Single(approvedReadings);
         string[] words =
             [SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm, "motifa", "motifb", "motifc", "motifd"];
-        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default", [], words));
+        if (secondaryForm) words = [.. words, "beta"];
+        var saved = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(fwDataPath, "Default",
+            mixedSelection ? [text.TextId] : [], words));
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
 
         var unbuilt = new ParseWordEvidence(ParseMorphEvidence.Schema, 0, SeededProject.AnalysedWordForm, 5,
@@ -80,6 +115,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
                 new(4, "motifc", 0, WordOutcome.Skipped, "-"),
                 new(5, "motifd", 30, WordOutcome.Analysed, "sig")
                     { Morphology = resolvable },
+                .. (secondaryForm ? new[] { new WordAnalysis(6, "beta", 5, WordOutcome.NoAnalysis, "-") } : []),
             ], 1000, fwDataPath, []) { PerWordStepLimit = 200000 })
             : new AssessmentRaw.WordMeasurements([]))
         {
@@ -95,6 +131,27 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         var stored = read.Value!.Assessment;
         Assert.NotNull(stored);
         Assert.Equal(Facts(run.Value!.Words), Facts(stored.Words));
+        var storedContext = stored.Words.Single(word => word.Word == SeededProject.AnalysedWordForm).StoredAnalyses;
+        Assert.Equal([ReadingGrade.Approved, ReadingGrade.Disapproved, ReadingGrade.Candidate],
+            storedContext.Select(analysis => analysis.StoredAnalysisOpinion));
+        Assert.Equal(ObjectUsesQuery.UsesOf(run.Value.Words,
+                new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }).Words
+            .Select(word => JsonSerializer.Serialize(word.Row)),
+            ObjectUsesQuery.UsesOf(stored.Words,
+                new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }).Words
+            .Select(word => JsonSerializer.Serialize(word.Row)));
+        if (secondaryForm)
+        {
+            var freshSecondary = run.Value.Words.Single(word => word.Word == "beta");
+            var reopenedSecondary = stored.Words.Single(word => word.Word == "beta");
+            Assert.Equal([ReadingGrade.Approved, ReadingGrade.Disapproved, ReadingGrade.Candidate],
+                freshSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisOpinion));
+            Assert.All(freshSecondary.StoredAnalyses, analysis => Assert.Equal("es", analysis.Identity!.WritingSystem));
+            Assert.Equal(freshSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId),
+                reopenedSecondary.StoredAnalyses.Select(analysis => analysis.StoredAnalysisId));
+            Assert.NotNull(freshSecondary.TryWordLink);
+            Assert.Equal(freshSecondary.TryWordLink, reopenedSecondary.TryWordLink);
+        }
         Assert.Equal(run.Value.CompletionSummary, stored.CompletionSummary);
         Assert.Equal(run.Value.InvocationId, stored.InvocationId);
         Assert.Equal(run.Value.Measurements.OrderBy(item => item.Kind),
@@ -159,7 +216,9 @@ public sealed class StoredAssessmentRowsTests : IDisposable
         .Select(word => string.Join(" | ", word.Word, word.Outcome, word.IsIncomplete, word.CompletionStatus,
             word.ElapsedMs, word.ProjectStanding, string.Join(",", word.ReadingGrades ?? []), word.OccurrenceCount,
             word.FixFirst?.Category, word.FixFirst?.Rank, word.FixFirst?.Label, word.FixFirst?.Explanation,
-            JsonSerializer.Serialize(word.MissedApproved)))
+            JsonSerializer.Serialize(word.MissedApproved), JsonSerializer.Serialize(word.StoredAnalyses),
+            JsonSerializer.Serialize(word.ExpectedAnalysis), word.TryWordLink, word.Attempts, word.Passes,
+            JsonSerializer.Serialize(word.Origin)))
         .ToArray();
 
     private static FakeInvoker NewInvoker() => new()

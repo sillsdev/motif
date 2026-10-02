@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -40,7 +41,7 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolvedReadingsByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
-    /// <summary>Stored analyses in the captured Text projection, keyed by word form.</summary>
+    /// <summary>The Selection's stored Baseline analyses, including added words, keyed by word form.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> StoredAnalysesByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
 
@@ -57,13 +58,16 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>The per-rule timing measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingObjectTimingAssessmentId { get; init; }
 
-    /// <summary>The current word outcomes after later subset runs replace their earlier answers.</summary>
-    public IReadOnlyList<AssessedWord> EffectiveWords => AssessmentWordOverlay.Apply(
-        MatchingAssessment?.Words ?? [], RerunAssessments);
+    /// <summary>The selected component runs and their effective measurements, projected once.</summary>
+    public AssessmentEvidenceSet? EvidenceSet { get; init; }
+
+    /// <summary>The current word outcomes after explicit reparses replace their earlier answers.</summary>
+    public IReadOnlyList<AssessedWord> EffectiveWords => EvidenceSet?.Words ??
+        (MatchingAssessment is { } assessment ? AssessmentEvidenceSet.Create(assessment, RerunAssessments).Words : []);
 
     /// <summary>The object times recorded for <see cref="EffectiveWords"/>, each from the run that timed its word.</summary>
-    public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => MatchingAssessment is { } assessment
-        ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : [];
+    public IReadOnlyList<AssessmentObjectTiming> EffectiveObjectTimings => EvidenceSet?.ObjectTimings ??
+        (MatchingAssessment is { } assessment ? AssessmentWordOverlay.ApplyObjectTimings(assessment, RerunAssessments) : []);
 
     /// <summary>
     /// The matching Assessment as an <c>assess</c> run returns it: its words after later subset runs, worded by
@@ -102,7 +106,7 @@ public static class CurrentEvidenceQuery
 
     internal static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentEvidence(
         MotifDatabase database, ProjectLocator project, bool includeDefaultSelection = true,
-        bool includeResolvedReadings = true)
+        bool includeResolvedReadings = true, bool includeWordContext = true)
     {
         var storeCreated = ReadStoreCreatedUtc(database);
         DateTimeOffset? lastSave = File.Exists(project.FullFwDataPath)
@@ -140,14 +144,8 @@ public static class CurrentEvidenceQuery
                     correctnessAssessmentId = SameInvocation(AssessmentKind.Correctness);
                     objectTimingAssessmentId = SameInvocation(AssessmentKind.ObjectTiming);
                 }
-                var original = assessment.Selection.Words.ToHashSet(StringComparer.Ordinal);
-                reruns = new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind())
-                    .Where(candidate => candidate.BaselineToken == tokenJson &&
-                        string.CompareOrdinal(candidate.SavedUtc, assessment.SavedUtc) > 0 &&
-                        candidate.Selection.Words.Count < original.Count &&
-                        candidate.Selection.Words.All(original.Contains))
-                    .OrderBy(candidate => candidate.SavedUtc, StringComparer.Ordinal)
-                    .ThenBy(candidate => candidate.AssessmentId, StringComparer.Ordinal).ToArray();
+                reruns = AssessmentWordOverlay.ReplacementsFor(assessment,
+                    new AssessmentRepository(database).ListBaselineAssessments(AssessmentKind.ParseTime.ToStoredKind()));
                 resolvedSelection = resolvedSelection with
                 {
                     Selection = resolvedSelection.Selection with { Provenance = assessment.Selection.Provenance },
@@ -159,57 +157,48 @@ public static class CurrentEvidenceQuery
             selection = resolvedSelection;
         }
 
-        var effectiveWords = assessment is null ? [] : AssessmentWordOverlay.Apply(assessment.Words ?? [], reruns);
-        var resolvedReadings = includeResolvedReadings && freshness == EvidenceFreshness.Current
-            ? ResolveReadings(project, effectiveWords)
-            : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        var storedAnalyses = new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        var wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (assessment is not null && saved is { TextIds.Count: > 0 })
+        var evidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns);
+        var effectiveWords = evidenceSet?.Words ?? [];
+        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> resolvedReadings =
+            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
+            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+        IReadOnlyDictionary<string, string> wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (includeWordContext && assessment is not null && current is not null)
         {
-            var projected = TextWordsQuery.Query(new TextWordsRequest(project.FullFwDataPath, saved.TextIds));
-            if (!projected.Succeeded)
-                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(projected.Refusal!);
-            if (!projected.Value!.HasBaseline)
+            if (!File.Exists(current.Baseline.FwDataPath))
+            {
                 return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
-                    "current-evidence.text-words-unavailable", FailureReason.Refused,
-                    "The stored Text analyses are unavailable for this Assessment."));
-            foreach (var word in projected.Value.Words)
-                storedAnalyses[word.Form] = word.Analyses.Select(analysis =>
-                    new ParserReading(analysis.Morphs)
-                        {
-                        StoredAnalysisId = analysis.StoredAnalysisId,
-                        StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
-                        Identity = analysis.Identity,
-                    }).ToArray();
-            foreach (var token in projected.Value.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens))
-                if (token.Form is { } form && token.WordLink is { } link) wordLinks.TryAdd(form, link);
+                    "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
+                    "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
+            }
+            else
+            {
+                using var reader = BaselineReadCache.Open(current.Baseline.FwDataPath);
+                var cache = reader.Cache;
+                var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
+                var context = BaselineWordContext.Read(cache, projectName, effectiveWords.Select(word => word.Word).ToArray());
+                storedAnalyses = context.Analyses;
+                wordLinks = context.WordLinks;
+                if (includeResolvedReadings)
+                    resolvedReadings = effectiveWords.Where(word => word.Morphology is not null).ToDictionary(
+                        word => word.Word,
+                        word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
+                        StringComparer.Ordinal);
+            }
         }
         return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
             RerunAssessments = reruns,
+            EvidenceSet = evidenceSet,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
             ResolvedReadingsByWord = resolvedReadings,
             StoredAnalysesByWord = storedAnalyses,
             WordAnalysesLinksByWord = wordLinks,
         });
-    }
-
-    private static IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolveReadings(
-        ProjectLocator project, IReadOnlyList<AssessedWord> words)
-    {
-        var resolvable = words.Where(word => word.Morphology is { Analyses.Count: > 0 }).ToArray();
-        if (resolvable.Length == 0 || !File.Exists(project.FullFwDataPath))
-            return new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-
-        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-        return resolvable.ToDictionary(word => word.Word,
-            word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
-            StringComparer.Ordinal);
     }
 
     /// <summary>Resolves one saved Selection from the project inventory captured with its Baseline.</summary>

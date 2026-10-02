@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
@@ -47,7 +48,8 @@ public static class SelectionCommands
             var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
             if (baseline is not null && request.TextIds.Count > 0)
             {
-                using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+                var cache = reader.Cache;
                 var repository = cache.ServiceLocator.GetInstance<SIL.LCModel.ITextRepository>();
                 var missing = request.TextIds.Distinct().FirstOrDefault(id => !repository.TryGetObject(id, out _));
                 if (missing != Guid.Empty)

@@ -216,6 +216,29 @@ public sealed class CatalogAggregationTests
         Assert.Equal(60, result.Attribution.NotAttributedMs);
     }
 
+    [Theory]
+    [InlineData("12345678-1234-1234-ABCD-123456789ABC")]
+    [InlineData("{12345678-1234-1234-abcd-123456789abc}")]
+    public void ARuleGuidResolvesAndFiltersByValue(string requested)
+    {
+        const string key = "12345678-1234-1234-abcd-123456789abc";
+        AssessmentObjectTiming[] rows = [Row("morph_rule", key, "Plural", "a", 10)];
+
+        Assert.Equal([key], TimingAggregation.ResolveRule(rows, requested));
+        var detail = TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", requested, top: 10);
+        Assert.Equal("a", Assert.Single(detail.CostliestWords).Word);
+        Assert.Equal(10, detail.CostliestWords[0].SelfMs);
+    }
+
+    [Fact]
+    public void AStructuralTimingKeyKeepsOrdinalIdentity()
+    {
+        AssessmentObjectTiming[] rows = [Row("morph_rule", "local/Rule", "Plural", "a", 10)];
+
+        Assert.Empty(TimingAggregation.ResolveRule(rows, "local/rule"));
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", "local/rule", 10).CostliestWords);
+    }
+
     [Fact]
     public void WithNoObjectTimeRecordedNoTimeIsCalledNotAttributed()
     {
@@ -224,6 +247,45 @@ public sealed class CatalogAggregationTests
         Assert.Equal(10, attribution.WordTimeMs);
         Assert.Null(attribution.NotAttributedMs);
         Assert.Null(attribution.NotAttributedShare);
+    }
+
+    [Theory]
+    [InlineData(300_000, 100_000, 200_000, 0)]
+    [InlineData(300_000, 100_000, 200_001, 1)]
+    public void NanosecondPartitionsPreserveExactResiduals(long whole, long first, long second, long overrun)
+    {
+        AssessedWord[] words = [new("quick", "analysed", [], 0) { ElapsedNs = whole }];
+        AssessmentObjectTiming[] rows =
+        [
+            new("morph_rule", "r", "authored", "analysis", "R", "quick", 1, null, first),
+            new("morph_rule", "r", "authored", "synthesis", "R", "quick", 1, null, second),
+        ];
+
+        var result = TimingAggregation.Aggregate(words, rows, "rule", "r", 10);
+
+        Assert.Equal(overrun > 0, result.Attribution.Overrun);
+        Assert.Equal(overrun / 1_000_000d, result.Attribution.OverrunMs);
+        Assert.Equal(0, result.Attribution.NotAttributedMs);
+        Assert.Equal((first + second) / 1_000_000d, result.Attribution.AttributedMs);
+        Assert.Equal((first + second) / 1_000_000d, Assert.Single(result.Aggregates).SelfMs);
+        Assert.Equal((first + second) / 1_000_000d, Assert.Single(result.CostliestWords).SelfMs);
+    }
+
+    [Fact]
+    public void MillisecondFallbackAndNanosecondRowsShareAnExactUnit()
+    {
+        AssessedWord[] words = [new("fallback", "analysed", [], 1)];
+        AssessmentObjectTiming[] rows =
+        [
+            new("morph_rule", "r", "authored", "analysis", "R", "fallback", 1, null, 300_000),
+            new("morph_rule", "r", "authored", "synthesis", "R", "fallback", 1, null, 700_000),
+        ];
+
+        var attribution = TimingAggregation.Aggregate(words, rows, "kind", null, 10).Attribution;
+
+        Assert.Equal(1, attribution.WordTimeMs);
+        Assert.Equal(0, attribution.NotAttributedMs);
+        Assert.False(attribution.Overrun);
     }
 
     private static AssessedWord Timed(string word, int ms) =>

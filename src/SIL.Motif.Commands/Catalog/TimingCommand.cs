@@ -7,6 +7,9 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using System.Text.Json;
+using SIL.Motif.Contract;
+using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Commands.Catalog;
 
@@ -27,7 +30,8 @@ public static class TimingCommand
         {
             var assessments = new AssessmentRepository(database);
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(
-                database, project, includeDefaultSelection: request.AssessmentId is null);
+                database, project, includeDefaultSelection: request.AssessmentId is null,
+                includeResolvedReadings: false, includeWordContext: false);
             if (!current.Succeeded)
                 return CommandOutcome<TimingResponse>.Refused(current.Refusal!);
             var currentEvidence = current.Value!;
@@ -47,8 +51,9 @@ public static class TimingCommand
             if (assessment is null || !assessment.Kind.IsStoredKind(AssessmentKind.ParseTime))
                 return RefusedTiming("timing.no-assessment", "No matching stored ParseTime Assessment is available.");
 
-            var words = (assessment.Words ?? Array.Empty<AssessedWord>()).ToList();
-            var objectTimings = assessment.ObjectTimings.ToList();
+            var evidenceSet = request.AssessmentId is null
+                ? currentEvidence.EvidenceSet! : AssessmentEvidenceSet.Create(assessment, []);
+            var replacements = evidenceSet.Components.Skip(1).ToList();
             foreach (var overrideId in request.OverrideAssessmentIds ?? [])
             {
                 AssessmentRecord? replacement;
@@ -59,20 +64,15 @@ public static class TimingCommand
                 if (!replacement.Kind.IsStoredKind(AssessmentKind.ParseTime) ||
                     replacement.BaselineToken != assessment.BaselineToken)
                     return RefusedTiming("timing.invalid-override", "A re-run must be a ParseTime Assessment of the same Baseline.");
-                foreach (var word in replacement.Words ?? [])
-                {
-                    var index = words.FindIndex(previous => previous.Word == word.Word);
-                    if (index < 0) words.Add(word);
-                    else words[index] = word;
-                    objectTimings.RemoveAll(row => row.Word == word.Word);
-                }
-                objectTimings.AddRange(replacement.ObjectTimings);
+                replacements.Add(replacement);
             }
-            var selected = ResolveWords(request, words, database, currentEvidence);
+            if (request.OverrideAssessmentIds is { Count: > 0 })
+                evidenceSet = AssessmentEvidenceSet.Create(assessment, replacements);
+            var selected = ResolveWords(request, evidenceSet.Words, database, currentEvidence);
             if (!selected.Succeeded) return CommandOutcome<TimingResponse>.Refused(selected.Refusal!);
             var selectedWords = selected.Value!;
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-            var objectRows = objectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
+            var objectRows = evidenceSet.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
             string? ruleKey = null;
             if (request.Rule is { } rule)
             {
@@ -85,18 +85,42 @@ public static class TimingCommand
             }
             var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, ruleKey, request.Top);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
+            BaselineToken? measuredBaseline;
+            try { measuredBaseline = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions()); }
+            catch (JsonException) { measuredBaseline = null; }
+            DateTimeOffset? measuredSave = null;
+            if (assessment.Invocation?.InvocationId is { } invocationId)
+            {
+                try
+                {
+                    var retained = new RetainedInvocationRepository(database).Get(invocationId);
+                    if (retained.BaselineToken == measuredBaseline) measuredSave = retained.BaselineSourceLastWriteUtc;
+                }
+                catch (KeyNotFoundException) { }
+            }
+            if (measuredBaseline is not null && measuredBaseline == currentEvidence.Baseline?.Token)
+                measuredSave ??= currentEvidence.Baseline.SourceLastWriteUtc;
+            var relation = measuredBaseline is null || currentEvidence.Baseline is null
+                ? TimingEvidenceRelation.Unknown
+                : measuredBaseline != currentEvidence.Baseline.Token ? TimingEvidenceRelation.Historical
+                : currentEvidence.LastFieldWorksSaveUtc > measuredSave ? TimingEvidenceRelation.SavedSince
+                : TimingEvidenceRelation.Current;
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
                 aggregates.Aggregates, aggregates.CostliestWords)
             {
-                IsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
+                IsStale = relation is TimingEvidenceRelation.Historical or TimingEvidenceRelation.SavedSince,
+                EvidenceRelation = relation,
+                Baseline = measuredBaseline,
+                SourceLastWriteUtc = measuredSave,
+                CurrentProjectIsStale = currentEvidence.Freshness == EvidenceFreshness.Stale,
                 Attribution = aggregates.Attribution,
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
                     word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? TimingCompletion.Skipped : TimingCompletion.Finished)
-                    { ElapsedNs = word.ElapsedNs }).ToArray(),
+                    { ElapsedNs = word.ElapsedNs, Origin = word.Origin }).ToArray(),
             });
         });
     }

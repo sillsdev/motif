@@ -1,7 +1,10 @@
+using SIL.Motif.Contract.Responses;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
@@ -155,7 +158,7 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
     }
 
     [Fact]
-    public void CurrentEvidenceIncludesLaterSubsetResultsForTheDefaultSelection()
+    public void ExploratorySubsetDoesNotReplaceTheDefaultSelectionsAnswers()
     {
         var fwDataPath = Path.Combine(_root, "project.fwdata");
         File.WriteAllText(fwDataPath, "synthetic project marker");
@@ -187,13 +190,13 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         repository.Record(Record("rerun", ["cat"], [new AssessedWord("cat", "analysed", [])],
             "2026-09-24T11:05:00Z", tokenJson));
 
-        var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
+        var result = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false, includeWordContext: false);
 
         Assert.True(result.Succeeded, result.Refusal?.Message);
         Assert.Equal("base", result.Value!.MatchingAssessment?.AssessmentId);
         Assert.Equal("correctness", result.Value.MatchingCorrectnessAssessmentId);
-        Assert.Equal("rerun", Assert.Single(result.Value.RerunAssessments).AssessmentId);
-        Assert.Equal("analysed", result.Value.EffectiveWords.Single(word => word.Word == "cat").Outcome);
+        Assert.Empty(result.Value.RerunAssessments);
+        Assert.Equal("timed-out", result.Value.EffectiveWords.Single(word => word.Word == "cat").Outcome);
         Assert.Equal(2, result.Value.EffectiveWords.Count);
     }
 
@@ -203,6 +206,147 @@ public sealed class CurrentEvidenceQueryTests : IDisposable
         "whitespace", "1", token, Selection.Create("run", words), "sha256:outcome",
         "sha256:semantic", "sha256:grammar", "fingerprint", "pipeline", 0, results,
         SavedUtc: savedUtc);
+
+    [Fact]
+    public void DefaultTimingUsesExplicitReplacementsAndHistoryKeepsItsOwnRows()
+    {
+        var fwDataPath = Path.Combine(_root, "timing.fwdata");
+        File.WriteAllText(fwDataPath, "synthetic project marker");
+        var savedUtc = DateTimeOffset.Parse("2026-09-24T10:00:00Z");
+        File.SetLastWriteTimeUtc(fwDataPath, savedUtc.UtcDateTime);
+        var project = new ProjectLocator(fwDataPath, "timing");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+        var root = Path.Combine(_root, "baseline");
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(root, Path.Combine(root, "timing.fwdata"), token),
+            savedUtc, savedUtc, TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
+        new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"]);
+        var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+        var repository = new AssessmentRepository(database);
+        static AssessmentObjectTiming Row(string word, long ns) =>
+            new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
+        repository.Record(Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
+            "2026-09-24T11:00:00Z", tokenJson) with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] });
+        repository.Record(Record("explicit", ["cat"], [new AssessedWord("cat", "analysed", [], 2)],
+            "2026-09-24T11:05:00Z", tokenJson) with
+        { ReplacesAssessmentId = "base", ObjectTimings = [Row("cat", 2_000_000)] });
+        repository.Record(Record("exploratory", ["dog"], [new AssessedWord("dog", "timed-out", [], 100)],
+            "2026-09-24T11:10:00Z", tokenJson) with { ObjectTimings = [Row("dog", 100_000_000)] });
+
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false, includeWordContext: false);
+        var timing = TimingCommand.Timing(new TimingRequest(fwDataPath));
+        var history = TimingCommand.Timing(new TimingRequest(fwDataPath, AssessmentId: "base"));
+        var overview = OverviewCommand.Overview(new OverviewRequest(fwDataPath));
+
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        Assert.Equal("explicit", Assert.Single(evidence.Value!.RerunAssessments).AssessmentId);
+        Assert.Equal([2, 5], evidence.Value.EffectiveWords.Select(word => word.ElapsedMs));
+        Assert.Equal(["explicit", "base"], evidence.Value.EffectiveWords.Select(word => word.Origin!.AssessmentId));
+        Assert.Equal([DateTimeOffset.Parse("2026-09-24T11:05:00Z"), DateTimeOffset.Parse("2026-09-24T11:00:00Z")],
+            evidence.Value.EffectiveWords.Select(word => word.Origin!.MeasuredUtc));
+        Assert.Same(evidence.Value.EvidenceSet!.Words, evidence.Value.EffectiveWords);
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal([2, 5], timing.Value!.Words.Select(word => word.ElapsedMs));
+        Assert.Equal(7, Assert.Single(timing.Value.Aggregates).SelfMs);
+        Assert.True(history.Succeeded, history.Refusal?.Message);
+        Assert.Equal([90, 5], history.Value!.Words.Select(word => word.ElapsedMs));
+        Assert.Equal(14, Assert.Single(history.Value.Aggregates).SelfMs);
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal("explicit", overview.Value!.WordOrigins["cat"].AssessmentId);
+        Assert.Equal("base", overview.Value.WordOrigins["dog"].AssessmentId);
+        Assert.Equal(TimingEvidenceRelation.Current, timing.Value.EvidenceRelation);
+        Assert.Equal(token, timing.Value.Baseline);
+        Assert.Equal(savedUtc, timing.Value.SourceLastWriteUtc);
+        File.SetLastWriteTimeUtc(fwDataPath, savedUtc.UtcDateTime.AddMinutes(1));
+        var savedSince = TimingCommand.Timing(new TimingRequest(fwDataPath));
+        Assert.True(savedSince.Succeeded, savedSince.Refusal?.Message);
+        Assert.Equal(TimingEvidenceRelation.SavedSince, savedSince.Value!.EvidenceRelation);
+        Assert.True(savedSince.Value.IsStale);
+        Assert.True(savedSince.Value.CurrentProjectIsStale);
+        Assert.Equal(savedUtc, savedSince.Value.SourceLastWriteUtc);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HistoricalTimingDoesNotBorrowTheCurrentBaselinesFreshness(bool currentProjectSavedAgain)
+    {
+        var fwDataPath = Path.Combine(_root, "historic.fwdata");
+        File.WriteAllText(fwDataPath, "synthetic project marker");
+        var savedUtc = DateTimeOffset.Parse("2026-09-24T10:00:00Z");
+        File.SetLastWriteTimeUtc(fwDataPath, savedUtc.UtcDateTime);
+        var project = new ProjectLocator(fwDataPath, "historic");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var oldToken = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-09-23T10:00:00Z", "sha256:" + new string('a', 64));
+        var newToken = new BaselineToken("project-id", "sha256:" + new string('2', 64), "projection-v1",
+            "2026-09-24T10:00:00Z", "sha256:" + new string('b', 64));
+        var root = Path.Combine(_root, "baseline");
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(root, Path.Combine(root, "historic.fwdata"), newToken),
+            savedUtc, savedUtc, TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
+        new AssessmentRepository(database).Record(Record("old", ["cat"], [new AssessedWord("cat", "analysed", [], 1)],
+            "2026-09-23T11:00:00Z", JsonSerializer.Serialize(oldToken, MotifJson.CreateOptions())));
+        if (currentProjectSavedAgain) File.SetLastWriteTimeUtc(fwDataPath, savedUtc.UtcDateTime.AddMinutes(1));
+
+        var timing = TimingCommand.Timing(new TimingRequest(fwDataPath, AssessmentId: "old"));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.True(timing.Value!.IsStale);
+        Assert.Equal(TimingEvidenceRelation.Historical, timing.Value.EvidenceRelation);
+        Assert.Equal(oldToken, timing.Value.Baseline);
+        Assert.Null(timing.Value.SourceLastWriteUtc);
+        Assert.Equal(currentProjectSavedAgain, timing.Value.CurrentProjectIsStale);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TimingOverridesUseTheSharedOverlayAndKeepTheirOrigin(bool useCurrentEvidence)
+    {
+        var fwDataPath = Path.Combine(_root, "override.fwdata");
+        File.WriteAllText(fwDataPath, "synthetic project marker");
+        var savedUtc = DateTimeOffset.Parse("2026-09-24T10:00:00Z");
+        File.SetLastWriteTimeUtc(fwDataPath, savedUtc.UtcDateTime);
+        var project = new ProjectLocator(fwDataPath, "override");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var token = new BaselineToken("project-id", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-09-24T10:00:00Z", "sha256:" + new string('a', 64));
+        var root = Path.Combine(_root, "baseline");
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(root, Path.Combine(root, "override.fwdata"), token),
+            savedUtc, savedUtc, TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
+        new NamedSelectionRepository(database).SetDefault("Default", [], ["cat", "dog"]);
+        var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+        var repository = new AssessmentRepository(database);
+        static AssessmentObjectTiming Row(string word, long ns) =>
+            new("morph_rule", "rule-r", "authored", "analysis", "R", word, 1, null, ns);
+        repository.Record(Record("base", ["cat", "dog"], [
+            new AssessedWord("cat", "timed-out", [], 90), new AssessedWord("dog", "analysed", [], 5)],
+            "2026-09-24T11:00:00Z", tokenJson) with { ObjectTimings = [Row("cat", 9_000_000), Row("dog", 5_000_000)] });
+        repository.Record(Record("other", ["cat", "bird"], [
+            new AssessedWord("cat", "analysed", [], 2), new AssessedWord("bird", "analysed", [], 40)],
+            "2026-09-24T11:05:00Z", tokenJson) with { ObjectTimings = [Row("cat", 2_000_000), Row("bird", 40_000_000)] });
+        repository.Record(Record("dog-reparse", ["dog"], [new AssessedWord("dog", "analysed", [], 3)],
+            "2026-09-24T11:03:00Z", tokenJson) with
+        { ReplacesAssessmentId = "base", ObjectTimings = [Row("dog", 3_000_000)] });
+
+        var timing = TimingCommand.Timing(new TimingRequest(fwDataPath, AssessmentId: useCurrentEvidence ? null : "base",
+            OverrideAssessmentIds: ["other"]));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(["cat", "dog"], timing.Value!.Words.Select(word => word.Word));
+        Assert.Equal([2, useCurrentEvidence ? 3 : 5], timing.Value.Words.Select(word => word.ElapsedMs));
+        Assert.Equal(["other", useCurrentEvidence ? "dog-reparse" : "base"],
+            timing.Value.Words.Select(word => word.Origin!.AssessmentId));
+        Assert.Equal(useCurrentEvidence ? 5 : 7, Assert.Single(timing.Value.Aggregates).SelfMs);
+    }
 
     public void Dispose()
     {

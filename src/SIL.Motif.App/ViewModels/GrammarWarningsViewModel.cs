@@ -204,9 +204,14 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             ? (ShownCount == 1 ? "1 finding of this kind" : $"{ShownCount} findings of this kind")
             : $"{ShownCount} of {TotalCount} findings match the filters";
 
+    /// <summary>The complete projected findings, including the effective words each finding touches.</summary>
+    public IReadOnlyList<GrammarWarning> Findings { get; private set; } = [];
+
     /// <summary>Replaces the displayed report, or clears the page when the check has no report.</summary>
     public void Load(IReadOnlyList<GrammarWarning>? warnings)
     {
+        Findings = warnings ?? [];
+        OnPropertyChanged(nameof(Findings));
         _all.Clear();
         if (warnings is not null)
         {

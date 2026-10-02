@@ -147,7 +147,7 @@ public static class TextWordsQuery
     private static string? GlossOf(ProjectAnalysis? analysis) => analysis is null ? null
         : string.Join(" ", analysis.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
 
-    private static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName)
+    internal static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName)
     {
         // The stored identity lists the same bundles in the same order, so it gives each morph its ids.
         var identities = analysis.Identity?.Morphs;

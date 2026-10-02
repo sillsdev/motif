@@ -20,6 +20,8 @@ public sealed class TryWordPageModel : PageModel
     private const int EarlierRuleLimit = 5;
     private int _timingGeneration;
     private string? _assessmentId;
+    private int _wordContextGeneration;
+    private CancellationTokenSource? _wordContextCancellation;
 
     public TryWordPageModel(WorkspaceContext context) : base(context)
     {
@@ -40,6 +42,9 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The shared trace the Texts page also primes when a Results word is chosen.</summary>
     public TraceWordViewModel Trace { get; }
+
+    /// <summary>All stored opinions for the typed word; null while the Baseline read is unavailable or pending.</summary>
+    public WordContextResponse? WordContext { get; private set; }
 
     /// <summary>The diagnostic tools beside the page's trace.</summary>
     public DiagnosticToolsViewModel Diagnostics { get; }
@@ -122,6 +127,10 @@ public sealed class TryWordPageModel : PageModel
 
     protected override void OnProjectCleared()
     {
+        _wordContextGeneration++;
+        _wordContextCancellation?.Cancel();
+        WordContext = null;
+        OnPropertyChanged(nameof(WordContext));
         _assessmentId = null;
         _timingGeneration++;
         ShowEarlierTiming(null, null);
@@ -134,8 +143,11 @@ public sealed class TryWordPageModel : PageModel
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
         SetStoredAssessmentId(evidence.ParseTimeAssessmentId);
-        return Task.CompletedTask;
+        return RefreshExpectedAsync(Trace.WordToTry, cancellationToken);
     }
+
+    protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) =>
+        RefreshExpectedAsync(Trace.WordToTry, cancellationToken);
 
     protected override void OnRequested(PageRequest request)
     {
@@ -181,9 +193,34 @@ public sealed class TryWordPageModel : PageModel
             RefreshExpected(Trace.WordToTry);
     }
 
-    private void RefreshExpected(string word)
+    private void RefreshExpected(string word) => _ = RefreshExpectedAsync(word, CancellationToken.None);
+
+    private async Task RefreshExpectedAsync(string word, CancellationToken cancellationToken)
     {
-        Trace.SetExpected(word, Context.Assess.Words.Find(word)?.ExpectedAnalysis?.Morphs);
+        var generation = ++_wordContextGeneration;
+        _wordContextCancellation?.Cancel();
+        _wordContextCancellation?.Dispose();
+        _wordContextCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var token = _wordContextCancellation.Token;
+        var projectPath = Context.ProjectPath;
+        word = word.Trim().Normalize(System.Text.NormalizationForm.FormD);
+        WordContext = null;
+        Trace.SetExpected(word, null);
+        OnPropertyChanged(nameof(WordContext));
+        if (projectPath is null || word.Length == 0) return;
+        var baseline = Context.Evidence.Stored?.Baseline?.Token ?? Context.Evidence.Assessment?.Assessment.Baseline.Token;
+        try
+        {
+            var result = await Context.Commands.ReadWordContextAsync(new WordContextRequest(projectPath, word, baseline),
+                token).ConfigureAwait(true);
+            if (generation != _wordContextGeneration || token.IsCancellationRequested || projectPath != Context.ProjectPath)
+                return;
+            WordContext = result.Succeeded ? result.Value : null;
+            Trace.SetExpected(word, WordContext?.ExpectedAnalysis?.Morphs.Select(morph =>
+                new ParserReadingMorphViewModel(morph)).ToArray());
+            OnPropertyChanged(nameof(WordContext));
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
     }
 
     private void TrackRecent(string word)

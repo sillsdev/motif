@@ -1,3 +1,4 @@
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -41,13 +42,15 @@ public static class ObjectUsesQuery
                 return CommandOutcome<ObjectUsesResponse>.Refused(new Refusal(
                     "uses.no-assessment", FailureReason.NotFound,
                     "No stored Assessment matches the current Baseline and default Selection."));
-            var timings = TimingsAfterReruns(record, snapshot.RerunAssessments);
+            var timings = snapshot.EffectiveObjectTimings;
             var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
                 ? FactsOf(asked, baseline, project) : null;
             return CommandOutcome<ObjectUsesResponse>.Success(
                 Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words) with
                 {
                     AssessmentId = record.AssessmentId,
+                    WordOrigins = snapshot.EffectiveWords.Where(word => word.Origin is not null).ToDictionary(
+                        word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                     IsStale = snapshot.Freshness == EvidenceFreshness.Stale,
                     Facts = facts,
                 });
@@ -165,27 +168,14 @@ public static class ObjectUsesQuery
     // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
     private static ObjectFacts? FactsOf(ObjectUseRef reference, BaselineRecord baseline, ProjectLocator project)
     {
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+        var cache = reader.Cache;
         var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
         return ObjectFactsReader.Read(cache, reference, found =>
             FieldWorksLinks.TargetFor(cache, found) is { } target
                 ? new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
                     target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!)
                 : null);
-    }
-
-    // A word a later subset run measured again keeps that run's timings, as its outcome does.
-    private static IReadOnlyList<AssessmentObjectTiming> TimingsAfterReruns(
-        AssessmentRecord assessment, IReadOnlyList<AssessmentRecord> reruns)
-    {
-        var timings = assessment.ObjectTimings.ToList();
-        foreach (var rerun in reruns)
-        {
-            var measured = (rerun.Words ?? []).Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-            timings.RemoveAll(row => measured.Contains(row.Word));
-            timings.AddRange(rerun.ObjectTimings);
-        }
-        return timings;
     }
 
     // A disapproved analysis is one the linguist says the word is not, so it is no use of its morphs.

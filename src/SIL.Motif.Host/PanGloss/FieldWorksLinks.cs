@@ -32,7 +32,7 @@ public static class FieldWorksLinks
     /// <summary>
     /// A link selecting the wordform <paramref name="word"/> in FieldWorks' Word Analyses, where Parser ▸
     /// Try a Word opens with that word already entered; <see langword="null"/> when the project has no
-    /// such wordform in its default vernacular writing system.
+    /// unambiguous wordform in any populated writing system.
     /// </summary>
     public static string? ForWordform(LcmCache cache, string projectName, string word)
     {
@@ -50,15 +50,17 @@ public static class FieldWorksLinks
         return Target(cache, found) is { } target ? new FieldWorksLinkTarget(target.Tool, target.Guid) : null;
     }
 
-    /// <summary>Finds the stable wordform destination for a word in the default vernacular writing system.</summary>
+    /// <summary>Finds a stable destination only when the exact form identifies one captured wordform.</summary>
     public static FieldWorksLinkTarget? WordformTargetFor(LcmCache cache, string word)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(word);
         var repository = cache.ServiceLocator.GetInstance<IWfiWordformRepository>();
-        return repository.TryGetObject(TsStringUtils.MakeString(word, cache.DefaultVernWs), true, out var wordform)
-            ? new FieldWorksLinkTarget("Analyses", wordform.Guid)
-            : null;
+        var form = word.Normalize(NormalizationForm.FormD);
+        var matches = repository.AllInstances().Where(wordform => wordform.Form.AvailableWritingSystemIds.Any(ws =>
+            StringComparer.Ordinal.Equals(wordform.Form.get_String(ws)?.Text?.Normalize(NormalizationForm.FormD), form)))
+            .Take(2).ToArray();
+        return matches.Length == 1 ? new FieldWorksLinkTarget("Analyses", matches[0].Guid) : null;
     }
 
     /// <summary>
