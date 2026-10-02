@@ -1228,6 +1228,7 @@ public sealed class TryWordPageTests
             Assert.True(page.HasEarlierTiming);
             Assert.Contains(DateTimeOffset.Parse("2026-09-25T12:00:00Z").ToLocalTime().ToString("ddd d MMM, h:mm tt",
                 CultureInfo.CurrentCulture), page.EarlierTimingTitle);
+            Assert.Equal(["rerun-1"], Assert.Single(fake.TimingRequests).OverrideAssessmentIds);
         });
     }
 

@@ -88,7 +88,10 @@ public sealed class ResultsInTextViewModelTests
         Func<ResultsInTextViewModel, ChangesViewModel, FakeCommandClient, Task>? afterAssessment = null,
         IReadOnlyList<AssessmentWordResult>? assessmentWords = null,
         IReadOnlyList<TextWord>? projectWords = null, Action<Func<Task>>? captureReload = null,
-        Action<AssessViewModel>? captureAssess = null)
+        Action<AssessViewModel>? captureAssess = null,
+        IReadOnlyList<string>? assessmentIds = null,
+        IReadOnlyList<ProducedAssessmentReference>? measurements = null,
+        IReadOnlyList<string>? timingOverrideAssessmentIds = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
@@ -145,10 +148,11 @@ public sealed class ResultsInTextViewModelTests
         fake.AssessCompletesWith(new AssessCommandResponse(
             new BaselineCaptureResponse(new BaselineToken("project-1", Digest, "1", "2026-09-05T00:00:00Z", Digest),
                 ProjectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true),
-            new SelectionProjection([], []), ["assessment/one"], "(summary)")
+            new SelectionProjection([], []), assessmentIds ?? ["assessment/one"], "(summary)")
         {
-            Measurements = [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime,
+            Measurements = measurements ?? [new ProducedAssessmentReference("assessment/one", AssessmentKinds.ParseTime,
                 "invocation/one")],
+            TimingOverrideAssessmentIds = timingOverrideAssessmentIds ?? [],
             Words = assessmentWords ??
             [
                 Result("kitabu", Book, Child) with
@@ -448,6 +452,27 @@ public sealed class ResultsInTextViewModelTests
         var request = Assert.Single(fake.ReadWordStateRequests, item => item.IsRead is not null);
         Assert.Equal([token.Occurrence!], request.Occurrences);
         Assert.True(request.IsRead);
+    }
+
+    [Fact]
+    public async Task WordCardTimingSelectsTheParseTimeMeasurementAndKeepsItsReplacements()
+    {
+        var (inText, _, fake) = await Loaded(
+            assessmentIds: ["assessment/parse", "assessment/object", "assessment/correctness"],
+            measurements:
+            [
+                new ProducedAssessmentReference("assessment/parse", AssessmentKinds.ParseTime, "invocation/one"),
+                new ProducedAssessmentReference("assessment/object", AssessmentKinds.ObjectTiming, "invocation/one"),
+                new ProducedAssessmentReference("assessment/correctness", AssessmentKinds.Correctness, "invocation/one"),
+            ],
+            timingOverrideAssessmentIds: ["assessment/rerun"]);
+        fake.TimingCompletesWith(new TimingResponse("assessment/parse", "selected", "rule", 1, 1, 1, [], [], []));
+
+        await inText.OpenTokenCardAsync(inText.VisibleLines[0].Tokens[0]);
+
+        var request = Assert.Single(fake.TimingRequests);
+        Assert.Equal("assessment/parse", request.AssessmentId);
+        Assert.Equal(["assessment/rerun"], request.OverrideAssessmentIds);
     }
 
     [Fact]

@@ -31,7 +31,6 @@ public sealed partial class TimingPageModel : PageModel
     public TimingPageModel(WorkspaceContext context) : base(context)
     {
         Statistics = new StatisticsViewModel(context.Commands);
-        Statistics.AssessedWord = context.Assess.Words.Find;
         Statistics.TryWord = context.TryWord;
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
@@ -311,7 +310,7 @@ public sealed partial class TimingPageModel : PageModel
     /// parse time.
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
-        Listed(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
+        Listed(word.Word, word.WordTimeMs is { } whole
             ? $"{TimingShare.FormatMilliseconds(word.SelfMs)} of its {TimingShare.FormatMilliseconds(whole)}"
             : TimingShare.FormatMilliseconds(word.SelfMs)))];
 
@@ -472,6 +471,7 @@ public sealed partial class TimingPageModel : PageModel
             Statistics.Reset();
             Statistics.SummaryMarkdown = shown.Assessment.SummaryMarkdown;
             Statistics.AssessmentId = evidence.ObjectTimingAssessmentId;
+            Statistics.HasTimingOverrides = evidence.TimingOverrideAssessmentIds.Count > 0;
         }
         OnPropertyChanged(nameof(MatrixCells));
         OnPropertyChanged(nameof(TextsLists));
@@ -878,7 +878,9 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
 
     public string CallsText => Source is null ? string.Empty : Source.Calls is { } calls
-        ? $"{calls:N0} {(calls == 1 ? "call" : "calls")}" : "Not counted";
+        ? Source.CallsArePartial ? $"{calls:N0} recorded calls; some call counts unavailable"
+            : $"{calls:N0} {(calls == 1 ? "call" : "calls")}"
+        : "Not counted";
 
     /// <summary>Formats the timing in milliseconds while retaining its recorded fractional precision.</summary>
     /// <param name="milliseconds">The measured time.</param>

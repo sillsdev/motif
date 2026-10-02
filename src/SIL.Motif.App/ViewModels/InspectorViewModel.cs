@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -431,10 +432,14 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
     public static InspectorWordsViewModel ForRanIn(ObjectUseWords? ranIn, Action<string> tryWord)
     {
         var words = ranIn?.Words ?? [];
-        var calls = words.Sum(word => (long)(word.Calls ?? 0));
+        var calls = TimingAggregation.CombineCalls(words.Select(word => ((long?)word.Calls, word.CallsArePartial)));
+        var callText = calls.Calls is { } total
+            ? calls.IsPartial ? $" · {total:N0} recorded calls · some call counts unavailable"
+                : $" · {total:N0} {(total == 1 ? "call" : "calls")}"
+            : " · call counts not recorded";
         var heading = words.Count == 0 ? string.Empty
             : (words.Count == 1 ? "Ran in 1 word" : $"Ran in {words.Count:N0} words") +
-              (calls > 0 ? $" · {calls:N0} {(calls == 1 ? "call" : "calls")}" : string.Empty);
+              callText;
         return new InspectorWordsViewModel(heading, CountByMeaning(ranIn?.ByMeaning ?? []), string.Empty,
             [.. words.OrderByDescending(word => word.ElapsedNs ?? 0)
                 .Select(word => new InspectorWordViewModel(word.Row, TimeText(word), tryWord))],

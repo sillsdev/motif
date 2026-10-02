@@ -90,7 +90,9 @@ public sealed class ProjectEvidence : ObservableObject
     public string? StoredAssessmentId => Stored?.MatchingAssessment?.AssessmentId;
 
     /// <summary>The ParseTime measurement of the Assessment on screen, else of the stored one.</summary>
-    public string? ParseTimeAssessmentId => MeasurementOf(AssessmentKinds.ParseTime) ?? StoredAssessmentId;
+    public string? ParseTimeAssessmentId => Assessment is { } shown
+        ? ParseTimeMeasurementOf(shown.Assessment) ?? StoredAssessmentId
+        : StoredAssessmentId;
 
     /// <summary>The Correctness measurement of the Assessment on screen, when it collected one.</summary>
     public string? CorrectnessAssessmentId => MeasurementOf(AssessmentKinds.Correctness);
@@ -180,6 +182,10 @@ public sealed class ProjectEvidence : ObservableObject
     }
 
     private string? MeasurementOf(string kind) => Assessment is { } shown ? MeasurementOf(shown.Assessment, kind) : null;
+
+    /// <summary>Selects an Assessment response's typed ParseTime measurement.</summary>
+    internal static string? ParseTimeMeasurementOf(AssessCommandResponse assessment) =>
+        MeasurementOf(assessment, AssessmentKinds.ParseTime);
 
     private static string? MeasurementOf(AssessCommandResponse assessment, string kind) => assessment.Measurements
         .LastOrDefault(measurement => measurement.Kind == kind)?.AssessmentId;

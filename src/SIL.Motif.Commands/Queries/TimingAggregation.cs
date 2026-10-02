@@ -48,6 +48,28 @@ public static class TimingAggregation
             .Take(top).Select(item => item.Word).ToArray();
     }
 
+    /// <summary>Whether a positive count or duration proves that an object did work in one word.</summary>
+    public static bool HasExecutionEvidence(int? attempts, long? elapsedNs) => attempts is > 0 || elapsedNs is > 0;
+
+    /// <summary>Sums the counts present and marks the projection partial when any row has no count.</summary>
+    public static (long? Calls, bool IsPartial) ProjectCalls(IEnumerable<int?> attempts)
+    {
+        ArgumentNullException.ThrowIfNull(attempts);
+        var rows = attempts.ToArray();
+        var recorded = rows.Where(value => value is not null).Select(value => (long)value!.Value).ToArray();
+        return (recorded.Length == 0 ? null : recorded.Sum(), recorded.Length > 0 && recorded.Length < rows.Length);
+    }
+
+    /// <summary>Combines per-word counts without losing whether any word's count is missing or partial.</summary>
+    public static (long? Calls, bool IsPartial) CombineCalls(IEnumerable<(long? Calls, bool IsPartial)> counts)
+    {
+        ArgumentNullException.ThrowIfNull(counts);
+        var rows = counts.ToArray();
+        var recorded = rows.Where(row => row.Calls is not null).ToArray();
+        return (recorded.Length == 0 ? null : recorded.Sum(row => row.Calls!.Value),
+            recorded.Length > 0 && (recorded.Length < rows.Length || recorded.Any(row => row.IsPartial)));
+    }
+
     /// <summary>Adds the split of the words' total word time by kind, and its residual, to the word summary.</summary>
     public static OverviewTiming SummarizeWords(IReadOnlyList<AssessedWord> words,
         IReadOnlyList<AssessmentObjectTiming> objectTimings, int top = 3)
@@ -76,7 +98,8 @@ public static class TimingAggregation
         var wordTimes = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var word in words)
             if (WordTimeNs(word) is { } time) wordTimes.TryAdd(word.Word, time);
-        var measured = rows.Where(row => wordTimes.ContainsKey(row.Word)).ToArray();
+        var measured = rows.Where(row => wordTimes.ContainsKey(row.Word) &&
+            HasExecutionEvidence(row.Attempts, row.ElapsedNs)).ToArray();
         var attribution = Attribute(wordTimes, measured);
         double? ShareOf(double selfMs) => attribution.WordTimeMs > 0 ? selfMs / attribution.WordTimeMs : null;
 
@@ -88,6 +111,7 @@ public static class TimingAggregation
             .Select(group =>
             {
                 var self = group.Rows.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
+                var calls = ProjectCalls(group.Rows.Select(row => row.Attempts));
                 var first = group.Rows[0];
                 return new TimingAggregateRow(by == "kind" ? first.Kind : KeyOf(first).Key, by == "kind" ? first.Kind : first.Object, self,
                     ShareOf(self), group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
@@ -95,7 +119,8 @@ public static class TimingAggregation
                     Kind = first.Kind,
                     IdentityQuality = by == "kind" ? string.Empty : first.IdentityQuality,
                     Scope = by == "kind" ? null : first.Scope,
-                    Calls = Calls(group.Rows),
+                    Calls = calls.Calls,
+                    CallsArePartial = calls.IsPartial,
                 };
             })
             .OrderByDescending(row => row.SelfMs).ThenBy(row => row.Name, StringComparer.Ordinal)
@@ -110,10 +135,12 @@ public static class TimingAggregation
                 {
                     var self = group.Rows.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
                     var whole = wordTimes[group.Word] / 1_000_000d;
-                    return new WordRuleTiming(group.Word, self, Calls(group.Rows))
+                    var calls = ProjectCalls(group.Rows.Select(row => row.Attempts));
+                    return new WordRuleTiming(group.Word, self, calls.Calls)
                     {
                         WordTimeMs = whole,
                         ShareOfWordTime = whole > 0 ? self / whole : null,
+                        CallsArePartial = calls.IsPartial,
                     };
                 })
                 .OrderByDescending(row => row.SelfMs).ThenBy(row => row.Word, StringComparer.Ordinal)
@@ -168,7 +195,4 @@ public static class TimingAggregation
             overrun / 1_000_000d, overrun > 0);
     }
 
-    // Calls are summed within one kind only; an uncounted row leaves the total unknown only if none counted.
-    private static long? Calls(IReadOnlyList<AssessmentObjectTiming> rows) =>
-        rows.Any(row => row.Attempts is not null) ? rows.Sum(row => (long)(row.Attempts ?? 0)) : null;
 }

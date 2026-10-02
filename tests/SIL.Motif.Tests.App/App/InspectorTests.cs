@@ -427,6 +427,20 @@ public sealed class InspectorTests
     }
 
     [Fact]
+    public void RanInCallSummaryMarksTheRecordedTotalWhenSomeWordsHaveNoCallCount()
+    {
+        var first = new ObjectUseWord(new SIL.Motif.Contract.Responses.WordRow("one", WordRowOutcome.NoParse, "Lost", WordRowTone.Problem))
+        {
+            Calls = 5,
+        };
+        var second = new ObjectUseWord(new SIL.Motif.Contract.Responses.WordRow("two", WordRowOutcome.NoParse, "Lost", WordRowTone.Problem));
+
+        var ranIn = InspectorWordsViewModel.ForRanIn(new ObjectUseWords([first, second], []), _ => { });
+
+        Assert.Equal("Ran in 2 words · 5 recorded calls · some call counts unavailable", ranIn.Heading);
+    }
+
+    [Fact]
     public void ASectionWhoseSourceIsMissingSaysWhyAndTheBaselinesFactsStillShow()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

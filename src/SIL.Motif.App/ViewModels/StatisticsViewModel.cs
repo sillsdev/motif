@@ -77,6 +77,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
         RaiseSummary();
     }
 
+    partial void OnHasTimingOverridesChanged(bool value) => OnPropertyChanged(nameof(ScopeNote));
+
     private bool IsWordGroup => SelectedGroup == "word";
 
     /// <summary>What the count column counts: a word's search steps, or each grammar object's own attempts.</summary>
@@ -94,13 +96,26 @@ public sealed partial class StatisticsViewModel : ObservableObject
             "leaves out time spent in the objects this one called.";
 
     /// <summary>Whether these rows use Timing's selected words or cover the whole Assessment.</summary>
-    public string ScopeNote => !IsWordGroup
-        ? $"{SelectedGroupChoice.Label} · all rows from the complete parse; selected words do not filter them."
-        : WordScope is { Count: 0 }
-            ? "By word · no words selected in Timing."
-        : WordScope is { } scope
-            ? $"By word · the same {SpeedText.Count(scope.Count, "word", "words")} selected in Timing."
-            : "By word · every word in the parse.";
+    public string ScopeNote
+    {
+        get
+        {
+            var scope = !IsWordGroup
+                ? $"{SelectedGroupChoice.Label} · all rows from the complete parse; selected words do not filter them."
+                : WordScope is { Count: 0 }
+                    ? "By word · no words selected in Timing."
+                : WordScope is { } words
+                    ? $"By word · the same {SpeedText.Count(words.Count, "word", "words")} selected in Timing."
+                    : "By word · every word in the parse.";
+            return HasTimingOverrides
+                ? scope + " These statistics are from the original Parse all words run; later word reruns appear above in Timing."
+                : scope;
+        }
+    }
+
+    /// <summary>Whether these rows come from a parse whose selected word times were later replaced.</summary>
+    [ObservableProperty]
+    private bool _hasTimingOverrides;
 
     /// <summary>
     /// Looks up a word in the Assessment these statistics came from, so a word's completion here is the same
@@ -283,6 +298,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         Refusal = null;
         SummaryMarkdown = null;
         AssessmentId = null;
+        HasTimingOverrides = false;
         Metadata.Clear();
     }
 

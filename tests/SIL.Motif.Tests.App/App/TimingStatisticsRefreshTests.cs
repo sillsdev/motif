@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -77,6 +79,39 @@ public sealed class TimingStatisticsRefreshTests
             {
                 window.Close();
             }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void DetailedStatisticsKeepTheOriginalRunsCompletionWhenAWordTimingWasReplaced()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, workspace) = NewWorkspace();
+            fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));
+            var rawWord = JsonDocument.Parse(
+                "{\"form\":\"motifa\",\"attempts\":12,\"passes\":1,\"elapsed_ns\":1000000000,\"capped\":true,\"timed_out\":false}")
+                .RootElement.Clone();
+            fake.StatsCompletesWith(new StatsCommandResponse("assessment-timing", "grammar.json", "cache.sqlite",
+                null, [rawWord]));
+            await workspace.SetProjectAsync(ProjectPath);
+            if (workspace.Context.Setup is { IsOpen: true } setup) await setup.SkipCommand.ExecuteAsync(null);
+            var timing = workspace.PageModel<TimingPageModel>();
+
+            var run = Run() with
+            {
+                Words = [new AssessmentWordResult("motifa", "analysed", false, "Search completed", 4, null)],
+                TimingOverrideAssessmentIds = ["assessment-rerun"],
+            };
+            workspace.Assess.Result = run;
+            Assert.NotNull(workspace.Assess.Words.Find("motifa"));
+            workspace.Context.PublishEvidence(new WorkspaceEvidence(run, Saved, WasRerun: false));
+            await workspace.Context.EvidencePublication;
+            await timing.Statistics.LoadCommand.ExecuteAsync(null);
+
+            Assert.True(Assert.Single(timing.Statistics.Rows).IsIncomplete);
+            Assert.Contains("original Parse all words run", timing.Statistics.ScopeNote, StringComparison.Ordinal);
+            Assert.Contains("later word reruns appear above in Timing", timing.Statistics.ScopeNote, StringComparison.Ordinal);
         }, TimeSpan.FromSeconds(30));
     }
 

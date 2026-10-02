@@ -120,6 +120,9 @@ public sealed record TimingAggregateRow(
     /// not count calls. A call to one kind is not a call to another, so no total adds calls across kinds.
     /// </summary>
     public long? Calls { get; init; }
+
+    /// <summary>Whether some rows lack a call count; <see cref="Calls"/> then totals recorded counts only.</summary>
+    public bool CallsArePartial { get; init; }
 }
 
 /// <summary>One word's time under a selected parser object.</summary>
@@ -133,6 +136,9 @@ public sealed record WordRuleTiming(string Word, double SelfMs, long? Calls)
 
     /// <summary><see cref="SelfMs"/> as a share of <see cref="WordTimeMs"/>, from 0 to 1, when it has one.</summary>
     public double? ShareOfWordTime { get; init; }
+
+    /// <summary>Whether some rows lack a call count; <see cref="Calls"/> then totals recorded counts only.</summary>
+    public bool CallsArePartial { get; init; }
 }
 
 /// <summary>

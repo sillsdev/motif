@@ -24,6 +24,7 @@ public sealed class TryWordPageModel : PageModel
     private int _timingGeneration;
     private string? _assessmentId;
     private TimingResponse? _earlierTiming;
+    private IReadOnlyList<string> _timingOverrideAssessmentIds = [];
     private int _wordContextGeneration;
     private CancellationTokenSource? _wordContextCancellation;
 
@@ -191,6 +192,7 @@ public sealed class TryWordPageModel : PageModel
         _resultContextCancellation?.Cancel();
         ShowResultContext(null);
         _assessmentId = null;
+        _timingOverrideAssessmentIds = [];
         _timingGeneration++;
         ShowEarlierTiming(null);
         Trace.Reset();
@@ -200,7 +202,7 @@ public sealed class TryWordPageModel : PageModel
 
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
-        SetStoredAssessmentId(evidence.ParseTimeAssessmentId);
+        SetStoredAssessmentId(evidence.ParseTimeAssessmentId, evidence.TimingOverrideAssessmentIds);
         return Task.WhenAll(RefreshExpectedAsync(Trace.WordToTry, cancellationToken), RefreshResultContextAsync());
     }
 
@@ -331,9 +333,10 @@ public sealed class TryWordPageModel : PageModel
         while (RecentWords.Count > RecentWordLimit) RecentWords.RemoveAt(RecentWords.Count - 1);
     }
 
-    private void SetStoredAssessmentId(string? assessmentId)
+    private void SetStoredAssessmentId(string? assessmentId, IReadOnlyList<string> timingOverrideAssessmentIds)
     {
         _assessmentId = assessmentId;
+        _timingOverrideAssessmentIds = timingOverrideAssessmentIds.ToArray();
         _timingGeneration++;
         ShowEarlierTiming(null);
         if (assessmentId is not null && Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
@@ -348,7 +351,8 @@ public sealed class TryWordPageModel : PageModel
 
         var generation = ++_timingGeneration;
         var outcome = await Context.Commands.TimingAsync(
-            new TimingRequest(projectPath, assessmentId, By: "rule", ExplicitWords: [result.Word]),
+            new TimingRequest(projectPath, assessmentId, By: "rule", ExplicitWords: [result.Word],
+                OverrideAssessmentIds: _timingOverrideAssessmentIds),
             CancellationToken.None).ConfigureAwait(true);
         if (generation != _timingGeneration || !ReferenceEquals(result, Trace.Result) ||
             !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;

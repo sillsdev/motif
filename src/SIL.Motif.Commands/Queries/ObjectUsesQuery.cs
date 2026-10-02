@@ -112,15 +112,18 @@ public static class ObjectUsesQuery
         ArgumentNullException.ThrowIfNull(timings);
         ArgumentNullException.ThrowIfNull(reference);
         var byWord = timings
-            .Where(row => ObjectIdentity.Same(reference.TimingIdentity, ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope)) && (row.Attempts is not 0 || row.ElapsedNs is not (null or 0)))
+            .Where(row => ObjectIdentity.Same(reference.TimingIdentity, ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope)) &&
+                TimingAggregation.HasExecutionEvidence(row.Attempts, row.ElapsedNs))
             .GroupBy(row => row.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         return Split(words.Where(word => byWord.ContainsKey(word.Word)).Select(word =>
         {
             var rows = byWord[word.Word];
+            var calls = TimingAggregation.ProjectCalls(rows.Select(row => row.Attempts));
             return new ObjectUseWord(WordRowProjection.Of(word))
             {
-                Calls = rows.Any(row => row.Attempts is not null) ? rows.Sum(row => row.Attempts ?? 0) : null,
+                Calls = calls.Calls is { } total ? checked((int)total) : null,
+                CallsArePartial = calls.IsPartial,
                 ElapsedNs = rows.Any(row => row.ElapsedNs is not null) ? rows.Sum(row => row.ElapsedNs ?? 0) : null,
             };
         }).ToArray());

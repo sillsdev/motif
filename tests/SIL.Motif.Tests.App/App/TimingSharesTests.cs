@@ -78,6 +78,19 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
+    public void APartialCallTotalSaysItIncludesOnlyRecordedCalls()
+    {
+        var source = new TimingAggregateRow("morph_rule", "morph_rule", 10, 0.5, 1)
+        {
+            Calls = 5,
+            CallsArePartial = true,
+        };
+        var share = new TimingShare("Morphological rules", "morph_rule", 10, 0.5, 1, source);
+
+        Assert.Equal("5 recorded calls; some call counts unavailable", share.CallsText);
+    }
+
+    [Fact]
     public async Task SharesUseTheResponseForFractionalWordTime()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -149,9 +162,24 @@ public sealed class TimingSharesTests
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules,
-            [new WordRuleTiming("mwalimu", 180, 900), new WordRuleTiming("hawajafika", 34, 200)]);
+            [new WordRuleTiming("mwalimu", 180, 900) { WordTimeMs = 700 },
+                new WordRuleTiming("hawajafika", 34, 200) { WordTimeMs = 48 }]);
 
         Assert.Equal(["180 ms of its 700 ms", "34 ms of its 48 ms"],
+            timing.CostliestRuleWordRows.Select(word => word.TimeText));
+    }
+
+    [Fact]
+    public async Task CostliestRuleWordsUseTheirExactWholeParseTimeWhenMillisecondsAreRoundedOrMissing()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var timing = await LoadedTiming([("rounded", 0), ("nanoseconds-only", null)], Kinds, Rules,
+            [
+                new WordRuleTiming("rounded", 0.4, 1) { WordTimeMs = 0.8 },
+                new WordRuleTiming("nanoseconds-only", 0.2, 1) { WordTimeMs = 0.5 },
+            ], elapsedNs: [800_000, 500_000]);
+
+        Assert.Equal(["0.4 ms of its 0.8 ms", "0.2 ms of its 0.5 ms"],
             timing.CostliestRuleWordRows.Select(word => word.TimeText));
     }
 

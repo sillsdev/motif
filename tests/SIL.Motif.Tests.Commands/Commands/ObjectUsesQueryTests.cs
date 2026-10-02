@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Worker.Store;
@@ -202,6 +203,40 @@ public sealed class ObjectUsesQueryTests
         Assert.Equal([("walikata", 6, 150_000L), ("anakata", 1, (long?)null)],
             ran.Words.Select(word => (word.Row.Word, word.Calls, word.ElapsedNs)));
         Assert.Equal([("Lost", WordRowTone.Problem, 2)], ran.ByMeaning.Select(meaning => (meaning.Meaning, meaning.Tone, meaning.Words)));
+    }
+
+    [Fact]
+    public void RanInRequiresRecordedPositiveExecutionEvidenceAndMarksPartialCallCounts()
+    {
+        var words = new[] { LostCell[0] with { Word = "unrecorded" }, LostCell[1] with { Word = "zero" },
+            LostCell[2] with { Word = "counted" }, LostCell[3] with { Word = "partial" },
+            LostCell[4] with { Word = "timed-zero" } };
+        var timings = new[]
+        {
+            Timing("phon_rule", "rule", "Rule", "unrecorded", null, null),
+            Timing("phon_rule", "rule", "Rule", "zero", 0, 0),
+            Timing("phon_rule", "rule", "Rule", "counted", 5, 100),
+            Timing("phon_rule", "rule", "Rule", "partial", 3, 100),
+            Timing("phon_rule", "rule", "Rule", "partial", null, 50, "synthesis"),
+            Timing("phon_rule", "rule", "Rule", "timed-zero", 0, 100),
+        };
+
+        var ran = ObjectUsesQuery.RanIn(words, timings,
+            new ObjectUseRef { TimingKind = "phon_rule", TimingKey = "rule" });
+        var counted = ran.Words.Single(word => word.Row.Word == "counted");
+        var partial = ran.Words.Single(word => word.Row.Word == "partial");
+        var timedZero = ran.Words.Single(word => word.Row.Word == "timed-zero");
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var countedJson = JsonSerializer.SerializeToElement(counted, jsonOptions);
+
+        Assert.Equal(["counted", "partial", "timed-zero"], ran.Words.Select(word => word.Row.Word));
+        Assert.Equal(5, counted.Calls);
+        Assert.True(countedJson.TryGetProperty("callsArePartial", out var countedPartial));
+        Assert.False(countedPartial.GetBoolean());
+        Assert.Equal(3, partial.Calls);
+        Assert.True(JsonSerializer.SerializeToElement(partial, jsonOptions).GetProperty("callsArePartial").GetBoolean());
+        Assert.Equal(0, timedZero.Calls);
+        Assert.False(JsonSerializer.SerializeToElement(timedZero, jsonOptions).GetProperty("callsArePartial").GetBoolean());
     }
 
     [Fact]

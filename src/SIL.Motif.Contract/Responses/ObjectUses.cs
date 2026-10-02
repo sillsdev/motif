@@ -302,6 +302,9 @@ public sealed record ObjectUseWord(WordRow Row)
     /// </summary>
     public int? Calls { get; init; }
 
+    /// <summary>Whether some timed directions lack a count; <see cref="Calls"/> then totals recorded calls only.</summary>
+    public bool CallsArePartial { get; init; }
+
     /// <summary>
     /// The object's self time in this word, in nanoseconds, over every direction PanGloss timed;
     /// <see langword="null"/> for a use, or when PanGloss does not time that kind.

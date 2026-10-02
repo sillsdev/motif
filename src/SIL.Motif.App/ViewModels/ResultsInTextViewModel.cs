@@ -659,7 +659,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
         var outcome = await _commands.TimingAsync(new TimingRequest(
             _assess.ProjectPath,
-            assessment.AssessmentIds.LastOrDefault(),
+            ProjectEvidence.ParseTimeMeasurementOf(assessment),
             By: "rule",
             ExplicitWords: [token.Form],
             OverrideAssessmentIds: assessment.TimingOverrideAssessmentIds), CancellationToken.None)

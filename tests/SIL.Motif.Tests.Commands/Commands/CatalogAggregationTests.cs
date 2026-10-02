@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Store;
+using System.Text.Json;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -207,6 +208,35 @@ public sealed class CatalogAggregationTests
 
         Assert.Equal(200d / 748d, share, precision: 6);
         Assert.Equal(0.267, share, precision: 3);
+    }
+
+    [Fact]
+    public void TimingCallTotalsMarkCountsMissingFromSomeMeasuredRows()
+    {
+        AssessedWord[] words = [Timed("counted", 20), Timed("uncounted", 20)];
+        AssessmentObjectTiming[] rows =
+        [
+            new("morph_rule", "rule-r", "authored", "analysis", "R", "counted", 5, null, 1_000_000),
+            new("morph_rule", "rule-r", "authored", "analysis", "R", "uncounted", null, null, 1_000_000),
+        ];
+
+        var aggregate = Assert.Single(TimingAggregation.Aggregate(words, rows, "rule", null, 10).Aggregates);
+        var json = JsonSerializer.SerializeToElement(aggregate, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.Equal(5, aggregate.Calls);
+        Assert.True(json.GetProperty("callsArePartial").GetBoolean());
+    }
+
+    [Fact]
+    public void ARecordedZeroCallCountStaysZeroWhenTheObjectHasMeasuredTime()
+    {
+        var row = new AssessmentObjectTiming("morph_rule", "rule-r", "authored", "analysis", "R", "zero", 0,
+            null, 1_000_000);
+
+        var aggregate = Assert.Single(TimingAggregation.Aggregate([Timed("zero", 20)], [row], "rule", null, 10).Aggregates);
+
+        Assert.Equal(0, aggregate.Calls);
+        Assert.False(aggregate.CallsArePartial);
     }
 
     [Fact]
