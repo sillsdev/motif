@@ -170,7 +170,8 @@ public sealed class InspectorTests
                 Assert.Same(inspector, InspectorPanel(window));
                 Assert.True(inspector.IsEffectivelyVisible);
 
-                var link = RecordedRuleLink(window);
+                var timingKey = new TraceTimingKey("morph_rule", OverviewTimingScreenshots.SubjectAgreementRuleKey);
+                var link = RecordedRuleLink(window, timingKey);
                 var rule = Assert.IsType<TraceStepViewModel>(link.DataContext);
                 Click(window, link);
                 await workspace.Inspector.Loading;
@@ -179,15 +180,15 @@ public sealed class InspectorTests
                 Assert.Equal(InspectorSubjectKind.Rule, fake.InspectRequests[^1].Subject.Kind);
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
 
+                workspace.Context.CloseInspector();
                 workspace.CurrentPage = WorkspacePage.Timing;
                 await Until(window, () => HasRuleLink(window, "Timing by rule"));
-                Click(window, RuleLinkIn(window, "Timing by rule"));
+                Click(window, RuleLinkIn(window, "Timing by rule", timingKey));
                 await workspace.Inspector.Loading;
                 Settle(window);
                 var asked = fake.InspectRequests[^1].Subject;
                 Assert.Equal(InspectorSubjectKind.Rule, asked.Kind);
-                Assert.Equal(new TraceTimingKey("morph_rule", "Subject agreement") { IdentityQuality = "unknown" }, asked.TimingKey);
-                Assert.Equal("unknown", asked.IdentityQuality);
+                Assert.Equal(rule.InspectSubject!.TimingKey, asked.TimingKey);
                 Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
                 Assert.Same(inspector, InspectorPanel(window));
                 Assert.Equal("Timing", workspace.Inspector.Crumbs[0].Label);
@@ -314,16 +315,20 @@ public sealed class InspectorTests
             .Single(items => AutomationProperties.GetName(items) == "Recorded analyses" && items.IsEffectivelyVisible)
             .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
 
-    private static InspectLink RecordedRuleLink(Window window) =>
+    private static InspectLink RecordedRuleLink(Window window, TraceTimingKey? timingKey = null) =>
         window.GetVisualDescendants().OfType<TreeView>()
             .Single(tree => AutomationProperties.GetName(tree) == "Recorded trace tree")
-            .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
+            .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible &&
+                (timingKey is null || link.DataContext is TraceStepViewModel step &&
+                    step.Reference?.TimingKey == timingKey));
 
-    private static Button RuleLinkIn(Window window, string list) =>
+    private static Button RuleLinkIn(Window window, string list, TraceTimingKey? timingKey = null) =>
         window.GetVisualDescendants().OfType<ItemsControl>()
             .Single(items => AutomationProperties.GetName(items) == list && items.IsEffectivelyVisible)
             .GetVisualDescendants().OfType<Button>()
-            .First(button => button.Classes.Contains("inspectLink") && button.IsEffectivelyVisible);
+            .First(button => button.Classes.Contains("inspectLink") && button.IsEffectivelyVisible &&
+                (timingKey is null || button.DataContext is TimingRuleRow row &&
+                    row.InspectSubject.TimingKey == timingKey));
 
     private static bool HasRuleLink(Window window, string list) =>
         window.GetVisualDescendants().OfType<ItemsControl>()
@@ -483,7 +488,7 @@ public sealed class InspectorTests
                 Assert.False(inspector.HasUses);
                 var sections = InspectorPanel(window).GetVisualDescendants().OfType<Border>()
                     .Where(border => border.Classes.Contains("inspectorSection") && border.IsEffectivelyVisible)
-                    .Select(AutomationProperties.GetName).ToArray();
+                    .Select(border => AutomationProperties.GetName(border) ?? string.Empty).ToArray();
                 Assert.Equal(["In this trace", "What it is", "Words it ran in", "In FieldWorks"], sections);
             }
             finally

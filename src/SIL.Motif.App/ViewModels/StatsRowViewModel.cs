@@ -69,9 +69,11 @@ public sealed class StatsRowViewModel
     /// <summary>The numbers as the table shows them, grouped for reading; empty where the parser gave none.</summary>
     public string AttemptsText => Format(Attempts, "N0");
     public string PassesText => Format(Passes, "N0");
-    public string ElapsedText => Format(ElapsedMs, ElapsedMs is < 10 ? "N2" : "N0");
+    /// <summary>Elapsed time in milliseconds, retaining its recorded fractional precision.</summary>
+    public string ElapsedText => ElapsedMs is { } elapsed
+        ? elapsed.ToString("#,0.######", CultureInfo.CurrentCulture) : string.Empty;
 
-    /// <summary>How strongly each number is shaded against the largest in its column, set by the grid's owner.</summary>
+    /// <summary>How strongly each number is shaded against the largest in its current scope.</summary>
     public double AttemptsHeat { get; private set; }
     public double PassesHeat { get; private set; }
     public double ElapsedHeat { get; private set; }

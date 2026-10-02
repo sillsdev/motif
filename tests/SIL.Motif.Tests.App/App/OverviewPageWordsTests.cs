@@ -36,13 +36,37 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("142 words · 38 s total word time", page.SpeedMain);
-        Assert.Equal("median 6.4 ms a word · 95th percentile 48 ms", page.SpeedMedian);
+        Assert.Equal("median 6.4 ms a word · 95th percentile 48.2 ms", page.SpeedMedian);
         Assert.Equal("3 stopped at the step limit", page.SpeedDetails);
         Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
         Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
                       ("Lexical entries", "7%"), ("Root lookup", "4%"), ("Not attributed", "12%")],
             page.TimingKindShares.Select(row => (row.Label, row.ShareText)));
+    }
+
+    [Fact]
+    public async Task TheSpeedTileRetainsTimingPrecisionForPercentilesAndSlowestWords()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            Timing = Populated().Timing with
+            {
+                MedianMs = 0.123456,
+                Percentile95Ms = 0.654321,
+                SlowestWords = [new SlowWordTiming("z-slowest", 0.800001), new SlowWordTiming("a-next", 0.8)],
+                MeasuredWordCount = 2,
+            },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("median 0.123456 ms a word · 95th percentile 0.654321 ms", page.SpeedMedian);
+        Assert.Equal([("z-slowest", "0.800001 ms"), ("a-next", "0.8 ms")],
+            page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
     }
 
     [Fact]

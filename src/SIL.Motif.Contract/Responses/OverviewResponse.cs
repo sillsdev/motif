@@ -137,8 +137,8 @@ public sealed record OverviewLookFirst(
 /// <param name="NamedByWarning">Whether a stored grammar warning names this allomorph or grammatical info.</param>
 public sealed record OverviewSharedMorpheme(string Form, int WordCount, bool NamedByWarning);
 
-/// <summary>A word among the slowest measured words.</summary>
-public sealed record SlowWordTiming(string Word, int ElapsedMs);
+/// <summary>A word among the slowest measured words, with its exact parse duration in milliseconds.</summary>
+public sealed record SlowWordTiming(string Word, double ElapsedMs);
 
 /// <summary>Counts of grammar findings and the largest diagnostic category.</summary>
 public sealed record OverviewWarningsSummary(int? Count, int? LeftOut, string? LargestKind, int? LargestKindCount)

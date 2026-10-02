@@ -63,6 +63,7 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(3, row.Attempts);
         Assert.Equal(1, row.Passes);
         Assert.Equal(12.5, row.ElapsedMs);
+        Assert.Equal("12.5", row.ElapsedText);
         Assert.False(statistics.IsStale);
         Assert.Null(statistics.Refusal);
         var entry = Assert.Single(fake.UsageEntries);
@@ -103,6 +104,50 @@ public sealed class StatisticsViewModelTests
 
         Assert.Single(fake.StatsRequests);
         Assert.Single(fake.UsageEntries);
+    }
+
+    [Fact]
+    public async Task WordRowsUseTheTimingSelectionAndKeepOneSelectedWordScale()
+    {
+        var (fake, statistics) = NewViewModel();
+        statistics.WordScope = ["beta", "gamma"];
+        fake.StatsCompletesWith(RowsResponse(
+            """{"kind":"word","form":"alpha","attempts":2,"elapsed_ns":10000000}""",
+            """{"kind":"word","form":"beta","attempts":4,"elapsed_ns":20000000}""",
+            """{"kind":"word","form":"gamma","attempts":8,"elapsed_ns":40000000}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(["beta", "gamma"], statistics.Rows.Select(row => row.Word));
+        Assert.Equal(2, statistics.RowCount);
+        Assert.Equal(0.7, statistics.Rows.Single(row => row.Word == "gamma").ElapsedHeat, precision: 6);
+        Assert.Equal("By word · the same 2 words selected in Timing.", statistics.ScopeNote);
+    }
+
+    [Fact]
+    public void WordStatisticsExplainAnEmptyTimingSelection()
+    {
+        var (_, statistics) = NewViewModel();
+        statistics.WordScope = [];
+
+        Assert.Equal("By word · no words selected in Timing.", statistics.ScopeNote);
+    }
+
+    [Fact]
+    public async Task NonWordStatisticsNameTheirCompleteParseScope()
+    {
+        var (fake, statistics) = NewViewModel();
+        statistics.SelectedGroup = "object";
+        statistics.WordScope = ["beta"];
+        fake.StatsCompletesWith(RowsResponse(
+            """{"kind":"morph_rule","label":"first","attempts":2,"time_ns":10000000}""",
+            """{"kind":"morph_rule","label":"second","attempts":4,"time_ns":20000000}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(["first", "second"], statistics.Rows.Select(row => row.Object));
+        Assert.Equal("By grammar object · all rows from the complete parse; selected words do not filter them.",
+            statistics.ScopeNote);
     }
 
     [Fact]

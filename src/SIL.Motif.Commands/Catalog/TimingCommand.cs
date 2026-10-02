@@ -134,9 +134,7 @@ public static class TimingCommand
         if (selection is TimingWordSet.StepLimited)
             return Success(allWords.Where(IsStepLimited).ToArray());
         if (selection is TimingWordSet.Slowest)
-            return Success(allWords.Where(word => word.ElapsedMs is not null)
-                .OrderByDescending(word => word.ElapsedMs).ThenBy(word => word.Word, StringComparer.Ordinal)
-                .Take(request.Top).ToArray());
+            return Success(TimingAggregation.SelectSlowestWords(allWords, request.Top));
         if (selection is TimingWordSet.MatrixCell cell)
         {
             var standing = TimingWordSet.StandingName(cell.Standing);

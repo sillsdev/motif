@@ -464,7 +464,7 @@ public sealed class WorkspaceContextTests
         Assert.Equal(kindRows, timing.KindTiming!.Aggregates);
         Assert.Equal(ruleRows, timing.RuleTiming!.Aggregates);
         Assert.Equal("morph_rule", timing.SelectedRuleRow!.Kind);
-        Assert.Equal("10 ms · 83% of these 2 words' 12 ms · recorded in 2 words", timing.RuleSummary);
+        Assert.Equal("10 ms · 83.33% of these 2 words' 12 ms · recorded in 2 words", timing.RuleSummary);
     }
 
     // The chosen row needs its own look; hover's grey alone could not tell it from the row under the pointer.

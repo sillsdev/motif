@@ -207,8 +207,8 @@ public sealed class AssessCommandTests : IDisposable
 
         var cachePath = Path.Combine(_managedRootsParent, "stats.sqlite");
         WriteStatsCache(cachePath,
-            (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L),
-            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L));
+            (SeededProject.AnalysedWordForm, 4, 1, 2, 2_000_000L, 99_000_000L),
+            (SeededProject.UnanalysedWordForm, 3, 0, 0, 0L, 15_000_000L));
         var cacheDigest = BatchInvocationEvidence.DigestFile(cachePath);
         AssessmentScope? observedScope = null;
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
@@ -526,9 +526,10 @@ public sealed class AssessCommandTests : IDisposable
         {
             var path = Path.Combine(_managedRootsParent, $"timing-overlay-{run}.sqlite");
             if (run == 1)
-                WriteStatsCache(path, ("motifa", 4, 1, 2, 2_000_000), ("motifb", 3, 0, 3, 3_000_000));
+                WriteStatsCache(path, ("motifa", 4, 1, 2, 2_000_000, 99_000_000),
+                    ("motifb", 3, 0, 3, 3_000_000, 50_000_000));
             else
-                WriteStatsCache(path, ("motifa", 8, 1, 5, 8_000_000));
+                WriteStatsCache(path, 10_000_000L, ("motifa", 8, 1, 5, 8_000_000));
             return new AssessmentRaw.FileCache(path, BatchInvocationEvidence.DigestFile(path));
         }
         var initial = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
@@ -1508,27 +1509,8 @@ public sealed class AssessCommandTests : IDisposable
         params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words) =>
         WriteStatsCache(path, 0L, words);
 
-    private static void WriteStatsCache(string path, string objectKind, string objectKey,
-        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
-    {
-        WriteStatsCache(path, 0L, words);
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        {
-            DataSource = path,
-            Mode = SqliteOpenMode.ReadWrite,
-            Pooling = false,
-        }.ToString());
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = "UPDATE object SET kind = $kind, key = $key, " +
-            "identity_quality = CASE WHEN $kind = 'lex_entry' THEN 'authored' ELSE identity_quality END";
-        command.Parameters.AddWithValue("$kind", objectKind);
-        command.Parameters.AddWithValue("$key", objectKey);
-        command.ExecuteNonQuery();
-    }
-
-    private static void WriteStatsCache(string path, long elapsedNs,
-        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
+    private static void WriteStatsCache(string path,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs, long ElapsedNs)[] words)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
@@ -1550,7 +1532,7 @@ public sealed class AssessCommandTests : IDisposable
             INSERT INTO object VALUES (1, 'mrule#0:Verb template', 'morph_rule', 'Verb template', 'structural');
             """;
         command.ExecuteNonQuery();
-        foreach (var (word, attempts, passes, objectAttempts, selfTimeNs) in words)
+        foreach (var (word, attempts, passes, objectAttempts, selfTimeNs, elapsedNs) in words)
         {
             using var insert = connection.CreateCommand();
             insert.CommandText = """
@@ -1574,6 +1556,30 @@ public sealed class AssessCommandTests : IDisposable
             fact.ExecuteNonQuery();
         }
     }
+
+    private static void WriteStatsCache(string path, string objectKind, string objectKey,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words)
+    {
+        WriteStatsCache(path, 0L, words);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false,
+        }.ToString());
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE object SET kind = $kind, key = $key, " +
+            "identity_quality = CASE WHEN $kind = 'lex_entry' THEN 'authored' ELSE identity_quality END";
+        command.Parameters.AddWithValue("$kind", objectKind);
+        command.Parameters.AddWithValue("$key", objectKey);
+        command.ExecuteNonQuery();
+    }
+
+    private static void WriteStatsCache(string path, long elapsedNs,
+        params (string Word, int Attempts, int Passes, int ObjectAttempts, long SelfTimeNs)[] words) =>
+        WriteStatsCache(path, words.Select(word =>
+            (word.Word, word.Attempts, word.Passes, word.ObjectAttempts, word.SelfTimeNs, elapsedNs)).ToArray());
 
     // SeedText's wordforms must be saved to disk for AssessCommand's own scratch load to see them.
     private SeededScratch NewSeededScratch()

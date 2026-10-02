@@ -160,8 +160,8 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The stored median and 95th percentile per-word parse time.</summary>
     public string SpeedMedian => Overview?.Timing is { MedianMs: { } median } timing
-        ? $"median {SpeedText.PerWord(median)} a word" +
-          (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {SpeedText.PerWord(p95)}" : string.Empty)
+        ? $"median {TimingShare.FormatMilliseconds(median)} a word" +
+          (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {TimingShare.FormatMilliseconds(p95)}" : string.Empty)
         : string.Empty;
 
     /// <summary>How many words stopped at the step limit, or empty when none did.</summary>
@@ -175,7 +175,7 @@ public sealed partial class OverviewPageModel : PageModel
             ? [.. timing.SlowestWords.Select(slow =>
             {
                 var listed = Context.Assess.Words.Listed(slow.Word);
-                listed.TimeText = SpeedText.PerWord(slow.ElapsedMs);
+                listed.TimeText = TimingShare.FormatMilliseconds(slow.ElapsedMs);
                 return listed;
             })]
             : [];

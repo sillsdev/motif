@@ -69,9 +69,9 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "More time does not fix a search that reached its step limit";
+                const string expectedSentence = "A word stopped by the step limit needs a larger step limit";
                 const string expectedSection = "Slowest words in Timing";
-                const string expectedOpening = "shows where recorded parse time went";
+                const string expectedOpening = "shows the measured total word time";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bool TimingIsRendered()
                 {
@@ -418,6 +418,8 @@ public sealed class MainWindowSmokeTests
 
             workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
             workspace.CurrentPage = WorkspacePage.Timing;
+            window.GetLogicalDescendants().OfType<Expander>()
+                .Single(expander => AutomationProperties.GetName(expander) == "More word sources").IsExpanded = true;
             var pickedWords = Assert.Single(window.GetLogicalDescendants().OfType<TextBox>(), input =>
                 AutomationProperties.GetName(input) == "Words picked by hand");
             pickedWords.Text = "motifa";

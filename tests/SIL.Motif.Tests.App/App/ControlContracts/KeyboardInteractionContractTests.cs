@@ -70,6 +70,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     }
 
     [Fact]
+    public void TimingKindBarIsDisplayOnlyAndDoesNotTakeKeyboardFocus()
+    {
+        var bar = new TimingKindBar();
+
+        Assert.False(bar.Focusable);
+        Assert.False(bar.IsTabStop);
+    }
+
+    [Fact]
     public void PointerAndKeyboardSelectionRespectTheSameCellGuards()
     {
         avalonia.Invoke(() =>

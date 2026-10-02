@@ -12,8 +12,8 @@ public sealed record TimingKindLegendEntry(TimingShare Row, IBrush? Brush);
 
 /// <summary>
 /// Draws each kind's share of the words' whole parse time across one full-width bar, and names each part's colour
-/// for a legend. Each kind keeps one colour wherever it falls in the bar, so a kind looks the same however the
-/// shares sort; the other time, which has no kind, takes the unattributed colour.
+/// for a legend. Each kind keeps one colour wherever it falls in the bar, and unattributed time takes its own
+/// colour.
 /// </summary>
 public sealed class TimingKindBar : Control
 {
@@ -36,6 +36,12 @@ public sealed class TimingKindBar : Control
 
     static TimingKindBar() => AffectsRender<TimingKindBar>(RowsProperty, MorphRuleBrushProperty,
         PhonRuleBrushProperty, LexiconBrushProperty, RootLookupBrushProperty, UnattributedBrushProperty);
+
+    public TimingKindBar()
+    {
+        Focusable = false;
+        IsTabStop = false;
+    }
 
     public IReadOnlyList<TimingShare>? Rows
     {
@@ -71,7 +77,7 @@ public sealed class TimingKindBar : Control
         set => SetValue(RootLookupBrushProperty, value);
     }
 
-    /// <summary>The part for time no rule kind's timer accounts for, and for any kind the bar does not name.</summary>
+    /// <summary>The part for time the parser did not attribute to a named kind.</summary>
     public IBrush? UnattributedBrush
     {
         get => GetValue(UnattributedBrushProperty);

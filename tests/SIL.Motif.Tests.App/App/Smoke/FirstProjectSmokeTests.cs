@@ -283,6 +283,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Grid,
                 InteractiveControlFamily.Morpheme,
+                InteractiveControlFamily.Summary,
                 InteractiveControlFamily.FocusableSurface,
                 InteractiveControlFamily.ContentSurface,
                 InteractiveControlFamily.Collection,

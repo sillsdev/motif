@@ -46,6 +46,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 
             walkthrough.ShowPage(WorkspacePage.Timing);
             var timing = walkthrough.Workspace.PageModel<TimingPageModel>();
+            walkthrough.Find<Expander>("More word sources").IsExpanded = true;
+            PageScreenshots.Settle(walkthrough.Window);
             Button SourceButton(string name) => walkthrough.Window.GetLogicalDescendants().OfType<Button>()
                 .Single(button => Equals(button.Content, name));
             var sources = new[]

@@ -414,7 +414,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             stage.Open(WorkspacePage.TryAWord);
             return await stage.Inspect(() => stage.Visible<InspectLink>(link =>
-                link.FindAncestorOfType<TreeView>() is { } tree && AutomationProperties.GetName(tree) == "Recorded trace tree").First(),
+                link.FindAncestorOfType<TreeView>() is { } tree &&
+                AutomationProperties.GetName(tree) == "Recorded trace tree").First(),
                 "the first recorded rule with an inspector identity");
         })
         {
@@ -439,6 +440,39 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         // Timing.
         yield return new("timing", "rule-hover", stage => stage.Hover(WorkspacePage.Timing,
             () => stage.Visible<Button>(button => button.Classes.Contains("timingRuleRow")).First(), "the first rule row"));
+        yield return new("timing", "filled", async stage =>
+        {
+            stage.Workspace.PageModel<TimingPageModel>().ShowKindCalls = false;
+            await stage.ShowTimingWords();
+            return "Timing with measured word time, kind shares, a selected rule, and its costliest words.";
+        })
+        { Height = 1600 };
+        yield return new("timing", "calls-open", async stage =>
+        {
+            stage.Open(WorkspacePage.Timing);
+            var timing = stage.Workspace.PageModel<TimingPageModel>();
+            await stage.Until(() => timing.HasKindCalls, "Timing's per-kind calls");
+            if (!timing.ShowKindCalls)
+            {
+                var calls = stage.Named<Button>("Show calls per kind");
+                calls.Command!.Execute(calls.CommandParameter);
+            }
+            PageScreenshots.Settle(stage.Window);
+            return "Timing with calls per kind disclosed.";
+        });
+        yield return new("timing", "selected-rule-inspector", async stage =>
+        {
+            stage.Workspace.PageModel<TimingPageModel>().ShowKindCalls = false;
+            await stage.ShowTimingWords();
+            var timing = stage.Workspace.PageModel<TimingPageModel>();
+            await timing.ChooseRuleCommand.ExecuteAsync(timing.RuleRows[0].Row);
+            await stage.Until(() => timing.CostliestRuleWordRows.Count > 0, "the selected rule's costliest words");
+            PageScreenshots.Settle(stage.Window);
+            return await stage.Inspect(() => stage.Visible<InspectLink>(link =>
+                link.FindAncestorOfType<ItemsControl>() is { } list &&
+                AutomationProperties.GetName(list) == "Timing by rule").First(), "the selected rule");
+        })
+        { Height = 1600 };
         yield return new("timing", "statistics-expanded", stage => stage.Expand(WorkspacePage.Timing,
             () => stage.Visible<Expander>(expander => expander.Header as string == "Detailed statistics").First(),
             "Detailed statistics"))
@@ -607,6 +641,21 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 await stage.Workspace.Assess.Trace.TryCommand.ExecutionTask!;
             },
         };
+        yield return new("timing", "empty-selection", async stage =>
+        {
+            stage.Client.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+                new TimingResponse(request.AssessmentId ?? "assessment/one", request.WordSet, request.By,
+                    0, 0, 0, [], [], [])
+                {
+                    Words = [],
+                    Attribution = new WordTimeAttribution(0, 0, 0, 0, null, 0, false),
+                })));
+            stage.Open(WorkspacePage.Timing);
+            var timing = stage.Workspace.PageModel<TimingPageModel>();
+            await timing.SelectWordSetCommand.ExecuteAsync("all");
+            await stage.Until(() => timing.ShowEmptySelection, "Timing's empty selection");
+            return "Timing when the selected words have no recorded parse times.";
+        });
     }
 
     // Two matching frames in a row, so no chevron is caught turning; a blinking caret ends the bounded run instead.
@@ -840,6 +889,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             var name = target();
             var centre = CentreOf(name);
+            Window.MouseMove(centre);
+            PageScreenshots.Settle(Window);
             Window.MouseDown(centre, MouseButton.Left);
             Window.MouseUp(centre, MouseButton.Left);
             Window.MouseMove(new Point(4, Window.Bounds.Height - 4));

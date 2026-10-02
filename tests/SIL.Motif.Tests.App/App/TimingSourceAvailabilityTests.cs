@@ -1,5 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
@@ -17,7 +18,7 @@ public sealed class TimingSourceAvailabilityTests
     private const string ProjectPath = @"C:\projects\reading.fwdata";
 
     [Fact]
-    public void WordSourcesShareOneLabeledRowAndOneHintBelowIt()
+    public void WordSourcesStayBehindOneCompactControlStrip()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -31,22 +32,28 @@ public sealed class TimingSourceAvailabilityTests
                 workspace.Context.ProjectPath = ProjectPath;
                 workspace.Assess.ProjectPath = ProjectPath;
                 workspace.Assess.Result = Assessment();
+                workspace.Context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow,
+                    WasRerun: false));
+                await workspace.Context.EvidencePublication;
                 workspace.Context.OpenPage(WorkspacePage.Timing);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 
-                var row = Assert.Single(window.GetVisualDescendants().OfType<WrapPanel>(),
-                    panel => AutomationProperties.GetName(panel) == "Timing word picker row");
-                var hint = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
-                    block => AutomationProperties.GetName(block) == "Timing word picker hint");
+                var controls = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
+                    panel => AutomationProperties.GetName(panel) == "Timing controls");
+                var sources = Assert.Single(window.GetVisualDescendants().OfType<Expander>(),
+                    expander => AutomationProperties.GetName(expander) == "More word sources");
+                Assert.Equal(Orientation.Horizontal, controls.Orientation);
+                Assert.False(sources.IsExpanded);
+                sources.IsExpanded = true;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
 
-                Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
-                Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "List from Texts");
-                Assert.Equal(2, row.GetVisualDescendants().OfType<ComboBox>().Count());
-                AssertPickerLabelBesideControl(row, "Matrix cell", "Matrix cell from Texts");
-                AssertPickerLabelBesideControl(row, "List from Texts", "List from Texts");
-                Assert.True(hint.Bounds.Top >= row.Bounds.Bottom);
-                Assert.Equal("Choose a preset, a cell, a Texts list, or words entered below.", hint.Text);
+                Assert.Contains(sources.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
+                Assert.Contains(sources.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "List from Texts");
+                Assert.Equal(2, sources.GetVisualDescendants().OfType<ComboBox>().Count());
+                AssertPickerLabelBesideControl(sources, "Matrix cell", "Matrix cell from Texts");
+                AssertPickerLabelBesideControl(sources, "List from Texts", "List from Texts");
             }
             finally
             {
@@ -56,7 +63,7 @@ public sealed class TimingSourceAvailabilityTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    private static void AssertPickerLabelBesideControl(WrapPanel row, string labelText, string controlName)
+    private static void AssertPickerLabelBesideControl(Control row, string labelText, string controlName)
     {
         var label = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == labelText);
         var control = Assert.Single(row.GetVisualDescendants().OfType<ComboBox>(),
@@ -83,12 +90,19 @@ public sealed class TimingSourceAvailabilityTests
                 workspace.Context.ProjectPath = ProjectPath;
                 workspace.Assess.ProjectPath = ProjectPath;
                 workspace.Assess.Result = Assessment();
+                workspace.Context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow,
+                    WasRerun: false));
+                await workspace.Context.EvidencePublication;
 
                 var compare = workspace.Assess.Compare;
                 Assert.Single(compare.Words).IsChecked = true;
                 var timing = workspace.PageModel<TimingPageModel>();
                 timing.SelectedTextsList = Assert.Single(compare.Presets, preset => preset.Count > 0);
                 workspace.Context.OpenPage(WorkspacePage.Timing);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.GetVisualDescendants().OfType<Expander>()
+                    .Single(expander => AutomationProperties.GetName(expander) == "More word sources").IsExpanded = true;
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 

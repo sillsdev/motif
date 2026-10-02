@@ -65,6 +65,10 @@
               AutomationProperties.Name="Refresh statistics" />
     </DockPanel>
 
+    <views:CopyableTextBlock DockPanel.Dock="Top" Classes="muted"
+               Text="{Binding Statistics.ScopeNote}"
+               AutomationProperties.Name="Statistics word scope" />
+
     <views:RefusalBlock DataContext="{Binding Statistics.ShownRefusal}" DockPanel.Dock="Top" />
     <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" TextWrapping="Wrap"
                Text="{Binding Statistics.ShadingNote}" />

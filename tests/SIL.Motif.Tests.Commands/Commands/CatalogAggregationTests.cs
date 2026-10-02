@@ -88,6 +88,40 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
+    public void OverviewTimingUsesExactWordTimesForStatisticsAndSlowestOrdering()
+    {
+        AssessedWord[] words =
+        [
+            new("z", "analysed", [], 0) { ElapsedNs = 800_000 },
+            new("a", "analysed", [], 0) { ElapsedNs = 200_000 },
+            new("nanosecond-only", "analysed", [], null) { ElapsedNs = 500_000 },
+            new("exact-zero", "analysed", [], 9) { ElapsedNs = 0 },
+            new("missing", "skipped", [], null),
+        ];
+
+        var result = TimingAggregation.SummarizeWords(words, top: 4);
+
+        Assert.Equal(4, result.MeasuredWordCount);
+        Assert.Equal(0.35, result.MedianMs);
+        Assert.Equal(0.8, result.Percentile95Ms);
+        Assert.Equal(["z", "nanosecond-only", "a", "exact-zero"],
+            result.SlowestWords.Select(word => word.Word));
+        Assert.Equal([0.8, 0.5, 0.2, 0], result.SlowestWords.Select(word => (double)word.ElapsedMs));
+    }
+
+    [Fact]
+    public void WordTimeUsesRecordedZeroAndFallsBackOnlyWhenNanosecondsAreMissing()
+    {
+        var exactZero = new AssessedWord("zero", "analysed", [], 9) { ElapsedNs = 0 };
+        var legacyTime = new AssessedWord("legacy", "analysed", [], 7);
+        var missing = new AssessedWord("missing", "skipped", [], null);
+
+        Assert.Equal(0, TimingAggregation.WordTimeMs(exactZero));
+        Assert.Equal(7, TimingAggregation.WordTimeMs(legacyTime));
+        Assert.Null(TimingAggregation.WordTimeMs(missing));
+    }
+
+    [Fact]
     public void OverviewTimingSplitsTotalWordTimeByKindWithTheResidualBeside()
     {
         AssessedWord[] words = [Timed("a", 500), Timed("b", 300)];

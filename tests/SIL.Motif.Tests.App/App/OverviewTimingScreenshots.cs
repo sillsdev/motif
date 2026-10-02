@@ -15,6 +15,8 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTimingScreenshots
 {
+    internal const string SubjectAgreementRuleKey = "c3f310a1-4c53-ff36-88e6-531c157983e6";
+
     private static readonly (string Word, int Ms, string Completion)[] Words =
     [
         ("mwalimu", 700, "Step limit"), ("hawajafika", 48, "Finished"), ("walikula", 12, "Finished"),
@@ -94,18 +96,23 @@ public sealed class OverviewTimingScreenshots
     private static TimingResponse Timing(string by) =>
         new("assessment/one", "all", by, Words.Length, 9, 700,
             [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48), new SlowWordTiming("walikula", 12)],
-            // The kinds record 680 ms of the words' 800 ms, so the page has other time to show.
+            // The kinds record 680 ms of the words' 800 ms, so the page shows its unattributed time.
             by == "kind"
                 ?
                 [
-                    new TimingAggregateRow("morph_rule", "morph_rule", 448, 448d / 800, 9) { Kind = "morph_rule" },
-                    new TimingAggregateRow("phon_rule", "phon_rule", 160, 160d / 800, 7) { Kind = "phon_rule" },
-                    new TimingAggregateRow("lex_entry", "lex_entry", 40, 40d / 800, 9) { Kind = "lex_entry" },
-                    new TimingAggregateRow("root_index", "root_index", 32, 32d / 800, 9) { Kind = "root_index" },
+                    new TimingAggregateRow("morph_rule", "morph_rule", 448, 448d / 800, 9)
+                    { Kind = "morph_rule", Calls = 420 },
+                    new TimingAggregateRow("phon_rule", "phon_rule", 160, 160d / 800, 7)
+                    { Kind = "phon_rule", Calls = 70 },
+                    new TimingAggregateRow("lex_entry", "lex_entry", 40, 40d / 800, 9)
+                    { Kind = "lex_entry", Calls = null },
+                    new TimingAggregateRow("root_index", "root_index", 32, 32d / 800, 9)
+                    { Kind = "root_index", Calls = 120 },
                 ]
                 :
                 [
-                    new TimingAggregateRow("Subject agreement", "Subject agreement", 288, 0.36, 6) { Kind = "morph_rule" },
+                    new TimingAggregateRow(SubjectAgreementRuleKey, "Subject agreement", 288, 0.36, 6)
+                    { Kind = "morph_rule", IdentityQuality = "authored" },
                     new TimingAggregateRow("Past tense li-", "Past tense li-", 152, 0.19, 3) { Kind = "morph_rule" },
                     new TimingAggregateRow("Vowel harmony", "Vowel harmony", 120, 0.15, 7) { Kind = "phon_rule" },
                 ],

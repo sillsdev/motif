@@ -42,6 +42,7 @@ public sealed partial class TimingPageModel : PageModel
         UseCheckedWordsCommand = new AsyncRelayCommand(UseCheckedWordsAsync, CanUseCheckedWords);
         UseMatrixCellCommand = new AsyncRelayCommand(UseMatrixCellAsync, CanUseMatrixCell);
         ChooseRuleCommand = new AsyncRelayCommand<TimingAggregateRow>(ChooseRuleAsync);
+        ToggleKindCallsCommand = new RelayCommand(() => ShowKindCalls = !ShowKindCalls);
         HandOffWordsCommand = new RelayCommand(() => context.HandOff(SelectedWords),
             () => SelectedWords.Count > 0);
         HandOffRuleCommand = new RelayCommand(() => context.HandOff(
@@ -110,7 +111,8 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The stored timing response's word count and percentiles in one line.</summary>
     public string StoredTimingSummary => StoredTiming is not { } timing ? string.Empty :
-        $"{timing.WordCount:N0} words · median {timing.MedianMs:N1} ms · 95th percentile {timing.Percentile95Ms:N1} ms";
+        $"{timing.WordCount:N0} words · median {FormatPercentile(timing.MedianMs)} · 95th percentile " +
+        FormatPercentile(timing.Percentile95Ms);
 
     /// <summary>The selected words' stored totals grouped by kind.</summary>
     public TimingResponse? KindTiming { get; private set; }
@@ -126,7 +128,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The slowest words as word rows, each with the parse time Timing measured for it.</summary>
     public IReadOnlyList<ListedWordViewModel> SlowestWordRows => KindTiming?.SlowestWords
-        .Select(slow => Listed(slow.Word, SpeedText.PerWord(slow.ElapsedMs))).ToArray() ?? [];
+        .Select(slow => Listed(slow.Word, TimingShare.FormatMilliseconds(slow.ElapsedMs))).ToArray() ?? [];
 
     public bool HasTiming => KindTiming is not null;
 
@@ -141,7 +143,7 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasHeadline => MeasuredWords.Count > 0;
 
     /// <summary>The chosen words' summed parse time, as PanGloss measured it.</summary>
-    public string HeadlineTotal => HasHeadline ? SpeedText.Duration(WordTimeMs)
+    public string HeadlineTotal => HasHeadline ? TimingShare.FormatMilliseconds(WordTimeMs)
         : string.Empty;
 
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
@@ -153,7 +155,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The chosen words' median parse time.</summary>
     public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
-        ? SpeedText.PerWord(median) : string.Empty;
+        ? TimingShare.FormatMilliseconds(median) : string.Empty;
 
     /// <summary>How many of the chosen words stopped at the step limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
@@ -163,8 +165,15 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The caption under the stopped-word count.</summary>
     public string HeadlineStoppedCaption => "stopped at the step limit";
 
+    /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
+    public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
+        ? $"Includes {SpeedText.Count(overrides.Count, "separate re-run measurement", "separate re-run measurements")}."
+        : string.Empty;
+
+    public bool HasRerunMeasurements => RerunMeasurementsText.Length > 0;
+
     private IReadOnlyList<TimingWordRow> MeasuredWords =>
-        KindTiming?.Words.Where(word => word.ElapsedMs is not null).ToArray() ?? [];
+        KindTiming?.Words.Where(word => TimingAggregation.WordTimeMs(word) is not null).ToArray() ?? [];
 
     private int ChosenWordCount => KindTiming?.Words.Count ?? 0;
 
@@ -188,6 +197,9 @@ public sealed partial class TimingPageModel : PageModel
         }
     }
 
+    /// <summary>The per-kind call counts, kept behind the page's call-count disclosure.</summary>
+    public IReadOnlyList<TimingShare> KindCallShares => SharesOf(KindTiming?.Aggregates, byKind: true);
+
     /// <summary>The chosen words' time by rule, each a share of the same whole parse time as the kinds.</summary>
     public IReadOnlyList<TimingShare> RuleShares => SharesOf(RuleTiming?.Aggregates, byKind: false);
 
@@ -208,22 +220,24 @@ public sealed partial class TimingPageModel : PageModel
     }
 
     /// <summary>What the response recorded as unattributed time and overrun.</summary>
-    public string OtherTimeText
+    public string NotAttributedText
     {
         get
         {
             if (!HasHeadline || KindTiming is not { } timing) return string.Empty;
             var attribution = timing.Attribution;
-            var notAttributed = attribution.NotAttributedMs is { } time
-                ? $"{SpeedText.PerWord(time)} was not attributed to rules or lookups."
-                : "Not attributed time was not recorded for these words.";
-            if (!attribution.Overrun) return notAttributed;
-            var overrun = attribution.OverrunMs > 0
-                ? $"Object time exceeded word time by {SpeedText.PerWord(attribution.OverrunMs)} across the words."
-                : "Object time exceeded word time for one or more words.";
-            return $"{notAttributed} {overrun}";
+            if (attribution.NotAttributedMs is not { } time) return "Not attributed: Not recorded.";
+            return attribution.NotAttributedShare is { } share
+                ? $"Not attributed: {TimingShare.FormatMilliseconds(time)} ({TimingShare.FormatPercent(share)})."
+                : $"Not attributed: {TimingShare.FormatMilliseconds(time)}.";
         }
     }
+
+    /// <summary>The measured object time beyond total word time, when the response records an overrun.</summary>
+    public string OverrunText => !HasHeadline || KindTiming is not { } timing || !timing.Attribution.Overrun
+        ? string.Empty : $"Overrun: {TimingShare.FormatMilliseconds(timing.Attribution.OverrunMs)}.";
+
+    public bool HasOverrun => HasHeadline && KindTiming?.Attribution.Overrun == true;
 
     private IReadOnlyList<TimingShare> SharesOf(IReadOnlyList<TimingAggregateRow>? rows, bool byKind) => rows is null ? [] :
         [.. rows.Select(row => new TimingShare(byKind ? TimingShare.KindName(row.Name) : row.Name, row.Kind, row.SelfMs,
@@ -243,7 +257,11 @@ public sealed partial class TimingPageModel : PageModel
         $"Where the time went, for these {KindTiming.WordCount:N0} words: by kind of rule";
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? "No words in this selection have recorded parse time." :
-        $"Median {KindTiming.MedianMs:N1} ms · 95th percentile {KindTiming.Percentile95Ms:N1} ms";
+        $"Median {FormatPercentile(KindTiming.MedianMs)} · 95th percentile " +
+        FormatPercentile(KindTiming.Percentile95Ms);
+
+    private static string FormatPercentile(double? milliseconds) => milliseconds is { } value
+        ? TimingShare.FormatMilliseconds(value) : "not recorded";
     /// <summary>The complete address selected here or requested by another page.</summary>
     public TraceTimingKey? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
@@ -254,7 +272,8 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
-        [.. RuleShares.Select(share => new TimingRuleRow(share, ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)))];
+        [.. RuleShares.OrderByDescending(share => share.Share ?? -1).Select(share =>
+            new TimingRuleRow(share, ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)))];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
     /// <summary>
@@ -263,8 +282,8 @@ public sealed partial class TimingPageModel : PageModel
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
         Listed(word.Word, KindTiming?.Words.FirstOrDefault(row => row.Word == word.Word)?.ElapsedMs is { } whole
-            ? $"{SpeedText.PerWord(word.SelfMs)} of its {SpeedText.PerWord(whole)}"
-            : SpeedText.PerWord(word.SelfMs)))];
+            ? $"{TimingShare.FormatMilliseconds(word.SelfMs)} of its {TimingShare.FormatMilliseconds(whole)}"
+            : TimingShare.FormatMilliseconds(word.SelfMs)))];
 
     /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
     public string RuleWordsTitle => $"Words where {SelectedRuleName} took longest";
@@ -355,6 +374,17 @@ public sealed partial class TimingPageModel : PageModel
     [ObservableProperty]
     private string? _rerunMessage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(KindCallsButtonText))]
+    [NotifyPropertyChangedFor(nameof(KindCallsButtonName))]
+    private bool _showKindCalls;
+
+    public string KindCallsButtonText => ShowKindCalls ? "Hide calls" : "Show calls";
+
+    public string KindCallsButtonName => ShowKindCalls ? "Hide calls per kind" : "Show calls per kind";
+
+    public bool HasKindCalls => KindCallShares.Count > 0;
+
     public string RerunProgressText => RerunWord is null ? $"{RerunCompleted} of {RerunTotal} words done" :
         $"{RerunCompleted} of {RerunTotal} words done · parsing {RerunWord}";
 
@@ -366,6 +396,7 @@ public sealed partial class TimingPageModel : PageModel
     public IAsyncRelayCommand UseCheckedWordsCommand { get; }
     public IAsyncRelayCommand UseMatrixCellCommand { get; }
     public IAsyncRelayCommand<TimingAggregateRow> ChooseRuleCommand { get; }
+    public IRelayCommand ToggleKindCallsCommand { get; }
     public IRelayCommand HandOffWordsCommand { get; }
     public IRelayCommand HandOffRuleCommand { get; }
     public IAsyncRelayCommand RerunWordsCommand { get; }
@@ -422,6 +453,8 @@ public sealed partial class TimingPageModel : PageModel
             StoredTiming = null;
             StoredTimingRefusal = null;
             RaiseStoredTimingState();
+            OnPropertyChanged(nameof(RerunMeasurementsText));
+            OnPropertyChanged(nameof(HasRerunMeasurements));
             return;
         }
 
@@ -576,7 +609,9 @@ public sealed partial class TimingPageModel : PageModel
         KindTiming = null;
         RuleTiming = null;
         RuleDetail = null;
+        Statistics.WordScope = null;
         TimingRefusal = null;
+        ShowKindCalls = false;
         _isLoadingTiming = true;
         RaiseTimingState();
         var top = _wordSet is TimingWordSet.Slowest ? Math.Max(1, SlowestCount) : 10;
@@ -602,6 +637,7 @@ public sealed partial class TimingPageModel : PageModel
         }
 
         KindTiming = kind.Value;
+        Statistics.WordScope = SelectedWords;
         FocusedTiming = Focus is null ? null : kind.Value;
         StoredTiming = Focus is null && _wordSet is TimingWordSet.All && _explicitWords is null ? kind.Value : StoredTiming;
         var rule = await Context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId,
@@ -733,7 +769,9 @@ public sealed partial class TimingPageModel : PageModel
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
             nameof(KindShares), nameof(RuleShares), nameof(RuleShareHeader), nameof(ShareDenominatorText),
-            nameof(OtherTimeText), nameof(CostliestRuleWordRows), nameof(RuleWordsTitle),
+            nameof(NotAttributedText), nameof(OverrunText), nameof(KindCallShares), nameof(HasKindCalls),
+            nameof(HasOverrun), nameof(RerunMeasurementsText), nameof(HasRerunMeasurements),
+            nameof(CostliestRuleWordRows), nameof(RuleWordsTitle),
         }) OnPropertyChanged(property);
         RaiseFocusState();
         RaiseStoredTimingState();
@@ -780,14 +818,14 @@ public sealed partial class TimingPageModel : PageModel
 
 /// <summary>
 /// One part of some words' measured parse time: a kind of rule, one rule, or the other time the parser recorded
-/// against no rule. Its share is always of the words' whole parse time, never of the time recorded against rules.
+/// without a named kind. Its share is always of the words' whole parse time, never of the named kinds' time.
 /// </summary>
 /// <param name="Label">The kind's or rule's name as the window shows it.</param>
 /// <param name="Kind">The stored kind, for a rule; empty for unattributed time.</param>
 /// <param name="ElapsedMs">The time the parser recorded, in milliseconds, or null when not recorded.</param>
 /// <param name="Share">The share of the words' whole parse time, or <see langword="null"/> when none was kept.</param>
 /// <param name="Words">How many words the parser recorded this part's time in.</param>
-/// <param name="Source">The command's row behind it, or <see langword="null"/> for the other time.</param>
+/// <param name="Source">The command's row behind it, or <see langword="null"/> for unattributed time.</param>
 public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, double? Share, int Words,
     TimingAggregateRow? Source)
 {
@@ -800,12 +838,35 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
 
-    public string TimeText => ElapsedMs is { } time ? SpeedText.PerWord(time) : "Not recorded";
+    public string TimeText => ElapsedMs is { } time ? FormatMilliseconds(time) : "Not recorded";
 
-    public string ShareText => Share is { } share ? share.ToString("P0", CultureInfo.CurrentCulture) :
+    public string ShareText => Share is { } share ? FormatPercent(share) :
         IsNotAttributed ? "Not recorded" : "—";
 
     public string WordsText => Words.ToString("N0", CultureInfo.CurrentCulture);
+
+    public string CallsText => Source is null ? string.Empty : Source.Calls is { } calls
+        ? $"{calls:N0} {(calls == 1 ? "call" : "calls")}" : "Not counted";
+
+    /// <summary>Formats the timing in milliseconds while retaining its recorded fractional precision.</summary>
+    /// <param name="milliseconds">The measured time.</param>
+    public static string FormatMilliseconds(double milliseconds) =>
+        milliseconds.ToString("#,0.######", CultureInfo.CurrentCulture) + " ms";
+
+    /// <summary>Formats a recorded share to at most two decimal places, trimming trailing zeroes.</summary>
+    /// <param name="share">The fraction of total word time.</param>
+    public static string FormatPercent(double share)
+    {
+        var formatted = share.ToString("P2", CultureInfo.CurrentCulture);
+        var suffix = CultureInfo.CurrentCulture.NumberFormat.PercentSymbol;
+        var suffixStart = formatted.LastIndexOf(suffix, StringComparison.Ordinal);
+        if (suffixStart < 0) return formatted;
+        var number = formatted[..suffixStart].TrimEnd();
+        var spacing = formatted[number.Length..suffixStart];
+        var separator = CultureInfo.CurrentCulture.NumberFormat.PercentDecimalSeparator;
+        number = number.TrimEnd('0').TrimEnd(separator.ToCharArray());
+        return number + spacing + suffix;
+    }
 
     /// <summary>The window's name for a stored parser kind.</summary>
     public static string KindName(string kind) => kind switch
@@ -825,6 +886,15 @@ public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
 {
     /// <summary>The rule's timing, as the command reported it.</summary>
     public TimingAggregateRow Row => Share.Source!;
+
+    public bool HasIdentityWarning => Row.IdentityQuality != "authored";
+
+    public string IdentityWarningText => Row.IdentityQuality switch
+    {
+        "structural" => "Structural identity; no FieldWorks GUID was recorded.",
+        "synthetic" => "Synthetic identity; no FieldWorks GUID was recorded.",
+        _ => "The rule's identity quality was not recorded.",
+    };
 
     /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
     public InspectorSubject InspectSubject => InspectorSubject.Rule(Row.TimingKey, Row.Name,

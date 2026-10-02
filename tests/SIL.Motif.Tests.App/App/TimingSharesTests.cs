@@ -1,7 +1,11 @@
 using System.Globalization;
+using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.Layout;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Baselines;
@@ -15,7 +19,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that every share on the Timing page is of the chosen words' whole measured parse time, that the time no
-/// rule recorded is shown apart as other time, and that no count is shown without saying what it counts.
+/// rule recorded is shown as unattributed, and that no count is shown without saying what it counts.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TimingSharesTests
@@ -30,15 +34,15 @@ public sealed class TimingSharesTests
 
     private static readonly TimingAggregateRow[] Kinds =
     [
-        new("morph_rule", "morph_rule", 480, 480d / 800, 9),
-        new("phon_rule", "phon_rule", 160, 160d / 800, 7),
-        new("root_index", "root_index", 40, 40d / 800, 9),
+        new("morph_rule", "morph_rule", 480, 480d / 800, 9) { Calls = 420 },
+        new("phon_rule", "phon_rule", 160, 160d / 800, 7) { Calls = 70 },
+        new("root_index", "root_index", 40, 40d / 800, 9) { Calls = null },
     ];
 
     private static readonly TimingAggregateRow[] Rules =
     [
-        new("Subject agreement", "Subject agreement", 288, 288d / 800, 6) { Kind = "morph_rule" },
-        new("Vowel harmony", "Vowel harmony", 120, 120d / 800, 7) { Kind = "phon_rule" },
+        new("Subject agreement", "Subject agreement", 288, 288d / 800, 6) { Kind = "morph_rule", IdentityQuality = "authored" },
+        new("Vowel harmony", "Vowel harmony", 120, 120d / 800, 7) { Kind = "phon_rule", IdentityQuality = "authored" },
     ];
 
     [Fact]
@@ -67,8 +71,10 @@ public sealed class TimingSharesTests
             timing.KindShares.Select(share => (share.Label, share.ShareText, share.TimeText)));
         Assert.Null(timing.KindShares[^1].Source);
         Assert.Equal(1d, timing.KindShares.Sum(share => share.Share!.Value), precision: 6);
-        Assert.Equal("Every share is of the 0.8 s these 9 words took to parse.", timing.ShareDenominatorText);
-        Assert.Equal("120 ms was not attributed to rules or lookups.", timing.OtherTimeText);
+        Assert.Equal("Every share is of the 800 ms these 9 words took to parse.", timing.ShareDenominatorText);
+        Assert.Equal("Not attributed: 120 ms (15%).", timing.NotAttributedText);
+        Assert.Empty(timing.OverrunText);
+        Assert.Equal(["420 calls", "70 calls", "Not counted"], timing.KindCallShares.Select(share => share.CallsText));
     }
 
     [Fact]
@@ -81,7 +87,7 @@ public sealed class TimingSharesTests
             elapsedNs: [1_800_000]);
 
         Assert.Equal("50%", timing.KindShares.Single(share => share.Source is not null).ShareText);
-        Assert.Equal("2 ms", timing.HeadlineTotal);
+        Assert.Equal("1.8 ms", timing.HeadlineTotal);
     }
 
     [Fact]
@@ -90,13 +96,23 @@ public sealed class TimingSharesTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var timing = await LoadedTiming(NineWords, Kinds, Rules);
 
-        Assert.Equal("SHARE OF 0.8 s", timing.RuleShareHeader);
+        Assert.Equal("SHARE OF 800 ms", timing.RuleShareHeader);
         Assert.Equal([("Subject agreement", "Morphological rules", "288 ms", "36%", "6"),
                 ("Vowel harmony", "Phonological rules", "120 ms", "15%", "7")],
             timing.RuleShares.Select(share => (share.Label, share.KindLabel, share.TimeText, share.ShareText,
                 share.WordsText)));
-        Assert.Equal("288 ms · 36% of these 9 words' 0.8 s · recorded in 6 words", timing.RuleSummary);
+        Assert.Equal("288 ms · 36% of these 9 words' 800 ms · recorded in 6 words", timing.RuleSummary);
         Assert.DoesNotContain("attempt", timing.RuleSummary, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RuleRowsAreOrderedByTheirShareOfWholeWordTime()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        TimingAggregateRow[] rules = [.. Rules.Reverse()];
+        var timing = await LoadedTiming(NineWords, Kinds, rules);
+
+        Assert.Equal(["Subject agreement", "Vowel harmony"], timing.RuleRows.Select(row => row.Share.Label));
     }
 
     [Fact]
@@ -141,8 +157,8 @@ public sealed class TimingSharesTests
         var notAttributed = timing.KindShares.Single(share => share.Source is null);
         Assert.Equal("15 ms", notAttributed.TimeText);
         Assert.Equal("50%", notAttributed.ShareText);
-        Assert.Equal("15 ms was not attributed to rules or lookups. Object time exceeded word time by 2 ms " +
-            "across the words.", timing.OtherTimeText);
+        Assert.Equal("Not attributed: 15 ms (50%).", timing.NotAttributedText);
+        Assert.Equal("Overrun: 2 ms.", timing.OverrunText);
     }
 
     [Fact]
@@ -156,7 +172,30 @@ public sealed class TimingSharesTests
         Assert.Equal("Not attributed", notAttributed.Label);
         Assert.Equal("Not recorded", notAttributed.TimeText);
         Assert.Equal("Not recorded", notAttributed.ShareText);
-        Assert.Equal("Not attributed time was not recorded for these words.", timing.OtherTimeText);
+        Assert.Equal("Not attributed: Not recorded.", timing.NotAttributedText);
+        Assert.Empty(timing.OverrunText);
+    }
+
+    [Fact]
+    public async Task MissingPercentilesAreNamedAsNotRecorded()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var timing = await LoadedTiming(NineWords, Kinds, Rules, medianMs: null, percentile95Ms: null);
+
+        Assert.Equal("Median not recorded · 95th percentile not recorded", timing.PercentileSummary);
+    }
+
+    [Fact]
+    public async Task ShareUsesTheWholeWordTimeDenominatorFromTheResponse()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var timing = await LoadedTiming([("mwalimu", 800)],
+            [new TimingAggregateRow("morph_rule", "morph_rule", 300, 0.375, 1) { Calls = 4 }], [],
+            attribution: new WordTimeAttribution(1, 800, 300, 500, 0.625, 0, false));
+
+        Assert.Equal("800 ms", timing.HeadlineTotal);
+        Assert.Equal("37.5%", timing.KindShares.Single(share => share.Source is not null).ShareText);
+        Assert.Equal("Not attributed: 500 ms (62.5%).", timing.NotAttributedText);
     }
 
     [Fact]
@@ -168,7 +207,8 @@ public sealed class TimingSharesTests
             new("guid-1", "Plural", 200, 0.25, 4) { Kind = "morph_rule" },
             new("guid-2", "Plural", 100, 0.125, 2) { Kind = "morph_rule" },
         ];
-        var timing = await LoadedTiming(NineWords, Kinds, rules, requestedRule: "guid-2");
+        var timing = await LoadedTiming(NineWords, Kinds, rules,
+            requestedRule: new TraceTimingKey("morph_rule", "guid-2"));
 
         Assert.Equal("guid-2", timing.SelectedRule?.Key);
         Assert.Equal("Plural", timing.SelectedRuleName);
@@ -184,7 +224,8 @@ public sealed class TimingSharesTests
             new("guid-1", "Plural", 200, 0.25, 4) { Kind = "morph_rule" },
             new("guid-2", "Plural", 100, 0.125, 2) { Kind = "morph_rule" },
         ];
-        var timing = await LoadedTiming(NineWords, Kinds, rules, requestedRule: "missing-key");
+        var timing = await LoadedTiming(NineWords, Kinds, rules,
+            requestedRule: new TraceTimingKey("morph_rule", "missing-key"));
 
         Assert.Null(timing.SelectedRuleRow);
         Assert.Equal("No stored timing for this rule.", timing.RuleSummary);
@@ -202,6 +243,32 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
+    public async Task DetailedWordStatisticsFollowTheTimingSelection()
+    {
+        var timing = await LoadedTiming(NineWords, Kinds, Rules);
+
+        Assert.Equal(timing.SelectedWords, timing.Statistics.WordScope);
+    }
+
+    [Fact]
+    public async Task ARequestedRuleIdentitySelectsOnlyTheMatchingKindAndKey()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        TimingAggregateRow[] rules =
+        [
+            new("same-key", "Morph rule", 200, 0.25, 4) { Kind = "morph_rule", IdentityQuality = "authored" },
+            new("same-key", "Phon rule", 100, 0.125, 2) { Kind = "phon_rule", IdentityQuality = "authored" },
+        ];
+        var timing = await LoadedTiming(NineWords, Kinds, rules, requestedRule: new TraceTimingKey("phon_rule", "same-key"));
+
+        Assert.Equal("same-key", timing.SelectedRule?.Key);
+        Assert.Equal("Phon rule", timing.SelectedRuleName);
+        Assert.Equal(new TraceTimingKey("phon_rule", "same-key"), timing.SelectedRuleRow is { } row
+            ? new TraceTimingKey(row.Kind, row.Key) : null);
+        Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
+    }
+
+    [Fact]
     public void TheRuleTableNamesItsDenominatorAndShowsNoAttemptsColumn()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -216,10 +283,10 @@ public sealed class TimingSharesTests
                 Dispatcher.UIThread.RunJobs();
                 var shown = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-                Assert.Contains("SHARE OF 0.8 s", shown);
+                Assert.Contains("SHARE OF 800 ms", shown);
                 Assert.Contains("TIME", shown);
                 Assert.Contains("Not attributed", shown);
-                Assert.Contains("Every share is of the 0.8 s these 9 words took to parse.", shown);
+                Assert.Contains("Every share is of the 800 ms these 9 words took to parse.", shown);
                 Assert.DoesNotContain("ATTEMPTS", shown);
                 Assert.DoesNotContain("SHARE OF TIME", shown);
             }
@@ -230,15 +297,133 @@ public sealed class TimingSharesTests
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Fact]
+    public void TimingControlsStayInOneRowAndCallsOpenOnRequest()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var timing = await LoadedTiming(NineWords, Kinds, Rules);
+            var window = new Window { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var strip = window.GetLogicalDescendants().OfType<StackPanel>()
+                    .Single(panel => AutomationProperties.GetName(panel) == "Timing controls");
+                Assert.Equal(Orientation.Horizontal, strip.Orientation);
+                var visibleControls = strip.Children.OfType<Control>().Where(control => control.IsEffectivelyVisible).ToArray();
+                var bounds = visibleControls.Select(control =>
+                {
+                    var top = control.TranslatePoint(default, window)!.Value.Y;
+                    return (Top: top, Bottom: top + control.Bounds.Height);
+                }).ToArray();
+                Assert.True(bounds.Max(control => control.Top) < bounds.Min(control => control.Bottom));
+
+                var calls = window.GetLogicalDescendants().OfType<Button>()
+                    .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");
+                Assert.True(calls.IsTabStop);
+                Assert.DoesNotContain("420 calls", VisibleText(window));
+                calls.Command!.Execute(calls.CommandParameter);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Contains("420 calls", VisibleText(window));
+                Assert.Contains("70 calls", VisibleText(window));
+                Assert.Contains("Not counted", VisibleText(window));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void NarrowRuleTableCellsDoNotRunIntoOneAnother()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var timing = await LoadedTiming(NineWords, Kinds, Rules);
+            var window = new Window { Width = 720, Height = 1400, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var table = window.GetVisualDescendants().OfType<ItemsControl>()
+                    .Single(control => AutomationProperties.GetName(control) == "Timing by rule");
+                var row = table.GetVisualDescendants().OfType<Button>()
+                    .First(button => button.Classes.Contains("timingRuleRow"));
+                var grid = row.GetVisualDescendants().OfType<Grid>()
+                    .First(candidate => candidate.Classes.Contains("timingColumns"));
+                var cells = grid.Children.OfType<Control>()
+                    .OrderBy(cell => cell.TranslatePoint(default, window)!.Value.X).ToArray();
+
+                foreach (var (left, right) in cells.Zip(cells.Skip(1)))
+                {
+                    var leftEdge = left.TranslatePoint(default, window)!.Value.X + left.Bounds.Width;
+                    var rightEdge = right.TranslatePoint(default, window)!.Value.X;
+                    Assert.True(leftEdge <= rightEdge + 0.5,
+                        $"Timing rule cells '{left.GetType().Name}' and '{right.GetType().Name}' overlap by {leftEdge - rightEdge:F1} px.");
+                }
+                foreach (var cell in cells)
+                {
+                    var cellRight = cell.TranslatePoint(default, window)!.Value.X + cell.Bounds.Width;
+                    foreach (var text in cell.GetVisualDescendants().OfType<TextBlock>()
+                                 .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text)))
+                    {
+                        var textRight = text.TranslatePoint(default, window)!.Value.X +
+                            text.TextLayout.WidthIncludingTrailingWhitespace;
+                        Assert.True(textRight <= cellRight + 0.5,
+                            $"'{text.Text}' runs past its Timing rule cell by {textRight - cellRight:F1} px.");
+                    }
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void AStructuralRuleIdentityShowsAWarningMark()
+    {
+        var rule = new TimingRuleRow(new TimingShare("Rule", "morph_rule", 10, 0.5, 1,
+            new TimingAggregateRow("structural-key", "Rule", 10, 0.5, 1)
+            { Kind = "morph_rule", IdentityQuality = "structural" }), false);
+
+        Assert.True(rule.HasIdentityWarning);
+        Assert.Contains("structural", rule.IdentityWarningText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ARequestedRuleAddressStaysUnresolvedWhenNoRowHasThatIdentity()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var requestedRule = new TraceTimingKey("morph_rule", "subject-guid");
+        var timing = await LoadedTiming(NineWords, Kinds, Rules, requestedRule: requestedRule);
+
+        Assert.Equal(requestedRule, timing.Focus!.Rule);
+        Assert.Null(timing.SelectedRuleRow);
+        Assert.Equal("No stored timing for this rule.", timing.RuleSummary);
+    }
+
+    private static string[] VisibleText(Window window) => window.GetLogicalDescendants().OfType<TextBlock>()
+        .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray();
+
     private static async Task<TimingPageModel> LoadedTiming((string Word, int? Ms)[] words,
         TimingAggregateRow[] kinds, TimingAggregateRow[] rules, WordRuleTiming[]? costliest = null,
-        WordTimeAttribution? attribution = null, IReadOnlyList<long?>? elapsedNs = null, string? requestedRule = null)
+        WordTimeAttribution? attribution = null, IReadOnlyList<long?>? elapsedNs = null,
+        TraceTimingKey? requestedRule = null, double? medianMs = 9, double? percentile95Ms = 700)
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
         var timing = new TimingPageModel(context);
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-            new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, 9, 700, [],
+            new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, medianMs, percentile95Ms, [],
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
                 Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms, TimingCompletion.Finished)
@@ -256,7 +441,7 @@ public sealed class TimingSharesTests
         }
         else
         {
-            context.OpenTiming(words.Select(word => word.Word).ToArray(), new TraceTimingKey(rules.FirstOrDefault(row => row.Key == requestedRule)?.Kind ?? "morph_rule", requestedRule));
+            context.OpenTiming(words.Select(word => word.Word).ToArray(), requestedRule);
             await timing.LoadFocusedTimingCommand.ExecutionTask!;
         }
         return timing;
@@ -267,9 +452,10 @@ public sealed class TimingSharesTests
         var wordTime = words.Where(word => word.Ms is not null).Sum(word => word.Ms!.Value);
         var attributed = kinds.Sum(row => row.SelfMs);
         var notAttributed = wordTime - attributed;
+        var nonNegativeNotAttributed = Math.Max(0, notAttributed);
         return new WordTimeAttribution(words.Count(word => word.Ms is not null), wordTime, attributed,
-            kinds.Length == 0 ? null : Math.Max(0, notAttributed),
-            kinds.Length > 0 && wordTime > 0 ? Math.Max(0, notAttributed) / wordTime : null,
+            kinds.Length == 0 ? null : nonNegativeNotAttributed,
+            kinds.Length > 0 && wordTime > 0 ? nonNegativeNotAttributed / wordTime : null,
             Math.Max(0, -notAttributed), notAttributed < 0);
     }
 

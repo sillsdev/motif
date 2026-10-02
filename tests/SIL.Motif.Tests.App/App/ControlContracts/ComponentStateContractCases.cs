@@ -610,6 +610,8 @@ internal static class TooltipOwners
                 text.Text == analysis.ProjectionErrorText),
         new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded time for this rule in",
             TooltipScene.Timing, control => control is CopyableTextBlock { Text: "WORDS" }),
+        new("rule identity quality", "Views/Pages/TimingPage.axaml", "{Binding IdentityWarningText}", TooltipScene.Timing,
+            control => control is TextBlock && Name(control) == "Rule identity warning"),
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
         new("a finding's problem", "Views/GrammarPanel.axaml", "{Binding Text}", TooltipScene.Warnings,

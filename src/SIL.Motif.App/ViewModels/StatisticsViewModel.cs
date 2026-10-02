@@ -71,6 +71,10 @@ public sealed partial class StatisticsViewModel : ObservableObject
         OnPropertyChanged(nameof(CountHeader));
         OnPropertyChanged(nameof(TimeHeader));
         OnPropertyChanged(nameof(ShadingNote));
+        OnPropertyChanged(nameof(ScopeNote));
+        RefreshShading();
+        ApplyView();
+        RaiseSummary();
     }
 
     private bool IsWordGroup => SelectedGroup == "word";
@@ -89,6 +93,15 @@ public sealed partial class StatisticsViewModel : ObservableObject
             "matched, a root looked up), so attempts are shaded only against rows of their own kind. Own time " +
             "leaves out time spent in the objects this one called.";
 
+    /// <summary>Whether these rows use Timing's selected words or cover the whole Assessment.</summary>
+    public string ScopeNote => !IsWordGroup
+        ? $"{SelectedGroupChoice.Label} · all rows from the complete parse; selected words do not filter them."
+        : WordScope is { Count: 0 }
+            ? "By word · no words selected in Timing."
+        : WordScope is { } scope
+            ? $"By word · the same {SpeedText.Count(scope.Count, "word", "words")} selected in Timing."
+            : "By word · every word in the parse.";
+
     /// <summary>
     /// Looks up a word in the Assessment these statistics came from, so a word's completion here is the same
     /// answer Results gives.
@@ -102,16 +115,16 @@ public sealed partial class StatisticsViewModel : ObservableObject
     public Action<string>? TryWord { get; set; }
 
     /// <summary>The word that took longest, or <see langword="null"/> when no word rows are loaded.</summary>
-    public StatsRowViewModel? SlowestWord => _allRows.Where(row => row.Word is not null && row.ElapsedMs is not null)
+    public StatsRowViewModel? SlowestWord => ScopeRows.Where(row => row.Word is not null && row.ElapsedMs is not null)
         .MaxBy(row => row.ElapsedMs);
 
     public bool HasSlowestWord => SlowestWord is not null;
 
     /// <summary>Whether any fetched row needed more than one pass; when none did, the column says nothing.</summary>
-    public bool AnyPasses => _allRows.Any(row => row.Passes is > 0);
+    public bool AnyPasses => ScopeRows.Any(row => row.Passes is > 0);
 
     /// <summary>Whether the rows are words, which is when the summary cards have something to say.</summary>
-    public bool HasWordRows => _allRows.Any(row => row.Word is not null);
+    public bool HasWordRows => ScopeRows.Any(row => row.Word is not null);
 
     public bool AnyIncomplete => IncompleteCount > 0;
 
@@ -134,7 +147,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         : string.Empty;
 
     // PanGloss's "passes" column counts the analyses a word produced, so it is shown as readings.
-    public int SeveralReadingsCount => _allRows.Count(row => row.Word is not null && row.Passes is > 1);
+    public int SeveralReadingsCount => ScopeRows.Count(row => row.Word is not null && row.Passes is > 1);
 
     public string PassesHeadline => SeveralReadingsCount switch
     {
@@ -189,11 +202,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     public IAsyncRelayCommand LoadCommand { get; }
 
-    /// <summary>How many rows were fetched, before any filter.</summary>
-    public int RowCount => _allRows.Count;
+    /// <summary>How many rows are in the applicable scope, before the row filter.</summary>
+    public int RowCount => ScopeRows.Count();
 
     /// <summary>How many fetched words stopped at a time or step limit.</summary>
-    public int IncompleteCount => _allRows.Count(row => row.IsIncomplete);
+    public int IncompleteCount => ScopeRows.Count(row => row.IsIncomplete);
 
     /// <summary>Whether the grid shows only the words that did not finish.</summary>
     [ObservableProperty]
@@ -234,6 +247,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
         SortColumn = null;
         FilterText = string.Empty;
         _wordScope = null;
+        OnPropertyChanged(nameof(ScopeNote));
         OnlyIncomplete = false;
         RaiseSummary();
         IsStale = false;
@@ -270,13 +284,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
                 else
                     _allRows.Add(new StatsRowViewModel(row));
             }
-            // Shaded against every fetched row, so filtering never changes what a shade means.
-            var largestAttempts = _allRows.GroupBy(row => row.Kind ?? string.Empty, StringComparer.Ordinal)
-                .ToDictionary(kind => kind.Key, kind => kind.Max(row => row.Attempts) ?? 0, StringComparer.Ordinal);
-            var largestPasses = _allRows.Max(row => row.Passes) ?? 0;
-            var largestElapsed = _allRows.Max(row => row.ElapsedMs) ?? 0;
-            foreach (var row in _allRows)
-                row.ShadeAgainst(largestAttempts[row.Kind ?? string.Empty], largestPasses, largestElapsed);
+            RefreshShading();
             if (AssessedWord is { } assessed)
                 foreach (var row in _allRows)
                     if (row.Word is { } word && assessed(word) is { } result)
@@ -322,18 +330,36 @@ public sealed partial class StatisticsViewModel : ObservableObject
         set
         {
             _wordScope = value;
+            OnPropertyChanged(nameof(ScopeNote));
+            RefreshShading();
             ApplyView();
+            RaiseSummary();
         }
     }
 
     private IReadOnlyList<string>? _wordScope;
 
+    private IEnumerable<StatsRowViewModel> ScopeRows => IsWordGroup && WordScope is { } scope
+        ? _allRows.Where(row => row.Word is { } word && scope.Contains(word, StringComparer.Ordinal))
+        : _allRows;
+
+    private void RefreshShading()
+    {
+        IEnumerable<StatsRowViewModel> scopeRows = _allRows;
+        if (IsWordGroup && WordScope is { } scope)
+            scopeRows = scopeRows.Where(row => row.Word is { } word && scope.Contains(word, StringComparer.Ordinal));
+        var rows = scopeRows.ToArray();
+        var largestAttempts = rows.GroupBy(row => row.Kind ?? string.Empty, StringComparer.Ordinal)
+            .ToDictionary(kind => kind.Key, kind => kind.Max(row => row.Attempts) ?? 0, StringComparer.Ordinal);
+        var largestPasses = rows.Select(row => row.Passes).DefaultIfEmpty().Max() ?? 0;
+        var largestElapsed = rows.Select(row => row.ElapsedMs).DefaultIfEmpty().Max() ?? 0;
+        foreach (var row in _allRows)
+            row.ShadeAgainst(largestAttempts.GetValueOrDefault(row.Kind ?? string.Empty), largestPasses, largestElapsed);
+    }
+
     private void ApplyView()
     {
-        IEnumerable<StatsRowViewModel> view = _allRows;
-
-        if (WordScope is { } scope)
-            view = view.Where(row => row.Word is { } word && scope.Contains(word, StringComparer.Ordinal));
+        IEnumerable<StatsRowViewModel> view = ScopeRows;
 
         if (!string.IsNullOrEmpty(FilterText))
             view = view.Where(row => row.MatchesFilter(FilterText));

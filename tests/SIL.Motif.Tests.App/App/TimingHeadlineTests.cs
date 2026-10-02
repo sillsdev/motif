@@ -39,7 +39,7 @@ public sealed class TimingHeadlineTests
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
         Assert.True(timing.HasHeadline);
-        Assert.Equal("0.8 s", timing.HeadlineTotal);
+        Assert.Equal("800 ms", timing.HeadlineTotal);
         Assert.Equal("for all 9 words", timing.HeadlineTotalCaption);
         Assert.Equal("9 ms", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
@@ -58,6 +58,44 @@ public sealed class TimingHeadlineTests
         await timing.SelectWordSetCommand.ExecuteAsync("slowest");
 
         Assert.Equal("for these 9 words", timing.HeadlineTotalCaption);
+    }
+
+    [Fact]
+    public async Task NanosecondOnlyWordsCountAsMeasuredForTheHeadline()
+    {
+        var (fake, context) = NewContext();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            Response(request) with
+            {
+                Words =
+                [
+                    new TimingWordRow("quick", null, TimingCompletion.Finished) { ElapsedNs = 800_000 },
+                    new TimingWordRow("quicker", null, TimingCompletion.Finished) { ElapsedNs = 200_000 },
+                    new TimingWordRow("missing", null, TimingCompletion.Finished),
+                ],
+                Attribution = new WordTimeAttribution(2, 1, 1, 0, 0, 0, false),
+            })));
+        await context.OpenProjectAsync(ProjectPath);
+
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.True(timing.HasHeadline);
+        Assert.Equal("for 2 of the 3 words", timing.HeadlineTotalCaption);
+    }
+
+    [Fact]
+    public async Task StoredTimingSummaryNamesPercentilesThatWereNotRecorded()
+    {
+        var (fake, context) = NewContext();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            Response(request) with { MedianMs = null, Percentile95Ms = null })));
+        await context.OpenProjectAsync(ProjectPath);
+
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+
+        Assert.Equal("9 words · median not recorded · 95th percentile not recorded", timing.StoredTimingSummary);
     }
 
     [Fact]
@@ -167,7 +205,7 @@ public sealed class TimingHeadlineTests
                 Dispatcher.UIThread.RunJobs();
                 var texts = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).ToArray();
-                var headline = texts.First(text => text.Text == "0.8 s");
+                var headline = texts.First(text => text.Text == "800 ms");
                 var lookAt = texts.First(text => text.Text == "Look at");
                 Assert.True(headline.TranslatePoint(default, window)!.Value.Y <
                     lookAt.TranslatePoint(default, window)!.Value.Y);

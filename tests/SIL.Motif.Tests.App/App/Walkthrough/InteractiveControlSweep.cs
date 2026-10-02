@@ -166,6 +166,7 @@ internal static class InteractiveControlSweep
         DataGrid or DataGridColumnHeader or DataGridRow or DataGridCell => InteractiveControlFamily.Grid,
         TreeView or TreeViewItem => InteractiveControlFamily.Tree,
         MorphemeRow => InteractiveControlFamily.Morpheme,
+        TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
         ProgressBar => InteractiveControlFamily.Progress,
         Ellipse mark when AutomationProperties.GetName(mark) == "Unread" => InteractiveControlFamily.Mark,

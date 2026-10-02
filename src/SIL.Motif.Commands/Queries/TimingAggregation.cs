@@ -18,8 +18,9 @@ public static class TimingAggregation
         ArgumentNullException.ThrowIfNull(words);
         if (top < 0) throw new ArgumentOutOfRangeException(nameof(top));
         var materialized = words.ToArray();
-        var timed = materialized.Where(word => word.ElapsedMs is not null).ToArray();
-        var durations = timed.Select(word => word.ElapsedMs!.Value).Order().ToArray();
+        var timed = materialized.Select(word => (Word: word, TimeMs: WordTimeMs(word)))
+            .Where(item => item.TimeMs is not null).ToArray();
+        var durations = timed.Select(item => item.TimeMs!.Value).Order().ToArray();
         var median = durations.Length switch
         {
             0 => (double?)null,
@@ -29,10 +30,22 @@ public static class TimingAggregation
         double? percentile95 = durations.Length == 0
             ? null
             : durations[Math.Max(0, (int)Math.Ceiling(durations.Length * 0.95) - 1)];
-        var slowest = timed.OrderByDescending(word => word.ElapsedMs).ThenBy(word => word.Word, StringComparer.Ordinal)
-            .Take(top).Select(word => new SlowWordTiming(word.Word, word.ElapsedMs!.Value)).ToArray();
+        var slowest = SelectSlowestWords(materialized, top)
+            .Select(word => new SlowWordTiming(word.Word, WordTimeMs(word)!.Value)).ToArray();
         var stepLimited = materialized.Count(word => word.Outcome == "capped" || word.Morphology?.Capped == true);
         return new OverviewTiming(median, percentile95, slowest, stepLimited) { MeasuredWordCount = durations.Length };
+    }
+
+    /// <summary>Returns measured words ordered by exact parse time, then by spelling for equal times.</summary>
+    public static IReadOnlyList<AssessedWord> SelectSlowestWords(IEnumerable<AssessedWord> words, int top)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        if (top < 0) throw new ArgumentOutOfRangeException(nameof(top));
+        return words.Select(word => (Word: word, TimeMs: WordTimeMs(word)))
+            .Where(item => item.TimeMs is not null)
+            .OrderByDescending(item => item.TimeMs)
+            .ThenBy(item => item.Word.Word, StringComparer.Ordinal)
+            .Take(top).Select(item => item.Word).ToArray();
     }
 
     /// <summary>Adds the split of the words' total word time by kind, and its residual, to the word summary.</summary>
@@ -124,11 +137,23 @@ public static class TimingAggregation
     public static double? WordTimeMs(AssessedWord word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        return WordTimeNs(word) is { } ns ? ns / 1_000_000d : null;
+        return WordTimeMs(word.ElapsedNs, word.ElapsedMs);
     }
 
-    private static long? WordTimeNs(AssessedWord word) =>
-        word.ElapsedNs is > 0 and var ns ? ns : word.ElapsedMs is { } ms ? ms * 1_000_000L : null;
+    /// <summary>Returns a stored Timing row's exact parse time, or null when neither duration was recorded.</summary>
+    public static double? WordTimeMs(TimingWordRow word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        return WordTimeMs(word.ElapsedNs, word.ElapsedMs);
+    }
+
+    private static double? WordTimeMs(long? elapsedNs, int? elapsedMs) => elapsedNs is { } ns
+        ? ns / 1_000_000d
+        : elapsedMs is { } ms ? ms : null;
+
+    private static long? WordTimeNs(AssessedWord word) => word.ElapsedNs is { } ns
+        ? ns
+        : word.ElapsedMs is { } ms ? ms * 1_000_000L : null;
 
     private static WordTimeAttribution Attribute(IReadOnlyDictionary<string, long> wordTimes,
         IReadOnlyList<AssessmentObjectTiming> rows)

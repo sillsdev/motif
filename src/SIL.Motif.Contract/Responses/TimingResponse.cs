@@ -69,11 +69,11 @@ public static class TimingCompletion
 
 /// <summary>One selected word's stored time and the reason its search stopped.</summary>
 /// <param name="Word">The word form.</param>
-/// <param name="ElapsedMs">The word's parse time to the whole millisecond, or null when none was recorded.</param>
+/// <param name="ElapsedMs">The stored whole-millisecond parse time, when present.</param>
 /// <param name="Completion">Why the search stopped: a step limit, a time limit, a skip, or a finished search.</param>
 public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completion)
 {
-    /// <summary>The word's parse time in nanoseconds from the parser's statistics, when it recorded one.</summary>
+    /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>
     public long? ElapsedNs { get; init; }
     /// <summary>The producing measurement, including its recorded time.</summary>
     public WordMeasurementOrigin? Origin { get; init; }
