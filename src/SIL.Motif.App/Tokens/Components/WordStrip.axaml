@@ -45,6 +45,10 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
+  <Style Selector="Border.wordStrip:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Focus}" />
+  </Style>
   <Style Selector="Border.wordStrip.uncertainChanged">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
@@ -92,6 +96,20 @@
   <Style Selector="TextBlock.stripMorphGloss">
     <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.GlossType}" />
     <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.GlossLine}" />
+  </Style>
+  <Style Selector="Border.warningMorphUnderline">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="Border.warningMorphUnderline.named">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Severity.Warning}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Underline}" />
+  </Style>
+  <Style Selector="TextBlock.warningMark">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="Border.stripFieldWorks TextBlock.stripMorphGloss">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />

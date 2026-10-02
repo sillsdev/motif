@@ -47,6 +47,7 @@ public enum ResultsInTextFilter
     Limit,
     NotAssessed,
     NeedsALook,
+    NamedInWarning,
 }
 
 /// <summary>
@@ -68,6 +69,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     // Per Text, how many Mark read or Mark unread answers have been applied, so an older load can tell it is stale.
     private readonly Dictionary<Guid, long> _readStateWritesApplied = [];
     private Task _readStateRefresh = Task.CompletedTask;
+    private Task _warningEvidenceRefresh = Task.CompletedTask;
+    private long _warningEvidenceGeneration;
+    private long _cardTimingGeneration;
 
     [ObservableProperty]
     private WindowRefusal? _readStateRefusal;
@@ -97,6 +101,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
         TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
         OpenPanGlossGuideCommand = new RelayCommand(() => OpenPanGlossGuide?.Invoke());
+        OpenWarningsCommand = new RelayCommand(() => OpenWarnings?.Invoke());
         RecheckChangesCommand = new AsyncRelayCommand(() => _changes.RecheckAsync(), CanRecheckChanges);
         AddChangeCommand = new AsyncRelayCommand<string>(AddSelectedChangeAsync, CanAddSelectedChange);
         StagePrimaryMarkingActionCommand = new AsyncRelayCommand(StagePrimaryMarkingActionAsync,
@@ -140,11 +145,19 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     /// <summary>Opens the PanGloss guide in the window's Help popup.</summary>
     public IRelayCommand OpenPanGlossGuideCommand { get; }
 
+    /// <summary>Opens the stored grammar warnings page.</summary>
+    public IRelayCommand OpenWarningsCommand { get; }
+
     /// <summary>Checks pending changes against the latest project state.</summary>
     public IAsyncRelayCommand RecheckChangesCommand { get; }
 
     /// <summary>The window callback that shows the PanGloss guide.</summary>
     public Action? OpenPanGlossGuide { get; set; }
+
+    /// <summary>The window callback that opens the stored grammar warnings page.</summary>
+    public Action? OpenWarnings { get; set; }
+
+    internal Task WarningEvidenceRefresh => _warningEvidenceRefresh;
 
     public IAsyncRelayCommand<string> AddChangeCommand { get; }
 
@@ -225,6 +238,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public int LimitCount => Count(OccurrenceVerdict.Limit);
     public int NotAssessedCount => Count(OccurrenceVerdict.NotAssessed);
     public int NeedsALookCount => _allWords.Count(token => token.Marking.NeedsALook);
+    /// <summary>How many chosen word occurrences exact warning identities name.</summary>
+    public int NamedInWarningCount => _allWords.Count(token => token.HasNamedWarning);
+    /// <summary>Whether stored exact or candidate warning evidence names any chosen word.</summary>
+    public bool HasWarningEvidence => _allWords.Any(token => token.HasWarningEvidence);
     public bool HasNotAssessed => NotAssessedCount > 0;
     public int SelectedTextAnalysisCount => StoredAnalysisIds(SelectedTextWords()).Count;
     public int ChosenTextsAnalysisCount => StoredAnalysisIds(_allWords).Count;
@@ -322,7 +339,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(token);
         SelectToken(token);
-        await MarkReadAsync(token).ConfigureAwait(true);
+        var generation = ++_cardTimingGeneration;
+        var read = MarkReadAsync(token);
+        var timing = ReadTokenTimingAsync(token, generation);
+        await Task.WhenAll(read, timing).ConfigureAwait(true);
     }
 
     /// <summary>Marks one word occurrence Read.</summary>
@@ -420,12 +440,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     internal void ClearProject()
     {
         _readStateGeneration++;
+        _warningEvidenceGeneration++;
+        _cardTimingGeneration++;
         SelectedText = null;
         SelectedToken = null;
     }
 
     partial void OnSelectedTokenChanging(ResultsTokenViewModel? oldValue, ResultsTokenViewModel? newValue)
     {
+        _cardTimingGeneration++;
         if (oldValue is not null) oldValue.PropertyChanged -= OnSelectedTokenPropertyChanged;
         if (oldValue is not null) oldValue.IsCardOpen = false;
         if (newValue is not null) newValue.PropertyChanged += OnSelectedTokenPropertyChanged;
@@ -473,6 +496,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
                 choice => StageMarkingChoiceForTokenAsync(token, choice),
                 choice => CanStageMarkingChoice(token, choice));
         }
+        _warningEvidenceRefresh = RefreshWarningEvidenceAsync(++_warningEvidenceGeneration,
+            _allWords.ToArray(), _assess.Result?.Words ?? []);
         OnPropertyChanged(nameof(ChosenTextsAnalysisCount));
         OnPropertyChanged(nameof(HasChosenTextAnalyses));
         OnPropertyChanged(nameof(ChosenTextsRemoveHeader));
@@ -496,6 +521,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(LimitCount));
         OnPropertyChanged(nameof(NotAssessedCount));
         OnPropertyChanged(nameof(NeedsALookCount));
+        OnPropertyChanged(nameof(NamedInWarningCount));
+        OnPropertyChanged(nameof(HasWarningEvidence));
         OnPropertyChanged(nameof(HasNotAssessed));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(HasCheckedWords));
@@ -550,8 +577,51 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ResultsInTextFilter.NotAssessed => token.Verdict == OccurrenceVerdict.NotAssessed,
         ResultsInTextFilter.Matches => token.Verdict == OccurrenceVerdict.Matches,
         ResultsInTextFilter.NeedsALook => token.Marking.NeedsALook,
+        ResultsInTextFilter.NamedInWarning => token.HasNamedWarning,
         _ => true,
     };
+
+    private async Task RefreshWarningEvidenceAsync(long generation,
+        IReadOnlyList<ResultsTokenViewModel> tokens, IReadOnlyList<AssessmentWordResult> assessmentWords)
+    {
+        if (tokens.Count == 0) return;
+        GrammarCheckResponse? check = null;
+        if (!string.IsNullOrWhiteSpace(_assess.ProjectPath))
+        {
+            var outcome = await _commands.ReadStoredGrammarCheckAsync(
+                new GrammarCheckRequest(_assess.ProjectPath), CancellationToken.None).ConfigureAwait(true);
+            if (generation != _warningEvidenceGeneration) return;
+            if (outcome.Succeeded) check = outcome.Value?.Check;
+        }
+        if (generation != _warningEvidenceGeneration) return;
+        var evidenceByWord = tokens.Select(token => token.Form).Distinct(StringComparer.Ordinal)
+            .ToDictionary(form => form,
+                form => ResultsTokenViewModel.WarningEvidenceFor(form, check, assessmentWords), StringComparer.Ordinal);
+        foreach (var token in tokens) token.SetWarningEvidence(evidenceByWord[token.Form]);
+        OnPropertyChanged(nameof(NamedInWarningCount));
+        OnPropertyChanged(nameof(HasWarningEvidence));
+        if (Filter == ResultsInTextFilter.NamedInWarning) RefreshLines();
+    }
+
+    private async Task ReadTokenTimingAsync(ResultsTokenViewModel token, long generation)
+    {
+        var assessment = _assess.Result;
+        if (assessment is null || string.IsNullOrWhiteSpace(_assess.ProjectPath))
+        {
+            token.SetTimingEvidence(null, responseAvailable: false);
+            return;
+        }
+
+        var outcome = await _commands.TimingAsync(new TimingRequest(
+            _assess.ProjectPath,
+            assessment.AssessmentIds.LastOrDefault(),
+            By: "rule",
+            ExplicitWords: [token.Form],
+            OverrideAssessmentIds: assessment.TimingOverrideAssessmentIds), CancellationToken.None)
+            .ConfigureAwait(true);
+        if (generation != _cardTimingGeneration || !ReferenceEquals(SelectedToken, token)) return;
+        token.SetTimingEvidence(outcome.Succeeded ? outcome.Value : null, outcome.Succeeded);
+    }
 
     private bool CanMarkTokenReadState(ResultsTokenViewModel? token) =>
         token is { IsWord: true, Occurrence: not null };

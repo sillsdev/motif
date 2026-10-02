@@ -23,6 +23,7 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <Button DockPanel.Dock="Right" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
+                Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
@@ -99,8 +100,9 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button DockPanel.Dock="Right" Classes="menuButton" Content="Mark read ▾" VerticalAlignment="Center"
-                Margin="{DynamicResource Intent.Gap.AfterRelated}"
+        <Button DockPanel.Dock="Right" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center"
+                Margin="{DynamicResource Component.TextsPage.ReaderActionGap}"
+                Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
@@ -122,9 +124,9 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Auto"
+        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Disabled" IsVisible="{Binding InText.HasResults}">
-          <StackPanel Orientation="Horizontal">
+          <WrapPanel>
           <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
@@ -147,7 +149,11 @@
                             IsVisible="{Binding InText.HasNotAssessed}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
-          </StackPanel>
+          <views:FilterChip Classes="compact" Label="Named in a warning" Count="{Binding InText.NamedInWarningCount}"
+                            IsVisible="{Binding InText.HasWarningEvidence}"
+                            IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NamedInWarning}}"
+                            Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NamedInWarning}" />
+          </WrapPanel>
         </ScrollViewer>
       </DockPanel>
 
@@ -201,6 +207,9 @@
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
                                                        AutomationProperties.AutomationId="{Binding WordAutomationId}" />
+                              <TextBlock Classes="warningMark" Text="{Binding WarningMarkLabel}"
+                                         IsVisible="{Binding HasNamedWarning}"
+                                         AutomationProperties.Name="{Binding WarningMarkLabel, StringFormat='Named in {0}'}" />
                               <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
                               <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
@@ -211,12 +220,14 @@
                             <Border Classes="stripRow stripFieldWorks analysisRow"
                                     AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                                <ItemsControl ItemsSource="{Binding PrimaryFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                                <ItemsControl ItemsSource="{Binding WarningMarkedFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
                                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
+                                    <DataTemplate x:DataType="vm:ResultsStripMorphViewModel">
                                       <StackPanel>
-                                        <TextBlock Classes="stripMorphForm" Text="{Binding Form}" />
+                                        <Border Classes="warningMorphUnderline" Classes.named="{Binding IsNamedInWarning}">
+                                          <TextBlock Classes="stripMorphForm" Text="{Binding Form}" />
+                                        </Border>
                                         <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}" />
                                       </StackPanel>
                                     </DataTemplate>
@@ -388,6 +399,75 @@
                                 </ItemsControl>
                               </StackPanel>
                             </Border>
+                          </StackPanel>
+                        </Border>
+                        <Border Classes="wordCardSection hoverReveal" IsVisible="{Binding HasWhySection}">
+                          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                            <views:CopyableTextBlock Classes="wordCardHeading" Text="Why it might not parse" />
+                            <views:CopyableTextBlock Classes="muted" Text="No stored warning names this word."
+                                                     IsVisible="{Binding HasNoNamedWarning}" />
+                            <ItemsControl ItemsSource="{Binding NamedWarningDetails}" IsVisible="{Binding HasNamedWarning}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NamedWarningCardViewModel">
+                                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                    <DockPanel LastChildFill="True">
+                                      <Button DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
+                                              Content="Open the warning" Command="{Binding $parent[ItemsControl].DataContext.Actions.OpenWarningsCommand}"
+                                              AutomationProperties.Name="Open the grammar warning" />
+                                      <views:CopyableTextBlock Classes="wordCardHeading" Text="{Binding Message}"
+                                                               TextWrapping="Wrap" />
+                                    </DockPanel>
+                                  </StackPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <views:CopyableTextBlock Classes="muted" Text="Named exactly"
+                                                     IsVisible="{Binding HasNamedWarning}" />
+                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
+                                        IsVisible="{Binding HasOtherWordsUsingMorpheme}">
+                              <views:CopyableTextBlock Classes="muted" Text="Other words using this morpheme" />
+                              <views:CopyableTextBlock Text="{Binding OtherWordsUsingMorphemeLabel}"
+                                                       TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
+                                        IsVisible="{Binding HasWarningCandidates}">
+                              <ItemsControl ItemsSource="{Binding MembershipCandidateWarnings}"
+                                            IsVisible="{Binding HasMembershipCandidateWarnings}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:WarningCandidateViewModel">
+                                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                      <views:CopyableTextBlock Classes="muted" Text="{Binding MembershipLabel}" />
+                                      <views:CopyableTextBlock Text="{Binding WordsLabel}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <ItemsControl ItemsSource="{Binding SpellingCandidateWarnings}"
+                                            IsVisible="{Binding HasSpellingCandidateWarnings}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:WarningCandidateViewModel">
+                                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                                      <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingLabel}" />
+                                      <views:CopyableTextBlock Text="{Binding WordsLabel}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                              <views:CopyableTextBlock Classes="muted" Text="This word's rule timing share" />
+                              <ItemsControl ItemsSource="{Binding TimingShares}" IsVisible="{Binding HasTimingShares}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:TimingShareViewModel">
+                                    <DockPanel LastChildFill="False">
+                                      <views:CopyableTextBlock Text="{Binding Name}" />
+                                      <views:CopyableTextBlock DockPanel.Dock="Right" Text="{Binding ShareLabel}" />
+                                    </DockPanel>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedShareLabel}" />
+                            </StackPanel>
                           </StackPanel>
                         </Border>
                         <Border Classes="wordCardSection last">

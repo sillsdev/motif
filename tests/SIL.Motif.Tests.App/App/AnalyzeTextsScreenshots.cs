@@ -17,6 +17,46 @@ namespace SIL.Motif.Tests.App;
 public sealed class AnalyzeTextsScreenshots
 {
     [ScreenshotFact]
+    public void CaptureWhyCardEvidenceStates()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure:
+                (fake, assessment) => AnalyzeTextsLayoutTests.ConfigureStoredExplanation(fake, assessment));
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                window.Height = 1500;
+                AnalyzeTextsLayoutTests.Settle(window);
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                await inText.WarningEvidenceRefresh;
+                var words = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).ToArray();
+                var warned = words.Single(token => token.Form == "alikula");
+                var notNamed = words.Single(token => token.Form == "hawajafika");
+
+                await inText.OpenTokenCardAsync(warned);
+                CaptureStates(window, folder, "named-warning-card");
+
+                await inText.OpenTokenCardAsync(notNamed);
+                CaptureStates(window, folder, "no-named-warning-card");
+
+                inText.Filter = ResultsInTextFilter.NamedInWarning;
+                await inText.OpenTokenCardAsync(warned);
+                CaptureStates(window, folder, "named-warning-filter");
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
     public void CaptureAnalyzeTextsStates()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
@@ -75,6 +115,17 @@ public sealed class AnalyzeTextsScreenshots
 
     private static (string Theme, ThemeVariant Variant)[] Themes() =>
         [("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark)];
+
+    private static void CaptureStates(MainWindow window, string folder, string scene)
+    {
+        window.Height = 1500;
+        foreach (var (theme, variant) in Themes())
+        {
+            Application.Current!.RequestedThemeVariant = variant;
+            foreach (var width in new[] { 1040, 1240 })
+                Save(window, width, Path.Combine(folder, $"{scene}-{width}-{theme}.png"));
+        }
+    }
 
     private static void Save(MainWindow window, int width, string path)
     {

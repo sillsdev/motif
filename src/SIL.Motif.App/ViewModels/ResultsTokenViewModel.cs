@@ -18,6 +18,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private readonly AssessmentWordResult? _assessment;
     private readonly Guid _textId;
     private bool _isUnread = true;
+    private IReadOnlyList<ObjectUseRef> _namedMorphemeRefs = [];
 
     [ObservableProperty]
     private bool _isCardOpen;
@@ -167,6 +168,154 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The first stored analysis, which the strip's FieldWorks line shows; the card shows them all.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> PrimaryFieldWorksMorphs =>
         FieldWorksAnalyses.Count == 0 ? [] : FieldWorksAnalyses[0].Morphs;
+
+    /// <summary>The first FieldWorks reading's morphemes, marked where a warning names their identities.</summary>
+    public IReadOnlyList<ResultsStripMorphViewModel> WarningMarkedFieldWorksMorphs =>
+        PrimaryFieldWorksMorphs.Select(morph => new ResultsStripMorphViewModel(morph,
+            _namedMorphemeRefs.Any(reference =>
+                (reference.AllomorphId is null || reference.AllomorphId == morph.AllomorphId) &&
+                (reference.GrammaticalInfoId is null || reference.GrammaticalInfoId == morph.GrammaticalInfoId))))
+            .ToArray();
+
+    /// <summary>The stored grammar findings whose exact identity evidence names this word.</summary>
+    public IReadOnlyList<GrammarWarning> NamedWarnings { get; private set; } = [];
+    /// <summary>The PanGloss message for each exact finding naming this word.</summary>
+    public IReadOnlyList<NamedWarningCardViewModel> NamedWarningDetails { get; private set; } = [];
+    /// <summary>Grammar findings that reach this word only by membership, kept as candidates.</summary>
+    public IReadOnlyList<WarningCandidateViewModel> MembershipCandidateWarnings { get; private set; } = [];
+    /// <summary>Grammar findings that reach this word only by spelling, kept as candidates.</summary>
+    public IReadOnlyList<WarningCandidateViewModel> SpellingCandidateWarnings { get; private set; } = [];
+    /// <summary>Other Selection words with a stored, non-disapproved use of the named morpheme.</summary>
+    public IReadOnlyList<string> OtherWordsUsingMorpheme { get; private set; } = [];
+    /// <summary>The stored per-word rule shares returned by Timing.</summary>
+    public IReadOnlyList<TimingShareViewModel> TimingShares { get; private set; } = [];
+    /// <summary>The stored share of this word's time that no object timer recorded.</summary>
+    public string NotAttributedShareLabel { get; private set; } = "Timing unavailable for this word";
+    /// <summary>The stored share of this word's time that no object timer recorded, when known.</summary>
+    public double? NotAttributedShare { get; private set; }
+    /// <summary>Whether an exact grammar finding names this word.</summary>
+    public bool HasNamedWarning => NamedWarnings.Count > 0;
+    /// <summary>Whether the card has no exact finding naming this word.</summary>
+    public bool HasNoNamedWarning => !HasNamedWarning;
+    /// <summary>Whether exact or candidate warning evidence names this word.</summary>
+    public bool HasWarningEvidence => HasNamedWarning || MembershipCandidateWarnings.Count > 0 ||
+        SpellingCandidateWarnings.Count > 0;
+    /// <summary>Whether either candidate list has an entry.</summary>
+    public bool HasWarningCandidates => MembershipCandidateWarnings.Count > 0 || SpellingCandidateWarnings.Count > 0;
+    /// <summary>Whether a warning names this word through a membership candidate.</summary>
+    public bool HasMembershipCandidateWarnings => MembershipCandidateWarnings.Count > 0;
+    /// <summary>Whether a warning names this word through a spelling candidate.</summary>
+    public bool HasSpellingCandidateWarnings => SpellingCandidateWarnings.Count > 0;
+    /// <summary>Whether other words use the same named morpheme.</summary>
+    public bool HasOtherWordsUsingMorpheme => OtherWordsUsingMorpheme.Count > 0;
+    /// <summary>The other word forms that use the same named morpheme.</summary>
+    public string OtherWordsUsingMorphemeLabel => string.Join(", ", OtherWordsUsingMorpheme);
+    /// <summary>Whether exact or candidate warning evidence, or this word's Assessment, supports the card section.</summary>
+    public bool HasWhySection => HasWarningEvidence || _assessment is not null;
+    /// <summary>Whether the Timing response included any rule shares for this word.</summary>
+    public bool HasTimingShares => TimingShares.Count > 0;
+    /// <summary>The strip mark and count for exact warning findings naming this word.</summary>
+    public string WarningMarkLabel => $"⚠ {NamedWarnings.Count}";
+
+    internal static ResultsWarningEvidence WarningEvidenceFor(string form, GrammarCheckResponse? check,
+        IReadOnlyList<AssessmentWordResult> assessmentWords)
+    {
+        var findings = check?.Findings ?? [];
+        var namedWarnings = findings.Where(finding => finding.YourWords is
+            { Match: WarningWordsMatch.Identity } words && words.Words.Any(word => word.Row.Word == form)).ToArray();
+        var namedWarningDetails = namedWarnings.Select(finding => new NamedWarningCardViewModel(finding.Description))
+            .ToArray();
+        var membershipCandidateWarnings = CandidateWarnings(findings, form, membership: true);
+        var spellingCandidateWarnings = CandidateWarnings(findings, form, membership: false);
+
+        var refs = namedWarnings.SelectMany(finding => finding.Subject)
+            .Where(part => part.Reach is { Path: WarningWordsPath.Uses })
+            .SelectMany(part => MorphemeRefs(part.Reach!))
+            .DistinctBy(reference => (reference.AllomorphId, reference.GrammaticalInfoId)).ToArray();
+        var otherWordsUsingMorpheme = refs.SelectMany(reference => ObjectUsesQuery.UsesOf(assessmentWords, reference).Words)
+            .Select(word => word.Row.Word).Where(word => word != form)
+            .Distinct(StringComparer.Ordinal).ToArray();
+
+        return new ResultsWarningEvidence(namedWarnings, namedWarningDetails, membershipCandidateWarnings,
+            spellingCandidateWarnings, refs, otherWordsUsingMorpheme);
+    }
+
+    internal void SetWarningEvidence(ResultsWarningEvidence evidence)
+    {
+        NamedWarnings = evidence.NamedWarnings;
+        NamedWarningDetails = evidence.NamedWarningDetails;
+        MembershipCandidateWarnings = evidence.MembershipCandidateWarnings;
+        SpellingCandidateWarnings = evidence.SpellingCandidateWarnings;
+        _namedMorphemeRefs = evidence.NamedMorphemeRefs;
+        OtherWordsUsingMorpheme = evidence.OtherWordsUsingMorpheme;
+
+        OnPropertyChanged(nameof(NamedWarnings));
+        OnPropertyChanged(nameof(NamedWarningDetails));
+        OnPropertyChanged(nameof(MembershipCandidateWarnings));
+        OnPropertyChanged(nameof(SpellingCandidateWarnings));
+        OnPropertyChanged(nameof(OtherWordsUsingMorpheme));
+        OnPropertyChanged(nameof(HasNamedWarning));
+        OnPropertyChanged(nameof(HasNoNamedWarning));
+        OnPropertyChanged(nameof(HasWarningEvidence));
+        OnPropertyChanged(nameof(HasWarningCandidates));
+        OnPropertyChanged(nameof(HasMembershipCandidateWarnings));
+        OnPropertyChanged(nameof(HasSpellingCandidateWarnings));
+        OnPropertyChanged(nameof(HasOtherWordsUsingMorpheme));
+        OnPropertyChanged(nameof(OtherWordsUsingMorphemeLabel));
+        OnPropertyChanged(nameof(HasWhySection));
+        OnPropertyChanged(nameof(WarningMarkLabel));
+        OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphs));
+    }
+
+    internal void SetTimingEvidence(TimingResponse? timing, bool responseAvailable)
+    {
+        var timingShares = timing?.Aggregates
+            .Where(row => row.ShareOfWordTime is > 0)
+            .Select(row => new TimingShareViewModel(row.Name, row.ShareOfWordTime!.Value))
+            .ToList() ?? [];
+        if (timing is not null && timing.Attribution.WordTimeMs > 0)
+        {
+            var allRulesShare = timing.Attribution.AttributedMs / timing.Attribution.WordTimeMs;
+            var otherRulesShare = allRulesShare - timingShares.Sum(row => row.Share);
+            if (double.IsFinite(otherRulesShare) && otherRulesShare >= 0.0005)
+                timingShares.Add(new TimingShareViewModel("Other rules", otherRulesShare));
+        }
+        TimingShares = timingShares;
+        NotAttributedShare = timing?.Attribution.NotAttributedShare;
+        NotAttributedShareLabel = NotAttributedShare is { } share
+            ? $"Not attributed · {share:P1}"
+            : responseAvailable ? "Not attributed · no object time recorded" : "Timing unavailable for this word";
+        OnPropertyChanged(nameof(TimingShares));
+        OnPropertyChanged(nameof(NotAttributedShareLabel));
+        OnPropertyChanged(nameof(NotAttributedShare));
+        OnPropertyChanged(nameof(HasTimingShares));
+    }
+
+    private static IReadOnlyList<WarningCandidateViewModel> CandidateWarnings(
+        IReadOnlyList<GrammarWarning> findings, string word, bool membership) => findings
+        .Select(finding =>
+        {
+            var source = finding.YourWords;
+            var candidates = source is null ? null : membership
+                ? source.Match == WarningWordsMatch.Membership ? source.Words : source.MembershipCandidates
+                : source.Match == WarningWordsMatch.Spelling ? source.Words : source.SpellingCandidates;
+            var namesWord = source is { Match: WarningWordsMatch.Identity }
+                ? source.Words.Any(candidate => candidate.Row.Word == word)
+                : candidates?.Any(candidate => candidate.Row.Word == word) == true;
+            return (Finding: finding, Candidates: candidates, NamesWord: namesWord);
+        })
+        .Where(item => item.NamesWord && item.Candidates is { Count: > 0 })
+        .Select(item => new WarningCandidateViewModel(
+            item.Candidates!.Select(candidate => candidate.Row.Word).Distinct(StringComparer.Ordinal).ToArray()))
+        .ToArray();
+
+    private static IEnumerable<ObjectUseRef> MorphemeRefs(WarningReach reach)
+    {
+        foreach (var allomorph in reach.AllomorphIds)
+            yield return new ObjectUseRef { AllomorphId = allomorph };
+        foreach (var grammaticalInfo in reach.GrammaticalInfoIds)
+            yield return new ObjectUseRef { GrammaticalInfoId = grammaticalInfo };
+    }
 
     /// <summary>Whether FieldWorks stores more analyses than the strip's one line shows.</summary>
     public bool HasMoreFieldWorksAnalyses => FieldWorksAnalyses.Count > 1;
@@ -361,6 +510,50 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     private static string Plural(int count) => count == 1 ? string.Empty : "s";
 }
+
+/// <summary>One strip morpheme and whether its exact identity is named by a warning.</summary>
+/// <param name="Morph">The existing morpheme display data.</param>
+/// <param name="IsNamedInWarning">Whether the warning names this morpheme by identity.</param>
+public sealed record ResultsStripMorphViewModel(ParserReadingMorphViewModel Morph, bool IsNamedInWarning)
+{
+    /// <summary>The morpheme's displayed form.</summary>
+    public string Form => Morph.Form;
+    /// <summary>The morpheme's displayed gloss or placeholder.</summary>
+    public string GlossOrPlaceholder => Morph.GlossOrPlaceholder;
+}
+
+/// <summary>The PanGloss message shown for an exact finding in a word card.</summary>
+/// <param name="Message">The warning description PanGloss supplied.</param>
+public sealed record NamedWarningCardViewModel(string Message);
+
+/// <summary>Words reached through one spelling or membership candidate group.</summary>
+/// <param name="Words">The candidate word forms reached through this route.</param>
+public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
+{
+    /// <summary>The candidate word forms as a comma-separated label.</summary>
+    public string WordsLabel => string.Join(", ", Words);
+    /// <summary>The heading for this membership candidate group.</summary>
+    public string MembershipLabel => "Membership candidates; not confirmed uses";
+    /// <summary>The heading for this spelling candidate group.</summary>
+    public string SpellingLabel => "Spelling candidates; not confirmed uses";
+}
+
+/// <summary>One stored rule's share of the selected word time.</summary>
+/// <param name="Name">The rule name returned by Timing.</param>
+/// <param name="Share">The rule's stored share of word time.</param>
+public sealed record TimingShareViewModel(string Name, double Share)
+{
+    /// <summary>The stored share formatted as a percentage.</summary>
+    public string ShareLabel => Share.ToString("P1", System.Globalization.CultureInfo.CurrentCulture);
+}
+
+internal sealed record ResultsWarningEvidence(
+    IReadOnlyList<GrammarWarning> NamedWarnings,
+    IReadOnlyList<NamedWarningCardViewModel> NamedWarningDetails,
+    IReadOnlyList<WarningCandidateViewModel> MembershipCandidateWarnings,
+    IReadOnlyList<WarningCandidateViewModel> SpellingCandidateWarnings,
+    IReadOnlyList<ObjectUseRef> NamedMorphemeRefs,
+    IReadOnlyList<string> OtherWordsUsingMorpheme);
 
 /// <summary>One parser reading of a word as the side panel lists it.</summary>
 public sealed class ResultsReadingViewModel

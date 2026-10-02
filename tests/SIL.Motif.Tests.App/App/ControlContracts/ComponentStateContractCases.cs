@@ -268,6 +268,10 @@ internal static class ComponentStateContractCases
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
         yield return new("Border.wordStrip.open", "open and keyboard focus", () => Alone(Strip("open")), StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Border.wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
+            StatePart.Self, Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Border.wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
+            StatePart.Self, Border.BorderThicknessProperty, "Intent.Stroke.Focus");
 
         const string rowsFace = " /template/ ContentPresenter#PART_ContentPresenter";
         yield return new("ListBox.wordRows ListBoxItem:pointerover" + rowsFace, "hover", () => WordRowsEntry(selected: false),

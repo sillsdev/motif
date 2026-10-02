@@ -41,6 +41,7 @@ public sealed partial class TextsPageModel : PageModel
             context.Commands)
         {
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
+            OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
         };
         context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);

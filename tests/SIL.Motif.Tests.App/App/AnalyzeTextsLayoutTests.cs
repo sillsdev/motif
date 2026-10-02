@@ -11,6 +11,9 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
+using ContractWordRow = SIL.Motif.Contract.Responses.WordRow;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -81,6 +84,193 @@ public sealed class AnalyzeTextsLayoutTests
             }
         }, Deadline);
     }
+
+    [Fact]
+    public void AnalyzeTextsExplainsExactWarningsSeparatelyFromCandidatesAndUsesStoredTiming()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                configure: (fake, assessment) => ConfigureStoredExplanation(fake, assessment));
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                window.Height = 1500;
+                Settle(window);
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                await inText.WarningEvidenceRefresh;
+                Assert.Equal(1, inText.NamedInWarningCount);
+                Assert.True(inText.HasWarningEvidence);
+                var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                    .Single(item => item.Form == "alikula");
+                Assert.True(token.HasNamedWarning);
+                Assert.Equal("anapenda", Assert.Single(token.MembershipCandidateWarnings).WordsLabel);
+                Assert.Equal("watoto", Assert.Single(token.SpellingCandidateWarnings).WordsLabel);
+                await inText.OpenTokenCardAsync(token);
+                Settle(window);
+
+                var panel = Panel(window);
+                var warningFilter = Assert.Single(panel.GetVisualDescendants().OfType<FilterChip>(),
+                    chip => chip.Label == "Named in a warning");
+                Assert.Equal(1, warningFilter.Count);
+                Assert.Contains("⚠", VisibleText(Assert.Single(Strips(panel), strip =>
+                    strip.Tag is ResultsTokenViewModel { Form: "alikula" })));
+                var card = OpenCard(window);
+                var cardLines = card.GetVisualDescendants().OfType<CopyableTextBlock>().ToArray();
+                var exactMessage = Assert.Single(cardLines,
+                    line => line.Text == "PanGloss exact warning message");
+                Assert.Contains("wordCardHeading", exactMessage.Classes);
+                var namedExactly = Assert.Single(cardLines, line => line.Text == "Named exactly");
+                Assert.True(Array.IndexOf(cardLines, exactMessage) < Array.IndexOf(cardLines, namedExactly));
+                Assert.DoesNotContain(cardLines, line => line.Text == "exact");
+                Assert.Contains(cardLines, line => line.Text == "Membership candidates; not confirmed uses");
+                Assert.Contains(cardLines, line => line.Text == "Spelling candidates; not confirmed uses");
+                Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · membership") == true);
+                Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
+                var cardText = string.Join(" ", cardLines.Select(line => line.Text)
+                    .Where(text => !string.IsNullOrWhiteSpace(text)));
+                Assert.Contains("Subject agreement", cardText);
+                Assert.Contains("Not attributed", cardText);
+                Assert.Contains("anapenda", cardText);
+                Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
+                Assert.Contains(token.WarningMarkedFieldWorksMorphs,
+                    morph => morph.Form == "-a" && morph.IsNamedInWarning);
+                Assert.InRange(token.TimingShares.Sum(row => row.Share) + token.NotAttributedShare!.Value,
+                    0.999, 1.001);
+
+                warningFilter.Command!.Execute(warningFilter.CommandParameter);
+                Settle(window);
+                Assert.Equal("NamedInWarning", inText.Filter.ToString());
+                Assert.False(token.IsDimmed);
+                Assert.All(inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+                    .Where(item => item.IsWord && item.Form != "alikula"), item => Assert.True(item.IsDimmed));
+                var openWarning = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<Button>(),
+                    button => button.Content?.ToString() == "Open the warning");
+                Assert.NotNull(openWarning.Command);
+                openWarning.Command.Execute(openWarning.CommandParameter);
+                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void AnalyzeTextsAccountsForAllOfHawajafikaTiming()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(
+                configure: (fake, assessment) => ConfigureStoredExplanation(fake, assessment));
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                window.Height = 1500;
+                Settle(window);
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                await inText.WarningEvidenceRefresh;
+                var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                    .Single(item => item.Form == "hawajafika");
+                await inText.OpenTokenCardAsync(token);
+                Settle(window);
+
+                Assert.InRange(token.TimingShares.Sum(row => row.Share) + token.NotAttributedShare!.Value,
+                    0.999, 1.001);
+                Assert.Contains(token.TimingShares, row => row.Name == "Other rules");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    internal static void ConfigureStoredExplanation(FakeCommandClient fake, AssessCommandResponse assessment,
+        string timedWord = "alikula")
+    {
+        var morpheme = assessment.Words.Single(word => word.Word == "alikula").StoredAnalyses
+            .SelectMany(analysis => analysis.Morphs).Single(morph => morph.Form == "-a");
+        var exactWord = WarningWord("alikula");
+        var candidateWord = WarningWord("anapenda");
+        var exactReach = new WarningReach(WarningWordsPath.Uses)
+        {
+            AllomorphIds = [morpheme.AllomorphId!],
+            GrammaticalInfoIds = [morpheme.GrammaticalInfoId!],
+        };
+        var membershipReach = new WarningReach(WarningWordsPath.Membership)
+        {
+            MembershipAllomorphIds = [morpheme.AllomorphId!],
+        };
+        var spellingReach = new WarningReach(WarningWordsPath.Spelling) { Spellings = ["a"] };
+        var warnings = new[]
+        {
+            SampleWarning("exact", "PanGloss exact warning message", WarningWordsMatch.Identity,
+                [exactWord], new GrammarWarningPart("-a", GrammarWarningPartRole.Object,
+                    morpheme.AllomorphId, "MoForm") { Reach = exactReach },
+                membershipCandidates: [candidateWord], spellingCandidates: [WarningWord("watoto")]),
+            SampleWarning("membership", "PanGloss membership warning message", WarningWordsMatch.Membership,
+                [candidateWord], new GrammarWarningPart("slot", GrammarWarningPartRole.Object) { Reach = membershipReach }),
+            SampleWarning("spelling", "PanGloss spelling warning message", WarningWordsMatch.Spelling,
+                [candidateWord], new GrammarWarningPart("letter a", GrammarWarningPartRole.Object) { Reach = spellingReach }),
+        };
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse(warnings, HasBaseline: true));
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            StoredTiming(request.ExplicitWords?.SingleOrDefault() ?? timedWord))));
+    }
+
+    private static TimingResponse StoredTiming(string word) => word == "hawajafika"
+        ? new TimingResponse("assessment/one", "all", "rule", 1, 1, 1, [],
+            [
+                new TimingAggregateRow("rule/subject", "Subject agreement", 0.36, 0.36, 1)
+                    { Kind = "morph_rule", IdentityQuality = "authored" },
+                new TimingAggregateRow("rule/past", "Past tense", 0.19, 0.19, 1)
+                    { Kind = "morph_rule", IdentityQuality = "authored" },
+                new TimingAggregateRow("rule/harmony", "Vowel harmony", 0.15, 0.15, 1)
+                    { Kind = "phon_rule", IdentityQuality = "authored" },
+            ], [])
+        {
+            Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 1_000_000 }],
+            Attribution = new WordTimeAttribution(1, 1, 0.85, 0.15, 0.15, 0, false),
+        }
+        : new TimingResponse("assessment/one", "all", "rule", 1, 0.9, 0.9,
+        [],
+        [
+            new TimingAggregateRow("rule/subject", "Subject agreement", 0.4, 0.4 / 0.9, 1)
+                { Kind = "morph_rule", IdentityQuality = "authored" },
+            new TimingAggregateRow("rule/past", "Past tense", 0.2, 0.2 / 0.9, 1)
+                { Kind = "morph_rule", IdentityQuality = "authored" },
+            new TimingAggregateRow("rule/harmony", "Vowel harmony", 0.1, 0.1 / 0.9, 1)
+                { Kind = "phon_rule", IdentityQuality = "authored" },
+        ], [])
+    {
+        Words = [new TimingWordRow(word, 1, TimingCompletion.Finished) { ElapsedNs = 900_000 }],
+        Attribution = new WordTimeAttribution(1, 0.9, 0.7, 0.2, 0.2 / 0.9, 0, false),
+        };
+
+    private static ObjectUseWord WarningWord(string word) => new(new ContractWordRow(
+        word, WordRowOutcome.Different, "Different", WordRowTone.Look));
+
+    private static GrammarWarning SampleWarning(string code, string description, WarningWordsMatch match,
+        IReadOnlyList<ObjectUseWord> words, GrammarWarningPart subject,
+        IReadOnlyList<ObjectUseWord>? membershipCandidates = null,
+        IReadOnlyList<ObjectUseWord>? spellingCandidates = null) => new(
+        GrammarDiagnosticLevel.Warning, code, [subject],
+        [new GrammarWarningPart(description, GrammarWarningPartRole.Text)], description)
+    {
+        Code = code,
+        Group = code,
+        Description = description,
+        YourWords = new WarningWords(match, words, [])
+        {
+            Paths = [subject.Reach!.Path],
+            MembershipCandidates = membershipCandidates ?? [],
+            SpellingCandidates = spellingCandidates ?? [],
+        },
+    };
 
     [Fact]
     public void ArrowKeysMoveTheCardBetweenWordsAndEscapeClosesItBackOntoTheWord()
