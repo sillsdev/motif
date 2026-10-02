@@ -7,7 +7,6 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.FilterChip.Padding" ResourceKey="Primitive.Inset.9_3_9_3" />
     <StaticResource x:Key="Component.FilterChip.Radius" ResourceKey="Primitive.Radius.12" />
-    <StaticResource x:Key="Component.FilterChip.Margin" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.FilterChip.CompactPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
     <StaticResource x:Key="Component.FilterChip.CompactMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
     <StaticResource x:Key="Component.FilterChip.CompactHeight" ResourceKey="Primitive.Size.24" />
@@ -16,7 +15,7 @@
     <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.Padding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.FilterChip.Radius}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.FilterChip.Margin}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />

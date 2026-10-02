@@ -14,9 +14,7 @@
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
-    <StaticResource x:Key="Component.MatrixCell.SharedPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.MatrixCell.SharedRadius" ResourceKey="Primitive.Radius.6" />
-    <StaticResource x:Key="Component.MatrixCell.ChosenPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />
@@ -112,7 +110,7 @@
 
   <!-- The chosen cells' list keeps a thin inset, so its word rows keep the width every column head needs. -->
   <Style Selector="Border.card.matrixChosen">
-    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.ChosenPadding}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.Padding}" />
   </Style>
   <Style Selector="StackPanel.matrixChosenMarks">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
@@ -122,7 +120,7 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="Border.matrixShared">
-    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.SharedPadding}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.Padding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.SharedRadius}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
   </Style>

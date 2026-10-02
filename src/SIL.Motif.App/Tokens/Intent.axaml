@@ -121,6 +121,7 @@
   Gaps (Thickness, for Margin):
     Intent.Gap.AfterGroup         after an item, before the next group
     Intent.Gap.AfterRelated       after an item, before a related one
+    Intent.Gap.CompactItem        right and bottom gaps between items in a compact group
 
   Strokes (Thickness for BorderThickness; double for StrokeThickness):
     Intent.Stroke.None            no border
@@ -198,6 +199,7 @@
 
   <StaticResource x:Key="Intent.Gap.AfterGroup" ResourceKey="Primitive.Inset.0_0_12_0" />
   <StaticResource x:Key="Intent.Gap.AfterRelated" ResourceKey="Primitive.Inset.0_0_8_0" />
+  <StaticResource x:Key="Intent.Gap.CompactItem" ResourceKey="Primitive.Inset.0_0_4_4" />
 
   <StaticResource x:Key="Intent.Stroke.None" ResourceKey="Primitive.Inset.0_0_0_0" />
   <StaticResource x:Key="Intent.Stroke.Box" ResourceKey="Primitive.Inset.1_1_1_1" />

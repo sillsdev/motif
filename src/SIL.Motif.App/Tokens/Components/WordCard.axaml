@@ -12,7 +12,6 @@
     <StaticResource x:Key="Component.WordCard.Radius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordCard.HeadPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
     <StaticResource x:Key="Component.WordCard.SectionPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
-    <StaticResource x:Key="Component.WordCard.ActionGap" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.WordCard.HeadingType" ResourceKey="Primitive.Type.10" />
     <StaticResource x:Key="Component.WordCard.NoteGap" ResourceKey="Primitive.Inset.10_0_0_0" />
   </Styles.Resources>
@@ -93,6 +92,6 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="Button.wordCardAction">
-    <Setter Property="Margin" Value="{DynamicResource Component.WordCard.ActionGap}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
 </Styles>

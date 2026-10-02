@@ -8,7 +8,6 @@
     <StaticResource x:Key="Component.Warnings.SummaryPadding" ResourceKey="Primitive.Inset.10_7_10_7" />
     <StaticResource x:Key="Component.Warnings.DetailPadding" ResourceKey="Primitive.Inset.14_10_14_10" />
     <StaticResource x:Key="Component.Warnings.WorkflowPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
-    <StaticResource x:Key="Component.Warnings.PartMargin" ResourceKey="Primitive.Inset.0_0_4_4" />
   </Styles.Resources>
 
   <Style Selector="Grid.warningPanel">
@@ -74,14 +73,14 @@
   </Style>
 
   <Style Selector=":is(Control).warningPart">
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
 
   <Style Selector="HyperlinkButton.warningObjectLink">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.Warnings.PartMargin}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
 
   <Style Selector=":is(SelectableTextBlock).warningObject">

@@ -54,11 +54,7 @@ internal static class TokenHygiene
     /// The named exceptions: a file, a fragment of the offending source line, and why the value is not a design
     /// decision. Each entry must still match a violation, or the run fails.
     /// </summary>
-    internal static readonly Allowance[] Allowlist =
-    [
-        new("src/SIL.Motif.App/Views/MainWindow.axaml", "<Canvas Width=\"24\" Height=\"24\">",
-            "the page icons' path data is drawn in a 24-unit square; the Viewbox around it sets the on-screen size"),
-    ];
+    internal static readonly Allowance[] Allowlist = [];
 
     private const string AppRoot = "src/SIL.Motif.App/";
     private const string ViewsRoot = AppRoot + "Views/";

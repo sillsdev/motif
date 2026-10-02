@@ -423,7 +423,7 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Warning.Text");
 
         yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.BackgroundProperty, "Intent.Clear");
-        yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Component.FilterChip.Margin");
+        yield return new("FilterChip", "a chip", host => Add(host, Press("filterChip")), Button.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("FilterChip", "a compact chip", host => Add(host, Press("filterChip", "compact")),
             Button.PaddingProperty, "Component.FilterChip.CompactPadding");
         yield return new("FilterChip", "an active chip", host => Add(host, Press("filterChip", "active")),
@@ -444,9 +444,9 @@ public sealed partial class ComponentStyleTests
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
             Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
-            Border.PaddingProperty, "Component.MatrixCell.ChosenPadding");
+            Border.PaddingProperty, "Component.MatrixCell.Padding");
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
-            Border.PaddingProperty, "Component.MatrixCell.SharedPadding");
+            Border.PaddingProperty, "Component.MatrixCell.Padding");
         yield return new("MatrixCell", "how many share a morpheme", host => Within(host, Box("matrixShared"), "matrixSharedCount"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("MatrixCell", "a cell's words", host => Inside(host, Box("matrixCell")),
@@ -507,7 +507,7 @@ public sealed partial class ComponentStyleTests
             ProgressBar.HeightProperty, "Component.TopBar.ParseProgressHeight");
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
-        yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Component.Menu.ActionGap");
+        yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.HeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
@@ -562,6 +562,8 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Surface");
         yield return new("Warnings", "a finding summary", host => Add(host, Press("warningSummary")),
             Button.BackgroundProperty, "Intent.Clear");
+        yield return new("Warnings", "a finding's compact part gap", host => Add(host, Text("warningPart")),
+            TextBlock.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("Warnings", "finding details", host => Add(host, Box("warningDetail")),
             Border.PaddingProperty, "Component.Warnings.DetailPadding");
         yield return new("Review", "a group of changes", host => Add(host, Box("reviewGroup")),
@@ -665,6 +667,8 @@ public sealed partial class ComponentStyleTests
         yield return new("WordRow", "an opened row's accent edge", OpenRowEdge, Border.BorderBrushProperty, "Intent.Accent");
         yield return new("WordRow", "a row's body", host => Add(host, Box("wordRowBody")),
             Border.PaddingProperty, "Component.WordRow.Padding");
+        yield return new("WordRow", "the compact cell gap", host => Add(host, With(new Grid(), ["wordRowCells"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Compact");
         yield return new("WordRow", "a row's height", host => Add(host, With(new Grid(), ["wordRowLine"])),
             Control.MinHeightProperty, "Component.WordRow.MinHeight");
         yield return new("WordRow", "the word", host => Add(host, Text("wordRowForm")),
@@ -811,6 +815,10 @@ public sealed partial class ComponentStyleTests
             TextBlock.FontSizeProperty, "Intent.Type.Small");
         yield return new("WordCard", "the closest-reading note", host => Add(host, Text("listCardNote")),
             TextBlock.MarginProperty, "Component.WordCard.NoteGap");
+        yield return new("WordCard", "an action in the word card", host => Add(host, Press("wordCardAction")),
+            Button.MarginProperty, "Intent.Gap.CompactItem");
+        yield return new("WordStrip", "a word strip's group gap", host => Add(host, Box("wordStrip")),
+            Border.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("WordStrip", "a resting word strip edge", host => Add(host, Box("wordStrip")),
             Border.BorderBrushProperty, "Intent.Clear");
         yield return new("WordStrip", "an open word strip edge", host => Add(host, Box("wordStrip", "open")),
@@ -843,7 +851,10 @@ public sealed partial class ComponentStyleTests
             Border.MinHeightProperty, "Component.Density.CompactWordHeight");
         yield return new("Density", "the compact word strip type", host =>
                 Assert.IsType<StackPanel>(CompactWordStrip(host).Child).Children.OfType<TextBlock>().Single(),
-            TextBlock.FontSizeProperty, "Component.Density.CompactWordType");
+            TextBlock.FontSizeProperty, "Component.Density.CompactType");
+        yield return new("Density", "the normal word strip type", host =>
+                Assert.IsType<StackPanel>(DensityWordStrip(host, normal: true).Child).Children.OfType<TextBlock>().Single(),
+            TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
             Control.HeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
@@ -933,8 +944,12 @@ public sealed partial class ComponentStyleTests
     }
 
     private static Border CompactWordStrip(Panel host)
+        => DensityWordStrip(host, normal: false);
+
+    private static Border DensityWordStrip(Panel host, bool normal)
     {
         var root = new Border { Classes = { "wordVerdict", "analysisDensity" } };
+        if (normal) root.Classes.Add("normal");
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = "word" });
         content.Children.Add(Box("opinionMark"));

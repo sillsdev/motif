@@ -10,7 +10,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordRow.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
-    <StaticResource x:Key="Component.WordRow.CellSpacing" ResourceKey="Primitive.Space.4" />
     <StaticResource x:Key="Component.WordRow.MinHeight" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.WordRow.CardPadding" ResourceKey="Primitive.Inset.36_4_8_8" />
     <StaticResource x:Key="Component.WordRow.MorphPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
@@ -67,7 +66,7 @@
     <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector="Grid.wordRowCells">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Component.WordRow.CellSpacing}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="Border.wordRowBody">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />

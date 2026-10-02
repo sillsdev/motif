@@ -9,7 +9,6 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Menu.Width" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.Menu.EntryPadding" ResourceKey="Primitive.Inset.10_8_10_8" />
-    <StaticResource x:Key="Component.Menu.ActionGap" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.Menu.ButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.Menu.ButtonHeight" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Menu.HelpMaxWidth" ResourceKey="Primitive.Size.780" />
@@ -32,7 +31,7 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
   <Style Selector="Button.menuAction">
-    <Setter Property="Margin" Value="{DynamicResource Component.Menu.ActionGap}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
   <Style Selector="Button.menuEntry">
     <Setter Property="HorizontalAlignment" Value="Stretch" />

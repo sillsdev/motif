@@ -14,6 +14,7 @@
     <StaticResource x:Key="Component.Sidebar.ItemMargin" ResourceKey="Primitive.Inset.0_0_0_2" />
     <StaticResource x:Key="Component.Sidebar.IconSize" ResourceKey="Primitive.Size.18" />
     <StaticResource x:Key="Component.Sidebar.IconSizeCollapsed" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.Sidebar.IconCanvasSize" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Sidebar.LabelMargin" ResourceKey="Primitive.Inset.10_0_0_0" />
     <StaticResource x:Key="Component.Sidebar.FooterMargin" ResourceKey="Primitive.Inset.18_8_8_14" />
   </Styles.Resources>

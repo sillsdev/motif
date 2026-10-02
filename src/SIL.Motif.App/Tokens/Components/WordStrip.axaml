@@ -8,7 +8,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
-    <StaticResource x:Key="Component.WordStrip.Gap" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.WordStrip.Radius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordStrip.WordRowHeight" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.WordStrip.AnalysisRowHeight" ResourceKey="Primitive.Size.28" />
@@ -22,8 +21,7 @@
     <StaticResource x:Key="Component.WordStrip.GutterMargin" ResourceKey="Primitive.Inset.0_1_6_0" />
     <StaticResource x:Key="Component.WordStrip.GutterWordPadding" ResourceKey="Primitive.Inset.0_5_0_0" />
     <StaticResource x:Key="Component.WordStrip.MorphType" ResourceKey="Primitive.Type.11" />
-    <StaticResource x:Key="Component.WordStrip.MorphLine" ResourceKey="Primitive.Size.14" />
-    <StaticResource x:Key="Component.WordStrip.GlossLine" ResourceKey="Primitive.Size.14" />
+    <StaticResource x:Key="Component.WordStrip.LineHeight" ResourceKey="Primitive.Size.14" />
     <StaticResource x:Key="Component.WordStrip.NoteType" ResourceKey="Primitive.Type.10" />
   </Styles.Resources>
   <Style Selector="Border.wordStrip">
@@ -32,7 +30,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.WordStrip.Radius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.Padding}" />
-    <Setter Property="Margin" Value="{DynamicResource Component.WordStrip.Gap}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
   <Style Selector="Border.wordStrip:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
@@ -88,11 +86,11 @@
   </Style>
   <Style Selector="TextBlock.stripMorphForm">
     <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.MorphType}" />
-    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.MorphLine}" />
+    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
   </Style>
   <Style Selector="TextBlock.stripMorphGloss">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Dense}" />
-    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.GlossLine}" />
+    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
   </Style>
   <Style Selector="Border.warningMorphUnderline">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />

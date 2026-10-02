@@ -5,12 +5,9 @@
     <StaticResource x:Key="Component.Density.NormalType" ResourceKey="Primitive.Type.15" />
     <StaticResource x:Key="Component.Density.CompactMarkSize" ResourceKey="Primitive.Size.13" />
     <StaticResource x:Key="Component.Density.NormalMarkSize" ResourceKey="Primitive.Size.15" />
-    <StaticResource x:Key="Component.Density.CompactActionHeight" ResourceKey="Primitive.Size.17" />
     <StaticResource x:Key="Component.Density.NormalActionHeight" ResourceKey="Primitive.Size.19" />
     <StaticResource x:Key="Component.Density.CompactWordHeight" ResourceKey="Primitive.Size.19" />
     <StaticResource x:Key="Component.Density.NormalWordHeight" ResourceKey="Primitive.Size.27" />
-    <StaticResource x:Key="Component.Density.CompactWordType" ResourceKey="Primitive.Type.13" />
-    <StaticResource x:Key="Component.Density.NormalWordType" ResourceKey="Primitive.Type.15" />
   </Styles.Resources>
   <Style Selector="StackPanel.analysisDensity TextBlock.densitySample">
     <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactType}" />
@@ -26,9 +23,6 @@
     <Setter Property="Width" Value="{DynamicResource Component.Density.NormalMarkSize}" />
     <Setter Property="Height" Value="{DynamicResource Component.Density.NormalMarkSize}" />
   </Style>
-  <Style Selector="StackPanel.analysisDensity Button.actionChip">
-    <Setter Property="Height" Value="{DynamicResource Component.Density.CompactActionHeight}" />
-  </Style>
   <Style Selector="StackPanel.analysisDensity.normal Button.actionChip">
     <Setter Property="Height" Value="{DynamicResource Component.Density.NormalActionHeight}" />
   </Style>
@@ -39,9 +33,9 @@
     <Setter Property="MinHeight" Value="{DynamicResource Component.Density.NormalWordHeight}" />
   </Style>
   <Style Selector="Border.wordVerdict.analysisDensity TextBlock">
-    <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactWordType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Component.Density.CompactType}" />
   </Style>
   <Style Selector="Border.wordVerdict.analysisDensity.normal TextBlock">
-    <Setter Property="FontSize" Value="{DynamicResource Component.Density.NormalWordType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Component.Density.NormalType}" />
   </Style>
 </Styles>

@@ -228,7 +228,8 @@
               <DataTemplate x:DataType="vm:PageViewModel">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <Viewbox Classes="pageIcon" VerticalAlignment="Center">
-                    <Canvas Width="24" Height="24">
+                    <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
+                            Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
                       <Path Classes="pageIcon" Data="{Binding Icon, Converter={x:Static views:PageIcons.Geometry}}"
                             Stroke="{Binding $parent[ListBoxItem].Foreground}" />
                     </Canvas>
