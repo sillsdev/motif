@@ -1,8 +1,11 @@
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -27,7 +30,7 @@ public sealed class OverviewPageWordsTests
         ["violation", "rejected", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
 
     private const int TimedOutWordCount = 2;
-    private static readonly string[] StepLimitedWords = ["stopped-1", "stopped-2", "stopped-3"];
+    private static readonly string[] StepLimitedWords = ["mwalimu", "stopped-2", "stopped-3"];
 
     [Theory]
     [InlineData(0, "No known word matches; some named connections could not be followed", "No known matches; incomplete")]
@@ -67,6 +70,35 @@ public sealed class OverviewPageWordsTests
         Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
                       ("Lexical entries", "7%"), ("Root lookup", "4%"), ("Not attributed", "12%")],
             page.TimingKindShares.Select(row => (row.Label, row.ShareText)));
+    }
+
+    [Fact]
+    public void SpeedTileKeepsSlowestWordsCompactAndMarksAStoppedWord()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            fake.OverviewCompletesWith(Populated());
+            await context.OpenProjectAsync(ProjectPath);
+            var window = Show(page);
+            try
+            {
+                var speed = window.GetLogicalDescendants().OfType<Control>()
+                    .Single(control => Avalonia.Automation.AutomationProperties.GetName(control) == "Speed");
+                var summary = speed.GetLogicalDescendants().OfType<TextBlock>()
+                    .Single(text => text.Text?.StartsWith("Slowest:", StringComparison.Ordinal) == true);
+
+                Assert.Contains("mwalimu", summary.Text, StringComparison.Ordinal);
+                Assert.Contains("◐ Stopped", summary.Text, StringComparison.Ordinal);
+                Assert.Contains("700 ms", summary.Text, StringComparison.Ordinal);
+                Assert.Empty(speed.GetLogicalDescendants().OfType<SIL.Motif.App.Views.WordRow>());
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -160,7 +192,7 @@ public sealed class OverviewPageWordsTests
 
         var residual = Assert.Single(page.TimingKindShares, row => row.IsNotAttributed);
         Assert.Equal(residualMs, residual.ElapsedMs);
-        Assert.Equal(share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture), residual.ShareText);
+        Assert.Equal(TimingShare.FormatPercent(share), residual.ShareText);
     }
 
     [Fact]
@@ -233,7 +265,7 @@ public sealed class OverviewPageWordsTests
         Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
         Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
         Assert.Equal("Grammar warning", Assert.Single(page.WarningKindRows).Name);
-        Assert.Equal("4 words", Assert.Single(page.WarningKindRows).IdentityMatchedWords);
+        Assert.Equal("At least 4 words", Assert.Single(page.WarningKindRows).IdentityMatchedWords);
         Assert.Equal("2 spelling candidates; not confirmed uses", Assert.Single(page.WarningKindRows).SpellingCandidates);
         foreach (var text in new[]
                  {
@@ -480,7 +512,7 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
-    public void LookFirstLinksSitBelowTheirEvidenceAtNarrowWidth()
+    public void LookFirstRowsRevealTheirLinkOnHoverOrFocus()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -496,16 +528,36 @@ public sealed class OverviewPageWordsTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var rows = window.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => button.Classes.Contains("overviewLookFirstRow")).ToArray();
-                Assert.NotEmpty(rows);
-                foreach (var row in rows)
+                var links = window.GetLogicalDescendants().OfType<Button>()
+                    .Where(link => link.Classes.Contains("overviewLookFirstRow")).ToArray();
+                Assert.Equal(page.LookFirstRows.Count, links.Length);
+                var actionHint = Assert.Single(links[0].GetLogicalDescendants().OfType<TextBlock>(),
+                    text => text.Classes.Contains("overviewLookFirstAction"));
+                Assert.Equal(0, actionHint.Opacity);
+                links[0].BringIntoView();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var point = links[0].TranslatePoint(new Avalonia.Point(
+                    links[0].Bounds.Width / 2, links[0].Bounds.Height / 2), window)!.Value;
+                window.MouseMove(point);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(links[0].IsPointerOver);
+                Assert.Equal(1, actionHint.Opacity);
+                window.MouseMove(new Avalonia.Point(-100, -100));
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(links[0].Focus(Avalonia.Input.NavigationMethod.Tab));
+                Assert.Equal(1, actionHint.Opacity);
+                foreach (var (link, row) in links.Zip(page.LookFirstRows))
                 {
-                    Assert.Contains(row.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                        text.Classes.Contains("overviewLookFirstWords") || text.Text?.Contains("word", StringComparison.OrdinalIgnoreCase) == true);
-                    Assert.Equal(0, row.GetLogicalDescendants().OfType<TextBlock>()
-                        .Single(text => text.Classes.Contains("overviewLookFirstAction")).Opacity);
-                    Assert.StartsWith("See the ", AutomationProperties.GetName(row));
+                    Assert.True(link.IsTabStop);
+                    Assert.IsAssignableFrom<CommunityToolkit.Mvvm.Input.IRelayCommand>(link.Command);
+                    Assert.Equal(row.LinkText, AutomationProperties.GetName(link));
+                    Assert.Contains(link.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == row.Summary);
+                    if (row.Detail.Length > 0)
+                        Assert.Contains(link.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == row.Detail);
                 }
             }
             finally
@@ -693,7 +745,6 @@ public sealed class OverviewPageWordsTests
                 new GrammarWarningSummary("test.finding", "Grammar warning", GrammarDiagnosticLevel.Warning, 6)
                 {
                     YourWords = 4,
-                    WordAttributionComplete = true,
                     BySpellingOnly = 2,
                 },
             ],

@@ -96,30 +96,17 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Timing →" DockPanel.Dock="Right"
-                               Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open Speed in Timing" />
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Slowest words →" DockPanel.Dock="Right"
+                               Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open slowest words in Timing" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedDetails}" TextWrapping="Wrap"
                        IsVisible="{Binding SpeedDetails, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            <StackPanel Grid.IsSharedSizeScope="True" IsVisible="{Binding HasSlowestWordRows}">
-              <TextBlock Classes="overviewTileDetail" Text="Slowest words" />
-              <ItemsControl ItemsSource="{Binding SlowestWordRows}" AutomationProperties.Name="Slowest words"
-                            KeyboardNavigation.TabNavigation="Continue">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ListedWordViewModel">
-                    <views:WordRow Row="{Binding Row}" List="overview-slowest" IsOpen="{Binding IsOpen}"
-                                   Columns="{x:Static views:WordRowColumnSets.Overview}" TimeText="{Binding TimeText}">
-                      <views:WordRow.Card>
-                        <views:ListedWordCard />
-                      </views:WordRow.Card>
-                    </views:WordRow>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
+            <TextBlock Classes="overviewTileDetail" Text="{Binding SlowestWordSummary}"
+                       TextWrapping="Wrap" IsVisible="{Binding HasSlowestWordSummary}"
+                       AutomationProperties.Name="Slowest words and recorded times" />
             <TextBlock Classes="overviewTileDetail" Text="Time by kind"
                        IsVisible="{Binding HasTimingKindShares}" />
             <views:TimingKindBar x:Name="OverviewKindBar" Rows="{Binding TimingKindShares}"

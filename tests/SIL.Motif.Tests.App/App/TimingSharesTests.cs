@@ -231,8 +231,8 @@ public sealed class TimingSharesTests
             attribution: new WordTimeAttribution(1, 800, 300, 500, 0.625, 0, false));
 
         Assert.Equal("800 ms", timing.HeadlineTotal);
-        Assert.Equal("37.5%", timing.KindShares.Single(share => share.Source is not null).ShareText);
-        Assert.Equal("Not attributed: 500 ms (62.5%).", timing.NotAttributedText);
+        Assert.Equal("38%", timing.KindShares.Single(share => share.Source is not null).ShareText);
+        Assert.Equal("Not attributed: 500 ms (62%).", timing.NotAttributedText);
     }
 
     [Fact]
@@ -340,8 +340,8 @@ public sealed class TimingSharesTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
-            var timing = await LoadedTiming(NineWords, Kinds, Rules);
-            var window = new Window { Width = 988, Height = 1400, Content = new TimingPage(timing) };
+            var timing = await LoadedTiming(NineWords, Kinds, Rules, stepLimitedWord: "mwalimu");
+            var window = new Window { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -461,7 +461,8 @@ public sealed class TimingSharesTests
     private static async Task<TimingPageModel> LoadedTiming((string Word, int? Ms)[] words,
         TimingAggregateRow[] kinds, TimingAggregateRow[] rules, WordRuleTiming[]? costliest = null,
         WordTimeAttribution? attribution = null, IReadOnlyList<long?>? elapsedNs = null,
-        TraceTimingKey? requestedRule = null, double? medianMs = 9, double? percentile95Ms = 700)
+        TraceTimingKey? requestedRule = null, double? medianMs = 9, double? percentile95Ms = 700,
+        string? stepLimitedWord = null)
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
@@ -470,7 +471,8 @@ public sealed class TimingSharesTests
             new TimingResponse("assessment-parse", request.WordSet, request.By, words.Length, medianMs, percentile95Ms, [],
                 request.By == "kind" ? kinds : rules, request.Rule is null ? [] : costliest ?? [])
             {
-                Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms, TimingCompletion.Finished)
+                Words = words.Select((word, index) => new TimingWordRow(word.Word, word.Ms,
+                    word.Word == stepLimitedWord ? TimingCompletion.StepLimit : TimingCompletion.Finished)
                 {
                     ElapsedNs = elapsedNs is not null && index < elapsedNs.Count ? elapsedNs[index] : null,
                 }).ToArray(),

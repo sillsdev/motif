@@ -1,6 +1,8 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
@@ -41,19 +43,36 @@ public sealed class TimingSourceAvailabilityTests
 
                 var controls = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
                     panel => AutomationProperties.GetName(panel) == "Timing controls");
-                var sources = Assert.Single(window.GetVisualDescendants().OfType<Expander>(),
-                    expander => AutomationProperties.GetName(expander) == "More word sources");
                 Assert.Equal(Orientation.Horizontal, controls.Orientation);
-                Assert.False(sources.IsExpanded);
-                sources.IsExpanded = true;
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
+                foreach (var name in new[]
+                         {
+                             "Words from a Matrix cell", "Words from a list", "More ways to choose words",
+                             "AI Handoff for these words", "Re-run words with new limits",
+                         })
+                    Assert.True(Assert.Single(controls.Children.OfType<Button>(), button =>
+                        AutomationProperties.GetName(button) == name).IsTabStop);
 
-                Assert.Contains(sources.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
-                Assert.Contains(sources.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "List from Texts");
-                Assert.Equal(2, sources.GetVisualDescendants().OfType<ComboBox>().Count());
-                AssertPickerLabelBesideControl(sources, "Matrix cell", "Matrix cell from Texts");
-                AssertPickerLabelBesideControl(sources, "List from Texts", "List from Texts");
+                var matrix = ShowFlyout(window, "Words from a Matrix cell");
+                Assert.Contains(matrix.GetLogicalDescendants().OfType<TextBlock>(), block => block.Text == "Matrix cell");
+                Assert.Single(matrix.GetLogicalDescendants().OfType<ComboBox>(), combo =>
+                    AutomationProperties.GetName(combo) == "Matrix cell from Texts");
+                Assert.Single(matrix.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Use cell");
+
+                var list = ShowFlyout(window, "Words from a list");
+                Assert.Contains(list.GetLogicalDescendants().OfType<TextBlock>(), block => block.Text == "List from Texts");
+                Assert.Single(list.GetLogicalDescendants().OfType<ComboBox>(), combo =>
+                    AutomationProperties.GetName(combo) == "List from Texts");
+                Assert.Single(list.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Use list");
+
+                var more = ShowFlyout(window, "More ways to choose words");
+                Assert.Single(more.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Chosen in Texts");
+                Assert.Single(more.GetLogicalDescendants().OfType<TextBox>(), input =>
+                    AutomationProperties.GetName(input) == "Words picked by hand");
+                Assert.Single(more.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Pick words");
             }
             finally
             {
@@ -63,14 +82,14 @@ public sealed class TimingSourceAvailabilityTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    private static void AssertPickerLabelBesideControl(Control row, string labelText, string controlName)
+    private static Control ShowFlyout(Window window, string accessibleName)
     {
-        var label = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == labelText);
-        var control = Assert.Single(row.GetVisualDescendants().OfType<ComboBox>(),
-            combo => AutomationProperties.GetName(combo) == controlName);
-
-        Assert.True(label.Bounds.Right <= control.Bounds.Left);
-        Assert.True(label.Bounds.Top < control.Bounds.Bottom && control.Bounds.Top < label.Bounds.Bottom);
+        var button = window.GetLogicalDescendants().OfType<Button>()
+            .Single(candidate => AutomationProperties.GetName(candidate) == accessibleName);
+        button.Flyout!.ShowAt(button);
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        return Assert.IsAssignableFrom<Control>(Assert.IsAssignableFrom<Flyout>(button.Flyout).Content);
     }
 
     [Fact]
@@ -101,15 +120,8 @@ public sealed class TimingSourceAvailabilityTests
                 workspace.Context.OpenPage(WorkspacePage.Timing);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
-                window.GetVisualDescendants().OfType<Expander>()
-                    .Single(expander => AutomationProperties.GetName(expander) == "More word sources").IsExpanded = true;
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-
-                var chosenWords = FakeComposedWindow.FindButton(window, "Chosen in Texts");
-                var useList = FakeComposedWindow.FindButton(window, "Use list");
-                Assert.True(chosenWords.IsEffectivelyEnabled);
-                Assert.True(useList.IsEffectivelyEnabled);
+                Assert.True(timing.UseCheckedWordsCommand.CanExecute(null));
+                Assert.True(timing.UseTextsListCommand.CanExecute(null));
 
                 var run = workspace.Assess.RerunAsync(["reading"], 1000);
                 Assert.Equal(RunState.Running, workspace.Assess.State);
@@ -120,8 +132,8 @@ public sealed class TimingSourceAvailabilityTests
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal(RunState.Cancelled, workspace.Assess.State);
                 Assert.True(workspace.Assess.ShowsEarlierResults);
-                Assert.True(chosenWords.IsEffectivelyEnabled);
-                Assert.True(useList.IsEffectivelyEnabled);
+                Assert.True(timing.UseCheckedWordsCommand.CanExecute(null));
+                Assert.True(timing.UseTextsListCommand.CanExecute(null));
                 Assert.NotNull(timing.SelectedTextsList);
             }
             finally

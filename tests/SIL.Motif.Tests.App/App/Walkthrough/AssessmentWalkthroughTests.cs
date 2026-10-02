@@ -46,64 +46,78 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
 
             walkthrough.ShowPage(WorkspacePage.Timing);
             var timing = walkthrough.Workspace.PageModel<TimingPageModel>();
-            walkthrough.Find<Expander>("More word sources").IsExpanded = true;
-            PageScreenshots.Settle(walkthrough.Window);
-            Button SourceButton(string name) => walkthrough.Window.GetLogicalDescendants().OfType<Button>()
-                .Single(button => Equals(button.Content, name));
-            var sources = new[]
+            var sourceCommandTimeout = TimeSpan.FromSeconds(20);
+            Control OpenMenu(string openerName)
             {
-                ("Use cell", "Choose a matrix cell above first."),
-                ("Use list", "Choose a word list above first."),
-                ("Pick words", "Enter one or more words, one per line."),
-                ("Chosen in Texts", "Tick words in Texts first."),
-            };
-            foreach (var (name, reason) in sources)
-            {
-                var button = SourceButton(name);
-                Assert.False(button.IsEffectivelyEnabled);
-                Assert.Equal(reason, AutomationProperties.GetHelpText(button));
+                var opener = walkthrough.Find<Button>(openerName);
+                var flyout = Assert.IsType<Flyout>(opener.Flyout);
+                flyout.ShowAt(opener);
+                PageScreenshots.Settle(walkthrough.Window);
+                return Assert.IsAssignableFrom<Control>(flyout.Content);
             }
 
-            walkthrough.Type("Words picked by hand", $"   {Environment.NewLine}   ");
-            Assert.False(SourceButton("Pick words").IsEffectivelyEnabled);
-            Assert.Equal("Enter one or more words, one per line.",
-                AutomationProperties.GetHelpText(SourceButton("Pick words")));
+            Button MenuButton(Control menu, string name) => menu.GetLogicalDescendants().OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == name);
 
-            var matrixPicker = walkthrough.Find<ComboBox>("Matrix cell from Texts");
-            HeadlessClick.Click(walkthrough.Window, matrixPicker, "Matrix cell from Texts");
+            void ClickMenu(Control menu, string name)
+            {
+                var button = MenuButton(menu, name);
+                HeadlessClick.Click(TopLevel.GetTopLevel(button)!, button, name);
+            }
+
+            var matrixMenu = OpenMenu("Words from a Matrix cell");
+            var useCell = MenuButton(matrixMenu, "Use cell");
+            Assert.False(useCell.IsEffectivelyEnabled);
+            Assert.Equal("Choose a matrix cell above first.", AutomationProperties.GetHelpText(useCell));
+            var matrixPicker = matrixMenu.GetLogicalDescendants().OfType<ComboBox>()
+                .Single(combo => AutomationProperties.GetName(combo) == "Matrix cell from Texts");
+            HeadlessClick.Click(TopLevel.GetTopLevel(matrixPicker)!, matrixPicker, "Matrix cell from Texts");
             walkthrough.Window.KeyPress(Avalonia.Input.Key.Down, Avalonia.Input.RawInputModifiers.None,
                 Avalonia.Input.PhysicalKey.None, null);
             walkthrough.Window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
                 Avalonia.Input.PhysicalKey.None, null);
             Assert.NotNull(timing.SelectedMatrixCell);
-            Assert.True(SourceButton("Use cell").IsEffectivelyEnabled);
-            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Use cell"))));
-            walkthrough.Click("Use cell");
+            Assert.True(useCell.IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(useCell)));
+            ClickMenu(matrixMenu, "Use cell");
+            Assert.False(walkthrough.Find<Button>("Words from a Matrix cell").Flyout!.IsOpen);
             walkthrough.WaitUntil(() => !timing.UseMatrixCellCommand.IsRunning && timing.KindTiming is not null,
-                WalkthroughSteps.Remaining(deadline), "Timing did not load the chosen matrix cell");
+                sourceCommandTimeout, "Timing did not load the chosen matrix cell");
 
-            var listPicker = walkthrough.Find<ComboBox>("List from Texts");
-            HeadlessClick.Click(walkthrough.Window, listPicker, "List from Texts");
+            var listMenu = OpenMenu("Words from a list");
+            var useList = MenuButton(listMenu, "Use list");
+            Assert.False(useList.IsEffectivelyEnabled);
+            Assert.Equal("Choose a word list above first.", AutomationProperties.GetHelpText(useList));
+            var listPicker = listMenu.GetLogicalDescendants().OfType<ComboBox>()
+                .Single(combo => AutomationProperties.GetName(combo) == "List from Texts");
+            HeadlessClick.Click(TopLevel.GetTopLevel(listPicker)!, listPicker, "List from Texts");
             walkthrough.Window.KeyPress(Avalonia.Input.Key.Down, Avalonia.Input.RawInputModifiers.None,
                 Avalonia.Input.PhysicalKey.None, null);
             walkthrough.Window.KeyPress(Avalonia.Input.Key.Enter, Avalonia.Input.RawInputModifiers.None,
                 Avalonia.Input.PhysicalKey.None, null);
             Assert.NotNull(timing.SelectedTextsList);
-            Assert.True(SourceButton("Use list").IsEffectivelyEnabled);
-            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Use list"))));
-            walkthrough.Click("Use list");
+            Assert.True(useList.IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(useList)));
+            ClickMenu(listMenu, "Use list");
+            Assert.False(walkthrough.Find<Button>("Words from a list").Flyout!.IsOpen);
             walkthrough.WaitUntil(() => !timing.UseTextsListCommand.IsRunning && timing.KindTiming is not null,
-                WalkthroughSteps.Remaining(deadline), "Timing did not load the chosen word list");
+                sourceCommandTimeout, "Timing did not load the chosen word list");
 
-            var oldScope = timing.ScopeLabel;
-            walkthrough.Type("Words picked by hand", string.Join(Environment.NewLine,
-                result.Words.Select(assessed => assessed.Word)));
-            Assert.True(SourceButton("Pick words").IsEffectivelyEnabled);
-            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Pick words"))));
-            walkthrough.Click("Pick words");
-            walkthrough.WaitUntil(() => !timing.UsePickedWordsCommand.IsRunning && timing.KindTiming is not null,
-                WalkthroughSteps.Remaining(deadline), "Timing did not load the picked word");
-            Assert.NotEqual(oldScope, timing.ScopeLabel);
+            var pastedWords = result.Words.Select(assessed => assessed.Word).ToArray();
+            var moreMenu = OpenMenu("More ways to choose words");
+            var pickedWords = moreMenu.GetLogicalDescendants().OfType<TextBox>()
+                .Single(input => AutomationProperties.GetName(input) == "Words picked by hand");
+            pickedWords.Text = string.Join(Environment.NewLine, pastedWords);
+            PageScreenshots.Settle(walkthrough.Window);
+            var pickWords = MenuButton(moreMenu, "Pick words");
+            Assert.True(pickWords.IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(pickWords)));
+            ClickMenu(moreMenu, "Pick words");
+            Assert.False(walkthrough.Find<Button>("More ways to choose words").Flyout!.IsOpen);
+            walkthrough.WaitUntil(() => !timing.UsePickedWordsCommand.IsRunning &&
+                    timing.SelectedWords.SequenceEqual(pastedWords, StringComparer.Ordinal),
+                sourceCommandTimeout, "Timing did not load the picked words");
+            Assert.Equal(pastedWords, timing.SelectedWords);
 
             walkthrough.ShowPage(WorkspacePage.Overview);
             walkthrough.Click("Open Text coverage in Texts");
@@ -116,13 +130,16 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord}");
             Assert.True(tick.IsChecked);
             walkthrough.ShowPage(WorkspacePage.Timing);
-            Assert.True(SourceButton("Chosen in Texts").IsEffectivelyEnabled);
-            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(SourceButton("Chosen in Texts"))));
+            var chosenMenu = OpenMenu("More ways to choose words");
+            var chosenWords = MenuButton(chosenMenu, "Chosen in Texts");
+            Assert.True(chosenWords.IsEffectivelyEnabled);
+            Assert.True(string.IsNullOrEmpty(AutomationProperties.GetHelpText(chosenWords)));
             var pickedScope = timing.ScopeLabel;
-            walkthrough.Click("Chosen in Texts");
+            ClickMenu(chosenMenu, "Chosen in Texts");
+            Assert.False(walkthrough.Find<Button>("More ways to choose words").Flyout!.IsOpen);
             walkthrough.WaitUntil(() => !timing.UseCheckedWordsCommand.IsRunning &&
                     timing.KindTiming is { WordCount: 1 },
-                WalkthroughSteps.Remaining(deadline), "Timing did not load the ticked word from Texts");
+                sourceCommandTimeout, "Timing did not load the ticked word from Texts");
             Assert.NotEqual(pickedScope, timing.ScopeLabel);
 
             return Task.CompletedTask;

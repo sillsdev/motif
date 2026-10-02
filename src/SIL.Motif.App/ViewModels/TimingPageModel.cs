@@ -176,7 +176,10 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The caption under the stopped-word count.</summary>
     public string HeadlineStoppedCaption => "stopped at the step limit";
 
-    /// <summary>Whether a word in the selected group stopped at either recorded parse limit.</summary>
+    /// <summary>The All filter's label, including the timing response's word count.</summary>
+    public string AllWordsButtonText => $"All {KindTiming?.WordCount ?? 0:N0}";
+
+    /// <summary>Whether the selected group has a word stopped at either recorded limit.</summary>
     public bool HasStoppedWords => HasStepLimitedWords || HasTimeLimitedWords;
 
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
@@ -193,6 +196,10 @@ public sealed partial class TimingPageModel : PageModel
 
     private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
         word.Completion == "Time limit") == true;
+
+    /// <summary>The stopped-words filter's label, including words stopped at the step limit.</summary>
+    public string StoppedWordsButtonText => $"Stopped {KindTiming?.Words.Count(word =>
+        word.Completion == TimingCompletion.StepLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0"}";
 
     /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
     public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
@@ -321,6 +328,12 @@ public sealed partial class TimingPageModel : PageModel
     {
         var listed = Context.Assess.Words.Listed(word);
         listed.TimeText = timeText;
+        listed.Note = KindTiming?.Words.FirstOrDefault(row => row.Word == word)?.Completion switch
+        {
+            TimingCompletion.StepLimit => "Stopped at the step limit",
+            "Time limit" => "Stopped at the time limit",
+            _ => null,
+        };
         return listed;
     }
 
@@ -791,12 +804,12 @@ public sealed partial class TimingPageModel : PageModel
             nameof(KindTiming), nameof(RuleTiming), nameof(RuleDetail), nameof(TimingRefusal),
             nameof(WordSet), nameof(IsStepLimitSelected), nameof(IsSlowestSelected),
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
+            nameof(AllWordsButtonText), nameof(StoppedWordsButtonText),
             nameof(SelectedWords),
             nameof(SlowestWordRows), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
-            nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(ScopeLabel),
+            nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(HasStoppedWords), nameof(StoppedWordsAdviceText), nameof(ScopeLabel),
             nameof(EmptySelectionText), nameof(CanShowAllWords),
-            nameof(HasStoppedWords), nameof(StoppedWordsAdviceText),
             nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
@@ -887,19 +900,13 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     public static string FormatMilliseconds(double milliseconds) =>
         milliseconds.ToString("#,0.######", CultureInfo.CurrentCulture) + " ms";
 
-    /// <summary>Formats a recorded share to at most two decimal places, trimming trailing zeroes.</summary>
+    /// <summary>Shows whole percentages, with positive shares below one percent shown as less than one percent.</summary>
     /// <param name="share">The fraction of total word time.</param>
     public static string FormatPercent(double share)
     {
-        var formatted = share.ToString("P2", CultureInfo.CurrentCulture);
-        var suffix = CultureInfo.CurrentCulture.NumberFormat.PercentSymbol;
-        var suffixStart = formatted.LastIndexOf(suffix, StringComparison.Ordinal);
-        if (suffixStart < 0) return formatted;
-        var number = formatted[..suffixStart].TrimEnd();
-        var spacing = formatted[number.Length..suffixStart];
-        var separator = CultureInfo.CurrentCulture.NumberFormat.PercentDecimalSeparator;
-        number = number.TrimEnd('0').TrimEnd(separator.ToCharArray());
-        return number + spacing + suffix;
+        var culture = CultureInfo.CurrentCulture;
+        if (share > 0 && share < 0.01) return "<" + 0.01.ToString("P0", culture);
+        return share.ToString("P0", culture);
     }
 
     /// <summary>The window's name for a stored parser kind.</summary>

@@ -132,8 +132,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.ContentSurface,
                 InteractiveControlFamily.Summary,
                 InteractiveControlFamily.StaticText,
-                InteractiveControlFamily.Collection,
-                InteractiveControlFamily.FocusableSurface);
+                InteractiveControlFamily.Collection);
             Assert.True(walkthrough.Find<Border>("Project summary").IsEffectivelyVisible);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.Matrix);

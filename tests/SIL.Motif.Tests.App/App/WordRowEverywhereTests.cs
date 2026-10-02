@@ -13,8 +13,8 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Every other place a word is listed shows the same word row as the Matrix and Lists, with its three next steps:
-/// Timing's slowest words and a rule's costliest words, the Overview's slowest words, Review changes, What changed
-/// and Analyze texts' Word list. Try a Word on any of them opens Try a Word on that word.
+/// Timing's slowest words and a rule's costliest words, Review changes, What changed and Analyze texts' Word list.
+/// Try a Word on any of them opens Try a Word on that word.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WordRowEverywhereTests
@@ -41,12 +41,15 @@ public sealed class WordRowEverywhereTests
         });
 
     [Fact]
-    public void TheOverviewsSlowestWordsOpenTryAWordOnTheirWord() =>
-        TryAWordOpensFrom("overview-slowest", "hawajafika", async (workspace, window) =>
+    public void TheOverviewSlowestWordsOpenTheirTimingRowsInTryAWord() =>
+        TryAWordOpensFrom("timing-words", "hawajafika", async (workspace, window) =>
         {
             workspace.CurrentPage = WorkspacePage.Overview;
             var overview = workspace.PageModel<OverviewPageModel>();
-            await Until(window, () => overview.HasSlowestWordRows, "the Overview's slowest words");
+            await Until(window, () => overview.HasSlowestWordSummary, "the Overview's slowest-word summary");
+            overview.OpenTimingCommand.Execute(null);
+            await Until(window, () => workspace.CurrentPage == WorkspacePage.Timing &&
+                workspace.PageModel<TimingPageModel>().SlowestWordRows.Count > 0, "Timing's slowest words");
         });
 
     [Fact]

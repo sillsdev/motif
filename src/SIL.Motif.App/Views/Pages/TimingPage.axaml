@@ -30,91 +30,110 @@
 
         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                     AutomationProperties.Name="Timing controls">
-          <views:CopyableTextBlock Classes="muted" Text="Look at" VerticalAlignment="Center" />
+          <views:CopyableTextBlock Classes="muted" Text="Words" VerticalAlignment="Center" />
+          <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
+                  Content="{Binding AllWordsButtonText}" Command="{Binding SelectWordSetCommand}"
+                  CommandParameter="all" AutomationProperties.Name="All timed words" />
           <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
-                  Content="Step limit" Command="{Binding SelectWordSetCommand}"
-                  CommandParameter="step-limit" />
+                  Content="{Binding StoppedWordsButtonText}" Command="{Binding SelectWordSetCommand}"
+                  CommandParameter="step-limit"
+                  AutomationProperties.HelpText="Words stopped at the step limit." />
           <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
                   Content="Slowest" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="slowest" />
           <NumericUpDown Value="{Binding SlowestCount}" Minimum="1" Increment="1"
                          Width="{DynamicResource Component.Timing.SlowestCountWidth}"
                          AutomationProperties.Name="Number of slowest words" />
-          <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
-                  Content="All" Command="{Binding SelectWordSetCommand}"
-                  CommandParameter="all" />
-          <views:CopyableTextBlock Classes="muted" Text="Seconds per word" VerticalAlignment="Center" />
-          <NumericUpDown Value="{Binding RerunSeconds}" Minimum="1" Increment="1"
-                         Width="{DynamicResource Component.Timing.SlowestCountWidth}" FormatString="0"
-                         AutomationProperties.Name="Seconds per word" />
-          <views:CopyableTextBlock Classes="muted" Text="Step limit" VerticalAlignment="Center" />
-          <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
-                         Width="{DynamicResource Component.Timing.SlowestCountWidth}" FormatString="N0"
-                         AutomationProperties.Name="Per-word step limit" />
-          <Button Content="Re-run" Command="{Binding RerunWordsCommand}"
-                  AutomationProperties.Name="Re-run chosen words" />
-          <Button Content="AI Handoff" Command="{Binding HandOffWordsCommand}"
+          <Button x:Name="MatrixWordsButton" Content="A Matrix cell" AutomationProperties.Name="Words from a Matrix cell">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <views:CopyableTextBlock Classes="section-title" Text="Matrix cell" />
+                  <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
+                            Width="{DynamicResource Component.Timing.SourcePickerWidth}"
+                            PlaceholderText="Choose a cell" AutomationProperties.Name="Matrix cell from Texts">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CompareCellViewModel">
+                        <TextBlock Text="{Binding AccessibleName}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Content="Use cell" Command="{Binding UseMatrixCellCommand}" Click="CloseWordSourceFlyouts"
+                          AutomationProperties.Name="Use cell"
+                          AutomationProperties.HelpText="{Binding UseMatrixCellDisabledReason}" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button x:Name="ListWordsButton" Content="A list" AutomationProperties.Name="Words from a list">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <views:CopyableTextBlock Classes="section-title" Text="List from Texts" />
+                  <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
+                            Width="{DynamicResource Component.Timing.SourcePickerWidth}"
+                            PlaceholderText="Choose a list" AutomationProperties.Name="List from Texts">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ComparePresetViewModel">
+                        <TextBlock Text="{Binding Label}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Content="Use list" Command="{Binding UseTextsListCommand}" Click="CloseWordSourceFlyouts"
+                          AutomationProperties.Name="Use list"
+                          AutomationProperties.HelpText="{Binding UseTextsListDisabledReason}" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Content="AI Handoff for these words" Command="{Binding HandOffWordsCommand}"
                   AutomationProperties.Name="AI Handoff for these words" />
+          <Button x:Name="MoreWordsButton" Content="More" AutomationProperties.Name="More ways to choose words">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <Button Classes="filterChip" Content="Chosen in Texts" Command="{Binding UseCheckedWordsCommand}"
+                          Click="CloseWordSourceFlyouts"
+                          HorizontalAlignment="Left" AutomationProperties.Name="Chosen in Texts"
+                          AutomationProperties.HelpText="{Binding UseCheckedWordsDisabledReason}" />
+                  <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
+                           Height="{DynamicResource Component.Timing.PickerHeight}"
+                           PlaceholderText="Type or paste words, one per line"
+                           AutomationProperties.Name="Words picked by hand" />
+                  <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}" Click="CloseWordSourceFlyouts"
+                          AutomationProperties.Name="Pick words"
+                          AutomationProperties.HelpText="{Binding UsePickedWordsDisabledReason}" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Content="Re-run" AutomationProperties.Name="Re-run words with new limits">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                    <views:CopyableTextBlock Text="Seconds per word" VerticalAlignment="Center" />
+                    <NumericUpDown Value="{Binding RerunSeconds}" Minimum="1" Increment="1"
+                                   AutomationProperties.Name="Seconds per word" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+                    <views:CopyableTextBlock Text="Step limit" VerticalAlignment="Center" />
+                    <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
+                                   AutomationProperties.Name="Per-word step limit" />
+                  </StackPanel>
+                  <Button Content="Re-run chosen words" Command="{Binding RerunWordsCommand}"
+                          AutomationProperties.Name="Re-run chosen words" />
+                  <views:CopyableTextBlock Text="{Binding RerunProgressText}" IsVisible="{Binding IsRerunning}" />
+                  <ProgressBar Minimum="0" Maximum="{Binding RerunTotal}" Value="{Binding RerunCompleted}"
+                               IsVisible="{Binding IsRerunning}" />
+                  <Button Content="Cancel" Command="{Binding CancelRerunCommand}"
+                          IsVisible="{Binding IsRerunning}" />
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMessage}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
-                    IsVisible="{Binding IsRerunning}" AutomationProperties.Name="Re-run progress">
-          <views:CopyableTextBlock Text="{Binding RerunProgressText}" VerticalAlignment="Center" />
-          <ProgressBar Minimum="0" Maximum="{Binding RerunTotal}" Value="{Binding RerunCompleted}"
-                       AutomationProperties.Name="Re-run progress" />
-          <Button Content="Cancel" Command="{Binding CancelRerunCommand}"
-                  AutomationProperties.Name="Cancel re-run" />
-        </StackPanel>
-        <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMessage}" TextWrapping="Wrap"
-                                 IsVisible="{Binding RerunMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-
-        <Expander Header="More word sources" AutomationProperties.Name="More word sources">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-            <Button Classes="filterChip" Content="Chosen in Texts" Command="{Binding UseCheckedWordsCommand}"
-                    HorizontalAlignment="Left" AutomationProperties.Name="Chosen in Texts"
-                    AutomationProperties.HelpText="{Binding UseCheckedWordsDisabledReason}" />
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-              <views:CopyableTextBlock Classes="muted" Text="Matrix cell" VerticalAlignment="Center" />
-              <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
-                        Width="{DynamicResource Component.Timing.SourcePickerWidth}"
-                        PlaceholderText="Choose a cell"
-                        AutomationProperties.Name="Matrix cell from Texts">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CompareCellViewModel">
-                    <TextBlock Text="{Binding AccessibleName}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Button Content="Use cell" Command="{Binding UseMatrixCellCommand}"
-                      AutomationProperties.Name="Use cell"
-                      AutomationProperties.HelpText="{Binding UseMatrixCellDisabledReason}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-              <views:CopyableTextBlock Classes="muted" Text="List from Texts" VerticalAlignment="Center" />
-              <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
-                        Width="{DynamicResource Component.Timing.SourcePickerWidth}"
-                        PlaceholderText="Choose a list"
-                        AutomationProperties.Name="List from Texts">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ComparePresetViewModel">
-                    <TextBlock Text="{Binding Label}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Button Content="Use list" Command="{Binding UseTextsListCommand}"
-                      AutomationProperties.Name="Use list"
-                      AutomationProperties.HelpText="{Binding UseTextsListDisabledReason}" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-              <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
-                       Height="{DynamicResource Component.Timing.PickerHeight}"
-                       PlaceholderText="Type or paste words, one per line"
-                       AutomationProperties.Name="Words picked by hand" />
-              <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}"
-                      AutomationProperties.Name="Pick words"
-                      AutomationProperties.HelpText="{Binding UsePickedWordsDisabledReason}" />
-            </StackPanel>
-          </StackPanel>
-        </Expander>
 
         <views:RefusalBlock DataContext="{Binding TimingRefusal}" />
         <Border Classes="card" IsVisible="{Binding IsLoadingTiming}">
@@ -127,6 +146,10 @@
                     IsVisible="{Binding $self.IsEffectivelyEnabled}"
                     HorizontalAlignment="Left" AutomationProperties.Name="Parse these words again to measure them" />
           </StackPanel>
+        </Border>
+        <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
+          <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
+                                   TextWrapping="Wrap" />
         </Border>
         <Border Classes="card" IsVisible="{Binding ShowEmptySelection}">
           <WrapPanel>
@@ -190,9 +213,6 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedText}"
-                                           IsVisible="{Binding HasHeadline}"
-                                           AutomationProperties.Name="Not attributed timing" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding OverrunText}"
                                            IsVisible="{Binding HasOverrun}"
                                            AutomationProperties.Name="Timing overrun" />
@@ -231,7 +251,8 @@
                                                  VerticalAlignment="Center">
                                 <TextBlock Text="Inspect" />
                               </views:InspectLink>
-                              <TextBlock Grid.Column="2" Text="⚠" IsVisible="{Binding HasIdentityWarning}"
+                              <TextBlock Grid.Column="2" Text="⚠" Foreground="{DynamicResource Intent.Severity.Warning}"
+                                         IsVisible="{Binding HasIdentityWarning}"
                                          ToolTip.Tip="{Binding IdentityWarningText}"
                                          AutomationProperties.Name="Rule identity warning"
                                          AutomationProperties.HelpText="{Binding IdentityWarningText}" />
@@ -295,8 +316,6 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
             <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding StoppedWordsAdviceText}"
-                                     IsVisible="{Binding HasStoppedWords}" TextWrapping="Wrap" />
             <views:CopyableTextBlock Text="Slowest words" FontWeight="SemiBold" />
             <StackPanel Grid.IsSharedSizeScope="True">
               <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />

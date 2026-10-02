@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -45,5 +46,14 @@ public sealed partial class TimingPage : UserControl
         var hasWideClass = _sidePanel.Classes.Contains("wide");
         if (!compact && !hasWideClass) _sidePanel.Classes.Add("wide");
         else if (compact && hasWideClass) _sidePanel.Classes.Remove("wide");
+    }
+
+    private void CloseWordSourceFlyouts(object? sender, RoutedEventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var name in new[] { "MatrixWordsButton", "ListWordsButton", "MoreWordsButton" })
+                this.FindControl<Button>(name)?.Flyout?.Hide();
+        }, DispatcherPriority.Background);
     }
 }

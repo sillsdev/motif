@@ -12,7 +12,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class OverviewTileNavigationTests
 {
     [Theory]
-    [InlineData("Open Speed in Timing", WorkspacePage.Timing)]
+    [InlineData("Open slowest words in Timing", WorkspacePage.Timing)]
     [InlineData("Open Grammar warnings in Warnings", WorkspacePage.Warnings)]
     [InlineData("Start an AI Handoff", WorkspacePage.AiHandoff)]
     public void OverviewDetailTilesOpenTheirPages(string tileName, WorkspacePage expectedPage)

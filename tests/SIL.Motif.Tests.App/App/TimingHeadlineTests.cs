@@ -45,9 +45,12 @@ public sealed class TimingHeadlineTests
         Assert.Equal("1", timing.HeadlineStopped);
         Assert.Equal("stopped at the step limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
+        Assert.Equal(1_000_000m, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
         Assert.Equal("Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
             timing.StoppedWordsAdviceText);
+        Assert.Equal("Stopped at the step limit",
+            timing.SlowestWordRows.Single(row => row.Word == "mwalimu").Note);
     }
 
     [Fact]
@@ -68,6 +71,8 @@ public sealed class TimingHeadlineTests
 
         Assert.True(timing.HasStoppedWords);
         Assert.Equal("Ran out of time. Increase Seconds per word in the Timing controls on this page.", timing.StoppedWordsAdviceText);
+        Assert.Equal("Stopped at the time limit",
+            timing.SlowestWordRows.Single(row => row.Word == "mwalimu").Note);
     }
 
     [Fact]
@@ -271,7 +276,7 @@ public sealed class TimingHeadlineTests
                 var texts = window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible).ToArray();
                 var headline = texts.First(text => text.Text == "800 ms");
-                var lookAt = texts.First(text => text.Text == "Look at");
+                var lookAt = texts.First(text => text.Text == "Words");
                 Assert.True(headline.TranslatePoint(default, window)!.Value.Y <
                     lookAt.TranslatePoint(default, window)!.Value.Y);
             }

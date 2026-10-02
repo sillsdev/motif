@@ -60,6 +60,8 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(TimingAttributionNote))]
     [NotifyPropertyChangedFor(nameof(SlowestWordRows))]
     [NotifyPropertyChangedFor(nameof(HasSlowestWordRows))]
+    [NotifyPropertyChangedFor(nameof(SlowestWordSummary))]
+    [NotifyPropertyChangedFor(nameof(HasSlowestWordSummary))]
     [NotifyPropertyChangedFor(nameof(LookFirstRows))]
     [NotifyPropertyChangedFor(nameof(HasLookFirstRows))]
     [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
@@ -180,6 +182,15 @@ public sealed partial class OverviewPageModel : PageModel
             : [];
 
     public bool HasSlowestWordRows => SlowestWordRows.Count > 0;
+
+    public string SlowestWordSummary => Overview is { Timing.MeasuredWordCount: > 0 } overview &&
+        overview.Timing.SlowestWords.Count > 0
+        ? "Slowest: " + string.Join(" · ", overview.Timing.SlowestWords.Select(word =>
+            $"{word.Word}{(overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal) ? " ◐ Stopped" : string.Empty)} · " +
+            TimingShare.FormatMilliseconds(word.ElapsedMs)))
+        : string.Empty;
+
+    public bool HasSlowestWordSummary => SlowestWordSummary.Length > 0;
 
     /// <summary>The measured time shares by kind, including any part no kind's timer recorded.</summary>
     public IReadOnlyList<TimingShare> TimingKindShares

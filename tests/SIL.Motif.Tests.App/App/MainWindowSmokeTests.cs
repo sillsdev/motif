@@ -154,7 +154,7 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "raise Step limit after a step-limit stop";
+                const string expectedSentence = "each stopped word says whether it reached the step or time limit";
                 const string expectedSection = "Slowest words in Timing";
                 const string expectedOpening = "opens on All";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -183,7 +183,7 @@ public sealed class MainWindowSmokeTests
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);
-                Assert.Contains("raise **Step limit** after a step-limit stop", help.Markdown);
+                Assert.Contains("each stopped word says whether it reached the step or time limit", help.Markdown);
                 Assert.Contains(expectedSection, help.Markdown);
             }
             finally
@@ -512,16 +512,18 @@ public sealed class MainWindowSmokeTests
 
             workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
             workspace.CurrentPage = WorkspacePage.Timing;
-            window.GetLogicalDescendants().OfType<Expander>()
-                .Single(expander => AutomationProperties.GetName(expander) == "More word sources").IsExpanded = true;
-            var pickedWords = Assert.Single(window.GetLogicalDescendants().OfType<TextBox>(), input =>
+            var more = window.GetLogicalDescendants().OfType<Button>()
+                .Single(button => AutomationProperties.GetName(button) == "More ways to choose words");
+            more.Flyout!.ShowAt(more);
+            var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(more.Flyout).Content);
+            var pickedWords = Assert.Single(menu.GetLogicalDescendants().OfType<TextBox>(), input =>
                 AutomationProperties.GetName(input) == "Words picked by hand");
             pickedWords.Text = "motifa";
             window.UpdateLayout();
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
 
-            var pickWords = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+            var pickWords = Assert.Single(menu.GetLogicalDescendants().OfType<Button>(), button =>
                 AutomationProperties.GetName(button) == "Pick words");
             Assert.True(pickWords.IsEffectivelyVisible);
             Assert.True(pickWords.IsEffectivelyEnabled);

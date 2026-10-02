@@ -291,13 +291,13 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "tile-hover", async stage =>
         {
             await stage.Hover(WorkspacePage.Overview, () => stage.Named<Border>("Speed"), "the Speed tile");
-            return await stage.Hover(null, () => stage.Named<Button>("Open Speed in Timing"), "the Timing link");
+            return await stage.Hover(null, () => stage.Named<Button>("Open slowest words in Timing"), "the Timing link");
         });
         yield return new("overview", "tile-focus", async stage =>
         {
             await stage.Hover(WorkspacePage.Overview, () => stage.Named<Border>("Speed"), "the Speed tile");
             return await stage.FocusFromKeyboard(WorkspacePage.Overview,
-                () => stage.Named<Button>("Open Speed in Timing"), "the Timing link");
+                () => stage.Named<Button>("Open slowest words in Timing"), "the Timing link");
         });
         yield return new("overview", "lookfirst-link-hover", stage => stage.Hover(WorkspacePage.Overview,
             () => stage.Visible<Button>(link => link.Classes.Contains("overviewLookFirstRow") &&
@@ -626,12 +626,21 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.OpenWordRow("timing-words");
         })
         { Height = 1700, Teardown = stage => stage.CloseWordRows() };
-        yield return new("overview", "slowest-row-opened", async stage =>
+        yield return new("overview", "slowest-summary", async stage =>
         {
             stage.Open(WorkspacePage.Overview);
-            return await stage.OpenWordRow("overview-slowest");
+            const string summaryName = "Slowest words and recorded times";
+            await stage.Until(() => stage.Visible<TextBlock>(text =>
+                AutomationProperties.GetName(text) == summaryName &&
+                text.Text?.Contains("mwalimu", StringComparison.Ordinal) == true &&
+                text.Text.Contains("hawajafika", StringComparison.Ordinal)).Any(),
+                "the Speed tile's slowest-word summary");
+            var text = stage.Named<TextBlock>(summaryName).Text ?? string.Empty;
+            Assert.Contains("700 ms", text, StringComparison.Ordinal);
+            Assert.Contains("48 ms", text, StringComparison.Ordinal);
+            return $"The Speed tile keeps its slowest words compact: {text}.";
         })
-        { Height = 1000, Teardown = stage => stage.CloseWordRows() };
+        { Height = 1000 };
         yield return new("review", "word-rows", async stage =>
         {
             stage.Open(WorkspacePage.Review);
