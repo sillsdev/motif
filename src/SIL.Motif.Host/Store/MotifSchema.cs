@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 37;
+    public const int CurrentSchema = 38;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -33,7 +33,7 @@ public static class MotifSchema
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
-                ReadOccurrenceDdl;
+                ReadOccurrenceDdl + ActiveParseDdl;
             command.ExecuteNonQuery();
         }
 
@@ -62,7 +62,7 @@ public static class MotifSchema
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits",
-            "ReadOccurrences"
+            "ReadOccurrences", "ActiveParse"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -180,7 +180,7 @@ public static class MotifSchema
     {
         var requiredSql = table switch
         {
-            "MotifMetadata" or "DefaultSelection" => "CHECK (Id = 1)",
+            "MotifMetadata" or "DefaultSelection" or "ActiveParse" => "CHECK (Id = 1)",
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
@@ -335,6 +335,9 @@ public static class MotifSchema
         "PendingChangeFits" =>
         [C("DraftRevision", "TEXT", true, 1), C("ProjectLastWriteUtcTicks", "INTEGER", true, 2),
             C("BaselineIdentity", "TEXT", true, 3), C("FitSummaryJson", "TEXT", true)],
+        "ActiveParse" =>
+        [C("Id", "INTEGER", false, 1), C("Token", "TEXT", true), C("ProcessId", "INTEGER", true),
+            C("ProcessStartIdentity", "TEXT", true)],
         "ReadOccurrences" =>
         [C("TextId", "TEXT", true, 1), C("ParagraphId", "TEXT", true, 2),
             C("SegmentId", "TEXT", true, 3), C("WordIndex", "INTEGER", true, 4),
@@ -456,6 +459,15 @@ public static class MotifSchema
         string OnUpdate,
         string OnDelete,
         string Match);
+
+    private const string ActiveParseDdl = """
+        CREATE TABLE ActiveParse (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            Token TEXT NOT NULL,
+            ProcessId INTEGER NOT NULL,
+            ProcessStartIdentity TEXT NOT NULL
+        );
+        """;
 
     private const string MetadataDdl = """
         CREATE TABLE MotifMetadata (

@@ -8,6 +8,7 @@ using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -45,20 +46,25 @@ public static class WordTraceQuery
     /// <summary>Traces a word with an explicitly selected parser.</summary>
     /// <param name="parserPath">The parser to run, or <see langword="null"/> when none is available.</param>
     public static CommandOutcome<WordTraceResponse> Query(
-        WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default)
+        WordTraceRequest request, string? parserPath, CancellationToken cancellationToken = default,
+        Action<AssessmentProgress>? onProgress = null)
     {
         using var invoker = new PanGlossInvoker(parserPath);
-        return Query(request, new PanGlossTracer(invoker), cancellationToken);
+        return Query(request, new PanGlossTracer(invoker), cancellationToken, onProgress);
     }
 
     internal static CommandOutcome<WordTraceResponse> Query(
-        WordTraceRequest request, IPanGlossTracer tracer, CancellationToken cancellationToken)
+        WordTraceRequest request, IPanGlossTracer tracer, CancellationToken cancellationToken,
+        Action<AssessmentProgress>? onProgress = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(tracer);
 
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
+            using var parseLease = ProjectParseLease.TryAcquire(database);
+            if (parseLease is null)
+                return CommandOutcome<WordTraceResponse>.Refused(ProjectParseLease.BusyRefusal());
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrent(workspaceKey);
             if (baseline is null)
@@ -68,6 +74,8 @@ public static class WordTraceQuery
                     "The project has no Baseline yet; capture one before tracing a word."));
             }
 
+            onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, $"Tracing {request.Word}")
+                { CurrentWord = request.Word });
             var clock = Stopwatch.StartNew();
             var outcome = tracer.TraceAsync(baseline.FwDataPath, request.Word, cancellationToken)
                 .GetAwaiter().GetResult();

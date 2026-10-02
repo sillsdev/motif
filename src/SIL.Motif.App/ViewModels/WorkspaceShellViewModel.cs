@@ -122,6 +122,40 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Baseline.Refreshed += OnBaselineRefreshed;
         Baseline.PropertyChanged += OnBaselinePropertyChanged;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Assess.ParseProgress.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) RaiseParseDisplay();
+        };
+        Assess.Trace.ParseProgress.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) RaiseParseDisplay();
+        };
+        var review = PageModel<ReviewPageModel>();
+        review.ParseProgress.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) RaiseParseDisplay();
+        };
+        CancelParsingCommand = new RelayCommand(() =>
+        {
+            if (Assess.Trace.IsLoading) Assess.Trace.CancelCommand.Execute(null);
+            else if (review.IsMeasuring) review.CancelMeasureCommand.Execute(null);
+            else Assess.CancelCommand.Execute(null);
+        }, () => Assess.CancelCommand.CanExecute(null) || Assess.Trace.CancelCommand.CanExecute(null) ||
+            review.CancelMeasureCommand.CanExecute(null));
+        review.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(ReviewPageModel.IsMeasuring)) return;
+            CancelParsingCommand.NotifyCanExecuteChanged();
+            ParseAllWordsCommand.NotifyCanExecuteChanged();
+        };
+        Assess.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AssessViewModel.State)) CancelParsingCommand.NotifyCanExecuteChanged();
+        };
+        Assess.Trace.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TraceWordViewModel.IsLoading)) CancelParsingCommand.NotifyCanExecuteChanged();
+        };
         Context.PropertyChanged += OnContextPropertyChanged;
         Context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
 
@@ -342,7 +376,18 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public bool ShowsChooseWhatToParseAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == false;
 
     /// <summary>Whether the top row is showing progress for an Assessment.</summary>
-    public bool ShowsParseAllWordsProgress => Assess.IsActive;
+    public bool ShowsParseAllWordsProgress => Assess.IsActive || Assess.Trace.ParseProgress.IsActive ||
+        PageModel<ReviewPageModel>().ParseProgress.IsActive;
+    public ParseProgressViewModel ActiveParseProgress => Assess.Trace.ParseProgress.IsActive
+        ? Assess.Trace.ParseProgress : PageModel<ReviewPageModel>().ParseProgress.IsActive
+            ? PageModel<ReviewPageModel>().ParseProgress : Assess.ParseProgress;
+    public IRelayCommand CancelParsingCommand { get; }
+
+    private void RaiseParseDisplay()
+    {
+        OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
+        OnPropertyChanged(nameof(ActiveParseProgress));
+    }
 
     /// <summary>The current number of words parsed, or the current run stage while no count is available.</summary>
     public string ParseAllWordsProgressText => Assess.Progress is
@@ -585,7 +630,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         !FreshnessIsStale && !Assess.IsActive && Context.Setup is { IsOpen: false };
 
     private bool CanParseAllWords() => Context.NeedsAssessment && !FreshnessIsStale && !_isRefreshing &&
-        !Assess.IsActive && Context.Setup is { IsOpen: false, CanRunDefaultSelection: true };
+        !Assess.IsActive && !PageModel<ReviewPageModel>().IsMeasuring &&
+        Context.Setup is { IsOpen: false, CanRunDefaultSelection: true };
 
     private async Task ParseAllWordsAsync()
     {

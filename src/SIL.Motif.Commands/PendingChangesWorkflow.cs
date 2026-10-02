@@ -143,8 +143,10 @@ public static class PendingChangesWorkflow
         var jobProgress = new JobStatusProgress(status =>
         {
             if (status.TrialProgress is not { } wordProgress) return;
-            var next = new MeasureProgress(wordProgress.Completed, wordProgress.Total);
-            if (next == lastProgress) return;
+            var next = new MeasureProgress(wordProgress.Completed, wordProgress.Total) { WordProgress = wordProgress };
+            if (lastProgress?.WordProgress is { } last && last.Completed == wordProgress.Completed &&
+                last.CurrentWord == wordProgress.CurrentWord && last.StoppedWords.Count == wordProgress.StoppedWords.Count)
+                return;
             progress.Report(next);
             lastProgress = next;
         });

@@ -54,9 +54,12 @@ public sealed record MeasurePendingResult(string JobId, string Revision, ReviewN
 }
 
 /// <summary>
-/// Reports completed work while Motif measures words for one pending revision. It names no current word:
-/// words may be parsed in parallel, so no one word is the one being checked.
+/// Reports completed work while Motif measures words for one pending revision, including the worker's
+/// latest sequential word evidence when parsing has begun.
 /// </summary>
 /// <param name="Completed">The number of words whose Trial work has finished.</param>
 /// <param name="Total">The number of words requested.</param>
-public sealed record MeasureProgress(int Completed, int Total);
+public sealed record MeasureProgress(int Completed, int Total)
+{
+    public SIL.Motif.Contract.Jobs.TrialWordProgress? WordProgress { get; init; }
+}

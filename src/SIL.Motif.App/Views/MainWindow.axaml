@@ -11,7 +11,7 @@
         Height="{DynamicResource Component.Shell.Height}"
         MinWidth="{DynamicResource Component.Shell.MinWidth}"
         MinHeight="{DynamicResource Component.Shell.MinHeight}">
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid RowDefinitions="Auto,Auto,Auto,*">
 
     <!-- Top bar: the project menu, how fresh the numbers are, and Refresh. -->
     <Border Classes="topBar">
@@ -79,21 +79,6 @@
           <Button Content="See what changed" Command="{Binding SeeWhatChangedCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsSeeWhatChanged}" AutomationProperties.Name="See what the refresh changed" />
-          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
-                      IsVisible="{Binding ShowsParseAllWordsProgress}">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
-              <TextBlock Text="{Binding ParseAllWordsProgressText}" />
-              <ProgressBar Classes="topBarParseProgress" Minimum="0" Maximum="1"
-                           Value="{Binding ParseAllWordsProgressFraction}"
-                           IsIndeterminate="{Binding ParseAllWordsProgressIsIndeterminate}"
-                           AutomationProperties.Name="Parse all words progress"
-                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWordsProgress}" />
-            </StackPanel>
-            <Button Content="Cancel" Command="{Binding Assess.CancelCommand}"
-                    Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
-                    VerticalAlignment="Center" AutomationProperties.Name="Cancel parsing all words"
-                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelAssessment}" />
-          </StackPanel>
           <Button Content="Parse all words" Command="{Binding ParseAllWordsCommand}"
                   Theme="{DynamicResource OutlineButton}" Classes="Tertiary"
                   IsVisible="{Binding ShowsParseAllWordsAction}"
@@ -168,7 +153,53 @@
       </Border>
     </Grid>
 
-    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+    <Border Grid.Row="2" Classes="notice" IsVisible="{Binding ShowsParseAllWordsProgress}">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+          <views:CopyableTextBlock Text="{Binding ActiveParseProgress.ProgressText}" TextWrapping="Wrap"
+                                   AutomationProperties.Name="Parse progress details"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseProgressDetails}" />
+          <views:CopyableTextBlock Text="{Binding ActiveParseProgress.TimeText}" />
+          <views:CopyableTextBlock Text="{Binding ActiveParseProgress.SlowestText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding ActiveParseProgress.HasSlowestWord}" />
+          <ProgressBar Classes="topBarParseProgress" Minimum="0" Maximum="1" HorizontalAlignment="Left"
+                       Value="{Binding ActiveParseProgress.Fraction}"
+                       IsIndeterminate="{Binding ActiveParseProgress.IsIndeterminate}"
+                       AutomationProperties.Name="Parse all words progress"
+                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseAllWordsProgress}" />
+          <views:CopyableTextBlock Text="{Binding ActiveParseProgress.StoppedText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding ActiveParseProgress.HasStoppedWords}" />
+          <Expander Header="See stopped words" IsVisible="{Binding ActiveParseProgress.HasStoppedWords}"
+                    AutomationProperties.Name="See stopped words while parsing"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseStoppedWords}">
+            <ScrollViewer MaxHeight="{DynamicResource Component.Shell.ParseStoppedMaxHeight}">
+              <ItemsControl ItemsSource="{Binding ActiveParseProgress.StoppedWords}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StoppedParseWordViewModel">
+                    <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Expander>
+          <views:CopyableTextBlock Text="{Binding ActiveParseProgress.StalledText}" TextWrapping="Wrap"
+                                   IsVisible="{Binding ActiveParseProgress.IsStalled}"
+                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseNoProgress}" />
+          <views:CopyableTextBlock Classes="muted" Text="{Binding ActiveParseProgress.CancellationText}" TextWrapping="Wrap" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
+          <Button Content="Cancel" Command="{Binding CancelParsingCommand}"
+                  AutomationProperties.Name="Cancel parsing all words"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.CancelAssessment}" />
+          <Button Content="Report a problem" Click="OnParseReportProblemClick"
+                  IsVisible="{Binding ActiveParseProgress.IsStalled}"
+                  AutomationProperties.Name="Report a problem with parsing"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseReportProblem}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto">
 
       <Border x:Name="Sidebar" Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}">
         <DockPanel LastChildFill="True">
@@ -221,6 +252,6 @@
       <views:Inspector x:Name="Inspector" Grid.Column="2" DataContext="{Binding Inspector}" />
     </Grid>
 
-    <views:SetupDialog Grid.RowSpan="3" DataContext="{Binding Context.Setup}" />
+    <views:SetupDialog Grid.RowSpan="4" DataContext="{Binding Context.Setup}" />
   </Grid>
 </Window>

@@ -22,6 +22,7 @@ public sealed class ReviewPageModel : PageModel
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
+        ParseProgress = new ParseProgressViewModel(context.Clock);
         Changes.PropertyChanged += OnChangesChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
@@ -52,6 +53,7 @@ public sealed class ReviewPageModel : PageModel
     }
 
     public ChangesViewModel Changes => Context.Changes;
+    public ParseProgressViewModel ParseProgress { get; }
 
     /// <summary>The open project's file name, which the apply card names.</summary>
     public string ProjectName => Context.ProjectName;
@@ -308,11 +310,11 @@ public sealed class ReviewPageModel : PageModel
         CommandOutcome<MeasurePendingResult> result;
         try
         {
-            result = await Context.Commands.MeasurePendingAsync(
+            result = await ParseProgress.TrackAsync(() => Context.Commands.MeasurePendingAsync(
                 new MeasurePendingRequest(project, draft, revision, words,
                     Context.Evidence.CorrectnessAssessmentId),
                 new Progress<MeasureProgress>(OnMeasurementProgress),
-                _measurementCancellation.Token).ConfigureAwait(true);
+                _measurementCancellation.Token)).ConfigureAwait(true);
         }
         finally
         {
@@ -360,6 +362,16 @@ public sealed class ReviewPageModel : PageModel
 
     private void OnMeasurementProgress(MeasureProgress progress)
     {
+        if (progress.WordProgress is { } word)
+            ParseProgress.Report(new AssessmentProgress(AssessmentStage.Parsing, word.Completed, word.Total,
+                "Checking the changed words...")
+            {
+                CurrentWord = word.CurrentWord, PerWordLimitMs = word.PerWordLimitMs,
+                StoppedWords = word.StoppedWords, SlowestWord = word.SlowestWord,
+            });
+        else
+            ParseProgress.Report(new AssessmentProgress(AssessmentStage.SelectingWords, progress.Completed,
+                progress.Total, "Preparing to check the changed words..."));
         MeasurementProgressText = $"{progress.Completed} of {progress.Total} words checked";
         OnPropertyChanged(nameof(MeasurementProgressText));
     }

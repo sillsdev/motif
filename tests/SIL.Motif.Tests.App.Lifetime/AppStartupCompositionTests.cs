@@ -348,12 +348,20 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.True(texts.ShowParsePrompt);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Parsing… see the top row." && text.IsEffectivelyVisible);
-                await UntilFound(session.Window, () => "top-row parse progress did not appear",
-                    text => text.StartsWith("Parsing ", StringComparison.Ordinal) &&
-                        text.EndsWith(" words", StringComparison.Ordinal));
+                await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
+                    AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParseProgressDetails &&
+                    text.Text == $"0 of 1 words done · Parsing {word}" && text.IsEffectivelyVisible),
+                    () => $"top-row parse progress did not appear; active={workspace.ShowsParseAllWordsProgress}, " +
+                        $"presenter='{workspace.ActiveParseProgress.ProgressText}', rendered='" +
+                        string.Join(" | ", session.Window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                            .Where(text => AutomationProperties.GetAutomationId(text) ==
+                                SIL.Motif.App.AutomationIds.ParseProgressDetails)
+                            .Select(text => $"{text.Text} (visible={text.IsEffectivelyVisible})")) + "'");
                 Assert.True(workspace.ShowsParseAllWordsProgress);
+                Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
                 Assert.Contains(session.Window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Cancel parsing all words" && button.IsEffectivelyVisible);
+                    AutomationProperties.GetName(button) == "Cancel parsing all words" &&
+                    button.IsEffectivelyVisible && button.IsEffectivelyEnabled);
 
                 stage = "released Parse all words";
                 File.WriteAllText(releasePath, string.Empty);

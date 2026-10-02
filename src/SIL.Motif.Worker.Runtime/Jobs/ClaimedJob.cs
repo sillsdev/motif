@@ -26,6 +26,8 @@ public sealed class ClaimedJob
         Job = claimed ?? throw new ArgumentNullException(nameof(claimed));
     }
 
+    internal SIL.Motif.Host.Store.MotifDatabase Database => _jobs.Database;
+
     /// <summary>This job's id, stable for the life of the claim.</summary>
     public string JobId => Job.JobId;
 

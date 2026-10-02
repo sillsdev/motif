@@ -18,8 +18,8 @@ public sealed partial class CommandClient
 
     public Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken) =>
-        PendingChangesWorkflow.Measure(request, progress, cancellationToken,
-            runnerLauncher: _options.RunnerLauncher);
+        ParseOneAtATime(() => PendingChangesWorkflow.Measure(request, progress, cancellationToken,
+            runnerLauncher: _options.RunnerLauncher));
 
     public Task<CommandOutcome<PendingChangesSnapshot>> LoadPendingChangesAsync(
         PendingChangesRequest request, CancellationToken cancellationToken) =>

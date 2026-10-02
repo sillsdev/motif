@@ -38,6 +38,9 @@ internal static class InteractiveControlSweep
             ["completed Handoff"] = [AutomationIds.WriteHandoff],
             ["older store refused"] = [AutomationIds.ProjectMenu],
             ["ready to assess pasted words"] = [AutomationIds.RunAssessment],
+            ["parse progress with stopped words"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseStoppedWords, AutomationIds.CancelAssessment],
+            ["parse with no progress"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseNoProgress, AutomationIds.ParseReportProblem, AutomationIds.CancelAssessment],
+            ["worker parse progress"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseAllWordsProgress, AutomationIds.CancelAssessment],
             ["Assessment running"] = [AutomationIds.CancelAssessment],
             ["Assessment cancelled"] = [AutomationIds.RunAssessment],
         };

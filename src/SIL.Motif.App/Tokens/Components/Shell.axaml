@@ -9,6 +9,7 @@
     <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.780" />
     <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.820" />
     <StaticResource x:Key="Component.Shell.MinHeight" ResourceKey="Primitive.Size.600" />
+    <StaticResource x:Key="Component.Shell.ParseStoppedMaxHeight" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.Shell.DiagnosticWidth" ResourceKey="Primitive.Size.1100" />
     <StaticResource x:Key="Component.Shell.DiagnosticHeight" ResourceKey="Primitive.Size.760" />
     <StaticResource x:Key="Component.Shell.DiagnosticMinWidth" ResourceKey="Primitive.Size.640" />

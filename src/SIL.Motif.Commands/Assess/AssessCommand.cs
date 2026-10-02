@@ -15,6 +15,7 @@ using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -28,6 +29,7 @@ using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 
@@ -92,8 +94,8 @@ public static class AssessCommand
 
     /// <summary>
     /// Measures the project against explicitly supplied collaborators — a fake Assessor and a fake invoker
-    /// stand in for a real PanGloss in tests. Admission and containment are the invoker's, so this command
-    /// holds no queue and no governor.
+    /// stand in for a real PanGloss in tests. The project store admits one parse; the invoker provides
+    /// machine admission and process containment.
     /// </summary>
     internal static CommandOutcome<AssessCommandResponse> Run(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
@@ -107,6 +109,9 @@ public static class AssessCommand
         {
             if (cancellationToken.IsCancellationRequested)
                 return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
+            using var parseLease = ProjectParseLease.TryAcquire(database);
+            if (parseLease is null)
+                return CommandOutcome<AssessCommandResponse>.Refused(ProjectParseLease.BusyRefusal());
             if (request.PerWordLimitMs is <= 0)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
@@ -215,8 +220,20 @@ public static class AssessCommand
                         : EstimatePerWordTimeLimit(assessments, stepLimit);
                 scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
                 onProgress?.Invoke(new AssessmentProgress(
-                    AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection..."));
-                produced = assessor.ProduceAsync(scope, exportedCandidate, cancellationToken).GetAwaiter().GetResult();
+                    AssessmentStage.Parsing, 0, composition.Selection.Words.Count, "Parsing the Selection...")
+                    { PerWordLimitMs = timeLimit is { } wordLimit ? (int)wordLimit.TotalMilliseconds : null });
+                produced = assessor.ProduceAsync(scope, exportedCandidate, wordProgress =>
+                {
+                    onProgress?.Invoke(new AssessmentProgress(AssessmentStage.Parsing,
+                        wordProgress.Completed, wordProgress.Total,
+                        wordProgress.CurrentWord is { } word ? $"Parsing {word}" : "Reading word results...")
+                    {
+                        CurrentWord = wordProgress.CurrentWord,
+                        PerWordLimitMs = scope.PerWordLimit is { } limit ? (int)limit.TotalMilliseconds : null,
+                        StoppedWords = wordProgress.StoppedWords,
+                        SlowestWord = wordProgress.SlowestWord,
+                    });
+                }, cancellationToken).GetAwaiter().GetResult();
             }
             catch (OperationCanceledException)
             {
@@ -619,6 +636,11 @@ internal sealed class LazyPanGlossAssessor : IAssessor
     public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken) =>
         Resolve().ProduceAsync(scope, exportedCandidate, cancellationToken);
+
+    public Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
+        AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
+        CancellationToken cancellationToken) =>
+        Resolve().ProduceAsync(scope, exportedCandidate, onProgress, cancellationToken);
 
     // A missing parser is the Assessor's own unavailability, not a fresh failure mode this wrapper invents.
     private IAssessor Resolve()

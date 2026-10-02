@@ -39,6 +39,22 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public void FlushedResultsRetainTheSlowestWordWhileTheNextWordIsStillRunning()
+    {
+        var path = Path.Combine(_root, "slowest-progress.tsv");
+        var reader = new BatchProgressReader(["fast", "slow", "held"]);
+        File.WriteAllText(path, "0\tfast\t2500\tok\t-\n1\tslow\t54000\tok\t-\n2\theld\tSTARTED\n");
+        var progress = reader.Read(path);
+        Assert.Equal(2, progress?.Completed);
+        Assert.Equal("held", progress?.CurrentWord);
+        var json = JsonSerializer.Serialize(progress, SIL.Motif.Contract.MotifJson.CreateOptions());
+        Assert.Contains("\"SlowestWord\":", json);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal("slow", document.RootElement.GetProperty("SlowestWord").GetProperty("Word").GetString());
+        Assert.Equal(54000, document.RootElement.GetProperty("SlowestWord").GetProperty("ElapsedMs").GetDouble());
+    }
+
+    [Fact]
     public void SequentialBatchProgressNamesTheStartedWordAfterCompletedRows()
     {
         var path = Path.Combine(_root, "progress.tsv");
@@ -78,7 +94,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         AppendBytes(path, nextRows[..split]);
         Assert.Equal(started, reader.Read(path));
         AppendBytes(path, nextRows[split..]);
-        var secondStarted = new TrialWordProgress(1, 2, "two");
+        var secondStarted = new TrialWordProgress(1, 2, "two") { SlowestWord = new ParseWordTiming(word, 12) };
         Assert.Equal(secondStarted, reader.Read(path));
         Assert.Equal(secondStarted, reader.Read(path));
 
@@ -86,7 +102,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         AppendBytes(path, finalRow[..^1]);
         Assert.Equal(secondStarted, reader.Read(path));
         AppendBytes(path, finalRow[^1..]);
-        Assert.Equal(new TrialWordProgress(2, 2, null), reader.Read(path));
+        Assert.Equal(new TrialWordProgress(2, 2, null) { SlowestWord = new ParseWordTiming(word, 12) }, reader.Read(path));
     }
 
     [Fact]
@@ -144,8 +160,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.True(outcome is PanGlossOutcome.Completed, outcome.Message);
         var updates = seen.ToArray();
         Assert.Contains(new TrialWordProgress(0, 2, "one"), updates);
-        Assert.Contains(new TrialWordProgress(1, 2, "two"), updates);
-        Assert.Equal(new TrialWordProgress(2, 2, null), updates[^1]);
+        Assert.Contains(new TrialWordProgress(1, 2, "two") { SlowestWord = new ParseWordTiming("one", 3) }, updates);
+        Assert.Equal(new TrialWordProgress(2, 2, null) { SlowestWord = new ParseWordTiming("one", 3) }, updates[^1]);
         Assert.Equal(updates.Distinct(), updates);
         Assert.All(updates.Zip(updates.Skip(1)), pair => Assert.True(pair.First.Completed <= pair.Second.Completed));
     }

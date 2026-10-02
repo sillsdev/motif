@@ -43,11 +43,17 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
     private string? _diagnosticJson;
 
-    public TraceWordViewModel(ICommandClient? commandClient = null, ITraceViewPreferences? preferences = null)
+    public TraceWordViewModel(ICommandClient? commandClient = null, ITraceViewPreferences? preferences = null, TimeProvider? clock = null)
     {
         _commandClient = commandClient;
+        ParseProgress = new ParseProgressViewModel(clock ?? TimeProvider.System);
         InitializeExpert(preferences);
-        TryCommand = new AsyncRelayCommand(TryAsync, () => _projectPath is not null && WordToTry.Trim().Length > 0);
+        TryCommand = new AsyncRelayCommand(TryAsync, () => _projectPath is not null && !IsLoading &&
+            !ParseProgress.IsActive && WordToTry.Trim().Length > 0);
+        ParseProgress.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) TryCommand.NotifyCanExecuteChanged();
+        };
         SetViewCommand = new RelayCommand<TraceView>(view => View = view);
         CancelCommand = new RelayCommand(CancelRunning, () => IsLoading);
         // Choosing the group already in force clears the filter, so one control both narrows and widens.
@@ -71,7 +77,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading;
 
-    partial void OnIsLoadingChanged(bool value) => CancelCommand.NotifyCanExecuteChanged();
+    partial void OnIsLoadingChanged(bool value)
+    {
+        CancelCommand.NotifyCanExecuteChanged();
+        TryCommand.NotifyCanExecuteChanged();
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShownRefusal))]
@@ -149,6 +159,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         RebuildFilteredRoots();
         RebuildExpert();
     }
+
+    public ParseProgressViewModel ParseProgress { get; }
 
     public bool HasResult => Result is not null;
 
@@ -634,7 +646,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     private async Task TryAsync()
     {
-        if (_projectPath is not { } path) return;
+        if (IsLoading || ParseProgress.IsActive || TryCommand.IsRunning || _projectPath is not { } path) return;
         var word = WordToTry.Trim();
         if (word.Length == 0) return;
         // Trying a word asks to read its story, which needs the full width, not the analyses beside it.
@@ -644,6 +656,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         using var running = new CancellationTokenSource();
         _running = running;
         var generation = ++_generation;
+        var previousResult = Result;
+        var previousDiagnostic = _diagnosticJson;
         IsLoading = true;
         Refusal = null;
         Result = null;
@@ -664,7 +678,12 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
         using var usageAction = _commandClient.BeginUsageAction("word trace",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("word"));
-        var outcome = await _commandClient.TraceWordAsync(new WordTraceRequest(path, word), running.Token)
+        var progress = new Progress<AssessmentProgress>(value =>
+        {
+            if (generation == _generation && IsLoading) ParseProgress.Report(value);
+        });
+        var outcome = await ParseProgress.TrackAsync(() =>
+            _commandClient.TraceWordAsync(new WordTraceRequest(path, word), running.Token, progress))
             .ConfigureAwait(true);
         if (ReferenceEquals(_running, running)) _running = null;
         if (generation != _generation) return;
@@ -673,6 +692,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         if (!outcome.Succeeded)
         {
             Refusal = outcome.Refusal;
+            if (outcome.Refusal?.Reason == FailureReason.Cancelled)
+            {
+                Result = previousResult;
+                _diagnosticJson = previousDiagnostic;
+            }
             return;
         }
 

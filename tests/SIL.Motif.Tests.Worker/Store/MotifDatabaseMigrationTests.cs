@@ -508,17 +508,17 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Fact]
     public void PreviousSchemaIsRefusedWithoutMigration()
     {
-        const int previousSchema = 36;
-        var path = DatabasePath("schema-36.fwdata");
+        const int previousSchema = 37;
+        var path = DatabasePath("schema-37.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(37, MotifSchema.CurrentSchema);
+        Assert.Equal(38, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
-            path, Locator("schema-36.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+            path, Locator("schema-37.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
+        Assert.Contains("schema 38", refusal.Message);
         Assert.Contains("schema 37", refusal.Message);
-        Assert.Contains("schema 36", refusal.Message);
         Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));

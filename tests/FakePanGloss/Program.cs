@@ -266,7 +266,8 @@ internal static class Program
                 _ => "ok",
             };
             var signature = known?.Signature ?? (known is { Outcome: "complete" } ? words[i] + "-sig" : "-");
-            builder.Append(i).Append('\t').Append(words[i]).Append('\t').Append(3).Append('\t')
+            builder.Append(i).Append('\t').Append(words[i]).Append('\t')
+                .Append((known?.ElapsedMs ?? 3).ToString(CultureInfo.InvariantCulture)).Append('\t')
                 .Append(status).Append('\t').Append(signature).Append('\n');
         }
         return builder.ToString();
@@ -621,7 +622,7 @@ internal static class Program
             var hasFindings = known?.Signature is { } signature ? signature != "-" : known?.Outcome == "complete";
             return JsonSerializer.Serialize(new
             {
-                schema = "fieldworks-parse-analysis/v1", index, word, elapsedMs = 3,
+                schema = "fieldworks-parse-analysis/v1", index, word, elapsedMs = known?.ElapsedMs ?? 3,
                 capped = known?.Outcome == "capped", timedOut = known?.Outcome == "timed-out", invalidShape = false,
                 analyses = known?.Analyses ?? [],
                 unavailable = hasFindings && known?.Analyses is not { Count: > 0 }
@@ -630,7 +631,7 @@ internal static class Program
         }));
 
     private sealed record FakeWord(string Word, string Outcome, string? Signature = null,
-        IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null);
+        IReadOnlyList<JsonElement>? Analyses = null, int? Attempts = null, int? Passes = null, double ElapsedMs = 3);
 
     private sealed record Behaviour
     {

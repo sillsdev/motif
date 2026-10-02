@@ -43,6 +43,7 @@ public sealed partial class CommandClient : ICommandClient
     private readonly string _managedRoot;
     private readonly IProjectGate _projectGate;
     private readonly UsageRecorder _usageRecorder;
+    private int _parseInFlight;
 
     public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
@@ -90,9 +91,9 @@ public sealed partial class CommandClient : ICommandClient
         AssessRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return AfterStartGate(GatedCommand.Assess, cancellationToken, () => OneAtATime(
+        return ParseOneAtATime(() => AfterStartGate(GatedCommand.Assess, cancellationToken, () => OneAtATime(
             () => AssessCommand.Assess(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken), cancellationToken));
+                progress.Report, cancellationToken), cancellationToken)));
     }
 
     public Task<CommandOutcome<StatsCommandResponse>> StatsAsync(
@@ -111,6 +112,15 @@ public sealed partial class CommandClient : ICommandClient
     public Task<CommandOutcome<ProjectStoreResetResponse>> DeleteRefusedStoreAsync(
         ProjectStoreResetRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => ProjectStoreReset.DeleteRefused(request));
+
+    private async Task<CommandOutcome<T>> ParseOneAtATime<T>(Func<Task<CommandOutcome<T>>> run) where T : class
+    {
+        if (Interlocked.CompareExchange(ref _parseInFlight, 1, 0) != 0)
+            return CommandOutcome<T>.Refused(new Refusal("parse.already-running-here", FailureReason.Busy,
+                "A parse is already running in this Motif window. Its progress is shown above."));
+        try { return await run().ConfigureAwait(false); }
+        finally { Volatile.Write(ref _parseInFlight, 0); }
+    }
 
     private async Task<T> AfterStartGate<T>(
         GatedCommand command, CancellationToken cancellationToken, Func<Task<T>> run)

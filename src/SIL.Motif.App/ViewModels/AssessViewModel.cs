@@ -30,7 +30,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         _selection = selection;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
-        Trace = new TraceWordViewModel(commandClient, traceViewPreferences);
+        Trace = new TraceWordViewModel(commandClient, traceViewPreferences, _timeProvider);
+        ParseProgress = new ParseProgressViewModel(_timeProvider);
         PropertyChanged += OnResultChanged;
         Words.PropertyChanged += OnWordsPropertyChanged;
         Compare.Rerun = RerunAsync;
@@ -49,6 +50,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     public Task RunDefaultSelectionAsync(int? perWordLimitMs, StepCap? perWordStepLimit)
     {
         if (perWordLimitMs is <= 0) throw new ArgumentOutOfRangeException(nameof(perWordLimitMs));
+        if (IsActive || RunCommand.IsRunning) return Task.CompletedTask;
         _runDefaultSelection = true;
         _defaultPerWordLimitMs = perWordLimitMs;
         _defaultStepLimit = perWordStepLimit;
@@ -65,6 +67,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     public Task RerunAsync(IReadOnlyList<string> words, int limitMs, StepCap? stepLimit)
     {
         ArgumentNullException.ThrowIfNull(words);
+        if (IsActive || RunCommand.IsRunning) return Task.CompletedTask;
         if (words.Count == 0) return Task.CompletedTask;
         _rerunWords = words;
         _rerunLimitMs = limitMs;
@@ -158,6 +161,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     /// <summary>Traces one word on demand against the current Baseline's grammar, for Try a Word.</summary>
     public TraceWordViewModel Trace { get; }
+    public ParseProgressViewModel ParseProgress { get; }
 
     /// <summary>Opens Try a Word on a word and traces it; set by whoever hosts Try a Word.</summary>
     public Action<string>? OpenTryWord { get; set; }
@@ -224,6 +228,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
 
     private void OnResultChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(Progress) && Progress is { } progress) ParseProgress.Report(progress);
         if (e.PropertyName is nameof(Result) or nameof(State) or nameof(Refusal))
         {
             OnPropertyChanged(nameof(ShowsEarlierResults));
@@ -274,7 +279,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
             _defaultStepLimit = null;
             var request = new AssessRequest(ProjectPath!, runDefault ? null : _selection.BuildRequest(),
                 timeLimitMs, requestedStepLimit);
-            return await _commandClient.AssessAsync(request, this, cancellationToken).ConfigureAwait(true);
+            return await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(request, this, cancellationToken)).ConfigureAwait(true);
         }
 
         var rerun = new AssessRequest(ProjectPath!,
@@ -282,7 +287,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
                 PerWordStepLimit: stepLimit ?? _selection.BuildRequest().PerWordStepLimit), limitMs,
             ReplaceAssessmentId: into?.Measurements.FirstOrDefault(measurement =>
                 measurement.Kind == AssessmentKinds.ParseTime)?.AssessmentId);
-        var outcome = await _commandClient.AssessAsync(rerun, this, cancellationToken).ConfigureAwait(true);
+        var outcome = await ParseProgress.TrackAsync(() => _commandClient.AssessAsync(rerun, this, cancellationToken)).ConfigureAwait(true);
         return outcome.Succeeded && into is not null
             ? CommandOutcome<AssessCommandResponse>.Success(Merge(into, outcome.Value!))
             : outcome;

@@ -124,6 +124,10 @@ internal sealed class TrialJobHandler
         ArgumentNullException.ThrowIfNull(claim);
         if (claim.Job.Status != JobStatus.Running)
             throw new InvalidOperationException("A Trial must already be claimed by a runner.");
+        using var parseLease = SIL.Motif.Host.Store.ProjectParseLease.TryAcquire(claim.Database);
+        if (parseLease is null)
+            return new JobOutcome(JobStatus.Failed, JobFailureCategory.Unknown,
+                JsonSerializer.Serialize(new { detail = SIL.Motif.Host.Store.ProjectParseLease.BusyRefusal().Message }));
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
         if (!StringComparer.Ordinal.Equals(claim.Job.Kind, TrialKind) ||
             !StringComparer.Ordinal.Equals(claim.Job.ProjectKey, workspaceKey))
@@ -173,8 +177,11 @@ internal sealed class TrialJobHandler
 
         try
         {
+            var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
+            claim.PublishTrialProgress(new TrialWordProgress(0, candidate.Scope.Words.Count, null)
+                { PerWordLimitMs = limitMs });
             var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory,
-                    progress => claim.PublishTrialProgress(progress), cancellationToken)
+                    progress => claim.PublishTrialProgress(progress with { PerWordLimitMs = limitMs }), cancellationToken)
                 .ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             try

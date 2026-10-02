@@ -59,6 +59,9 @@ public sealed partial class MainWindow : Window
         Closing += (_, _) => SaveBounds();
     }
 
+    private async void OnParseReportProblemClick(object? sender, RoutedEventArgs e) =>
+        await _uriLauncher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true);
+
     // The tip opens left of the whole group, so it hides neither the action's neighbours nor the notice below.
     private static void PlaceBesideTopBarActions(StackPanel actions, Button action)
     {

@@ -14,6 +14,8 @@ namespace SIL.Motif.Contract.Commands;
 /// </remarks>
 public static class RefusalCodes
 {
+    public const string ParseAlreadyRunningHere = "parse.already-running-here";
+    public const string ParseAlreadyRunning = "parse.already-running";
     public const string ApplyAppliedContentMismatch = "apply.applied-content-mismatch";
     public const string ApplyChangeNoLongerFits = "apply.change-no-longer-fits";
     public const string ApplyChangeUncertain = "apply.change-uncertain";

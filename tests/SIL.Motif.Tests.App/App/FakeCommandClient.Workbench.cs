@@ -172,7 +172,7 @@ public sealed partial class FakeCommandClient
     }
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
-        WordTraceRequest request, CancellationToken cancellationToken)
+        WordTraceRequest request, CancellationToken cancellationToken, IProgress<AssessmentProgress>? progress = null)
     {
         TraceWordRequests.Add(request);
         return _traceWord(request, cancellationToken);

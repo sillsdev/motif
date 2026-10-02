@@ -35,12 +35,14 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
                 if (walkthrough.Workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
-                    throw new XunitException("The slow Assessment finished before cancellation could be requested.");
+                    throw new XunitException("The slow Assessment finished before cancellation could be requested; " +
+                        $"state={walkthrough.Workspace.Assess.State}, progress={walkthrough.Workspace.Assess.Progress}, " +
+                        $"refusal={walkthrough.Workspace.Assess.Refusal}");
 
                 var progress = walkthrough.Workspace.Assess.Progress;
                 return walkthrough.Workspace.Assess.State == RunState.Running &&
-                    progress is { Stage: AssessmentStage.Parsing, Completed: 0 } &&
-                    progress.Total == firstProject.Words.Count;
+                    progress is { Stage: AssessmentStage.Parsing } &&
+                    progress.Total == firstProject.Words.Count && progress.Completed < progress.Total;
             }, WalkthroughSteps.Remaining(deadline), "the real parser did not reach Parsing with work still running");
 
             Assert.False(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);

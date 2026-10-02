@@ -48,6 +48,91 @@ public sealed class MainWindowSmokeTests
     public MainWindowSmokeTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
+    public void ManyStoppedWordsStayScrollableWithoutCoveringTheWindow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var progress = workspace.Assess.Trace.ParseProgress;
+            var running = progress.TrackAsync(() => finish.Task);
+            try
+            {
+                window.Show();
+                progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 30, 40, "Parsing next")
+                {
+                    CurrentWord = "next", PerWordLimitMs = 1000,
+                    StoppedWords = Enumerable.Range(0, 30).Select(index =>
+                        new SIL.Motif.Contract.Jobs.StoppedParseWord($"stopped-{index}", "TIMEOUT", 1000)).ToArray(),
+                });
+                var stopped = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetAutomationId(expander) == SIL.Motif.App.AutomationIds.ParseStoppedWords);
+                stopped.IsExpanded = true;
+                PageScreenshots.Settle(window);
+                var scroll = Assert.Single(stopped.GetVisualDescendants().OfType<ScrollViewer>());
+                Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+                Assert.True(scroll.Bounds.Height < window.Bounds.Height / 2);
+                scroll.ScrollToEnd();
+                PageScreenshots.Settle(window);
+                Assert.True(scroll.Offset.Y > 0);
+            }
+            finally
+            {
+                finish.SetResult(true);
+                await running;
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public void ReportAProblemDuringAStalledParseOpensTheIssuePage()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var launcher = new RecordingParseLauncher();
+            var clock = new SIL.Motif.Tests.TestFixtures.FixedClock(DateTimeOffset.UtcNow);
+            var (workspace, window, _) = NewComposedWindow(launcher: launcher, clock: clock);
+            var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var progress = workspace.Assess.Trace.ParseProgress;
+            var running = progress.TrackAsync(() => finish.Task);
+            try
+            {
+                window.Show();
+                progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing held")
+                    { CurrentWord = "held", PerWordLimitMs = 1000 });
+                clock.Advance(TimeSpan.FromSeconds(12));
+                progress.Report(new AssessmentProgress(AssessmentStage.Parsing, 0, 1, "Parsing held")
+                    { CurrentWord = "held", PerWordLimitMs = 1000 });
+                PageScreenshots.Settle(window);
+                var report = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Report a problem with parsing");
+                Assert.True(report.IsEffectivelyVisible);
+                ClickButton(window, report);
+                Assert.Equal(new Uri(AppLinks.Issues), launcher.Opened);
+            }
+            finally
+            {
+                finish.SetResult(true);
+                await running;
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromSeconds(20));
+    }
+
+    private sealed class RecordingParseLauncher : IUriLauncher
+    {
+        public Uri? Opened { get; private set; }
+        public Task<bool> LaunchAsync(Uri uri, CancellationToken cancellationToken = default)
+        {
+            Opened = uri;
+            return Task.FromResult(true);
+        }
+    }
+
+    [Fact]
     public async Task F1OpensHelpForTheCurrentPage()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -1537,17 +1622,17 @@ public sealed class MainWindowSmokeTests
     }
 
     private static (WorkspaceShellViewModel Workspace, MainWindow Window, FakeDragSource DragSource)
-        NewComposedWindow(TechDemoNoticeViewModel? techDemoNotice = null)
+        NewComposedWindow(TechDemoNoticeViewModel? techDemoNotice = null, IUriLauncher? launcher = null, TimeProvider? clock = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var dragSource = new FakeDragSource();
-        var window = new MainWindow();
+        var window = new MainWindow(false, launcher);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake),
             selection,
-            new AssessViewModel(fake, selection),
+            new AssessViewModel(fake, selection, clock),
             new FakeFolderPicker(), dragSource,
             fake, clipboard: new AvaloniaClipboard(window), techDemoNotice: techDemoNotice);
 

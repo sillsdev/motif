@@ -319,7 +319,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         TrialWordProgress? previous = null;
         void Publish(TrialWordProgress? current)
         {
-            if (current is null || current == previous) return;
+            if (current is null || previous is { } last && current.Completed == last.Completed &&
+                current.CurrentWord == last.CurrentWord && current.StoppedWords.Count == last.StoppedWords.Count) return;
             try
             {
                 batch.OnProgress!(current);

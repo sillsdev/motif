@@ -70,6 +70,8 @@ public sealed partial record WindowRefusal
         [C.ApplyReopenFailed] =
             "The changes could not be applied or reopened. Inspect the FieldWorks project before trying again.",
 
+        [C.ParseAlreadyRunningHere] = "A parse is already running in this Motif window. Its progress is shown above.",
+        ["parse.already-running"] = "A parse is already running for this project in another Motif window or process. Use that window to see its progress or cancel it.",
         [C.AssessBaselineChanged] = "The project was refreshed while words were being measured. Measure them again.",
         [C.AssessInvalidLimit] = "Enter a per-word time limit greater than zero.",
         [C.AssessInvocationInconsistent] = "Motif could not record these measurements together. Measure the words again.",

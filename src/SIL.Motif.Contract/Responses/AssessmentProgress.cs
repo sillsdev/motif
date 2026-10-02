@@ -1,8 +1,8 @@
 namespace SIL.Motif.Contract.Responses;
 
 /// <summary>
-/// One command-owned boundary a synchronous <c>assess</c> or <c>handoff</c> run passes through. Never a
-/// per-word tick — PanGloss exposes no such signal, so reporting one would be invented, not observed.
+/// One boundary a synchronous <c>assess</c> or <c>handoff</c> run passes through.
+/// Parsing progress comes from the sequential parser's flushed word rows.
 /// </summary>
 public enum AssessmentStage
 {
@@ -30,9 +30,15 @@ public enum AssessmentStage
 /// never console output the command itself writes (ADR 0043 decision 1).
 /// </summary>
 /// <param name="Completed">
-/// How much of this stage's own, command-known work is done, or <c>0</c> when the stage has no such count.
+/// How much of this stage's observed work is done, or <c>0</c> when the stage has no such count.
 /// </param>
-/// <param name="Total">This stage's own, command-known total, or <c>null</c> when there is none to report.</param>
+/// <param name="Total">This stage's known total, or <c>null</c> when there is none to report.</param>
 /// <param name="Stage">The command-owned phase currently being reported.</param>
 /// <param name="Message">The human-readable diagnostic associated with this progress step.</param>
-public sealed record AssessmentProgress(AssessmentStage Stage, int Completed, int? Total, string Message);
+public sealed record AssessmentProgress(AssessmentStage Stage, int Completed, int? Total, string Message)
+{
+    public string? CurrentWord { get; init; }
+    public int? PerWordLimitMs { get; init; }
+    public SIL.Motif.Contract.Jobs.ParseWordTiming? SlowestWord { get; init; }
+    public IReadOnlyList<SIL.Motif.Contract.Jobs.StoppedParseWord> StoppedWords { get; init; } = [];
+}

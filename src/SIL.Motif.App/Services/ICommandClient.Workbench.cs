@@ -39,9 +39,9 @@ public partial interface ICommandClient
     Task<CommandOutcome<TextWordsResponse>> ListTextWordsAsync(
         TextWordsRequest request, CancellationToken cancellationToken);
 
-    /// <summary>Traces one word against the current Baseline's grammar.</summary>
+    /// <summary>Traces one word against the current Baseline's grammar, with optional progress while waiting.</summary>
     Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
-        WordTraceRequest request, CancellationToken cancellationToken);
+        WordTraceRequest request, CancellationToken cancellationToken, IProgress<AssessmentProgress>? progress = null);
 
     /// <summary>
     /// Reads what Motif knows about one inspector subject, each section from its own source: the Baseline's facts,

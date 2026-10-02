@@ -41,8 +41,9 @@ public sealed partial class CommandClient
         Task.Run(() => TextWordsQuery.Query(request, cancellationToken));
 
     public Task<CommandOutcome<WordTraceResponse>> TraceWordAsync(
-        WordTraceRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath, cancellationToken), cancellationToken);
+        WordTraceRequest request, CancellationToken cancellationToken, IProgress<AssessmentProgress>? progress = null) =>
+        ParseOneAtATime(() => OneAtATime(() => WordTraceQuery.Query(request, _options.ParserPath,
+            cancellationToken, progress is null ? null : progress.Report), cancellationToken));
 
     // The facts come from a scratch LibLCM cache of the Baseline, so the read waits its turn like the parser.
     public Task<CommandOutcome<InspectResponse>> InspectAsync(InspectRequest request, CancellationToken cancellationToken) =>

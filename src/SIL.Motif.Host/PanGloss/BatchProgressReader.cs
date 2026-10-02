@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using SIL.Motif.Contract.Jobs;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -9,6 +10,8 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
     private readonly MemoryStream _partialLine = new();
     private long _position;
     private int _completed;
+    private readonly List<StoppedParseWord> _stoppedWords = [];
+    private ParseWordTiming? _slowest;
     private int? _started;
     private bool _sawRow;
 
@@ -42,6 +45,10 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
     private TrialWordProgress? Current => _sawRow
         ? new TrialWordProgress(_completed, words.Count,
             _started is { } current && current >= _completed ? words[current] : null)
+            {
+                StoppedWords = _stoppedWords.Count == 0 ? Array.Empty<StoppedParseWord>() : _stoppedWords.ToArray(),
+                SlowestWord = _slowest,
+            }
         : null;
 
     private void Process(ReadOnlySpan<byte> bytes)
@@ -78,6 +85,14 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
         }
         else if (cells.Length >= 5 && index == _completed)
         {
+            if (double.TryParse(cells[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var elapsed) &&
+                double.IsFinite(elapsed) && elapsed >= 0)
+            {
+                if (_slowest is null || elapsed > _slowest.ElapsedMs)
+                    _slowest = new ParseWordTiming(words[index], elapsed);
+                if (cells[3] is "TIMEOUT" or "CAP")
+                    _stoppedWords.Add(new StoppedParseWord(words[index], cells[3], elapsed));
+            }
             _completed++;
             _started = null;
             _sawRow = true;
