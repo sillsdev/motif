@@ -505,7 +505,15 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.True(fixes.Length <= 1, $"{form} offers {fixes.Length} Fix controls.");
                     Assert.All(fixes, fix =>
                     {
-                        Assert.Equal("Fix ▾", fix.Content);
+                        var content = Assert.IsType<StackPanel>(fix.Content);
+                        Assert.Collection(content.Children,
+                            child => Assert.Equal("Fix ", Assert.IsType<TextBlock>(child).Text),
+                            child =>
+                            {
+                                var caret = Assert.IsType<PathIcon>(child);
+                                Assert.Contains("actionChipCaret", caret.Classes);
+                                Assert.NotNull(caret.Data);
+                            });
                         Assert.NotNull(fix.Flyout);
                     });
                     Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);

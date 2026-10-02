@@ -502,6 +502,40 @@ internal static class WalkthroughReplay
                     }).ToArray();
                     var capture = WalkthroughArtifacts.Capture(step.Id, elapsedMs, step.DurationMs!.Value,
                         window.Window, callouts, step.CropPadding, step.Scale);
+                    if (script.Id == "explained-word-card" && step.Id == "approved-agrees")
+                    {
+                        var fixId = callouts.Single(callout =>
+                            callout.AutomationId.EndsWith("-fix", StringComparison.Ordinal)).AutomationId;
+                        var fix = (Button)window.FindByAutomationId(fixId);
+                        var fallbackWidths = new List<int>();
+                        var chevron = Assert.Single(fix.GetLogicalDescendants().OfType<PathIcon>());
+                        foreach (var fallbackFamily in new[] { "serif", "monospace" })
+                        {
+                            chevron.SetValue(TextElement.FontFamilyProperty, new FontFamily(fallbackFamily));
+                            window.Window.UpdateLayout();
+                            fallbackWidths.Add(CaptureWidth());
+                        }
+                        chevron.ClearValue(TextElement.FontFamilyProperty);
+                        window.Window.UpdateLayout();
+                        Assert.Equal(fallbackWidths[0], fallbackWidths[1]);
+                        using var productionBitmap = SKBitmap.Decode(capture.Png);
+                        Assert.Equal(fallbackWidths[0], productionBitmap!.Width);
+
+                        int CaptureWidth()
+                        {
+                            var changedCallouts = callouts.Select(callout => callout.AutomationId == fixId
+                                ? callout with
+                                {
+                                    Bounds = WalkthroughArtifacts.PadSmallHighlightTarget(
+                                        window.BoundsByAutomationId(fixId)),
+                                }
+                                : callout).ToArray();
+                            var changedCapture = WalkthroughArtifacts.Capture(step.Id, elapsedMs,
+                                step.DurationMs!.Value, window.Window, changedCallouts, step.CropPadding, step.Scale);
+                            using var changedBitmap = SKBitmap.Decode(changedCapture.Png);
+                            return changedBitmap!.Width;
+                        }
+                    }
                     if (script.Id == "explained-word-card")
                     {
                         WalkthroughArtifacts.ValidateCaptionColumnLayout(repositoryRoot, capture);

@@ -203,6 +203,7 @@
   <x:Double x:Key="Primitive.Type.10">10</x:Double>
 
   <x:Double x:Key="Primitive.Size.1">1</x:Double>
+  <x:Double x:Key="Primitive.Size.5">5</x:Double>
   <x:Double x:Key="Primitive.Size.8">8</x:Double>
   <x:Double x:Key="Primitive.Size.18">18</x:Double>
   <x:Double x:Key="Primitive.Size.22">22</x:Double>

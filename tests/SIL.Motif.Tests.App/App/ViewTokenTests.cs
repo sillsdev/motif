@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -187,8 +188,20 @@ public sealed class ViewTokenTests
     public void StripAndCardOfferFixAndApproveOneReadingAtATime()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        var view = XDocument.Parse(markup);
         Assert.DoesNotContain("Header=\"Fix ▾\"", markup, StringComparison.Ordinal);
-        Assert.Equal(2, Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Count);
+        Assert.Single(Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Cast<Match>());
+        var stripFix = Assert.Single(view.Descendants(), element => element.Name.LocalName == "Button" &&
+            (string?)element.Attribute("AutomationProperties.Name") == "Fix actions from the word strip");
+        var stripFixContent = Assert.Single(stripFix.Elements(), element => element.Name.LocalName == "StackPanel");
+        Assert.Collection(stripFixContent.Elements(),
+            label => Assert.Equal("Fix ", (string?)label.Attribute("Text")),
+            caret =>
+            {
+                Assert.Equal("PathIcon", caret.Name.LocalName);
+                Assert.Contains("actionChipCaret", ((string?)caret.Attribute("Classes") ?? "").Split(' '));
+                Assert.Equal("M1 2L7 2L4 6Z", (string?)caret.Attribute("Data"));
+            });
         Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
             StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,

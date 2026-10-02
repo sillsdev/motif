@@ -270,9 +270,13 @@
                                       CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
                                       AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
                                       AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Button Classes="actionChip fix revealOnHover" Content="Fix ▾" AutomationProperties.Name="Fix actions from the word strip"
+                              <Button Classes="actionChip fix revealOnHover" AutomationProperties.Name="Fix actions from the word strip"
                                       VerticalAlignment="Center"
                                       AutomationProperties.AutomationId="{Binding FixAutomationId}">
+                                <StackPanel Orientation="Horizontal">
+                                  <TextBlock Text="Fix " />
+                                  <PathIcon Classes="actionChipCaret" Data="M1 2L7 2L4 6Z" />
+                                </StackPanel>
                                 <Button.Flyout>
                                   <Flyout Placement="BottomEdgeAlignedLeft">
                                     <StackPanel Classes="menu">
