@@ -1,5 +1,7 @@
 # ADR 0002 — Version compatibility is detected by effect comparison, not declared
 
+**In plain terms:** A proposed edit matters when it changes what the project contains or how it behaves. Motif compares the state before and after an edit using explicit rules for which effects are compatible.
+
 Status: accepted (2026-07-24)
 
 ## Context

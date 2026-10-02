@@ -10,4 +10,4 @@ To remove a change without replacing it:
 
 The remaining pending changes stay in the list. Use **Keep editing** to return to the page where the first pending change was collected. Changes belong to the project and remain available if you close Motif and open that project again.
 
-![Replacing a pending change with a new choice](shot:replace-a-pending-change/replaced-choice)
+![A staged choice before you replace or undo it](shot:explained-word-card/unknown-staged)

@@ -1,7 +1,7 @@
 # Installing Motif
 
-Motif’s current application is a Windows desktop app. The project’s README names the .NET 10 SDK for building the app from source, but this repository does not provide a user-facing installer or a download-and-install sequence. Ask your Motif administrator or maintainer which approved build to use.
+Download the Windows x64 **Setup.exe** asset from the [latest Motif release](https://github.com/sillsdev/motif/releases/latest), run it, and follow the installer. It installs Motif for your Windows user and creates a Start menu shortcut. Launch **Motif** from that shortcut, then choose **Select new…** and browse to your FieldWorks `.fwdata` file.
 
-Motif can open without PanGloss, but it needs the `pangloss` executable to parse words and produce parsing measurements. If PanGloss is unavailable, parsing and AI Handoff actions can be refused while the other project pages remain available. The current documentation does not explain how end users should obtain or install PanGloss, so follow the instructions supplied with your Motif build.
+The official Windows release includes the matching PanGloss parser. You do not need to download PanGloss separately. If you are using a development build instead, parsing requires the `pangloss` executable supplied with that build.
 
-Motif keeps project workflow information with the project. The exact location and backup procedure for an installed copy are not described in the current user-facing materials; ask your administrator before moving or removing Motif’s project data.
+Motif stores project workflow data in a file beside the FieldWorks project: for `Koro.fwdata`, the file is `Koro.motif.db`. It holds Motif’s Baseline, Selection, measurements and pending workflow records; it does not replace the FieldWorks project. When moving or backing up a project, close Motif and copy both files together to the same folder. Open the `.fwdata` file at its new location to continue with the matching Motif data.

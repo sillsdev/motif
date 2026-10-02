@@ -9,4 +9,4 @@ Apply writes the pending analysis changes to the FieldWorks project as one opera
 
 If Apply is unavailable, read the reason beside the button. A stale result needs **Refresh**; incomplete evidence needs another successful check; a change that says **No longer fits** must be removed or checked against a refreshed project. The window does not offer a way to force a change that no longer fits.
 
-![Changes applied to the FieldWorks project](shot:apply-to-fieldworks/applied-receipt)
+![Receipt after changes are applied to the FieldWorks project](shot:review-apply-refresh-parse/applied)

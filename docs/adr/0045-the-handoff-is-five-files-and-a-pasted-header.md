@@ -1,5 +1,7 @@
 # ADR 0045 — The Handoff is five files and a pasted header
 
+People need a clear way to give a chat model context about a parse. This decision defines the files Motif creates and warns what project information they can contain.
+
 **Status:** accepted, 2026-09-18. Rewrites the **Handoff** entry in `CONTEXT.md`. Builds on
 [ADR 0044](0044-every-parser-process-is-one-pangloss-invocation.md) (one way to run the parser) and
 [ADR 0011](0011-experiment-loop-boundary-motif-is-the-record.md) (Motif is the record). The work package is

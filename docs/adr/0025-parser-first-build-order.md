@@ -1,5 +1,7 @@
 # ADR 0025 — Build the parsing slice first, including grammar and approved analyses
 
+**In plain terms:** Motif can deliver value early by supporting the project data that affects parsing. This decision orders implementation around those parser-relevant fields while keeping later data in scope.
+
 **Status:** accepted, 2026-08-05. Supersedes [ADR 0012](0012-build-order-hc-spine-first-kinds-generated.md)'s
 build order (its generation decisions stand). Amends [ADR 0017](0017-text-and-analysis-destination-scope.md):
 the approval half of analysis comes into v1. Answers `B8a` and closes `B21`.

@@ -1,0 +1,97 @@
+{
+  "id": "first-run-setup-parse",
+  "locale": "en",
+  "title": "Set up and parse words",
+  "description": "Choose a Default Selection and run Parse all words from the window.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "selection",
+      "caption": "Select all texts and add a word to the Default Selection before saving it.",
+      "startMs": 1250,
+      "endMs": 2650,
+      "screenshot": "steps/01-selection.png",
+      "annotated": "steps/01-selection-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 267,
+          "y": 318,
+          "width": 127,
+          "height": 32,
+          "label": "1",
+          "caption": "Select every Text in the project"
+        },
+        {
+          "x": 353,
+          "y": 408,
+          "width": 660,
+          "height": 52,
+          "label": "2",
+          "caption": "Words included in the Default Selection"
+        }
+      ]
+    },
+    {
+      "id": "cancelling",
+      "caption": "The progress panel shows the current run and lets you cancel it.",
+      "startMs": 3400,
+      "endMs": 4600,
+      "screenshot": "steps/02-cancelling.png",
+      "annotated": "steps/02-cancelling-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 14,
+          "y": 114,
+          "width": 1172,
+          "height": 23,
+          "label": "1",
+          "caption": "Progress for the current Parse all words run"
+        },
+        {
+          "x": 1194,
+          "y": 140,
+          "width": 72,
+          "height": 32,
+          "label": "2",
+          "caption": "Cancel this run"
+        }
+      ]
+    },
+    {
+      "id": "parsed",
+      "caption": "After setup, run Parse all words to record measurements for the Selection.",
+      "startMs": 5350,
+      "endMs": 6950,
+      "screenshot": "steps/03-parsed.png",
+      "annotated": "steps/03-parsed-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 237,
+          "y": 222,
+          "width": 200,
+          "height": 26,
+          "label": "1",
+          "caption": "Words in the Selection"
+        }
+      ]
+    }
+  ],
+  "clip": null
+}

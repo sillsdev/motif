@@ -1,5 +1,7 @@
 # ADR 0043 — One command catalog, two front ends
 
+People should see the same task names and rules whether they use the Motif window or command line. This decision makes both front ends read one shared command catalog.
+
 **Status:** accepted, 2026-09-04. Supersedes [ADR 0040](0040-one-api-the-cli.md) decisions 1 to 3. ADR 0040
 decisions 4 to 7 — the database as the only boundary between Motif's own processes, one shipped artifact at
 one version, no shared-XML peering, and reaching a live project only at a save boundary — remain binding.

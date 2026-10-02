@@ -1,5 +1,7 @@
 # ADR 0037 — Fetching lives outside Motif; a bundle is the handoff
 
+Downloading and cleaning outside text sources depends on each source’s format and licensing rules. This decision assigns that work to an external tool and has Motif accept a documented bundle.
+
 **Status:** accepted, 2026-08-09. Implements the ingestion half of
 [ADR 0036](0036-motif-has-its-own-data-store.md).
 

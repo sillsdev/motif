@@ -1,5 +1,7 @@
 # ADR 0001 — HermitCrab intent is a projection, not the canonical contract
 
+**In plain terms:** People need one stable description of a language change even when different parsers represent the grammar differently. Motif therefore records edits to FieldWorks data and derives parser-specific views from that data.
+
 Status: accepted (2026-07-23)
 
 ## Context

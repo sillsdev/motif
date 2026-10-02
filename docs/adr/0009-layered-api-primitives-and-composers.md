@@ -1,5 +1,7 @@
 # ADR 0009 — Layered API: primitives, composers, and generated kinds
 
+**In plain terms:** A linguist describes a goal, while the project stores smaller field changes. Motif keeps those layers separate so higher-level actions can use a stable set of underlying operations.
+
 Status: accepted (2026-07-25)
 
 ## Context

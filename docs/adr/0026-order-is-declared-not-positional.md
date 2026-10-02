@@ -1,5 +1,7 @@
 # ADR 0026 — Order is declared, not positional: dependencies in the DAG, canonical order for the rest
 
+**In plain terms:** When one Proposal contains several edits, only declared dependencies determine their order. Moving an edit in the input list cannot silently change what the Proposal means.
+
 **Status:** accepted, 2026-08-05. **Amends `AGENTS.md` non-negotiable rule 5** and
 `docs/change-set-contract.md`'s "authoritative execution order". Resolves `F23a`.
 

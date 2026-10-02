@@ -18,4 +18,4 @@ Select a cell to list its words below the Matrix. The list's heading names the c
 
 Changes you collect remain pending until you review and apply them. The page’s **Review changes** link opens that list; it does not write anything to FieldWorks. [Text Coverage](term:text-coverage) appears on the Overview after a measurement.
 
-![Text Coverage changing after texts are measured](shot:texts-choose-texts/coverage)
+![Texts after Parse all words records the current comparison](shot:open-project-overview/texts)

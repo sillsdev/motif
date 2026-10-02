@@ -1,5 +1,7 @@
 # ADR 0008 — Operation model: reparent and compound graph operations
 
+**In plain terms:** Some language changes move an object or update several related pieces of project data. The operation model makes those effects explicit so they can be reviewed together.
+
 Status: accepted (2026-07-24)
 
 ## Context

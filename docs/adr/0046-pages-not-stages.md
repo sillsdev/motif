@@ -1,5 +1,7 @@
 # ADR 0046 — Pages, not stages
 
+People can check results, inspect words and review pending analysis changes without moving through formal stages. This decision describes those tasks as pages and keeps each action explicit.
+
 **Status:** accepted, 2026-09-24. Adds **Overview**, **Default Selection**, **Text Coverage** and **Review
 changes** to `CONTEXT.md` and widens **Drift** and **Preflight** to single changes. Leaves the 2026-08-31
 amendment to `docs/proposal-lifecycle.md` standing. Reruns stay the reader's decision, as

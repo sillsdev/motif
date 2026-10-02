@@ -1,5 +1,7 @@
 # ADR 0048 — Parser containment and worker identity across operating systems
 
+People should be able to use PanGloss on Windows, Linux or macOS and understand which limits applied to a run. This decision makes parser containment visible across those systems.
+
 **Status:** accepted, amended 2026-09-28.
 
 **In plain terms:** Motif can now run PanGloss on Windows, Linux, and macOS. Each run reports the limits its operating system applied, including when that system cannot enforce the same limits as Windows.

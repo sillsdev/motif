@@ -10,32 +10,31 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that the Guide's Overview pages name the cards the window draws, by the titles the window gives them, and
-/// make no claim about a Baseline on the page, whose freshness the top bar alone reports.
+/// Ensures the canonical Overview guide names every card and the reading guide links back to its full page tour.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewGuideTests
 {
-    private static readonly string[] GuidePages = ["overview", "reading-the-overview"];
-
     private static readonly string[] RetiredCardNames = ["Accuracy", "Text Coverage", "**Timing**", "**Warnings**"];
 
     [Fact]
-    public void TheOverviewGuidePagesNameTheWindowsCards()
+    public void TheOverviewGuideNamesEveryCardAndTheReadingGuideLinksBack()
     {
         var titles = RenderedTileTitles();
         Assert.Equal(["Speed", "Text coverage", "Approved analyses kept", "Grammar warnings"], titles);
 
-        foreach (var name in GuidePages)
-        {
-            var guide = HelpCatalog.Load(CultureInfo.GetCultureInfo("en")).GetHelpPage(HelpEntryKind.Guide, name);
-            Assert.NotNull(guide);
-            foreach (var title in titles)
-                Assert.True(guide.Contains($"**{title}**", StringComparison.Ordinal), $"{name} does not name {title}");
-            foreach (var retired in RetiredCardNames)
-                Assert.False(guide.Contains(retired, StringComparison.Ordinal), $"{name} still says {retired}");
-            Assert.False(guide.Contains("its [Baseline]", StringComparison.Ordinal), $"{name} puts a Baseline on the page");
-        }
+        var catalog = HelpCatalog.Load(CultureInfo.GetCultureInfo("en"));
+        var guide = catalog.GetHelpPage(HelpEntryKind.Guide, "overview");
+        Assert.NotNull(guide);
+        foreach (var title in titles)
+            Assert.True(guide.Contains($"**{title}**", StringComparison.Ordinal), $"overview does not name {title}");
+        foreach (var retired in RetiredCardNames)
+            Assert.False(guide.Contains(retired, StringComparison.Ordinal), $"overview still says {retired}");
+        Assert.False(guide.Contains("its [Baseline]", StringComparison.Ordinal), "overview puts a Baseline on the page");
+
+        var readingGuide = catalog.GetHelpPage(HelpEntryKind.Guide, "reading-the-overview");
+        Assert.NotNull(readingGuide);
+        Assert.Contains("[Overview](guide:overview)", readingGuide);
     }
 
     private static string[] RenderedTileTitles()

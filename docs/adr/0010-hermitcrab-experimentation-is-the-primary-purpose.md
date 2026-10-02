@@ -1,5 +1,7 @@
 # ADR 0010 — The HermitCrab experimentation loop is Motif's primary purpose
 
+**In plain terms:** Motif began as a way for grammar researchers to try changes and measure how a parser responds. This decision made that experiment loop the product’s first purpose.
+
 Status: accepted (2026-07-25) — amended 2026-07-27 by
 [ADR 0011](0011-experiment-loop-boundary-motif-is-the-record.md) (the loop boundary: Motif is the
 record, not the orchestrator; forward projection deleted) and

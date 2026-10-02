@@ -1,5 +1,7 @@
 # ADR 0040 — There is one API, and it is the CLI
 
+People and external tools need the same dependable way to ask Motif to work on a project. A single command interface gives them that shared path.
+
 **Status:** accepted, 2026-08-26. Supersedes [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)
 decisions 1 and 8, and its decision 2's in-process FieldWorks boundary. ADR 0039's Baseline, live-host
 authority, per-project queueing, PanGloss bounding, and one-sibling-database decisions remain binding.

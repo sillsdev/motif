@@ -1,5 +1,7 @@
 # ADR 0011 — The experiment loop boundary: Motif is the record, not the orchestrator
 
+**In plain terms:** This early proposal described Motif as a record of changes while other tools ran and judged them. A later decision chose FieldWorks’ existing change mechanism instead.
+
 Status: **superseded (2026-07-27)**
 > **SUPERSEDED (2026-07-27) by [ADR 0013](0013-harmony-is-the-change-mechanism.md).** This ADR
 > describes how to grow a change-management mechanism that ADR 0013 declines to build, on the

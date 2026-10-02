@@ -1,5 +1,7 @@
 # ADR 0005 — Custom-field (schema) operations run in a separate non-undoable unit of work
 
+**In plain terms:** Changing which fields a project has is different from changing values in those fields. Motif treats the related changes as one unit so a failure cannot leave only part of the work applied.
+
 Status: accepted (2026-07-24)
 
 ## Context

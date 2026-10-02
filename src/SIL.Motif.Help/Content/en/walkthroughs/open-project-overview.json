@@ -3,9 +3,13 @@
   "title": "Open a project",
   "description": "Open a language project and see its Overview.",
   "steps": {
+    "texts": "The Texts page shows the saved word comparison.",
     "overview": "The Overview shows the latest stored measurements."
   },
   "callouts": {
+    "texts": {
+      "motif-page-texts": "Texts and their measured results"
+    },
     "overview": {
       "motif-overview-selection-word-count": "Words in the Selection"
     }

@@ -1,5 +1,7 @@
 # ADR 0024 — The name's group is derived; the linguistic domain is editorial metadata
 
+**In plain terms:** People need useful groupings of the language changes Motif supports, but those groupings should not change a change’s machine identity. This decision keeps the grouping editorial and derives identity from the model.
+
 **Status:** accepted, 2026-08-05. Completes the mechanisation begun in
 [ADR 0022](0022-structure-is-derived-policy-is-five-rows.md) and
 [ADR 0023](0023-derived-kind-names-required-descriptions.md): **no part of a hashed identifier is

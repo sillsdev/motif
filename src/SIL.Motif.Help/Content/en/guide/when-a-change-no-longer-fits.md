@@ -9,4 +9,4 @@ When a pending change is marked **No longer fits**, use these steps to check the
 
 Apply remains blocked while any change no longer fits. The window does not offer a way to force a change that no longer fits.
 
-![A change marked No longer fits](shot:no-longer-fits/not-fitting)
+![Review changes with a choice marked No longer fits](shot:no-longer-fits/review)

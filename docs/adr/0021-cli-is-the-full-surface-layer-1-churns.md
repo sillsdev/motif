@@ -1,5 +1,7 @@
 # ADR 0021 — The CLI is the full product surface; Layer 1 churns, Layer 0 does not
 
+**In plain terms:** An AI tool needs to perform the same useful work that a person will later reach through FieldWorks. The command line therefore covers complete tasks, while the meaning stored in Proposals stays stable as commands improve.
+
 **Status:** accepted, 2026-08-05. Refines [ADR 0020](0020-cli-first-fieldworks-planned-not-built.md)'s
 scope 1 and constrains [ADR 0009](0009-layered-api-primitives-and-composers.md)'s Layer 1. Sets the
 `J43` removal rule.

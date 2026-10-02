@@ -1,12 +1,8 @@
-# Normative Change Set contract
+# Normative Proposal contract
 
-> **Vocabulary:** written before [ADR 0015](adr/0015-proposal-assessment-dry-run-vocabulary.md).
-> Read *change set* as **Proposal**, and *Assessment* as **Dry Run** — `Assessment` now means a PanGloss
-> run only. Glossary: [CONTEXT.md](../CONTEXT.md).
+This contract defines which project changes Motif may propose and how implementations compare, evaluate and apply them. Its rules keep a Proposal's meaning stable across tools and project states.
 
-This document fixes the semantics that implementation and conformance fixtures must enforce.
-Concrete JSON Schema files should be generated or written during Phase 1 and must agree with this
-document.
+Implementations and conformance fixtures must enforce the semantics below. Any JSON Schema for Proposal input must describe these same fields and constraints.
 
 ## Document shape
 
@@ -15,7 +11,7 @@ Illustrative shape:
 ```json
 {
   "contractVersions": { "lexical": "1.0" },
-  "changeSetId": "agent_AAECAwQFBgcICQoLDA0ODw",
+  "proposalId": "agent_AAECAwQFBgcICQoLDA0ODw",
   "requires": ["agent_9y8x7w6v5u4t3s2r1q0p"],
   "operations": [
     {
@@ -33,7 +29,7 @@ Illustrative shape:
 }
 ```
 
-`contractVersions` maps each endpoint group to the contract major/minor the Change Set was authored
+`contractVersions` maps each endpoint group to the contract major/minor the Proposal was authored
 against. The group is the leading segment of `kind`. The map must name exactly the groups the
 operation array uses: a missing group is a validation error, and a padded one is too, because the map
 is hashed and must depend only on authored content.
@@ -43,13 +39,18 @@ declared versions exist so that a runner which cannot honor one can say which gr
 was required, and which it carries, letting the operator upgrade or rewrite instead of receiving a
 partial application. See [versioning](architecture.md#versioning).
 
-The operation array is authoritative execution order. The runner never silently reorders it.
-Dependencies validate whether that order is legal. Planning may resolve the identity of a later
-proposed entity, but an operation cannot execute against an entity before its creator operation.
+Order is authoritative only where it is declared. The runner honors Proposal-level `requires` and
+operation-level `dependsOn`; it never infers a dependency from array position. The canonical order
+honors that dependency graph, with deterministic tie-breaking as defined by [ADR 0026](adr/0026-order-is-declared-not-positional.md).
+
+A finalized Proposal contains at most one operation for each slot `(target, field, discriminator)`.
+The discriminator is the writing system for `Multi*` fields and the member id for collections; a
+scalar or atomic reference has no discriminator. Same-slot changes must be normalized before a
+Proposal is finalized, so array position never decides which value wins.
 
 ### Prerequisites
 
-A Change Set may declare prerequisites — other Change Sets that must already be in the project's
+A Proposal may declare prerequisites — other Proposals that must already be in the project's
 applied history before this one may apply:
 
 ```json
@@ -57,14 +58,14 @@ applied history before this one may apply:
 ```
 
 Each prerequisite is verified against the [applied-change log](applied-log.md): the referenced
-`changeSetId` must be present. Presence means "was applied at some point," which is exactly the
+`proposalId` must be present. Presence means "was applied at some point," which is exactly the
 guarantee this field makes — *this change must be in the history of LibLCM.* Whether a prerequisite's
 effects are still in force is not this field's job; the ordinary
-[comparison footprint](#comparison-footprint) catches a dependent Change Set whose required structure
+[comparison footprint](#comparison-footprint) catches a dependent Proposal whose required structure
 was later removed, because that structure is in its footprint.
 
-Prerequisites form a **directed acyclic graph**, not a single-parent tree: a Change Set may require
-several independent predecessors, so two independently-authored Change Sets — for example a lexical
+Prerequisites form a **directed acyclic graph**, not a single-parent tree: a Proposal may require
+several independent predecessors, so two independently-authored Proposals — for example a lexical
 one and a grammar one — can both be prerequisites of a third without imposing a false order between
 them. See [ADR 0004](adr/0004-prerequisite-graph-stable-ids-bound-apply.md). The reachable
 prerequisite graph must be acyclic; a cycle anywhere in the closure is a hard error, detected by
@@ -72,10 +73,10 @@ topological sort.
 
 The dependency cannot be overridden at apply time. A missing prerequisite is a hard
 [dependency/order error](conflicts-and-rebase.md#outcomes) — never a warning, never forceable. It can
-only be *removed*, by editing the Change Set to drop the entry, which is an authored change and so
-moves the intent digest, though not the frozen `changeSetId` (see [identity](#change-set-identity-vs-content-digest)).
+only be *removed*, by editing the Proposal to drop the entry, which is an authored change and so
+moves the intent digest, though not the frozen `proposalId` (see [identity](#proposal-identity-vs-content-digest)).
 
-Assessment and conformance tests evaluate a dependent Change Set against the state LibLCM would be in
+Dry Run and conformance tests evaluate a dependent Proposal against the state LibLCM would be in
 with its full prerequisite closure already applied, in topological order. In a live project that
 state already exists because the prerequisites are in history; in fixtures it is constructed by
 applying the closure first.
@@ -83,8 +84,8 @@ applying the closure first.
 Omission always means “leave untouched.” Clearing, detaching, removing, and deleting require
 explicit verbs. JSON `null` is never overloaded to mean several different mutations.
 
-`set` means unconditional desired semantic value. Baseline `before` evidence belongs to an
-Assessment, not portable intent. Apply is bound to a prior Assessment (see
+`set` means unconditional desired semantic value. Baseline `before` evidence belongs to a
+Dry Run, not portable intent. Apply is bound to a prior Dry Run (see
 [Application Receipt](#application-receipt)); when the current before-state differs from it,
 that drift is a diagnostic condition, not a reinterpretation of `set`; application policy
 chooses whether warnings may proceed. Structural guards deliberately authored as part of intent
@@ -98,7 +99,7 @@ real LibLCM capability, targets a manifest-classified surface, and ships with sc
 lowering, effects, and conformance vectors
 ([ADR 0009](adr/0009-layered-api-primitives-and-composers.md) §1). Everything else —
 `Expand`, find-and-replace, batch update, duplicate, `setPartOfSpeech` — is a Layer-1 **composer**: it
-authors Change Sets built entirely from these ten verbs and adds zero permanent contract surface
+authors Proposals built entirely from these ten verbs and adds zero permanent contract surface
 (ADR 0009 §1). Families that look construct-shaped — writing-system lifecycle, reversal-index
 entries, publication flags, the custom-field data family — are constructs realized over these verbs
 via the generated per-field kind namespace, not additional verbs; see
@@ -249,7 +250,7 @@ or reorder the declared morphs.
 
 ## IDs and GUID mapping
 
-Change Set IDs, operation IDs, and proposed entity IDs use this textual convention:
+Proposal IDs, operation IDs, and proposed entity IDs use this textual convention:
 
 ```text
 <optional arbitrary prefix><22-character unpadded base64url suffix>
@@ -268,9 +269,9 @@ The suffix is always the final 22 characters. Everything preceding it is the pre
 exactly with no normalization or character/separator requirement. Document resource limits may
 bound total string length, but validators do not assign prefix semantics.
 
-`changeSetId` and every `operationId` must be present and valid. Operation IDs must be unique within
-one Change Set. A proposed entity ID may have only one creator operation in a Change Set; later
-operations reference that creation. Global uniqueness of Change Set and operation IDs cannot be
+`proposalId` and every `operationId` must be present and valid. Operation IDs must be unique within
+one Proposal. A proposed entity ID may have only one creator operation in a Proposal; later
+operations reference that creation. Global uniqueness of Proposal and operation IDs cannot be
 proven or enforced by the runner. Only entity IDs participate in LibLCM GUID realization.
 
 For entity IDs, the 16 canonical bytes map left-to-right to the ordinary textual GUID hexadecimal
@@ -302,7 +303,7 @@ The runner preflights every proposed storage GUID before mutation.
 - A GUID occupied by a different LibLCM type is a genuine semantic conflict that blocks
   application. An explicit authored storage-GUID override is the escape hatch and therefore
   produces amended intent.
-- Overrides change storage realization, not canonical identity, and are recorded in assessment and
+- Overrides change storage realization, not canonical identity, and are recorded in the Dry Run and
   receipt.
 
 Preflight is mandatory because LibLCM identity-map registration can otherwise overwrite an
@@ -313,17 +314,17 @@ matched on `(class, name)`) do not go through it; their equivalent tri-state res
 [`ensure`](#ensure) verb.
 
 LibLCM does not persist the canonical-to-overridden-storage mapping. A caller using an override
-must retain the Application Receipt and supply its identity mapping to later assessment, diff, and
+must retain the Application Receipt and supply its identity mapping to a later Dry Run, diff, and
 apply calls. With no supplied mapping, a snapshot can expose only the storage GUID-derived identity
 and must diagnose the missing lineage; it may not guess the original canonical ID. The mapping
 resolver is an input port, while storage of its records remains outside this repository.
 
 ## Ownership and delete
 
-Deletion uses LibLCM native ownership cascade and reference cleanup. The canonical Change Set does
+Deletion uses LibLCM native ownership cascade and reference cleanup. The canonical Proposal does
 not enumerate synthetic child-delete operations merely to imitate the cascade.
 
-Assessment must expose the complete delete closure:
+The Dry Run must expose the complete delete closure:
 
 - target object;
 - all owned objects that will be deleted;
@@ -341,56 +342,17 @@ cleanup: some back-references (for example a grammar stratum's) can be left dang
 cleaned, so conformance verifies the closure against real deletions rather than assuming it. See
 [Flexicon harvest](flexicon-harvest.md).
 
-Assessment generates baseline-relative `expectedEffects`; they are not mutable fields filled into
-the canonical Change Set. A changed cascade discovered on apply or re-assessment is one instance of
+The Dry Run generates baseline-relative `expectedEffects`; they are not mutable fields filled into
+the canonical Proposal. A changed cascade discovered on apply or a later Dry Run is one instance of
 the general rule in [drift](#drift): emit the full delta and let the application or user decide.
 A missing, already-deleted object is deterministically ignorable only when prior baseline identity
 and intent prove it is the same deletion, not an unresolved target.
 
 ### Owning-atomic replacement
 
-`create` may target an **occupied** `owning/atomic` slot — the everyday "change which allomorph is
-the lexeme form" edit, and the resolution for all 69 in-scope `owning/atomic` fields
-([API surface, layer 1](api-surface-layer1.md#totality-owningatomic-replacement-resolved)):
+`create` may target an occupied `owning/atomic` slot, including a change to which allomorph is the lexeme form. Assigning a replacement deletes the displaced object through LibLCM ownership semantics; it does not detach it or leave an orphan. The `LexEntry.LexemeForm` behavior is pinned by `DisplacedOccupantFactTests`. The observed deletion remains part of the read-back effects, but it does not require a separate orphan disclosure or a compensating `delete`.
 
-> **Corrected 2026-08-06 — measured against a real project, and the premise below is wrong.**
-> Overwriting an `owning/atomic` slot **destroys the displaced occupant**; it does not detach it. Verified with
-> LibLCM's own factory and no Motif machinery involved: after `entry.LexemeFormOA = replacement`, the previous
-> form's GUID is no longer a valid object id
-> (`tests/SIL.Motif.Tests/Runner/DisplacedOccupantFactTests.cs`). **There is no orphan to disclose and nothing
-> for the runner to refuse.**
->
-> That follows from LibLCM's ownership model being exclusive and total — an owned object dropped by its owner
-> has nowhere to live. Scope of the evidence, stated honestly: **verified for `LexEntry.LexemeForm`**, and
-> expected to generalise across the 69 `owning/atomic` fields for that reason, but not verified for all of them.
->
-> **The bullets below conflate two different cases.** De-referencing a *reference* (`rel`) genuinely leaves the
-> target alive, and the orphan risk there — the `SetPartOfSpeech`/MSA bug class — is real. Overwriting an
-> *owning* slot is not that case. The refuse-unless-disposed rule was written for the reference hazard and then
-> applied to ownership, where it guards nothing and would be pure friction.
->
-> `MOT-4` slice 2 therefore ships `create`-into-occupied with no orphan disclosure, correctly. Retained below as
-> the original reasoning, because the *rejection* of `delete`-then-`create` still stands on its own grounds.
-
-- ~~**Implicit detach, not cascade delete.**~~ LibLCM's own overwrite of an owning/atomic slot is a
-  detach, so `create`-into-occupied mirrors the engine rather than destroying more than it does. No
-  other verb can express this: `set` is barred from owning slots; a whole-object `replace`-the-slot
-  verb is the Kubernetes `managedFields` anti-pattern this contract already rejects
-  ([ADR 0009](adr/0009-layered-api-primitives-and-composers.md) §1); `reparent` moves an *existing*
-  object cross-owner and there is nothing existing to move into a fresh create; and
-  `delete`-then-`create` would trigger a full ownership cascade on the incumbent where the engine's
-  own semantics only detach.
-- **The displaced occupant is a disclosed orphan effect** — surfaced in expected effects exactly as
-  any other de-referencing orphan (above), never silently deleted and never silently dropped.
-- **The runner refuses to apply** unless the same Change Set also disposes of the displaced object
-  (an explicit `delete`, per the compensating-sweep rule below) or the caller explicitly accepts the
-  orphan. Silent orphaning here is the `SetPartOfSpeech`/MSA bug class this contract exists to
-  prevent.
-
-A composer that can prove from the baseline that the displaced occupant loses its last referent emits
-an explicit `delete` rather than relying on a hidden runner sweep, making the cleanup a visible,
-reviewable operation; if the baseline shifts and the delete becomes wrong, the `delete`'s own
-disclosure surfaces it (ADR 0009 §6).
+This rule is specific to ownership. Removing a `rel` reference does not itself delete its target; when intent includes deleting an unreferenced target, represent that deletion explicitly so it remains reviewable.
 
 ### Pooled-but-private ownership
 
@@ -438,27 +400,27 @@ Placement uses identity-relative anchors:
 
 An edge anchor may omit one side. Numeric indices are not canonical intent.
 
-During reassessment, resolved execution anchors may be refreshed when exactly one gap satisfies the
+During a Dry Run, resolved execution anchors may be refreshed when exactly one gap satisfies the
 unchanged authored anchors. If the authored anchors themselves must change, explicit rebase emits
-an amended Change Set and new digest only when exactly one gap preserves the ordering intent. If
+an amended Proposal and new digest only when exactly one gap preserves the ordering intent. If
 several positions are plausible, the operation conflicts.
 
-### Change Set identity vs content digest
+### Proposal identity vs content digest
 
-The `changeSetId` is a **stable, uniquely-minted identity**: a 128-bit id assigned when the Change Set
+The `proposalId` is a **stable, uniquely-minted identity**: a 128-bit id assigned when the Proposal
 is created — content-independent and unique by construction (a time-ordered value: millisecond
 timestamp plus random bits, in the suffix convention above) — and then **frozen**. It never changes
-when the Change Set is later edited or rebased, so `requires` links and
+when the Proposal is later edited or rebased, so `requires` links and
 [applied-change log](applied-log.md) entries that reference it never dangle. Uniqueness is by
-construction, not derivation: ten Change Sets that each start empty and diverge still get ten distinct
+construction, not derivation: ten Proposals that each start empty and diverge still get ten distinct
 ids. It is the linkage target.
 
 The **intent digest** is the live content hash — recomputed on every edit, full SHA-256. Identical
 authored intent produces an identical digest, so content equality and tamper-evidence are a query on
 the intent digest, not on the id. An amendment or rebase moves the intent digest while keeping
-`changeSetId` fixed.
+`proposalId` fixed.
 
-The applied-log records both: it matches on the stable `changeSetId` (*was this exact Change Set
+The applied-log records both: it matches on the stable `proposalId` (*was this exact Proposal
 applied?*) and stores the intent digest, so *was this content already applied?* is a separate query on
 the digest, and a later apply whose content differs from the recorded one is surfaced. See
 [ADR 0004](adr/0004-prerequisite-graph-stable-ids-bound-apply.md).
@@ -472,7 +434,7 @@ The intent digest includes executable desired content:
 - declared contract group versions, which depend only on the operations authored and never on the
   runner's own version table;
 - the declared prerequisite, if any, so removing it produces a new intent digest;
-- operation order;
+- canonical operation order, derived from declared dependencies and deterministic tie-breaking;
 - operation IDs, because dependencies refer to them;
 - operation kinds;
 - targets and new entity IDs;
@@ -482,19 +444,19 @@ The intent digest includes executable desired content:
 
 It excludes:
 
-- Change Set ID, which is uniquely minted at creation and never derived from content; excluding it
+- Proposal ID, which is uniquely minted at creation and never derived from content; excluding it
   keeps the digest a pure function of content (see
-  [identity](#change-set-identity-vs-content-digest));
+  [identity](#proposal-identity-vs-content-digest));
 - pretty formatting;
 - rationale, confidence, and provenance, which are review metadata rather than executable meaning;
-- assessment before-state;
+- Dry Run before-state;
 - expected/observed effects generated by the runner;
 - warnings and conflicts;
 - impact analysis;
 - application receipt;
 - non-semantic extensions.
 
-The formal intent projection written in Phase 1 must contain exactly these included fields and no
+The formal intent projection must contain exactly these included fields and no
 others. Digests are rendered as `sha256:` followed by 64 lowercase hexadecimal characters.
 
 Ordered arrays remain ordered. Collections classified as unordered are sorted by **byte-ordinal
@@ -580,7 +542,7 @@ Five rules make it load-bearing.
    transition no one reviewed. The digest excludes everything the coverage manifest classifies as
    non-semantic (`derived-read-only`, `internal`, `runner-bookkeeping`) and every value the engine
    assigns non-deterministically; a value the engine assigns deterministically is computed at
-   assessment time and included.
+   Dry Run time and included.
 5. **Cause is a descriptive tag, never a filter.** Every effect carries `cause`:
    `authored | engine-cascade | engine-computed-default` — whether the operation named this field
    directly, the engine's own cascade touched it as a consequence (ownership cascade on delete,
@@ -594,9 +556,9 @@ digest is over the one canonical delta beneath them. The `before` states an effe
 same footprint-scoped snapshot the [pre-flight anchor](#pre-flight-and-re-anchoring) stores — effects,
 the anchor, and the drift oracle are one artifact seen three ways.
 
-## Assessment
+## Dry Run
 
-Assessment is deterministic for the same Change Set, semantic baseline, runner/version matrix, and
+A Dry Run is deterministic for the same Proposal, semantic baseline, runner/version matrix, and
 policy-independent options. It contains:
 
 - intent digest;
@@ -607,10 +569,10 @@ policy-independent options. It contains:
 - expected effects and effect digests;
 - warnings, conflicts, and hard errors with stable diagnostic codes;
 - impact summary;
-- applicability — whether the Change Set applies to this baseline at all, distinct from the
+- applicability — whether the Proposal applies to this baseline at all, distinct from the
   per-group ingestibility below;
 - ingestibility, naming any declared group version the runner cannot honor and the version it carries;
-- effect drift against a supplied prior Assessment, if one was given;
+- effect drift against a supplied prior Dry Run, if one was given;
 - runner, declared contract group, projection, model, and manifest versions.
 
 Warnings do not silently become errors or approvals. The host owns application policy.
@@ -618,11 +580,11 @@ Warnings do not silently become errors or approvals. The host owns application p
 ### Drift
 
 `expectedEffects`, defined in [expected effects](#expected-effects), are the compatibility oracle.
-When a Change Set is re-assessed or applied against a
-prior Assessment, any difference in expected effects is a typed diagnostic carrying the full delta,
+When a Proposal is evaluated again or applied against a
+prior Dry Run, any difference in expected effects is a typed diagnostic carrying the full delta,
 resolved by application policy and never auto-accepted.
 
-Assessment determinism is conditioned on the runner/version matrix, so this one rule covers both
+A Dry Run's determinism is conditioned on the runner/version matrix, so this one rule covers both
 kinds of drift: the baseline moved, or the tools did. An operator on a newer build sees a changed
 default, a reclassified member, or a new lowering as an effect delta to review — never as a silent
 reinterpretation.
@@ -657,7 +619,7 @@ A fifth outcome sits alongside the four drift classes and the diagnostic categor
 "checked and confirmed harmless" is distinguishable from "nothing needed checking." Info is for
 conditions that are drift-adjacent but provably inert:
 
-- the baseline moved but the Change Set's effects are unchanged (the
+- the baseline moved but the Proposal's effects are unchanged (the
   [deterministic-resolution](conflicts-and-rebase.md#outcomes) case);
 - a newer runner produces an improved lowering with identical effects.
 
@@ -677,7 +639,7 @@ disclosed, resolved consequence with no such hazard.
 
 ### Impact summary
 
-The `impactSummary` field of Assessment (below) makes bulk changes reviewable without demanding a
+The `impactSummary` field of the Dry Run makes bulk changes reviewable without demanding a
 line-by-line read of thousands of transitions. It is a presentation layer over the complete effect
 set — nothing it groups is removed from that set or from the digest, and `cause` (see
 [expected effects](#expected-effects)) is one axis among several a rendering may group by.
@@ -704,12 +666,12 @@ effect set the drift oracle already computed, never a second source of truth.
 
 ### Comparison footprint
 
-Drift is judged over a Change Set's **comparison footprint** — the model facts its meaning depends
+Drift is judged over a Proposal's **comparison footprint** — the model facts its meaning depends
 on — never over the whole project. This is what keeps drift meaningful while linguists keep editing
 the project in FieldWorks indefinitely: an unrelated edit does not touch the footprint, so the review
 stays silent.
 
-One rule fixes the footprint's reach: **it extends into another object exactly when this Change Set's
+One rule fixes the footprint's reach: **it extends into another object exactly when this Proposal's
 meaning depends on that object.** That happens in exactly three ways.
 
 1. **The operation's own owned target** — always in the footprint, in full: the object the operation
@@ -735,7 +697,7 @@ coverage manifest and migratable as understanding improves:
 
 The third class exists because phonological rule order is feeding/bleeding: a neighbor rule editing
 its own content changes the surface form this rule produces, so the neighbor's *state*, not merely
-its identity, is part of this Change Set's meaning. Positionally ordered data has no such coupling —
+its identity, is part of this Proposal's meaning. Positionally ordered data has no such coupling —
 a neighbor's internal edits do not change what the operation means; only a change to *which* object
 is adjacent does.
 
@@ -756,7 +718,7 @@ in the rule.
 Reclassifying a property between these four buckets is a declared manifest change.
 
 The footprint defines what an effect set must span; effect comparison remains the oracle. A cheap
-identity-and-adjacency check over the footprint may pre-filter *possibly drifted, re-assess*, but may
+identity-and-adjacency check over the footprint may pre-filter *possibly drifted, reevaluate*, but may
 never conclude *clean* — only a fresh effect comparison grants that, because the feeding class proves
 identity alone can miss a real change.
 
@@ -778,7 +740,7 @@ rule with four triggers, not four separate mechanisms
    ([API surface, layer 1](api-surface-layer1.md#comparison-class)).
 
 A discovered-reach operation uses read-back-derived effects (the footprint-plus-cascade closure from
-[expected effects](#expected-effects)) and **forces full re-assessment**; it may not claim a static
+[expected effects](#expected-effects)) and **forces a full Dry Run**; it may not claim a static
 comparison footprint. Simple, declared-reach operations keep the static footprint above.
 
 ### Pre-flight and re-anchoring
@@ -786,8 +748,8 @@ comparison footprint. Simple, declared-reach operations keep the static footprin
 The stored comparison anchor is the footprint's digest plus the engine version (runner, LibLCM, and
 projection) — not the whole-project digest, which would move on every unrelated edit and never let
 the check pass. Two axes can move it: the engine version and the footprint's baseline. If neither has
-moved since the anchor, determinism guarantees identical effects and the Change Set needs no
-re-check. Otherwise a pre-flight re-assesses and compares effects over the footprint; on a loaded
+moved since the anchor, determinism guarantees identical effects and the Proposal needs no
+re-check. Otherwise a pre-flight runs a new Dry Run and compares effects over the footprint; on a loaded
 model this is near-instantaneous, because it is scoped to the footprint rather than the model, and it
 may run automatically when an item is viewed. This near-instantaneous property is conditioned on the
 host warming LibLCM's incoming-reference index at project load, off the interactive path;
@@ -796,7 +758,7 @@ host warming LibLCM's incoming-reference index at project load, off the interact
 promise. See [ADR 0006](adr/0006-engine-reality-apply-readback-preflight.md).
 
 A clean pre-flight — identical effects — advances the anchor to the current engine version and
-footprint digest and marks the Change Set ready to apply. This is a fast-forward, not a new review:
+footprint digest and marks the Proposal ready to apply. This is a fast-forward, not a new review:
 [review equivalence](conflicts-and-rebase.md#review-equivalence) already established that identical
 effects mean nothing changed for the reviewer. A pre-flight that finds an effect delta stops and
 hands the delta to the application or user, exactly as any other drift.
@@ -806,12 +768,12 @@ hands the delta to the application or user, exactly as any other drift.
 A core receipt is emitted only after all operations, read-back, and invariant validation succeed
 and the unit of work commits. It contains:
 
-- Change Set ID and intent digest;
+- Proposal ID and intent digest;
 - baseline and result semantic digests;
 - per-operation outcomes;
 - canonical-ID-to-storage-GUID mappings;
 - actual effect closure — the observed effects, i.e. the read-back realized set, as distinct from
-  the assessment's expected effects;
+  the Dry Run's expected effects;
 - warnings explicitly accepted by the caller;
 - runner, projection, and LibLCM/model versions, so a stored result digest remains interpretable
   after a dependency bump.
@@ -857,7 +819,7 @@ Common-ancestor three-way comparison distinguishes changes relative to ancestor 
 and B and reports compatible changes, warnings, and genuine semantic conflicts. It does not
 silently choose “source wins,” “target wins,” or “newest.”
 
-Its primary output is a `ThreeWayAssessment`. It may also synthesize a candidate Change Set
+Its primary output is a `ThreeWayAssessment`. It may also synthesize a candidate Proposal
 containing only deterministic compatible edits. Conflicting intent remains structured conflict
 data and is never inserted as a guessed operation.
 

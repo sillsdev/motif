@@ -1,15 +1,8 @@
-# Assessment scope — the design problem, and what is already settled
+# Assessment scope — historical research
 
-*2026-08-29. A working design document. The decisions it reached are now recorded in
-[ADR 0042](adr/0042-a-job-produces-assessments-an-assessor-makes-them.md); what remains here is the working
-that produced them, and the questions in §6 that are still open.*
+A parser result can be compared with another only when their measurements describe compatible work. The current Assessment model is defined by [ADR 0042](adr/0042-a-job-produces-assessments-an-assessor-makes-them.md); this file preserves the earlier research and options that informed that decision.
 
-**In plain terms:** before Motif can tell a linguist whether a grammar change helped, it has to have measured
-the same thing twice. That sounds obvious and is the whole difficulty: two runs of the parser can differ in
-which words they tried, which engine they used, how long they were willing to wait, and how much detail they
-recorded — and two numbers produced under different conditions cannot be subtracted. This document names the
-thing that must be held equal (a **scope**), records what has already been decided about measurement, and
-sets out what has not.
+The proposals, open questions and implementation assumptions below are historical material, not current requirements. Use ADR 0042 and the current Help glossary when describing or implementing Assessments.
 
 ---
 

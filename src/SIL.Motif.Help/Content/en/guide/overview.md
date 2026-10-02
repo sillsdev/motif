@@ -10,6 +10,6 @@ The slowest words include searches that stopped. Project wordforms, rules and le
 
 The top bar says whether these numbers are current. If FieldWorks has saved since they were measured, the freshness line gives the save time and Baseline time once. Press **Refresh** when you are ready to capture the saved project and measure the [Default Selection](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
 
-Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →**, or **Warnings →**, to see more on that page. Hover over or focus a card to show its link. Each **Look first** row opens the words or timings it names; hover or focus the row to show its word-count link. Expand **Project history** to see recorded activity.
+Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →**, or **Warnings →**, to see more on that page. Hover over or focus a card to show its link. Each **Look first** row opens the words or timings it names; hover or focus the row to show its word-count link. Expand **Project history** to see recorded activity. For a closer explanation of each measure and how to read its breakdowns, see [Reading the Overview](guide:reading-the-overview).
 
-![Overview showing stored project results](shot:open-project-overview/headline-numbers)
+![Overview showing the project's stored results](shot:open-project-overview/overview)

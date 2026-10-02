@@ -1,5 +1,7 @@
 # ADR 0003 — Feasibility findings: effect capture, applied-log sync, adapter reuse
 
+**In plain terms:** Motif’s design depends on what FieldWorks and its supporting tools can actually do. This record captures the feasibility choices verified before the implementation relied on them.
+
 Status: accepted (2026-07-24)
 
 ## Context

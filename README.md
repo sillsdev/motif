@@ -11,9 +11,9 @@ Install the .NET 10 SDK, then build and check the repository from its root:
 ./test.ps1
 ```
 
-`build.ps1` runs the comment and design-token checks before compiling. `test.ps1` runs that build gate before the full suite. All Motif projects target `net10.0`.
+`build.ps1` runs the comment and design-token checks before compiling. The default `test.ps1` run selects Unit and Integration tests for the developer loop; use `./test.ps1 -All` for every test level and the merge gate. See [AGENTS.md](AGENTS.md) for the levels and test setup. All Motif projects target `net10.0`.
 
-On Ubuntu, local LibLCM builds need SIL's `icu-fw` package; on macOS they need `icu4c` with its library directory on `DYLD_LIBRARY_PATH`. The [Linux](.github/workflows/linux-debug.yml) and [macOS](.github/workflows/mac-debug.yml) workflows show the current setup. Windows development uses the bundled SIL ICU dependencies.
+On Linux, stage the pinned SIL ICU packages with `bash tools/stage-sil-icu.sh` and export the folder it prints as `MOTIF_SIL_ICU_STAGE` before building. macOS builds also use a staged SIL ICU folder named by `MOTIF_SIL_ICU_STAGE`. Windows development uses the bundled SIL ICU dependencies. See [AGENTS.md](AGENTS.md#linux-and-macos-need-sil-icu-staged-once) and the [Linux](.github/workflows/linux-debug.yml) and [macOS](.github/workflows/mac-debug.yml) workflows.
 
 ## Run from the build
 
@@ -37,7 +37,7 @@ dotnet tool install --global vpk --version 1.2.158
 ./tools/package-release.ps1 -ProductVersion 0.1.0
 ```
 
-The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) describes the supported Windows setup; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
+The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) gives the Windows download, install and project-data steps; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
 
 For builds against a local LibPalaso checkout, see [the opt-in NuGet override instructions](AGENTS.md#building-against-a-local-libpalaso-opt-in-off-by-default). The override is off by default; package-cache settings and the package source remain separate.
 
@@ -70,7 +70,7 @@ To generate the publishable website, manually run the **CI** workflow with **pub
 - [CLI and command API](docs/cli-api.md) — where current command usage and Guides are maintained.
 - [Semantic change contract](docs/change-set-contract.md) and [Proposal lifecycle](docs/proposal-lifecycle.md) — normative change and workflow details.
 - [Shared Help and agent Guides](src/SIL.Motif.Help/Content/en/guide/) — user-facing Guides owned by `SIL.Motif.Help`.
-- [Assessment scope](docs/assessment-scope-design.md) and [parser handoff](docs/pangloss-grammar-assessment-handoff-spec.md) — parser evidence and integration details.
+- [Assessment model](docs/adr/0042-a-job-produces-assessments-an-assessor-makes-them.md) and [parser handoff](docs/pangloss-grammar-assessment-handoff-spec.md) — parser evidence and integration details.
 - [Repository instructions](AGENTS.md) — build, test, vocabulary and contribution rules.
 
 The former architecture documents remain available as historical plans: [Plan A](docs/plan-motif.md), [product architecture plan](docs/plan-product-architecture.md), and [architecture proposal](docs/architecture.md). The current overview is the guide to the implementation that exists now.

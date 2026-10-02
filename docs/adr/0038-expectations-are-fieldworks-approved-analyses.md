@@ -1,5 +1,7 @@
 # ADR 0038 — Expectations are FieldWorks' approved analyses; Motif reads them in aggregate
 
+A grammar change should be checked against examples a linguist has approved. FieldWorks already holds those examples, so Motif reads them and reports whether the parser still produces them.
+
 **Status:** accepted, 2026-08-09. Refines [ADR 0033](0033-three-systems-and-who-owns-which-measure.md) on who
 owns which measure, and [ADR 0035](0035-reports-are-advisory-queries-over-stored-assessments.md) on reports
 being advisory queries.

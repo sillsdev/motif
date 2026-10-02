@@ -1,5 +1,7 @@
 # ADR 0015 — Proposal, Assessment, and Dry Run: one word per concept
 
+**In plain terms:** A grammar measurement and a check of proposed project edits answer different questions. This decision gives each a distinct name so users can tell what Motif measured.
+
 Status: accepted (2026-07-31)
 
 Two different things were both called **Assessment**: an immutable PanGloss parser run

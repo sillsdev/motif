@@ -1,0 +1,35 @@
+{
+  "id": "handoff-cancel-retry",
+  "locale": "en",
+  "title": "Cancel and retry a Handoff",
+  "description": "Cancel a running AI Handoff, then retry and inspect the completed files.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "completed-files",
+      "caption": "The retry writes the completed AI Handoff files.",
+      "startMs": 1500,
+      "endMs": 3100,
+      "screenshot": "steps/01-completed-files.png",
+      "annotated": "steps/01-completed-files-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 245,
+          "y": 377,
+          "width": 546,
+          "height": 343,
+          "label": "1",
+          "caption": "Files written by the completed Handoff"
+        }
+      ]
+    }
+  ],
+  "clip": null
+}

@@ -1,5 +1,7 @@
 # ADR 0007 — Cross-language digest determinism
 
+**In plain terms:** The same Proposal must keep the same identity when different tools read it. A single canonical form lets independent implementations calculate matching digests.
+
 Status: accepted (2026-07-24)
 
 ## Context

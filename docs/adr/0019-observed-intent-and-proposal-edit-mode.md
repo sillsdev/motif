@@ -1,5 +1,7 @@
 # ADR 0019 — Observe intent at edit time, inside a constrained proposal-edit mode
 
+**In plain terms:** Motif should preserve the change a person actually made instead of guessing it from two project snapshots. Project comparison remains available for cases where no recorded edit exists.
+
 **Status:** accepted, 2026-08-05. Answers `F26` and `F22` in [grill-plan-a.md](../grill-plan-a.md).
 
 ## Context

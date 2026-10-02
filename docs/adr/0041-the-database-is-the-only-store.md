@@ -1,5 +1,7 @@
 # ADR 0041 — The database is the only store, and the runner sweeps every project
 
+People should be able to reopen Motif work without guessing which companion files still matter. A single project database keeps that work together beside the language project.
+
 **Status:** accepted, 2026-08-28. Completes [ADR 0036](0036-motif-has-its-own-data-store.md) by removing
 the file store it was meant to replace, and deletes the migration path that was meant to get there.
 Follows [ADR 0040](0040-one-api-the-cli.md): its decision 7 already settles which verbs may touch a live

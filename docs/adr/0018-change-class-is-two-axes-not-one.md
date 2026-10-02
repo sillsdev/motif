@@ -1,5 +1,7 @@
 # ADR 0018 — A change class is two orthogonal axes, and both are already in the kind name
 
+**In plain terms:** A change’s kind and the domain it belongs to answer different questions. Keeping them separate makes a Proposal easier to describe without changing its identity.
+
 **Status:** accepted, 2026-08-05. Answers `G28`, the second gate of
 [grill-plan-a.md](../grill-plan-a.md), and resolves `G27` and `G29` as consequences.
 

@@ -11,4 +11,4 @@ From Try a Word, **AI Handoff for this word** keeps the displayed trace and the 
 
 The page tells you if a newer parse makes the files out of date. Write the Handoff again when you want the chat model to receive the newer results. Only share the files if you are comfortable sending their linguistic data to that service.
 
-![AI Handoff files ready to share](shot:ai-handoff/handoff-ready)
+![AI Handoff files ready to share](shot:handoff-cancel-retry/completed-files)

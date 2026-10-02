@@ -1,5 +1,7 @@
 # ADR 0049: FieldWorks' opinion words, and "now → after Apply"
 
+When a linguist changes an analysis, Motif needs to show the opinion FieldWorks records and what changed after Apply. This decision uses FieldWorks’ terms and makes uncertainty visible when the sentence moved.
+
 **Status:** accepted, 2026-09-28. This ADR:
 - renames what the window calls a person's judgement on an analysis;
 - adds **Opinion**, **Parser agreement**, **Uncertain** and **Remove analysis** to `CONTEXT.md`, and amends **Candidate**.

@@ -1,5 +1,7 @@
 # ADR 0022 — The generator derives structure; the only hand-authored policy is naming, scope, and seven rows
 
+**In plain terms:** Motif should not require developers to hand-maintain structural facts already present in FieldWorks. This decision derives those facts from the model and reserves the manifest for deliberate product choices.
+
 **Status:** accepted, 2026-08-05. Amends [ADR 0014](0014-generate-the-crdt-layer-from-masterlcmodel.md)
 decision 2. Answers `B7a`, and retires most of `B18`.
 

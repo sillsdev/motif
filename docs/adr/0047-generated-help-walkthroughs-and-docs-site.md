@@ -1,5 +1,7 @@
 # ADR 0047 — Help text, Walkthroughs and the docs site are generated from one source
 
+People need the same command and window guidance in the app, command line and website. This decision generates those guides from shared Help content and tested walkthroughs.
+
 **Status:** accepted, 2026-09-26. Adds **Walkthrough**, **Help text**, **Title** and **Help page** to `CONTEXT.md`
 and widens **Description** from operations to everything documented. Extends ADR 0023's
 label-and-description pattern, renaming its label to Title; supersedes nothing else. The implementation

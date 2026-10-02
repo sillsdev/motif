@@ -8,4 +8,4 @@ For a project without a saved Default Selection, setup opens once a Baseline is 
 
 FieldWorks must be closed before you apply changes from Motif. This is separate from opening the project or reading its last saved state.
 
-![A project open on the Overview](shot:open-project-overview/project-opened)
+![A project open on the Overview](shot:open-project-overview/overview)

@@ -1,5 +1,7 @@
 # ADR 0029 — Agents address Layer 1 only; an unreachable field is a requirement, not a gap
 
+**In plain terms:** AI tools need a useful way to describe language changes even while Motif improves its commands. They address stable operations, while command wording can evolve independently.
+
 **Status:** accepted, 2026-08-06. Resolves `J41` by making it concrete. Scopes `MOT-17`. Builds on [ADR 0009](0009-layered-api-primitives-and-composers.md) and
 [ADR 0021](0021-cli-is-the-full-surface-layer-1-churns.md).
 

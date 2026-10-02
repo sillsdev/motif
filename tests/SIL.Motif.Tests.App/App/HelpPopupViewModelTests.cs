@@ -143,7 +143,7 @@ public sealed class HelpPopupViewModelTests
             var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), HelpCatalog.Load());
             viewModel.ShowForPage(WorkspacePage.Timing);
 
-            Assert.Contains("Slowest words in Timing", viewModel.Markdown);
+            Assert.Contains("Saved parse timings on the Timing page", viewModel.Markdown);
             Assert.DoesNotContain("shot:timing-slow-words/slowest-words", viewModel.Markdown);
         });
     }

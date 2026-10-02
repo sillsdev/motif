@@ -1,5 +1,7 @@
 # ADR 0044 — Every parser process is one PanGloss invocation
 
+When Motif runs PanGloss, its limits and results should describe the actual parser execution. This decision treats each parser command as one bounded, recorded invocation.
+
 **Status:** accepted, 2026-09-08. Builds on [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)
 decision 5 (PanGloss bounding), [ADR 0042](0042-a-job-produces-assessments-an-assessor-makes-them.md) (an
 Assessor makes Assessments; adding one is an addition, not a redesign), and

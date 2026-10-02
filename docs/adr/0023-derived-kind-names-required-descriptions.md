@@ -1,5 +1,7 @@
 # ADR 0023 — Kind names are derived from the declaring class; meaning lives in a required description
 
+**In plain terms:** Names shown to people should not need to be copied by hand into machine identifiers. Motif derives operation names from the project model and keeps descriptions with the features people use.
+
 **Status:** accepted, 2026-08-05. Resolves `B19` and `B20`. Completes
 [ADR 0022](0022-structure-is-derived-policy-is-five-rows.md): the manifest is now an authority on `Scope`
 and on `Construct` **as a staging grouping only** — every column that feeds a wire identifier is derived.

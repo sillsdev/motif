@@ -10,4 +10,4 @@ The last step saves this as the project’s [Default Selection](term:default-sel
 
 On the Texts step and in **Analyze texts**, choose **Select all texts** to check every Text. On a long list, choose **Clear** to uncheck them all. The next parse uses the resulting Selection.
 
-![Choosing texts and added words in first-time setup](shot:first-run-default-selection/selection)
+![Choosing texts and added words in first-time setup](shot:first-run-setup-parse/selection)

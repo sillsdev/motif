@@ -17,6 +17,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
@@ -191,6 +192,26 @@ public sealed class ReviewApplyRefreshParseWalkthroughReplayTests(
 [Collection(LcmCacheTestCollection.Name)]
 [AuthoredWalkthroughId("try-word-typing")]
 public sealed class TryWordTypingWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("no-longer-fits")]
+public sealed class NoLongerFitsWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
+[AuthoredWalkthroughId("warnings-filter")]
+public sealed class WarningsFilterWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [Fact]
@@ -647,6 +668,12 @@ internal static class WalkthroughReplay
                 Assert.Equal(3, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                 Assert.False(window.Workspace.Context.NeedsAssessment);
                 break;
+            case "no-longer-fits":
+                var review = window.Workspace.PageModel<ReviewPageModel>();
+                window.WaitUntil(() => review.ReviewGroups.Any(group => group.IsNoLongerFits),
+                    WalkthroughSteps.Remaining(deadline), "the changed word did not appear in No longer fits");
+                Assert.NotEmpty(review.ReviewGroups.Single(group => group.IsNoLongerFits).Items);
+                break;
             case "handoff-cancel-retry":
                 var handoff = window.Workspace.PageModel<AiHandoffPageModel>().Handoff;
                 window.WaitUntil(() => handoff.State == RunState.Completed && handoff.Files.Count > 0,
@@ -677,6 +704,8 @@ internal static class WalkthroughFixtureSeeder
             ["try-word-ready"] = SeedTryWordReadyAsync,
             ["apply-refresh-ready"] = SeedApplyRefreshReadyAsync,
             ["handoff-cancel-ready"] = SeedHandoffCancelReadyAsync,
+            ["no-longer-fits-ready"] = SeedNoLongerFitsReadyAsync,
+            ["warnings-ready"] = SeedWarningsReadyAsync,
         };
 
     public static Task<WalkthroughFixturePreparation> SeedAsync(
@@ -716,6 +745,32 @@ internal static class WalkthroughFixtureSeeder
             new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
         Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         Assert.Equal(CaptureTime, DateTimeOffset.Parse(baseline.Value!.Token.CapturedUtc, CultureInfo.InvariantCulture));
+        await SeedSelectionAndSkipSetupAsync(project, client);
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedWarningsReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        await SeedOverviewReadyAsync(project, clock, parserPath);
+        var check = GrammarCheckQuery.Query(new GrammarCheckRequest(project.FwDataPath), parserPath);
+        Assert.True(check.Succeeded, check.Refusal?.Message);
+        Assert.NotEmpty(check.Value!.Findings);
+        return WalkthroughFixturePreparation.Empty;
+    }
+
+    private static async Task<WalkthroughFixturePreparation> SeedNoLongerFitsReadyAsync(
+        WalkthroughProjectContext project, FixedClock clock, string parserPath)
+    {
+        const string word = "drifted-change-word";
+        var change = PendingChangeFixture.AddIncorrectSpelling(
+            project.FwDataPath, project.ManagedRoot, word);
+        new FieldWorksSimulator(project.FwDataPath).DeleteWordform(change.Word);
+
+        var client = RealCommandClient.Create(project.ManagedRoot, parserPath, timeProvider: clock);
+        var baseline = await client.CaptureBaselineAsync(
+            new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
+        Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
         await SeedSelectionAndSkipSetupAsync(project, client);
         return WalkthroughFixturePreparation.Empty;
     }

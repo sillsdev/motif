@@ -12,4 +12,4 @@ The **Slowest** list includes stopped searches when they have a recorded time; e
 
 The **Readings** count in Detailed statistics reports how many words produced more than one reading. That count does not tell you why. It may reflect different words with the same spelling or several analyses the grammar allows; inspect the words' readings to tell them apart. A rule's time share says how much time its timer recorded, not what caused a word to parse or stop.
 
-![Slowest words in Timing](shot:timing-slow-words/slowest-words)
+![Saved parse timings on the Timing page](shot:review-apply-refresh-parse/timing)

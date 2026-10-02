@@ -10,7 +10,7 @@ A finding may have exact word uses, words reached only by membership or spelling
 
 Open a row to read PanGloss's full description and any explanation or guidance it supplied. **What to do in FieldWorks** appears only when PanGloss supplied guidance. The named item opens in FieldWorks only when PanGloss supplied a verified destination. If a finding no longer appears after **Refresh**, its row says **Gone after Refresh**. Save edits in FieldWorks, refresh Motif, then parse the affected words again to see their current results.
 
-![Filtered grammar findings](shot:warnings-filter/filtered-findings)
+![Grammar findings saved for the current Baseline](shot:warnings-filter/findings)
 
 PanGloss supplies each finding's title, description, explanation and guidance in the report's recorded language. **Learn more** opens its reference when available. Motif displays that text without adding advice of its own.
 

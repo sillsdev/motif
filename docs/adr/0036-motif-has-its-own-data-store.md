@@ -1,5 +1,7 @@
 # ADR 0036 — Motif has its own data store, and only curated subsets cross into FieldWorks
 
+Large text collections and research data can exceed a language project by many times. Motif keeps its own data store so FieldWorks stays focused on the project, with only deliberate changes crossing over.
+
 **Status:** accepted, 2026-08-09; storage layout amended by
 [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md). The separate-store and deliberate-promotion
 decisions remain binding. Decision 6's file/database split is historical: one paired SQLite database now

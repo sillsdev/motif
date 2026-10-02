@@ -6,4 +6,4 @@ The change is kept as pending work for this project. It applies to the word form
 
 To measure the effect before applying, choose **Check these changes** in Review changes. When you are ready, close FieldWorks and choose **Apply to FieldWorks project**. See **Review changes** for the conditions that must be met first.
 
-![A new pending change in the Review changes page](shot:change-an-analysis/pending-change)
+![A pending choice shown on its word card](shot:explained-word-card/unknown-staged)

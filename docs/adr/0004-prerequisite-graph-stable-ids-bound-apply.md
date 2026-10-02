@@ -1,5 +1,7 @@
 # ADR 0004 — Prerequisite graph, stable uniquely-minted identity, and bound apply
 
+**In plain terms:** A group of edits may depend on earlier edits, and the project can change before they are applied. Stable identities and declared dependencies let Motif detect when those edits no longer describe the same work.
+
 Status: accepted (2026-07-24)
 
 ## Context

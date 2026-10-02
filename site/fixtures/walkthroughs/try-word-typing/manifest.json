@@ -1,0 +1,35 @@
+{
+  "id": "try-word-typing",
+  "locale": "en",
+  "title": "Try a word",
+  "description": "Type a word to see the trace returned by PanGloss for the current Baseline.",
+  "width": 1280,
+  "height": 720,
+  "fps": 30,
+  "steps": [
+    {
+      "id": "trace",
+      "caption": "Try a word to show the recorded result from the current grammar.",
+      "startMs": 1000,
+      "endMs": 2500,
+      "screenshot": "steps/01-trace.png",
+      "annotated": "steps/01-trace-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 220,
+          "y": 166,
+          "width": 70,
+          "height": 36,
+          "label": "1",
+          "caption": "Word sent to PanGloss and its trace result"
+        }
+      ]
+    }
+  ],
+  "clip": null
+}

@@ -1,5 +1,7 @@
 # ADR 0035 — Reports are advisory queries over stored Assessments
 
+Slow parser measurements should be reusable, and reading a report should not affect a proposed change. This decision stores measurements and makes reports advisory queries over that evidence.
+
 **Status:** accepted, 2026-08-09. Scopes `MOT-19` and `MOT-17`. Builds on
 [ADR 0033](0033-three-systems-and-who-owns-which-measure.md) and
 [ADR 0034](0034-the-boundary-with-fieldworks-state-versus-change.md), and applies

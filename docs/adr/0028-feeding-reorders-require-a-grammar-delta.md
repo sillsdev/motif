@@ -1,5 +1,7 @@
 # ADR 0028 — A reorder of a feeding field cannot be approved on a Dry Run alone
 
+**In plain terms:** Changing rule order can change which words a grammar parses. Motif requires new parser evidence before it accepts a feeding-order change.
+
 **Status:** accepted, 2026-08-05. Resolves `C12`, the highest-risk item in Plan A. Makes `MOT-8`'s acceptance
 concrete and gives `MOT-10` its first change-class-conditional check requirement.
 

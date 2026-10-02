@@ -42,7 +42,7 @@ public sealed partial class WindowWordsTests
     private static partial Regex FileName();
 
     // A Guide page's cross-link target is a code; only its link text is read.
-    [GeneratedRegex(@"\]\((?:cmd|term|shot):[^)]*\)")]
+    [GeneratedRegex(@"\]\((?:cmd|guide|term|shot):[^)]*\)")]
     private static partial Regex LinkTarget();
 
     [GeneratedRegex(@"\]\(term:([^)]*)\)")]

@@ -1,5 +1,7 @@
 # ADR 0014 — Generate the CRDT layer from MasterLCModel.xml; Harmony gains primitives only
 
+**In plain terms:** FieldWorks defines the data Motif edits, so Motif’s operation catalog must track FieldWorks as it changes. This decision generates that catalog from the FieldWorks model rather than maintaining a parallel list by hand.
+
 Status: accepted (2026-07-30). **Retitled in effect: the generation target is LibLCM, not a CRDT layer.**
 
 > **Read this first.** The *method* this ADR settles — generate the LibLCM-shaped layer from

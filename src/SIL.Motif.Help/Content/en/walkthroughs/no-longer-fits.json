@@ -1,0 +1,13 @@
+{
+  "id": "no-longer-fits",
+  "title": "When a change no longer fits",
+  "description": "See how Review changes marks a choice that no longer fits the current project.",
+  "steps": {
+    "review": "The original choice stays visible and blocks Apply until you remove or recheck it."
+  },
+  "callouts": {
+    "review": {
+      "motif-page-review": "Review changes"
+    }
+  }
+}

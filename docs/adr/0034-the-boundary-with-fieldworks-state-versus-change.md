@@ -1,5 +1,7 @@
 # ADR 0034 — The boundary with FieldWorks: state versus change
 
+FieldWorks shows how each word is analyzed, while researchers also need to know how changes affect a grammar’s structure. This decision draws the line between what the project holds and what Motif measures about a change.
+
 **Status:** accepted, 2026-08-08. Answers "are we duplicating FieldWorks, and should we go whole hog?".
 Bounds [ADR 0033](0033-three-systems-and-who-owns-which-measure.md) decision 1 and
 [the grammar-coverage design](../grammar-coverage-design.md).

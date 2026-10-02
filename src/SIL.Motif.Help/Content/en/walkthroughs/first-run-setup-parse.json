@@ -4,6 +4,7 @@
   "description": "Choose a Default Selection and run Parse all words from the window.",
   "steps": {
     "selection": "Select all texts and add a word to the Default Selection before saving it.",
+    "cancelling": "The progress panel shows the current run and lets you cancel it.",
     "parsed": "After setup, run Parse all words to record measurements for the Selection."
   },
   "callouts": {
@@ -13,6 +14,10 @@
     },
     "parsed": {
       "motif-overview-selection-word-count": "Words in the Selection"
+    },
+    "cancelling": {
+      "motif-parse-progress-details": "Progress for the current Parse all words run",
+      "motif-cancel-assessment": "Cancel this run"
     }
   }
 }

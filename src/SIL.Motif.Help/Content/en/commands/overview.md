@@ -16,7 +16,7 @@ motif overview --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --json
 
 Human output shows the available project measurements and warnings. Timing gives the words' total word time, each word's parse time added up, and its split by kind of rule, with the part no rule recorded shown as not attributed. Warnings give the counts by level and, when a stored Assessment matches, how many words use a named object by identity; spelling candidates are shown separately and are not confirmed uses. [Read grammar warnings](cmd:warnings) explains how those words are found. JSON emits the same Overview in a structured response. If nothing has been measured, the response reports that no evidence is available.
 
-The warning word headline counts exact uses only. Membership candidates and spelling candidates have separate counts; spelling candidates are not confirmed uses of the phoneme.
+The warning word headline counts exact uses only. Membership candidates and spelling candidates have separate counts; spelling candidates are not confirmed uses of the named item.
 
 ## Related commands
 

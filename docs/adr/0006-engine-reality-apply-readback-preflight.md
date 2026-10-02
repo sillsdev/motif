@@ -1,5 +1,7 @@
 # ADR 0006 — Engine-reality constraints on apply, read-back, and pre-flight
 
+**In plain terms:** Applying a proposal must reflect what FieldWorks actually wrote, and a project may change before Apply. Motif reads the result back and checks the live project immediately before writing.
+
 Status: accepted (2026-07-24)
 
 ## Context

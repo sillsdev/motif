@@ -1,5 +1,7 @@
 # Velopack installers use one payload per runtime
 
+People need an installer that sets up Motif’s launch options, updates the app together and leaves project data alone when they uninstall. This decision defines the supported Windows install and update path.
+
 **Status:** accepted, 2026-09-26.
 
 **In plain terms:** People install one Motif download for their computer, open the window from a shortcut, and can also use `motif` from a shell or FieldWorks. Updates keep the installed files together, while uninstall removes Motif's launch hooks and leaves the person's data alone.

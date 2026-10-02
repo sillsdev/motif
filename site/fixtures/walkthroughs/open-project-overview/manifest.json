@@ -8,12 +8,35 @@
   "fps": 30,
   "steps": [
     {
+      "id": "texts",
+      "caption": "The Texts page shows the saved word comparison.",
+      "startMs": 750,
+      "endMs": 1950,
+      "screenshot": "steps/01-texts.png",
+      "annotated": "steps/01-texts-annotated.png",
+      "width": 1280,
+      "height": 720,
+      "annotatedWidth": 1280,
+      "annotatedHeight": 720,
+      "calloutLayout": "target-overlay",
+      "callouts": [
+        {
+          "x": 8,
+          "y": 155,
+          "width": 187,
+          "height": 37,
+          "label": "1",
+          "caption": "Texts and their measured results"
+        }
+      ]
+    },
+    {
       "id": "overview",
       "caption": "The Overview shows the latest stored measurements.",
-      "startMs": 1000,
-      "endMs": 2600,
-      "screenshot": "steps/01-overview.png",
-      "annotated": "steps/01-overview-annotated.png",
+      "startMs": 2200,
+      "endMs": 3800,
+      "screenshot": "steps/02-overview.png",
+      "annotated": "steps/02-overview-annotated.png",
       "width": 1280,
       "height": 720,
       "annotatedWidth": 1280,

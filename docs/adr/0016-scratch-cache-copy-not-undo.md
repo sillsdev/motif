@@ -1,5 +1,7 @@
 # ADR 0016 — Dry runs use a scratch cache copy, never Undo or Rollback
 
+**In plain terms:** A test of proposed edits should not leave the open FieldWorks project partly changed. Motif evaluates the edits against a disposable project copy and reads the result back.
+
 Status: accepted (2026-08-01). **Amended twice** — 2026-08-05 (*Verified, and two hazards this ADR did not
 anticipate*) and 2026-08-06 (*there is exactly one rollback, and the apparatus is deleted rather than kept*),
 which is the one to read first: it shrinks this ADR's consequences to a deletion.

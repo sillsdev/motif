@@ -10,4 +10,4 @@ Each project has its own Motif workflow information. Switching away does not mov
 
 Choose **Configure…** from the project menu to reopen the project’s saved Selection and parsing limits. Use **Refresh** when you want a new Baseline and measurement; opening the project alone only reads stored results.
 
-![The Overview after reopening a project](shot:switch-projects/project-reopened)
+![The Overview after selecting a project](shot:open-project-overview/overview)

@@ -1,5 +1,7 @@
 # ADR 0031 — Collaboration follows the data, not the surface: grammar has one integrator
 
+When a grammar changes, its author’s reasoning can be lost even if the rule itself remains. This decision focuses Motif on preserving the rationale for grammar work instead of coordinating several people editing at once.
+
 **Status:** accepted, 2026-08-06. Answers `D14`, `D15`, `D16`. Scopes `MOT-10`, `MOT-17`, `MOT-18` and
 therefore most of M4. Builds on [ADR 0021](0021-cli-is-the-full-surface-layer-1-churns.md) (the CLI is the
 whole surface) and [ADR 0029](0029-agents-address-layer-1-only.md) (the agent is a contributor).

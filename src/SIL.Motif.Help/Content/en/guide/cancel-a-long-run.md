@@ -1,14 +1,7 @@
 # Cancelling a run
 
-Motif’s long actions have separate **Cancel** controls. Use the one beside the action that is running:
+During **Parse all words**, choose **Cancel** in the progress panel at the top of the window. The panel stays visible while you move between pages. If no word has finished for a long time, it shows a stalled-search notice; cancel there if you do not want to keep waiting. A second Parse all words request for the same project is refused while the first run is active. Use the window that owns the run to see its progress or cancel it.
 
-1. On **Texts**, choose **Cancel** while Motif is parsing all words.
-2. On **Try a Word**, choose **Cancel** while the trace is running.
-3. On **AI Handoff**, choose **Cancel** while Motif is writing the folder.
-4. On **Timing**, choose **Cancel** beside **Re-run chosen words**.
+Cancel keeps the results from the previous completed parse. The unfinished parse is not saved, and Motif does not change the FieldWorks project. For other long actions, use the **Cancel** control beside the running action: on **Try a Word**, **AI Handoff**, or beside **Re-run chosen words** in **Timing**. The global progress panel also has **Cancel** while **Refresh** is parsing.
 
-The top bar also shows **Cancel** while Refresh is running. It stops the parsing part of Refresh if that part has started. A cancelled or interrupted search is not a completed parse result; read the run status before using its numbers.
-
-The **Warnings** page does not show a Cancel action while **Check the grammar** is running. Wait for that check to finish before leaving the page or switching projects.
-
-![Parsing all words being cancelled](shot:cancel-an-assessment/cancelled)
+![Parse all words progress and its Cancel control](shot:first-run-setup-parse/cancelling)

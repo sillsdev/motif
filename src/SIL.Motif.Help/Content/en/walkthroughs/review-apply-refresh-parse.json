@@ -6,7 +6,8 @@
     "measured": "Review the measured change before applying it.",
     "applied": "Apply records a Receipt and clears this pending change.",
     "refreshed": "Refresh captures a new Baseline; Parse all words separately updates the numbers.",
-    "parsed": "The latest Assessment is published, with updated results in the Overview."
+    "parsed": "The latest Assessment is published, with updated results in the Overview.",
+    "timing": "Timing shows the recorded parse measurements for the Selection."
   },
   "callouts": {
     "measured": {
@@ -21,6 +22,9 @@
     "parsed": {
       "motif-overview-speed": "Speed of the current Assessment",
       "motif-overview-text-coverage": "Text Coverage after Parse all words"
+    },
+    "timing": {
+      "motif-page-timing": "Timing for the saved parse"
     }
   }
 }

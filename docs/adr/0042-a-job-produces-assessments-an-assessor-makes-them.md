@@ -1,5 +1,7 @@
 # ADR 0042 — A Job produces Assessments, an Assessor makes them, and a scope is what makes two comparable
 
+A parser result should say what it measured and which tool produced it, so unlike results are never mistaken for a fair comparison. This decision records those facts separately and lets Motif compare compatible evidence.
+
 **Status:** accepted, 2026-08-29. Amends [ADR 0035](0035-reports-are-advisory-queries-over-stored-assessments.md)
 decision 1, which said a configured target does not gate. Builds on
 [ADR 0033](0033-three-systems-and-who-owns-which-measure.md), whose division of labour between PanGloss,

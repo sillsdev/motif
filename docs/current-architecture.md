@@ -63,7 +63,7 @@ Morpheme inspection requires recorded authored identity before reading FieldWork
 
 Motif uses SQLite for process-shared workflow state and coordination. A machine store tracks known projects and usage; each project's Motif database holds its workflow, jobs and retained evidence. The CLI and Worker coordinate through those stores. They do not make Motif's database a second authority for FieldWorks language data.
 
-The caller supplies an already-loaded `LcmCache` and owns its project lifetime and persistence. LibLCM operations use that cache; the caller decides when the live project is saved. A scratch cache is used when a caller needs evaluation without changing the live project. See the [semantic change contract](change-set-contract.md) and the [Proposal lifecycle](proposal-lifecycle.md) for their normative rules.
+The caller supplies an already-loaded `LcmCache` and owns its project lifetime and persistence. LibLCM operations use that cache; the caller decides when the live project is saved. A scratch cache is used when a caller needs evaluation without changing the live project. See the [semantic change contract](change-set-contract.md), the [Proposal lifecycle](proposal-lifecycle.md) and [ADR 0042](adr/0042-a-job-produces-assessments-an-assessor-makes-them.md) for their normative rules.
 
 Motif invokes PanGloss through a child process. The Host contains the process adapter and translates the supported request and result into typed Motif data. The CLI and desktop application both reach that adapter through shared commands; neither front end defines a separate parser protocol.
 
@@ -76,5 +76,5 @@ The `SIL.Motif.Help` project supplies shared Help data to the CLI, App and site.
 - [CLI and command API](cli-api.md) — current entry points and generated command reference.
 - [Semantic change contract](change-set-contract.md) — Proposal and operation shapes.
 - [Proposal lifecycle](proposal-lifecycle.md) — current workflow semantics.
-- [Assessment scope](assessment-scope-design.md) — what parser Assessments measure.
+- [ADR 0042](adr/0042-a-job-produces-assessments-an-assessor-makes-them.md) — Assessment kinds, Assessors and compatible scopes.
 - [FieldWorks integration contract](../AGENTS.md#compatibility-targets) — the save-boundary command and response fields.

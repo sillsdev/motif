@@ -27,6 +27,10 @@
     { "id": "wait-for-published-results", "kind": "waitFor", "automationId": "motif-overview-text-coverage", "condition": "assessmentPublished", "timeoutMs": 30000 },
     { "id": "highlight-assessment", "kind": "highlight", "automationId": "motif-overview-speed" },
     { "id": "highlight-text-coverage", "kind": "highlight", "automationId": "motif-overview-text-coverage" },
-    { "id": "parsed", "kind": "capture", "durationMs": 1500, "callouts": [ { "automationId": "motif-overview-speed" }, { "automationId": "motif-overview-text-coverage" } ] }
+    { "id": "parsed", "kind": "capture", "durationMs": 1500, "callouts": [ { "automationId": "motif-overview-speed" }, { "automationId": "motif-overview-text-coverage" } ] },
+    { "id": "open-timing", "kind": "click", "automationId": "motif-page-timing" },
+    { "id": "wait-for-timing-page", "kind": "waitFor", "automationId": "motif-page-timing", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "highlight-timing", "kind": "highlight", "automationId": "motif-page-timing" },
+    { "id": "timing", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-page-timing" } ] }
   ]
 }

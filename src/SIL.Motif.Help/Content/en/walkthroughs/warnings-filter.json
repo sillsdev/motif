@@ -1,0 +1,13 @@
+{
+  "id": "warnings-filter",
+  "title": "Read grammar findings",
+  "description": "Review the findings PanGloss recorded for a project's current Baseline.",
+  "steps": {
+    "findings": "Warnings shows grammar findings saved for the current Baseline."
+  },
+  "callouts": {
+    "findings": {
+      "motif-page-warnings": "Warnings for this Baseline"
+    }
+  }
+}

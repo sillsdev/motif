@@ -1,5 +1,7 @@
 # ADR 0012 — Build order: the HC-reachable spine first, kinds generated from day one
 
+**In plain terms:** This early proposal put the parser-facing grammar model first in Motif’s build sequence. A later decision replaced the change mechanism that this sequence depended on.
+
 Status: **superseded (2026-07-27)**
 > **SUPERSEDED (2026-07-27) by [ADR 0013](0013-harmony-is-the-change-mechanism.md).** This ADR
 > describes how to grow a change-management mechanism that ADR 0013 declines to build, on the

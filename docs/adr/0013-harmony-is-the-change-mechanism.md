@@ -1,5 +1,7 @@
 # ADR 0013 — Harmony is the change mechanism; Motif's contract layer is redundant
 
+**In plain terms:** FieldWorks already has a mechanism for recording project changes. Motif builds on that mechanism instead of creating a competing record of its own.
+
 Status: accepted (2026-07-27)
 
 **Reverses the central premise of [ADR 0011](0011-experiment-loop-boundary-motif-is-the-record.md)

@@ -1,5 +1,7 @@
 # ADR 0017 — Text and analysis are in the destination, staged out of v1
 
+**In plain terms:** Words and sentences are part of the language project, but they have different identities and uses. This decision defines which text and analysis changes Motif can address safely.
+
 **Status:** accepted, 2026-08-05. Answers `H30`, the first gate of
 [grill-plan-a.md](../grill-plan-a.md). Supersedes the flat "text is out" statements in
 [plan-motif.md](../plan-motif.md) and the README.

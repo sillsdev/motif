@@ -1,5 +1,7 @@
 # ADR 0033 — Three systems, and which measure each one owns
 
+A single score cannot answer whether a word parses, whether it matches a human analysis, and which parts of a grammar the text exercises. This decision gives those questions distinct owners so Motif can present evidence without deciding what would improve a grammar.
+
 **Status:** accepted, 2026-08-08. Refines
 [ADR 0032](0032-stem-assessment-is-pangloss-supplied-lexicon.md) and the
 [grammar-breadth research](../research/2026-08-08-grammar-breadth-black-2025-and-a-path.md). Scopes `MOT-19`.

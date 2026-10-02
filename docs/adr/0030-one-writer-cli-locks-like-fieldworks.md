@@ -1,5 +1,7 @@
 # ADR 0030 — There is one writer: the CLI locks the project exactly as FieldWorks does
 
+**In plain terms:** Only one program can write a FieldWorks project at a time. Motif uses the project’s own lock for live work, while saved copies let measurement proceed without taking ownership of the open project.
+
 **Status:** partly superseded by
 [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md), 2026-08-22. The FieldWorks file lock
 and one-live-writer findings remain binding. Decisions 1 and 2 below are historical: a reusable Baseline

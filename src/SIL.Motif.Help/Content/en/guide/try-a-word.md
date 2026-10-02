@@ -33,6 +33,6 @@ Recorded details can include the replacement lexical entry for a Blocked event, 
 A Blocked event records an intermediate result. In the supported parser it means replacement by a compatible entry in the same lexical family; search can continue. Missing reasons, rejection details and grammar sources are shown as not recorded, and unfamiliar reason codes keep their raw notation with an unavailable explanation.
 
 
-![A word parsed in Try a Word](shot:try-a-word-parses/parsed-word)
+![A word parsed in Try a Word](shot:try-word-typing/trace)
 
 The main analysis cards combine source records only when available projections establish equal ordered allomorph and grammatical information identities, including inflection type. Equal spellings alone do not establish that they are the same analysis. The recorded source list keeps every producer record.

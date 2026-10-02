@@ -155,7 +155,7 @@ public sealed class MainWindowSmokeTests
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
                 const string expectedSentence = "each stopped word says whether it reached the step or time limit";
-                const string expectedSection = "Slowest words in Timing";
+                const string expectedAltText = "Saved parse timings on the Timing page";
                 const string expectedOpening = "opens on All";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bool TimingIsRendered()
@@ -163,7 +163,7 @@ public sealed class MainWindowSmokeTests
                     if (markdownRenderer.RenderedTextProjection is not { } projection) return false;
                     var text = string.Join("\n", projection.Buffers.Select(buffer => buffer.Text.ToString()));
                     return text.Contains(expectedSentence, StringComparison.Ordinal) &&
-                        text.Contains(expectedSection, StringComparison.Ordinal);
+                        text.Contains(expectedAltText, StringComparison.Ordinal);
                 }
                 markdownRenderer.PropertyChanged += (_, changed) =>
                 {
@@ -176,7 +176,7 @@ public sealed class MainWindowSmokeTests
                     markdownRenderer.RenderedTextProjection);
                 var renderedText = string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString()));
                 Assert.Contains(expectedSentence, renderedText);
-                Assert.Contains(expectedSection, renderedText);
+                Assert.Contains(expectedAltText, renderedText);
                 Assert.Equal(2, renderedText.Split(expectedOpening).Length);
                 Assert.DoesNotContain(renderedTextProjection.Buffers,
                     buffer => buffer.Text.ToString().Trim() == "Timing");
@@ -184,7 +184,7 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);
                 Assert.Contains("each stopped word says whether it reached the step or time limit", help.Markdown);
-                Assert.Contains(expectedSection, help.Markdown);
+                Assert.Contains(expectedAltText, help.Markdown);
             }
             finally
             {

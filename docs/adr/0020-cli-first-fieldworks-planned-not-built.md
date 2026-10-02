@@ -1,5 +1,7 @@
 # ADR 0020 — Two scopes: prove the LibLCM seams through the CLI, plan FieldWorks without building it
 
+**In plain terms:** This early decision proposed proving Motif’s project operations through commands before adding FieldWorks screens. Later decisions updated the integration boundary while preserving the command-driven workflow.
+
 **Status:** accepted, 2026-08-05; execution mechanism amended by
 [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md). The CLI-first sequencing and
 cross-runtime obligations remain binding, but the on-demand worker replaces the warm CLI process as the

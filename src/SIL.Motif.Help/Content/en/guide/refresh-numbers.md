@@ -8,4 +8,4 @@ Use **Refresh** after saving changes in FieldWorks when you want Motif’s resul
 
 If this is the first Baseline, first-time setup may open so you can choose texts or add words before the first parse. If you cancel the run or the parser refuses it, the Baseline may still be newer than the numbers; read the freshness message before relying on them. Opening Motif again does not perform a Refresh for you.
 
-![Numbers refreshed against a saved project](shot:refresh-stale-numbers/updated-overview)
+![Refresh captures a Baseline before a separate parse updates the numbers](shot:review-apply-refresh-parse/refreshed)

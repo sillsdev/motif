@@ -1,5 +1,7 @@
 # ADR 0032 — The stem-assessment loop is PanGloss's supplied lexicon; Motif owns persistence and promotion
 
+A linguist can try a new word against the grammar before adding it to the project. Motif uses PanGloss for that experiment and keeps the durable dictionary change with the project.
+
 **Status:** accepted, 2026-08-06. Corrects a finding in
 [ADR 0031](0031-collaboration-follows-the-data-not-the-surface.md) and decides `B24`. Constrains `MOT-15`
 and `MOT-19`.
