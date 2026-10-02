@@ -18,6 +18,8 @@ public sealed class TryWordPageModel : PageModel
 {
     private const int RecentWordLimit = 5;
     private const int EarlierRuleLimit = 5;
+    private int _resultContextGeneration;
+    private CancellationTokenSource? _resultContextCancellation;
     private int _timingGeneration;
     private string? _assessmentId;
     private int _wordContextGeneration;
@@ -29,9 +31,15 @@ public sealed class TryWordPageModel : PageModel
         Diagnostics = new DiagnosticToolsViewModel(Trace, context.Clipboard, context.DiagnosticFiles,
             context.DiagnosticDialogs);
         Trace.PropertyChanged += OnTracePropertyChanged;
-        OpenInTextsCommand = new RelayCommand(() => Context.OpenWord(Trace.WordToTry.Trim()), CanOpenCurrentWord);
-        HandOffCommand = new RelayCommand(() => Context.HandOff([Trace.WordToTry.Trim()]), CanOpenCurrentWord);
-        OpenTimingCommand = new RelayCommand(OpenTimingForCurrentWord, CanOpenCurrentWord);
+        OpenInTextsCommand = new RelayCommand(() =>
+        {
+            if (Trace.Result is { } result) Context.OpenWord(result.Word);
+        }, CanOpenResultWord);
+        HandOffCommand = new RelayCommand(() =>
+        {
+            if (Trace.Result is { } result) Context.HandOff([result.Word]);
+        }, CanOpenResultWord);
+        OpenTimingCommand = new RelayCommand(OpenTimingForResultWord, CanOpenResultWord);
         OpenRecentWordCommand = new RelayCommand<string?>(word =>
         {
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
@@ -45,6 +53,30 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>All stored opinions for the typed word; null while the Baseline read is unavailable or pending.</summary>
     public WordContextResponse? WordContext { get; private set; }
+
+    /// <summary>The shared FieldWorks record for the displayed result, independent of the editable input.</summary>
+    public WordContextResponse? ResultWordContext { get; private set; }
+
+    /// <summary>The returned membership or availability state, without treating a missing row as absence.</summary>
+    public string FieldWorksContextStatus => ResultWordContext switch
+    {
+        null or { HasBaseline: false } => "FieldWorks word context unavailable",
+        { IsInFieldWorks: null } => "FieldWorks membership not recorded",
+        { IsInFieldWorks: false } => "Word absent from the captured FieldWorks Baseline",
+        { Analyses.Count: 0 } => "No stored analyses in the captured FieldWorks Baseline",
+        _ => "Stored analyses for " + ResultWordContext.Word,
+    };
+
+    /// <summary>The save recorded by the shared context query; never the trace's grammar provenance.</summary>
+    public string FieldWorksContextSource => ResultWordContext is not { HasBaseline: true } context ? string.Empty
+        : (context.SourceLastWriteUtc is { } saved ? $"FieldWorks save: {saved:O}" : "FieldWorks save not recorded") +
+          (context.Baseline is { } baseline ? $"; Baseline captured: {baseline.CapturedUtc}" : "; Baseline identity not recorded");
+
+    /// <summary>The context's own freshness warning, independent of the traced grammar.</summary>
+    public bool FieldWorksContextIsStale => ResultWordContext?.IsStale == true;
+
+    /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
+    public IReadOnlyList<ParserReadingViewModel> FieldWorksAnalyses { get; private set; } = [];
 
     /// <summary>The diagnostic tools beside the page's trace.</summary>
     public DiagnosticToolsViewModel Diagnostics { get; }
@@ -68,23 +100,6 @@ public sealed class TryWordPageModel : PageModel
     public ObservableCollection<string> RecentWords { get; } = [];
 
     /// <summary>
-    /// Rule events, including repeats, on the successful or furthest recorded attempt, outward from the stem,
-    /// as a linguist builds the word, not in the order the parser took it apart.
-    /// </summary>
-    public ObservableCollection<TryWordRuleRowViewModel> RulesOnBestPath { get; } = [];
-
-    /// <summary>
-    /// The parser's taking-apart pass on that attempt in one line, its pieces in the word's own order, such as
-    /// "Taking the word apart found ma- · tin · -lu"; empty when a step's forms do not split into affix and rest.
-    /// </summary>
-    public string TakingApartText { get; private set; } = string.Empty;
-
-    public bool HasTakingApart => TakingApartText.Length > 0;
-
-    /// <summary>Whether the current trace has named rules on its successful or furthest attempt.</summary>
-    public bool HasRulesOnBestPath => RulesOnBestPath.Count > 0;
-
-    /// <summary>
     /// The traced word's rule times from the earlier parse named in <see cref="EarlierTimingTitle"/>, then the time
     /// that parse recorded against no rule; empty when no parse can be named as their source.
     /// </summary>
@@ -105,16 +120,11 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Whether the earlier parse kept the word's whole time, so its rule times have shares.</summary>
     public bool HasEarlierShares => EarlierShareHeader.Length > 0;
 
-    /// <summary>The sidebar link to the first named rule on the current trace, or its general Timing link.</summary>
-    public string TimingLinkText => RulesOnBestPath.FirstOrDefault() is { } rule
-        ? $"See {rule.Rule} in Timing" : "Timing for this word";
+    /// <summary>The overrun the earlier parse recorded when its object timers exceeded the word's time; else empty.</summary>
+    public string EarlierOverrunText { get; private set; } = string.Empty;
 
     /// <summary>Opens Texts on the current word, even when the word is absent from its list.</summary>
     public IRelayCommand OpenInTextsCommand { get; }
-
-    /// <summary>The sidebar's offer to read the current word in its texts, where its analyses are approved.</summary>
-    public string OpenInTextsText => Trace.WordToTry.Trim() is { Length: > 0 } word
-        ? $"Open {word} in Analyze texts" : "Open in Analyze texts";
 
     /// <summary>Opens AI Handoff with only the current word selected.</summary>
     public IRelayCommand HandOffCommand { get; }
@@ -131,23 +141,25 @@ public sealed class TryWordPageModel : PageModel
         _wordContextCancellation?.Cancel();
         WordContext = null;
         OnPropertyChanged(nameof(WordContext));
+        _resultContextGeneration++;
+        _resultContextCancellation?.Cancel();
+        ShowResultContext(null);
         _assessmentId = null;
         _timingGeneration++;
-        ShowEarlierTiming(null, null);
+        ShowEarlierTiming(null);
         Trace.Reset();
         Trace.WordToTry = string.Empty;
         RecentWords.Clear();
-        RebuildRules(null);
     }
 
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
         SetStoredAssessmentId(evidence.ParseTimeAssessmentId);
-        return RefreshExpectedAsync(Trace.WordToTry, cancellationToken);
+        return Task.WhenAll(RefreshExpectedAsync(Trace.WordToTry, cancellationToken), RefreshResultContextAsync());
     }
 
     protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) =>
-        RefreshExpectedAsync(Trace.WordToTry, cancellationToken);
+        Task.WhenAll(RefreshExpectedAsync(Trace.WordToTry, cancellationToken), RefreshResultContextAsync());
 
     protected override void OnRequested(PageRequest request)
     {
@@ -163,17 +175,20 @@ public sealed class TryWordPageModel : PageModel
         _ = Trace.TryCommand.ExecuteAsync(null);
     }
 
-    private bool CanOpenCurrentWord() => !string.IsNullOrWhiteSpace(Trace.WordToTry);
+    private bool CanOpenResultWord() => !string.IsNullOrWhiteSpace(Trace.Result?.Word);
 
-    private void OpenTimingForCurrentWord() => Context.OpenTiming(
-        [Trace.WordToTry.Trim()], RulesOnBestPath.FirstOrDefault()?.Rule);
+    private void OpenTimingForResultWord()
+    {
+        if (Trace.Result is { } result) Context.OpenTiming([result.Word], null);
+    }
 
     private void OnTracePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TraceWordViewModel.WordToTry))
-        {
             RefreshExpected(Trace.WordToTry);
-            OnPropertyChanged(nameof(OpenInTextsText));
+        else if (e.PropertyName == nameof(TraceWordViewModel.Result))
+        {
+            _ = RefreshResultContextAsync();
             OpenInTextsCommand.NotifyCanExecuteChanged();
             HandOffCommand.NotifyCanExecuteChanged();
             OpenTimingCommand.NotifyCanExecuteChanged();
@@ -182,7 +197,8 @@ public sealed class TryWordPageModel : PageModel
             TrackRecent(Trace.WordToTry.Trim());
         else if (e.PropertyName == nameof(TraceWordViewModel.Candidates))
         {
-            RebuildRules(Trace.Result);
+            _timingGeneration++;
+            ShowEarlierTiming(null);
             if (Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
         }
     }
@@ -223,6 +239,42 @@ public sealed class TryWordPageModel : PageModel
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
     }
 
+    private async Task RefreshResultContextAsync()
+    {
+        var generation = ++_resultContextGeneration;
+        _resultContextCancellation?.Cancel();
+        _resultContextCancellation?.Dispose();
+        _resultContextCancellation = new CancellationTokenSource();
+        var token = _resultContextCancellation.Token;
+        var result = Trace.Result;
+        var projectPath = Context.ProjectPath;
+        ShowResultContext(null);
+        if (result is null || projectPath is null) return;
+        var baseline = Context.Evidence.Stored?.Baseline?.Token ?? Context.Evidence.Assessment?.Assessment.Baseline.Token;
+        try
+        {
+            var outcome = await Context.Commands.ReadWordContextAsync(new WordContextRequest(projectPath, result.Word,
+                baseline), token).ConfigureAwait(true);
+            if (generation != _resultContextGeneration || token.IsCancellationRequested ||
+                !ReferenceEquals(result, Trace.Result) || projectPath != Context.ProjectPath) return;
+            ShowResultContext(outcome.Succeeded ? outcome.Value : null);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    private void ShowResultContext(WordContextResponse? context)
+    {
+        ResultWordContext = context;
+        FieldWorksAnalyses = context is { HasBaseline: true, IsInFieldWorks: true }
+            ? context.Analyses.Select((reading, index) => new ParserReadingViewModel(index + 1, reading, null)).ToArray()
+            : [];
+        OnPropertyChanged(nameof(ResultWordContext));
+        OnPropertyChanged(nameof(FieldWorksContextStatus));
+        OnPropertyChanged(nameof(FieldWorksContextSource));
+        OnPropertyChanged(nameof(FieldWorksContextIsStale));
+        OnPropertyChanged(nameof(FieldWorksAnalyses));
+    }
+
     private void TrackRecent(string word)
     {
         if (string.IsNullOrWhiteSpace(word)) return;
@@ -236,79 +288,8 @@ public sealed class TryWordPageModel : PageModel
     {
         _assessmentId = assessmentId;
         _timingGeneration++;
-        ShowEarlierTiming(null, null);
+        ShowEarlierTiming(null);
         if (assessmentId is not null && Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
-    }
-
-    private void RebuildRules(WordTraceResponse? result)
-    {
-        _timingGeneration++;
-        ShowEarlierTiming(null, null);
-        RulesOnBestPath.Clear();
-        TakingApartText = string.Empty;
-        var attempt = Trace.Candidates.FirstOrDefault(candidate => candidate.Succeeded) ?? Trace.ClosestAttempts.FirstOrDefault();
-        if (attempt is not null) TakingApartText = TakingApart(attempt.Steps);
-        var refs = Trace.Reading?.Refs ?? [];
-        var labels = new TraceDisplayLabels(refs);
-        foreach (var rule in Trace.Reading?.RulesOnBestPath ?? [])
-        {
-            var name = labels.Resolve(rule.RefId, rule.Rule)!;
-            RulesOnBestPath.Add(new TryWordRuleRowViewModel(name, rule.Kind, rule.Outcome,
-                rule.Explanation, () => Context.OpenTiming([result!.Word], name))
-            {
-                InspectSubject = refs.FirstOrDefault(reference => reference.Id == rule.RefId) is { TimingKey: { } key } named
-                    ? InspectorSubject.Rule(key, name, named.IdentityQuality) : null,
-            });
-        }
-        OnPropertyChanged(nameof(RulesOnBestPath));
-        OnPropertyChanged(nameof(HasRulesOnBestPath));
-        OnPropertyChanged(nameof(TakingApartText));
-        OnPropertyChanged(nameof(HasTakingApart));
-        OnPropertyChanged(nameof(TimingLinkText));
-    }
-
-    private static string TakingApart(IReadOnlyList<TraceStepViewModel> path)
-    {
-        var prefixes = new List<string>();
-        var suffixes = new List<string>();
-        string? stem = null;
-        var affixSteps = path.Where(step =>
-            TakesApart(step) && step.Type.StartsWith("MorphologicalRule", StringComparison.Ordinal));
-        foreach (var step in affixSteps)
-        {
-            var whole = step.Input is { Length: > 0 } own ? own : FormBefore(step, path);
-            if (whole is null || step.Output is not { Length: > 0 } rest || AffixForm(rest, whole) is not { } affix)
-                return string.Empty;
-            // Each affix comes off the outside, so prefixes arrive left to right and suffixes right to left.
-            if (affix.EndsWith('-')) prefixes.Add(affix);
-            else suffixes.Insert(0, affix);
-            stem = rest;
-        }
-        return stem is null ? string.Empty : $"Taking the word apart found {string.Join(" · ", [.. prefixes, stem, .. suffixes])}";
-    }
-
-    // The affix a step added, written as FieldWorks writes it: "ma-" before the form, "-lu" after it.
-    private static string? AffixForm(string before, string after) =>
-        after.Length <= before.Length ? null
-        : after.EndsWith(before, StringComparison.Ordinal) ? $"{after[..^before.Length]}-"
-        : after.StartsWith(before, StringComparison.Ordinal) ? $"-{after[before.Length..]}"
-        : null;
-
-    private static bool TakesApart(TraceStepViewModel step) => step.Type.Contains("Analysis", StringComparison.Ordinal);
-
-    // A rule step records only the form it left; the form it met is the one the step before it on the path holds.
-    private static string? FormBefore(TraceStepViewModel step, IReadOnlyList<TraceStepViewModel> path)
-    {
-        for (var index = IndexOf(path, step) - 1; index >= 0; index--)
-            if ((path[index].Output ?? path[index].Input) is { Length: > 0 } form) return form;
-        return null;
-    }
-
-    private static int IndexOf(IReadOnlyList<TraceStepViewModel> path, TraceStepViewModel step)
-    {
-        for (var index = 0; index < path.Count; index++)
-            if (ReferenceEquals(path[index], step)) return index;
-        return -1;
     }
 
     private async Task LoadStoredRuleTimingsAsync()
@@ -316,8 +297,7 @@ public sealed class TryWordPageModel : PageModel
         var result = Trace.Result;
         var projectPath = Context.ProjectPath;
         var assessmentId = _assessmentId;
-        var parsedAt = EarlierParseTime;
-        if (result is null || projectPath is null || assessmentId is null || parsedAt is null) return;
+        if (result is null || projectPath is null || assessmentId is null) return;
 
         var generation = ++_timingGeneration;
         var outcome = await Context.Commands.TimingAsync(
@@ -326,52 +306,50 @@ public sealed class TryWordPageModel : PageModel
         if (generation != _timingGeneration || !ReferenceEquals(result, Trace.Result) ||
             !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
 
-        ShowEarlierTiming(outcome.Succeeded ? outcome.Value : null, parsedAt);
+        ShowEarlierTiming(outcome.Succeeded ? outcome.Value : null);
     }
 
-    // When the stored parse behind the word's timing ran; unknown once a re-run has replaced some words' times.
-    private DateTimeOffset? EarlierParseTime => Context.Evidence.TimingOverrideAssessmentIds.Count > 0 ? null
-        : Context.Evidence.Assessment is { } shown &&
-            shown.Assessment.Measurements.Any(measurement => measurement.Kind == AssessmentKinds.ParseTime)
-            ? shown.WasRerun ? null : shown.CompletedAt
-            : Context.Evidence.Stored?.AssessedUtc;
-
-    private void ShowEarlierTiming(TimingResponse? timing, DateTimeOffset? parsedAt)
+    private void ShowEarlierTiming(TimingResponse? timing)
     {
         EarlierRuleTimes.Clear();
-        EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = string.Empty;
-        if (timing is { Aggregates.Count: > 0 } && parsedAt is { } ranAt && Trace.Result is { } result)
+        EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = EarlierOverrunText = string.Empty;
+        if (timing is { Aggregates.Count: > 0 } && Trace.Result is { } result &&
+            timing.Words.FirstOrDefault(word => word.Word == result.Word)?.Origin is { } origin)
         {
-            var wordMs = timing.Words.FirstOrDefault(word => word.Word == result.Word)?.ElapsedMs is > 0 and var ms
-                ? (double?)ms : null;
-            string ShareOf(double elapsed) => wordMs is { } whole
-                ? (elapsed / whole).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
+            var wordMs = timing.Words.FirstOrDefault(word => word.Word == result.Word)?.ElapsedNs is >= 0 and var ns
+                ? ns / 1_000_000d : timing.Attribution.MeasuredWordCount > 0 ? (double?)timing.Attribution.WordTimeMs : null;
+            static string ShareOf(double? share) => share?.ToString("P0", CultureInfo.CurrentCulture) ?? string.Empty;
             foreach (var rule in timing.Aggregates.Take(EarlierRuleLimit))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),
-                    SpeedText.PerWord(rule.SelfMs), ShareOf(rule.SelfMs), IsOtherTime: false));
+                    SpeedText.PerWord(rule.SelfMs), ShareOf(rule.ShareOfWordTime), IsOtherTime: false));
             if (timing.Aggregates.Skip(EarlierRuleLimit).ToArray() is { Length: > 0 } rest)
             {
                 var restMs = rest.Sum(rule => rule.SelfMs);
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(SpeedText.Count(rest.Length, "other rule", "other rules"),
-                    string.Empty, SpeedText.PerWord(restMs), ShareOf(restMs), IsOtherTime: false));
+                    string.Empty, SpeedText.PerWord(restMs),
+                    ShareOf(rest.All(rule => rule.ShareOfWordTime is not null) ? rest.Sum(rule => rule.ShareOfWordTime) : null),
+                    IsOtherTime: false));
             }
-            if (wordMs - timing.Aggregates.Sum(rule => rule.SelfMs) is double other && other >= TimingShare.SmallestShownMs)
+            if (timing.Attribution.NotAttributedMs is { } other && other >= TimingShare.SmallestShownMs)
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Other time", string.Empty,
-                    SpeedText.PerWord(other), ShareOf(other), IsOtherTime: true));
-            EarlierTimingTitle = $"Time from the parse of {ranAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
-            EarlierTimingSource = "Not from this try. " + (wordMs is { } took
+                    SpeedText.PerWord(other), ShareOf(timing.Attribution.NotAttributedShare), IsOtherTime: true));
+            EarlierTimingTitle = $"Time from the parse of {origin.MeasuredUtc.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
+            EarlierTimingSource = "Not from this traced search. " + (wordMs is { } took
                 ? $"In that parse {result.Word} took {SpeedText.PerWord(took)}; each rule's time covers that parse's " +
                     "whole search for the word"
                 : $"Each rule's time covers that parse's whole search for {result.Word}") +
-                ", including attempts that stopped, not only the path above." +
-                (Context.Evidence.IsStale ? " FieldWorks has changed since that parse." : string.Empty);
-            EarlierShareHeader = wordMs is { } whole ? $"Share of {SpeedText.PerWord(whole)}" : string.Empty;
+                ", including attempts that stopped.";
+            EarlierShareHeader = timing.Aggregates.Any(rule => rule.ShareOfWordTime is not null)
+                ? wordMs is { } whole ? $"Share of {SpeedText.PerWord(whole)}" : "Word share" : string.Empty;
+            if (timing.Attribution.Overrun)
+                EarlierOverrunText = $"Recorded object timers exceeded word time by {SpeedText.PerWord(timing.Attribution.OverrunMs)}.";
         }
         OnPropertyChanged(nameof(HasEarlierTiming));
         OnPropertyChanged(nameof(EarlierTimingTitle));
         OnPropertyChanged(nameof(EarlierTimingSource));
         OnPropertyChanged(nameof(EarlierShareHeader));
         OnPropertyChanged(nameof(HasEarlierShares));
+        OnPropertyChanged(nameof(EarlierOverrunText));
     }
 }
 
@@ -382,42 +360,8 @@ public sealed class TryWordPageModel : PageModel
 /// <param name="ShareText">Its share of the word's whole time in that parse; empty when that time was not kept.</param>
 /// <param name="IsOtherTime">Whether this is the time the parser recorded against no rule.</param>
 public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, string TimeText, string ShareText,
-    bool IsOtherTime);
-
-/// <summary>One rule event on the best path, including repeated events for the same rule.</summary>
-/// <param name="rule">The captured FieldWorks name when available, otherwise the producer label.</param>
-/// <param name="kind">The kinds of steps attributed to the rule.</param>
-/// <param name="outcome">The outcomes recorded for the rule's steps.</param>
-/// <param name="explanation">The recorded detail for the rule's steps.</param>
-/// <param name="openTiming">Opens Timing filtered to the rule and current word.</param>
-public sealed class TryWordRuleRowViewModel(
-    string rule, string kind, string outcome, string explanation, Action openTiming)
+    bool IsOtherTime)
 {
-    /// <summary>The captured FieldWorks name when available, otherwise the producer label.</summary>
-    public string Rule { get; } = rule;
-
-    /// <summary>The kinds of steps attributed to the rule.</summary>
-    public string Kind { get; } = kind;
-
-    /// <summary>The outcomes recorded for the rule's steps.</summary>
-    public string Outcome { get; } = outcome;
-
-    /// <summary>The recorded detail for the rule's steps.</summary>
-    public string Explanation { get; } = explanation;
-
-    /// <summary>Opens Timing filtered to the rule and current word.</summary>
-    public IRelayCommand OpenTimingCommand { get; } = new RelayCommand(openTiming);
-
-    /// <summary>
-    /// The rule as the inspector looks it up, by the key PanGloss times it under; <see langword="null"/> when the
-    /// trace gave the rule no identity.
-    /// </summary>
-    public InspectorSubject? InspectSubject { get; init; }
-
-    /// <summary>What the trace recorded about the rule on this path, for the inspector to show apart from the Baseline.</summary>
-    public IReadOnlyList<InspectorDetail> Captured =>
-        InspectorDetail.Recorded(("Kind", Kind), ("Outcome", Outcome), ("Explanation", Explanation));
-
-    public bool CanInspect => InspectSubject is not null;
-    public bool CannotInspect => InspectSubject is null;
+    /// <summary>The recorded timing kind, absent for rows that gather several kinds or record no object time.</summary>
+    public string? KindTip => KindLabel.Length > 0 ? KindLabel : null;
 }

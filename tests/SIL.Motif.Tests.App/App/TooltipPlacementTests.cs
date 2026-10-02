@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.App;
 /// <summary>
 /// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window. The test
 /// opens the top bar's Refresh, the selected list's column headings, Compare's rerun, AI Handoff's drag and question
-/// tips, Try a Word's rule rows, a disabled Apply and AI Handoff with their reasons, the word strips and their marks,
+/// tips, a disabled Apply and AI Handoff with their reasons, the word strips and their marks,
 /// a word card's links and opinion, a finding's FieldWorks link, the collapsed sidebar, the Matrix's pending mark and
 /// the Timing page at both widths and in both themes. Each tooltip opens under the pointer, as a person meets it.
 /// </summary>
@@ -23,7 +23,7 @@ public sealed class TooltipPlacementTests
 {
     private static readonly string[] Owners =
     [
-        "refresh", "drag all files", "question to copy", "rule row", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "refresh", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
         "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card", "FieldWorks link on a morpheme",
         "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",

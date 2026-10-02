@@ -83,7 +83,11 @@ public sealed class OverviewTimingScreenshots
                 new TimingAggregateRow("ma", "ma", 0.3, 0.3, 1) { Kind = "morph_rule" },
             ], [])
         {
-            Words = [new TimingWordRow("matinlu", 1, TimingCompletion.Finished)],
+            Words = [new TimingWordRow("matinlu", 1, TimingCompletion.Finished)
+            {
+                Origin = new WordMeasurementOrigin("assessment/one", "invocation/one",
+                    DateTimeOffset.Parse("2026-09-22T09:18:00Z")),
+            }],
             Attribution = new WordTimeAttribution(1, 1, 0.7, 0.3, 0.3, 0, false),
         };
 

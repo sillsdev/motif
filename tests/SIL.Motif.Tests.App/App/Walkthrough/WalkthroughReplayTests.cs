@@ -125,7 +125,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             Assert.NotNull(displayedGloss);
             Assert.True(displayedGloss.IsEffectivelyVisible);
             Assert.False(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .Single(control => control.Text == "The parser found no analysis.").IsEffectivelyVisible);
+                .Single(control => control.Text == "Analysis not recorded.").IsEffectivelyVisible);
             Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
             Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
             Assert.Contains("parse", FakeParser.Invocations(parserPath));

@@ -1,14 +1,16 @@
 # Reading why a word fails
 
-**Try a Word** traces a word through the grammar in the current [Baseline](term:baseline). The word can be new; it does not have to occur in the project’s Texts or lexicon. Enter it in **Type any word...**, choose **Try it**, and read the result. You can cancel a running trace.
+**Try a Word** records the parser's search for one word. Enter it in **Type any word...**, choose **Try it**, and read the result. The word can be new; it does not have to occur in the project's texts or lexicon.
 
-Start with the answer and search status:
+Start with the result and search status:
 
-- **Parsed** means the parser found an analysis.
-- **No parse** with **Search complete** means it finished and found no analysis.
-- **Stopped: taking too long** means the parser hit a limit before it finished, and gives the reason. A limit is not evidence that no analysis exists.
-- **Nothing to parse** means the word has a character the grammar’s character table does not define.
+- **Parsed** means a completed search found an analysis.
+- **No parse** with **Search complete** means the search finished without finding an analysis.
+- **Search incomplete** means the search did not finish. Read its recorded stop reason; an unfinished search is not evidence that no analysis exists, even when the trace contains no analysis.
+- **Nothing to parse** means the grammar's character table does not define a character in the word.
 
-For a failed word, look at **THE PARSER'S FURTHEST TRY** and the rule steps. The attempt shows the pieces it built and the rule that stopped it, when recorded. If it never gets a stem, begin with the lexicon. If it builds a stem but stops at an affix, check the slot order and the affix’s allomorph or environment. If a rule changes an unexpected sound, inspect the phonological rules and their order.
+Read any **Analysis summaries** before the **Recorded trace**. Expand tree context to see the recorded events. Select an event to read its exact input, output, raw reason code and captured rejection operands. A rule that was **Tried** was not necessarily **Applied**. **Blocked** names the recorded event without identifying an unrecorded blocker or treating it as the whole word's failure.
 
-The trace is a record of the parser’s search, not a verdict about the word. A rule can stop one attempt while another attempt succeeds. A completed **No parse** can have several plausible causes, so compare the trace with the form and analysis you know are right. If the word stopped, adjust the relevant limit and try again before changing the grammar.
+**Reason not recorded** and **Rejection details not recorded** mark missing evidence. A raw reason code is separate from the actual features or environment the parser captured. Do not infer a responsible rule from a nearby rejection or assume that every failed path explains the word's result. One attempt may fail while another succeeds.
+
+**Grammar source not recorded** means the page cannot establish the trace's source save. **FieldWorks word context unavailable** means its stored analyses and opinions are unavailable here; it does not mean FieldWorks has no analysis. Use **Analyze texts**, revealed by hover or keyboard focus on the result, to read the word in its text. Use **Full derivation** for the complete recorded tree and filters. The diagnostic tools save the original trace independently of filters.

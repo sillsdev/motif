@@ -126,7 +126,7 @@ public sealed class InspectorTests
     }
 
     [Fact]
-    public void TryAWordsChipAndRuleRowAndTimingsRuleRowOpenTheSameInspector()
+    public void TryAWordsAnalysisAndRecordedRuleAndTimingsRuleRowOpenTheSameInspector()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -135,7 +135,20 @@ public sealed class InspectorTests
             {
                 fake = client;
                 OverviewTimingScreenshots.ReadOverviewAndTiming(client, assessment);
-                client.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities());
+                var trace = PageScreenshots.TraceWithIdentities();
+                var morph = new TraceMorph("morph", "ma-", null, "prefix", null, null, null, null, null, null)
+                {
+                    FormId = "11111111-1111-1111-1111-111111111111",
+                    MsaId = "22222222-2222-2222-2222-222222222222", IdentityQuality = "authored",
+                };
+                client.TraceWordCompletesWith(trace with
+                {
+                    Reading = trace.Reading with
+                    {
+                        Analyses = [new TraceAnalysis("analysis", 0, "matinlu", "available", [morph])],
+                        LogicalAnalyses = [new TraceLogicalAnalysis("analysis", [0])],
+                    },
+                });
             });
             try
             {
@@ -146,24 +159,23 @@ public sealed class InspectorTests
                 Settle(window);
                 var inspector = InspectorPanel(window);
 
-                workspace.Assess.Trace.ShowDroppedPaths = true;
-                Settle(window);
                 var chip = TraceChip(window);
-                var morph = Assert.IsType<ParserReadingMorphViewModel>(chip.Tag);
+                var morph = Assert.IsType<TraceMorphViewModel>(chip.DataContext);
                 Click(window, chip);
                 await workspace.Inspector.Loading;
                 Settle(window);
-                Assert.NotNull(morph.AllomorphId);
-                Assert.Equal(morph.AllomorphId, fake.InspectRequests[^1].Subject.AllomorphId);
+                Assert.NotNull(morph.InspectSubject!.AllomorphId);
+                Assert.Equal(morph.InspectSubject.AllomorphId, fake.InspectRequests[^1].Subject.AllomorphId);
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
                 Assert.Same(inspector, InspectorPanel(window));
                 Assert.True(inspector.IsEffectivelyVisible);
 
-                var rule = Assert.IsType<TryWordRuleRowViewModel>(RuleLinkIn(window, "Best path rules").DataContext);
-                Click(window, RuleLinkIn(window, "Best path rules"));
+                var link = RecordedRuleLink(window);
+                var rule = Assert.IsType<TraceStepViewModel>(link.DataContext);
+                Click(window, link);
                 await workspace.Inspector.Loading;
                 Settle(window);
-                Assert.Equal(rule.InspectSubject!.TimingKey, fake.InspectRequests[^1].Subject.TimingKey);
+                Assert.Equal(rule.Reference!.TimingKey, fake.InspectRequests[^1].Subject.TimingKey);
                 Assert.Equal(InspectorSubjectKind.Rule, fake.InspectRequests[^1].Subject.Kind);
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
 
@@ -296,11 +308,15 @@ public sealed class InspectorTests
     private static IReadOnlyList<Button> Crumbs(Window window) =>
         InspectorPanel(window).GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("crumb")).ToArray();
 
-    private static Border TraceChip(Window window) =>
+    private static InspectLink TraceChip(Window window) =>
         window.GetVisualDescendants().OfType<ItemsControl>()
-            .Single(items => AutomationProperties.GetName(items) == "Attempts that got furthest" && items.IsEffectivelyVisible)
-            .GetVisualDescendants().OfType<Border>()
-            .First(border => border.Classes.Contains("inspectable") && border.IsEffectivelyVisible);
+            .Single(items => AutomationProperties.GetName(items) == "Recorded analyses" && items.IsEffectivelyVisible)
+            .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
+
+    private static InspectLink RecordedRuleLink(Window window) =>
+        window.GetVisualDescendants().OfType<TreeView>()
+            .Single(tree => AutomationProperties.GetName(tree) == "Recorded trace tree")
+            .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
 
     private static Button RuleLinkIn(Window window, string list) =>
         window.GetVisualDescendants().OfType<ItemsControl>()
@@ -452,7 +468,7 @@ public sealed class InspectorTests
                 workspace.Context.TryWord("matinlu");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 Settle(window);
-                Click(window, RuleLinkIn(window, "Best path rules"));
+                Click(window, RecordedRuleLink(window));
                 await workspace.Inspector.Loading;
                 Settle(window);
 

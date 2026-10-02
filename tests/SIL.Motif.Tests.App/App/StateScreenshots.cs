@@ -264,8 +264,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("try-a-word", "tools-menu", stage => stage.OpenMenu(WorkspacePage.TryAWord,
             () => stage.Named<Button>("Try a Word tools"), "Try a Word tools"))
         { Setup = stage => stage.TryTheSampleWord() };
-        yield return new("try-a-word", "rule-hover", stage => stage.Hover(WorkspacePage.TryAWord,
-            () => stage.Visible<Button>(button => button.Classes.Contains("ruleRow")).First(), "the first rule row"))
+        yield return new("try-a-word", "recorded-step-focus", stage => stage.FocusFromKeyboard(WorkspacePage.TryAWord,
+            () => stage.Named<TreeView>("Recorded trace tree"), "the recorded trace"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "steps-expanded", async stage =>
         {
@@ -589,6 +589,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             if (page is { } shown) Open(shown, tab);
             var button = find();
             var menu = button.Flyout ?? throw new InvalidOperationException($"{what} has no menu.");
+            button.Focus(NavigationMethod.Tab);
+            PageScreenshots.Settle(Window);
             HeadlessClick.Click(Window, button, what);
             await Until(() => menu.IsOpen, $"the {what} menu");
             _menus.Insert(0, menu);
@@ -848,5 +850,216 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), Window)
                 ?? throw new InvalidOperationException($"{control.GetType().Name} is not in the window.");
         }
+    }
+}
+
+[Collection(AvaloniaHeadlessCollection.Name)]
+public sealed class TryWordReviewScreenshots
+{
+    [ScreenshotFact]
+    public void CapturePlainReviewScenes()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? client = null;
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
+            {
+                client = fake;
+                OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);
+                fake.AssessCompletesWith(assessment with
+                {
+                    Measurements = [new ProducedAssessmentReference("assessment/one", "ParseTime", "assessment/one")],
+                });
+            });
+            var page = workspace.PageModel<TryWordPageModel>();
+            var trace = page.Trace;
+            var project = workspace.Context.ProjectPath;
+            var sample = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+                AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
+            var captured = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel).Value!;
+            var unknown = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel
+                .Replace("RequiredSyntacticFeatureStruct", "UnknownFutureCode", StringComparison.Ordinal)).Value!;
+            var interrupted = new WordTraceResponse("dogs", false, false,
+                "The parser stopped at its step cap after 1,000,000 steps, so this trace is not the whole search.",
+                1_000_000, null, 1, TraceReadingBuilder.Build("dogs",
+                    new TraceStep("WordAnalysis", null, "dogs", null, null,
+                    [new TraceStep("MorphologicalRuleAnalysis", "Plural", "dogs", "dog", null, [])
+                    { OutcomeStatus = "attempted" }]), [], []));
+            try
+            {
+                foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                {
+                    Application.Current!.RequestedThemeVariant = variant;
+                    foreach (var width in new[] { 1040, 1240 })
+                    {
+                        window.Width = width;
+                        window.Height = 780;
+                        await Show(sample, timing: true);
+                        Save("earlier-timing");
+                        window.Height = 1500;
+                        Save("earlier-timing-tall");
+                        window.Height = 780;
+                        var input = Named<TextBox>("Word to try");
+                        window.MouseMove(input.TranslatePoint(new Point(20, 10), window)!.Value);
+                        Save("tools-hover");
+                        var tools = Named<Button>("Try a Word tools");
+                        tools.Focus(NavigationMethod.Tab);
+                        Save("tools-focus");
+                        tools.Flyout!.ShowAt(tools);
+                        Save("tools-menu");
+                        tools.Flyout.Hide();
+                        Named<Button>("Open in Analyze texts").Focus(NavigationMethod.Tab);
+                        Save("result-actions-focus");
+
+                        window.Height = 1500;
+                        await Show(sample, timing: true);
+                        SelectPlain("0.2.0.3.1");
+                        var selectedCard = window.GetVisualDescendants().OfType<TextBlock>()
+                            .Single(block => block.IsEffectivelyVisible && block.Text == "Selected recorded step");
+                        var card = selectedCard.FindAncestorOfType<Border>()!;
+                        card.BringIntoView();
+                        PageScreenshots.Settle(window);
+                        var cardOrigin = card.TranslatePoint(default, window)!.Value;
+                        Assert.True(cardOrigin.Y + card.Bounds.Height <= window.ClientSize.Height + 1,
+                            "The selected rejection card must fit inside the captured viewport.");
+                        Save("selected-rejection");
+                        await Show(unknown);
+                        SelectPlain("0.0");
+                        Save("unknown-reason");
+                        await Show(captured);
+                        SelectPlain("0.0");
+                        Save("captured-labels-live");
+                        trace.Reset();
+                        trace.SetProjectPath(null);
+                        trace.Result = TraceWordViewModel.FromDiagnosticJson(captured.DiagnosticJson).Result;
+                        SelectPlain("0.0");
+                        Save("captured-labels-reopened");
+                        trace.SetProjectPath(project);
+                        await Show(interrupted);
+                        Save("interrupted-progress");
+                        trace.Result = interrupted with { StopReason = null };
+                        Save("incomplete-reason-unavailable");
+                        await Show(sample, timing: true);
+                        window.Height = 2400;
+                        Named<Expander>("Full derivation tree").IsExpanded = true;
+                        trace.RuleFilter = "lu";
+                        PageScreenshots.Settle(window);
+                        Named<Expander>("Full derivation tree").BringIntoView();
+                        Save("expanded-filters");
+
+                        await Show(sample, timing: true);
+                        window.Height = 3000;
+                        trace.ShowDroppedPaths = true;
+                        var groupIndex = trace.Reading!.StopGroups.ToList().FindIndex(group =>
+                            group.Attempts.Any(attempt => attempt.AttemptId == "0.2.0.3.2"));
+                        trace.SelectStopGroupCommand.Execute(trace.StopGroups[groupIndex]);
+                        PageScreenshots.Settle(window);
+                        foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
+                                     .Where(expander => expander.IsEffectivelyVisible && expander.Header?.ToString() == "Steps on this path"))
+                            expander.IsExpanded = true;
+                        Assert.Single(trace.ClosestAttempts).IsTreeContextExpanded = true;
+                        PageScreenshots.Settle(window);
+                        Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                            block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.0");
+                        var finalContextRow = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                            .Single(block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.2.0.3.1")
+                            .FindAncestorOfType<StackPanel>()!;
+                        var contextOrigin = finalContextRow.TranslatePoint(default, window)!.Value;
+                        Assert.True(contextOrigin.Y + finalContextRow.Bounds.Height <= window.ClientSize.Height + 1,
+                            "The final recorded context row must fit inside the expanded-path capture.");
+                        Save("steps-expanded");
+
+                        window.Height = 1500;
+                        await Show(sample with
+                        {
+                            HostCapture = (sample.HostCapture ?? new TraceHostCapture(null, null, null, null, null, null, [])) with
+                            {
+                                Baseline = new TraceBaselineSource(workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
+                                    DateTimeOffset.Parse("2026-09-22T09:18:00Z"), DateTimeOffset.Parse("2026-09-22T10:00:00Z"),
+                                    "Returned trace Baseline"),
+                            },
+                        });
+                        Save("grammar-source");
+                        await Show(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.AnalysisRecords()).Value!);
+                        window.GetVisualDescendants().OfType<Expander>()
+                            .Single(expander => expander.Header?.ToString() == "Recorded source analyses").IsExpanded = true;
+                        Save("source-analyses");
+
+                        window.Height = 1500;
+                        foreach (var (scene, context) in new[]
+                        {
+                            ("fieldworks-mixed-opinions", new WordContextResponse("matinlu", true)
+                            {
+                                IsInFieldWorks = true, Baseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
+                                SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T09:18:00Z"), IsStale = true,
+                                Analyses = new string?[] { "approved", "disapproved", "candidate", null }.Select(opinion =>
+                                    new ParserReading([new("matin", "stem", "n", null, false, null),
+                                        new("lu", "suffix", string.Empty, null, false, null)])
+                                    { StoredAnalysisOpinion = opinion }).ToArray(),
+                            }),
+                            ("fieldworks-empty", new WordContextResponse("matinlu", true) { IsInFieldWorks = true }),
+                            ("fieldworks-absent", new WordContextResponse("matinlu", true) { IsInFieldWorks = false }),
+                            ("fieldworks-membership-unknown", new WordContextResponse("matinlu", true)),
+                        })
+                        {
+                            client!.WordContextHandler = (_, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(context));
+                            await Show(sample);
+                            Save(scene);
+                        }
+                        client!.WordContextHandler = null;
+                    }
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+
+            async Task Show(WordTraceResponse response, bool timing = false)
+            {
+                trace.RuleFilter = string.Empty;
+                trace.SearchText = string.Empty;
+                trace.SetProjectPath(project);
+                client!.TraceWordCompletesWith(response);
+                if (timing) OverviewTimingScreenshots.ReadOverviewAndTiming(client, workspace.Context.Evidence.Assessment!.Assessment);
+                else client.TimingCompletesWith(new TimingResponse("assessment/one", "selected", "rule", 0, 0, 0, [], [], []));
+                workspace.Context.TryWord(response.Word);
+                await trace.TryCommand.ExecutionTask!;
+                PageScreenshots.Settle(window);
+                var full = Named<Expander>("Full derivation tree");
+                full.IsExpanded = false;
+                var panel = window.GetVisualDescendants().OfType<TryWordPanel>().Single();
+                panel.GetVisualDescendants().OfType<ScrollViewer>().First().Offset = default;
+                window.FocusManager?.Focus(null, NavigationMethod.Unspecified, KeyModifiers.None);
+                window.MouseMove(default);
+                PageScreenshots.Settle(window);
+            }
+
+            void SelectPlain(string address)
+            {
+                PageScreenshots.Settle(window);
+                var tree = Named<TreeView>("Recorded trace tree");
+                var node = Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0));
+                foreach (var index in address.Split('.').Skip(1).Select(int.Parse))
+                {
+                    node.IsExpanded = true;
+                    PageScreenshots.Settle(window);
+                    node = Assert.IsType<TreeViewItem>(node.ContainerFromIndex(index));
+                }
+                node.IsSelected = true;
+                node.BringIntoView();
+                PageScreenshots.Settle(window);
+                Assert.Equal(address, trace.SelectedStep!.RecordedStep.StepId);
+            }
+
+            T Named<T>(string name) where T : Control => window.GetVisualDescendants().OfType<T>()
+                .Single(control => AutomationProperties.GetName(control) == name);
+
+            void Save(string scene) => PageScreenshots.Save(window,
+                Path.Combine(folder, $"state-try-a-word-{scene}-{(int)window.Width}-{(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark ? "dark" : "light")}.png"));
+        }, TimeSpan.FromMinutes(3));
     }
 }

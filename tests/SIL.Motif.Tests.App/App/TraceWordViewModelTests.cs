@@ -35,7 +35,11 @@ public sealed class TraceWordViewModelTests
             Assert.Equal("Vowel harmony", trace.Candidates[0].RecordedTreeContext[0].Source);
             Assert.Equal("Producer name", Assert.Single(trace.Reading!.Refs).Label);
             trace.RuleFilter = "Vowel harmony";
-            Assert.NotEmpty(trace.FilteredRoots);
+            var filtered = Assert.Single(trace.FilteredRoots).Children[0];
+            Assert.Equal("Vowel harmony", filtered.Source);
+            Assert.Equal("Producer name", filtered.RecordedStep.Source);
+            Assert.Same(trace.Reading.Root.Children[0], filtered.RecordedStep);
+            Assert.Same(trace.Reading.Root.Children[0], Assert.Single(trace.RecordedRoots).Children[0].RecordedStep);
         }
     }
 
@@ -68,6 +72,58 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
+    public void AnIncompleteSearchStaysStoppedEvenWhenItFoundAnAnalysis()
+    {
+        var trace = new TraceWordViewModel
+        {
+            Result = new WordTraceResponse("word", true, false, "limit", 1, null, 2, TraceReadingBuilder.Build("word", Leaf("WordAnalysis"), [], [])),
+        };
+
+        Assert.Equal("Search incomplete", trace.AnswerText);
+        Assert.Equal(Mark.Stopped, trace.AnswerMark);
+        Assert.Contains("this traced search", trace.PageSummaryText);
+    }
+
+    [Theory]
+    [InlineData("attempted", "Tried")]
+    [InlineData("successful", "Applied")]
+    [InlineData("failed", "Refused")]
+    [InlineData("blocked", "Blocked")]
+    [InlineData(null, "Outcome not recorded")]
+    public void RecordedContextKeepsTheEventOutcomeAndNotation(string? status, string label)
+    {
+        var record = new TraceStep("MorphologicalRuleSynthesis", "Plural", null, "dogs", null, [])
+        {
+            StepId = "0.2", SourceIdentityId = "rule-2", OutcomeStatus = status, OutcomeEventType = "rule_event",
+        };
+        var step = new TraceStepViewModel(record, null);
+        var filtered = step.WithChildren([], true);
+
+        Assert.Equal(label, step.RecordedOutcomeText);
+        Assert.Contains("MorphologicalRuleSynthesis", step.Notation);
+        Assert.Contains("rule_event", step.Notation);
+        if (status is not null) Assert.Contains(status, step.Notation);
+        Assert.Same(record, filtered.RecordedStep);
+        Assert.Equal("0.2", filtered.RecordedStep.StepId);
+        Assert.Equal(record.RefId, filtered.RecordedStep.RefId);
+        Assert.Null(filtered.Input);
+        Assert.Equal("Reason not recorded", filtered.RecordedReasonText);
+        Assert.Equal("Rejection details not recorded", filtered.RecordedRejectionText);
+    }
+
+    [Fact]
+    public void AnUnknownReasonStaysRawAndOnlyCapturedOperandsAppear()
+    {
+        var step = new TraceStepViewModel(new TraceStep("Failed", null, null, null, "UnknownFutureCode", [])
+        {
+            FailureRequired = "[debug feature]", FailureEnvironment = "[raw environment]",
+        }, null);
+
+        Assert.Equal("UnknownFutureCode", step.RecordedReasonText);
+        Assert.Equal("Required: [debug feature]\nEnvironment: [raw environment]", step.RecordedRejectionText);
+    }
+
+    [Fact]
     public void ABlockedStepKeepsItsRecordedEventLabel()
     {
         var step = new TraceStepViewModel(new TraceStep("Blocked", "rule", null, null, null, [])
@@ -82,6 +138,55 @@ public sealed class TraceWordViewModelTests
     }
 
     private const string ProjectPath = @"C:\projects\one.fwdata";
+
+    [Theory]
+    [InlineData("available")]
+    [InlineData("recorded")]
+    public void RecordedRejectionEvidenceWithoutOperandsKeepsItsAvailability(string status)
+    {
+        var record = new TraceStep("Failed", null, null, null, null, [])
+        {
+            FailureEvidence = new TraceFailureEvidence(null, null, null, status, null, null, null, null, null),
+        };
+        var step = new TraceStepViewModel(record, null);
+        Assert.Equal(TraceEvidenceAvailability.Recorded, record.RejectionDetailsAvailability);
+        Assert.Contains("Rejection details recorded", step.RecordedRejectionText);
+        Assert.Contains(status, step.RecordedRejectionText);
+        Assert.DoesNotContain("Rejection details not recorded", step.RecordedRejectionText);
+    }
+
+    [Theory]
+    [InlineData(false, "Producer name")]
+    [InlineData(true, "Producer name")]
+    [InlineData(false, "Vowel harmony")]
+    [InlineData(true, "Vowel harmony")]
+    public async Task RecordedAndCapturedNamesBothMatchFilters(bool reopened, string name)
+    {
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!);
+        var trace = new TraceWordViewModel(fake) { WordToTry = "word" };
+        trace.SetProjectPath(ProjectPath);
+        await trace.TryCommand.ExecuteAsync(null);
+        if (reopened) trace = TraceWordViewModel.FromDiagnosticJson(trace.DiagnosticJson);
+        var original = trace.Reading!.Root.Children[0];
+        trace.RuleFilter = name;
+        Assert.Same(original, Assert.Single(Assert.Single(trace.FilteredRoots).Children).RecordedStep);
+        trace.RuleFilter = string.Empty;
+        trace.SearchText = name;
+        Assert.Same(original, Assert.Single(Assert.Single(trace.FilteredRoots).Children).RecordedStep);
+    }
+
+    [Fact]
+    public void ATraceWithoutRecordedMeasurementsHasNoSummaryFragment()
+    {
+        var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+        var trace = new TraceWordViewModel
+        {
+            Result = response with { Complete = true, ElapsedMs = 0, ParserSteps = null, ParserElapsedMs = null, HostCapture = null },
+        };
+        Assert.NotEmpty(trace.Candidates);
+        Assert.Empty(trace.PageSummaryText);
+    }
 
     private static TraceStep Leaf(string type, string? source = null, string? failure = null) =>
         new(type, source, "in", "out", failure, []);
@@ -539,8 +644,10 @@ public sealed class TraceWordViewModelTests
     [Theory]
     [InlineData("The parser stopped at its step cap after 1,000,000 steps, so this trace is not the whole search.")]
     [InlineData("The parser stopped at its own time limit, so this trace is not the whole search.")]
+    [InlineData("The search was cancelled.")]
     [InlineData(null)]
-    public void AWordStoppedAtALimitReadsAsStoppedAndTakingTooLong(string? stopReason)
+    [InlineData("")]
+    public void AnIncompleteSearchShowsOnlyItsRecordedReason(string? stopReason)
     {
         var response = new WordTraceResponse(
             "kitabu", Parsed: false, Complete: false, StopReason: stopReason, StepCount: 5,
@@ -551,9 +658,9 @@ public sealed class TraceWordViewModelTests
         };
         var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = response };
 
-        Assert.StartsWith("Stopped: taking too long.", trace.SearchStatusText, StringComparison.Ordinal);
-        Assert.DoesNotContain("incomplete", trace.SearchStatusText, StringComparison.OrdinalIgnoreCase);
-        if (stopReason is not null) Assert.EndsWith(stopReason, trace.SearchStatusText, StringComparison.Ordinal);
+        Assert.Equal($"Search incomplete: {(string.IsNullOrWhiteSpace(stopReason) ? "Reason not recorded" : stopReason)}",
+            trace.SearchStatusText);
+        Assert.DoesNotContain("taking too long", trace.SearchStatusText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -583,7 +690,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("book", trace.Analyses[0].Morphs[0].Gloss);
         Assert.Equal("N", trace.Analyses[0].Morphs[0].Category);
         Assert.Equal(1, trace.FailedAttemptCount);
-        Assert.Equal("Stopped: taking too long. The search reached its limit.", trace.SearchStatusText);
+        Assert.Equal("Search incomplete: The search reached its limit.", trace.SearchStatusText);
         Assert.Equal("4", trace.Effort[0].Uses);
         Assert.Equal("2", trace.Effort[0].Work);
         Assert.Equal("stopped", trace.Candidates[1].StatusText);

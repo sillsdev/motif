@@ -6,172 +6,171 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TryWordPanel"
              x:DataType="vm:TryWordPageModel">
-  <ScrollViewer VerticalScrollBarVisibility="Auto" views:InspectLink.Trace="{Binding Trace.InspectorTrace}">
-    <!-- The right gap keeps the scroll bar off the result line's links. -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" views:InspectLink.Trace="{Binding Trace.InspectorTrace}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
-      <DockPanel LastChildFill="True">
-        <!-- Tools for a trace wait behind one menu beside Try it, so the page itself holds only the answer. -->
-        <Button DockPanel.Dock="Right" Content="&#x22ef;" Margin="{DynamicResource Intent.Gap.AfterRelated}"
-                AutomationProperties.Name="Try a Word tools">
-          <Button.Flyout>
-            <Flyout Placement="BottomEdgeAlignedRight">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
-                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Open a saved trace..." Click="OnOpenDiagnosticClick"
-                        AutomationProperties.Name="Open a saved trace" />
-                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy for a chat model" Click="OnCopyInstructionsClick"
-                        AutomationProperties.Name="Copy AI diagnostic instructions" />
-                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Save the trace..." Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
-                        AutomationProperties.Name="Save full diagnostic JSON" />
-                <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}"
-                        AutomationProperties.Name="Copy full diagnostic JSON" />
-                <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap"
-                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}"
-                                         AutomationProperties.Name="Diagnostic capture details" />
-                <views:CopyableTextBlock Text="{Binding Trace.WritingSystemSummary}" Classes="muted" TextWrapping="Wrap"
-                                         FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasResult}"
-                                         AutomationProperties.Name="Writing system direction and font" />
-              </StackPanel>
-            </Flyout>
-          </Button.Flyout>
-        </Button>
-        <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}"
-                Classes="Primary" Theme="{DynamicResource SolidButton}"
-                AutomationProperties.Name="Try the word"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}"
-                Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-        <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..."
-                 MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
-                 AutomationProperties.Name="Word to try"
-                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
-      </DockPanel>
-
+      <!-- The whole row is the reveal region: an opacity-hidden button cannot take the pointer itself. -->
+      <Border Classes="hoverReveal" Background="{DynamicResource Intent.Clear}">
+        <DockPanel LastChildFill="True">
+          <Button DockPanel.Dock="Right" Content="&#x22ef;" Classes="revealControl revealOnHover" Margin="{DynamicResource Intent.Gap.AfterRelated}"
+                  AutomationProperties.Name="Try a Word tools">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
+                  <TextBlock Text="Recent words" FontWeight="SemiBold" />
+                  <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <Button Content="{Binding}" Command="{Binding $parent[StackPanel].((vm:TryWordPageModel)DataContext).OpenRecentWordCommand}"
+                                CommandParameter="{Binding}" Theme="{DynamicResource BorderlessButton}" Classes="recentWord"
+                                AutomationProperties.Name="{Binding StringFormat='Try {0} again'}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Open a saved trace..." Click="OnOpenDiagnosticClick" AutomationProperties.Name="Open a saved trace" />
+                  <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy for a chat model" Click="OnCopyInstructionsClick" AutomationProperties.Name="Copy AI diagnostic instructions" />
+                  <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Save the trace..." Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}" AutomationProperties.Name="Save full diagnostic JSON" />
+                  <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="Copy the trace" Click="OnCopyJsonClick" IsEnabled="{Binding Trace.HasDiagnosticJson}" AutomationProperties.Name="Copy full diagnostic JSON" />
+                  <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}" AutomationProperties.Name="Diagnostic capture details" />
+                  <views:CopyableTextBlock Text="{Binding Trace.WritingSystemSummary}" Classes="muted" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="Writing system direction and font" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}" Classes="Primary"
+                  Theme="{DynamicResource SolidButton}" AutomationProperties.Name="Try the word"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..." MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
+                   AutomationProperties.Name="Word to try" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
+        </DockPanel>
+      </Border>
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Trace.HasResult}"
-                               Text="Type a word to see how the grammar parses it, where it stops, and the rules on its way. Choosing a word on the Texts page brings it here." />
-
+                               Text="Try any word to read the parser's recorded search." />
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}" IsVisible="{Binding Trace.IsLoading}">
-        <views:CopyableTextBlock Classes="muted" Text="Tracing... this can take a while. You can cancel at any time." VerticalAlignment="Center" />
-        <Button Content="Cancel" Command="{Binding Trace.CancelCommand}"
-                AutomationProperties.Name="Cancel the trace" />
+        <views:CopyableTextBlock Classes="muted" Text="Tracing..." VerticalAlignment="Center" />
+        <Button Content="Cancel" Command="{Binding Trace.CancelCommand}" AutomationProperties.Name="Cancel the trace" />
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding Trace.ShownRefusal}" />
-
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
-            IsVisible="{Binding Trace.HasResult}">
-        <views:CopyableTextBlock Text="{Binding Trace.WordToTry}"
-                                 FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold"
-                                 AutomationProperties.Name="Try a Word result"
-                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
-        <views:MarkChip Grid.Column="1" Mark="{Binding Trace.AnswerMark}"
-                           Text="{Binding Trace.AnswerText}" />
-        <views:CopyableTextBlock Grid.Column="2" Text="{Binding Trace.PageSummaryText}"
-                                 Classes="muted" TextWrapping="Wrap"
-                                 AutomationProperties.Name="Try a Word summary" />
-        <HyperlinkButton Grid.Column="3" Content="Open in Texts" Command="{Binding OpenInTextsCommand}"
-                         Theme="{DynamicResource BorderlessButton}" Padding="{DynamicResource Intent.Inset.None}"
-                         FontSize="{DynamicResource Intent.Type.Caption}"
-                         AutomationProperties.Name="Open in Texts" />
-      </Grid>
-      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding Trace.HasResult}">
-        <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap"
-                                 IsVisible="{Binding Trace.HasStopReason}" AutomationProperties.Name="Search completeness" />
-      </StackPanel>
-
-      <Border Classes="card" IsVisible="{Binding Trace.HasComparison}"
-              AutomationProperties.Name="Expected beside the furthest try">
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
-                                     FontWeight="SemiBold" Text="WHAT THE PROJECT EXPECTS" />
-            <views:MorphemeRow Morphs="{Binding Trace.ExpectedMorphs}" Separators="True" />
-          </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
-                                     FontWeight="SemiBold" Text="THE PARSER'S FURTHEST TRY" />
-            <views:MorphemeRow Morphs="{Binding Trace.FurthestAttempt.Morphs, FallbackValue={x:Null}}" Separators="True" />
-            <views:CopyableTextBlock Classes="stopText" FontWeight="SemiBold" TextWrapping="Wrap"
-                                     Text="{Binding Trace.FurthestAttempt.StopHeadline, FallbackValue=''}" />
-          </StackPanel>
-        </Grid>
-      </Border>
-
-      <views:TraceAnalysesView DataContext="{Binding Trace}" />
-
-      <Border Classes="card bestPath" IsVisible="{Binding HasRulesOnBestPath}"
-              AutomationProperties.Name="Rules on this word's best path">
+      <Border Classes="hoverReveal" Background="{DynamicResource Intent.Clear}" IsVisible="{Binding Trace.HasResult}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="Rules on this word's best path"
-                     FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-          <TextBlock Classes="muted" Text="{Binding TakingApartText}" TextWrapping="Wrap"
-                     FontSize="{DynamicResource Intent.Type.Small}" IsVisible="{Binding HasTakingApart}" />
-          <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*"
-                ColumnSpacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="2" Classes="muted" Text="Outcome" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="3" Classes="muted" Text="Explanation" FontWeight="SemiBold" />
-          </Grid>
-          <ItemsControl ItemsSource="{Binding RulesOnBestPath}" AutomationProperties.Name="Best path rules">
+          <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+              <Button Content="Analyze texts" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Open in Analyze texts" />
+              <Button Content="Timing" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Timing for this word" />
+              <Button Content="AI Handoff" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="AI Handoff for this word" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+              <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
+              <views:MarkChip Mark="{Binding Trace.AnswerMark}" Text="{Binding Trace.AnswerText}" />
+            </StackPanel>
+          </DockPanel>
+          <views:CopyableTextBlock Text="{Binding Trace.PageSummaryText}" Classes="muted" TextWrapping="Wrap" AutomationProperties.Name="Try a Word summary" />
+          <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap" IsVisible="{Binding !Trace.Result.Complete}" AutomationProperties.Name="Search completeness" />
+          <views:CopyableTextBlock Text="{Binding Trace.GrammarSourceText}" Classes="muted" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="FieldWorks beside the parser">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <TextBlock Text="FieldWorks beside the parser" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding FieldWorksContextStatus}" Classes="muted" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding FieldWorksContextSource}" Classes="muted" TextWrapping="Wrap"
+                                   IsVisible="{Binding FieldWorksContextSource, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+          <views:CopyableTextBlock Text="FieldWorks has been saved since this Baseline" Classes="status"
+                                   IsVisible="{Binding FieldWorksContextIsStale}" TextWrapping="Wrap" />
+          <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:TryWordRuleRowViewModel">
-                <Border BorderBrush="{DynamicResource Intent.Border}"
-                        BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}">
-                  <Button Command="{Binding OpenTimingCommand}" HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Stretch" Theme="{DynamicResource BorderlessButton}"
-                          Classes="ruleRow" ToolTip.Tip="Open stored Timing for this rule and word">
-                    <Grid ColumnDefinitions="1.3*,1.4*,1.3*,2*"
-                          ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                      <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
-                                         HorizontalAlignment="Left" VerticalAlignment="Top">
-                        <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      </views:InspectLink>
-                      <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                                 IsVisible="{Binding CannotInspect}" />
-                      <TextBlock Grid.Column="1" Text="{Binding Kind}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="2" Text="{Binding Outcome}" TextWrapping="Wrap" />
-                      <TextBlock Grid.Column="3" Text="{Binding Explanation}" TextWrapping="Wrap" />
-                    </Grid>
-                  </Button>
-                </Border>
+              <DataTemplate x:DataType="vm:ParserReadingViewModel">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <views:CopyableTextBlock Text="{Binding StoredAnalysisOpinion}" FontWeight="SemiBold"
+                                           IsVisible="{Binding StoredAnalysisOpinion, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  <views:CopyableTextBlock Text="Opinion not recorded" Classes="muted"
+                                           IsVisible="{Binding StoredAnalysisOpinion, Converter={x:Static conv:StringConverters.IsNullOrEmpty}}" />
+                  <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <HyperlinkButton Content="Word Analyses in FieldWorks" NavigateUri="{Binding ResultWordContext.WordAnalysesLink}"
+                           IsVisible="{Binding ResultWordContext.WordAnalysesLink, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
-
-      <!-- An earlier parse's whole-search times stay apart from this try's path, under the parse that measured them. -->
-      <Border Classes="card bestPath" IsVisible="{Binding HasEarlierTiming}"
-              AutomationProperties.Name="Time from an earlier parse">
+      <views:TraceAnalysesView DataContext="{Binding Trace}" />
+      <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="Recorded trace context">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-          <TextBlock Text="{Binding EarlierTimingTitle}"
-                     FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <TextBlock Text="Recorded trace" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <TreeView ItemsSource="{Binding Trace.RecordedRoots}" SelectedItem="{Binding Trace.SelectedStep}" AutomationProperties.Name="Recorded trace tree">
+            <TreeView.Styles>
+              <Style Selector="TreeViewItem" x:DataType="vm:TraceStepViewModel">
+                <Setter Property="IsExpanded" Value="{Binding ExpandForFilter}" />
+              </Style>
+            </TreeView.Styles>
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate x:DataType="vm:TraceStepViewModel" ItemsSource="{Binding Children}">
+                <Grid ColumnDefinitions="2*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <TextBlock Text="{Binding RecordedLabel}" FontWeight="SemiBold" />
+                    <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
+                                       HorizontalAlignment="Left">
+                      <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
+                    </views:InspectLink>
+                    <TextBlock Text="{Binding SourceLabel}" IsVisible="{Binding HasUnlinkedSource}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
+                    <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                             IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                </Grid>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+          <Border Classes="card" IsVisible="{Binding Trace.SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+            <StackPanel DataContext="{Binding Trace.SelectedStep}" Spacing="{DynamicResource Intent.Space.Snug}">
+              <TextBlock Text="Selected recorded step" FontWeight="SemiBold" />
+              <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                       IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+              <views:CopyableTextBlock Text="{Binding CapturedSourceText}" TextWrapping="Wrap"
+                                       IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+              <views:CopyableTextBlock Text="{Binding Input, StringFormat='Input: {0}'}" IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding Output, StringFormat='Output: {0}'}" IsVisible="{Binding Output, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding RecordedReasonText}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding RecordedExplanationText}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding RecordedRejectionText}" Classes="muted" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+      <Border Classes="card bestPath" IsVisible="{Binding HasEarlierTiming}" AutomationProperties.Name="Time from an earlier parse">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <TextBlock Text="{Binding EarlierTimingTitle}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" Text="{Binding EarlierTimingSource}" TextWrapping="Wrap" />
-          <Grid ColumnDefinitions="2*,1.6*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-            <TextBlock Classes="muted" Text="Rule" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="1" Classes="muted" Text="Kind" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="2" Classes="muted" Text="Time" FontWeight="SemiBold" TextAlignment="Right" />
-            <TextBlock Grid.Column="3" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="SemiBold"
-                       TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
+          <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+            <TextBlock Classes="muted" Text="Measured object" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Classes="muted" Text="Time" FontWeight="SemiBold" TextAlignment="Right" />
+            <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="SemiBold" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
           <ItemsControl ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="Earlier rule times">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordEarlierRuleTime">
-                <Border BorderBrush="{DynamicResource Intent.Border}"
-                        BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
-                        Padding="{DynamicResource Component.TryWord.SmallInset}">
-                  <Grid ColumnDefinitions="2*,1.6*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                    <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                               Classes.muted="{Binding IsOtherTime}" />
-                    <TextBlock Grid.Column="1" Text="{Binding KindLabel}" TextWrapping="Wrap" />
-                    <TextBlock Grid.Column="2" Text="{Binding TimeText}" TextAlignment="Right" />
-                    <TextBlock Grid.Column="3" Classes="share" Text="{Binding ShareText}" TextAlignment="Right" />
+                <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}" Padding="{DynamicResource Component.TryWord.SmallInset}">
+                  <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                    <TextBlock Text="{Binding Rule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Classes.muted="{Binding IsOtherTime}" ToolTip.Tip="{Binding KindTip}" />
+                    <TextBlock Grid.Column="1" Text="{Binding TimeText}" TextAlignment="Right" />
+                    <TextBlock Grid.Column="2" Classes="share" Text="{Binding ShareText}" TextAlignment="Right" />
                   </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <views:CopyableTextBlock Text="{Binding EarlierOverrunText}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding EarlierOverrunText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
-
       <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
     </StackPanel>
   </ScrollViewer>

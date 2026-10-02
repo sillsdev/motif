@@ -110,6 +110,90 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         Assert.Single(last.RecordedTreeContext[^1].Children);
     }
 
+    [Theory]
+    [InlineData(1040)]
+    [InlineData(1240)]
+    public void ExpandedPathOutcomesHaveSpaceBeforeTheirNames(int width)
+    {
+        var model = Scene("matinlu");
+        model.ShowDroppedPaths = true;
+        WithPanel(model, (window, _) =>
+        {
+            window.Width = width;
+            foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
+                         .Where(expander => expander.Header?.ToString() == "Steps on this path"))
+                expander.IsExpanded = true;
+            PageScreenshots.Settle(window);
+            var rows = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Where(block => block.IsEffectivelyVisible && block.DataContext is TraceStepViewModel step &&
+                    block.Text == step.Label && block.FindAncestorOfType<Expander>()?.Header?.ToString() == "Steps on this path")
+                .ToArray();
+            Assert.NotEmpty(rows);
+            foreach (var name in rows)
+            {
+                var step = (TraceStepViewModel)name.DataContext!;
+                var parent = name.FindAncestorOfType<Grid>()!;
+                var outcome = parent.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Single(block => block.Text == step.StatusText);
+                var right = outcome.TranslatePoint(new Point(outcome.Bounds.Width, 0), window)!.Value.X;
+                var left = name.TranslatePoint(default, window)!.Value.X;
+                Assert.True(left - right >= 4, $"{step.StatusText} runs into {step.Label}: gap {left - right:F1} px");
+            }
+        });
+    }
+
+    [Fact]
+    public void RepeatedTreeContextLabelsShowTheirOriginalEventAddresses()
+    {
+        var model = MatinluContext();
+        WithPanel(model, (window, _) =>
+        {
+            var candidate = Assert.Single(model.ClosestAttempts);
+            candidate.IsTreeContextExpanded = true;
+            PageScreenshots.Settle(window);
+            var context = window.GetVisualDescendants().OfType<Expander>()
+                .Single(expander => expander.Header?.ToString() == "Recorded tree context" && expander.IsEffectivelyVisible);
+            var texts = context.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
+            var repeated = candidate.RecordedTreeContext.GroupBy(step => step.Label)
+                .Where(group => group.Count() > 1).ToArray();
+            Assert.NotEmpty(repeated);
+            foreach (var step in repeated.SelectMany(group => group))
+                Assert.Contains($"Recorded event: {step.RecordedStep.StepId}", texts);
+            Assert.Contains("Membership in this derivation is not recorded.", texts);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompactRecordedPathsDistinguishProducerAndCapturedNames(bool ancestor)
+    {
+        var diagnostic = System.Text.Json.Nodes.JsonNode.Parse(TraceEnvelope.CapturedRuleLabel)!;
+        if (ancestor)
+        {
+            var children = diagnostic["trace"]!["children"]!.AsArray();
+            var terminal = children[1]!.DeepClone();
+            children.RemoveAt(1);
+            children[0]!["children"]!.AsArray().Add(terminal);
+        }
+        var model = Model(diagnostic.ToJsonString());
+        WithPanel(model, (window, _) =>
+        {
+            var candidate = Assert.Single(model.ClosestAttempts);
+            if (!ancestor) candidate.IsTreeContextExpanded = true;
+            var header = ancestor ? "Steps on this path" : "Recorded tree context";
+            var expander = window.GetVisualDescendants().OfType<Expander>()
+                .Single(control => control.Header?.ToString() == header);
+            expander.IsExpanded = true;
+            PageScreenshots.Settle(window);
+            var texts = expander.GetVisualDescendants().OfType<CopyableTextBlock>()
+                .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
+            Assert.Contains("Producer: Producer name", texts);
+            Assert.Contains("Captured FieldWorks: Vowel harmony", texts);
+        });
+    }
+
     [ScreenshotFact]
     public void CaptureTraceReaderReviewScenes()
     {

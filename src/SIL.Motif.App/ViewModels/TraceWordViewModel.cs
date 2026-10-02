@@ -37,6 +37,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IReadOnlyList<TraceCandidateViewModel> _closestAttempts = [];
     private WordTraceReading? _reading;
     private TraceDisplayLabels _labels = new([]);
+    private IReadOnlyDictionary<string, TraceRef> _refs = new Dictionary<string, TraceRef>();
     private IReadOnlyList<TraceAnalysisViewModel> _analyses = [];
     private IReadOnlyList<TraceStepViewModel> _filteredRoots = [];
     private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
@@ -90,13 +91,20 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public IReadOnlyList<TraceCandidateViewModel> Candidates => _candidates;
     public WordTraceReading? Reading => _reading;
 
+    partial void OnResultChanging(WordTraceResponse? value)
+    {
+        SelectedStep = null;
+        SelectedCandidate = null;
+    }
+
     partial void OnResultChanged(WordTraceResponse? value)
     {
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
         _reading = value?.Reading;
         _labels = new TraceDisplayLabels(_reading?.Refs ?? []);
-        _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions, _labels, _reading.Root)).ToArray() ?? [];
+        _refs = (_reading?.Refs ?? []).ToDictionary(reference => reference.Id, StringComparer.Ordinal);
+        _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions, _labels, _reading.Root, _refs)).ToArray() ?? [];
         _analyses = _reading is null ? [] : _reading.LogicalAnalyses.Count > 0
             ? _reading.LogicalAnalyses.Select((summary, index) => new TraceAnalysisViewModel(
                 _reading.Analyses[summary.SourcePositions[0]], allowLiveLinks, directions, index + 1, summary.RecordCount)).ToArray()
@@ -109,6 +117,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(InspectorTrace));
         OnPropertyChanged(nameof(HasEffort));
         OnPropertyChanged(nameof(HasResult));
+        OnPropertyChanged(nameof(RecordedRoots));
+        OnPropertyChanged(nameof(GrammarSourceText));
         OnPropertyChanged(nameof(HasDiagnosticJson));
         OnPropertyChanged(nameof(SummaryText));
         OnPropertyChanged(nameof(PageSummaryText));
@@ -154,7 +164,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             else if (result.ElapsedMs > 0) parts.Add($"{FormatMs(result.ElapsedMs)} overall");
             if (!result.Complete && result.Reading.Attempts.Count == 0) parts.Add("No terminal attempt recorded; tree progress retained");
             if (HasComparison) parts.Add("Expected analysis source not recorded for this trace");
-            return string.Join(" · ", parts);
+            return parts.Count == 0 ? string.Empty : string.Join(" · ", parts) + " in this traced search";
         }
     }
 
@@ -188,9 +198,19 @@ public sealed partial class TraceWordViewModel : ObservableObject
     };
 
     public TraceStepViewModel? Root =>
-        Result is { } result ? new TraceStepViewModel(result.Reading.Root, result.DeepestRule, WritingSystemsById(result), _labels) : null;
+        Result is { } result ? new TraceStepViewModel(result.Reading.Root, result.DeepestRule, WritingSystemsById(result), _labels, _refs) : null;
 
     public IReadOnlyList<TraceStepViewModel> Roots => Root is { } root ? [root] : [];
+
+    /// <summary>The original tree context, with its root expanded without implying attempt membership.</summary>
+    public IReadOnlyList<TraceStepViewModel> RecordedRoots => Root is { } root ? [root.WithChildren(root.Children, true)] : [];
+
+    /// <summary>The grammar source returned with this trace, independent of the current workspace.</summary>
+    public string GrammarSourceText => Result is not { } result ? string.Empty
+        : result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded ? "Grammar source not recorded"
+        : result.HostCapture?.Baseline is { } baseline
+            ? $"Grammar source: Baseline captured {baseline.Token.CapturedUtc} · source saved {baseline.SourceLastWriteUtc:u} · {baseline.CaptureDescription}"
+            : $"Grammar source: {result.GrammarSource}";
 
     /// <summary>
     /// Logical summaries in first-recorded order, each with the number of source records it represents.
@@ -247,14 +267,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>Whether the word parsed, as the one word a reader wants before anything else.</summary>
     public string AnswerText => Result is not { } result ? string.Empty
-        : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
+        : !result.Complete ? "Search incomplete" : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
 
     /// <summary>
     /// The mark that answer wears: a trace that built the word is a built step, one that reached a limit is Stopped,
     /// and one that finished without building it is No parse.
     /// </summary>
-    public Mark AnswerMark => Result is { Parsed: true } ? Mark.Of(TraceStepMark.Built)
-        : Result is { Complete: false } ? Mark.Stopped
+    public Mark AnswerMark => Result is { Complete: false } ? Mark.Stopped
+        : Result is { Parsed: true } ? Mark.Of(TraceStepMark.Built)
         : Mark.NoParse;
 
     /// <summary>Recorded stopped attempts grouped by explicit attribution and reason; empty when nothing failed.</summary>
@@ -519,7 +539,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             var status = result.InvalidShape
                 ? "Nothing to parse: the word has a character the grammar's character table does not define"
                 : incomplete
-                    ? $"Stopped: taking too long. {result.StopReason ?? "The parser stopped before it finished, so this trace is not the whole search."}"
+                    ? $"Search incomplete: {(string.IsNullOrWhiteSpace(result.StopReason) ? "Reason not recorded" : result.StopReason)}"
                     : "Search complete";
             return HiddenStepCount > 0 ? $"{status}  ·  {HiddenStepCount:N0} hidden by filters" : status;
         }
@@ -677,8 +697,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
         if (OutcomeFilter == TraceOutcomeFilter.Succeeded && !node.IsSuccessful) return false;
         if (OutcomeFilter == TraceOutcomeFilter.Failed && !node.IsFailure) return false;
         if (!string.IsNullOrWhiteSpace(RuleFilter) &&
-            (node.Source?.Contains(RuleFilter.Trim(), StringComparison.OrdinalIgnoreCase) != true)) return false;
-        var morphText = string.Join("\n", node.Type, node.Source, node.Input, node.Output, node.FailureReason,
+            node.Source?.Contains(RuleFilter.Trim(), StringComparison.OrdinalIgnoreCase) != true &&
+            node.RecordedStep.Source?.Contains(RuleFilter.Trim(), StringComparison.OrdinalIgnoreCase) != true) return false;
+        var morphText = string.Join("\n", node.Type, node.Source, node.RecordedStep.Source, node.Input, node.Output, node.FailureReason,
             node.ContextualFailure, node.FailureRequired, node.FailureActual, node.FailureEnvironment,
             node.SourceIdentityId, node.MorphSearchText);
         if (!string.IsNullOrWhiteSpace(MorphFilter) &&
@@ -987,7 +1008,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
 {
     public TraceCandidateViewModel(TraceCandidate candidate, bool allowLiveLinks = false,
         IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null,
-        TraceStep? root = null)
+        TraceStep? root = null, IReadOnlyDictionary<string, TraceRef>? refs = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         Morphs = candidate.Morphs
@@ -1009,8 +1030,8 @@ public sealed class TraceCandidateViewModel : ObservableObject
             : "Source identity not recorded";
         HasTreeContext = candidate.TreeContext.Count > 0;
         _loadContext = () => root is null ? [] : TraceTreeContextRange.Resolve(root, candidate.TreeContext)
-            .Select(step => new TraceStepViewModel(step, null, directions, labels)).ToArray();
-        Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions, labels)).ToArray();
+            .Select(step => new TraceStepViewModel(step, null, directions, labels, refs)).ToArray();
+        Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions, labels, refs)).ToArray();
         Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : Steps.LastOrDefault()?.Source ?? "Recorded attempt";
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
         Surface = candidate.Surface;
@@ -1164,11 +1185,65 @@ public sealed class TraceEffortViewModel
 /// <summary>One node of the derivation tree, wrapped for a TreeView with its own children.</summary>
 public sealed class TraceStepViewModel
 {
+    public TraceStep RecordedStep { get; private init; } = null!;
+    public TraceRef? Reference { get; private init; }
+    public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? $"Producer: {source}" : null;
+    public string? CapturedSourceText => Reference?.CapturedFieldWorksLabel is { Length: > 0 } captured &&
+        !string.Equals(captured, RecordedStep.Source, StringComparison.Ordinal) ? $"Captured FieldWorks: {captured}" : null;
+    public string? SourceLabel => CapturedSourceText ?? Source;
+
+    /// <summary>The inspector subject from this event's recorded typed key; absent without that key.</summary>
+    public InspectorSubject? InspectSubject => Reference is { TimingKey: { } key } reference
+        ? InspectorSubject.Rule(key, Source, reference.IdentityQuality) : null;
+
+    /// <summary>This event's recorded details, shown apart from the inspector's current Baseline facts.</summary>
+    public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded(("Kind", Type),
+        ("Producer", RecordedStep.Source), ("Captured FieldWorks", Reference?.CapturedFieldWorksLabel),
+        ("Outcome", OutcomeStatus), ("Event", OutcomeEventType), ("Reason", FailureReason));
+    public bool CanInspect => InspectSubject is not null;
+    public bool HasUnlinkedSource => !CanInspect && SourceLabel is { Length: > 0 };
+
+    public string RecordedOutcomeText => OutcomeStatus?.ToLowerInvariant() switch
+    {
+        "attempted" => "Tried",
+        "success" or "succeeded" or "successful" => "Applied",
+        "failed" or "failure" or "error" => "Refused",
+        "blocked" => "Blocked",
+        null or "" => "Outcome not recorded",
+        _ => OutcomeStatus,
+    };
+    public string RecordedLabel => Type == "Blocked" ? "Blocked" : KindText;
+    public string Notation => string.Join(" · ", new[] { Type, OutcomeStatus, OutcomeEventType }
+        .Where(value => !string.IsNullOrWhiteSpace(value)));
+    public string RecordedEventAddress => RecordedStep.StepId is { Length: > 0 } address
+        ? $"Recorded event: {address}" : "Event address not recorded";
+    public string RecordedReasonText => RecordedStep.ReasonAvailability == TraceEvidenceAvailability.Recorded
+        ? RecordedStep.FailureReason! : "Reason not recorded";
+    public string RecordedExplanationText => RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+        ? RecordedStep.ReasonExplanation! : "Explanation not recorded";
+    public string RecordedRejectionText => RecordedStep.RejectionDetailsAvailability == TraceEvidenceAvailability.NotRecorded
+        ? "Rejection details not recorded" : string.Join("\n", new[]
+    {
+        FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,
+        FailureActual is { Length: > 0 } ? $"Actual: {FailureActual}" : null,
+        FailureEnvironment is { Length: > 0 } ? $"Environment: {FailureEnvironment}" : null,
+        RecordedStep.FailureEvidence is not null ? "Rejection details recorded" : null,
+        RecordedStep.FailureEvidence?.Status is { Length: > 0 } status ? $"Evidence status: {status}" : null,
+        RecordedStep.FailureEvidence?.Kind is { Length: > 0 } kind ? $"Evidence kind: {kind}" : null,
+        RecordedStep.FailureEvidence?.Source is { Length: > 0 } source ? $"Evidence source: {source}" : null,
+        RecordedStep.FailureEvidence?.ReasonCode is { Length: > 0 } code ? $"Evidence reason code: {code}" : null,
+        RecordedStep.FailureEvidence?.UnavailableReason is { Length: > 0 } unavailable ? $"Evidence unavailable reason: {unavailable}" : null,
+        RecordedStep.FailureEvidence?.Reason is { Length: > 0 } reason ? $"Evidence reason: {reason}" : null,
+        RecordedStep.FailureEvidence?.Required is { Length: > 0 } required ? $"Evidence required: {required}" : null,
+        RecordedStep.FailureEvidence?.Actual is { Length: > 0 } actual ? $"Evidence actual: {actual}" : null,
+        RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? $"Evidence environment: {environment}" : null,
+    }.Where(value => value is not null)) is { Length: > 0 } text ? text : "Rejection details recorded";
     public TraceStepViewModel(TraceStep step, string? deepestRule,
-        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null)
+        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null, IReadOnlyDictionary<string, TraceRef>? refs = null)
     {
         ArgumentNullException.ThrowIfNull(step);
         RecordedStep = step;
+        Reference = step.RefId is { } refId && refs is not null && refs.TryGetValue(refId, out var reference) ? reference : null;
         Type = step.Type;
         Source = labels?.Resolve(step.RefId, step.Source) ?? step.Source;
         Input = step.Input;
@@ -1186,12 +1261,10 @@ public sealed class TraceStepViewModel
         SourceIdentityQuality = step.SourceIdentityQuality;
         AttemptedMorphs = step.AttemptedMorphs.Select(morph => new TraceMorphViewModel(morph, false, directions)).ToArray();
         IsDeepest = deepestRule is not null && string.Equals(step.Source, deepestRule, StringComparison.Ordinal);
-        Children = step.Children.Select(child => new TraceStepViewModel(child, deepestRule, directions, labels)).ToArray();
+        Children = step.Children.Select(child => new TraceStepViewModel(child, deepestRule, directions, labels, refs)).ToArray();
         _directions = directions;
         Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }
-
-    public TraceStep? RecordedStep { get; private init; }
 
     private readonly IReadOnlyDictionary<string, TraceWritingSystem>? _directions;
 
@@ -1256,7 +1329,7 @@ public sealed class TraceStepViewModel
     public TraceStepViewModel WithChildren(IReadOnlyList<TraceStepViewModel> children, bool expandForFilter = false) =>
         new(Type, Source, Input, Output, FailureReason, Subrule, OutcomeStatus, OutcomeEventType,
             ContextualFailure, FailureRequired, FailureActual, FailureEnvironment, SourceIdentityKind, SourceIdentityId, SourceIdentityQuality,
-            AttemptedMorphs, _directions, children, IsDeepest, expandForFilter) { RecordedStep = RecordedStep };
+            AttemptedMorphs, _directions, children, IsDeepest, expandForFilter) { RecordedStep = RecordedStep, Reference = Reference };
 
     private TraceStepViewModel(string type, string? source, string? input, string? output, string? failureReason,
         int? subrule, string? outcomeStatus, string? outcomeEventType, string? contextualFailure,

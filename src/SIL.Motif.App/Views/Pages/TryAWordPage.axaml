@@ -1,70 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.TryAWordPage"
-             x:Name="Root"
              x:DataType="vm:TryWordPageModel">
-  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Section}"
-        Margin="{DynamicResource Component.TryWord.PageInset}">
-    <ContentControl x:Name="TryWordPanelHost" Grid.Column="0" />
-    <ScrollViewer Grid.Column="1" Width="{DynamicResource Component.TryWord.SidebarWidth}"
-                  VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-        <Border Classes="card">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Text="Recent words" FontSize="{DynamicResource Intent.Type.Section}"
-                                     FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Related}"
-                             LineSpacing="{DynamicResource Intent.Space.Compact}" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="x:String">
-                  <Button Content="{Binding}"
-                          Command="{Binding $parent[views:TryAWordPage].((vm:TryWordPageModel)DataContext).OpenRecentWordCommand}"
-                          CommandParameter="{Binding}"
-                          Theme="{DynamicResource BorderlessButton}" Classes="recentWord"
-                          HorizontalAlignment="Left" HorizontalContentAlignment="Left"
-                          AutomationProperties.Name="{Binding}" />
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Text="From here" FontSize="{DynamicResource Intent.Type.Section}"
-                                     FontWeight="SemiBold" />
-            <Button Content="{Binding TimingLinkText}" Command="{Binding OpenTimingCommand}"
-                    Theme="{DynamicResource OutlineButton}"
-                    AutomationProperties.Name="{Binding TimingLinkText}" />
-            <!-- Opinions change one analysis at a time, in the text (ADR 0049), so the offer is the text itself. -->
-            <Button Command="{Binding OpenInTextsCommand}"
-                    Theme="{DynamicResource OutlineButton}"
-                    AutomationProperties.Name="Open in Analyze texts">
-              <TextBlock Text="{Binding OpenInTextsText}" TextWrapping="Wrap" TextAlignment="Center" />
-            </Button>
-            <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}"
-                    Theme="{DynamicResource OutlineButton}"
-                    AutomationProperties.Name="AI Handoff for this word" />
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card">
-          <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-            <views:CopyableTextBlock Text="Also a word not in the texts"
-                                     FontSize="{DynamicResource Intent.Type.Section}"
-                                     FontWeight="SemiBold" />
-            <views:CopyableTextBlock Text="Type any word; it is parsed against the current Baseline's grammar whether or not the project has it."
-                                     TextWrapping="Wrap" />
-          </StackPanel>
-        </Border>
-      </StackPanel>
-    </ScrollViewer>
-  </Grid>
+  <ContentControl x:Name="TryWordPanelHost" Margin="{DynamicResource Component.TryWord.PageInset}" />
 </UserControl>

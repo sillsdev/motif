@@ -13,6 +13,15 @@ public sealed partial class DiagnosticPanel : UserControl
     public static readonly StyledProperty<bool> ShowResultSummaryProperty =
         AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowResultSummary), defaultValue: true);
 
+    public static readonly StyledProperty<bool> ShowAttemptSummariesProperty =
+        AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowAttemptSummaries), defaultValue: true);
+
+    public bool ShowAttemptSummaries
+    {
+        get => GetValue(ShowAttemptSummariesProperty);
+        set => SetValue(ShowAttemptSummariesProperty, value);
+    }
+
     public DiagnosticPanel(DiagnosticToolsViewModel tools)
         : this(tools, showResultSummary: true)
     {
@@ -24,11 +33,14 @@ public sealed partial class DiagnosticPanel : UserControl
     /// <param name="tools">The trace to display, with the tools that copy, save, and open diagnostics beside it.</param>
     /// <param name="showResultSummary">Whether this panel displays the trace's result summary.</param>
     /// <param name="showAnalyses">Whether this panel displays the trace's analyses, ahead of its attempts.</param>
-    public DiagnosticPanel(DiagnosticToolsViewModel tools, bool showResultSummary, bool showAnalyses = true)
+    /// <param name="showAttemptSummaries">Whether the panel displays shared summaries of terminal attempts.</param>
+    public DiagnosticPanel(DiagnosticToolsViewModel tools, bool showResultSummary, bool showAnalyses = true,
+        bool showAttemptSummaries = true)
     {
         ArgumentNullException.ThrowIfNull(tools);
         Tools = tools;
         ShowResultSummary = showResultSummary;
+        ShowAttemptSummaries = showAttemptSummaries;
         DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
         if (showAnalyses) this.FindControl<ContentControl>("AnalysesHost")!.Content = new TraceAnalysesView();

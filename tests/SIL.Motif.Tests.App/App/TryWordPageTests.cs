@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
@@ -9,6 +10,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
@@ -34,7 +36,7 @@ public sealed class TryWordPageTests
             context.TryWord("word");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Empty(page.RulesOnBestPath);
+            Assert.Empty(page.Trace.Reading!.RulesOnBestPath);
             Assert.Equal("Vowel harmony", page.Trace.Root!.Children[0].Source);
             page.Trace.Candidates[0].IsTreeContextExpanded = true;
             Assert.Equal("Vowel harmony", page.Trace.Candidates[0].RecordedTreeContext[0].Source);
@@ -43,7 +45,7 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
-    public void AncestorRuleRowsDisplayCapturedFieldWorksNamesAndInspectTheirRecordedIdentity()
+    public void AncestorRecordedRulesRetainTheirCapturedNamesAndInspectorIdentity()
     {
         RunOnAvalonia(async () =>
         {
@@ -61,16 +63,114 @@ public sealed class TryWordPageTests
             context.TryWord("word");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            var row = Assert.Single(page.RulesOnBestPath);
-            Assert.Equal("Vowel harmony", row.Rule);
+            var row = Assert.Single(page.Trace.RecordedRoots).Children[0];
+            Assert.Equal("Vowel harmony", row.Source);
             var subject = Assert.IsType<InspectorSubject>(row.InspectSubject);
             Assert.Equal(InspectorSubjectKind.Rule, subject.Kind);
             Assert.Equal("Vowel harmony", subject.Label);
             Assert.Equal(new TraceTimingKey("phon_rule", "rule-id"), subject.TimingKey);
             Assert.Equal("authored", subject.IdentityQuality);
             Assert.Equal("Producer name", Assert.Single(page.Trace.Reading!.Refs).Label);
-            row.OpenTimingCommand.Execute(null);
-            Assert.Equal("Vowel harmony", timing.Focus!.Rule);
+            page.OpenTimingCommand.Execute(null);
+            Assert.Equal(["word"], timing.Focus!.Words);
+            Assert.Null(timing.Focus.Rule);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RecordedContextDisplaysCapturedNamesWithoutReplacingProducerEvidence(bool reopened)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            if (reopened)
+            {
+                context.ProjectPath = null;
+                page.Trace.Result = TraceWordViewModel.FromDiagnosticJson(TraceEnvelope.CapturedRuleLabel).Result;
+            }
+            else
+            {
+                fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!);
+                context.TryWord("word");
+                await page.Trace.TryCommand.ExecutionTask!;
+            }
+
+            var root = Assert.Single(page.Trace.RecordedRoots);
+            Assert.Equal("Vowel harmony", root.Children[0].Source);
+            Assert.Equal("Producer name", root.Children[0].RecordedStep.Source);
+            Assert.Same(page.Trace.Reading!.Root.Children[0], root.Children[0].RecordedStep);
+            Assert.Equal("Producer name", Assert.Single(page.Trace.Reading.Refs).Label);
+            var window = new Window
+            {
+                Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
+            };
+            try
+            {
+                window.Show();
+                Settle(window);
+                Assert.Contains("Captured FieldWorks: Vowel harmony", VisibleTexts(window));
+                Assert.Contains("Producer: Producer name", VisibleTexts(window));
+                var link = Assert.Single(window.GetVisualDescendants().OfType<InspectLink>(), control =>
+                    control.IsEffectivelyVisible && control.DataContext is TraceStepViewModel step &&
+                    ReferenceEquals(step.RecordedStep, root.Children[0].RecordedStep));
+                Assert.Equal(new TraceTimingKey("phon_rule", "rule-id"), link.Subject!.TimingKey);
+                Assert.Equal("Vowel harmony", link.Subject.Label);
+                Assert.Equal("authored", link.Subject.IdentityQuality);
+                Assert.Contains(link.Captured!, detail => detail.Label == "Producer" && detail.Value == "Producer name");
+                page.Trace.SelectedStep = root.Children[0];
+                var full = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetName(expander) == "Full derivation tree");
+                full.IsExpanded = true;
+                page.Trace.RuleFilter = "Vowel harmony";
+                Settle(window);
+                Assert.Contains("Producer: Producer name", VisibleTexts(window));
+                Assert.Contains("Captured FieldWorks: Vowel harmony", VisibleTexts(window));
+                var plainCard = window.GetVisualDescendants().OfType<TextBlock>().Single(block =>
+                    block.Text == "Selected recorded step").FindAncestorOfType<Border>()!;
+                var fullCard = window.GetVisualDescendants().OfType<DiagnosticPanel>().Single()
+                    .FindControl<Border>("DetailHost")!;
+                foreach (var card in new[] { plainCard, fullCard })
+                {
+                    Assert.Contains("Producer: Producer name", VisibleTexts(card));
+                    Assert.Contains("Captured FieldWorks: Vowel harmony", VisibleTexts(card));
+                }
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ARecordedNameWithoutATypedKeyHasNoInspectorLink()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            var result = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+            page.Trace.Result = result with
+            {
+                Reading = result.Reading with
+                {
+                    Refs = result.Reading.Refs.Select(reference => reference with { TimingKey = null }).ToArray(),
+                },
+            };
+            var window = new Window
+            {
+                Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
+            };
+            try
+            {
+                window.Show();
+                Settle(window);
+                Assert.Contains("Captured FieldWorks: Vowel harmony", VisibleTexts(window));
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<InspectLink>(), link =>
+                    link.IsEffectivelyVisible && link.DataContext is TraceStepViewModel);
+            }
+            finally { window.Close(); }
         });
     }
 
@@ -78,6 +178,343 @@ public sealed class TryWordPageTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public TryWordPageTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Theory]
+    [InlineData(1800000, 1, 0.9, 0.5, "50%")]
+    [InlineData(400000, 0, 0.3, 0.75, "75%")]
+    public void EarlierTimingUsesTheResponsesPreciseShare(long ns, int roundedMs, double selfMs,
+        double share, string expected)
+    {
+        RunOnAvalonia(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming() with
+            {
+                Words = [new TimingWordRow("dogs", roundedMs, TimingCompletion.Finished) { ElapsedNs = ns, Origin = DogsOrigin }],
+                Aggregates = [new TimingAggregateRow("same-label-key", "Plural", selfMs, share, 1)],
+            });
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.Equal(expected, Assert.Single(page.EarlierRuleTimes).ShareText);
+            Assert.Null(Assert.Single(page.EarlierRuleTimes).KindTip);
+            Assert.DoesNotContain("Other time", page.EarlierRuleTimes.Select(row => row.Rule));
+        });
+    }
+
+    [Fact]
+    public void EarlierTimingReportsOnlyTheRecordedResidualAndOverrun()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming() with
+            {
+                Attribution = new WordTimeAttribution(1, 10, 4, 2, 0.2, 0.7, true),
+            });
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.Equal("2 ms", page.EarlierRuleTimes.Single(row => row.IsOtherTime).TimeText);
+            Assert.Equal("Morphological rules", page.EarlierRuleTimes.Single(row => !row.IsOtherTime).KindTip);
+            Assert.Null(page.EarlierRuleTimes.Single(row => row.IsOtherTime).KindTip);
+            Assert.Contains("0.7 ms", page.EarlierOverrunText);
+            Assert.DoesNotContain("round", page.EarlierOverrunText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PlainShowsTheReturnedGrammarSourceInsteadOfClaimingItIsMissing(bool baseline)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            var captured = Assessment().Baseline.Token;
+            page.Trace.Result = DogsTrace() with
+            {
+                GrammarSource = baseline ? null : "Recorded producer grammar",
+                HostCapture = baseline ? new TraceHostCapture(null, null, null, null, null, null, [])
+                {
+                    Baseline = new TraceBaselineSource(captured, DateTimeOffset.Parse("2026-09-01T10:00:00Z"),
+                        DateTimeOffset.Parse("2026-09-02T11:00:00Z"), "Returned capture description"),
+                } : null,
+            };
+            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var texts = VisibleTexts(window).ToArray();
+                Assert.DoesNotContain("Grammar source not recorded", texts);
+                Assert.Contains(texts, text => text.Contains(baseline ? captured.CapturedUtc : "Recorded producer grammar", StringComparison.Ordinal));
+                if (baseline)
+                {
+                    Assert.Contains(texts, text => text.Contains("2026-09-01", StringComparison.Ordinal));
+                    Assert.Contains(texts, text => text.Contains("Returned capture description", StringComparison.Ordinal));
+                }
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
+    [InlineData(null, "Explanation not recorded")]
+    [InlineData("Returned explanation", "Returned explanation")]
+    public void PlainUsesTheSelectedEventsReturnedExplanation(string? explanation, string expected)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            var response = DogsTrace();
+            page.Trace.Result = response with
+            {
+                Reading = response.Reading with
+                {
+                    Root = new TraceStep("Failed", null, "in", "out", "FutureReason", [])
+                    { StepId = "0", ReasonExplanation = explanation },
+                },
+            };
+            page.Trace.SelectedStep = Assert.Single(page.Trace.RecordedRoots);
+            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var texts = VisibleTexts(window).ToArray();
+                Assert.Contains("FutureReason", texts);
+                Assert.Contains(expected, texts);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void PlainShowsAvailabilityAndOneKeyboardReachableAnalyzeTextsAction()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            page.Trace.WordToTry = "dogs";
+            page.Trace.Result = DogsTrace();
+            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1240, Height = 1600 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var texts = VisibleTexts(window).ToArray();
+                Assert.Contains("Grammar source not recorded", texts);
+                Assert.Contains("FieldWorks word context unavailable", texts);
+                Assert.Contains("Recorded trace", texts);
+                var analyze = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    button.Command == page.OpenInTextsCommand);
+                Assert.True(analyze.Focusable);
+                Assert.Equal(0, analyze.Opacity);
+                analyze.Focus();
+                Settle(window);
+                Assert.Equal(1, analyze.Opacity);
+                Assert.True(analyze.IsHitTestVisible);
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    button.Classes.Contains("ruleRow") && button.Command == page.OpenTimingCommand);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ASelectedOccurrenceSurvivesBothMountedTreesAndFiltering()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            page.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+            var window = new Window
+            {
+                Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1240, Height = 2400,
+            };
+            try
+            {
+                window.Show();
+                var full = window.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetName(expander) == "Full derivation tree");
+                full.IsExpanded = true;
+                page.Trace.RuleFilter = "Vowel harmony";
+                Settle(window);
+                var plain = window.GetVisualDescendants().OfType<TreeView>().Single(tree =>
+                    AutomationProperties.GetName(tree) == "Recorded trace tree");
+                var expert = window.GetVisualDescendants().OfType<TreeView>().Single(tree =>
+                    AutomationProperties.GetName(tree) == "Filtered full derivation tree");
+                SelectRule(plain);
+                var occurrence = page.Trace.SelectedStep!.RecordedStep;
+                Assert.Same(page.Trace.Reading!.Root.Children[0], occurrence);
+                SelectRule(expert);
+                Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
+                page.Trace.RuleFilter = "a rule absent from this trace";
+                Settle(window);
+                Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
+                Assert.Contains("Producer: Producer name", VisibleTexts(window));
+                page.Trace.RuleFilter = "Vowel harmony";
+                Settle(window);
+                Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
+                full.IsExpanded = false;
+                Settle(window);
+                Assert.Same(occurrence, page.Trace.SelectedStep!.RecordedStep);
+                page.Trace.Result = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
+                Settle(window);
+                Assert.Null(page.Trace.SelectedStep);
+            }
+            finally { window.Close(); }
+
+            void SelectRule(TreeView tree)
+            {
+                var root = Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0));
+                root.IsExpanded = true;
+                Settle(window);
+                var rule = Assert.IsType<TreeViewItem>(root.ContainerFromIndex(0));
+                rule.IsSelected = true;
+                Settle(window);
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(1040)]
+    [InlineData(1240)]
+    public void ExpandedFilteredNotationFitsInsideTheFullTreeViewport(int width)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            page.Trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+                AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
+            page.Trace.RuleFilter = "lu";
+            var window = new Window
+            {
+                Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = width, Height = 2400,
+            };
+            try
+            {
+                window.Show();
+                window.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetName(expander) == "Full derivation tree").IsExpanded = true;
+                Settle(window);
+                var tree = window.GetVisualDescendants().OfType<TreeView>().Single(control =>
+                    AutomationProperties.GetName(control) == "Filtered full derivation tree");
+                var scroll = tree.GetVisualDescendants().OfType<ScrollViewer>().First();
+                var notation = tree.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(block => block.IsEffectivelyVisible && block.Classes.Contains("traceNotation")).ToArray();
+                Assert.NotEmpty(notation);
+                foreach (var block in notation)
+                {
+                    var origin = block.TranslatePoint(default, tree)!.Value;
+                    Assert.True(origin.X + block.Bounds.Width <= tree.Bounds.Width + 1,
+                        $"Notation extends past the {width}px tree viewport: {block.Text}");
+                }
+                Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1,
+                    $"The {width}px filtered tree requires horizontal scrolling for its wrapped notation.");
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void InterruptedProgressNamesMissingAttemptsAndKeepsTheRecordedEvents()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            var progress = new TraceStep("MorphologicalRuleAnalysis", "Plural", "dogs", "dog", null, [])
+            {
+                StepId = "0.0", OutcomeStatus = "attempted",
+            };
+            page.Trace.Result = new WordTraceResponse("dogs", false, false, "limit", 1, null, 1,
+                TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, "dogs", null, null, [progress]), [], []));
+            var window = new Window
+            {
+                Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 1600,
+            };
+            try
+            {
+                window.Show();
+                Settle(window);
+                Assert.Contains("No terminal attempt was recorded before the search stopped. Recorded progress is retained.", VisibleTexts(window));
+                var tree = window.GetLogicalDescendants().OfType<TreeView>().Single(control =>
+                    AutomationProperties.GetName(control) == "Recorded trace tree");
+                var root = Assert.IsType<TraceStepViewModel>(Assert.Single(tree.Items));
+                Assert.Same(page.Trace.Reading!.Root.Children[0], Assert.Single(root.Children).RecordedStep);
+
+                page.Trace.Result = DogsTrace();
+                Settle(window);
+                Assert.DoesNotContain("No terminal attempt was recorded before the search stopped. Recorded progress is retained.", VisibleTexts(window));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void PointingAtTheWordRowRevealsTheToolsMenu()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Try a Word tools");
+                var input = window.GetLogicalDescendants().OfType<TextBox>().Single(box =>
+                    AutomationProperties.GetName(box) == "Word to try");
+                Assert.Equal(0, tools.Opacity);
+
+                window.MouseMove(input.TranslatePoint(new Point(input.Bounds.Width / 2, input.Bounds.Height / 2), window)!.Value);
+                Settle(window);
+
+                Assert.Equal(1, tools.Opacity);
+                Assert.True(tools.IsHitTestVisible);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ARecentWordInTheToolsMenuTracesItAgain()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var page = new TryWordPageModel(NewContext(out _));
+            page.RecentWords.Add("kitabu");
+            var window = new Window { Content = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page), Width = 1040, Height = 800 };
+            try
+            {
+                window.Show();
+                var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Try a Word tools");
+                tools.Flyout!.ShowAt(tools);
+                Settle(window);
+
+                var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(tools.Flyout).Content);
+                var word = menu.GetVisualDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Try kitabu again");
+                Assert.Same(page.OpenRecentWordCommand, word.Command);
+                Assert.Equal("kitabu", word.CommandParameter);
+            }
+            finally { window.Close(); }
+        });
+    }
 
     [Fact]
     public void TypedWordReadsEveryOpinionBeforeAnyMainAssessment()
@@ -130,6 +567,103 @@ public sealed class TryWordPageTests
         });
     }
 
+    [Theory]
+    [InlineData(false, null, "FieldWorks word context unavailable")]
+    [InlineData(true, null, "FieldWorks membership not recorded")]
+    [InlineData(true, false, "Word absent from the captured FieldWorks Baseline")]
+    [InlineData(true, true, "No stored analyses in the captured FieldWorks Baseline")]
+    public void ReturnedWordContextDistinguishesAbsenceFromEmptyAndUnavailable(bool baseline, bool? member,
+        string expected)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, baseline) { IsInFieldWorks = member }));
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                Assert.Contains(expected, ContextTexts(window));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ReturnedContextShowsEveryOpinionAndItsCapturedSaveAfterTheInputChanges()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var saved = new DateTimeOffset(2026, 9, 22, 9, 18, 0, TimeSpan.Zero);
+            var readings = new[] { "approved", "disapproved", "candidate" }.Select(opinion =>
+                new ParserReading([new("dog", opinion, "n", null, false, null)])
+                { StoredAnalysisId = opinion, StoredAnalysisOpinion = opinion }).ToArray();
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true)
+                {
+                    IsInFieldWorks = true, Analyses = request.Word == "dogs" ? readings : [],
+                    Baseline = Assessment().Baseline.Token, SourceLastWriteUtc = saved, IsStale = true,
+                }));
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            page.Trace.WordToTry = "cats";
+            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var texts = ContextTexts(window);
+                foreach (var opinion in new[] { "approved", "disapproved", "candidate" }) Assert.Contains(opinion, texts);
+                Assert.Contains(texts, text => text is not null && text.Contains(saved.ToString("O")));
+                Assert.Contains("FieldWorks has been saved since this Baseline", texts);
+                Assert.DoesNotContain("No stored analyses in the captured FieldWorks Baseline", texts);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void ADelayedResultContextCannotReplaceANewerDisplayedWord()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var delayed = new TaskCompletionSource<CommandOutcome<WordContextResponse>>();
+            fake.WordContextHandler = (request, _) => request.Word == "dogs" ? delayed.Task : Task.FromResult(
+                CommandOutcome<WordContextResponse>.Success(new(request.Word, true) { IsInFieldWorks = false }));
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            fake.TraceWordCompletesWith(DogsTrace() with { Word = "cats" });
+            context.TryWord("cats");
+            await page.Trace.TryCommand.ExecutionTask!;
+            delayed.SetResult(CommandOutcome<WordContextResponse>.Success(new("dogs", true)
+                { IsInFieldWorks = true }));
+            await Task.Yield();
+            Assert.Equal("cats", page.ResultWordContext!.Word);
+            Assert.Equal("Word absent from the captured FieldWorks Baseline", page.FieldWorksContextStatus);
+            Assert.Empty(page.FieldWorksAnalyses);
+        });
+    }
+
+    private static string?[] ContextTexts(Window window) => window.GetVisualDescendants().OfType<Border>()
+        .Single(border => AutomationProperties.GetName(border) == "FieldWorks beside the parser")
+        .GetVisualDescendants().OfType<TextBlock>().Where(block => block.IsEffectivelyVisible)
+        .Select(block => block.Text).ToArray();
+
     [Fact]
     public void RecentWordsSitApartSoTwoWordsNeverReadAsOne()
     {
@@ -145,7 +679,14 @@ public sealed class TryWordPageTests
                 window.Show();
                 window.UpdateLayout();
 
-                var list = window.GetLogicalDescendants().OfType<ItemsControl>()
+                var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetName(button) == "Try a Word tools");
+                tools.Focus();
+                tools.Flyout!.ShowAt(tools);
+                Settle(window);
+
+                var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(tools.Flyout).Content);
+                var list = menu.GetLogicalDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Recent words");
                 var words = list.GetVisualDescendants().OfType<TextBlock>()
                     .Where(text => text.Text is "kitabu" or "matinlu")
@@ -178,8 +719,6 @@ public sealed class TryWordPageTests
                 window.UpdateLayout();
 
                 Assert.Equal("TryAWordPage", view.GetType().Name);
-                Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Open in Texts");
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "AI Handoff for this word");
                 // Opinions change only in the text, so the page offers the text rather than an approval.
@@ -225,26 +764,21 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
                 TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [step])], [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-                [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
+                [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], [])
             {
-                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished)],
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, Origin = DogsOrigin }],
+                Attribution = new WordTimeAttribution(1, 10, 4, 6, 0.6, 0, false),
             });
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
 
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            var row = Assert.Single(page.RulesOnBestPath);
-            Assert.Equal("Plural", row.Rule);
-            Assert.Equal("Morphological rule", row.Kind);
-            Assert.Equal("applied", row.Outcome);
-            Assert.Equal("-s · dog → dogs", row.Explanation);
             // The stored share is of the word's whole parse time in that parse, not of the rules' recorded time.
             Assert.True(page.HasEarlierTiming);
             Assert.Equal("Share of 10 ms", page.EarlierShareHeader);
             Assert.Equal([("Plural", "Morphological rules", "4 ms", "40%"), ("Other time", "", "6 ms", "60%")],
                 page.EarlierRuleTimes.Select(time => (time.Rule, time.KindLabel, time.TimeText, time.ShareText)));
-            Assert.Equal("Open dogs in Analyze texts", page.OpenInTextsText);
             Assert.Contains("dogs", page.RecentWords);
             var request = Assert.Single(fake.TimingRequests);
             Assert.Equal("rule", request.By);
@@ -266,7 +800,10 @@ public sealed class TryWordPageTests
                 TraceReadingBuilder.Build("dogs", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
                     new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, [])])], [])));
             fake.TimingCompletesWith(new TimingResponse("assessment-1", "selected", "rule", 1, 10, 10, [],
-                [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1)], []));
+                [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1)], [])
+            {
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { Origin = DogsOrigin }],
+            });
 
             await context.PublishCurrentEvidenceAsync(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow, null,
                 EvidenceFreshness.Current, null, null, null, null, StoredAssessment()));
@@ -290,7 +827,7 @@ public sealed class TryWordPageTests
             var page = new TryWordPageModel(context);
             fake.TraceWordCompletesWith(DogsTrace());
             fake.TimingCompletesWith(DogsTiming());
-            var parsedAt = new DateTimeOffset(2026, 9, 22, 9, 18, 0, TimeSpan.Zero);
+            var parsedAt = DogsOrigin.MeasuredUtc;
             context.PublishEvidence(new WorkspaceEvidence(Assessment(), parsedAt, false));
 
             context.TryWord("dogs");
@@ -298,8 +835,8 @@ public sealed class TryWordPageTests
 
             var when = parsedAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
             Assert.Equal($"Time from the parse of {when}", page.EarlierTimingTitle);
-            Assert.Equal("Not from this try. In that parse dogs took 10 ms; each rule's time covers that parse's " +
-                "whole search for the word, including attempts that stopped, not only the path above.",
+            Assert.Equal("Not from this traced search. In that parse dogs took 10 ms; each rule's time covers that parse's " +
+                "whole search for the word, including attempts that stopped.",
                 page.EarlierTimingSource);
 
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
@@ -309,10 +846,10 @@ public sealed class TryWordPageTests
                 window.Show();
                 window.UpdateLayout();
                 var bestPath = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
-                    AutomationProperties.GetName(border) == "Rules on this word's best path");
+                    AutomationProperties.GetName(border) == "Recorded trace context");
                 var texts = bestPath.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.Contains("Rules on this word's best path", texts);
+                Assert.Contains("Recorded trace", texts);
                 Assert.DoesNotContain(texts, text => text is not null &&
                     (text.Contains("time", StringComparison.OrdinalIgnoreCase) || text.EndsWith('%')));
                 var earlier = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
@@ -327,7 +864,7 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
-    public void TimingIsNotShownWhenItsParseCannotBeNamed()
+    public void ReturnedTimingOriginNamesTheWordsParseAfterARerun()
     {
         RunOnAvalonia(async () =>
         {
@@ -336,16 +873,23 @@ public sealed class TryWordPageTests
             context.Assess.ProjectPath = ProjectPath;
             var page = new TryWordPageModel(context);
             fake.TraceWordCompletesWith(DogsTrace());
-            fake.TimingCompletesWith(DogsTiming());
-            // A re-run replaced some words' times, so which parse a word's time came from is no longer one answer.
+            fake.TimingCompletesWith(DogsTiming() with
+            {
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished)
+                {
+                    ElapsedNs = 10_000_000,
+                    Origin = new WordMeasurementOrigin("rerun-1", "invocation-rerun", DateTimeOffset.Parse("2026-09-25T12:00:00Z")),
+                }],
+            });
             context.PublishEvidence(new WorkspaceEvidence(Assessment() with { TimingOverrideAssessmentIds = ["rerun-1"] },
                 DateTimeOffset.UtcNow, WasRerun: true));
 
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.False(page.HasEarlierTiming);
-            Assert.Empty(page.EarlierRuleTimes);
+            Assert.True(page.HasEarlierTiming);
+            Assert.Contains(DateTimeOffset.Parse("2026-09-25T12:00:00Z").ToLocalTime().ToString("ddd d MMM, h:mm tt",
+                CultureInfo.CurrentCulture), page.EarlierTimingTitle);
         });
     }
 
@@ -354,14 +898,38 @@ public sealed class TryWordPageTests
             [new TraceCandidate([], true, null, "Built the word", [
                 new TraceStep("MorphologicalRule", "Plural", "dog", "dogs", null, []) { OutcomeStatus = "succeeded" }])], []));
 
-    private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
-        [new TimingAggregateRow("Plural", "Plural", 4, 1, 1) { Kind = "morph_rule" }], [])
+    private static readonly WordMeasurementOrigin DogsOrigin = new("assessment-parse", "invocation/one",
+        DateTimeOffset.Parse("2026-09-22T09:18:00Z"));
+
+    [Fact]
+    public void TimingWithoutAReturnedOriginCannotBorrowTheWorkspacesDate()
     {
-        Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished)],
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            fake.TimingCompletesWith(DogsTiming() with
+            {
+                Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000 }],
+            });
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.UtcNow, false));
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.False(page.HasEarlierTiming);
+            Assert.Empty(page.EarlierRuleTimes);
+        });
+    }
+
+    private static TimingResponse DogsTiming() => new("assessment-parse", "selected", "rule", 1, 10, 10, [],
+        [new TimingAggregateRow("Plural", "Plural", 4, 0.4, 1) { Kind = "morph_rule" }], [])
+    {
+        Words = [new TimingWordRow("dogs", 10, TimingCompletion.Finished) { ElapsedNs = 10_000_000, Origin = DogsOrigin }],
     };
 
     [Fact]
-    public void RuleTimingAndWordLinksRouteThroughTheWorkspaceContext()
+    public void TimingAndWordLinksRouteThroughTheWorkspaceContext()
     {
         RunOnAvalonia(async () =>
         {
@@ -379,9 +947,9 @@ public sealed class TryWordPageTests
 
             context.TryWord("typed-only");
             await page.Trace.TryCommand.ExecutionTask!;
-            Assert.Single(page.RulesOnBestPath).OpenTimingCommand.Execute(null);
+            page.OpenTimingCommand.Execute(null);
             Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
-            Assert.Equal("Plural", timing.Focus!.Rule);
+            Assert.Null(timing.Focus!.Rule);
             Assert.Equal(["typed-only"], timing.Focus.Words);
 
             page.OpenInTextsCommand.Execute(null);
@@ -394,8 +962,63 @@ public sealed class TryWordPageTests
         });
     }
 
+    [Theory]
+    [InlineData("cats", false)]
+    [InlineData("", false)]
+    [InlineData("cats", true)]
+    [InlineData("", true)]
+    public void ResultActionsKeepTheReturnedWordAfterInputEdits(string edited, bool duringTrace)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var page = new TryWordPageModel(context);
+            var timing = new TimingPageModel(context);
+            var handoff = new AiHandoffPageModel(context);
+            var requests = new WordRequestObserver(context);
+            var completion = new TaskCompletionSource<CommandOutcome<WordTraceResponse>>();
+            fake.OnTraceWord((_, _) => completion.Task);
+            var changes = 0;
+            page.OpenTimingCommand.CanExecuteChanged += (_, _) => changes++;
+            Assert.False(page.OpenTimingCommand.CanExecute(null));
+            context.TryWord("dogs");
+            var run = page.Trace.TryCommand.ExecutionTask!;
+            if (duringTrace) page.Trace.WordToTry = edited;
+            completion.SetResult(CommandOutcome<WordTraceResponse>.Success(DogsTrace()));
+            await run;
+            if (!duringTrace) page.Trace.WordToTry = edited;
+            var resultChanges = changes;
+            Assert.Equal("dogs", page.Trace.Result!.Word);
+            Assert.True(page.OpenTimingCommand.CanExecute(null));
+            Assert.True(page.OpenInTextsCommand.CanExecute(null));
+            Assert.True(page.HandOffCommand.CanExecute(null));
+            page.OpenTimingCommand.Execute(null);
+            Assert.Equal(["dogs"], timing.Focus!.Words);
+            Assert.Null(timing.Focus.Rule);
+            page.OpenInTextsCommand.Execute(null);
+            Assert.Equal("dogs", requests.Word);
+            page.HandOffCommand.Execute(null);
+            Assert.Equal(["dogs"], handoff.Handoff.ChosenWords);
+            page.Trace.Result = null;
+            Assert.False(page.OpenTimingCommand.CanExecute(null));
+            Assert.False(page.OpenInTextsCommand.CanExecute(null));
+            Assert.False(page.HandOffCommand.CanExecute(null));
+            Assert.True(changes > resultChanges);
+        });
+    }
+
+    private sealed class WordRequestObserver(WorkspaceContext context) : PageModel(context)
+    {
+        public string? Word { get; private set; }
+        protected override void OnRequested(PageRequest request)
+        {
+            if (request is OpenWordRequest word) Word = word.Word;
+        }
+    }
+
     [Fact]
-    public void SidebarTimingLinkNamesAndOpensTheFirstRuleOnTheBestPath()
+    public void GeneralTimingActionDoesNotChooseAnArbitraryRule()
     {
         RunOnAvalonia(async () =>
         {
@@ -426,7 +1049,7 @@ public sealed class TryWordPageTests
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
                     AutomationProperties.GetName(block) == "Try a Word screenshot note");
                 var ruleTable = Assert.Single(window.GetLogicalDescendants().OfType<Border>(), border =>
-                    AutomationProperties.GetName(border) == "Rules on this word's best path");
+                    AutomationProperties.GetName(border) == "Recorded trace context");
                 var headers = ruleTable.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(block => block.IsVisible)
                     .Select(block => block.Text)
@@ -434,13 +1057,13 @@ public sealed class TryWordPageTests
                     .Select(value => value.Trim())
                     .Where(value => value is "Rule" or "Kind" or "Outcome" or "Explanation" or
                         "Stored time" or "Attempts" or "Word share").ToArray();
-                Assert.Equal(new[] { "Rule", "Kind", "Outcome", "Explanation" }, headers);
+                Assert.Empty(headers);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "See Verb template in Timing");
+                    AutomationProperties.GetName(button) == "Timing for this word");
 
                 page.OpenTimingCommand.Execute(null);
 
-                Assert.Equal("Verb template", timing.Focus!.Rule);
+                Assert.Null(timing.Focus!.Rule);
                 Assert.Equal(["verb"], timing.Focus.Words);
             }
             finally
@@ -471,90 +1094,48 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            Assert.Single(page.RulesOnBestPath);
             Assert.False(page.HasEarlierTiming);
             Assert.Empty(page.EarlierRuleTimes);
             Assert.Equal("8.0 ms", Assert.Single(page.Trace.Effort).Time);
         });
     }
 
-    // Parser class names such as MorphologicalRuleSynthesis, its reason codes, and Motif's own placeholders.
-    private static readonly System.Text.RegularExpressions.Regex EngineWords = new(
-        @"^\?$|[A-Z][a-z]+(?:Rule|Stratum|Template)?(?:Analysis|Synthesis)(?:Input|Output)?\b|MorphologicalRule|" +
-        @"NonPartialRule|recorded attempt|\bMSA\b|stratum|ordinal|GUID|Projection");
-
     [Fact]
-    public void TheSeededTraceOfMatinluReadsInPlainWords()
+    public void TheSeededTraceShowsLogicalSummariesBeforeRecordedContext()
     {
-        var visible = new List<string>();
-        var unfolded = new List<string>();
-        double analysesTop = 0, rulesTop = 0;
         RunOnAvalonia(async () =>
         {
             var (context, fake) = NewContext();
-            context.ProjectPath = ProjectPath;
-            context.Assess.ProjectPath = ProjectPath;
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
             fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(
                 Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!);
             var page = new TryWordPageModel(context);
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;
-            Assert.True(page.Trace.HasResult);
-            Assert.Equal(2, page.Trace.Analyses.Count);
-            Assert.All(page.Trace.Analyses, analysis => Assert.Equal(1, analysis.RecordCount));
-            Assert.Equal(["analysis-0", "analysis-1"], page.Trace.SourceAnalyses.Select(analysis => analysis.AnalysisId));
-            Assert.Equal("Parsed: 2 analyses", page.Trace.AnalysesHeading);
-            Assert.All(page.RulesOnBestPath, row => Assert.Equal("tried", row.Outcome));
-            // The rules read in building order, outward from the stem, each with the affix's own form.
-            Assert.Equal(["ma", "lu"], page.RulesOnBestPath.Select(row => row.Rule));
-            Assert.Equal("ma- · tin → matin", page.RulesOnBestPath[0].Explanation);
-            Assert.Equal("-lu · matin → matinlu", page.RulesOnBestPath[1].Explanation);
-            // The parser's taking-apart pass is one line, the pieces in the word's own order.
-            Assert.Equal("Taking the word apart found ma- · tin · -lu", page.TakingApartText);
-            Assert.Equal("Show the other attempt", page.Trace.MoreAttemptsText);
-
             var view = PageRegistry.For(WorkspacePage.TryAWord).CreateView(page);
             var window = new Window { Content = view, Width = 1240, Height = 2400 };
             try
             {
                 window.Show();
                 Settle(window);
-                visible.AddRange(VisibleTexts(view));
-                analysesTop = TopOf(view, "Parsed: 2 analyses", window);
-                rulesTop = view.GetLogicalDescendants().OfType<Border>().Single(border =>
-                        AutomationProperties.GetName(border) == "Rules on this word's best path")
-                    .TranslatePoint(default, window)!.Value.Y;
-
-                page.Trace.ShowDroppedPaths = true;
-                Settle(window);
-                unfolded.AddRange(VisibleTexts(view));
+                var visible = VisibleTexts(view).ToArray();
+                Assert.Contains("Parsed: 2 analyses", visible);
+                Assert.DoesNotContain("Recorded twice", visible);
+                Assert.Single(visible, text => text == "Analysis 1");
+                Assert.True(TopOf(view, "Parsed: 2 analyses", window) < TopOf(view, "Recorded trace", window));
+                Assert.DoesNotContain("Why the other attempts stopped", visible);
+                Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
+                Assert.DoesNotContain("Rules on this word's best path", visible);
+                var notation = view.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(block => block.IsEffectivelyVisible && block.Classes.Contains("traceNotation")).ToArray();
+                Assert.NotEmpty(notation);
+                Assert.Contains(notation, block => block.Text!.Contains("WordAnalysis", StringComparison.Ordinal));
+                var full = window.GetLogicalDescendants().OfType<Expander>().Single(expander =>
+                    AutomationProperties.GetName(expander) == "Full derivation tree");
+                Assert.False(full.IsExpanded);
             }
-            finally
-            {
-                window.Close();
-            }
+            finally { window.Close(); }
         });
-
-        // A parsed word leads with its recorded analyses; the paths the parser dropped wait, folded, under a count.
-        Assert.Contains("Parsed: 2 analyses", visible);
-        Assert.Contains("4 other paths the parser tried and dropped (normal)", visible);
-        Assert.True(analysesTop < rulesTop, $"the analyses sit at {analysesTop:F0} px, below the rules at {rulesTop:F0} px");
-        Assert.DoesNotContain("Why the other attempts stopped", visible);
-        Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
-        Assert.Single(visible, text => text == "Analysis 1");
-        Assert.Contains("Analysis 2", visible);
-        Assert.Contains("Taking the word apart found ma- · tin · -lu", visible);
-
-        Assert.Contains("Why the other attempts stopped", unfolded);
-        Assert.Contains("This candidate ended as a partial parse; it did not include all analyzed morphemes.", unfolded);
-        foreach (var texts in new[] { visible, unfolded })
-        {
-            Assert.Contains("Morphological rule", texts);
-            Assert.DoesNotContain("unknown morpheme", texts);
-            // The parser's own morpheme names are its detail, kept for the tooltip.
-            Assert.DoesNotContain(texts, text => text.Contains("MA+TIN+LU", StringComparison.Ordinal));
-            Assert.DoesNotContain(texts, text => EngineWords.IsMatch(text));
-        }
     }
 
     private static void Settle(Window window)

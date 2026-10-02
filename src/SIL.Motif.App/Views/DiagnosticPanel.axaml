@@ -46,7 +46,7 @@
           <views:CopyableTextBlock Text="{Binding SummaryText}" Classes="muted" TextWrapping="Wrap"
                      IsVisible="{Binding HasResult}" AutomationProperties.Name="Diagnostic result" />
           <views:CopyableTextBlock Text="{Binding SearchStatusText}" Classes="status" TextWrapping="Wrap"
-                     IsVisible="{Binding HasStopReason}" AutomationProperties.Name="Search completeness" />
+                     IsVisible="{Binding !Result.Complete}" AutomationProperties.Name="Search completeness" />
           <views:CopyableTextBlock Text="{Binding ProvenanceWarning}" Classes="failed" TextWrapping="Wrap"
                      IsVisible="{Binding HasProvenanceWarning}" AutomationProperties.Name="Diagnostic provenance warning" />
           <views:CopyableTextBlock Text="Standalone diagnostic: recorded evidence only; live FieldWorks navigation is unavailable."
@@ -54,14 +54,18 @@
         </StackPanel>
       </StackPanel>
 
+      <StackPanel IsVisible="{Binding $parent[views:DiagnosticPanel].ShowAttemptSummaries}">
       <Border Classes="notice" IsVisible="{Binding NoAttemptRecorded}">
         <views:CopyableTextBlock TextWrapping="Wrap"
                                  Text="{Binding NoAttemptNotice}" />
       </Border>
+      </StackPanel>
 
       <ContentControl x:Name="AnalysesHost" />
 
-      <!-- A parsed word's stopped attempts are the search tidying up, so they wait folded under their count. -->
+      <StackPanel Spacing="{DynamicResource Intent.Space.Group}"
+                  IsVisible="{Binding $parent[views:DiagnosticPanel].ShowAttemptSummaries}">
+      <!-- A parsed word's stopped attempts wait folded under their count. -->
       <Expander Header="{Binding DroppedPathsText}" IsExpanded="{Binding ShowDroppedPaths, Mode=TwoWay}"
                 IsVisible="{Binding HasDroppedPaths}" AutomationProperties.Name="Paths the parser dropped" />
 
@@ -135,11 +139,18 @@
                     <ItemsControl ItemsSource="{Binding Steps}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:TraceStepViewModel">
-                          <DockPanel Margin="{DynamicResource Component.TryWord.SmallRowInset}">
-                            <views:CopyableTextBlock DockPanel.Dock="Left" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
-                                       Text="{Binding StatusText}" />
-                            <views:CopyableTextBlock Text="{Binding Label}" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" />
-                          </DockPanel>
+                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+                                Margin="{DynamicResource Component.TryWord.SmallRowInset}">
+                            <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}"
+                                                    Text="{Binding StatusText}" VerticalAlignment="Top" />
+                            <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
+                              <views:CopyableTextBlock Text="{Binding Label}" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                                      IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                              <views:CopyableTextBlock Text="{Binding CapturedSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                                      IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                            </StackPanel>
+                          </Grid>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -151,7 +162,16 @@
                       <ItemsControl ItemsSource="{Binding RecordedTreeContext}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:TraceStepViewModel">
-                            <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
+                                        Margin="{DynamicResource Component.TryWord.SmallRowInset}">
+                              <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                                      IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                              <views:CopyableTextBlock Text="{Binding CapturedSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                                      IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                              <views:CopyableTextBlock Text="{Binding RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+                            </StackPanel>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>
@@ -167,12 +187,13 @@
                 AutomationProperties.Name="Show every attempt" />
       </StackPanel>
 
+      </StackPanel>
       <views:RefusalBlock x:Name="ErrorRefusal" DataContext="{Binding $parent[views:DiagnosticPanel].Tools.Error}"
                           AutomationProperties.Name="Diagnostic file error" />
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasNoAnalyses}">
         <views:CopyableTextBlock Text="Analyses" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted" Text="The parser found no analysis." />
+        <views:CopyableTextBlock Classes="muted" Text="Analysis not recorded." />
       </StackPanel>
 
       <Expander Header="Full derivation" IsExpanded="False" AutomationProperties.Name="Full derivation tree">
@@ -227,7 +248,7 @@
           <Grid x:Name="DetailGrid" ColumnDefinitions="2*,1*" RowDefinitions="*"
                 ColumnSpacing="{DynamicResource Intent.Space.Group}">
             <TreeView x:Name="TreeHost" ItemsSource="{Binding FilteredRoots}" SelectedItem="{Binding SelectedStep}"
-                      AutomationProperties.Name="Filtered full derivation tree">
+                      AutomationProperties.Name="Filtered full derivation tree" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <TreeView.Styles>
                 <Style Selector="TreeViewItem" x:DataType="vm:TraceStepViewModel">
                   <Setter Property="IsExpanded" Value="{Binding ExpandForFilter}" />
@@ -237,10 +258,18 @@
               <TreeView.ItemTemplate>
                 <TreeDataTemplate x:DataType="vm:TraceStepViewModel" ItemsSource="{Binding Children}">
 
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                      <views:CopyableTextBlock Text="{Binding StatusText}" Classes="muted" />
-                      <views:CopyableTextBlock Text="{Binding Label}" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="2*,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
+                      <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" />
+                        <views:CopyableTextBlock Text="{Binding RecordedLabel}" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
+                        <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
+                                                 IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+                    </Grid>
 
                 </TreeDataTemplate>
               </TreeView.ItemTemplate>
@@ -249,10 +278,12 @@
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" DataContext="{Binding SelectedStep}">
                 <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Text="{Binding StatusText}" Classes="status" />
+                <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="status" />
                 <views:CopyableTextBlock Text="{Binding Type}" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Text="{Binding Source, StringFormat='Rule: {0}'}"
-                           IsVisible="{Binding Source, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation"
+                           IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding CapturedSourceText}"
+                           IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding Input, StringFormat='Input: {0}'}"
                            IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding Output, StringFormat='Output: {0}'}"
@@ -262,9 +293,9 @@
                            IsVisible="{Binding OutcomeStatus, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding OutcomeEventType, StringFormat='Event: {0}'}"
                            IsVisible="{Binding OutcomeEventType, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Text="{Binding FailureReason, StringFormat='Failure: {0}'}"
-                           IsVisible="{Binding HasFailureReason}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Text="{Binding ContextText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding RecordedReasonText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding RecordedExplanationText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding RecordedRejectionText}" TextWrapping="Wrap" />
                 <ItemsControl ItemsSource="{Binding AttemptedMorphs}" IsVisible="{Binding HasAttemptedMorphs}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TraceMorphViewModel">

@@ -10,6 +10,7 @@
     <StaticResource x:Key="Component.TryWord.SmallBottomInset" ResourceKey="Primitive.Inset.0_0_4_4" />
     <StaticResource x:Key="Component.TryWord.ToolButtonInset" ResourceKey="Primitive.Inset.9_3_9_3" />
     <StaticResource x:Key="Component.TryWord.SidebarWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.TryWord.NotationFont" ResourceKey="Primitive.Font.Mono" />
   </Styles.Resources>
   <Style Selector="StackPanel.diagnosticBody">
     <Setter Property="Margin" Value="{DynamicResource Component.TryWord.PageInset}" />
@@ -76,5 +77,10 @@
   </Style>
   <Style Selector=":is(TextBlock).stopText">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning}" />
+  </Style>
+  <Style Selector=":is(TextBlock).traceNotation">
+    <Setter Property="FontFamily" Value="{DynamicResource Component.TryWord.NotationFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
 </Styles>
