@@ -412,7 +412,13 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
 
                 var heads = header.GetVisualDescendants().OfType<TextBlock>().Where(text => !string.IsNullOrEmpty(text.Text))
                     .OrderBy(text => BoundsIn(text, window).X).ToArray();
-                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING", "PLACES", "TIME", "NEXT"],
+                var fieldWorksHead = Assert.IsAssignableFrom<TextBlock>(header.FindControl<TextBlock>("FieldWorksCell"));
+                var panGlossHead = Assert.IsAssignableFrom<TextBlock>(header.FindControl<TextBlock>("PanGlossCell"));
+                Assert.Equal("FieldWorks", ToolTip.GetTip(fieldWorksHead));
+                Assert.Equal("PanGloss", ToolTip.GetTip(panGlossHead));
+                Assert.Equal("FieldWorks", AutomationProperties.GetName(fieldWorksHead));
+                Assert.Equal("PanGloss", AutomationProperties.GetName(panGlossHead));
+                Assert.Equal(["WORD", "FW", "PG", "MEANING", "PLACES", "TIME", "NEXT"],
                     heads.Select(text => text.Text!).Where(text => text.All(char.IsLetter)));
                 Assert.All(heads, text => Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5,
                     $"'{text.Text}' needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#} px but has {text.Bounds.Width:0.#}."));

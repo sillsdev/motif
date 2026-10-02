@@ -26,8 +26,14 @@
               <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowRead" />
             </Grid.ColumnDefinitions>
             <views:CopyableTextBlock x:Name="WordCell" Classes="wordRowWord wordRowHeading" Text="WORD" />
-            <views:CopyableTextBlock x:Name="FieldWorksCell" Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS" />
-            <views:CopyableTextBlock x:Name="PanGlossCell" Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS" />
+            <views:CopyableTextBlock x:Name="FieldWorksCell" Grid.Column="1" Classes="wordRowHeading" Text="FIELDWORKS"
+                                     TextTrimming="CharacterEllipsis" ToolTip.Tip="FieldWorks"
+                                     views:ClearTipPlacement.IsEnabled="True"
+                                     AutomationProperties.Name="FieldWorks" />
+            <views:CopyableTextBlock x:Name="PanGlossCell" Grid.Column="2" Classes="wordRowPanGloss wordRowHeading" Text="PANGLOSS"
+                                     TextTrimming="CharacterEllipsis" ToolTip.Tip="PanGloss"
+                                     views:ClearTipPlacement.IsEnabled="True"
+                                     AutomationProperties.Name="PanGloss" />
             <views:CopyableTextBlock x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING" />
             <views:CopyableTextBlock x:Name="WarningsCell" Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
                        AutomationProperties.Name="Warnings" />

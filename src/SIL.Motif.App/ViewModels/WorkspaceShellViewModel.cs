@@ -46,6 +46,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     [ObservableProperty]
     private bool _isParsingAllWords;
     private Task? _knownProjectsRefreshTask;
+    private bool _knownProjectsRefreshRequested;
     private int _refreshGeneration;
 
     public WorkspaceShellViewModel(
@@ -180,20 +181,30 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Re-reads the Known projects, keeping the last list if the read fails.</summary>
     public Task RefreshKnownProjectsAsync()
     {
-        if (_knownProjectsRefreshTask is { IsCompleted: false } inProgress) return inProgress;
+        if (_knownProjectsRefreshTask is { IsCompleted: false } inProgress)
+        {
+            _knownProjectsRefreshRequested = true;
+            return inProgress;
+        }
+
         return _knownProjectsRefreshTask = RefreshKnownProjectsCoreAsync();
     }
 
     private async Task RefreshKnownProjectsCoreAsync()
     {
-        try
+        do
         {
-            await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+            _knownProjectsRefreshRequested = false;
+            try
+            {
+                await Project.LoadKnownProjectsAsync().ConfigureAwait(true);
+            }
+            catch (Exception)
+            {
+                // A failed Known projects read should preserve the last usable list.
+            }
         }
-        catch (Exception)
-        {
-            // A failed Known projects read should preserve the last usable list.
-        }
+        while (_knownProjectsRefreshRequested);
     }
 
     /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
