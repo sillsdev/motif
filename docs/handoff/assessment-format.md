@@ -1,124 +1,62 @@
-# The Assessment format — `assessment.json`
+# Assessment format
 
-**Status: this describes a contract, not yet a shipped file.** `assessment.json` is defined by
-[ADR 0045](../adr/0045-the-handoff-is-five-files-and-a-pasted-header.md); the writer that produces
-it has not landed. Everything below is the ADR's decision, not an observed file — where the ADR
-leaves a detail open, this document leaves it open too rather than guessing at it.
+An assessed AI Handoff keeps measured results beside any raw trace collected for a word. A Handoff started from **Try a Word** keeps the trace already on screen with the Baseline that produced it, without running a replacement Assessment or trace.
 
-`assessment.json` is the record of one Assessment run: PanGloss actually parsing every word in the
-Handoff's Selection, timed, plus the derivation traces for whichever words the person chose to
-look closer at. Statistics alone can tell you a word failed; they cannot tell you why. This file
-exists because "why didn't *xyz* parse" needs the parser's own trace, not just a pass/fail count.
+`assessment.json` is a valid JSON array with one compact record per line. The file as a whole loads with `json.load`; a single grepped line carries the array's trailing comma, so remove it before parsing that line alone.
 
-## A Handoff can have no Assessment at all
+## Batch measurements
 
-`assessment.json` is not a mandatory file. When nobody has run one, it is simply absent, and
-`handoff.md` says so. Motif is replacing an export that never ran a parser in the first place;
-refusing to hand off anything until an Assessment exists would make the replacement worse than
-what it replaces.
+Each word in the Assessment Selection has one record from the batch pass:
 
-## What produces it: one invocation, two phases
+| Field | What it holds |
+|---|---|
+| `word` | The parsed surface form. |
+| `outcome` | The outcome recorded by PanGloss, such as `analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`. |
+| `elapsedMs` | The batch time, when measured. |
+| `signature` | PanGloss's analysis signature, when it recorded one. |
 
-An Assessment run is, from the person's side, one action. Internally it has two phases, in this
-order:
+`capped` and `timed-out` record a stopped batch search; they do not establish that no analysis exists. `skipped` records that the word did not reach the parser. Read other outcomes as the result the batch pass recorded, without treating timing as a verdict.
 
-1. **The batch pass.** Every word in the Selection is parsed once, merged (PanGloss's ordinary,
-   collapsed search — see PanGloss's `docs/formats/trace-format.md` for what "merged" means and
-   why it matters) and timed. This is where every word's statistics record and its measured timing
-   come from.
-2. **The traced pass.** After the batch pass has already produced its results — so the traced set
-   can be chosen using what the batch pass found — a chosen subset of words is re-parsed with
-   `pangloss parse <grammar> <word> --trace --trace-format=json`, one word per PanGloss invocation,
-   because `batch` itself cannot trace. This pass runs unmerged, which means it explores more of
-   the search space than the batch pass did for the same word; see `docs/formats/trace-format.md`
-   for why that is deliberate.
+## A trace in a one-word Handoff
 
-Only the traced words pay the cost of the second phase. **Every word's timing in
-`assessment.json`, traced or not, comes from the batch pass.** A traced word's time is not
-re-measured during tracing, precisely so that the times in this file stay comparable to each other
-regardless of which words happened to get traced.
+There are two one-word trace routes. A fresh assessed Handoff runs an Assessment, traces the word against the grammar retained for that Assessment, writes the diagnostic to `traces/<encoded-word>.trace.json`, and adds a `trace` member to the matching `assessment.json` record. This route can be used by command callers.
 
-## The JSON convention
+From **Try a Word**, **AI Handoff for this word** exports the diagnostic already displayed and opens the Baseline named in that trace's host capture. It writes the selected diagnostic unchanged under `traces/`, with no `assessment.json`; it does not run an Assessment or a replacement trace. If that captured Baseline is no longer available, Motif refuses the Handoff rather than relabeling the trace with a newer Baseline.
 
-Like every JSON file in the Handoff, `assessment.json` is valid JSON with **one record per line**:
-pretty-printed to the record, compact within it. This means a `grep` for a word's surface form
-returns that word's whole record on one line, and the file as a whole still loads with a plain
-`json.load`. A single grepped line carries the array's trailing comma, so strip that comma before
-`json.loads` on the line by itself — `parse_grammar_texts_assessment.py`'s loaders accept either. For example, to find everything
-the Assessment recorded about the word *mirusi*:
+The trace member has a Handoff-relative `file` path and a compact `summary`:
+
+| Summary field | What it holds |
+|---|---|
+| `outcome` | `parsed`, `no-analysis-recorded`, or `invalid-shape`, as read from the diagnostic. |
+| `parserSteps` | The parser's recorded step count, or JSON `null` when it was not recorded. |
+| `completion` | `not-run` when the word's shape prevented a search; `incomplete` when the diagnostic records a stopped trace; `unknown` when it does not establish whether the trace step cap stopped the search. Motif does not infer completion from a clean process exit. |
+| `failureReasons` | Distinct reason codes present in the recorded tree, in ordinal order. They do not establish which neighboring event caused an attempt to fail. |
+| `deepestRule` | The deepest named rule in the typed reading, or JSON `null` when none is recorded. |
+
+For both routes, the raw file preserves PanGloss's complete `pangloss.trace-details.v3` envelope, including `search`, `result`, `categories`, and `trace`; the summary is additional and does not select or remove tree branches. Unknown producer fields survive. The assessed route adds Motif's recorded host capture. The Try a Word route preserves the full selected capture, including its existing host capture. See [Try a Word diagnostic JSON](trace-diagnostic-format.md) for the retained v3 fields and their meanings, and [PanGloss v0.6.0's trace format](https://github.com/sillsdev/PanGloss/blob/v0.6.0/docs/formats/trace-format.md) for the producer's diagnostic fields. Percent encoding in the filename keeps word punctuation out of the file name. `handoff.md` identifies the trace by that filename, which remains usable after a chat upload flattens folders.
+
+For a saved trace, [load a trace](cmd:trace%20--load) reads the same diagnostic without opening a project or running PanGloss. [Trace a word](cmd:trace) runs one against a project's current Baseline.
+
+## Reading a record
+
+Use `word` to locate the batch record and, when present, `trace.file` to open its raw diagnostic:
 
 ```
 grep '"mirusi"' assessment.json
 ```
 
-## Per-word statistics
+A parsed JSON reader can follow the recorded path directly. If a chat upload flattened the folder, it can fall back to the same file name beside `assessment.json`:
 
-Every word in the Selection — whether or not it was chosen for tracing — gets one record from the
-batch pass, with these fields:
+```python
+import json
+from pathlib import Path
 
-| Field | What it holds |
-|---|---|
-| `word` | The surface form that was parsed. Always present; this is what a `grep` lands on. |
-| `outcome` | One of `analysed`, `no-analysis`, `capped`, `timed-out`, `skipped`. |
-| `elapsedMs` | How long the batch pass took on this word. Absent when it was not measured. |
-| `signature` | PanGloss's own analysis signature, when it produced one. |
+records = json.load(open("assessment.json", encoding="utf-8"))
+record = next(item for item in records if item["word"] == "mirusi")
+trace_path = Path(record["trace"]["file"])
+if not trace_path.is_file():
+    trace_path = Path(trace_path.name)
+trace = json.load(open(trace_path, encoding="utf-8"))
+```
 
-`outcome` is the field to read before trusting any claim about a word. `no-analysis` means the
-parser ran to completion and found nothing, which is a real answer. `capped` and `timed-out` mean
-it stopped early, so "this word does not parse" is **not** a conclusion you may draw from them —
-the search was cut short, not exhausted. `skipped` means the word never reached the parser.
-
-There is deliberately no step count here. Step counts compare across machines where milliseconds do
-not, so one would be the better measure, but Motif does not yet record one for the batch pass and
-this file states only what it actually holds.
-
-## The Selection, including typed words
-
-The Selection is what the Assessment actually ran against, and it admits a third kind of member
-beside a Text and a lexicon entry: a word the person simply typed in, which need not appear
-anywhere in the project at all. "Why didn't *xyz* parse" is usually asked about a word someone has
-in their head, not one already sitting in a Text — so a typed word is parsed and measured exactly
-like every other member of the Selection, and its statistics record in this file looks like any
-other word's.
-
-## Which words get traced
-
-Not every word in the Selection is traced — tracing runs a second, larger search per word, and
-running it for everything would multiply that cost across the whole Selection. The traced set is
-chosen by the person, from three kinds of choice: the typed words, the *N* slowest words (by the
-batch pass's own timing), and all the words in one or more chosen Texts. There is no fixed ceiling
-on how many words may be traced; when a set does need to be narrowed, typed words are kept first,
-then words that failed or hit a limit, then the slowest of what remains. Whichever words end up
-traced, `assessment.json` records only the outcome of that choice — the choice itself is made at
-run time, not written into the file.
-
-## Traces, keyed by word
-
-For every traced word, `assessment.json` carries two things together, keyed by the word:
-
-- **The tree, verbatim.** Exactly what `pangloss parse <grammar> <word> --trace
-  --trace-format=json` produced for that word. This document does not restate what the tree's
-  fields mean or what its node types are — see PanGloss's own
-  [`docs/formats/trace-format.md`](https://github.com/sillsdev/PanGloss/blob/v0.6.0/docs/formats/trace-format.md)
-  for that. The tree travels unedited because deciding which branch of a derivation mattered is
-  the judgement being handed to whoever — person or model — reads the Handoff; Motif does not
-  prune it first.
-- **A derived one-line summary.** Built from that same tree, so fifty traces can be triaged without
-  opening fifty trees, and so a `grep` for a word lands on something readable immediately. It
-  states: the outcome, the step count, whether the trace completed, the distinct failure reasons
-  that appear anywhere in the tree, and the deepest rule the derivation reached.
-
-## `traceComplete: false`
-
-Tracing is not allowed to put the rest of the Assessment at risk. The batch pass's results are
-published as the retained invocation as soon as that pass completes, before any tracing starts;
-traces are added to it as they land, one at a time. If the run is cancelled during the traced
-phase, the invocation is left standing, marked partial, with a count of how much tracing finished.
-
-Because a traced parse has no PanGloss-side bound of its own — `parse --trace` carries no
-`--step-cap` — Motif imposes its own timeout on the traced phase, shorter than the batch pass's.
-A trace that runs out that cap or that timeout is not discarded: it is kept, marked
-`traceComplete: false`, together with the reason it stopped. A half-finished derivation is still
-evidence of what the parser was doing when it ran out of room, and the one-line summary for such a
-trace is built from whatever the tree contains up to that point, not withheld until the tree is
-complete.
+The embedded `parse_grammar_texts_assessment.py` helper reads the Handoff's files and documents its commands with `--help`.

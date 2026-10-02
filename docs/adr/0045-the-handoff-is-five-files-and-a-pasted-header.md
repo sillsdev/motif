@@ -184,3 +184,15 @@ for surfacing `capped` on `parse`'s output: without it, decision 11 and the `Com
 trace JSON's envelope — and `batch` already reports this per word. Until it lands, Motif must not claim a
 trace is complete; a summary derived from a process that exited cleanly says only that, and says it in
 those words.
+
+## Amendment, 2026-10-02: one-word Handoffs carry a trace
+
+From Try a Word, a linguist can send the trace they are viewing with the Baseline that produced it. A fresh one-word Assessment Handoff can also pair its measured result with a trace.
+
+The fresh assessed route runs an Assessment, then traces the selected word against the retained grammar. It writes the diagnostic, with Motif's host capture, to `traces/<encoded-word>.trace.json`; the matching `assessment.json` record gets a `trace` object with the relative file path and a summary of its parse outcome, recorded parser steps, completion status, distinct failure reasons, and deepest named rule. The five core files remain at the top level; this route adds one file below `traces/`. `handoff.md` names the trace by its encoded file name, and its Python example tries that name beside the other files before falling back to the original nested location, so both the saved Handoff and a flat chat upload work.
+
+The Try a Word route carries the displayed diagnostic and its captured Baseline into Handoff. It exports that diagnostic unchanged and reads the Baseline through the shared private reader, even if a newer Baseline was published after the trace. This route does not run another Assessment or trace and does not write `assessment.json`; its folder has the four non-Assessment core files and the selected trace file. The reader example in the assessment format also falls back to the trace's file name when a flat upload no longer has the original subfolder.
+
+The pinned PanGloss release does not report whether a trace reached its step cap when the process exits cleanly. In that case the summary records `completion: "unknown"`; an explicit stopped trace is `incomplete`, and an invalid word shape is `not-run`. Motif preserves PanGloss fields and only summarizes reason codes in the recorded tree; it does not infer a cause from neighboring events.
+
+The window's **Copy for a chat model** action includes its instructions, one-line summary, and complete trace diagnostic. `motif trace` and `motif trace --load` are Released commands with Help pages, so a saved trace can be read through the same typed interpretation as a live one.

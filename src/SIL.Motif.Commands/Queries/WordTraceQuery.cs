@@ -106,7 +106,7 @@ public static class WordTraceQuery
                     "wordtrace.parser-unavailable", FailureReason.Refused, outcome.Message)),
             };
             return result.Succeeded ? CommandOutcome<WordTraceResponse>.Success(
-                TraceDiagnosticCapture.Attach(result.Value!, baseline, project)) : result;
+                TraceDiagnosticCapture.Attach(result.Value!, baseline, project, elapsedMs)) : result;
         });
     }
 

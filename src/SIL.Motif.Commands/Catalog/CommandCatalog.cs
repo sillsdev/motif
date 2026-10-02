@@ -134,8 +134,8 @@ public static class CommandCatalog
         new CommandDescriptor("inspect", typeof(InspectRequest), typeof(InspectResponse), CommandSurface.Developer),
 
         // WordTraceQuery: one word's trace, live or from a saved file, as Try a Word reads it
-        new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Developer),
-        new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Developer),
+        new CommandDescriptor("trace", typeof(WordTraceRequest), typeof(WordTraceResponse), CommandSurface.Released),
+        new CommandDescriptor("trace --load", typeof(WordTraceLoadRequest), typeof(WordTraceResponse), CommandSurface.Released),
 
         // HandoffCommand
         new CommandDescriptor("handoff", typeof(HandoffRequest), typeof(HandoffCommandResponse), CommandSurface.Released),

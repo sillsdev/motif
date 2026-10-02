@@ -23,11 +23,11 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     public const string FormatGuide =
         "https://github.com/sillsdev/motif/blob/main/docs/handoff/trace-diagnostic-format.md";
 
-    /// <summary>What "Copy for a chat model" puts on the clipboard.</summary>
+    /// <summary>The evidence-handling instructions copied beside a trace.</summary>
     public const string ChatInstructions =
         "Interpret this saved Motif diagnostic as recorded evidence. Read analyses before attempts, keep parser order, " +
-        "treat incomplete search as incomplete even with a success, and label category counts aggregate rather than " +
-        "step timing. Format guide: " + FormatGuide;
+        "treat incomplete search as incomplete even with a success, do not infer trace completion from a clean exit, " +
+        "and label category counts aggregate rather than step timing. Format guide: " + FormatGuide;
 
     private readonly IClipboard _clipboard;
     private readonly IDiagnosticFilePicker _files;
@@ -82,8 +82,8 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     /// <summary>Copies the trace's full diagnostic JSON.</summary>
     public Task CopyJsonAsync() => CopyAsync(Trace.DiagnosticJson, "Motif could not copy the diagnostic.");
 
-    /// <summary>Copies <see cref="ChatInstructions"/>, for pasting beside the diagnostic in a chat.</summary>
-    public Task CopyInstructionsAsync() => CopyAsync(ChatInstructions, "Motif could not copy the instructions.");
+    /// <summary>Copies instructions, a summary, and the original trace diagnostic for a chat.</summary>
+    public Task CopyInstructionsAsync() => CopyAsync(BuildChatText(), "Motif could not copy the instructions.");
 
     /// <summary>Asks where to save the trace's diagnostic JSON and writes it there; a cancelled dialog writes nothing.</summary>
     public async Task SaveAsync()
@@ -121,6 +121,21 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
         {
             Error = NotWritten(failure, exception);
         }
+    }
+
+    private string BuildChatText()
+    {
+        var summary = string.IsNullOrWhiteSpace(Trace.SummaryText) ? "Not recorded." : Trace.SummaryText;
+        var completion = Trace.Result switch
+        {
+            { InvalidShape: true } => "not run (invalid shape recorded)",
+            { Complete: false } result =>
+                $"incomplete{(string.IsNullOrWhiteSpace(result.StopReason) ? "; reason not recorded" : "; " + result.StopReason)}",
+            { Complete: true } => "unknown; the parser did not record whether its trace step cap stopped the search",
+            _ => "not recorded",
+        };
+        var diagnostic = string.IsNullOrWhiteSpace(Trace.DiagnosticJson) ? "Not recorded." : Trace.DiagnosticJson;
+        return $"{ChatInstructions}\n\nSummary:\n{summary}\nSearch completion: {completion}.\n\nTrace diagnostic JSON:\n{diagnostic}";
     }
 
     private static WindowRefusal NotWritten(string sentence, Exception exception) =>

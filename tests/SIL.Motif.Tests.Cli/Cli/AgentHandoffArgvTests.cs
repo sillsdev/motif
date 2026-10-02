@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -76,6 +77,65 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.NotFound), missing.ExitCode);
         Assert.Equal("handoff.invocation-not-found", ProjectionJson.Deserialize<FailureEnvelope>(missing.Error)!.Code);
         Assert.False(Directory.Exists(missingDestination));
+    }
+
+    [Fact]
+    public async Task HandoffReadsTheCapturedBaselineWhileAnotherProcessHoldsItOpen()
+    {
+        var project = _pristine.CopyProjectFile();
+        var selection = await CliProcess.RunAsync(_workerRoot, null, false, "selection", "set-default",
+            "--project", project, "--name", "Default", "--add-words", "motifa", "--json");
+        Assert.True(selection.ExitCode == 0, selection.FailureDetails);
+        var parser = CopyFakeParser();
+        var assessment = await CliProcess.RunAsync(_workerRoot, parser, false, "assess", project, "--json");
+        Assert.True(assessment.ExitCode == 0, assessment.FailureDetails);
+        var assessed = ProjectionJson.Deserialize<AssessCommandResponse>(assessment.Output)!;
+        var original = File.ReadAllBytes(assessed.Baseline.FwDataPath);
+        using var held = new FwDataProjectLoader().LoadScratchCache(assessed.Baseline.FwDataPath);
+        var heldPath = held.ProjectId.Path;
+        Assert.Equal(Path.GetFullPath(assessed.Baseline.FwDataPath), Path.GetFullPath(heldPath));
+        var destination = Path.Combine(_root, "held-baseline-handoff");
+
+        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+            "handoff", project, "--out", destination, "--invocation", assessed.InvocationId, "--json");
+
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
+        var handoff = ProjectionJson.Deserialize<HandoffCommandResponse>(result.Output)!;
+        Assert.Equal(Path.GetFullPath(assessed.Baseline.FwDataPath), Path.GetFullPath(handoff.Baseline.FwDataPath));
+        Assert.Equal(heldPath, held.ProjectId.Path);
+        Assert.Equal(original, File.ReadAllBytes(assessed.Baseline.FwDataPath));
+        Assert.True(File.Exists(Path.Combine(destination, "texts.json")));
+    }
+
+    [Fact]
+    public async Task BaselineOnlyHandoffReadsTheCapturedBaselineWhileAnotherProcessHoldsItOpen()
+    {
+        var project = _pristine.CopyProjectFile();
+        Guid textId;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(project))
+        {
+            textId = SeededProject.SeedText(cache, _pristine.Seed).TextId;
+            new FwDataProjectLoader().Save(cache);
+        }
+        var capture = await CliProcess.RunAsync(_workerRoot, null, false,
+            "baseline", "capture", project, "--json");
+        Assert.True(capture.ExitCode == 0, capture.FailureDetails);
+        var baseline = ProjectionJson.Deserialize<BaselineCaptureResponse>(capture.Output)!;
+        var original = File.ReadAllBytes(baseline.FwDataPath);
+        using var held = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        var heldPath = held.ProjectId.Path;
+        Assert.Equal(Path.GetFullPath(baseline.FwDataPath), Path.GetFullPath(heldPath));
+        var destination = Path.Combine(_root, "held-baseline-only-handoff");
+
+        var result = await CliProcess.RunAsync(_workerRoot, null, false,
+            "handoff", project, "--out", destination, "--no-assess", "--texts", textId.ToString("D"), "--json");
+
+        Assert.True(result.ExitCode == 0, result.FailureDetails);
+        var handoff = ProjectionJson.Deserialize<HandoffCommandResponse>(result.Output)!;
+        Assert.Equal(Path.GetFullPath(baseline.FwDataPath), Path.GetFullPath(handoff.Baseline.FwDataPath));
+        Assert.Equal(heldPath, held.ProjectId.Path);
+        Assert.Equal(original, File.ReadAllBytes(baseline.FwDataPath));
+        Assert.True(File.Exists(Path.Combine(destination, "texts.json")));
     }
 
     public void Dispose()

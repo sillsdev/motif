@@ -1005,6 +1005,7 @@ public sealed class TryWordPageTests
             Assert.Equal("dogs", requests.Word);
             page.HandOffCommand.Execute(null);
             Assert.Equal(["dogs"], handoff.Handoff.ChosenWords);
+            Assert.Same(page.Trace.Result, handoff.Handoff.SelectedTrace);
             page.Trace.Result = null;
             Assert.False(page.OpenTimingCommand.CanExecute(null));
             Assert.False(page.OpenInTextsCommand.CanExecute(null));

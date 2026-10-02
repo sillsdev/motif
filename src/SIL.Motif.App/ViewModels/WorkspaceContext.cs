@@ -580,7 +580,10 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public void OpenTiming(IReadOnlyList<string> words, TraceTimingKey? rule, string? label = null) => Open(new OpenTimingRequest(words, rule, label));
 
     /// <summary>Opens the AI Handoff page with <paramref name="words"/> as the words it will write.</summary>
-    public void HandOff(IReadOnlyList<string> words) => Open(new HandOffRequest(words));
+    public void HandOff(IReadOnlyList<string> words) => HandOff(words, null);
+
+    public void HandOff(IReadOnlyList<string> words, WordTraceResponse? selectedTrace) =>
+        Open(new HandOffRequest(words, selectedTrace));
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -1,10 +1,13 @@
 using System.ComponentModel;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>Opens the AI Handoff page with some words as the ones it will write.</summary>
 /// <param name="Words">The words to hand off.</param>
-public sealed record HandOffRequest(IReadOnlyList<string> Words) : PageRequest(WorkspacePage.AiHandoff);
+/// <param name="SelectedTrace">The displayed trace and Baseline to preserve, when this request came from Try a Word.</param>
+public sealed record HandOffRequest(IReadOnlyList<string> Words, WordTraceResponse? SelectedTrace = null)
+    : PageRequest(WorkspacePage.AiHandoff);
 
 /// <summary>The AI Handoff page's model: the action that writes the files, and which Assessment they cover.</summary>
 public sealed class AiHandoffPageModel : PageModel
@@ -44,6 +47,7 @@ public sealed class AiHandoffPageModel : PageModel
 
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
+        if (Handoff.SelectedTrace is not null) return Task.CompletedTask;
         if (evidence.Assessment is not { } shown) return Task.CompletedTask;
         Handoff.InvocationId = shown.Assessment.InvocationId;
         Handoff.LatestAssessmentAt = shown.CompletedAt;
@@ -54,7 +58,9 @@ public sealed class AiHandoffPageModel : PageModel
 
     protected override void OnRequested(PageRequest request)
     {
-        if (request is HandOffRequest handOff) Handoff.UseWords(handOff.Words);
+        if (request is not HandOffRequest handOff) return;
+        if (handOff.SelectedTrace is { } trace) Handoff.UseSelectedTrace(trace);
+        else Handoff.UseWords(handOff.Words);
     }
 
     // What an AI Handoff written now would cover, so the reader knows which run the chat model will see.

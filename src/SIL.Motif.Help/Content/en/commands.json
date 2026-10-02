@@ -89,6 +89,16 @@
     "description": "Writes a folder with the grammar and selected Texts, plus retained parse evidence when an invocation is selected. The files contain real project data, so review them before sharing.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "trace": {
+    "title": "Trace a word",
+    "description": "Runs PanGloss for one word against the project's current Baseline and returns its diagnostic. Use it to inspect recorded analyses and trace events.",
+    "source": "Hand-written from command behavior."
+  },
+  "trace --load": {
+    "title": "Load a saved trace",
+    "description": "Reads a saved diagnostic without opening a project or starting PanGloss. Use it to inspect earlier trace evidence with the same reader as a live trace.",
+    "source": "Hand-written from command behavior."
+  },
   "add-corpus": {
     "title": "Describe a Corpus",
     "description": "Creates an empty Corpus and records its provenance, tokenisation, and licence capabilities. Use it before adding Documents to the Corpus.",

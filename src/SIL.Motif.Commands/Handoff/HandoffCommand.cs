@@ -7,14 +7,17 @@ using System.Threading;
 using SIL.LCModel;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
-using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.WritingSystems;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Assess;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
@@ -22,16 +25,20 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Handoff;
 
-/// <summary>Which project to hand off, where to publish it, and whether to export a retained invocation.</summary>
+/// <summary>Which project to hand off, where to publish it, and which saved evidence to include.</summary>
 public sealed record HandoffRequest(
     string ProjectPath,
     string OutputDirectory,
     SelectionRequest Selection,
     bool Assess,
-    string? InvocationId = null);
+    string? InvocationId = null)
+{
+    /// <summary>The displayed one-word trace to keep with the Baseline recorded in its capture.</summary>
+    public WordTraceResponse? SelectedTrace { get; init; }
+}
 
 /// <summary>
-/// Writes the five-file AI Handoff (ADR 0045) by composing the commands that already exist:
+/// Writes the core AI Handoff files (ADR 0045) by composing the commands that already exist:
 /// <see cref="BaselineCaptureCommand"/> for a Baseline-only export, <see cref="AssessCommand"/> for a fresh
 /// Assessment, or a selected retained invocation, which supplies its own Baseline, Selection, evidence, and
 /// Assessment identities.
@@ -111,6 +118,7 @@ public static class HandoffCommand
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
+            BaselineReadCache? sourceReader = null;
             try
             {
                 BaselineCaptureResponse baseline;
@@ -119,13 +127,62 @@ public static class HandoffCommand
                 string? statisticsAssessmentId = null;
                 var assessmentIds = new List<string>();
                 string? exportedInvocationId = null;
+                WordTraceResponse? handoffTrace = null;
                 RetainedInvocationRecord? retained = null;
                 StatsEvidenceReplay? replay = null;
-                LcmCache? retainedSource = null;
                 string? languageName = null;
                 string? projectName = null;
 
-                if (request.Assess && request.InvocationId is not null)
+                if (request.SelectedTrace is { } requestedTrace)
+                {
+                    if (request.Assess || request.InvocationId is not null || request.Selection.Words.Count != 1)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-unavailable", FailureReason.InvalidArgument,
+                            "A selected trace Handoff must contain only that trace and its captured Baseline."));
+
+                    var traceOutcome = WordTraceQuery.LoadDiagnostic(requestedTrace.DiagnosticJson);
+                    if (!traceOutcome.Succeeded || traceOutcome.Value is not { } selectedTrace)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-unavailable", FailureReason.Refused,
+                            traceOutcome.Refusal?.Message ?? "The selected trace diagnostic is unavailable."));
+                    if (!StringComparer.Ordinal.Equals(selectedTrace.Word, request.Selection.Words[0]))
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-unavailable", FailureReason.InvalidArgument,
+                            "The selected trace must name the one word in this Handoff."));
+
+                    var captured = selectedTrace.HostCapture?.Baseline;
+                    if (captured is null)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-baseline-unavailable", FailureReason.Refused,
+                            "The selected trace does not record the Baseline that produced it."));
+
+                    try
+                    {
+                        var capturedPath = ResolveCapturedBaselinePath(managedRoot, captured.Token);
+                        sourceReader = BaselineReadCache.Open(capturedPath);
+                        if (!Guid.TryParse(captured.Token.ProjectIdentity, out var capturedProjectIdentity) ||
+                            sourceReader.Cache.LangProject.Guid != capturedProjectIdentity)
+                            throw new InvalidDataException("The selected trace Baseline belongs to another project.");
+                        baseline = new BaselineCaptureResponse(captured.Token, capturedPath,
+                            captured.SourceLastWriteUtc, false, true);
+                    }
+                    catch (Exception exception) when (exception is IOException or InvalidDataException or
+                        UnauthorizedAccessException or ArgumentException)
+                    {
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-baseline-unavailable", FailureReason.Refused, exception.Message));
+                    }
+
+                    var composed = SelectionComposer.Compose(
+                        sourceReader.Cache, request.Selection, new AssessmentRepository(database));
+                    if (!composed.Succeeded)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(composed.Refusal!);
+                    selectionProjection = composed.Value!.Projection;
+                    languageName = LanguageNameOf(sourceReader.Cache);
+                    projectName = sourceReader.Cache.ProjectId.Name;
+                    handoffTrace = selectedTrace;
+                }
+                else if (request.Assess && request.InvocationId is not null)
                 {
                     try
                     {
@@ -191,7 +248,7 @@ public static class HandoffCommand
                         if (!File.Exists(retained.BaselineFwDataPath))
                             throw new FileNotFoundException(
                                 "The retained Baseline source is not available.", retained.BaselineFwDataPath);
-                        retainedSource = new FwDataProjectLoader().LoadScratchCache(retained.BaselineFwDataPath);
+                        sourceReader = BaselineReadCache.Open(retained.BaselineFwDataPath);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or ArgumentException)
@@ -203,7 +260,7 @@ public static class HandoffCommand
                     }
 
                     Guid? missingTextId = null;
-                    var retainedTextRepository = retainedSource.ServiceLocator.GetInstance<ITextRepository>();
+                    var retainedTextRepository = sourceReader.Cache.ServiceLocator.GetInstance<ITextRepository>();
                     foreach (var textId in retained.Selection.TextIds)
                     {
                         if (!retainedTextRepository.TryGetObject(textId, out _))
@@ -214,7 +271,6 @@ public static class HandoffCommand
                     }
                     if (missingTextId is not null)
                     {
-                        retainedSource.Dispose();
                         replay.Dispose();
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.text-not-found", FailureReason.InvalidArgument,
@@ -230,14 +286,13 @@ public static class HandoffCommand
                     assessmentIds.AddRange(retained.Members.Select(member => member.AssessmentId));
                     exportedInvocationId = retained.InvocationId;
                     statisticsAssessmentId = statisticsAssessment.AssessmentId;
-                    languageName = LanguageNameOf(retainedSource);
-                    projectName = retainedSource.ProjectId.Name;
+                    languageName = LanguageNameOf(sourceReader.Cache);
+                    projectName = sourceReader.Cache.ProjectId.Name;
 
                     var parseAssessment = retained.Assessments.FirstOrDefault(item =>
                         item.Kind.IsStoredKind(AssessmentKind.ParseTime));
                     if (parseAssessment is null)
                     {
-                        retainedSource.Dispose();
                         replay.Dispose();
                         return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
                             "handoff.statistics-unavailable", FailureReason.Refused,
@@ -285,14 +340,14 @@ public static class HandoffCommand
                         return CommandOutcome<HandoffCommandResponse>.Refused(baselineOutcome.Refusal!);
                     baseline = baselineOutcome.Value!;
 
-                    using var selectionCache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+                    sourceReader = BaselineReadCache.Open(baseline.FwDataPath);
                     var composed = SelectionComposer.Compose(
-                        selectionCache, request.Selection, new AssessmentRepository(database));
+                        sourceReader.Cache, request.Selection, new AssessmentRepository(database));
                     if (!composed.Succeeded)
                         return CommandOutcome<HandoffCommandResponse>.Refused(composed.Refusal!);
                     selectionProjection = composed.Value!.Projection;
-                    languageName = LanguageNameOf(selectionCache);
-                    projectName = selectionCache.ProjectId.Name;
+                    languageName = LanguageNameOf(sourceReader.Cache);
+                    projectName = sourceReader.Cache.ProjectId.Name;
                 }
 
                 if (statisticsAssessmentId is not null && replay is null)
@@ -314,27 +369,41 @@ public static class HandoffCommand
                     }
                 }
                 using var replayLease = replay;
-                using var retainedSourceLease = retainedSource;
                 var grammarPath = request.Assess ? replay!.GrammarPath : baseline.FwDataPath;
+                if (request.Assess && request.InvocationId is null && request.Selection.Words.Count == 1)
+                {
+                    var word = request.Selection.Words[0];
+                    var traceOutcome = new PanGlossTracer(invoker)
+                        .TraceAsync(grammarPath, word, cancellationToken).GetAwaiter().GetResult();
+                    if (traceOutcome is PanGlossTraceOutcome.Cancelled)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
+                    if (traceOutcome.Document is not { } document)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-unavailable", FailureReason.Refused,
+                            $"The Handoff could not record a trace for '{word}': {traceOutcome.Message}"));
+
+                    var loadedTrace = WordTraceQuery.LoadDiagnostic(document.RawJson);
+                    if (!loadedTrace.Succeeded)
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-unavailable", FailureReason.Refused,
+                            $"The Handoff could not read the trace for '{word}': {loadedTrace.Refusal!.Message}"));
+                    var traceBaseline = new BaselineRepository(database)
+                        .GetCurrent(ProjectWorkspaceKey.Compute(project));
+                    if (traceBaseline is null || !Equals(traceBaseline.Token, baseline.Token))
+                        return CommandOutcome<HandoffCommandResponse>.Refused(new Refusal(
+                            "handoff.trace-baseline-unavailable", FailureReason.Refused,
+                            "The Handoff could not attach the selected trace to its Assessment Baseline."));
+                    handoffTrace = TraceDiagnosticCapture.Attach(loadedTrace.Value!, traceBaseline, project);
+                }
 
                 var writeRefusal = HandoffWriter.Publish(request.OutputDirectory, request.Assess, incoming =>
                 {
-                    Refusal? textsRefusal;
-                    string? sampleTextKey;
-                    if (retainedSource is not null)
-                    {
-                        textsRefusal = HandoffWriter.WriteTextsJson(
-                            retainedSource, retained?.Selection.TextIds ?? request.Selection.TextIds, incoming,
-                            out sampleTextKey);
-                    }
-                    else
-                    {
-                        using var cache = new FwDataProjectLoader().LoadScratchCache(grammarPath);
-                        languageName ??= LanguageNameOf(cache);
-                        projectName ??= cache.ProjectId.Name;
-                        textsRefusal = HandoffWriter.WriteTextsJson(
-                            cache, request.Selection.TextIds, incoming, out sampleTextKey);
-                    }
+                    sourceReader ??= BaselineReadCache.Open(grammarPath);
+                    languageName ??= LanguageNameOf(sourceReader.Cache);
+                    projectName ??= sourceReader.Cache.ProjectId.Name;
+                    var textsRefusal = HandoffWriter.WriteTextsJson(
+                        sourceReader.Cache, retained?.Selection.TextIds ?? request.Selection.TextIds, incoming,
+                        out var sampleTextKey);
                     if (textsRefusal is not null) return textsRefusal;
 
                     HandoffWriter.WritePythonHelper(incoming);
@@ -353,15 +422,19 @@ public static class HandoffCommand
                     }
 
                     if (request.Assess)
-                        HandoffWriter.WriteAssessmentJson(incoming, assessedWords ?? []);
+                        HandoffWriter.WriteAssessmentJson(incoming, assessedWords ?? [], handoffTrace);
+                    else if (handoffTrace is not null)
+                        HandoffWriter.WriteTraceJson(incoming, handoffTrace);
 
-                    var sampleWord = selectionProjection.Words.Count > 0 ? selectionProjection.Words[0] : "word";
+                    var sampleWord = handoffTrace?.Word ??
+                        (selectionProjection.Words.Count > 0 ? selectionProjection.Words[0] : "word");
                     var handoffMarkdown = HandoffWriter.BuildHandoffMarkdown(
-                        request.Assess, sampleTextKey ?? "text", sampleWord);
+                        request.Assess, sampleTextKey ?? "text", sampleWord, handoffTrace is not null,
+                        request.SelectedTrace is not null);
                     File.WriteAllText(Path.Combine(incoming, HandoffWriter.HandoffMarkdownFileName), handoffMarkdown);
 
                     return null;
-                });
+                }, includeTrace: handoffTrace is not null);
 
                 if (writeRefusal is not null)
                     return CommandOutcome<HandoffCommandResponse>.Refused(writeRefusal);
@@ -384,6 +457,10 @@ public static class HandoffCommand
             {
                 return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
             }
+            finally
+            {
+                sourceReader?.Dispose();
+            }
         });
     }
 
@@ -391,6 +468,24 @@ public static class HandoffCommand
         WritingSystemInventoryReader.Read(cache).DefaultVernacular?.Name is { Length: > 0 } name
             ? name
             : "the language";
+
+    private static string ResolveCapturedBaselinePath(string managedRoot, BaselineToken token)
+    {
+        const string digestPrefix = "sha256:";
+        if (!token.BundleDigest.StartsWith(digestPrefix, StringComparison.Ordinal))
+            throw new InvalidDataException("The selected trace Baseline has no canonical bundle digest.");
+        var directory = Path.Combine(managedRoot, "baselines", token.BundleDigest[digestPrefix.Length..]);
+        if (!Directory.Exists(directory) ||
+            (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
+            throw new FileNotFoundException("The selected trace Baseline is no longer available.", directory);
+        var fwDataFiles = Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly)
+            .Where(path => StringComparer.OrdinalIgnoreCase.Equals(Path.GetExtension(path), ".fwdata"))
+            .ToArray();
+        if (fwDataFiles.Length != 1 ||
+            (File.GetAttributes(fwDataFiles[0]) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidDataException("The selected trace Baseline has an invalid project file layout.");
+        return fwDataFiles[0];
+    }
 
     private static void Report(Action<AssessmentProgress>? onProgress, AssessmentStage stage, string message) =>
         onProgress?.Invoke(new AssessmentProgress(stage, 0, null, message));

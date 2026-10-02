@@ -37,7 +37,7 @@ public sealed class TryWordPageModel : PageModel
         }, CanOpenResultWord);
         HandOffCommand = new RelayCommand(() =>
         {
-            if (Trace.Result is { } result) Context.HandOff([result.Word]);
+            if (Trace.Result is { } result) Context.HandOff([result.Word], result);
         }, CanOpenResultWord);
         OpenTimingCommand = new RelayCommand(OpenTimingForResultWord, CanOpenResultWord);
         OpenRecentWordCommand = new RelayCommand<string?>(word =>

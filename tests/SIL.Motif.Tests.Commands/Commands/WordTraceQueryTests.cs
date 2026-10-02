@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.PanGloss;
@@ -120,6 +121,25 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal("Failed", failed.Steps[^1].Type);
         Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
         Assert.Contains(TraceTreeContextRange.Resolve(response.Reading.Root, failed.TreeContext), step => step.FailureReason == "NonPartialRuleProhibitedAfterFinalTemplate");
+    }
+
+    [Fact]
+    public void LiveTraceRecordsMeasuredHostElapsedTime()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GoldenStandardOutput, string.Empty, TimeSpan.Zero),
+        };
+        var tracer = new DelayingTracer(new PanGlossTracer(invoker), TimeSpan.FromMilliseconds(75));
+
+        var outcome = WordTraceQuery.Query(
+            new WordTraceRequest(fwDataPath, "sagd"), tracer, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.True(outcome.Value!.HostCapture!.WallElapsedMs > 0,
+            "A live trace host duration must be measured around the parser invocation.");
     }
 
     [Fact]
@@ -256,5 +276,15 @@ public sealed class WordTraceQueryTests : IDisposable
         var root = Path.Combine(_managedRootsParent, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         return root;
+    }
+
+    private sealed class DelayingTracer(IPanGlossTracer inner, TimeSpan delay) : IPanGlossTracer
+    {
+        public async Task<PanGlossTraceOutcome> TraceAsync(
+            string grammarPath, string word, CancellationToken cancellationToken, TimeSpan? timeout = null)
+        {
+            await Task.Delay(delay, cancellationToken);
+            return await inner.TraceAsync(grammarPath, word, cancellationToken, timeout);
+        }
     }
 }

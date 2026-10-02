@@ -19,10 +19,17 @@ public sealed class DesktopFileAndClipboardSeamTests
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
 
+    private const string InvalidShapeDiagnosticJson = """
+        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
+         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":true,"steps":0,"elapsedNs":0},
+         "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
+        """;
+
     private const string ExpectedChatInstructions =
         "Interpret this saved Motif diagnostic as recorded evidence. Read analyses before attempts, keep parser order, " +
-        "treat incomplete search as incomplete even with a success, and label category counts aggregate rather than " +
-        "step timing. Format guide: https://github.com/sillsdev/motif/blob/main/docs/handoff/trace-diagnostic-format.md";
+        "treat incomplete search as incomplete even with a success, do not infer trace completion from a clean exit, " +
+        "and label category counts aggregate rather than step timing. Format guide: " +
+        "https://github.com/sillsdev/motif/blob/main/docs/handoff/trace-diagnostic-format.md";
 
     private readonly RecordingClipboard _clipboard = new();
     private readonly ScriptedDiagnosticFiles _files = new();
@@ -43,13 +50,31 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task CopyingForAChatModelPutsTheInstructionsAndTheFormatGuideOnTheClipboard()
+    public async Task CopyingForAChatModelIncludesInstructionsSummaryAndTheUnchangedTrace()
     {
         var tools = ToolsFor(ValidDiagnosticJson);
 
         await tools.CopyInstructionsAsync();
 
-        Assert.Equal(ExpectedChatInstructions, Assert.Single(_clipboard.Copied));
+        var copied = Assert.Single(_clipboard.Copied);
+        Assert.Contains(ExpectedChatInstructions, copied, StringComparison.Ordinal);
+        Assert.Contains("Summary:\nNo parse", copied, StringComparison.Ordinal);
+        Assert.Contains("1 parser steps", copied, StringComparison.Ordinal);
+        Assert.Contains("overall time not recorded", copied, StringComparison.Ordinal);
+        Assert.Contains("Search completion: incomplete", copied, StringComparison.Ordinal);
+        Assert.Contains("Trace diagnostic JSON:\n" + ValidDiagnosticJson, copied, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CopyingAnInvalidShapeSaysTheSearchDidNotRun()
+    {
+        var tools = ToolsFor(InvalidShapeDiagnosticJson);
+
+        await tools.CopyInstructionsAsync();
+
+        var copied = Assert.Single(_clipboard.Copied);
+        Assert.Contains("Search completion: not run (invalid shape recorded)", copied, StringComparison.Ordinal);
+        Assert.DoesNotContain("Search completion: incomplete", copied, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -264,7 +289,10 @@ public sealed class DesktopFileAndClipboardSeamTests
 
         Assert.Same(page.Trace, page.Diagnostics.Trace);
         await page.Diagnostics.CopyInstructionsAsync();
-        Assert.Equal(ExpectedChatInstructions, Assert.Single(_clipboard.Copied));
+        var copied = Assert.Single(_clipboard.Copied);
+        Assert.Contains(ExpectedChatInstructions, copied, StringComparison.Ordinal);
+        Assert.Contains("Summary:\nNot recorded.", copied, StringComparison.Ordinal);
+        Assert.Contains("Trace diagnostic JSON:\nNot recorded.", copied, StringComparison.Ordinal);
     }
 
     [Fact]

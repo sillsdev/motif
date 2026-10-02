@@ -16,14 +16,15 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>Adds host-owned capture evidence while preserving every parser field.</summary>
 internal static class TraceDiagnosticCapture
 {
-    internal static WordTraceResponse Attach(WordTraceResponse response, BaselineRecord baseline, ProjectLocator project)
+    internal static WordTraceResponse Attach(WordTraceResponse response, BaselineRecord baseline, ProjectLocator project,
+        long? wallElapsedMs = null)
     {
         var baselineSource = new TraceBaselineSource(baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc,
             $"Saved FieldWorks project as of {baseline.SourceLastWriteUtc:O}; Baseline captured {baseline.Token.CapturedUtc}.");
         if (string.IsNullOrEmpty(response.DiagnosticJson)) return response with
         {
             HostCapture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
-                response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow, response.ElapsedMs, [])
+                response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow, wallElapsedMs, [])
                 { Baseline = baselineSource },
         };
         using var reader = BaselineReadCache.Open(baseline.FwDataPath);
@@ -41,7 +42,7 @@ internal static class TraceDiagnosticCapture
             .Concat(inventory.Analysis.Select(ws => Describe(ws, false))).ToArray();
         var capture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
             response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow,
-            response.ElapsedMs, systems)
+            wallElapsedMs, systems)
         {
             Baseline = baselineSource,
         };

@@ -33,6 +33,19 @@ public sealed class HandoffMarkdownTests
         Assert.Contains("`handoff.md`", markdown, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void OneWordHandoffMarkdownNamesItsOptionalTraceFile()
+    {
+        var markdown = HandoffWriter.BuildHandoffMarkdown(true, "example-key", "mirusi", hasTrace: true);
+
+        Assert.Contains("six files", markdown, StringComparison.Ordinal);
+        Assert.Contains("`mirusi.trace.json`", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("`traces/", markdown, StringComparison.Ordinal);
+        Assert.Contains("Completion is `unknown`", markdown, StringComparison.Ordinal);
+        Assert.Contains("preserves its recorded parser fields", markdown, StringComparison.Ordinal);
+        Assert.True(markdown.Split('\n').Length <= 100);
+    }
+
     // The reader script is always written now, whether or not this run collected an Assessment.
     [Theory]
     [InlineData(true)]

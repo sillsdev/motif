@@ -162,16 +162,41 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     [NotifyPropertyChangedFor(nameof(ChosenWordsText))]
     private IReadOnlyList<string>? _chosenWords;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChosenWordsText))]
+    private WordTraceResponse? _selectedTrace;
+
     public bool HasChosenWords => ChosenWords is { Count: > 0 };
 
-    public string ChosenWordsText => ChosenWords is { } words
-        ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
-        : string.Empty;
+    public string ChosenWordsText => SelectedTrace is { } trace
+        ? $"Keeps the displayed trace for {trace.Word} and the Baseline captured with it."
+        : ChosenWords is { } words
+            ? $"Only the {words.Count:N0} word{(words.Count == 1 ? string.Empty : "s")} chosen on the Texts page, parsed again for these files."
+            : string.Empty;
 
     /// <summary>Hands off <paramref name="words"/> rather than the whole Assessment.</summary>
-    public void UseWords(IReadOnlyList<string> words) => ChosenWords = words.Count > 0 ? words : null;
+    public void UseWords(IReadOnlyList<string> words)
+    {
+        SelectedTrace = null;
+        ChosenWords = words.Count > 0 ? words : null;
+    }
 
-    public void UseWholeAssessment() => ChosenWords = null;
+    /// <summary>Keeps the trace already displayed on Try a Word with the Baseline recorded in its capture.</summary>
+    public void UseSelectedTrace(WordTraceResponse trace)
+    {
+        ArgumentNullException.ThrowIfNull(trace);
+        SelectedTrace = trace;
+        ChosenWords = [trace.Word];
+        InvocationId = null;
+        LatestAssessmentAt = null;
+        CoverageText = null;
+    }
+
+    public void UseWholeAssessment()
+    {
+        SelectedTrace = null;
+        ChosenWords = null;
+    }
 
     partial void OnChosenWordsChanged(IReadOnlyList<string>? value) => RunCommand.NotifyCanExecuteChanged();
 
@@ -192,8 +217,14 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     protected override Task<CommandOutcome<HandoffCommandResponse>> ExecuteCoreAsync(
         CancellationToken cancellationToken)
     {
-        var request = ChosenWords is { } words
-            ? new HandoffRequest(ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], words, false, null), true)
+        var request = SelectedTrace is { } trace
+            ? new HandoffRequest(ProjectPath!, _pendingFolder!,
+                new SelectionRequest(false, [], [trace.Word], false, null), false)
+            {
+                SelectedTrace = trace,
+            }
+            : ChosenWords is { } words
+                ? new HandoffRequest(ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], words, false, null), true)
             : new HandoffRequest(
                 ProjectPath!, _pendingFolder!, new SelectionRequest(false, [], [], false, null), true, InvocationId);
         return _commandClient.HandoffAsync(request, this, cancellationToken);
@@ -213,6 +244,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     {
         InvocationId = null;
         ChosenWords = null;
+        SelectedTrace = null;
         CoverageText = null;
         LatestAssessmentAt = null;
         WrittenAt = null;

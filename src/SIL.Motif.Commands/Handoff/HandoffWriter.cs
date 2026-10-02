@@ -13,11 +13,9 @@ using SIL.Motif.Host.Texts;
 namespace SIL.Motif.Commands.Handoff;
 
 /// <summary>
-/// Writes the five flat files ADR 0045 puts in an AI Handoff — <c>grammar.json</c>, <c>texts.json</c>,
-/// <c>assessment.json</c>, <c>parse_grammar_texts_assessment.py</c>, and <c>handoff.md</c> — and publishes
-/// them atomically: every file lands in a sibling <c>.incoming-&lt;guid&gt;</c> directory first, the exact
-/// listing is validated, and only then one <see cref="Directory.Move(string, string)"/> makes it appear at
-/// its destination.
+/// Writes the five core files ADR 0045 puts in an AI Handoff and, for a one-word Handoff, its trace file.
+/// Every file lands in a sibling <c>.incoming-&lt;guid&gt;</c> directory first; only a validated listing is
+/// moved to its destination.
 /// </summary>
 /// <remarks>
 /// <see cref="Publish"/> is the whole atomicity contract: its populate callback writes files freely into
@@ -63,6 +61,7 @@ public static class HandoffWriter
     /// existing empty directory here is removed immediately before the final move.
     /// </param>
     /// <param name="includeAssessment">Whether <c>assessment.json</c> is required (design decision 2: absent, not empty, when there is none).</param>
+    /// <param name="includeTrace">Whether one trace file is required inside <c>traces/</c>.</param>
     /// <param name="populate">
     /// Writes every file into the incoming directory it is handed. Returning a <see cref="Refusal"/>
     /// aborts without moving anything; an exception it throws propagates after the incoming directory is
@@ -70,7 +69,7 @@ public static class HandoffWriter
     /// </param>
     /// <returns>The <see cref="Refusal"/> <paramref name="populate"/> returned, or <see langword="null"/> on success.</returns>
     public static Refusal? Publish(
-        string destinationDirectory, bool includeAssessment, Func<string, Refusal?> populate)
+        string destinationDirectory, bool includeAssessment, Func<string, Refusal?> populate, bool includeTrace = false)
     {
         ArgumentNullException.ThrowIfNull(destinationDirectory);
         ArgumentNullException.ThrowIfNull(populate);
@@ -87,7 +86,7 @@ public static class HandoffWriter
             var refusal = populate(incoming);
             if (refusal is not null) return refusal;
 
-            ValidateListing(incoming, includeAssessment);
+            ValidateListing(incoming, includeAssessment, includeTrace);
 
             // Known empty by the caller's own pre-check; removed here so Directory.Move never sees it.
             if (Directory.Exists(full)) Directory.Delete(full);
@@ -161,27 +160,80 @@ public static class HandoffWriter
     internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature);
 
     /// <summary>
-    /// Writes <c>assessment.json</c>: every Assessment word, each record carrying its own <c>word</c> field
-    /// so a future trace can join the same record instead of a parallel structure (design decisions 2 and
-    /// 12 — this call never writes a trace itself; see <see cref="SIL.Motif.Host.PanGloss.IPanGlossTracer"/>).
+    /// Writes <c>assessment.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
+    /// A one-word Handoff adds its raw trace file and summary to that word's record.
     /// </summary>
-    internal static void WriteAssessmentJson(string incomingRoot, IReadOnlyList<AssessedWordStatistics> words)
+    internal static void WriteAssessmentJson(
+        string incomingRoot, IReadOnlyList<AssessedWordStatistics> words, WordTraceResponse? trace = null)
     {
         ArgumentNullException.ThrowIfNull(words);
+        if (trace is not null && !words.Any(word => StringComparer.Ordinal.Equals(word.Word, trace.Word)))
+            throw new InvalidOperationException("The traced word is not in the Handoff Assessment.");
+
+        if (trace is not null)
+        {
+            WriteTraceJson(incomingRoot, trace);
+        }
 
         var records = words
             .OrderBy(word => word.Word, StringComparer.Ordinal)
-            .Select(word => (JsonNode)BuildAssessedWordRecord(word))
+            .Select(word => (JsonNode)BuildAssessedWordRecord(
+                word, trace is not null && StringComparer.Ordinal.Equals(word.Word, trace.Word) ? trace : null))
             .ToList();
         File.WriteAllText(Path.Combine(incomingRoot, AssessmentFileName), BuildLineDelimitedJsonArray(records));
     }
 
-    private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word)
+    internal static void WriteTraceJson(string incomingRoot, WordTraceResponse trace)
+    {
+        ArgumentNullException.ThrowIfNull(trace);
+        if (string.IsNullOrWhiteSpace(trace.DiagnosticJson))
+            throw new InvalidOperationException("The Handoff trace has no raw diagnostic to write.");
+        var tracePath = Path.Combine(incomingRoot, TraceRelativePath(trace.Word)
+            .Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(tracePath)!);
+        File.WriteAllText(tracePath, trace.DiagnosticJson);
+    }
+
+    private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word, WordTraceResponse? trace)
     {
         var value = new JsonObject { ["word"] = word.Word, ["outcome"] = word.Outcome };
         if (word.ElapsedMs is { } elapsed) value["elapsedMs"] = elapsed;
         if (!string.IsNullOrEmpty(word.RawSignature)) value["signature"] = word.RawSignature;
+        if (trace is not null)
+        {
+            value["trace"] = new JsonObject
+            {
+                ["file"] = TraceRelativePath(trace.Word),
+                ["summary"] = BuildTraceSummary(trace),
+            };
+        }
         return value;
+    }
+
+    private static JsonObject BuildTraceSummary(WordTraceResponse trace)
+    {
+        var reasons = new SortedSet<string>(StringComparer.Ordinal);
+        Walk(trace.Reading.Root);
+        return new JsonObject
+        {
+            ["outcome"] = trace.InvalidShape ? "invalid-shape" : trace.Parsed ? "parsed" : "no-analysis-recorded",
+            ["parserSteps"] = trace.ParserSteps is { } steps ? JsonValue.Create(steps) : null,
+            ["completion"] = trace.InvalidShape ? "not-run" : trace.Complete ? "unknown" : "incomplete",
+            ["failureReasons"] = JsonSerializer.SerializeToNode(reasons.ToArray()),
+            ["deepestRule"] = trace.DeepestRule,
+        };
+
+        void Walk(TraceStep step)
+        {
+            if (step.FailureReason is { Length: > 0 } reason) reasons.Add(reason);
+            foreach (var child in step.Children) Walk(child);
+        }
+    }
+
+    internal static string TraceRelativePath(string word)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        return "traces/" + Uri.EscapeDataString(word) + ".trace.json";
     }
 
     /// <summary>
@@ -204,7 +256,9 @@ public static class HandoffWriter
     /// per file, what it is, one <c>grep</c> example, and one Python call. Capped at 100
     /// lines by <c>HandoffMarkdownTests.HandoffMarkdownNeverExceedsTheHundredLineCap</c>.
     /// </summary>
-    internal static string BuildHandoffMarkdown(bool hasAssessment, string sampleTextKey, string sampleWord)
+    internal static string BuildHandoffMarkdown(
+        bool hasAssessment, string sampleTextKey, string sampleWord, bool hasTrace = false,
+        bool selectedTrace = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
@@ -213,7 +267,30 @@ public static class HandoffWriter
             : "- No Assessment was run for this Handoff, so `assessment.json` is not included.";
 
         // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
-        var fileCount = hasAssessment ? "five" : "four";
+        var fileCount = hasTrace ? hasAssessment ? "six" : "five" : hasAssessment ? "five" : "four";
+        var traceFileName = Uri.EscapeDataString(sampleWord) + ".trace.json";
+        var traceManifestLine = hasTrace
+            ? $"- `{traceFileName}` — the {(selectedTrace ? "selected" : "recorded")} trace diagnostic and Motif's host capture for `{sampleWord}`."
+            : string.Empty;
+        var traceEvidenceDescription = selectedTrace
+            ? "This is the exact diagnostic selected from Try a Word, kept unchanged with the Baseline it records. " +
+              "No Assessment or replacement trace was run for this Handoff."
+            : "The matching `trace.summary` in `assessment.json` gives recorded parser steps and failure reasons. " +
+              "Completion is `unknown` when the parser did not report whether its step cap stopped the search; " +
+              "an invalid shape records `not-run`.";
+        var traceSection = hasTrace
+            ? $"""
+
+                ## {traceFileName}
+
+                The diagnostic for `{sampleWord}` preserves its recorded parser fields and Motif's host capture.
+                {traceEvidenceDescription}
+
+                ```
+                python -c "import json; from pathlib import Path; name='{traceFileName}'; p=Path(name); p=p if p.is_file() else Path('traces')/name; print(json.dumps(json.load(open(p, encoding='utf-8'))))"
+                ```
+                """
+            : string.Empty;
 
         var assessmentSection = hasAssessment
             ? $"""
@@ -222,18 +299,18 @@ public static class HandoffWriter
 
                 One record per Selection word, each carrying its own `word` field: the outcome PanGloss
                 reported (`analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`) and how long the
-                batch pass took. A traced word, when one has been chosen for tracing, carries its
-                derivation in the same record. See
+                batch pass took. A one-word Handoff also links its raw trace file and summary from that
+                word's record. The summary keeps completion unknown when PanGloss did not record it. See
                 https://raw.githubusercontent.com/sillsdev/motif/{MotifRef}/docs/handoff/assessment-format.md.
 
                 ```
                 grep '"{sampleWord}"' assessment.json
                 ```
                 ```
-                python -c "import json; d=json.load(open('assessment.json')); print([r for r in d if r['word']=='{sampleWord}'][0])"
+                python -c "import json; print(json.dumps(json.load(open('assessment.json', encoding='utf-8'))))"
                 ```
                 ```
-                python parse_grammar_texts_assessment.py word {sampleWord}
+                python parse_grammar_texts_assessment.py --help
                 ```
                 """
             : $"""
@@ -248,10 +325,9 @@ public static class HandoffWriter
         var markdown = $"""
             # Handoff
 
-            The {fileCount} files listed below describe one FieldWorks project as of its last save: the
-            grammar PanGloss parsed with, the interlinear Texts that were selected, what happened when
-            each Selection word was parsed, the script that reads all of that, and this file. There are
-            no other files and no subfolders.
+            The {fileCount} files listed below describe one FieldWorks project as of its captured Baseline. A
+            one-word Handoff adds that word's raw diagnostic in the traces folder; the core files stay
+            at the top level.
 
             Every JSON file here is valid JSON with **one record per line** — pretty-printed down to the
             record, compact within it — so a `grep` for a word returns that word's whole record on one
@@ -268,7 +344,8 @@ public static class HandoffWriter
             - `grammar.json` — the grammar PanGloss actually parsed with.
             - `texts.json` — every selected Text, each record carrying its own sanitized-title-and-GUID `key`.
             {assessmentManifestLine}
-            - `parse_grammar_texts_assessment.py` — reads the three files above; see its own `--help`.
+            {traceManifestLine}
+            - `parse_grammar_texts_assessment.py` — reads `grammar.json`, `texts.json`, and `assessment.json`; see its own `--help`.
             - `handoff.md` — this file.
 
             ## grammar.json
@@ -300,6 +377,7 @@ public static class HandoffWriter
             python parse_grammar_texts_assessment.py text {sampleTextKey}
             ```
             {assessmentSection}
+            {traceSection}
             """;
 
         return NormalizeNewlines(markdown);
@@ -330,7 +408,7 @@ public static class HandoffWriter
     }
 
     // The folder's own consistency guard: never move an incomplete listing to the caller's destination.
-    private static void ValidateListing(string root, bool includeAssessment)
+    private static void ValidateListing(string root, bool includeAssessment, bool includeTrace)
     {
         foreach (var name in AlwaysRequiredTopLevelFiles)
         {
@@ -347,6 +425,18 @@ public static class HandoffWriter
         else if (File.Exists(assessmentPath))
         {
             throw new InvalidOperationException("A --no-assess Handoff must not write 'assessment.json'.");
+        }
+
+        var traceRoot = Path.Combine(root, "traces");
+        if (includeTrace)
+        {
+            if (!Directory.Exists(traceRoot) ||
+                Directory.EnumerateFiles(traceRoot, "*.trace.json", SearchOption.AllDirectories).Count() != 1)
+                throw new InvalidOperationException("A one-word Handoff must contain exactly one trace file.");
+        }
+        else if (Directory.Exists(traceRoot))
+        {
+            throw new InvalidOperationException("A Handoff without a one-word trace must not write a 'traces' folder.");
         }
     }
 
