@@ -7,8 +7,8 @@ namespace SIL.Motif.Projection.Grammar;
 /// <summary>
 /// Reads, from a FieldWorks project, what a grammar finding's subject leads to: the allomorphs and grammatical infos
 /// whose stored uses count, the rule keys whose stored per-word times count, or the letters a word is spelled with.
-/// Every link followed is a FieldWorks reference, except a natural class's place in an environment, which FieldWorks
-/// itself writes as the class's abbreviation in brackets. Reads only; the project is never changed.
+/// Exact routes follow FieldWorks references. Natural-class names in environment notation do not establish
+/// which object was selected; that unresolved reach is kept separately. Reads only; the project is never changed.
 /// </summary>
 public static partial class WarningReachReader
 {
@@ -73,12 +73,12 @@ public static partial class WarningReachReader
         var environments = new List<IPhEnvironment>();
         var allomorphs = new List<IMoForm>();
         var rules = new List<IPhSegmentRule>();
-        var token = Abbreviation(naturalClass) is { } abbreviation
-            ? new Regex(@"\[\s*" + Regex.Escape(abbreviation) + @"\s*\]", RegexOptions.CultureInvariant)
-            : null;
-        foreach (var environment in cache.LanguageProject.PhonologicalDataOA?.EnvironmentsOS ?? Enumerable.Empty<IPhEnvironment>())
-            if (token is not null && token.IsMatch(environment.StringRepresentation?.Text ?? string.Empty))
-                environments.Add(environment);
+        var labels = naturalClass.Abbreviation.AvailableWritingSystemIds.Select(ws => naturalClass.Abbreviation.get_String(ws)?.Text)
+            .Concat(naturalClass.Name.AvailableWritingSystemIds.Select(ws => naturalClass.Name.get_String(ws)?.Text)).Where(text => !string.IsNullOrEmpty(text) && text != "***")
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var unresolvedNotation = (cache.LanguageProject.PhonologicalDataOA?.EnvironmentsOS ?? Enumerable.Empty<IPhEnvironment>())
+            .Any(environment => labels.Any(label => Regex.IsMatch(environment.StringRepresentation?.Text ?? string.Empty,
+                @"\[\s*" + Regex.Escape(label!) + @"\s*\]", RegexOptions.CultureInvariant)));
         foreach (var context in cache.ServiceLocator.GetInstance<IPhSimpleContextNCRepository>().AllInstances()
                      .Where(context => context.FeatureStructureRA == naturalClass))
         {
@@ -90,8 +90,12 @@ public static partial class WarningReachReader
             }
         }
         allomorphs.AddRange(AllomorphsConditionedBy(cache, environments.Distinct().ToArray()));
-        return new WarningReach(WarningWordsPath.ThroughEnvironmentsAndRules)
+        return new WarningReach(allomorphs.Count == 0 && rules.Count == 0 && unresolvedNotation
+            ? WarningWordsPath.UnresolvedIdentity : WarningWordsPath.ThroughEnvironmentsAndRules)
         {
+            Reason = allomorphs.Count == 0 && rules.Count == 0 && unresolvedNotation
+                ? WarningAttributionReason.UnresolvedEnvironmentNotation : null,
+            AttributionLimits = unresolvedNotation ? [WarningAttributionReason.UnresolvedEnvironmentNotation] : [],
             AllomorphIds = allomorphs.Distinct().Select(Id).ToArray(),
             TimingKeys = rules.Distinct().Select(rule => new TraceTimingKey(PhonRule, Id(rule))).ToArray(),
         };
@@ -102,16 +106,6 @@ public static partial class WarningReachReader
         for (var owner = start.Owner; owner is not null; owner = owner.Owner)
             if (owner is IPhEnvironment or IPhSegmentRule or IMoForm) return owner;
         return null;
-    }
-
-    // FieldWorks resolves a class in an environment string by this same abbreviation (PhEnvironment's recognizer).
-    private static string? Abbreviation(IPhNaturalClass naturalClass)
-    {
-        var abbreviation = naturalClass.Abbreviation.AnalysisDefaultWritingSystem?.Text;
-        if (string.IsNullOrEmpty(abbreviation)) abbreviation = naturalClass.Abbreviation.BestAnalysisVernacularAlternative?.Text;
-        if (string.IsNullOrEmpty(abbreviation) || abbreviation == "***")
-            abbreviation = naturalClass.Name.BestAnalysisVernacularAlternative?.Text;
-        return string.IsNullOrEmpty(abbreviation) || abbreviation == "***" ? null : abbreviation;
     }
 
     private static IEnumerable<IMoForm> AllomorphsConditionedBy(LcmCache cache, IReadOnlyCollection<IPhEnvironment> environments)

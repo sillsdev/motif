@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Xml.Linq;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
@@ -58,6 +59,125 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Equal(SeededProject.FirstGloss, reading.Morphs[0].Gloss);
         Assert.Contains(Path.GetFileNameWithoutExtension(project.Path), reading.Morphs[0].FieldWorksLink!);
         Assert.Equal(stamp, File.GetLastWriteTimeUtc(project.Path));
+    }
+
+    [Theory]
+    [InlineData("structural")]
+    [InlineData("unknown")]
+    [InlineData("grammar-local")]
+    public void OpaqueMorphemeIdsCannotReadAuthoredFactsOrUses(string quality)
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm]);
+        var subject = InspectorSubject.Morpheme(_pristine.Seed.FirstLexemeFormId.ToString("D"),
+            project.Morphology.Analyses[0].Morphs[0].Msa)! with { IdentityQuality = quality };
+        var result = InspectQuery.Query(new InspectRequest(project.Path, subject));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(InspectorResolution.NotAuthored, result.Value!.Resolution);
+        Assert.Null(result.Value.Facts.Value);
+        Assert.Equal(InspectorSectionStatus.Absent, result.Value.Uses.Status);
+        Assert.Null(result.Value.Uses.Value);
+        Assert.Null(result.Value.TimingKey);
+    }
+
+    [Theory]
+    [InlineData("replaced", false)]
+    [InlineData("deleted", false)]
+    [InlineData("wrong-type", false)]
+    [InlineData("unreadable", false)]
+    [InlineData("retained", true)]
+    public void LiveLinksVerifySavedProjectAndTargetWhileBaselineFactsRemainReadable(string change, bool linksAvailable)
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm], missedLink:
+            FieldWorksLinks.ForTarget(Path.GetFileNameWithoutExtension(project.Path), new("lexiconEdit", _pristine.Seed.FirstEntryId)));
+        var saved = XDocument.Load(project.Path);
+        if (change == "replaced")
+            saved.Root!.Elements("rt").Single(item => (string?)item.Attribute("class") == "LangProject")
+                .SetAttributeValue("guid", Guid.NewGuid());
+        if (change == "deleted")
+            saved.Root!.Elements("rt").Where(item => (string?)item.Attribute("class") is "LexEntry" or "WfiWordform").Remove();
+        if (change == "wrong-type")
+            foreach (var item in saved.Root!.Elements("rt").Where(item =>
+                         (string?)item.Attribute("class") is "LexEntry" or "WfiWordform"))
+                item.SetAttributeValue("class", "CmPossibility");
+        if (change == "unreadable") File.WriteAllText(project.Path, "<not-a-project>");
+        else saved.Save(project.Path);
+        File.SetLastWriteTimeUtc(project.Path, project.Baseline.SourceLastWriteUtc.UtcDateTime.AddSeconds(10));
+        var subject = InspectorSubject.Morpheme(_pristine.Seed.FirstLexemeFormId.ToString("D"), null)!
+            with { IdentityQuality = "authored" };
+        var inspected = InspectQuery.Query(new InspectRequest(project.Path, subject));
+        Assert.True(inspected.Succeeded, inspected.Refusal?.Message);
+        var facts = inspected.Value!.Facts.Value!;
+        Assert.NotNull(facts.Entry);
+        Assert.Equal(linksAvailable, facts.Entry.FieldWorks is not null);
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(project.Path,
+            new ObjectUseRef { AllomorphId = subject.AllomorphId }));
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        Assert.Equal(linksAvailable, uses.Value!.Facts!.Entry!.FieldWorks is not null);
+        var context = WordContextQuery.Query(new WordContextRequest(project.Path, SeededProject.AnalysedWordForm));
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.Equal(linksAvailable, context.Value!.WordAnalysesLink is not null);
+        Assert.Equal(linksAvailable, context.Value.Analyses[0].Morphs[0].FieldWorksLink is not null);
+        var evidence = CurrentEvidenceQuery.ReadCurrentEvidence(project.Path);
+        Assert.True(evidence.Succeeded, evidence.Refusal?.Message);
+        var row = Assert.Single(evidence.Value!.Assessment!.Words);
+        Assert.Equal(linksAvailable, row.Readings![0].Morphs[0].FieldWorksLink is not null);
+        Assert.Equal(linksAvailable, row.MissedApproved![0].Morphs[0].FieldWorksLink is not null);
+        var text = TextWordsQuery.Query(new TextWordsRequest(project.Path, [project.TextId]));
+        Assert.True(text.Succeeded, text.Refusal?.Message);
+        var token = text.Value!.Texts.SelectMany(item => item.Lines).SelectMany(line => line.Tokens)
+            .First(item => item.Analysis is not null);
+        Assert.Equal(linksAvailable, token.WordLink is not null);
+        Assert.Equal(linksAvailable, token.Analysis!.Morphs[0].FieldWorksLink is not null);
+    }
+
+    [Theory]
+    [InlineData("deleted", false)]
+    [InlineData("wrong-type", false)]
+    [InlineData("replaced", false)]
+    [InlineData("unreadable", false)]
+    [InlineData("retained", true)]
+    public void TraceCaptureVerifiesLiveDestinationsWithoutLosingCapturedLabels(string change, bool available)
+    {
+        var project = Capture();
+        var saved = XDocument.Load(project.Path);
+        if (change == "deleted")
+            saved.Root!.Elements("rt").Where(item => (string?)item.Attribute("class") == "LexEntry").Remove();
+        if (change == "replaced")
+            saved.Root!.Elements("rt").Single(item => (string?)item.Attribute("class") == "LangProject")
+                .SetAttributeValue("guid", Guid.NewGuid());
+        if (change == "wrong-type")
+            foreach (var item in saved.Root!.Elements("rt").Where(item =>
+                         (string?)item.Attribute("class") is "LexEntry" or "WfiWordform"))
+                item.SetAttributeValue("class", "CmPossibility");
+        if (change == "unreadable") File.WriteAllText(project.Path, "<broken>");
+        else saved.Save(project.Path);
+        var root = new TraceStep("LexEntryLookup", "producer label", null, null, null, [])
+        {
+            SourceIdentityKind = "lexEntry", SourceIdentityId = _pristine.Seed.FirstEntryId.ToString("D"),
+            SourceIdentityQuality = "authored",
+            AttemptedMorphs = [new TraceMorph(null, "producer form", null, null, null, null, null, null, null, null)
+            {
+                EntryId = _pristine.Seed.FirstEntryId.ToString("D"), IdentityQuality = "authored",
+            }],
+        };
+        var response = new WordTraceResponse("word", false, true, null, 1, null, 1,
+            TraceReadingBuilder.Build("word", root, [], [])) { DiagnosticJson = "{}" };
+        using var database = ProjectMotifDatabase.Open(project.Path);
+        var locator = new ProjectLocator(project.Path, Path.GetFileNameWithoutExtension(project.Path));
+        var baseline = new SIL.Motif.Worker.Baselines.BaselineRepository(database)
+            .GetCurrent(ProjectWorkspaceKey.Compute(locator))!;
+        var attached = TraceDiagnosticCapture.Attach(response, baseline, locator);
+        var reference = attached.Reading.Refs.Single(item => item.Kind != "morph");
+        Assert.Equal("producer label", reference.Label);
+        Assert.NotNull(reference.CapturedFieldWorksLabel);
+        Assert.Equal(available, reference.FieldWorks is not null);
+        Assert.Equal(available, attached.Reading.Root.AttemptedMorphs[0].FieldWorksLink is not null);
     }
 
     [Theory]
@@ -442,7 +562,7 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
     }
 
     private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words, bool parsed = true,
-        string id = "assessment")
+        string id = "assessment", string? missedLink = null)
     {
         using var database = ProjectMotifDatabase.Open(project.Path);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
@@ -453,6 +573,8 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
                 parsed ? "analysed" : "no-analysis", [], 1)
             {
                 ProjectStanding = ProjectStanding.Approved,
+                MissedApproved = missedLink is null ? null : [new ParserReading([
+                    new ParserReadingMorph("captured form", "captured gloss", "noun", null, false, missedLink)])],
                 Morphology = parsed && word == SeededProject.AnalysedWordForm ? project.Morphology : null,
             }).ToArray()));
     }

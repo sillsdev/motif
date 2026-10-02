@@ -67,6 +67,48 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
         Assert.Equal(WarningAttributionState.NoneInSelection, WarningWordsQuery.YourWordsOf(finding, [], [])!.State);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NaturalClassNotationDoesNotEstablishExactIdentity(bool fallbackName)
+    {
+        var grammar = WarningGrammar.Author(pristine);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(grammar.FwDataPath);
+        var first = cache.ServiceLocator.GetInstance<IPhNaturalClassRepository>().GetObject(grammar.Vowels);
+        IPhNaturalClass second = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            second = cache.ServiceLocator.GetInstance<IPhNCSegmentsFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.NaturalClassesOS.Add(second);
+            second.Abbreviation.set_String(cache.DefaultAnalWs, fallbackName ? "" : "V");
+            second.Name.set_String(cache.DefaultAnalWs, "V");
+            if (fallbackName)
+            {
+                first.Abbreviation.set_String(cache.DefaultAnalWs, "");
+                first.Name.set_String(cache.DefaultAnalWs, "V");
+            }
+        });
+        foreach (var naturalClass in new[] { first, second })
+        {
+            var reach = WarningReachReader.Reach(Subject(naturalClass) with { FieldWorksKind = "PhNaturalClass" }, () => cache)!;
+            Assert.Empty(reach.AllomorphIds);
+            Assert.NotEmpty(reach.AttributionLimits);
+            var word = new AssessmentWordResult("synthetic", "no-analysis", false, "Search completed", 1, null)
+            {
+                StoredAnalyses = [new ParserReading([new ParserReadingMorph("synthetic", "root", "noun", null, false, null)
+                    { AllomorphId = pristine.Seed.SecondLexemeFormId.ToString("D") }])
+                    { StoredAnalysisOpinion = ReadingGrade.Approved }],
+            };
+            var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "class", [Subject(naturalClass) with { Reach = reach }], [], "class");
+            var matches = WarningWordsQuery.YourWordsOf(finding, [word], [])!;
+            Assert.Empty(matches.Words);
+            Assert.Equal(0, WarningWordsQuery.Touched([finding with { YourWords = matches }])!.Words);
+        }
+        var direct = WarningReachReader.Reach(Subject(first) with { FieldWorksKind = "PhNaturalClass" }, () => cache)!;
+        Assert.Contains(new TraceTimingKey("phon_rule", grammar.Harmony.ToString("D")), direct.TimingKeys);
+        Assert.Empty(WarningReachReader.Reach(Subject(second) with { FieldWorksKind = "PhNaturalClass" }, () => cache)!.TimingKeys);
+    }
+
     [Fact]
     public void EmptyProjectResourcesHaveNoWordAttribution()
     {

@@ -72,7 +72,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var entryGuid = _pristine.Seed.FirstEntryId.ToString("D");
-        var openGuid = "5c9e433d-cc9b-4d12-b8cb-b5840f46dbd2";
+        var openGuid = _pristine.Seed.SecondEntryId.ToString("D");
         var report = Report(entryGuid, openGuid);
         var invoker = new FakeInvoker
         {
@@ -410,7 +410,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.Equal((WarningWordsPath.ThroughAllomorphs, Id(seed.SecondLexemeFormId)),
             (reach["environment"]!.Path, Assert.Single(reach["environment"]!.AllomorphIds)));
         Assert.Equal(WarningWordsPath.ThroughEnvironmentsAndRules, reach["natural-class"]!.Path);
-        Assert.Equal([Id(seed.SecondLexemeFormId)], reach["natural-class"]!.AllomorphIds);
+        Assert.Empty(reach["natural-class"]!.AllomorphIds);
+        Assert.Equal([WarningAttributionReason.UnresolvedEnvironmentNotation], reach["natural-class"]!.AttributionLimits);
         Assert.Equal([new TraceTimingKey("phon_rule", Id(grammar.Harmony))], reach["natural-class"]!.TimingKeys);
         Assert.Equal([new TraceTimingKey("phon_rule", Id(grammar.Harmony))], reach["rule"]!.TimingKeys);
         Assert.Equal(WarningWordsPath.RuleTimes, reach["rule"]!.Path);

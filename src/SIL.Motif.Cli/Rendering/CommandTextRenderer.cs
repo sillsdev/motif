@@ -402,6 +402,7 @@ public static class CommandTextRenderer
         WarningAttributionState.UnresolvedIdentity => "Your words: unresolved identity; " + (finding.AttributionReason switch
         {
             WarningAttributionReason.NamedWithoutProjectGuid => "the named subject has no project GUID",
+            WarningAttributionReason.UnresolvedEnvironmentNotation => "environment notation does not identify a natural-class object",
             WarningAttributionReason.UnsupportedKind => "the named class has no supported route to words",
             _ => "PanGloss names no subject",
         }),
@@ -410,6 +411,7 @@ public static class CommandTextRenderer
 
     private static string AttributionLimitText(WarningAttributionReason reason) => reason switch
     {
+        WarningAttributionReason.UnresolvedEnvironmentNotation => "environment notation does not identify a natural-class object",
         WarningAttributionReason.UnsupportedKind => "an owner's class has no supported route to words",
         WarningAttributionReason.NoWordAttribution => "an owner has no word attribution",
         WarningAttributionReason.StaleGuid => "a subject's GUID is absent from the checked Baseline",

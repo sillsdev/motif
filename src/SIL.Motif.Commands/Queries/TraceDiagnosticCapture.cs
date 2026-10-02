@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Xml;
 using SIL.LCModel;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Baselines;
@@ -46,11 +45,11 @@ internal static class TraceDiagnosticCapture
         {
             Baseline = baselineSource,
         };
-        var sourceIdentity = ReadSourceIdentity(project.FullFwDataPath);
+        var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity);
         var baselineMatches = Guid.TryParse(baseline.Token.ProjectIdentity, out var baselineIdentity) &&
             baselineIdentity == cache.LangProject.Guid;
-        var projectStatus = sourceIdentity is null ? "unknown"
-            : baselineMatches && sourceIdentity == baselineIdentity ? "match" : "mismatch";
+        var projectStatus = navigation.ProjectIdentityStatus == "unknown" ? "unknown"
+            : baselineMatches ? navigation.ProjectIdentityStatus : "mismatch";
         var projectMatches = projectStatus == "match";
         var comparison = new TraceProvenanceComparison(projectStatus,
             "unknown", "unknown", false,
@@ -63,14 +62,13 @@ internal static class TraceDiagnosticCapture
             CanNavigate = projectMatches,
         };
         var repository = cache.ServiceLocator.GetInstance<ICmObjectRepository>();
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
         TraceMorph Resolve(TraceMorph morph)
         {
             string? link = null;
             if (projectMatches && morph.IdentityQuality == "authored" &&
                 Guid.TryParse(morph.EntryId ?? morph.FormId ?? morph.MsaId, out var id) &&
                 repository.TryGetObject(id, out var found))
-                link = FieldWorksLinks.For(cache, projectName, found);
+                link = navigation.TargetFor(cache, found)?.Link;
             return morph with { FieldWorksLink = link };
         }
         TraceStep ResolveStep(TraceStep step) => step with
@@ -97,11 +95,10 @@ internal static class TraceDiagnosticCapture
                 !Guid.TryParse(reference.Identity, out var id) || !repository.TryGetObject(id, out var found))
                 return reference;
             reference = reference with { CapturedFieldWorksLabel = NameOf(found) };
-            if (!comparison.CanNavigate || FieldWorksLinks.TargetFor(cache, found) is not { } target) return reference;
+            if (!comparison.CanNavigate) return reference;
             return reference with
             {
-                FieldWorks = new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
-                    target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!),
+                FieldWorks = navigation.TargetFor(cache, found),
             };
         }
         reading = reading with { Refs = reading.Refs.Select(Link).ToArray() };
@@ -122,33 +119,6 @@ internal static class TraceDiagnosticCapture
             DiagnosticJson = json.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }),
             Reading = reading,
         };
-    }
-
-    // A saved-file read avoids taking the live project's LibLCM lock just to authorize navigation.
-    private static Guid? ReadSourceIdentity(string path)
-    {
-        try
-        {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            using var reader = XmlReader.Create(stream, new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Prohibit,
-                XmlResolver = null,
-            });
-            Guid? identity = null;
-            while (reader.Read())
-            {
-                if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "rt" ||
-                    reader.GetAttribute("class") != "LangProject") continue;
-                if (identity is not null || !Guid.TryParse(reader.GetAttribute("guid"), out var guid)) return null;
-                identity = guid;
-            }
-            return identity;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or XmlException)
-        {
-            return null;
-        }
     }
 
     // An affix rule is known by its entry, as FieldWorks shows it: headword, then the sense gloss if any.

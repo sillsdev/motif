@@ -314,6 +314,8 @@ public enum WarningAttributionReason
     [JsonStringEnumMemberName("wrong_class")] WrongClass,
     /// <summary>The project resource has no lexical or rule owner to attribute.</summary>
     [JsonStringEnumMemberName("no_word_attribution")] NoWordAttribution,
+    /// <summary>Natural-class notation supplies a label without a resolved object reference.</summary>
+    [JsonStringEnumMemberName("unresolved_environment_notation")] UnresolvedEnvironmentNotation,
     /// <summary>The named class has no supported route to stored word evidence.</summary>
     [JsonStringEnumMemberName("unsupported_kind")] UnsupportedKind,
 }

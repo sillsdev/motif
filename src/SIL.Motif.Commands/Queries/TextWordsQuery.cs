@@ -50,7 +50,7 @@ public static class TextWordsQuery
                 return CommandOutcome<TextWordsResponse>.Success(
                     new TextWordsResponse(Array.Empty<TextWord>(), Array.Empty<TextLines>(), HasBaseline: false));
 
-            var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
+            var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity);
             var textsById = current.Projection.Texts.ToDictionary(text => text.TextId);
             var wordformsById = current.Projection.Wordforms.ToDictionary(wordform => wordform.WordformId);
             var order = new List<string>();
@@ -62,7 +62,7 @@ public static class TextWordsQuery
                 if (cancellationToken.IsCancellationRequested) return Cancelled();
                 if (!textsById.TryGetValue(textId, out var text)) continue;
                 var analyses = text.Analyses.ToDictionary(
-                    stored => stored.Key, stored => ReadAnalysis(stored, projectName), StringComparer.Ordinal);
+                    stored => stored.Key, stored => ReadAnalysis(stored, string.Empty, navigation.LinkFor), StringComparer.Ordinal);
                 var lines = new List<TextLine>();
                 foreach (var line in text.Lines)
                 {
@@ -72,7 +72,7 @@ public static class TextWordsQuery
                         var analysis = token.AnalysisKey is { } key ? analyses[key] : null;
                         var storedAnalyses = token.WordformId is { } storedWordformId &&
                             wordformsById.TryGetValue(storedWordformId, out var storedWordform)
-                                ? storedWordform.Analyses.Select(item => ReadAnalysis(item, projectName)).ToArray()
+                                ? storedWordform.Analyses.Select(item => ReadAnalysis(item, string.Empty, navigation.LinkFor)).ToArray()
                                 : Array.Empty<ProjectAnalysis>();
                         var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0]);
                         tokens.Add(new TextToken(token.Text, primary.Length == 0 ? null : primary,
@@ -90,7 +90,7 @@ public static class TextWordsQuery
                                 wordformsById.TryGetValue(markedWordformId, out var markedWordform) &&
                                 markedWordform.IncorrectSpelling,
                             WordLink = token.Text.Length == 0
-                                ? null : FieldWorksLinks.ForTarget(projectName, token.WordLinkTarget),
+                                ? null : navigation.LinkFor(token.WordLinkTarget),
                         });
 
                         if (token.Status is null) continue;
@@ -123,11 +123,11 @@ public static class TextWordsQuery
                 var accumulator = accumulators[form];
                 var wordform = accumulator.WordformId is { } id && wordformsById.TryGetValue(id, out var found)
                     ? found : null;
-                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
+                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
+                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                var all = wordform?.Analyses.Select(analysis => ReadAnalysis(analysis, projectName)).ToArray()
+                var all = wordform?.Analyses.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
                 return new TextWord(form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
                     approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false)
@@ -147,13 +147,14 @@ public static class TextWordsQuery
     private static string? GlossOf(ProjectAnalysis? analysis) => analysis is null ? null
         : string.Join(" ", analysis.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
 
-    internal static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName)
+    internal static ProjectAnalysis ReadAnalysis(TextWordsProjectedAnalysis analysis, string projectName,
+        Func<FieldWorksLinkTarget?, string?>? liveLink = null)
     {
         // The stored identity lists the same bundles in the same order, so it gives each morph its ids.
         var identities = analysis.Identity?.Morphs;
         var morphs = analysis.Morphs.Select((morph, index) => new ParserReadingMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            FieldWorksLinks.ForTarget(projectName, morph.LinkTarget))
+            (liveLink ?? (target => FieldWorksLinks.ForTarget(projectName, target)))(morph.LinkTarget))
         {
             Entry = morph.Entry,
             AllomorphId = identities is { } ids && index < ids.Count ? ids[index].Form : null,

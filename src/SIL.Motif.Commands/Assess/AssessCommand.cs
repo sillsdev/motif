@@ -350,7 +350,8 @@ public static class AssessCommand
                 var projectName = Path.GetFileNameWithoutExtension(request.ProjectPath);
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
-                var storedContext = BaselineWordContext.Read(namingCache, projectName, composition.Selection.Words);
+                var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity);
+                var storedContext = BaselineWordContext.Read(namingCache, navigation, composition.Selection.Words);
                 // Named once and recorded, so a later read of the stored words glosses them as this run does.
                 var namedMissed = new Dictionary<string, ParserReading[]?>(StringComparer.Ordinal);
                 ParserReading[]? NameMissed(string word, WordCorrectness? correctness)
@@ -358,7 +359,7 @@ public static class AssessCommand
                     if (namedMissed.TryGetValue(word, out var named)) return named;
                     return namedMissed[word] = correctness?.Unmatched
                         .Select(index => correctness.Expectations[index])
-                        .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved))
+                        .Select(missed => ReadStoredAnalysis(namingCache, projectName, missed, ReadingGrade.Approved, navigation.LinkFor))
                         .ToArray();
                 }
                 pendingRecords = pendingRecords.Select(record => record with
@@ -422,7 +423,7 @@ public static class AssessCommand
                     words = words.Select(word =>
                     {
                         var readings = word.Morphology is null
-                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology);
+                            ? null : ParserReadingReader.Read(namingCache, projectName, word.Morphology, navigation.LinkFor);
                         var readingGrades = word.Morphology is null ? null : GradeReadings(word.Morphology.Analyses,
                             wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
                             wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
@@ -559,11 +560,12 @@ public static class AssessCommand
             : ReadingGrade.NoOpinion).ToArray();
 
     internal static ParserReading ReadStoredAnalysis(
-        LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion)
+        LcmCache cache, string projectName, ApprovedMorphology analysis, string opinion,
+        Func<FieldWorksLinkTarget?, string?>? liveLink = null)
     {
         var morphs = analysis.Morphs.Select(morph =>
             new ParseMorph(morph.Form, morph.Msa, morph.InflType, GuessedString: null)).ToArray();
-        return new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs))
+        return new ParserReading(ParserReadingReader.ReadMorphs(cache, projectName, morphs, liveLink))
         {
             StoredAnalysisId = analysis.SourceAnalysisId,
             StoredAnalysisOpinion = opinion,

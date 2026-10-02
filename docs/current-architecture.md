@@ -49,6 +49,14 @@ Stored analyses, individual opinions, expected readings and Word Analyses links 
 
 Timing describes the selected measurement's Baseline relationship separately from the current project's freshness. A historical run keeps its own captured save when retained invocation evidence supplies it; it never borrows another Baseline's save time. Warning word joins likewise require the token of the Baseline whose grammar was checked and available captured analysis context. Unavailable context leaves affected words unknown. Numeric Timing does not open a LibLCM cache; Overview requests context only when joining stored findings. The window adopts changed replacement components even when the root Assessment is unchanged, refreshing Matrix, Timing, Overview and stored warning projections without running PanGloss. Warnings parser-side row hydration and Try a Word presentation remain separate page responsibilities.
 
+## Live FieldWorks navigation
+
+Captured facts stay readable when FieldWorks has changed, but links open only destinations the saved project still holds. Replacing a project at the same filename never authorizes links into the replacement.
+
+`SavedProjectNavigation` reads the saved `.fwdata` without opening a live LibLCM cache. It compares the LangProject GUID to the selected Baseline and checks each destination GUID and class for its FieldWorks tool. An unreadable or malformed identity, a missing target, or a target of another class leaves the link unavailable. Inspector facts, Uses, stored word and morphology rows, Texts, Assess, warning links, pending-change display readings and trace capture share this policy. Cached links are checked again when projected; captured labels and producer advice remain readable. The check describes the saved file at query time, independently of Baseline integrity, measurement freshness, or changes still unsaved in FieldWorks.
+
+Morpheme inspection requires recorded authored identity before reading FieldWorks facts or exact uses. Opaque GUID-looking keys, missing quality and scoped local keys retain their captured trace details without becoming authored objects. Natural-class notation in an environment supplies no resolved object GUID: its reach stays unavailable with an explicit attribution limit, while direct natural-class context references still establish exact rule or allomorph reach.
+
 ## Process coordination and project ownership
 
 Motif uses SQLite for process-shared workflow state and coordination. A machine store tracks known projects and usage; each project's Motif database holds its workflow, jobs and retained evidence. The CLI and Worker coordinate through those stores. They do not make Motif's database a second authority for FieldWorks language data.

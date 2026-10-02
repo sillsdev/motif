@@ -66,9 +66,10 @@ public sealed record InspectorSubject(InspectorSubjectKind Kind)
 
     /// <summary>A morpheme by its allomorph, its grammatical info, or both; <see langword="null"/> when it names neither.</summary>
     public static InspectorSubject? Morpheme(string? allomorphId, string? grammaticalInfoId, string? label = null,
-        string? gloss = null) =>
+        string? gloss = null, string identityQuality = "unknown") =>
         allomorphId is null && grammaticalInfoId is null ? null : new InspectorSubject(InspectorSubjectKind.Morpheme)
         {
+            IdentityQuality = identityQuality,
             AllomorphId = allomorphId,
             GrammaticalInfoId = grammaticalInfoId,
             Label = label,
@@ -77,7 +78,7 @@ public sealed record InspectorSubject(InspectorSubjectKind Kind)
 
     /// <summary>A morpheme of a reading, by its allomorph and grammatical info.</summary>
     public static InspectorSubject? Morpheme(ParserReadingMorph morph) =>
-        morph is null ? null : Morpheme(morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, morph.Gloss);
+        morph is null ? null : Morpheme(morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, morph.Gloss, "authored");
 
     /// <summary>A rule by the kind and key PanGloss's statistics record it under, with how far that key can be trusted.</summary>
     public static InspectorSubject Rule(TraceTimingKey key, string? label = null, string identityQuality = "unknown") =>

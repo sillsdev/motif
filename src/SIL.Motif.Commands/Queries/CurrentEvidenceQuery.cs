@@ -34,6 +34,10 @@ public sealed record CurrentEvidenceSnapshot(
     ResolvedSelectionSnapshot? Selection,
     AssessmentRecord? MatchingAssessment)
 {
+    /// <summary>The query's saved-file navigation check; absent when word context was not requested.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SavedProjectNavigation? Navigation { get; init; }
+
     /// <summary>The later subset runs applied to words of the current default Selection.</summary>
     public IReadOnlyList<AssessmentRecord> RerunAssessments { get; init; } = [];
 
@@ -159,6 +163,8 @@ public static class CurrentEvidenceQuery
 
         var evidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns);
         var effectiveWords = evidenceSet?.Words ?? [];
+        var navigation = includeWordContext && current is not null
+            ? SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity) : null;
         IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> resolvedReadings =
             new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
         IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
@@ -176,14 +182,13 @@ public static class CurrentEvidenceQuery
             {
                 using var reader = BaselineReadCache.Open(current.Baseline.FwDataPath);
                 var cache = reader.Cache;
-                var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-                var context = BaselineWordContext.Read(cache, projectName, effectiveWords.Select(word => word.Word).ToArray());
+                var context = BaselineWordContext.Read(cache, navigation!, effectiveWords.Select(word => word.Word).ToArray());
                 storedAnalyses = context.Analyses;
                 wordLinks = context.WordLinks;
                 if (includeResolvedReadings)
                     resolvedReadings = effectiveWords.Where(word => word.Morphology is not null).ToDictionary(
                         word => word.Word,
-                        word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, projectName, word.Morphology!),
+                        word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, string.Empty, word.Morphology!, navigation!.LinkFor),
                         StringComparer.Ordinal);
             }
         }
@@ -191,6 +196,7 @@ public static class CurrentEvidenceQuery
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
+            Navigation = navigation,
             RerunAssessments = reruns,
             EvidenceSet = evidenceSet,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,

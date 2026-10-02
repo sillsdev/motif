@@ -1,5 +1,6 @@
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Contract.Baselines;
@@ -20,6 +21,9 @@ public static class WarningWordsQuery
         GrammarCheckResponse check, BaselineToken checkedBaseline)
     {
         var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: false);
+        var navigation = current.Succeeded && current.Value!.Baseline?.Token == checkedBaseline
+            ? current.Value.Navigation : null;
+        check = (navigation ?? SavedProjectNavigation.Read(project.FullFwDataPath, checkedBaseline.ProjectIdentity)).Verify(check);
         if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
             current.Value.Assessment is not { } assessment)
             return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };

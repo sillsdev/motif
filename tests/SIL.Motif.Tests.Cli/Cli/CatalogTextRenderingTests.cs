@@ -303,6 +303,8 @@ public sealed class CatalogTextRenderingTests
         "Your words: unresolved identity; the named subject has no project GUID")]
     [InlineData(WarningWordsMatch.UnresolvedIdentity, WarningAttributionReason.UnsupportedKind,
         "Your words: unresolved identity; the named class has no supported route to words")]
+    [InlineData(WarningWordsMatch.UnresolvedIdentity, WarningAttributionReason.UnresolvedEnvironmentNotation,
+        "Your words: unresolved identity; environment notation does not identify a natural-class object")]
     public void WarningsTextExplainsEachUnattributedState(WarningWordsMatch match,
         WarningAttributionReason reason, string expected)
     {

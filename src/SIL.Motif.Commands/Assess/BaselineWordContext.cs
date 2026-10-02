@@ -12,12 +12,12 @@ internal sealed record BaselineWordContext(
     IReadOnlySet<string> PresentWords)
 {
     /// <summary>Projects all opinions and links before the caller disposes its Baseline cache.</summary>
-    internal static BaselineWordContext Read(LcmCache cache, string projectName, IReadOnlyList<string> words)
+    internal static BaselineWordContext Read(LcmCache cache, SavedProjectNavigation navigation, IReadOnlyList<string> words)
     {
         var approved = ApprovedMorphologyReader.Read(cache);
         var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
         var candidates = ApprovedMorphologyReader.ReadCandidates(cache);
-        var analyses = words.ToDictionary(word => word, word => ReadAnalyses(cache, projectName,
+        var analyses = words.ToDictionary(word => word, word => ReadAnalyses(cache, navigation,
             approved.GetValueOrDefault(word) ?? [], rejected.GetValueOrDefault(word) ?? [],
             candidates.GetValueOrDefault(word) ?? []), StringComparer.Ordinal);
         var forms = new Dictionary<string, HashSet<Guid>>(StringComparer.Ordinal);
@@ -31,19 +31,19 @@ internal sealed record BaselineWordContext(
             }
         var links = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var word in words)
-            if (forms.TryGetValue(word, out var identities) && identities.Count == 1)
-                links[word] = FieldWorksLinks.ForTarget(projectName, new("Analyses", identities.Single()))!;
+            if (forms.TryGetValue(word, out var identities) && identities.Count == 1 &&
+                navigation.LinkFor(new("Analyses", identities.Single())) is { } link) links[word] = link;
         var present = forms.Keys.ToHashSet(StringComparer.Ordinal);
         return new(analyses, links, present);
     }
 
     /// <summary>Names the stored opinions in the same order for fresh and reopened rows.</summary>
-    internal static IReadOnlyList<ParserReading> ReadAnalyses(LcmCache cache, string projectName,
+    internal static IReadOnlyList<ParserReading> ReadAnalyses(LcmCache cache, SavedProjectNavigation navigation,
         IReadOnlyList<ApprovedMorphology> approved, IReadOnlyList<ApprovedMorphology> rejected,
         IReadOnlyList<ApprovedMorphology> candidates) =>
-        approved.Select(analysis => AssessCommand.ReadStoredAnalysis(cache, projectName, analysis, ReadingGrade.Approved))
+        approved.Select(analysis => AssessCommand.ReadStoredAnalysis(cache, string.Empty, analysis, ReadingGrade.Approved, navigation.LinkFor))
             .Concat(rejected.Select(analysis =>
-                AssessCommand.ReadStoredAnalysis(cache, projectName, analysis, ReadingGrade.Disapproved)))
+                AssessCommand.ReadStoredAnalysis(cache, string.Empty, analysis, ReadingGrade.Disapproved, navigation.LinkFor)))
             .Concat(candidates.Select(analysis =>
-                AssessCommand.ReadStoredAnalysis(cache, projectName, analysis, ReadingGrade.Candidate))).ToArray();
+                AssessCommand.ReadStoredAnalysis(cache, string.Empty, analysis, ReadingGrade.Candidate, navigation.LinkFor))).ToArray();
 }

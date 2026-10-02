@@ -16,14 +16,15 @@ public static class ParserReadingReader
     /// Every reading in <paramref name="evidence"/>, in order; an identifier the project does not contain
     /// shows as a short marker in place of its text rather than being dropped.
     /// </summary>
-    public static IReadOnlyList<ParserReading> Read(LcmCache cache, string projectName, ParseWordEvidence evidence)
+    public static IReadOnlyList<ParserReading> Read(LcmCache cache, string projectName, ParseWordEvidence evidence,
+        Func<FieldWorksLinkTarget?, string?>? liveLink = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(projectName);
         ArgumentNullException.ThrowIfNull(evidence);
         var objects = cache.ServiceLocator.ObjectRepository;
         return evidence.Analyses
-            .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs)))
+            .Select(analysis => new ParserReading(ReadMorphs(cache, objects, projectName, analysis.Morphs, liveLink)))
             .ToArray();
     }
 
@@ -33,17 +34,19 @@ public static class ParserReadingReader
     /// reading the parser missed) needs the identical form/gloss/category rendering.
     /// </summary>
     public static IReadOnlyList<ParserReadingMorph> ReadMorphs(
-        LcmCache cache, string projectName, IReadOnlyList<ParseMorph> morphs)
+        LcmCache cache, string projectName, IReadOnlyList<ParseMorph> morphs,
+        Func<FieldWorksLinkTarget?, string?>? liveLink = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(projectName);
         ArgumentNullException.ThrowIfNull(morphs);
-        return ReadMorphs(cache, cache.ServiceLocator.ObjectRepository, projectName, morphs);
+        return ReadMorphs(cache, cache.ServiceLocator.ObjectRepository, projectName, morphs, liveLink);
     }
 
     private static IReadOnlyList<ParserReadingMorph> ReadMorphs(
-        LcmCache cache, ICmObjectRepository objects, string projectName, IReadOnlyList<ParseMorph> morphs) =>
-        morphs.Select(morph => ReadMorph(cache, objects, projectName, morph)).ToArray();
+        LcmCache cache, ICmObjectRepository objects, string projectName, IReadOnlyList<ParseMorph> morphs,
+        Func<FieldWorksLinkTarget?, string?>? liveLink) =>
+        morphs.Select(morph => ReadMorph(cache, objects, projectName, morph, liveLink)).ToArray();
 
     /// <summary>
     /// The FieldWorks object a link on <paramref name="morph"/> opens: the entry owning its allomorph, else the
@@ -65,7 +68,8 @@ public static class ParserReadingReader
     }
 
     private static ParserReadingMorph ReadMorph(
-        LcmCache cache, ICmObjectRepository objects, string projectName, ParseMorph morph)
+        LcmCache cache, ICmObjectRepository objects, string projectName, ParseMorph morph,
+        Func<FieldWorksLinkTarget?, string?>? liveLink)
     {
         var form = Find<IMoForm>(objects, morph.Form);
         var msa = Find<IMoMorphSynAnalysis>(objects, morph.Msa);
@@ -85,7 +89,7 @@ public static class ParserReadingReader
             category,
             inflectionType?.Abbreviation.BestAnalysisAlternative.Text,
             morph.GuessedString is not null,
-            FieldWorksLinks.ForTarget(projectName, EntryTargetFor(cache, objects, morph)))
+            (liveLink ?? (target => FieldWorksLinks.ForTarget(projectName, target)))(EntryTargetFor(cache, objects, morph)))
         {
             Entry = entry?.LexemeFormOA is { } lexemeForm ? Marked(lexemeForm) : null,
             AllomorphId = IdOf(morph.Form),

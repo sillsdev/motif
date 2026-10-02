@@ -44,7 +44,7 @@ public static class InspectQuery
             var snapshot = current.Value!;
 
             var (resolution, facts) = snapshot.Baseline is { } baseline
-                ? FactsOf(subject, baseline, project)
+                ? FactsOf(subject, baseline, snapshot.Navigation!)
                 : (InspectorResolution.NoBaseline, null);
             var timingKey = subject.Kind switch
             {
@@ -113,23 +113,18 @@ public static class InspectQuery
 
     // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
     private static (InspectorResolution, ObjectFacts?) FactsOf(InspectorSubject subject, BaselineRecord baseline,
-        ProjectLocator project)
+        SavedProjectNavigation navigation)
     {
         if (subject.Kind is not (InspectorSubjectKind.Morpheme or InspectorSubjectKind.Rule))
             return (InspectorResolution.Unsupported, null);
-        if (subject.Kind == InspectorSubjectKind.Rule &&
-            (subject.IdentityQuality != "authored" || !Guid.TryParse(subject.TimingKey?.Key, out _)))
+        if (subject.IdentityQuality != "authored" ||
+            subject.Kind == InspectorSubjectKind.Rule && !Guid.TryParse(subject.TimingKey?.Key, out _))
             return (InspectorResolution.NotAuthored, null);
         using var reader = BaselineReadCache.Open(baseline.FwDataPath);
         var cache = reader.Cache;
         var (resolution, reference) = InspectorSubjectResolver.Resolve(cache, subject);
         if (reference is null) return (resolution, null);
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-        var facts = ObjectFactsReader.Read(cache, reference, found =>
-            FieldWorksLinks.TargetFor(cache, found) is { } target
-                ? new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
-                    target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!)
-                : null);
+        var facts = ObjectFactsReader.Read(cache, reference, found => navigation.TargetFor(cache, found));
         return facts is null ? (InspectorResolution.NotInBaseline, null) : (resolution, facts);
     }
 
@@ -146,6 +141,11 @@ public static class InspectQuery
         IReadOnlyList<AssessmentWordResult>? words) =>
         subject.Kind != InspectorSubjectKind.Morpheme
             ? InspectorSection<ObjectUseWords>.Not(InspectorSectionStatus.Unsupported, "Only a morpheme is used by words.")
+            : subject.IdentityQuality != "authored" ||
+                subject.AllomorphId is not null && !Guid.TryParse(subject.AllomorphId, out _) ||
+                subject.GrammaticalInfoId is not null && !Guid.TryParse(subject.GrammaticalInfoId, out _)
+                ? InspectorSection<ObjectUseWords>.Not(
+                InspectorSectionStatus.Absent, FactsReason(InspectorResolution.NotAuthored))
             : words is null ? InspectorSection<ObjectUseWords>.Not(InspectorSectionStatus.Absent, NoParse)
             : InspectorSection<ObjectUseWords>.Of(ObjectUsesQuery.UsesOf(words,
                 new ObjectUseRef { AllomorphId = subject.AllomorphId, GrammaticalInfoId = subject.GrammaticalInfoId }));
@@ -163,11 +163,16 @@ public static class InspectQuery
     private static InspectorSection<IReadOnlyList<GrammarWarning>> WarningsSection(MotifDatabase database,
         CurrentEvidenceSnapshot snapshot, InspectorSubject subject, TraceTimingKey? timingKey)
     {
+        if (subject.Kind == InspectorSubjectKind.Morpheme && subject.IdentityQuality != "authored")
+            return InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
+                FactsReason(InspectorResolution.NotAuthored));
         if (snapshot.Baseline is not { } baseline)
             return InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
                 "No Baseline yet, so no grammar check.");
         var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
         var check = new GrammarCheckRepository(database).GetLatest(token);
+        if (check is not null)
+            check = snapshot.Navigation!.Verify(check);
         return check is null
             ? InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
                 "The grammar hasn't been checked since the last Refresh.")

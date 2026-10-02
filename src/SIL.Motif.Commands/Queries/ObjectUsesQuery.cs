@@ -44,7 +44,7 @@ public static class ObjectUsesQuery
                     "No stored Assessment matches the current Baseline and default Selection."));
             var timings = snapshot.EffectiveObjectTimings;
             var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
-                ? FactsOf(asked, baseline, project) : null;
+                ? FactsOf(asked, baseline, snapshot.Navigation!) : null;
             return CommandOutcome<ObjectUsesResponse>.Success(
                 Read(assessment.Words, timings, WithTimingKey(request.Ref, facts), request.Words) with
                 {
@@ -166,16 +166,11 @@ public static class ObjectUsesQuery
             : reference;
 
     // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
-    private static ObjectFacts? FactsOf(ObjectUseRef reference, BaselineRecord baseline, ProjectLocator project)
+    private static ObjectFacts? FactsOf(ObjectUseRef reference, BaselineRecord baseline, SavedProjectNavigation navigation)
     {
         using var reader = BaselineReadCache.Open(baseline.FwDataPath);
         var cache = reader.Cache;
-        var projectName = Path.GetFileNameWithoutExtension(project.FullFwDataPath);
-        return ObjectFactsReader.Read(cache, reference, found =>
-            FieldWorksLinks.TargetFor(cache, found) is { } target
-                ? new TraceFieldWorksTarget(target.Tool, FieldWorksLinks.ToolName(target.Tool),
-                    target.ObjectId.ToString("D"), FieldWorksLinks.ForTarget(projectName, target)!)
-                : null);
+        return ObjectFactsReader.Read(cache, reference, found => navigation.TargetFor(cache, found));
     }
 
     // A disapproved analysis is one the linguist says the word is not, so it is no use of its morphs.

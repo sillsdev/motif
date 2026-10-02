@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 
@@ -32,7 +33,8 @@ public static class WordContextQuery
                     "The exact Baseline file is unavailable. Capture a new Baseline to read its analyses.");
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             var cache = reader.Cache;
-            var context = BaselineWordContext.Read(cache, Path.GetFileNameWithoutExtension(project.FullFwDataPath), [word]);
+            var context = BaselineWordContext.Read(cache,
+                SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity), [word]);
             var analyses = context.Analyses[word];
             var link = context.WordLinks.GetValueOrDefault(word);
             var liveSave = File.Exists(project.FullFwDataPath)

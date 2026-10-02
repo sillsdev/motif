@@ -439,7 +439,7 @@ public sealed class AssessCommandTests : IDisposable
         var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
 
         var inspected = InspectQuery.Query(new InspectRequest(seeded.FwDataPath,
-            InspectorSubject.Morpheme(_pristine.Seed.FirstLexemeFormId.ToString("D"), null, SeededProject.FirstForm)!));
+            InspectorSubject.Morpheme(_pristine.Seed.FirstLexemeFormId.ToString("D"), null, SeededProject.FirstForm, identityQuality: "authored")!));
 
         Assert.True(inspected.Succeeded, inspected.Refusal?.Message);
         var response = inspected.Value!;
@@ -470,7 +470,7 @@ public sealed class AssessCommandTests : IDisposable
             return outcome.Value!;
         }
 
-        var mixed = Inspect(InspectorSubject.Morpheme(_pristine.Seed.SecondLexemeFormId.ToString("D"), first.GrammaticalInfoId)!);
+        var mixed = Inspect(InspectorSubject.Morpheme(_pristine.Seed.SecondLexemeFormId.ToString("D"), first.GrammaticalInfoId, identityQuality: "authored")!);
         Assert.Equal(InspectorResolution.Contradictory, mixed.Resolution);
         Assert.Equal(InspectorSectionStatus.Absent, mixed.Facts.Status);
         Assert.Null(mixed.Facts.Value);
@@ -478,7 +478,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Empty(mixed.Uses.Value!.Words);
         Assert.Null(mixed.TimingKey);
 
-        var missing = Inspect(InspectorSubject.Morpheme(first.AllomorphId, Guid.NewGuid().ToString("D"))!);
+        var missing = Inspect(InspectorSubject.Morpheme(first.AllomorphId, Guid.NewGuid().ToString("D"), identityQuality: "authored")!);
         Assert.Equal(InspectorResolution.NotInBaseline, missing.Resolution);
         Assert.Null(missing.Facts.Value);
 

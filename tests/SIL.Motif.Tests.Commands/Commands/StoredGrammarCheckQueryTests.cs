@@ -204,7 +204,10 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal([("Lost", 1)], yours["allomorph"].ByMeaning.Select(meaning => (meaning.Meaning, meaning.Words)));
         Assert.Equal([SeededProject.AnalysedWordForm], Words("environment"));
         Assert.Equal([WarningWordsPath.ThroughAllomorphs], yours["environment"].Paths);
-        Assert.Equal([SeededProject.AnalysedWordForm, SeededProject.UnanalysedWordForm], Words("natural-class"));
+        Assert.Equal([SeededProject.UnanalysedWordForm], Words("natural-class"));
+        Assert.Equal([WarningAttributionReason.UnresolvedEnvironmentNotation],
+            stored.Value.Check.Findings.Single(finding => finding.Code == "natural-class").AttributionLimits);
+        Assert.Equal(WarningWordsMatch.Identity, yours["natural-class"].Match);
         Assert.Equal([SeededProject.UnanalysedWordForm], Words("rule"));
         Assert.Equal((3, 3_000_000L), (yours["rule"].Words[0].Calls!.Value, yours["rule"].Words[0].ElapsedNs!.Value));
         Assert.Equal(WarningWordsMatch.Spelling, yours["phoneme"].Match);

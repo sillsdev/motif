@@ -877,6 +877,12 @@ public static class PendingChanges
 
         var revision = Revision(current.ProposalJson);
         currentBaseline ??= new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+        var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, currentBaseline?.Token.ProjectIdentity);
+        changes = changes.Select(change => change with
+        {
+            Analyses = change.Analyses.Select(analysis => analysis with
+                { Reading = navigation.Verify(analysis.Reading) }).ToArray(),
+        }).ToArray();
         var baselineIdentity = BaselineIdentity(currentBaseline?.Token);
         var lastWriteTicks = observedLastWriteTicks ?? File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks;
         var fits = fitRepository.Get(revision, lastWriteTicks, baselineIdentity);

@@ -49,6 +49,29 @@ public sealed class ObjectFactsReaderTests : IDisposable
     }
 
     [Theory]
+    [InlineData("structural")]
+    [InlineData("unknown")]
+    [InlineData("grammar-local")]
+    public void GuidLookingMorphemesRequireRecordedAuthoredQuality(string quality)
+    {
+        var subject = InspectorSubject.Morpheme(_grammar.Ja.LexemeFormOA.Guid.ToString("D"),
+            _grammar.JaMsa.Guid.ToString("D"))! with { IdentityQuality = quality };
+        var (resolution, reference) = InspectorSubjectResolver.Resolve(_cache, subject);
+        Assert.Equal(InspectorResolution.NotAuthored, resolution);
+        Assert.Null(reference);
+    }
+
+    [Fact]
+    public void AuthoredMorphemeGuidVariantsResolveTogether()
+    {
+        var subject = InspectorSubject.Morpheme(_grammar.Ja.LexemeFormOA.Guid.ToString("B").ToUpperInvariant(),
+            _grammar.JaMsa.Guid.ToString("N"))! with { IdentityQuality = "authored" };
+        var (resolution, reference) = InspectorSubjectResolver.Resolve(_cache, subject);
+        Assert.Equal(InspectorResolution.Resolved, resolution);
+        Assert.NotNull(reference);
+    }
+
+    [Theory]
     [InlineData("lex_entry")]
     [InlineData("phon_rule")]
     [InlineData("unknown")]

@@ -99,6 +99,12 @@ internal static class AssessmentWordRows
         var words = snapshot.EffectiveWords.Select(word =>
         {
             var row = FromRecorded(word);
+            if (row.MissedApproved is { } missed)
+                row = row with { MissedApproved = missed.Select(reading => snapshot.Navigation is { } navigation
+                    ? navigation.Verify(reading) : reading with
+                    {
+                        Morphs = reading.Morphs.Select(morph => morph with { FieldWorksLink = null }).ToArray(),
+                    }).ToArray() };
             row = snapshot.StoredAnalysesByWord.TryGetValue(word.Word, out var stored)
                 ? row with { StoredAnalyses = stored, ExpectedAnalysis = ExpectedAnalysis(stored) } : row;
             row = snapshot.WordAnalysesLinksByWord.TryGetValue(word.Word, out var link)

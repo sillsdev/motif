@@ -584,7 +584,7 @@ public sealed record InspectorFactViewModel(string Label, string Value)
             rows.Add(With(new InspectorFactViewModel(allomorph.IsAsked ? "This allomorph" : "Allomorph",
                 $"{allomorph.Form} · {where}{needs}")
             {
-                InspectSubject = allomorph.IsAsked ? null : InspectorSubject.Morpheme(allomorph.Id, null, allomorph.Form),
+                InspectSubject = allomorph.IsAsked ? null : InspectorSubject.Morpheme(allomorph.Id, null, allomorph.Form, identityQuality: "authored"),
             }, allomorph.Environments.FirstOrDefault()?.FieldWorks, allomorph.Form));
         }
         if (facts.Rule is { } rule)

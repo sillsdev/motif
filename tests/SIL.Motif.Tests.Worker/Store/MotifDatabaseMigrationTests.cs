@@ -512,12 +512,12 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(34, MotifSchema.CurrentSchema);
+        Assert.Equal(35, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
             path, Locator("schema-33.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
         Assert.Contains("schema 33", refusal.Message);
-        Assert.Contains("schema 34", refusal.Message);
+        Assert.Contains("schema 35", refusal.Message);
         Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));

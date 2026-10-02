@@ -1278,7 +1278,7 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
     var morpheme = Value("allomorph") is not null || Value("grammatical-info") is not null;
     var named = kinds.Where(name => Value(name) is not null).ToArray();
     if ((morpheme ? 1 : 0) + named.Length != 1) return null;
-    if (morpheme) return InspectorSubject.Morpheme(Value("allomorph"), Value("grammatical-info"));
+    if (morpheme) return InspectorSubject.Morpheme(Value("allomorph"), Value("grammatical-info"), identityQuality: "authored");
     var given = Value(named[0])!;
     return named[0] switch
     {

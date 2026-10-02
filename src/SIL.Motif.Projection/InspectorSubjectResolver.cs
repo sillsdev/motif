@@ -68,6 +68,7 @@ public static class InspectorSubjectResolver
     private static (InspectorResolution, ObjectUseRef?) Morpheme(LcmCache cache, InspectorSubject subject)
     {
         if (subject.AllomorphId is null && subject.GrammaticalInfoId is null) return (InspectorResolution.NotInBaseline, null);
+        if (subject.IdentityQuality != "authored") return (InspectorResolution.NotAuthored, null);
         if (!Given(subject.AllomorphId) || !Given(subject.GrammaticalInfoId)) return (InspectorResolution.NotAuthored, null);
         return Resolve(cache, new ObjectUseRef
         {
