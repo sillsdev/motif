@@ -19,6 +19,7 @@ internal static class InteractiveControlSweep
         {
             ["no project selected"] = [AutomationIds.ProjectMenu],
             ["first project setup"] = [AutomationIds.SetupNext, AutomationIds.SkipSetup],
+            ["setup text selection"] = [AutomationIds.SetupSelectAllTexts, AutomationIds.SetupClearTexts],
             ["completed Overview"] = [AutomationIds.RefreshProject],
             ["completed Compare Matrix"] = [AutomationIds.RunAssessment],
             ["pending changes in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
@@ -29,6 +30,8 @@ internal static class InteractiveControlSweep
             ["completed Timing"] = [AutomationIds.RefreshProject],
             ["completed Warnings"] = [AutomationIds.RefreshProject],
             ["completed Analyze texts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
+            ["Analyze texts with many Texts"] =
+                [AutomationIds.SelectAllTexts, AutomationIds.ClearTexts, AutomationIds.RunAssessment],
             ["completed Word list with opinion counts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
             ["word card with a reading"] = [AutomationIds.AnalyzeTextsTab],
             ["opened diagnostic window"] = [AutomationIds.TryWordInput, AutomationIds.TryWordRun],

@@ -52,6 +52,17 @@
 
           <StackPanel IsVisible="{Binding IsSelectionStep}" Spacing="{DynamicResource Intent.Space.Related}">
             <TextBlock Classes="setupMuted" Text="Texts, most interlinearized first" />
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                        IsVisible="{Binding Selection.HasTexts}">
+              <Button Content="Select all texts" Command="{Binding Selection.SelectAllTextsCommand}"
+                      Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
+                      AutomationProperties.Name="Select all texts"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupSelectAllTexts}" />
+              <Button Content="Clear" Command="{Binding Selection.ClearTextsCommand}"
+                      IsVisible="{Binding Selection.ShowClearTexts}"
+                      Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
+                      AutomationProperties.Name="Clear" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupClearTexts}" />
+            </StackPanel>
             <Border Classes="setupTextList">
               <ScrollViewer MaxHeight="{DynamicResource Component.Setup.TextListHeight}">
                 <ItemsControl ItemsSource="{Binding Selection.Texts}">

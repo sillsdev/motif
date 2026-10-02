@@ -1,8 +1,13 @@
 using System.Diagnostics;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.TestFixtures;
@@ -13,6 +18,101 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void SelectingAndClearingTextsUsesTheFinalSelectionForTheFirstParse()
+    {
+        using var project = new ManyTextWalkthroughProject(pristine);
+        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var parser = FakeParser.Copy(project.ManagedRoot);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var walkthrough = new WalkthroughWindow(
+                project.ManagedRoot, project.FwDataPath, parserPath: parser);
+            SetupWalkthroughActions.SelectProject(walkthrough, project.FwDataPath);
+            SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
+                walkthrough, project.TextCount, WalkthroughSteps.Remaining(deadline));
+            var setup = walkthrough.Workspace.Context.Setup!;
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
+
+            var selectAll = SetupWalkthroughActions.FindSetupButton(walkthrough, "Select all texts");
+            Assert.Equal(AutomationIds.SetupSelectAllTexts, AutomationProperties.GetAutomationId(selectAll));
+            Assert.True(selectAll.IsEffectivelyVisible);
+            Assert.True(selectAll.Focusable);
+            selectAll.Focus();
+            Assert.True(selectAll.IsFocused);
+            walkthrough.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+            Assert.All(setup.Selection.Texts, text => Assert.True(text.IsChecked));
+            var selectedTextIds = setup.Selection.Texts.Select(text => text.Id).Order().ToArray();
+            Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
+
+            var clear = SetupWalkthroughActions.FindSetupButton(walkthrough, "Clear");
+            Assert.Equal(AutomationIds.SetupClearTexts, AutomationProperties.GetAutomationId(clear));
+            Assert.True(clear.IsEffectivelyVisible);
+            Assert.True(clear.Focusable);
+            InteractiveControlSweep.AssertScene(walkthrough, "setup text selection",
+                InteractiveControlFamily.Action, InteractiveControlFamily.Check);
+            clear.Focus();
+            Assert.True(clear.IsFocused);
+            walkthrough.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+            Assert.All(setup.Selection.Texts, text => Assert.False(text.IsChecked));
+            Assert.Empty(setup.Selection.ChosenTextIds);
+
+            selectAll.Focus();
+            walkthrough.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+            Assert.All(setup.Selection.Texts, text => Assert.True(text.IsChecked));
+            Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
+
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
+            walkthrough.SetFakeParserBehavior(new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new { words = new[] { new { word = SeededProject.FirstForm, outcome = "complete" } } },
+                },
+            });
+            walkthrough.Click("Start first run");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the first parse did not finish");
+
+            var parsed = Assert.IsType<AssessCommandResponse>(walkthrough.Workspace.Assess.Result);
+            Assert.Equal(selectedTextIds, parsed.SelectionDescriptor!.TextIds.Order());
+            var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
+            var saved = await commands.ReadDefaultSelectionAsync(
+                new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
+            Assert.True(saved.Succeeded, saved.Refusal?.Message);
+            Assert.Equal(selectedTextIds, saved.Value!.Selection!.TextIds.Order());
+
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
+            var selectionPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<SelectionPanel>());
+            var panelClear = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
+                AutomationProperties.GetAutomationId(button) == AutomationIds.ClearTexts);
+            var panelSelectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
+                AutomationProperties.GetAutomationId(button) == AutomationIds.SelectAllTexts);
+            InteractiveControlSweep.AssertScene(walkthrough, "Analyze texts with many Texts",
+                InteractiveControlFamily.Action, InteractiveControlFamily.Check);
+            HeadlessClick.Click(walkthrough.Window, panelClear, "Clear Texts in Analyze texts");
+            Assert.Empty(selectionPanel.Selection.ChosenTextIds);
+            HeadlessClick.Click(walkthrough.Window, panelSelectAll, "Select all Texts in Analyze texts");
+            Assert.Equal(selectedTextIds, selectionPanel.Selection.ChosenTextIds.Order());
+
+            var previousInvocationId = parsed.InvocationId;
+            walkthrough.Click("Parse all words in the Selection");
+            walkthrough.WaitUntil(
+                () => walkthrough.Workspace.Assess.State == RunState.Completed &&
+                    walkthrough.Workspace.Assess.Result?.InvocationId != previousInvocationId &&
+                    walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                WalkthroughSteps.Remaining(deadline), "the next parse did not finish from Analyze texts");
+            var nextParse = Assert.IsType<AssessCommandResponse>(walkthrough.Workspace.Assess.Result);
+            Assert.Equal(selectedTextIds, nextParse.SelectionDescriptor!.TextIds.Order());
+        }, WalkthroughSteps.Remaining(deadline));
+    }
+
     [Fact]
     public void FirstRunSetupAdvancesAndSavesTheSelection()
     {

@@ -17,6 +17,10 @@ public static class AutomationIds
     public const string OverviewTextCoverage = "motif-overview-text-coverage";
     public const string SetupAddWords = "motif-setup-add-words";
     public const string SetupStepLimit = "motif-setup-step-limit";
+    public const string SetupSelectAllTexts = "motif-setup-select-all-texts";
+    public const string SetupClearTexts = "motif-setup-clear-texts";
+    public const string SelectAllTexts = "motif-select-all-texts";
+    public const string ClearTexts = "motif-clear-texts";
     public const string SetupBack = "motif-setup-back";
     public const string SetupNext = "motif-setup-next";
     public const string SetupFinish = "motif-setup-finish";

@@ -3,11 +3,12 @@
   "title": "Set up and parse words",
   "description": "Choose a Default Selection and run Parse all words from the window.",
   "steps": {
-    "selection": "Add a word to the Default Selection before saving it.",
+    "selection": "Select all texts and add a word to the Default Selection before saving it.",
     "parsed": "After setup, run Parse all words to record measurements for the Selection."
   },
   "callouts": {
     "selection": {
+      "motif-setup-select-all-texts": "Select every Text in the project",
       "motif-setup-add-words": "Words included in the Default Selection"
     },
     "parsed": {

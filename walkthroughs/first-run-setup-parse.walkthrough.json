@@ -10,8 +10,10 @@
     { "id": "open-selection-step", "kind": "click", "automationId": "motif-setup-next" },
     { "id": "wait-for-added-words", "kind": "waitFor", "automationId": "motif-setup-add-words", "condition": "visible", "timeoutMs": 30000 },
     { "id": "add-word", "kind": "type", "automationId": "motif-setup-add-words", "text": "motifa" },
+    { "id": "select-all-texts", "kind": "click", "automationId": "motif-setup-select-all-texts" },
+    { "id": "highlight-select-all-texts", "kind": "highlight", "automationId": "motif-setup-select-all-texts" },
     { "id": "highlight-added-words", "kind": "highlight", "automationId": "motif-setup-add-words" },
-    { "id": "selection", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-setup-add-words" } ] },
+    { "id": "selection", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-setup-select-all-texts" }, { "automationId": "motif-setup-add-words" } ] },
     { "id": "wait-for-limits-next", "kind": "waitFor", "automationId": "motif-setup-next", "condition": "visible", "timeoutMs": 30000 },
     { "id": "open-limits-step", "kind": "click", "automationId": "motif-setup-next" },
     { "id": "wait-for-first-run-next", "kind": "waitFor", "automationId": "motif-setup-next", "condition": "visible", "timeoutMs": 30000 },
@@ -26,7 +28,7 @@
     { "id": "wait-for-parse", "kind": "waitFor", "automationId": "motif-parse-all-words-progress", "condition": "visible", "timeoutMs": 30000 },
     { "id": "wait-for-results", "kind": "waitFor", "automationId": "motif-parse-all-words-progress", "condition": "hidden", "timeoutMs": 30000 },
     { "id": "open-overview", "kind": "click", "automationId": "motif-page-overview" },
-    { "id": "wait-for-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "1", "timeoutMs": 30000 },
+    { "id": "wait-for-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "3", "timeoutMs": 30000 },
     { "id": "highlight-count", "kind": "highlight", "automationId": "motif-overview-selection-word-count" },
     { "id": "parsed", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-overview-selection-word-count" } ] }
   ]

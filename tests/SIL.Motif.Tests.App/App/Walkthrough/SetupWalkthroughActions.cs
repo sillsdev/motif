@@ -14,10 +14,16 @@ internal static class SetupWalkthroughActions
 {
     internal static void ClickSetupButton(WalkthroughWindow walkthrough, string accessibleName)
     {
-        var button = walkthrough.Window.GetLogicalDescendants().OfType<Button>().Single(candidate =>
+        var button = FindSetupButton(walkthrough, accessibleName);
+        HeadlessClick.Click(walkthrough.Window, button, accessibleName);
+    }
+
+    internal static Button FindSetupButton(WalkthroughWindow walkthrough, string accessibleName)
+    {
+        var dialog = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<SetupDialog>());
+        return dialog.GetLogicalDescendants().OfType<Button>().Single(candidate =>
             string.Equals(Avalonia.Automation.AutomationProperties.GetName(candidate), accessibleName,
                 StringComparison.Ordinal) || Equals(candidate.Content, accessibleName));
-        HeadlessClick.Click(walkthrough.Window, button, accessibleName);
     }
 
     internal static void ClickParseAllWordsFromTexts(WalkthroughWindow walkthrough)

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
@@ -25,16 +26,27 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
     private int _textLoadGeneration;
+    private bool _settingTextChecks;
 
     public SelectionViewModel(ICommandClient commandClient)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
+        SelectAllTextsCommand = new RelayCommand(SelectAllTexts, CanSelectAllTexts);
+        ClearTextsCommand = new RelayCommand(ClearTexts, CanClearTexts);
         Recompute();
     }
 
     /// <summary>The current Baseline's Texts matching <see cref="SearchText"/>, most-recently-loaded order.</summary>
     public ObservableCollection<TextChoiceViewModel> Texts { get; } = [];
+
+    public bool HasTexts => _allTexts.Count > 0;
+
+    public bool ShowClearTexts => _allTexts.Count > 3;
+
+    public IRelayCommand SelectAllTextsCommand { get; }
+
+    public IRelayCommand ClearTextsCommand { get; }
 
     /// <summary>Why the Text list is empty, or <c>null</c> when it is not.</summary>
     [ObservableProperty]
@@ -130,6 +142,8 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         foreach (var text in _allTexts) text.IsChecked = false;
         _allTexts.Clear();
         Texts.Clear();
+        OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(ShowClearTexts));
         SearchText = string.Empty;
         PastedWords = string.Empty;
         AllWordforms = false;
@@ -179,6 +193,8 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         TextsEmptyMessage = _allTexts.Count > 0
             ? null
             : outcome.Value!.HasBaseline ? "This Baseline has no Texts." : "Capture a Baseline to choose Texts.";
+        OnPropertyChanged(nameof(HasTexts));
+        OnPropertyChanged(nameof(ShowClearTexts));
         ApplyFilter();
         Recompute();
     }
@@ -197,7 +213,31 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 
     private void OnTextChoicePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TextChoiceViewModel.IsChecked)) Recompute();
+        if (e.PropertyName == nameof(TextChoiceViewModel.IsChecked) && !_settingTextChecks) Recompute();
+    }
+
+    private void SelectAllTexts() => SetAllTextChecks(isChecked: true);
+
+    private void ClearTexts() => SetAllTextChecks(isChecked: false);
+
+    private bool CanSelectAllTexts() => _allTexts.Count > 0 && ChosenTextIds.Count < _allTexts.Count;
+
+    private bool CanClearTexts() => ChosenTextIds.Count > 0;
+
+    private void SetAllTextChecks(bool isChecked)
+    {
+        if (!_allTexts.Any(text => text.IsChecked != isChecked)) return;
+        _settingTextChecks = true;
+        try
+        {
+            foreach (var text in _allTexts) text.IsChecked = isChecked;
+        }
+        finally
+        {
+            _settingTextChecks = false;
+        }
+
+        Recompute();
     }
 
     /// <summary>
@@ -251,6 +291,8 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 
         CanAssess = hasAnySource && thresholdValid && stepLimitValid;
         SummaryText = BuildSummary(hasAnySource, hasThreshold && thresholdValid);
+        SelectAllTextsCommand.NotifyCanExecuteChanged();
+        ClearTextsCommand.NotifyCanExecuteChanged();
     }
 
     private string BuildSummary(bool hasAnySource, bool includeThreshold)
