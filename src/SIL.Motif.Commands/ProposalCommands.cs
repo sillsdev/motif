@@ -9,11 +9,14 @@ using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Canonicalization;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Baselines;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
@@ -89,9 +92,8 @@ public static partial class ProposalCommands
         try
         {
             var fullPath = ResolveProjectPath(fwDataPath);
-            var loader = new FwDataProjectLoader();
-            using var cache = loader.LoadCache(fullPath);
-            return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(cache));
+            using var reader = BaselineReadCache.Open(fullPath);
+            return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(reader.Cache));
         }
         catch (Exception ex)
         {
@@ -145,19 +147,32 @@ public static partial class ProposalCommands
                     "An analyses aggregate requires a per-word ParseTime or Correctness Assessment.",
                     Fact(("assessmentId", assessmentId))));
 
+            BaselineRecord? baseline;
+            try { baseline = FindAssessmentBaseline(database, project, record); }
+            catch (Exception ex) when (ex is InvalidDataException or JsonException or ArgumentException)
+            {
+                return InvalidAssessmentEvidence(assessmentId, ex);
+            }
+            if (baseline is null || !File.Exists(baseline.FwDataPath))
+                return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
+                    "assessment.baseline-unavailable", FailureReason.Refused,
+                    "The exact Baseline for this Assessment is unavailable. Capture a Baseline and assess it again.",
+                    Fact(("assessmentId", assessmentId))));
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            var context = new AnalysisProjectContext("baseline", baseline.Token, baseline.SourceLastWriteUtc);
+
             if (record.Kind.IsStoredKind(AssessmentKind.Correctness) ||
                 record.Words?.Any(word => word.Morphology is not null) == true ||
                 record.OutcomeDigest is null || record.SemanticDigest is null || record.ModelFingerprint is null ||
                 record.Pipeline is null || record.DiagnosticCount is null)
             {
-                using var manualCache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
                 try
                 {
                     return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.ReadMorphology(
-                        manualCache, record.Words ?? throw new InvalidDataException("Assessment word detail was not loaded."),
+                        reader.Cache, record.Words ?? throw new InvalidDataException("Assessment word detail was not loaded."),
                         new AnalysisAssessmentProvenance(record.Selection.Name, record.Selection.Sha256, record.GrammarSourceSha256),
                         currentSelectionSha256, currentGrammarSourceSha256, record.Kind.IsStoredKind(AssessmentKind.Correctness),
-                        record.Invocation?.GrammarWarningLines));
+                        record.Invocation?.GrammarWarningLines) with { ProjectContext = context });
                 }
                 catch (InvalidDataException ex)
                 {
@@ -165,10 +180,9 @@ public static partial class ProposalCommands
                 }
             }
 
-            var loader = new FwDataProjectLoader();
-            using var cache = loader.LoadScratchCache(project.FullFwDataPath);
             return CommandOutcome<AnalysisAggregateProjection>.Success(AnalysisAggregateProjectionQuery.Read(
-                cache, record.ToStored(), currentSelectionSha256, currentGrammarSourceSha256));
+                reader.Cache, record.ToStored(), currentSelectionSha256, currentGrammarSourceSha256)
+                with { ProjectContext = context });
         }
         catch (ArgumentException ex)
         {
@@ -182,6 +196,27 @@ public static partial class ProposalCommands
         }
     }
 
+    private static BaselineRecord? FindAssessmentBaseline(MotifDatabase database, ProjectLocator project, AssessmentRecord record)
+    {
+        var token = JsonSerializer.Deserialize<BaselineToken>(record.BaselineToken, MotifJson.CreateOptions())
+            ?? throw new InvalidDataException("The Assessment has no recorded Baseline identity.");
+        var projectKey = ProjectWorkspaceKey.Compute(project);
+        if (record.Invocation?.InvocationId is { } invocationId)
+        {
+            try
+            {
+                var retained = new RetainedInvocationRepository(database).Get(invocationId);
+                if (retained.ProjectKey != projectKey || retained.BaselineToken != token)
+                    throw new InvalidDataException("The retained invocation does not identify this Assessment's Baseline.");
+                return new BaselineRecord(projectKey, token, retained.BaselineRootDirectory, retained.BaselineFwDataPath,
+                    retained.BaselineSourceLastWriteUtc, retained.BaselinePublishedUtc);
+            }
+            catch (KeyNotFoundException) { }
+        }
+        var current = new BaselineRepository(database).GetCurrent(projectKey);
+        return current?.Token == token ? current : null;
+    }
+
     private static CommandOutcome<AnalysisAggregateProjection> InvalidAssessmentEvidence(string assessmentId, Exception exception) =>
         CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
             "assessment.invalid-evidence", FailureReason.Refused, exception.Message, Fact(("assessmentId", assessmentId))));
@@ -191,9 +226,10 @@ public static partial class ProposalCommands
         try
         {
             var fullPath = ResolveProjectPath(fwDataPath);
-            var loader = new FwDataProjectLoader();
-            using var cache = loader.LoadScratchCache(fullPath);
-            return CommandOutcome<AnalysisAggregateProjection>.Success(ManualAnalysisProjectionQuery.Read(cache));
+            using var reader = BaselineReadCache.Open(fullPath);
+            var saved = new DateTimeOffset(File.GetLastWriteTimeUtc(reader.Cache.ProjectId.Path), TimeSpan.Zero);
+            return CommandOutcome<AnalysisAggregateProjection>.Success(ManualAnalysisProjectionQuery.Read(reader.Cache)
+                with { ProjectContext = new AnalysisProjectContext("saved-project", null, saved) });
         }
         catch (Exception ex)
         {

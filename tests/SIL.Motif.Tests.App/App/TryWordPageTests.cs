@@ -718,6 +718,30 @@ public sealed class TryWordPageTests
         });
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ContextFreshnessUsesTheRecordedLiveSaveComparison(bool stale)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var baseline = Assessment().Baseline.Token;
+            var saved = DateTimeOffset.Parse(baseline.CapturedUtc).AddHours(-1);
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true)
+                {
+                    IsInFieldWorks = true, Baseline = baseline, SourceLastWriteUtc = saved, IsStale = stale,
+                }));
+            var page = new TryWordPageModel(context);
+            fake.TraceWordCompletesWith(DogsTrace());
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.Equal(stale, page.FieldWorksContextIsStale);
+        });
+    }
+
     [Fact]
     public void ContextSaveBeforeItsBaselineDoesNotShowASavedSinceMessage()
     {
@@ -730,7 +754,7 @@ public sealed class TryWordPageTests
             fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
                 new(request.Word, true)
                 {
-                    IsInFieldWorks = true, Baseline = baseline, SourceLastWriteUtc = saved, IsStale = true,
+                    IsInFieldWorks = true, Baseline = baseline, SourceLastWriteUtc = saved, IsStale = false,
                 }));
             var page = new TryWordPageModel(context);
             fake.TraceWordCompletesWith(DogsTrace());

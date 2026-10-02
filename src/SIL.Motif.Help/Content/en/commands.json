@@ -4,6 +4,11 @@
     "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "word-context": {
+    "title": "Read one word's context",
+    "description": "Reads a word's captured FieldWorks presence and every stored analysis with its individual Opinion. Uses the current Baseline without requiring a Selection or an Assessment, and reports whether FieldWorks has saved since.",
+    "source": "Hand-written from the shared WordContext query."
+  },
   "analyses": {
     "title": "Inspect word analyses",
     "description": "Lists manually approved analyses, or adds parser results from a named Assessment when current digests are supplied. It does not run PanGloss.",

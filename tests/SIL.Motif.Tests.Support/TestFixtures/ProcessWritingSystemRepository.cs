@@ -18,8 +18,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </para>
 /// <para>
 /// The module initializer sets the path before any test, fixture or product code can open the first
-/// cache. Child processes inherit it and install the same path when the host initializes, pinned by
-/// <see cref="SIL.Motif.Tests.WritingSystems.ProcessWritingSystemRepositoryTests.LaunchedMotifProcessUsesTheSelectedRepositoryInsteadOfTheMachineWideRepository"/>.
+/// cache. Read-only child inspection must leave both the selected and shared stores untouched, pinned by
+/// <see cref="SIL.Motif.Tests.WritingSystems.ProcessWritingSystemRepositoryTests.ReadOnlyMotifProcessLeavesEveryWritingSystemRepositoryUnchanged"/>.
 /// </para>
 /// </remarks>
 internal static class ProcessWritingSystemRepository

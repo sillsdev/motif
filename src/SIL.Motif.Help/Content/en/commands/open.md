@@ -1,6 +1,6 @@
 # Open a project
 
-`open` reads a saved FieldWorks language project and reports its identity and basic counts. It does not change the project.
+`open` reads a private copy of a saved FieldWorks language project and reports its identity and basic counts. It works before a Baseline exists, including while FieldWorks holds the original project, and does not change the original.
 
 ## When to use it
 

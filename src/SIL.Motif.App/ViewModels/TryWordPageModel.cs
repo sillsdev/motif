@@ -74,10 +74,8 @@ public sealed class TryWordPageModel : PageModel
               ? $" · Baseline captured {LocalDate(DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture))}"
               : " · Baseline identity not recorded");
 
-    /// <summary>The context save is newer than the Baseline capture time.</summary>
-    public bool FieldWorksContextIsStale => ResultWordContext is
-        { SourceLastWriteUtc: { } saved, Baseline: { } baseline } &&
-        saved > DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture);
+    /// <summary>Whether the shared context query found a later FieldWorks save than the captured source save.</summary>
+    public bool FieldWorksContextIsStale => ResultWordContext?.IsStale == true;
 
     private string LocalDate(DateTimeOffset value)
     {

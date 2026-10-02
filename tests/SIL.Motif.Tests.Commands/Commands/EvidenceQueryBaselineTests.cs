@@ -333,6 +333,57 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
     }
 
     [Fact]
+    public void ReadOnlyProjectHandlersLeaveTheOriginalOwnerAndSavedBytesAlone()
+    {
+        var path = _pristine.CopyProjectFile();
+        var bytes = File.ReadAllBytes(path);
+        var saved = File.GetLastWriteTimeUtc(path);
+        using var owner = new FwDataProjectLoader().LoadCache(path);
+        var open = ProposalCommands.Open(new SIL.Motif.Commands.Requests.OpenRequest(path));
+        var analyses = ProposalCommands.Analyses(new SIL.Motif.Commands.Requests.ManualAnalysesRequest(path));
+        Assert.True(open.Succeeded, open.Refusal?.Message);
+        Assert.True(analyses.Succeeded, analyses.Refusal?.Message);
+        Assert.True(File.Exists(path + ".lock"));
+        Assert.Equal(bytes, File.ReadAllBytes(path));
+        Assert.Equal(saved, File.GetLastWriteTimeUtc(path));
+        Assert.Equal(2, open.Value!.LexicalEntryCount);
+    }
+
+    [Fact]
+    public void AssessmentAggregateReadsItsBaselineAfterALaterLiveSave()
+    {
+        var project = Capture();
+        var id = SIL.Motif.Contract.Ids.CanonicalId.Mint("assessment/").Value;
+        RecordAssessment(project, [SeededProject.AnalysedWordForm], id: id, grammarHash: "sha256:" + new string('a', 64));
+        File.WriteAllText(project.Path, File.ReadAllText(project.Path)
+            .Replace(SeededProject.FirstForm, "later-live-form", StringComparison.Ordinal));
+        File.SetLastWriteTimeUtc(project.Path, project.Baseline.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+        using var held = new FieldWorksSimulator(project.Path).Hold();
+        var result = ProposalCommands.Analyses(new SIL.Motif.Commands.Requests.AssessmentAnalysesRequest(
+            project.Path, "1.0", id, Selection.Create("Default", [SeededProject.AnalysedWordForm]).Sha256,
+            "sha256:" + new string('a', 64)));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(project.Baseline.Token, result.Value!.ProjectContext!.Baseline);
+        Assert.Equal("baseline", result.Value.ProjectContext.Source);
+        Assert.Contains(SeededProject.FirstForm, Assert.Single(result.Value!.WordForms).ManualAnalyses[0].MorphBreakdown);
+        Assert.DoesNotContain("later-live-form", ProjectionJson.Serialize(result.Value));
+    }
+
+    [Fact]
+    public void AssessmentAggregateRefusesAnUnavailableExactBaseline()
+    {
+        var project = Capture();
+        var id = SIL.Motif.Contract.Ids.CanonicalId.Mint("assessment/").Value;
+        RecordAssessment(project, [SeededProject.AnalysedWordForm], id: id, grammarHash: "sha256:" + new string('a', 64));
+        File.Delete(project.Baseline.FwDataPath);
+        var result = ProposalCommands.Analyses(new SIL.Motif.Commands.Requests.AssessmentAnalysesRequest(
+            project.Path, "1.0", id, Selection.Create("Default", [SeededProject.AnalysedWordForm]).Sha256,
+            "sha256:" + new string('a', 64)));
+        Assert.False(result.Succeeded);
+        Assert.Equal("assessment.baseline-unavailable", result.Refusal!.Code);
+    }
+
+    [Fact]
     public void WordContextBeforeCaptureLeavesMembershipUnknown()
     {
         var path = _pristine.CopyProjectFile();
@@ -638,13 +689,13 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
     }
 
     private static void RecordAssessment(CapturedProject project, IReadOnlyList<string> words, bool parsed = true,
-        string id = "assessment", string? missedLink = null)
+        string id = "assessment", string? missedLink = null, string grammarHash = "sha256:grammar")
     {
         using var database = ProjectMotifDatabase.Open(project.Path);
         new AssessmentRepository(database).Record(new NewAssessmentRecord(
             id, null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
             "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
-            Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", "sha256:grammar",
+            Selection.Create("Default", words), "sha256:outcome", "sha256:semantic", grammarHash,
             "fingerprint", "pipeline", 0, words.Select(word => new AssessedWord(word,
                 parsed ? "analysed" : "no-analysis", [], 1)
             {

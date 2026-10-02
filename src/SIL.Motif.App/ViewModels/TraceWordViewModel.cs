@@ -552,12 +552,15 @@ public sealed partial class TraceWordViewModel : ObservableObject
         get
         {
             if (Result is not { } result) return string.Empty;
-            var incomplete = !result.Complete || !string.Equals(result.SearchStatus, "complete", StringComparison.OrdinalIgnoreCase);
-            var status = result.InvalidShape
-                ? "Nothing to parse: the word has a character the grammar's character table does not define"
-                : incomplete
-                    ? $"Search incomplete: {(string.IsNullOrWhiteSpace(result.StopReason) ? "Reason not recorded" : result.StopReason)}"
-                    : "Search complete";
+            var status = result.SearchCompletion switch
+            {
+                TraceSearchCompletion.InvalidShape =>
+                    "Nothing to parse: the word has a character the grammar's character table does not define",
+                TraceSearchCompletion.Incomplete =>
+                    $"Search incomplete: {(string.IsNullOrWhiteSpace(result.StopReason) ? "Reason not recorded" : result.StopReason)}",
+                TraceSearchCompletion.Complete => "Search complete",
+                _ => "Search completion not recorded",
+            };
             return HiddenStepCount > 0 ? $"{status}  ·  {HiddenStepCount:N0} hidden by filters" : status;
         }
     }
@@ -1348,9 +1351,6 @@ public sealed class TraceStepViewModel
     public IReadOnlyList<TraceMorphViewModel> AttemptedMorphs { get; }
     public bool HasAttemptedMorphs => AttemptedMorphs.Count > 0;
     public bool HasFailureReason => FailureReason is { Length: > 0 };
-
-    /// <summary>Legacy fact retained for existing candidate consumers; neutral nodes remain textual attempts.</summary>
-    public bool Passed => !HasFailureReason;
 
     public bool IsBlocked => Type == "Blocked" || IsStatus(OutcomeStatus, "blocked");
 

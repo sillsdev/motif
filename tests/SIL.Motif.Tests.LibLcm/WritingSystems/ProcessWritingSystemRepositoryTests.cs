@@ -58,7 +58,7 @@ public sealed class ProcessWritingSystemRepositoryTests
     }
 
     [Fact]
-    public async Task LaunchedMotifProcessUsesTheSelectedRepositoryInsteadOfTheMachineWideRepository()
+    public async Task ReadOnlyMotifProcessLeavesEveryWritingSystemRepositoryUnchanged()
     {
         var machineStore = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -108,7 +108,7 @@ public sealed class ProcessWritingSystemRepositoryTests
             Assert.True(process.ExitCode == 0, $"motif open failed: {error}\n{output}");
             Assert.Equal(machineStoreBefore, SnapshotFiles(machineStore));
             Assert.Equal(processStoreBefore, SnapshotFiles(ProcessWritingSystemRepository.BasePath));
-            Assert.NotEmpty(SnapshotFiles(childStore));
+            Assert.Empty(SnapshotFiles(childStore));
         }
         finally
         {

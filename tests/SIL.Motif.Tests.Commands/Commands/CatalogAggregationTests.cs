@@ -49,10 +49,17 @@ public sealed class CatalogAggregationTests
     }
 
     [Fact]
+    public void TimingHasNoCompatibilityOnlyRuleResolver()
+    {
+        Assert.Null(typeof(TimingAggregation).GetMethod("ResolveRule"));
+    }
+
+    [Fact]
     public void ADisplayLabelCannotSelectATimingObject()
     {
         AssessmentObjectTiming[] rows = [new("phon_rule", "key", "structural", "analysis", "Plural", "a", 1, null, 1_000_000)];
-        Assert.Empty(TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", "Plural")));
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule",
+            new TraceTimingKey("phon_rule", "Plural") { IdentityQuality = "structural" }, 10).CostliestWords);
     }
 
     [Fact]
@@ -294,10 +301,15 @@ public sealed class CatalogAggregationTests
             new("phon_rule", "guid-3", "authored", "analysis", "Nasal harmony", "a", 1, null, 1_000_000),
         ];
 
-        Assert.Equal([new TraceTimingKey("morph_rule", "guid-1")], TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", "guid-1")));
-        Assert.Empty(TimingAggregation.ResolveRule(rows, new TraceTimingKey("phon_rule", "Nasal harmony")));
-        Assert.Empty(TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", "Plural")));
-        Assert.Empty(TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", "Missing")));
+        var selected = TimingAggregation.Aggregate([Timed("a", 100)], rows, "rule",
+            new TraceTimingKey("morph_rule", "guid-1") { IdentityQuality = "authored" }, 10);
+        Assert.Equal(10, Assert.Single(selected.CostliestWords).SelfMs);
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 100)], rows, "rule",
+            new TraceTimingKey("phon_rule", "Nasal harmony") { IdentityQuality = "authored" }, 10).CostliestWords);
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule",
+            new TraceTimingKey("phon_rule", "Plural") { IdentityQuality = "structural" }, 10).CostliestWords);
+        Assert.Empty(TimingAggregation.Aggregate([Timed("a", 100)], rows, "rule",
+            new TraceTimingKey("morph_rule", "Missing") { IdentityQuality = "authored" }, 10).CostliestWords);
     }
 
     [Fact]
@@ -322,7 +334,6 @@ public sealed class CatalogAggregationTests
         const string key = "12345678-1234-1234-abcd-123456789abc";
         AssessmentObjectTiming[] rows = [Row("morph_rule", key, "Plural", "a", 10)];
 
-        Assert.Equal([new TraceTimingKey("morph_rule", key)], TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", requested)));
         var detail = TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", new TraceTimingKey("morph_rule", requested), top: 10);
         Assert.Equal("a", Assert.Single(detail.CostliestWords).Word);
         Assert.Equal(10, detail.CostliestWords[0].SelfMs);
@@ -333,7 +344,6 @@ public sealed class CatalogAggregationTests
     {
         AssessmentObjectTiming[] rows = [Row("morph_rule", "local/Rule", "Plural", "a", 10)];
 
-        Assert.Empty(TimingAggregation.ResolveRule(rows, new TraceTimingKey("morph_rule", "local/rule")));
         Assert.Empty(TimingAggregation.Aggregate([Timed("a", 20)], rows, "rule", new TraceTimingKey("morph_rule", "local/rule"), 10).CostliestWords);
     }
 

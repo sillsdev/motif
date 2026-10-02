@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Contract;
+using System.Text.Json;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
@@ -20,6 +23,8 @@ internal static class SeededAssessment
         BatchInvocationEvidence? invocation = null)
     {
         ArgumentNullException.ThrowIfNull(assessment);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath));
+        if (!captured.Succeeded) throw new InvalidOperationException(captured.Refusal!.Message);
         var project = new ProjectLocator(fwDataPath, Path.GetFileNameWithoutExtension(fwDataPath));
         using var database = MotifDatabase.OpenOwned(
             ProjectDatabaseCatalog.DatabasePathFor(project), project, MotifSchema.CurrentSchema, new Version(1, 0));
@@ -34,7 +39,7 @@ internal static class SeededAssessment
             ScopeDigest: "sha256:scope",
             TokeniserName: "whitespace-and-punctuation",
             TokeniserVersion: "1",
-            BaselineToken: "{}",
+            BaselineToken: JsonSerializer.Serialize(captured.Value!.Token, MotifJson.CreateOptions()),
             Selection: assessment.Selection,
             OutcomeDigest: assessment.Report.OutcomeDigest,
             SemanticDigest: assessment.Report.SemanticDigest,

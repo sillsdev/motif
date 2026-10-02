@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.App.Services;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -126,12 +127,12 @@ public sealed partial class DiagnosticToolsViewModel : ObservableObject
     private string BuildChatText()
     {
         var summary = string.IsNullOrWhiteSpace(Trace.SummaryText) ? "Not recorded." : Trace.SummaryText;
-        var completion = Trace.Result switch
+        var completion = Trace.Result?.SearchCompletion switch
         {
-            { InvalidShape: true } => "not run (invalid shape recorded)",
-            { Complete: false } result =>
-                $"incomplete{(string.IsNullOrWhiteSpace(result.StopReason) ? "; reason not recorded" : "; " + result.StopReason)}",
-            { Complete: true } => "unknown; the parser did not record whether its trace step cap stopped the search",
+            TraceSearchCompletion.InvalidShape => "not run (invalid shape recorded)",
+            TraceSearchCompletion.Incomplete =>
+                $"incomplete{(string.IsNullOrWhiteSpace(Trace.Result.StopReason) ? "; reason not recorded" : "; " + Trace.Result.StopReason)}",
+            TraceSearchCompletion.Complete => "complete",
             _ => "not recorded",
         };
         var diagnostic = string.IsNullOrWhiteSpace(Trace.DiagnosticJson) ? "Not recorded." : Trace.DiagnosticJson;

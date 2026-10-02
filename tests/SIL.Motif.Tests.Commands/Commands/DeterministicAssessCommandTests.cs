@@ -705,6 +705,30 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
 
     [Fact]
+    public void AnalysesKeepsTheRetainedBaselineAfterAnotherCapture()
+    {
+        using var seeded = NewSeededScratch();
+        var measured = AssessForUses(seeded);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+        var response = measured.Value!;
+        var id = Assert.Single(response.Measurements, row => row.Kind == "ParseTime").AssessmentId;
+        File.WriteAllText(seeded.FwDataPath, File.ReadAllText(seeded.FwDataPath)
+            .Replace(SeededProject.FirstForm, "later-live-form", StringComparison.Ordinal));
+        var refreshed = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(seeded.FwDataPath), NewManagedRoot());
+        Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
+        Assert.NotEqual(response.Baseline.Token, refreshed.Value!.Token);
+
+        using var database = OpenDatabase(seeded.FwDataPath);
+        var record = new AssessmentRepository(database).Get(id);
+        var result = ProposalCommands.Analyses(new SIL.Motif.Commands.Requests.AssessmentAnalysesRequest(
+            seeded.FwDataPath, "1.0", id, record.Selection.Sha256, record.GrammarSourceSha256));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(response.Baseline.Token, result.Value!.ProjectContext!.Baseline);
+        Assert.Contains(SeededProject.FirstForm, Assert.Single(result.Value.WordForms).ManualAnalyses[0].MorphBreakdown);
+        Assert.DoesNotContain("later-live-form", ProjectionJson.Serialize(result.Value));
+    }
+
+    [Fact]
     public void PartialFindingsRemainIncompleteInTheResponseAndStoredWord()
     {
         using var seeded = NewSeededScratch();

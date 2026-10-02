@@ -822,6 +822,13 @@ try
             result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(overviewProject)));
             break;
 
+        case "word-context":
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var contextProject) ||
+                !flags.TryGetValue("word", out var contextWord) || string.IsNullOrWhiteSpace(contextWord))
+                return Usage(UsageLineFor("word-context"), asJson);
+            result = RenderCommand(WordContextQuery.Query(new WordContextRequest(contextProject, contextWord)));
+            break;
+
         case "warnings":
             if (!flags.TryGetValue("project", out var warningsProject) ||
                 (flags.TryGetValue("kind", out var warningKind) && string.IsNullOrWhiteSpace(warningKind)))

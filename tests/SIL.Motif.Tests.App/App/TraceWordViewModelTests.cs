@@ -522,14 +522,25 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void APassingStepHasNoFailureReasonAndAFailingOneDoes()
+    public void NeutralStepsHaveExplicitStatusWithoutASuccessAlias()
+    {
+        var neutral = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestStepId: null);
+        Assert.False(neutral.IsSuccessful);
+        Assert.False(neutral.IsFailure);
+        Assert.Equal("tried", neutral.StatusText);
+        Assert.Null(typeof(TraceStepViewModel).GetProperty("Passed"));
+    }
+
+    [Fact]
+    public void ANeutralStepHasNoFailureReasonAndAFailingOneDoes()
     {
         var passing = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestStepId: null);
         var failing = new TraceStepViewModel(Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked"), deepestStepId: null);
 
-        Assert.True(passing.Passed);
+        Assert.False(passing.IsSuccessful);
+        Assert.Equal("tried", passing.StatusText);
         Assert.False(passing.HasFailureReason);
-        Assert.False(failing.Passed);
+        Assert.True(failing.IsFailure);
         Assert.True(failing.HasFailureReason);
     }
 
@@ -556,8 +567,9 @@ public sealed class TraceWordViewModelTests
 
         var candidate = Assert.Single(trace.Candidates);
         Assert.Equal(2, candidate.Steps.Count);
-        Assert.True(candidate.Steps[0].Passed);
-        Assert.False(candidate.Steps[1].Passed);
+        Assert.False(candidate.Steps[0].IsSuccessful);
+        Assert.Equal("tried", candidate.Steps[0].StatusText);
+        Assert.True(candidate.Steps[1].IsFailure);
         Assert.Equal("blocked", candidate.Steps[1].FailureReason);
     }
 

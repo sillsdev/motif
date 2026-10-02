@@ -14,7 +14,7 @@ namespace SIL.Motif.Host.Analysis;
 /// <summary>Reads and shapes the project analysis aggregate without invoking PanGloss.</summary>
 public static class AnalysisAggregateProjectionQuery
 {
-    /// <summary>Combines current manual navigation with validated, immutable Assessment cases.</summary>
+    /// <summary>Combines the supplied project context with validated, immutable Assessment cases.</summary>
     public static AnalysisAggregateProjection ReadMorphology(
         LcmCache cache, IReadOnlyList<AssessedWord> words, AnalysisAssessmentProvenance provenance,
         string currentSelectionSha256, string currentGrammarSourceSha256, bool requireExpectations,

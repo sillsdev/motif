@@ -11,6 +11,24 @@ namespace SIL.Motif.Tests.Cli;
 
 public sealed class CatalogTextRenderingTests
 {
+    [Theory]
+    [InlineData(0, "No known word matches")]
+    [InlineData(2, "At least 2 of your words")]
+    public void WarningTextQualifiesIncompleteAggregateAndKindCounts(int known, string qualifier)
+    {
+        var response = new WarningsResponse(true, true, [],
+            [new GrammarWarningSummary("mixed", "Mixed", GrammarDiagnosticLevel.Warning, 1)
+                { YourWords = known, WordAttributionComplete = false }], 1, 0)
+        {
+            YourWords = new WarningWordsTouched(known, 0, [])
+                { IsComplete = false, AttributionLimits = [WarningAttributionReason.UnsupportedKind] },
+        };
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(response), false).Output;
+        Assert.Contains(qualifier, text);
+        Assert.Contains("some named connections could not be followed", text);
+        Assert.Contains(known == 0 ? "no known matches; incomplete" : "at least 2 of your words", text);
+    }
+
     [Fact]
     public void AssessmentTextAndJsonCarryTheSharedComparisonHeadlineAndQualification()
     {
@@ -318,7 +336,7 @@ public sealed class CatalogTextRenderingTests
         };
         var response = new WarningsResponse(true, true, findings,
             [new GrammarWarningSummary("hc-unsegmentable", "Allomorph can't be split", GrammarDiagnosticLevel.Warning, 1)
-                { YourWords = 2, BySpellingOnly = 1 }], 4, 0)
+                { YourWords = 2, BySpellingOnly = 1, WordAttributionComplete = true }], 4, 0)
         {
             YourWords = new WarningWordsTouched(2, 2, [lost]) { BySpellingOnly = 1 },
         };

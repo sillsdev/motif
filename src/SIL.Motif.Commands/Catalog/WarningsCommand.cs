@@ -33,6 +33,8 @@ public static class WarningsCommand
                     group.Key.Severity, group.Count())
                 {
                     YourWords = touched?.Words,
+                    WordAttributionComplete = touched?.IsComplete,
+                    AttributionLimits = touched?.AttributionLimits ?? group.SelectMany(finding => finding.AttributionLimits).Distinct().ToArray(),
                     ByMembershipOnly = touched?.ByMembershipOnly,
                     BySpellingOnly = touched?.BySpellingOnly,
                 };

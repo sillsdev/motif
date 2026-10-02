@@ -65,6 +65,32 @@ public sealed class DesktopFileAndClipboardSeamTests
         Assert.Contains("Trace diagnostic JSON:\n" + ValidDiagnosticJson, copied, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(true, false, "complete", "Search complete")]
+    [InlineData(false, true, "incomplete", "Search incomplete")]
+    public async Task ChatCompletionAgreesWithTheRecordedDiagnosticAndWindow(bool completed, bool capped,
+        string completion, string windowStatus)
+    {
+        var json = ValidDiagnosticJson.Replace("\"completed\":false", "\"completed\":" + completed.ToString().ToLowerInvariant())
+            .Replace("\"capped\":false", "\"capped\":" + capped.ToString().ToLowerInvariant());
+        var tools = ToolsFor(json);
+        await tools.CopyInstructionsAsync();
+        Assert.Equal(completed, tools.Trace.Result!.Complete);
+        Assert.StartsWith(windowStatus, tools.Trace.SearchStatusText);
+        Assert.Contains("Search completion: " + completion, Assert.Single(_clipboard.Copied), StringComparison.Ordinal);
+        Assert.Contains(json, _clipboard.Copied[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UnavailableSearchCompletionStaysUnavailableInTheWindowAndChat()
+    {
+        var tools = ToolsFor(ValidDiagnosticJson);
+        tools.Trace.Result = tools.Trace.Result! with { Complete = true, SearchStatus = "unavailable" };
+        await tools.CopyInstructionsAsync();
+        Assert.Equal("Search completion not recorded", tools.Trace.SearchStatusText);
+        Assert.Contains("Search completion: not recorded", Assert.Single(_clipboard.Copied));
+    }
+
     [Fact]
     public async Task CopyingAnInvalidShapeSaysTheSearchDidNotRun()
     {

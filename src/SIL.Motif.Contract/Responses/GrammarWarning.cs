@@ -94,6 +94,12 @@ public sealed record GrammarWarningSummary(string Code, string? GroupName, Gramm
     /// </summary>
     public int? YourWords { get; init; }
 
+    /// <summary>Whether all findings have available word evidence and every named connection was followed.</summary>
+    public bool? WordAttributionComplete { get; init; }
+
+    /// <summary>The named connections that could not be followed, even when known matches exist.</summary>
+    public IReadOnlyList<WarningAttributionReason> AttributionLimits { get; init; } = [];
+
     /// <summary>
     /// How many words this kind's findings reach only as membership candidates, excluded from
     /// <see cref="YourWords"/>; <see langword="null"/> when <see cref="YourWords"/> is.
@@ -426,6 +432,15 @@ public sealed record WarningWords(
 /// <param name="ByMeaning">Those words counted by meaning, most words first.</param>
 public sealed record WarningWordsTouched(int Words, int NoParse, IReadOnlyList<ObjectUseMeaning> ByMeaning)
 {
+    /// <summary>Whether the counts cover every finding and all of its named connections.</summary>
+    public bool IsComplete { get; init; } = true;
+
+    /// <summary>The named connections that could not be followed; counts include only known matches.</summary>
+    public IReadOnlyList<WarningAttributionReason> AttributionLimits { get; init; } = [];
+
+    /// <summary>Findings whose word evidence was unavailable, excluded from the known counts.</summary>
+    public int UnavailableFindingCount { get; init; }
+
     /// <summary>Distinct spelling candidates without exact or membership evidence, excluded from Words.</summary>
     public int BySpellingOnly { get; init; }
 

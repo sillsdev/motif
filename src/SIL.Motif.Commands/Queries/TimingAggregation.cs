@@ -56,15 +56,6 @@ public static class TimingAggregation
         return SummarizeWords(words, top) with { Kinds = byKind.Aggregates, Attribution = byKind.Attribution };
     }
 
-    /// <summary>Finds complete typed addresses matching the request; display labels never select objects.</summary>
-    public static IReadOnlyList<TraceTimingKey> ResolveRule(IReadOnlyList<AssessmentObjectTiming> rows, TraceTimingKey rule)
-    {
-        ArgumentNullException.ThrowIfNull(rows);
-        ArgumentNullException.ThrowIfNull(rule);
-        return rows.Select(KeyOf).Where(key => ObjectIdentity.Same(key.Identity, rule.Identity))
-            .DistinctBy(key => key.Identity).ToArray();
-    }
-
     /// <summary>The stored row's typed address, retaining its query-derived local scope.</summary>
     public static TraceTimingKey KeyOf(AssessmentObjectTiming row) =>
         new(row.Kind, ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality)!)

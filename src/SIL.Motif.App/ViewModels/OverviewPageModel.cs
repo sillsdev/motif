@@ -325,9 +325,11 @@ public sealed partial class OverviewPageModel : PageModel
     public bool HasWarningsWordSummary => Overview?.Warnings?.YourWords is not null;
 
     /// <summary>The Selection words reached by exact identity from a stored grammar warning.</summary>
-    public string WarningsYourWordsText => Overview?.Warnings?.YourWords is { } touched
-        ? $"{touched.Words:N0} of your words use something a warning names"
-        : string.Empty;
+    public string WarningsYourWordsText => Overview?.Warnings?.YourWords is not { } touched ? string.Empty
+        : touched.IsComplete ? $"{touched.Words:N0} of your words use something a warning names"
+        : (touched.Words == 0 ? "No known word matches" : $"At least {touched.Words:N0} of your words use something a warning names") +
+          (touched.AttributionLimits.Count > 0 ? "; some named connections could not be followed"
+              : "; word evidence is unavailable for some findings");
 
     /// <summary>Spelling matches stay visible as candidates, separate from confirmed identity matches.</summary>
     public string WarningsSpellingCandidatesText => Overview?.Warnings?.YourWords is { BySpellingOnly: > 0 } touched
@@ -338,11 +340,15 @@ public sealed partial class OverviewPageModel : PageModel
     public IReadOnlyList<OverviewWarningKindRow> WarningKindRows => Overview?.Warnings?.ByKind.Take(3)
         .Select(row => new OverviewWarningKindRow(row.GroupName ?? row.Code,
             SpeedText.Count(row.Count, "warning", "warnings"),
-            row.YourWords is { } exact ? SpeedText.Count(exact, "word", "words") : string.Empty,
+            WarningKindWordText(row),
             row.BySpellingOnly is > 0 and var candidates
                 ? $"{SpeedText.Count(candidates, "spelling candidate", "spelling candidates")}; not confirmed uses"
                 : string.Empty))
         .ToArray() ?? [];
+
+    private static string WarningKindWordText(GrammarWarningSummary row) => row.YourWords is not { } known ? string.Empty
+        : row.WordAttributionComplete == true ? SpeedText.Count(known, "word", "words")
+        : known == 0 ? "No known matches; incomplete" : "At least " + SpeedText.Count(known, "word", "words");
 
     /// <summary>
     /// Every grammar finding, the number the Warnings page's sidebar badge also shows, then the errors among them.

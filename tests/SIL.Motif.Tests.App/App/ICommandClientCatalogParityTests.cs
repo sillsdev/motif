@@ -36,6 +36,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ReadWordStateAsync)] = "word read-state",
             [nameof(ICommandClient.DeleteRefusedStoreAsync)] = "store delete-refused",
             [nameof(ICommandClient.TraceWordAsync)] = "trace",
+            [nameof(ICommandClient.ReadWordContextAsync)] = "word-context",
             [nameof(ICommandClient.InspectAsync)] = "inspect",
         };
 
@@ -45,7 +46,6 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ListKnownProjectsAsync),
         nameof(ICommandClient.GetCurrentBaselineAsync),
         nameof(ICommandClient.ReadCurrentEvidenceAsync),
-        nameof(ICommandClient.ReadWordContextAsync),
         nameof(ICommandClient.GetProjectHistoryAsync),
         nameof(ICommandClient.ReadStoredGrammarCheckAsync),
         nameof(ICommandClient.ListTextWordsAsync),

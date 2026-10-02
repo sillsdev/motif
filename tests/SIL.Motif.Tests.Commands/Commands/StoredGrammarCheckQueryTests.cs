@@ -230,7 +230,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal((warnings.YourWords.Words, warnings.YourWords.NoParse),
             (overview.Warnings!.YourWords!.Words, overview.Warnings.YourWords.NoParse));
         Assert.Equal(warnings.YourWords.ByMeaning, overview.Warnings.YourWords.ByMeaning);
-        Assert.Equal(warnings.ByKind, overview.Warnings.ByKind);
+        Assert.Equal(ProjectionJson.Serialize(warnings.ByKind), ProjectionJson.Serialize(overview.Warnings.ByKind));
         Assert.Equal(0, overview.Warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
     }
 

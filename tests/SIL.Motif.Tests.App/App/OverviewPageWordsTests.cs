@@ -29,6 +29,26 @@ public sealed class OverviewPageWordsTests
     private const int TimedOutWordCount = 2;
     private static readonly string[] StepLimitedWords = ["stopped-1", "stopped-2", "stopped-3"];
 
+    [Theory]
+    [InlineData(0, "No known word matches; some named connections could not be followed", "No known matches; incomplete")]
+    [InlineData(2, "At least 2 of your words use something a warning names; some named connections could not be followed", "At least 2 words")]
+    public async Task WarningTotalsQualifyIncompleteRoutes(int known, string total, string kind)
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var warnings = Populated().Warnings! with
+        {
+            YourWords = new WarningWordsTouched(known, 0, [])
+                { IsComplete = false, AttributionLimits = [WarningAttributionReason.UnsupportedKind] },
+            ByKind = [new GrammarWarningSummary("mixed", "Mixed", GrammarDiagnosticLevel.Warning, 1)
+                { YourWords = known, WordAttributionComplete = false }],
+        };
+        fake.OverviewCompletesWith(Populated() with { Warnings = warnings });
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.Equal(total, page.WarningsYourWordsText);
+        Assert.Equal(kind, Assert.Single(page.WarningKindRows).IdentityMatchedWords);
+    }
+
     [Fact]
     public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalParseTime()
     {
@@ -616,6 +636,7 @@ public sealed class OverviewPageWordsTests
                 new GrammarWarningSummary("test.finding", "Grammar warning", GrammarDiagnosticLevel.Warning, 6)
                 {
                     YourWords = 4,
+                    WordAttributionComplete = true,
                     BySpellingOnly = 2,
                 },
             ],

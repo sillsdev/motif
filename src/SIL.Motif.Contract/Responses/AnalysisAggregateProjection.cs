@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -42,6 +43,12 @@ public sealed record WordFormAnalysisView(
     public int? AutomaticAnalysisCount => AutomaticAnalyses?.Count;
 }
 
+/// <summary>The saved project state supplying manual facts in an analyses response.</summary>
+/// <param name="Source">Baseline for Assessment context, or saved-project for current saved-file inspection.</param>
+/// <param name="Baseline">The exact captured identity, absent for saved-file inspection.</param>
+/// <param name="SourceLastWriteUtc">The source save represented by these manual facts.</param>
+public sealed record AnalysisProjectContext(string Source, BaselineToken? Baseline, DateTimeOffset SourceLastWriteUtc);
+
 /// <summary>
 /// The read-only analysis aggregate. Word forms without an approved analysis are omitted because the
 /// unanalysed are reported only in aggregate.
@@ -51,6 +58,9 @@ public sealed record AnalysisAggregateProjection(
     IReadOnlyList<WordFormAnalysisView> WordForms,
     UnanalysedReachView? UnanalysedReach = null)
 {
+    /// <summary>The recorded source of manual facts, independent of current digests supplied for comparison.</summary>
+    public AnalysisProjectContext? ProjectContext { get; init; }
+
     /// <summary>Ordered recorded cases; null means this projection has no structured Assessment case block.</summary>
     public IReadOnlyList<AssessmentAnalysisCase>? AssessmentCases { get; init; }
 

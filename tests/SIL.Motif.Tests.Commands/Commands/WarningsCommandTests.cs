@@ -55,7 +55,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         Assert.Equal(warnings.Value.WarningCount, overview.Value.Warnings.WarningCount);
         Assert.Equal(warnings.Value.InformationCount, overview.Value.Warnings.InformationCount);
         Assert.Equal(warnings.Value.ErrorCount, overview.Value.Warnings.ErrorCount);
-        Assert.Equal(warnings.Value.ByKind, overview.Value.Warnings.ByKind);
+        Assert.Equal(ProjectionJson.Serialize(warnings.Value.ByKind), ProjectionJson.Serialize(overview.Value.Warnings.ByKind));
     }
 
     private string CheckedProject()

@@ -115,15 +115,18 @@ public static class WarningWordsQuery
     }
 
     /// <summary>
-    /// The words <paramref name="findings"/> touch, each counted once; <see langword="null"/> when some finding's
-    /// words are not known. With no findings, no word uses anything a finding names.
+    /// The confirmed words <paramref name="findings"/> touch, each counted once, with attribution completeness.
+    /// Returns <see langword="null"/> when no finding has available word evidence; no findings gives complete zero.
     /// </summary>
     public static WarningWordsTouched? Touched(IReadOnlyList<GrammarWarning> findings)
     {
         ArgumentNullException.ThrowIfNull(findings);
-        if (findings.Any(finding => finding.YourWords is null)) return null;
+        if (findings.Count > 0 && findings.All(finding => finding.YourWords is null)) return null;
+        var limits = findings.SelectMany(finding => finding.AttributionLimits.Concat(
+            finding.AttributionReason is { } reason ? [reason] : [])).Distinct().ToArray();
+        var unavailable = findings.Count(finding => finding.YourWords is null);
         var rows = new Dictionary<string, (ObjectUseWord Word, int Strength)>(StringComparer.Ordinal);
-        foreach (var yours in findings.Select(finding => finding.YourWords!))
+        foreach (var yours in findings.Select(finding => finding.YourWords).OfType<WarningWords>())
         {
             Add(yours.Words, yours.Match switch
             {
@@ -141,6 +144,9 @@ public static class WarningWordsQuery
         {
             ByMembershipOnly = rows.Values.Count(row => row.Strength == 2),
             BySpellingOnly = rows.Values.Count(row => row.Strength == 1),
+            IsComplete = unavailable == 0 && limits.Length == 0,
+            AttributionLimits = limits,
+            UnavailableFindingCount = unavailable,
         };
 
         void Add(IReadOnlyList<ObjectUseWord> words, int strength)

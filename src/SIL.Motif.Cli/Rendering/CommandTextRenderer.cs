@@ -72,6 +72,7 @@ public static class CommandTextRenderer
             InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
+            WordContextResponse r => RenderWordContext(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);
@@ -339,6 +340,43 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
+    private static string RenderWordContext(WordContextResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"Word: {response.Word}");
+        if (!response.HasBaseline)
+        {
+            text.AppendLine("No Baseline has been captured; word membership and stored analyses are unknown.");
+            text.AppendLine("Run: motif baseline capture <fwdata>");
+            return text.ToString();
+        }
+        text.AppendLine($"Baseline: {response.Baseline?.BundleDigest ?? "identity not recorded"}");
+        text.AppendLine($"Captured: {response.Baseline?.CapturedUtc ?? "not recorded"}");
+        text.AppendLine($"FieldWorks source save: {response.SourceLastWriteUtc?.ToString("O") ?? "not recorded"}");
+        if (response.IsStale) text.AppendLine("FieldWorks saved since; these analyses remain the captured Baseline's.");
+        text.AppendLine(response.IsInFieldWorks switch
+        {
+            true => "Present in the captured FieldWorks Baseline",
+            false => "Absent from the captured FieldWorks Baseline",
+            _ => "Word membership not recorded",
+        });
+        foreach (var analysis in response.Analyses)
+        {
+            var opinion = analysis.StoredAnalysisOpinion switch
+            {
+                "approved" => "Approved",
+                "disapproved" => "Disapproved",
+                "candidate" => "Unknown",
+                _ => "Opinion not recorded",
+            };
+            text.AppendLine($"  {opinion}: {analysis.StoredAnalysisId ?? "identity not recorded"} " +
+                string.Join(" + ", analysis.Morphs.Select(morph => $"{morph.Form} {morph.Gloss}")));
+        }
+        if (response.Analyses.Count == 0) text.AppendLine("No stored analyses in the captured FieldWorks Baseline");
+        if (response.WordAnalysesLink is { } link) text.AppendLine($"Word Analyses: {link}");
+        return text.ToString();
+    }
+
     private static string RenderWarnings(WarningsResponse response)
     {
         if (!response.HasBaseline)
@@ -359,7 +397,9 @@ public static class CommandTextRenderer
         foreach (var kind in response.ByKind)
         {
             text.AppendLine($"  {kind.Code}: {kind.Count:N0} {kind.Level.ToWireValue()}" +
-                (kind.YourWords is { } words ? $", {words:N0} of your words" : string.Empty));
+                (kind.YourWords is not { } words ? string.Empty : kind.WordAttributionComplete == true
+                    ? $", {words:N0} of your words" : words == 0 ? ", no known matches; incomplete"
+                    : $", at least {words:N0} of your words; incomplete"));
             if (CandidateLine(kind.ByMembershipOnly ?? 0, kind.BySpellingOnly ?? 0) is { } candidates)
                 text.AppendLine($"    Not counted: {candidates}");
         }
@@ -409,8 +449,12 @@ public static class CommandTextRenderer
         return text.ToString();
     }
 
-    private static string TouchedLine(WarningWordsTouched touched) =>
-        $"{touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse)";
+    private static string TouchedLine(WarningWordsTouched touched) => touched.IsComplete
+        ? $"{touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse)"
+        : (touched.Words == 0 ? "No known word matches" :
+            $"At least {touched.Words:N0} of your words use something a finding names ({touched.NoParse:N0} don't parse)") +
+          (touched.AttributionLimits.Count > 0 ? "; some named connections could not be followed"
+              : "; word evidence is unavailable for some findings");
 
     private static string? CandidateLine(int members, int spelled)
     {

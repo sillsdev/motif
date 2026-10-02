@@ -26,6 +26,8 @@ public static class CliVerbCatalog
     public static IReadOnlyList<CliVerbDescriptor> All { get; } = new[]
     {
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "word-context", "word-context",
+            new[] { "word-context --project <fwdata> --word <word> [--json]" }),
         new CliVerbDescriptor(
             "Commands", "analyses", "analyses",
             new[]

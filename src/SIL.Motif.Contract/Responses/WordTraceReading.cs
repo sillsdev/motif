@@ -197,6 +197,13 @@ public sealed record WordTraceResponse(
     public string DiagnosticFormat { get; init; } = string.Empty;
     public string SearchStatus { get; init; } = "complete";
     public bool InvalidShape { get; init; }
+
+    /// <summary>The recorded search state, independently of whether an analysis was found.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TraceSearchCompletion SearchCompletion => InvalidShape ? TraceSearchCompletion.InvalidShape
+        : !Complete || SearchStatus == "incomplete" ? TraceSearchCompletion.Incomplete
+        : SearchStatus == "complete" ? TraceSearchCompletion.Complete : TraceSearchCompletion.NotRecorded;
+
     public TraceHostCapture? HostCapture { get; init; }
     public TraceProvenanceComparison? Provenance { get; init; }
     public string? ParserName { get; init; }
@@ -207,6 +214,19 @@ public sealed record WordTraceResponse(
     public string? GrammarSource { get; init; }
     public TraceEvidenceAvailability GrammarSourceAvailability => GrammarSource is null && HostCapture?.Baseline is null
         ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
+}
+
+/// <summary>The search completion evidence available in a trace response.</summary>
+public enum TraceSearchCompletion
+{
+    /// <summary>The declared search finished.</summary>
+    Complete,
+    /// <summary>The declared search did not finish.</summary>
+    Incomplete,
+    /// <summary>The word's shape prevented the search from running.</summary>
+    InvalidShape,
+    /// <summary>No supported search completion fact was recorded.</summary>
+    NotRecorded,
 }
 
 public sealed record TraceEffort(

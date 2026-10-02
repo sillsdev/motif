@@ -124,8 +124,18 @@ public static class CommandTextRenderer
         var sb = new StringBuilder();
         sb.AppendLine("Analysis aggregate");
         sb.AppendLine($"Word forms: {projection.WordFormCount}");
-        if (projection.AssessmentCases is not null)
-            sb.AppendLine("Current project manually approved analyses and navigation:");
+        sb.AppendLine(projection.ProjectContext?.Source switch
+        {
+            "baseline" => "Manually approved analyses from the captured Baseline:",
+            "saved-project" => "Manually approved analyses from the saved FieldWorks project:",
+            _ => "Manual analysis source not recorded:",
+        });
+        if (projection.ProjectContext is { } context)
+        {
+            sb.AppendLine($"Source saved: {context.SourceLastWriteUtc:O}");
+            if (context.Baseline is { } baseline)
+                sb.AppendLine($"Baseline: {baseline.BundleDigest}, captured {baseline.CapturedUtc}");
+        }
 
         foreach (var wordForm in projection.WordForms)
         {

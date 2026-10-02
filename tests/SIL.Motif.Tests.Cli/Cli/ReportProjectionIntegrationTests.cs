@@ -2,6 +2,9 @@ using System;
 using System.IO;
 using SIL.Motif.Cli.Rendering;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Contract;
+using System.Text.Json;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Projects;
@@ -132,13 +135,16 @@ public sealed class ReportProjectionIntegrationTests
     {
         var assessmentId = CanonicalId.Mint("assessment/").Value;
         var selection = Selection.Create("empty", []);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_fwDataPath));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var project = new ProjectLocator(_fwDataPath, Path.GetFileNameWithoutExtension(_fwDataPath));
         using (var database = MotifDatabase.OpenOwned(AssessmentDatabasePath(), project,
             MotifSchema.CurrentSchema, new Version(1, 0)))
         {
             new AssessmentRepository(database).Record(new NewAssessmentRecord(
                 assessmentId, null, null, "pangloss", "Correctness", "{}", "sha256:scope",
-                "whitespace-and-punctuation", "1", "{}", selection, null, null, Hash('a'), null, null, null, []));
+                "whitespace-and-punctuation", "1", JsonSerializer.Serialize(captured.Value!.Token, MotifJson.CreateOptions()),
+                selection, null, null, Hash('a'), null, null, null, []));
         }
 
         var result = ProposalCommands.Analyses(new AssessmentAnalysesRequest(
