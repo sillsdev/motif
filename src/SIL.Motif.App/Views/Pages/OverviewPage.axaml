@@ -66,16 +66,37 @@
         <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
 
-      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" IsVisible="{Binding ShowWarningsTile}"
-            ColumnSpacing="{DynamicResource Intent.Space.Group}"
-            RowSpacing="{DynamicResource Intent.Space.Group}">
-        <!-- Its slowest words are rows with their own next steps, so this tile is a frame with a link, not a button. -->
-        <Border Grid.Row="0" Grid.Column="0" Classes="overviewTile" IsVisible="{Binding ShowTiles}"
+      <Border Classes="card overviewLookFirst hoverReveal" IsVisible="{Binding HasLookFirstRows}"
+              AutomationProperties.Name="Look first">
+        <StackPanel Classes="overviewLookFirstContent">
+          <TextBlock Classes="overviewTileTitle" Text="Look first" />
+          <ItemsControl ItemsSource="{Binding LookFirstRows}" AutomationProperties.Name="Stored results to look at first">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OverviewLookFirstRow">
+                <Grid Classes="overviewLookFirstRow" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                  <TextBlock Classes="overviewLookFirstNumber" Text="{Binding Number}" Grid.RowSpan="2" />
+                  <StackPanel Grid.Column="1" Classes="overviewLookFirstWords">
+                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                    <TextBlock Classes="overviewMuted" Text="{Binding Detail}" TextWrapping="Wrap"
+                               IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                  <HyperlinkButton Grid.Row="1" Grid.Column="1" Classes="overviewLookFirstLink revealControl revealLink"
+                                   Content="{Binding LinkText}" Command="{Binding OpenCommand}"
+                                   AutomationProperties.Name="{Binding LinkText}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <UniformGrid Classes="overviewTiles" Rows="2" Columns="2" IsVisible="{Binding ShowWarningsTile}">
+        <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
                 AutomationProperties.Name="Speed">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="Timing →" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Timing →" DockPanel.Dock="Right"
                                Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open Speed in Timing" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap"
@@ -99,16 +120,42 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
+            <TextBlock Classes="overviewTileDetail" Text="Time by kind"
+                       IsVisible="{Binding HasTimingKindShares}" />
+            <views:TimingKindBar x:Name="OverviewKindBar" Rows="{Binding TimingKindShares}"
+                                 Height="{DynamicResource Component.Overview.KindBarHeight}"
+                                 IsVisible="{Binding HasTimingKindShares}" />
+            <ItemsControl ItemsSource="{Binding #OverviewKindBar.Legend}" IsVisible="{Binding HasTimingKindShares}"
+                          AutomationProperties.Name="Overview time by kind">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="views:TimingKindLegendEntry">
+                  <StackPanel Classes="outcomeLegendEntry" Orientation="Horizontal">
+                    <Border Classes="outcomeSegment swatch" Background="{Binding Brush}" />
+                    <TextBlock Classes="outcomeLegendText" Text="{Binding Row.Label}" />
+                    <TextBlock Classes="outcomeLegendText" FontWeight="SemiBold" Text="{Binding Row.ShareText}" />
+                    <TextBlock Classes="overviewMuted" Text="{Binding Row.TimeText, StringFormat='{}{0}'}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="overviewTileDetail" Text="{Binding TimingAttributionNote}" TextWrapping="Wrap"
+                       IsVisible="{Binding TimingAttributionNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Border>
 
-        <Button Grid.Row="0" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenTextCoverageCommand}"
-                IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open Text coverage in Texts">
+        <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
+                AutomationProperties.Name="Text coverage">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
-              <TextBlock Classes="overviewTileLink" Text="Texts →" DockPanel.Dock="Right" />
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Texts →" DockPanel.Dock="Right"
+                               Command="{Binding OpenTextCoverageCommand}"
+                               AutomationProperties.Name="Open Text coverage in Texts" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding TextCoverageMain}" TextWrapping="Wrap"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewTextCoverage}" />
@@ -116,15 +163,16 @@
             <views:OutcomeBar Classes="overviewOutcomeBar" Segments="{Binding TextCoverageSegments}" ShowShares="False"
                               AutomationProperties.Name="Text coverage outcomes" />
           </StackPanel>
-        </Button>
+        </Border>
 
-        <Button Grid.Row="1" Grid.Column="0" Classes="overviewTile" Command="{Binding OpenAccuracyCommand}"
-                IsVisible="{Binding ShowTiles}"
-                AutomationProperties.Name="Open Approved analyses kept in the Matrix">
+        <Border Classes="overviewTile hoverReveal" IsVisible="{Binding ShowTiles}"
+                AutomationProperties.Name="Approved analyses kept">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Approved analyses kept" DockPanel.Dock="Left" />
-              <TextBlock Classes="overviewTileLink" Text="Matrix →" DockPanel.Dock="Right" />
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Matrix →" DockPanel.Dock="Right"
+                               Command="{Binding OpenAccuracyCommand}"
+                               AutomationProperties.Name="Open Approved analyses kept in the Matrix" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding AccuracyCaption}" TextWrapping="Wrap" />
@@ -132,23 +180,44 @@
                               AutomationProperties.Name="Approved analyses kept outcomes" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding AccuracyBreakdown}" TextWrapping="Wrap" />
           </StackPanel>
-        </Button>
+        </Border>
 
-        <Button Grid.Row="1" Grid.Column="1" Classes="overviewTile" Command="{Binding OpenWarningsCommand}"
-                IsVisible="{Binding ShowWarningsTile}"
-                AutomationProperties.Name="Open Grammar warnings in Warnings">
+        <Border Classes="overviewTile hoverReveal" AutomationProperties.Name="Grammar warnings">
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Grammar warnings" DockPanel.Dock="Left" />
-              <TextBlock Classes="overviewTileLink" Text="Warnings →" DockPanel.Dock="Right" />
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Warnings →" DockPanel.Dock="Right"
+                               Command="{Binding OpenWarningsCommand}"
+                               AutomationProperties.Name="Open Grammar warnings in Warnings" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewMuted" Text="{Binding WarningsYourWordsText}"
+                       IsVisible="{Binding HasWarningsWordSummary}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsSpellingCandidatesText}"
+                       IsVisible="{Binding WarningsSpellingCandidatesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       TextWrapping="Wrap" />
             <TextBlock Classes="overviewMuted" Text="found in the grammar as PanGloss read it"
                        TextWrapping="Wrap" IsVisible="{Binding HasWarningSummary}" />
             <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsDetails}" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding WarningKindRows}" AutomationProperties.Name="Warning kinds and words">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OverviewWarningKindRow">
+                  <StackPanel Classes="overviewWarningKindRow">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                      <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                      <TextBlock Grid.Column="1" Text="{Binding WarningCount}" />
+                      <TextBlock Grid.Column="2" Classes="overviewMuted" Text="{Binding IdentityMatchedWords}" />
+                    </Grid>
+                    <TextBlock Classes="overviewTileDetail" Text="{Binding SpellingCandidates}"
+                               IsVisible="{Binding SpellingCandidates, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
-        </Button>
-      </Grid>
+        </Border>
+      </UniformGrid>
 
       <Border Classes="card overviewHandoff">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HandoffGap}">

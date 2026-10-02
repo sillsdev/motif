@@ -153,17 +153,35 @@ public sealed class CatalogAggregationTests
         Assert.Equal(15, attribution.NotAttributedMs!.Value, precision: 6);
     }
 
-    [Fact]
-    public void WordTimeKeepsNanosecondsSoASubMillisecondWordStillHasADenominator()
+    [Theory]
+    [InlineData(60_000, 0.04, 0.4)]
+    [InlineData(50_000, 0.05, 0.5)]
+    public void OverviewTimingKeepsSmallMeasuredResidualsAndShares(long objectNs, double residualMs, double residualShare)
     {
-        AssessedWord[] words = [new("quick", "analysed", [], 0) { ElapsedNs = 400_000 }];
-        AssessmentObjectTiming[] rows = [new("morph_rule", "rule-r", "authored", "analysis", "R", "quick", 1, null, 300_000)];
+        AssessedWord[] words = [new("quick", "analysed", [], 0) { ElapsedNs = 100_000 }];
+        AssessmentObjectTiming[] rows = [new("morph_rule", "rule-r", "authored", "analysis", "R", "quick", 1, null, objectNs)];
 
-        var result = TimingAggregation.Aggregate(words, rows, "rule", rule: null, top: 10);
+        var result = TimingAggregation.SummarizeWords(words, rows);
 
-        Assert.Equal(0.4, result.Attribution.WordTimeMs, precision: 9);
-        Assert.Equal(0.75, Assert.Single(result.Aggregates).ShareOfWordTime!.Value, precision: 6);
-        Assert.Equal(0.1, result.Attribution.NotAttributedMs!.Value, precision: 9);
+        Assert.Equal(0.1, result.Attribution.WordTimeMs, precision: 9);
+        Assert.Equal(1 - residualShare, Assert.Single(result.Kinds).ShareOfWordTime!.Value, precision: 6);
+        Assert.Equal(residualMs, result.Attribution.NotAttributedMs!.Value, precision: 9);
+        Assert.Equal(residualShare, result.Attribution.NotAttributedShare!.Value, precision: 6);
+    }
+
+    [Fact]
+    public void AMeasuredZeroResidualIsDistinctFromUnavailableAttribution()
+    {
+        AssessedWord[] words = [new("quick", "analysed", [], 0) { ElapsedNs = 100_000 }];
+        AssessmentObjectTiming[] rows = [new("morph_rule", "rule-r", "authored", "analysis", "R", "quick", 1, null, 100_000)];
+
+        var timing = TimingAggregation.SummarizeWords(words, rows);
+        var unavailable = TimingAggregation.SummarizeWords(words, []);
+
+        Assert.Equal(0, timing.Attribution.NotAttributedMs);
+        Assert.Equal(0, timing.Attribution.NotAttributedShare);
+        Assert.Null(unavailable.Attribution.NotAttributedMs);
+        Assert.Null(unavailable.Attribution.NotAttributedShare);
     }
 
     [Fact]
@@ -310,6 +328,74 @@ public sealed class CatalogAggregationTests
         Assert.Equal(1, result.TextCoverage.UnknownWords);
         Assert.Equal(1, result.Accuracy.UnknownWords);
         Assert.Equal(0, result.Accuracy.Violations);
+    }
+
+    [Fact]
+    public void OverviewCoverageSeparatesSameAndDifferentCompletedParses()
+    {
+        var same = new AssessedWord("same", "analysed", [], 10)
+        {
+            ProjectStanding = SIL.Motif.Contract.Responses.ProjectStanding.Candidate,
+            Morphology = Parsed(1),
+            ReadingGrades = [ReadingGrade.Candidate],
+        };
+        var different = new AssessedWord("different", "analysed", [], 20)
+        {
+            ProjectStanding = SIL.Motif.Contract.Responses.ProjectStanding.Approved,
+            Morphology = Parsed(1),
+            ReadingGrades = [ReadingGrade.NoOpinion],
+        };
+
+        var result = OverviewMetrics.Build([same.Word, different.Word], null, [same, different]);
+
+        Assert.Equal(2, result.TextCoverage.ParsedWords);
+        Assert.Equal((1, 1), (result.TextCoverage.SameWords, result.TextCoverage.DifferentWords));
+    }
+
+    [Fact]
+    public void OverviewLookFirstUsesStoredLostWordsWarningsAndStepLimitTimes()
+    {
+        static ParserReadingMorph Morph(string form, string key) => new(form, form, "v", null, false, null)
+        {
+            AllomorphId = "form-" + key,
+            GrammaticalInfoId = "msa-" + key,
+        };
+        var kat = Morph("kat", "kat");
+        var ja = Morph("ja-", "ja");
+        var suffix = Morph("-a", "suffix");
+        AssessmentWordResult Lost(string word, ParserReadingMorph distinctive) =>
+            new(word, "no-analysis", false, "No parse", null, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            StoredAnalyses = [new ParserReading([distinctive, suffix]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
+        };
+        var limited = new AssessmentWordResult("limited", "capped", true, "Step limit", 400, null);
+        var different = new AssessmentWordResult("different", "analysed", false, "Completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Candidate,
+            Morphology = Parsed(1),
+        };
+        var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "shared-morpheme",
+            [new GrammarWarningPart("kat", GrammarWarningPartRole.Object)
+            {
+                Reach = new WarningReach(WarningWordsPath.Uses) { AllomorphIds = ["form-kat"] },
+            }], [], "warning");
+
+        var lost = new[]
+        {
+            Lost("walikata", kat), Lost("anakata", kat), Lost("wamekata", kat),
+            Lost("hawajafika", ja), Lost("hatujaona", ja), Lost("hamjafika", ja),
+        };
+        var result = OverviewLookFirstBuilder.Build([.. lost, limited, different],
+            [new AssessedWord("limited", "capped", [], 400)], new GrammarCheckResponse([warning], true));
+
+        Assert.Equal(["walikata", "anakata", "wamekata", "hawajafika", "hatujaona", "hamjafika"],
+            result.ApprovedLostWords);
+        Assert.Equal([("kat", 3, true), ("ja-", 3, false)],
+            result.SharedLostMorphemes.Select(item => (item.Form, item.WordCount, item.NamedByWarning)));
+        Assert.Equal(["limited"], result.StepLimitedWords);
+        Assert.Equal(400d, result.StepLimitedWordTimeMs);
+        Assert.Equal(1, result.UnknownDifferentWordCount);
     }
 
     private static ParseWordEvidence Parsed(int readings) => new("v1", 0, "word", 1, false, false, false,

@@ -55,8 +55,13 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(SpeedMain))]
     [NotifyPropertyChangedFor(nameof(SpeedMedian))]
     [NotifyPropertyChangedFor(nameof(SpeedDetails))]
+    [NotifyPropertyChangedFor(nameof(TimingKindShares))]
+    [NotifyPropertyChangedFor(nameof(HasTimingKindShares))]
+    [NotifyPropertyChangedFor(nameof(TimingAttributionNote))]
     [NotifyPropertyChangedFor(nameof(SlowestWordRows))]
     [NotifyPropertyChangedFor(nameof(HasSlowestWordRows))]
+    [NotifyPropertyChangedFor(nameof(LookFirstRows))]
+    [NotifyPropertyChangedFor(nameof(HasLookFirstRows))]
     [NotifyPropertyChangedFor(nameof(TextCoverageMain))]
     [NotifyPropertyChangedFor(nameof(TextCoverageWords))]
     [NotifyPropertyChangedFor(nameof(TextCoverageSegments))]
@@ -67,6 +72,10 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(HasWarningSummary))]
     [NotifyPropertyChangedFor(nameof(WarningsCount))]
     [NotifyPropertyChangedFor(nameof(WarningsDetails))]
+    [NotifyPropertyChangedFor(nameof(HasWarningsWordSummary))]
+    [NotifyPropertyChangedFor(nameof(WarningsYourWordsText))]
+    [NotifyPropertyChangedFor(nameof(WarningsSpellingCandidatesText))]
+    [NotifyPropertyChangedFor(nameof(WarningKindRows))]
     private OverviewResponse? _overview;
 
     /// <summary>Why the stored Overview query was refused, in the window's words.</summary>
@@ -146,14 +155,14 @@ public sealed partial class OverviewPageModel : PageModel
     /// </summary>
     public string SpeedMain => Overview is
         { Timing.MeasuredWordCount: > 0 and var measured, AssessmentElapsedSeconds: { } seconds }
-        ? $"{SpeedText.Count(measured, "word", "words")} · {SpeedText.Duration(seconds * 1000)} total word time"
+        ? $"{SpeedText.Count(measured, "word", "words")} · {PreciseDuration(seconds * 1000)} total word time"
         : "No parse times recorded";
 
     /// <summary>The stored median and 95th percentile per-word parse time.</summary>
     public string SpeedMedian => Overview?.Timing is { MedianMs: { } median } timing
         ? $"median {SpeedText.PerWord(median)} a word" +
           (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {SpeedText.PerWord(p95)}" : string.Empty)
-        : "Parse all words to measure how fast PanGloss is.";
+        : string.Empty;
 
     /// <summary>How many words stopped at the step limit, or empty when none did.</summary>
     public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
@@ -173,6 +182,68 @@ public sealed partial class OverviewPageModel : PageModel
 
     public bool HasSlowestWordRows => SlowestWordRows.Count > 0;
 
+    /// <summary>The measured time shares by kind, including any part no kind's timer recorded.</summary>
+    public IReadOnlyList<TimingShare> TimingKindShares
+    {
+        get
+        {
+            if (Overview?.Timing is not { } timing) return [];
+            var shares = timing.Kinds.Select(row => new TimingShare(TimingShare.KindName(row.Kind), row.Kind,
+                row.SelfMs, row.ShareOfWordTime, row.WordsTouched, row)).ToList();
+            if (timing.Attribution.NotAttributedMs is > 0 and var other &&
+                timing.Attribution.NotAttributedShare is { } share)
+                shares.Add(new TimingShare("Not attributed", string.Empty, other, share,
+                    timing.Attribution.MeasuredWordCount, null));
+            return shares;
+        }
+    }
+
+    public bool HasTimingKindShares => TimingKindShares.Count > 0;
+
+    /// <summary>Names the measured overrun if parser-object timers exceed total word time.</summary>
+    public string TimingAttributionNote => Overview?.Timing.Attribution is { Overrun: true } attribution
+        ? $"Object timers exceed total word time by {SpeedText.Duration(attribution.OverrunMs)}."
+        : string.Empty;
+
+    /// <summary>The stored-result groups ranked for a useful next step.</summary>
+    public IReadOnlyList<OverviewLookFirstRow> LookFirstRows
+    {
+        get
+        {
+            if (Overview is not { AssessmentId: not null } overview) return [];
+            var data = overview.LookFirst;
+            var rows = new List<OverviewLookFirstRow>();
+            if (data.ApprovedLostWords.Count > 0)
+            {
+                var detail = string.Join(" · ", data.SharedLostMorphemes.Select(morpheme =>
+                    $"{SpeedText.Count(morpheme.WordCount, "word", "words")} use {morpheme.Form}" +
+                    (morpheme.NamedByWarning ? " (named by a grammar warning)" : string.Empty)));
+                rows.Add(new OverviewLookFirstRow("1",
+                    $"{SpeedText.Count(data.ApprovedLostWords.Count, "approved word", "approved words")} are Lost; " +
+                    "the grammar builds nothing for them.", detail, "Approved × No parse →",
+                    new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
+            }
+            if (data.StepLimitedWords.Count > 0)
+            {
+                var detail = data.StepLimitedWordTimeMs is { } stopped && overview.AssessmentElapsedSeconds is { } total
+                    ? $"{PreciseDuration(stopped)} of {PreciseDuration(total * 1000)} total word time"
+                    : string.Empty;
+                rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
+                    $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at the step limit.",
+                    detail, "Timing: the stopped words →",
+                    new RelayCommand(() => Context.OpenTiming(data.StepLimitedWords, null))));
+            }
+            if (data.UnknownDifferentWordCount > 0)
+                rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
+                    $"{SpeedText.Count(data.UnknownDifferentWordCount, "Unknown word", "Unknown words")} differ " +
+                    "from what PanGloss builds.", string.Empty, "Unknown × Different →",
+                    new RelayCommand(() => OpenCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch))));
+            return rows;
+        }
+    }
+
+    public bool HasLookFirstRows => LookFirstRows.Count > 0;
+
     /// <summary>How many Selection words produced a completed parse.</summary>
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
         $"{overview.TextCoverage.ParsedWords:N0} of {overview.SelectionWordCount:N0} words parse";
@@ -186,10 +257,16 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            new(Mark.Same, overview.TextCoverage.ParsedWords, "parsed"),
-            new(Mark.NoParse, overview.TextCoverage.NoParseWords, "no parse"),
-            new(Mark.Stopped, overview.TextCoverage.UnknownWords, "stopped (step or time limit)"),
-            new(Mark.NotParsed, overview.TextCoverage.SkippedWords, "skipped"));
+            Segment(Mark.Same, overview.TextCoverage.SameWords, "same", CompareColumnKind.Match,
+                "Same outcome"),
+            Segment(Mark.Different, overview.TextCoverage.DifferentWords, "different", CompareColumnKind.NoMatch,
+                "Different outcome"),
+            Segment(Mark.NoParse, overview.TextCoverage.NoParseWords, "no parse", CompareColumnKind.NoParse,
+                "No parse"),
+            Segment(Mark.Stopped, overview.TextCoverage.UnknownWords, "stopped", CompareColumnKind.Timeout,
+                "Stopped"),
+            Segment(Mark.NotParsed, overview.TextCoverage.SkippedWords, "not parsed", CompareColumnKind.Skipped,
+                "Not parsed"));
 
     /// <summary>How many approved words the grammar still builds.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
@@ -225,14 +302,41 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The approved-word outcomes that make up the Accuracy bar.</summary>
     public IReadOnlyList<OutcomeSegment> AccuracySegments => !HasAssessment || Overview is not { } overview ? [] :
         NonZeroSegments(
-            new(Mark.Of(MeaningTone.Fine), overview.Accuracy.ApprovedWordsKept, "rebuilt"),
-            new(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoMatch, "built another reading"),
-            new(Mark.NoParse, overview.Accuracy.ApprovedWordsNoParse, "no parse"),
-            new(Mark.Stopped, overview.Accuracy.ApprovedWordsUnknown, "stopped"),
-            new(Mark.NotParsed, overview.Accuracy.ApprovedWordsSkipped, "skipped"));
+            ApprovedSegment(Mark.Of(MeaningTone.Fine), overview.Accuracy.ApprovedWordsKept, "kept",
+                CompareColumnKind.Match, "Kept"),
+            ApprovedSegment(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoMatch,
+                "built something else", CompareColumnKind.NoMatch, "Built something else"),
+            ApprovedSegment(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoParse,
+                "lost", CompareColumnKind.NoParse, "Lost"),
+            ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsUnknown,
+                "unknown yet", CompareColumnKind.Timeout, "Unknown yet"),
+            ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsSkipped,
+                "not parsed", CompareColumnKind.Skipped, "Not parsed"));
 
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;
+
+    public bool HasWarningsWordSummary => Overview?.Warnings?.YourWords is not null;
+
+    /// <summary>The Selection words reached by exact identity from a stored grammar warning.</summary>
+    public string WarningsYourWordsText => Overview?.Warnings?.YourWords is { } touched
+        ? $"{touched.Words:N0} of your words use something a warning names"
+        : string.Empty;
+
+    /// <summary>Spelling matches stay visible as candidates, separate from confirmed identity matches.</summary>
+    public string WarningsSpellingCandidatesText => Overview?.Warnings?.YourWords is { BySpellingOnly: > 0 } touched
+        ? $"{SpeedText.Count(touched.BySpellingOnly, "spelling candidate", "spelling candidates")}; not confirmed uses"
+        : string.Empty;
+
+    /// <summary>The largest warning kinds, with exact identity matches and spelling candidates shown apart.</summary>
+    public IReadOnlyList<OverviewWarningKindRow> WarningKindRows => Overview?.Warnings?.ByKind.Take(3)
+        .Select(row => new OverviewWarningKindRow(row.GroupName ?? row.Code,
+            SpeedText.Count(row.Count, "warning", "warnings"),
+            row.YourWords is { } exact ? SpeedText.Count(exact, "word", "words") : string.Empty,
+            row.BySpellingOnly is > 0 and var candidates
+                ? $"{SpeedText.Count(candidates, "spelling candidate", "spelling candidates")}; not confirmed uses"
+                : string.Empty))
+        .ToArray() ?? [];
 
     /// <summary>
     /// Every grammar finding, the number the Warnings page's sidebar badge also shows, then the errors among them.
@@ -268,8 +372,37 @@ public sealed partial class OverviewPageModel : PageModel
     private static IReadOnlyList<OutcomeSegment> NonZeroSegments(params OutcomeSegment[] segments) =>
         segments.Where(segment => segment.Count > 0).ToArray();
 
+    private OutcomeSegment Segment(Mark mark, int count, string label, CompareColumnKind column, string outcome) =>
+        new(mark, count, label)
+        {
+            Command = new RelayCommand(() => OpenOutcomeColumn(column)),
+            ActionName = $"Open {count:N0} {outcome} words in the Matrix",
+        };
+
+    private OutcomeSegment ApprovedSegment(Mark mark, int count, string label, CompareColumnKind column,
+        string meaning) => new(mark, count, label)
+    {
+        Command = new RelayCommand(() => OpenCell(WordProjectStatus.Approved, column)),
+        ActionName = $"Open {count:N0} Approved {meaning} words in the Matrix",
+    };
+
+    private void OpenOutcomeColumn(CompareColumnKind column) => Context.OpenTexts(TextsTab.Matrix,
+        Enum.GetValues<WordProjectStatus>().Select(status => new TextsListCell(status, column)).ToArray());
+
+    private void OpenCell(WordProjectStatus status, CompareColumnKind column) =>
+        Context.OpenTexts(TextsTab.Matrix, [new TextsListCell(status, column)]);
+
     private static string FormatPercent(double? value) => value is { } percent
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : "not recorded";
+
+    private static string PreciseDuration(double milliseconds)
+    {
+        if (milliseconds < 1000) return SpeedText.Duration(milliseconds);
+        var seconds = milliseconds / 1000;
+        var wholeSeconds = Math.Round(seconds);
+        var precision = Math.Abs(seconds - wholeSeconds) < 0.0000001 ? "N0" : "N1";
+        return $"{seconds.ToString(precision, CultureInfo.CurrentCulture)} s";
+    }
 
     protected override void OnProjectCleared()
     {
@@ -339,3 +472,20 @@ public sealed partial class OverviewPageModel : PageModel
         if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(OverviewIsStale));
     }
 }
+
+/// <summary>One stored-result group on the Overview's ranked next steps.</summary>
+/// <param name="Number">Its place in the displayed order.</param>
+/// <param name="Summary">The measured condition in the group's words.</param>
+/// <param name="Detail">Additional stored evidence for the group.</param>
+/// <param name="LinkText">The destination described by its link.</param>
+/// <param name="OpenCommand">Opens the exact Matrix cell or Timing word set.</param>
+public sealed record OverviewLookFirstRow(
+    string Number, string Summary, string Detail, string LinkText, IRelayCommand OpenCommand);
+
+/// <summary>One warning kind in the Overview, keeping exact matches apart from spelling candidates.</summary>
+/// <param name="Name">The kind's window name.</param>
+/// <param name="WarningCount">How many findings of this kind were recorded.</param>
+/// <param name="IdentityMatchedWords">How many words use a named object by exact identity.</param>
+/// <param name="SpellingCandidates">The spelling-only candidates, not confirmed uses.</param>
+public sealed record OverviewWarningKindRow(
+    string Name, string WarningCount, string IdentityMatchedWords, string SpellingCandidates);

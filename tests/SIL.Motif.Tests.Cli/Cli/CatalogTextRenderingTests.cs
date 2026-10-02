@@ -56,13 +56,15 @@ public sealed class CatalogTextRenderingTests
                 ErrorCount = 0,
                 WarningCount = 24,
                 InformationCount = 0,
-                YourWords = new WarningWordsTouched(17, 7, []),
+                YourWords = new WarningWordsTouched(14, 7, []) { BySpellingOnly = 3 },
             });
 
         var rendered = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false);
 
         Assert.Contains("Warnings   24 findings (0 errors, 24 warnings, 0 information)", rendered.Output, StringComparison.Ordinal);
-        Assert.Contains("           17 of your words use something a finding names (7 don't parse)", rendered.Output,
+        Assert.Contains("           14 of your words use something a finding names (7 don't parse)", rendered.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("           Not counted: 3 spelling candidates; not confirmed uses of the phoneme", rendered.Output,
             StringComparison.Ordinal);
     }
 
@@ -260,7 +262,7 @@ public sealed class CatalogTextRenderingTests
         };
         var response = new WarningsResponse(true, true, findings,
             [new GrammarWarningSummary("hc-unsegmentable", "Allomorph can't be split", GrammarDiagnosticLevel.Warning, 1)
-                { YourWords = 2 }], 4, 0)
+                { YourWords = 2, BySpellingOnly = 1 }], 4, 0)
         {
             YourWords = new WarningWordsTouched(2, 2, [lost]) { BySpellingOnly = 1 },
         };
@@ -270,7 +272,7 @@ public sealed class CatalogTextRenderingTests
 
         Assert.Contains("2 of your words use something a finding names (2 don't parse)", text,
             StringComparison.Ordinal);
-        Assert.Contains("1 spelling candidates; not confirmed uses of the phoneme", text, StringComparison.Ordinal);
+        Assert.Contains("Not counted: 1 spelling candidates; not confirmed uses of the phoneme", text, StringComparison.Ordinal);
         Assert.Contains("  hc-unsegmentable: 1 warning, 2 of your words", text, StringComparison.Ordinal);
         Assert.Contains("    Your words: walikata (Lost), anakata (Lost)", text, StringComparison.Ordinal);
         Assert.Contains("    Spelling candidates; not confirmed uses of the phoneme: ngozi (Lost)", text, StringComparison.Ordinal);

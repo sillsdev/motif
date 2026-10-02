@@ -109,15 +109,30 @@ public sealed class OutcomeBar : StackPanel
                 if (!ShowShares)
                 {
                     entry.Children.Add(Words(segment.Label + separator, "outcomeLegendText"));
+                    AddAction(segment, entry);
                     continue;
                 }
                 entry.Children.Add(Words(segment.Label, "outcomeLegendText"));
                 var share = ((double)segment.Count / total).ToString("P0", CultureInfo.CurrentCulture);
                 entry.Children.Add(Words(share + separator, "muted"));
+                AddAction(segment, entry);
             }
-            legend.Children.Add(entry);
+            legend.Children.Add(new Border { Classes = { "hoverReveal" }, Child = entry });
         }
         Children.Add(bar);
         if (ShowLegend) Children.Add(legend);
+    }
+
+    private void AddAction(OutcomeSegment segment, StackPanel entry)
+    {
+        if (_insideButton || segment.Command is null) return;
+        var action = new HyperlinkButton
+        {
+            Content = "→",
+            Command = segment.Command,
+            Classes = { "revealControl", "revealLink", "outcomeLegendAction" },
+        };
+        if (segment.ActionName is { } name) Avalonia.Automation.AutomationProperties.SetName(action, name);
+        entry.Children.Add(action);
     }
 }

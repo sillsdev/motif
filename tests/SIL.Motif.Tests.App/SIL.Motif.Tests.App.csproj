@@ -18,6 +18,7 @@
   <ItemGroup>
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.App\SIL.Motif.App.csproj" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Contract\SIL.Motif.Contract.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Generator\SIL.Motif.Generator.csproj" />

@@ -216,7 +216,8 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 {
                     Application.Current!.RequestedThemeVariant = theme;
                     PageScreenshots.Settle(window);
-                    var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>());
+                    var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>(),
+                        candidate => candidate.IsEffectivelyVisible);
                     Assert.True(bar.IsEffectivelyVisible);
                     var brushes = KindBrushes(bar);
                     var parts = brushes.Select(brush => Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color).ToArray();
@@ -255,7 +256,8 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                 window.Height = 780;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
-                var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>());
+                var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>(),
+                    candidate => candidate.IsEffectivelyVisible);
                 var legend = window.GetLogicalDescendants().OfType<ItemsControl>()
                     .Single(control => AutomationProperties.GetName(control) == "Timing by kind");
                 var swatches = legend.GetVisualDescendants().OfType<Border>()

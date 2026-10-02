@@ -163,6 +163,12 @@ internal static class ComponentStateContractCases
             StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Hover");
         yield return new("Border.matrixCell:pointerover", "keyboard focus", () => Alone(Cell()), StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
+        yield return new("Border.overviewTile:pointerover", "hover", () => Alone(new Border
+        {
+            Classes = { "overviewTile" }, Width = 200, Height = 80,
+            Child = new TextBlock { Text = "Summary" },
+        }),
+            StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.matrixCell.selected", "selected", () => Alone(Cell("selected")), StateStimulus.None,
             StatePart.Self, Border.BoxShadowProperty, "Intent.Shadow.Selected");
         yield return new("Border.matrixCell.selected", "selected under the pointer", () => Alone(Cell("selected")),

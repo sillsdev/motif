@@ -39,6 +39,9 @@ public static class OverviewCommand
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
             if (storedCheck is { Findings.Count: > 0 } && evidence.Baseline is { } checkedBaseline)
                 storedCheck = WarningWordsQuery.WithYourWords(database, project, storedCheck, checkedBaseline.Token);
+            var lookFirst = evidence.Assessment is { } assessmentRows
+                ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck)
+                : OverviewLookFirst.Empty;
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
             var largestKind = warningCounts.ByKind.FirstOrDefault();
             return CommandOutcome<OverviewResponse>.Success(new OverviewResponse(
@@ -76,6 +79,7 @@ public static class OverviewCommand
                 BaselineSourceLastWriteUtc = evidence.Baseline?.SourceLastWriteUtc,
                 IsStale = evidence.Freshness == EvidenceFreshness.Stale,
                 BaselineToken = evidence.Baseline?.Token,
+                LookFirst = lookFirst,
             });
         });
 }
@@ -93,6 +97,8 @@ internal static class OverviewMetrics
         var unknown = 0;
         var skipped = 0;
         var parsedOccurrences = 0;
+        var same = 0;
+        var different = 0;
         var approvedKept = 0;
         var approved = 0;
         var violations = 0;
@@ -123,8 +129,13 @@ internal static class OverviewMetrics
             switch (placement.Column)
             {
                 case CompareColumnKind.Match:
+                    parsed++;
+                    same++;
+                    parsedOccurrences += occurrences?.OccurrencesByWord.GetValueOrDefault(form) ?? 0;
+                    break;
                 case CompareColumnKind.NoMatch:
                     parsed++;
+                    different++;
                     parsedOccurrences += occurrences?.OccurrencesByWord.GetValueOrDefault(form) ?? 0;
                     break;
                 case CompareColumnKind.NoParse:
@@ -178,6 +189,8 @@ internal static class OverviewMetrics
         return (
             new OverviewTextCoverage(parsed, noParse, unknown, skipped, totalOccurrences, parsedOccurrences)
             {
+                SameWords = same,
+                DifferentWords = different,
                 OccurrenceCoveragePercent = Percent(parsedOccurrences, totalOccurrences),
             },
             new OverviewAccuracy(approvedKept, approved, violations, accuracyUnknown,
@@ -193,4 +206,41 @@ internal static class OverviewMetrics
 
     internal static double? Percent(int numerator, int denominator) => denominator == 0
         ? null : numerator * 100d / denominator;
+}
+
+internal static class OverviewLookFirstBuilder
+{
+    public static OverviewLookFirst Build(IReadOnlyList<AssessmentWordResult> words,
+        IReadOnlyList<AssessedWord> measuredWords, GrammarCheckResponse? grammarCheck)
+    {
+        var lost = words.Where(word => Place(word) is
+            { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoParse }).ToArray();
+        var stopped = words.Where(word => word.Outcome == "capped" || word.Morphology?.Capped == true).ToArray();
+        var stoppedNames = stopped.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
+        var stoppedTimes = measuredWords.Where(word => stoppedNames.Contains(word.Word))
+            .Select(TimingAggregation.WordTimeMs).Where(time => time is not null).Select(time => time!.Value).ToArray();
+        var namedIds = (grammarCheck?.Findings ?? []).SelectMany(finding => finding.Subject)
+            .Where(part => part.Reach is not null).SelectMany(part => part.Reach!.AllomorphIds
+                .Concat(part.Reach.GrammaticalInfoIds)).Select(IdKey).ToHashSet(StringComparer.Ordinal);
+        var sharedGroups = ObjectUsesQuery.SharedBy(words, lost.Select(word => word.Word).ToArray());
+        var distinctiveSharedGroups = sharedGroups.Where(item => item.Words.Count < lost.Length).ToArray();
+        var shared = (distinctiveSharedGroups.Length > 0 ? distinctiveSharedGroups : sharedGroups)
+            .Take(2)
+            .Select(item => new OverviewSharedMorpheme(item.Morpheme.Form, item.Words.Count,
+                (item.Morpheme.AllomorphId is { } allomorph && namedIds.Contains(IdKey(allomorph))) ||
+                (item.Morpheme.GrammaticalInfoId is { } info && namedIds.Contains(IdKey(info)))))
+            .ToArray();
+        var candidateDifferent = words.Count(word => Place(word) is
+            { Standing: ProjectStanding.Candidate, Column: CompareColumnKind.NoMatch });
+        return new OverviewLookFirst(lost.Select(word => word.Word).ToArray(), shared,
+            stopped.Select(word => word.Word).ToArray(), stoppedTimes.Length == stopped.Length && stopped.Length > 0
+                ? stoppedTimes.Sum() : null,
+            candidateDifferent);
+    }
+
+    private static ComparePlacement Place(AssessmentWordResult word) => CompareSemantics.Place(new CompareWordFacts(
+        word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology, word.ReadingGrades,
+        word.MissedApproved?.Count ?? 0));
+
+    private static string IdKey(string id) => Guid.TryParse(id, out var guid) ? guid.ToString("D") : id;
 }

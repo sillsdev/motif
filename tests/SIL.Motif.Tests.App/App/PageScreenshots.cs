@@ -49,7 +49,8 @@ public sealed class PageScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenOverSampleData();
+            var (workspace, window) = await OpenOverSampleData(configure: (fake, _) =>
+                fake.OverviewCompletesWith(OverviewPageWordsTests.Populated()));
             try
             {
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
@@ -80,6 +81,78 @@ public sealed class PageScreenshots
                 window.Close();
             }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    [ScreenshotFact]
+    public void CaptureOverviewEvidenceStatesAtBothWidthsAndThemes()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        var states = new List<string>();
+
+        foreach (var state in new[] { "populated", "empty", "stale" })
+        {
+            AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+            {
+                var (workspace, window) = await OpenOverSampleData(parse: state != "empty", configure: (fake, _) =>
+                {
+                    fake.OverviewCompletesWith(state == "empty" ? EmptyOverview() : OverviewFor(state));
+                    if (state == "stale")
+                    {
+                        var saved = DateTimeOffset.UtcNow;
+                        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), saved.AddHours(-2), false)
+                        {
+                            ProjectLastWriteUtc = saved,
+                        });
+                    }
+                });
+                try
+                {
+                    workspace.CurrentPage = WorkspacePage.Overview;
+                    foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                    {
+                        Application.Current!.RequestedThemeVariant = variant;
+                        foreach (var width in new[] { 1040, 1240 })
+                        {
+                            window.Width = width;
+                            window.Height = 780;
+                            var file = $"overview-{state}-{width}-{theme}.png";
+                            Save(window, Path.Combine(folder, file));
+                            states.Add($"{file}\tOverview {state}, {width} px, {theme} theme.");
+                        }
+                    }
+                }
+                finally
+                {
+                    Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                    window.Close();
+                }
+            }, TimeSpan.FromMinutes(3));
+        }
+
+        File.WriteAllLines(Path.Combine(folder, "overview-states.txt"), states);
+    }
+
+    private static OverviewResponse OverviewFor(string state) => state == "stale"
+        ? OverviewPageWordsTests.Populated() with
+        {
+            IsStale = true,
+            LastFieldWorksSaveUtc = DateTimeOffset.UtcNow,
+        }
+        : OverviewPageWordsTests.Populated();
+
+    private static OverviewResponse EmptyOverview()
+    {
+        var saved = DateTimeOffset.UtcNow;
+        return new OverviewResponse("Sample", saved, saved, 0, 0, 0, 0, 0, 0, 0, null, null, null,
+            null, null, new OverviewTextCoverage(0, 0, 0, 0, 0, 0),
+            new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0), new OverviewTiming(null, null, [], 0), null)
+        {
+            SelectionResolved = true,
+            ProjectFileName = "Sample.fwdata",
+            BaselineCapturedUtc = saved,
+            BaselineSourceLastWriteUtc = saved,
+        };
     }
 
     /// <summary>Every page, and every tab of the Texts page, with the file name each is saved under.</summary>

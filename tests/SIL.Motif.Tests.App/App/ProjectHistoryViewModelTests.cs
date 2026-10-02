@@ -40,7 +40,7 @@ public sealed class ProjectHistoryViewModelTests
     }
 
     [Theory]
-    [InlineData(ProjectHistoryKind.Baseline, "Baseline")]
+    [InlineData(ProjectHistoryKind.Baseline, "Refresh")]
     [InlineData(ProjectHistoryKind.Assessment, "Parse all words")]
     [InlineData(ProjectHistoryKind.Handoff, "AI Handoff")]
     public async Task EachEntryIsTitledInTheWindowsWords(ProjectHistoryKind kind, string title)
@@ -54,6 +54,16 @@ public sealed class ProjectHistoryViewModelTests
         var entry = Assert.Single(history.Entries);
         Assert.Equal(title, entry.Title);
         Assert.Equal("142 words", entry.Summary);
+    }
+
+    [Fact]
+    public void ARefreshEntryUsesTheWindowWordsForItsSummary()
+    {
+        var row = ProjectHistoryRow.From(new ProjectHistoryEntry(DateTimeOffset.UtcNow,
+            ProjectHistoryKind.Baseline, "Baseline captured."));
+
+        Assert.Equal("Refresh", row.Title);
+        Assert.Equal("new Baseline from FieldWorks.", row.Summary);
     }
 
     [Fact]

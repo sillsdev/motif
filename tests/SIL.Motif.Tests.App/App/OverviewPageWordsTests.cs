@@ -1,10 +1,14 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
+using SIL.Motif.Cli.Rendering;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -19,11 +23,12 @@ public sealed class OverviewPageWordsTests
     private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "sample.fwdata");
 
     private static readonly string[] EngineWords =
-        ["violation", "rejected", "candidate", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
+        ["violation", "rejected", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
 
     [Fact]
     public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalParseTime()
     {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
         var page = new OverviewPageModel(context);
         fake.OverviewCompletesWith(Populated());
@@ -35,6 +40,9 @@ public sealed class OverviewPageWordsTests
         Assert.Equal("3 stopped at the step limit", page.SpeedDetails);
         Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
+        Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
+                      ("Lexical entries", "7%"), ("Root lookup", "4%"), ("Not attributed", "12%")],
+            page.TimingKindShares.Select(row => (row.Label, row.ShareText)));
     }
 
     [Fact]
@@ -57,9 +65,10 @@ public sealed class OverviewPageWordsTests
     [Theory]
     [InlineData(1, 0.045, "1 word · 45 ms total word time")]
     [InlineData(9, 0.8, "9 words · 0.8 s total word time")]
-    [InlineData(1318, 612.4, "1,318 words · 612 s total word time")]
+    [InlineData(1318, 612.4, "1,318 words · 612.4 s total word time")]
     public async Task TheSpeedHeadlineReadsInTheUnitThatSuitsTheTotal(int words, double seconds, string expected)
     {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContext();
         var page = new OverviewPageModel(context);
         fake.OverviewCompletesWith(Populated() with
@@ -71,6 +80,57 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal(expected, page.SpeedMain);
+    }
+
+    [Theory]
+    [InlineData(0.04, 0.4)]
+    [InlineData(0.05, 0.5)]
+    public async Task APositiveSubMillisecondResidualAndItsShareRemainOnTheOverview(double residualMs, double share)
+    {
+        var timing = new OverviewTiming(0.1, 0.1, [], 0)
+        {
+            MeasuredWordCount = 1,
+            Kinds = [new TimingAggregateRow("morph_rule", "morph_rule", 0.1 - residualMs, 1 - share, 1)
+                { Kind = "morph_rule" }],
+            Attribution = new WordTimeAttribution(1, 0.1, 0.1 - residualMs, residualMs, share, 0, false),
+        };
+        var response = Populated() with { Timing = timing };
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(response);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        var residual = Assert.Single(page.TimingKindShares, row => row.IsNotAttributed);
+        Assert.Equal(residualMs, residual.ElapsedMs);
+        Assert.Equal(share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture), residual.ShareText);
+    }
+
+    [Fact]
+    public async Task ZeroAndUnavailableResidualsDoNotAppearAsMeasuredPositiveShares()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            Timing = Populated().Timing with
+            {
+                Attribution = new WordTimeAttribution(1, 0.1, 0.1, 0, 0, 0, false),
+            },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.DoesNotContain(page.TimingKindShares, row => row.IsNotAttributed);
+
+        fake.OverviewCompletesWith(Populated() with
+        {
+            Timing = Populated().Timing with
+            {
+                Attribution = new WordTimeAttribution(1, 0.1, 0.1, null, null, 0, false),
+            },
+        });
+        await page.RetryOverviewCommand.ExecuteAsync(null);
+        Assert.DoesNotContain(page.TimingKindShares, row => row.IsNotAttributed);
     }
 
     [Fact]
@@ -87,7 +147,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("No parse times recorded", page.SpeedMain);
-        Assert.Equal("Parse all words to measure how fast PanGloss is.", page.SpeedMedian);
+        Assert.Equal(string.Empty, page.SpeedMedian);
         Assert.Equal(string.Empty, page.SpeedDetails);
     }
 
@@ -102,16 +162,23 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("118 of 142 words parse", page.TextCoverageMain);
         Assert.Equal("83% of the words in your Selection · 88% of their 611 occurrences", page.TextCoverageWords);
-        Assert.Equal(["118 parsed", "17 no parse", "5 stopped (step or time limit)", "2 skipped"],
+        Assert.Equal(["81 same", "37 different", "17 no parse", "5 stopped", "2 not parsed"],
             page.TextCoverageSegments.Select(segment => $"{segment.CountText} {segment.Label}"));
+        Assert.All(page.TextCoverageSegments, segment => Assert.NotNull(segment.Command));
         Assert.Equal("71 of 84 rebuilt", page.AccuracyMain);
         Assert.Equal("The grammar still builds 71 of the 84 words you approved in FieldWorks.", page.AccuracyCaption);
-        Assert.Equal(["71 rebuilt", "3 built another reading", "8 no parse", "2 stopped"],
+        Assert.Equal(["71 kept", "3 built something else", "8 lost", "2 unknown yet"],
             page.AccuracySegments.Select(segment => $"{segment.CountText} {segment.Label}"));
+        Assert.All(page.AccuracySegments, segment => Assert.Equal(MarkKind.Meaning, segment.Mark.Kind));
         Assert.Equal("1 disapproved analysis still built · PanGloss confirms 9 of 14 words marked Unknown",
             page.AccuracyBreakdown);
         Assert.Equal("24 warnings · 0 errors", page.WarningsCount);
         Assert.Equal("4 worth a look", page.WarningsDetails);
+        Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
+        Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
+        Assert.Equal("Grammar warning", Assert.Single(page.WarningKindRows).Name);
+        Assert.Equal("4 words", Assert.Single(page.WarningKindRows).IdentityMatchedWords);
+        Assert.Equal("2 spelling candidates; not confirmed uses", Assert.Single(page.WarningKindRows).SpellingCandidates);
         foreach (var text in new[]
                  {
                      page.TextCoverageMain, page.TextCoverageWords, page.AccuracyMain,
@@ -141,6 +208,25 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
+    public async Task TheAppAndOverviewCommandKeepSpellingCandidatesOutsideTheExactUseCount()
+    {
+        var response = Populated();
+        var cli = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(response);
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
+        Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
+        Assert.Contains("14 of your words use something a finding names (7 don't parse)", cli,
+            StringComparison.Ordinal);
+        Assert.Contains("Not counted: 3 spelling candidates; not confirmed uses of the phoneme", cli,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EachTileIsNamedForScreenReadersByItsVisibleTitle()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -156,6 +242,7 @@ public sealed class OverviewPageWordsTests
                 var tiles = window.GetLogicalDescendants().OfType<Control>()
                     .Where(tile => tile.Classes.Contains("overviewTile")).ToArray();
                 Assert.Equal(4, tiles.Length);
+                Assert.All(tiles, tile => Assert.Equal(tiles[0].Bounds.Size, tile.Bounds.Size));
                 foreach (var tile in tiles)
                 {
                     var title = tile.GetLogicalDescendants().OfType<TextBlock>()
@@ -211,11 +298,85 @@ public sealed class OverviewPageWordsTests
                             string.Join(" ", words));
                         Assert.All(entries[index].Children.OfType<TextBlock>(), text =>
                         {
-                            Assert.IsNotAssignableFrom<SelectableTextBlock>(text);
                             Assert.Equal(detail.FontSize, text.FontSize);
+                        });
+                        Assert.All(entries[index].Children.OfType<HyperlinkButton>(), link =>
+                        {
+                            Assert.NotNull(link.Command);
+                            Assert.NotEmpty(Avalonia.Automation.AutomationProperties.GetName(link) ?? string.Empty);
                         });
                         Assert.Equal(detail.FontWeight, entries[index].Children.OfType<TextBlock>().Last().FontWeight);
                     }
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task LookFirstUsesStoredResultsAndOpensTheExactMatrixCellsOrTimingWords()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var texts = new TextsPageModel(context);
+        var timing = new TimingPageModel(context);
+        fake.OverviewCompletesWith(Populated());
+        await context.OpenProjectAsync(ProjectPath);
+
+        var rows = page.LookFirstRows;
+        Assert.Equal(3, rows.Count);
+        Assert.Equal("1", rows[0].Number);
+        Assert.Contains("6 approved words are Lost", rows[0].Summary);
+        Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
+        Assert.Equal("2", rows[1].Number);
+        Assert.Contains("5 words stopped at the step limit", rows[1].Summary);
+        Assert.Equal("33.6 s of 38 s total word time", rows[1].Detail);
+        Assert.Equal("3", rows[2].Number);
+        Assert.Contains("3 Unknown words differ", rows[2].Summary);
+        Assert.Equal(string.Empty, rows[2].Detail);
+
+        rows[0].OpenCommand.Execute(null);
+        Assert.Equal([new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse)],
+            texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
+                .Select(cell => new TextsListCell(cell.Row, cell.Column)));
+        rows[1].OpenCommand.Execute(null);
+        Assert.Equal(["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], timing.Focus!.Words);
+        rows[2].OpenCommand.Execute(null);
+        Assert.Equal([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)],
+            texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
+                .Select(cell => new TextsListCell(cell.Row, cell.Column)));
+    }
+
+    [Fact]
+    public void LookFirstLinksSitBelowTheirEvidenceAtNarrowWidth()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            fake.OverviewCompletesWith(Populated());
+            await context.OpenProjectAsync(ProjectPath);
+            var window = Show(page);
+            try
+            {
+                window.Width = 1040;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var rows = window.GetLogicalDescendants().OfType<Grid>()
+                    .Where(grid => grid.Classes.Contains("overviewLookFirstRow")).ToArray();
+                Assert.NotEmpty(rows);
+                foreach (var row in rows)
+                {
+                    var words = row.Children.OfType<StackPanel>().Single(panel => panel.Classes.Contains("overviewLookFirstWords"));
+                    var link = Assert.Single(row.Children.OfType<HyperlinkButton>());
+                    Assert.True(link.Bounds.Top >= words.Bounds.Bottom,
+                        $"{link.Content} should follow the measured text at narrow width.");
                 }
             }
             finally
@@ -312,11 +473,11 @@ public sealed class OverviewPageWordsTests
             var window = Show(page);
             try
             {
-                var tiles = window.GetLogicalDescendants().OfType<Control>()
-                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible)
-                    .OrderBy(tile => Grid.GetRow(tile)).ThenBy(tile => Grid.GetColumn(tile))
-                    .Select(tile => Avalonia.Automation.AutomationProperties.GetName(tile)).ToArray();
-                Assert.Equal("Speed", tiles[0]);
+                var grid = window.GetLogicalDescendants().OfType<UniformGrid>()
+                    .Single(candidate => candidate.Classes.Contains("overviewTiles"));
+                var tiles = grid.Children.OfType<Control>()
+                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible).ToArray();
+                Assert.Equal("Speed", Avalonia.Automation.AutomationProperties.GetName(tiles[0]));
             }
             finally
             {
@@ -367,7 +528,12 @@ public sealed class OverviewPageWordsTests
         "Sample", DateTimeOffset.Parse("2026-09-30T08:00:00Z"), DateTimeOffset.Parse("2026-09-30T06:11:00Z"),
         142, 2, 0, 611, 1318, 47, 862, "assessment/one", DateTimeOffset.Parse("2026-09-30T08:51:00Z"), 38,
         "sha256:" + new string('c', 64), "sha256:" + new string('d', 64),
-        new OverviewTextCoverage(118, 17, 5, 2, 611, 540) { OccurrenceCoveragePercent = 88.4 },
+        new OverviewTextCoverage(118, 17, 5, 2, 611, 540)
+        {
+            SameWords = 81,
+            DifferentWords = 37,
+            OccurrenceCoveragePercent = 88.4,
+        },
         new OverviewAccuracy(71, 84, 3, 2, 1, 3, 9, 14)
         {
             ApprovedWordsNoMatch = 3,
@@ -377,14 +543,35 @@ public sealed class OverviewPageWordsTests
         new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)], 3)
         {
             MeasuredWordCount = 142,
+            Kinds =
+            [
+                new TimingAggregateRow("morph_rule", "morph_rule", 21280, 0.56, 142) { Kind = "morph_rule" },
+                new TimingAggregateRow("phon_rule", "phon_rule", 7980, 0.21, 142) { Kind = "phon_rule" },
+                new TimingAggregateRow("lex_entry", "lex_entry", 2660, 0.07, 142) { Kind = "lex_entry" },
+                new TimingAggregateRow("root_index", "root_index", 1520, 0.04, 142) { Kind = "root_index" },
+            ],
+            Attribution = new WordTimeAttribution(142, 38000, 33440, 4560, 0.12, 0, false),
         },
-        new OverviewWarningsSummary(24, 20, "Parser finding", 20)
+        new OverviewWarningsSummary(24, 20, "Grammar warning", 20)
         {
             ErrorCount = 0,
             WarningCount = 20,
             InformationCount = 4,
+            YourWords = new WarningWordsTouched(14, 7, []) { BySpellingOnly = 3 },
+            ByKind =
+            [
+                new GrammarWarningSummary("test.finding", "Grammar warning", GrammarDiagnosticLevel.Warning, 6)
+                {
+                    YourWords = 4,
+                    BySpellingOnly = 2,
+                },
+            ],
         })
     {
+        LookFirst = new OverviewLookFirst(
+            ["lost-1", "lost-2", "lost-3", "lost-4", "lost-5", "lost-6"],
+            [new OverviewSharedMorpheme("kat", 3, true), new OverviewSharedMorpheme("ja-", 3, false)],
+            ["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], 33600, 3),
         SelectionResolved = true,
         WordCoveragePercent = 83.1,
         ProjectFileName = "Sample.fwdata",

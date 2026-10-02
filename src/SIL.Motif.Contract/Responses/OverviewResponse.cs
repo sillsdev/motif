@@ -24,6 +24,9 @@ public sealed record OverviewResponse(
     OverviewTiming Timing,
     OverviewWarningsSummary? Warnings)
 {
+    /// <summary>The stored results worth opening first; empty when no Parse all words matches.</summary>
+    public OverviewLookFirst LookFirst { get; init; } = OverviewLookFirst.Empty;
+
     /// <summary>The producing run and measurement time for each word contributing to these composite metrics.</summary>
     public IReadOnlyDictionary<string, WordMeasurementOrigin> WordOrigins { get; init; } =
         new Dictionary<string, WordMeasurementOrigin>(StringComparer.Ordinal);
@@ -59,6 +62,12 @@ public sealed record OverviewTextCoverage(
     int TotalOccurrences,
     int ParsedOccurrences)
 {
+    /// <summary>Words where PanGloss built the same analysis as FieldWorks.</summary>
+    public int SameWords { get; init; }
+
+    /// <summary>Words where PanGloss built an analysis different from FieldWorks.</summary>
+    public int DifferentWords { get; init; }
+
     /// <summary>The share of selected Text occurrences with a completed parse.</summary>
     public double? OccurrenceCoveragePercent { get; init; }
 }
@@ -106,6 +115,24 @@ public sealed record OverviewTiming(
     /// <summary>The measured words' total word time and the part of it no parser object recorded.</summary>
     public WordTimeAttribution Attribution { get; init; } = WordTimeAttribution.None;
 }
+
+/// <summary>Stored word groups that give a linguist a useful next place to look.</summary>
+public sealed record OverviewLookFirst(
+    IReadOnlyList<string> ApprovedLostWords,
+    IReadOnlyList<OverviewSharedMorpheme> SharedLostMorphemes,
+    IReadOnlyList<string> StepLimitedWords,
+    double? StepLimitedWordTimeMs,
+    int UnknownDifferentWordCount)
+{
+    /// <summary>An empty list of priorities when the project has no matching Parse all words.</summary>
+    public static OverviewLookFirst Empty { get; } = new([], [], [], null, 0);
+}
+
+/// <summary>A morpheme used by several lost Approved words, matched by FieldWorks identity.</summary>
+/// <param name="Form">The allomorph form in the stored analysis.</param>
+/// <param name="WordCount">How many lost words use it.</param>
+/// <param name="NamedByWarning">Whether a stored grammar warning names this allomorph or grammatical info.</param>
+public sealed record OverviewSharedMorpheme(string Form, int WordCount, bool NamedByWarning);
 
 /// <summary>A word among the slowest measured words.</summary>
 public sealed record SlowWordTiming(string Word, int ElapsedMs);

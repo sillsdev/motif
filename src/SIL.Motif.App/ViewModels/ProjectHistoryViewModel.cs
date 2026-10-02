@@ -72,17 +72,20 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
 
 /// <summary>One event in a project's history as the window shows it, titled in the window's words.</summary>
 /// <param name="At">When it happened.</param>
-/// <param name="Title">What happened: a Baseline, a Parse all words, or an AI Handoff.</param>
+/// <param name="Title">What happened: Refresh, Parse all words, or an AI Handoff.</param>
 /// <param name="Summary">The event's one-line summary, as the store wrote it.</param>
 public sealed record ProjectHistoryRow(DateTimeOffset At, string Title, string Summary)
 {
     /// <summary>The row for a stored history entry.</summary>
-    public static ProjectHistoryRow From(ProjectHistoryEntry entry) =>
-        new(entry.At, entry.Kind switch
-        {
-            ProjectHistoryKind.Assessment => "Parse all words",
-            ProjectHistoryKind.Handoff => "AI Handoff",
-            ProjectHistoryKind.Baseline => "Baseline",
-            _ => entry.Kind.ToString(),
-        }, entry.Summary);
+    public static ProjectHistoryRow From(ProjectHistoryEntry entry) => entry.Kind switch
+    {
+        ProjectHistoryKind.Assessment => new(entry.At, "Parse all words", entry.Summary),
+        ProjectHistoryKind.Handoff => new(entry.At, "AI Handoff", entry.Summary),
+        ProjectHistoryKind.Baseline => new(entry.At, "Refresh", BaselineSummary(entry.Summary)),
+        _ => new(entry.At, entry.Kind.ToString(), entry.Summary),
+    };
+
+    private static string BaselineSummary(string summary) => summary.StartsWith("Baseline captured", StringComparison.Ordinal)
+        ? "new Baseline from FieldWorks" + summary["Baseline captured".Length..]
+        : summary;
 }

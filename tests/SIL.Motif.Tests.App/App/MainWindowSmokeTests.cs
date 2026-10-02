@@ -273,9 +273,9 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
                 Assert.Equal(Mark.NotParsed,
-                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "skipped").Mark);
-                Assert.Equal(Mark.NoParse,
-                    Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "no parse").Mark);
+                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "not parsed").Mark);
+                Assert.Equal(Mark.Of(MeaningTone.Problem),
+                    Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "lost").Mark);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
                     .Single(item => item.Text == overviewModel.TextCoverageWords).FontWeight);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
@@ -1544,6 +1544,8 @@ public sealed class MainWindowSmokeTests
         "grammar-fingerprint", "selection-fingerprint",
         new OverviewTextCoverage(41, 23, 55, 6, 313, 183)
         {
+            SameWords = 18,
+            DifferentWords = 23,
             OccurrenceCoveragePercent = 58.46,
         },
         new OverviewAccuracy(18, 39, 5, 55, 2, 4, 9, 18)

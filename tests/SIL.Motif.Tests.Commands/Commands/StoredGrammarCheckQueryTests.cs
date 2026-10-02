@@ -219,11 +219,16 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
         Assert.Equal(1, warnings.ByKind.Single(kind => kind.Code == "phoneme").BySpellingOnly);
         Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "nothing").YourWords);
+        Assert.Equal((0, 1, 0), (
+            warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords,
+            warnings.ByKind.Single(kind => kind.Code == "phoneme").BySpellingOnly,
+            warnings.ByKind.Single(kind => kind.Code == "phoneme").ByMembershipOnly));
         var overview = OverviewCommand.Overview(new OverviewRequest(grammar.FwDataPath)).Value!;
         Assert.Equal((warnings.YourWords.Words, warnings.YourWords.NoParse),
             (overview.Warnings!.YourWords!.Words, overview.Warnings.YourWords.NoParse));
         Assert.Equal(warnings.YourWords.ByMeaning, overview.Warnings.YourWords.ByMeaning);
         Assert.Equal(warnings.ByKind, overview.Warnings.ByKind);
+        Assert.Equal(0, overview.Warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
     }
 
     [Fact]
