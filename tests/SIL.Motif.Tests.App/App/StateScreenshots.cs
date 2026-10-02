@@ -454,7 +454,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             PageScreenshots.Settle(stage.Window);
             Assert.True(section.IsEffectivelyVisible);
             var group = Assert.Single(stage.Workspace.PageModel<TryWordPageModel>().Trace.StopGroups);
-            Assert.Equal("Stopping rule not recorded", group.RuleText);
+            Assert.Equal("Recorded refusal", group.RuleText);
             return Task.FromResult("The Plain trace keeps its recorded context visible; the stopped attempt's rule is not recorded.");
         })
         { Setup = stage => stage.TryTheSampleWord() };
@@ -1372,6 +1372,8 @@ public sealed class TryWordReviewScreenshots
 
             void SelectPlain(string address)
             {
+                PageScreenshots.Settle(window);
+                trace.SelectedStep = trace.ExpertEvents.Single(step => step.RecordedStep.StepId == address);
                 PageScreenshots.Settle(window);
                 var list = Named<ListBox>("Plain trace steps");
                 var step = trace.PlainSteps.Single(step => step.RecordedStep.StepId == address);

@@ -113,7 +113,9 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             Assert.False(trace.IsExpert);
             var page = walkthrough.Window.GetLogicalDescendants().OfType<TryWordPanel>().Single();
             var diagnosticHost = page.FindControl<ContentControl>("RichDiagnosticHost")!;
-            Assert.False(diagnosticHost.IsVisible);
+            Assert.True(diagnosticHost.IsVisible);
+            Assert.False(diagnosticHost.GetLogicalDescendants().OfType<Expander>().Single(expander =>
+                Avalonia.Automation.AutomationProperties.GetName(expander) == "Full derivation tree").IsEffectivelyVisible);
             Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
             Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
             Assert.Contains("parse", FakeParser.Invocations(parserPath));

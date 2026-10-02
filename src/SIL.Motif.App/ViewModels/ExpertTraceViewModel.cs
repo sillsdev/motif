@@ -41,11 +41,19 @@ public sealed partial class TraceWordViewModel
     }
 
     partial void OnExpertWholeTreeChanged(bool value) => NotifyExpertRows();
-    partial void OnSelectedCandidateChanged(TraceCandidateViewModel? value) => NotifyExpertRows();
+    partial void OnSelectedCandidateChanged(TraceCandidateViewModel? value)
+    {
+        OnPropertyChanged(nameof(PlainSteps));
+        OnPropertyChanged(nameof(PlainFoldText));
+        NotifyExpertRows();
+    }
     partial void OnSelectedStepChanged(TraceStepViewModel? value)
     {
+        if (value is not null) value.IsSelected = true;
         foreach (var step in _expertTree.Concat(Candidates.SelectMany(candidate => candidate.Steps)))
             step.IsSelected = value?.RecordedStep.StepId == step.RecordedStep.StepId;
+        OnPropertyChanged(nameof(PlainSteps));
+        OnPropertyChanged(nameof(PlainFoldText));
         OnPropertyChanged(nameof(PlainSelectedStep));
         OnPropertyChanged(nameof(ExpertReadableText));
         OnPropertyChanged(nameof(ExpertRawRecord));
@@ -86,12 +94,37 @@ public sealed partial class TraceWordViewModel
     }
 
     /// <summary>Compact recorded events; context-only levels and lookups stay available in Expert.</summary>
-    public IReadOnlyList<TraceStepViewModel> PlainSteps => _expertTree.Where(step =>
-        step.KindText is not ("Rule level" or "Lexical lookup" or "Word")).ToArray();
+    public IReadOnlyList<TraceStepViewModel> PlainSteps
+    {
+        get
+        {
+            var attempt = SelectedCandidate ?? Candidates.FirstOrDefault(candidate => candidate.Succeeded)
+                ?? ClosestAttempts.FirstOrDefault();
+            var path = attempt?.Steps ?? _expertTree;
+            var addresses = SIL.Motif.Commands.Queries.TraceBuildingStory.Steps(path.Select(step => step.RecordedStep).ToArray())
+                .Select(step => step.StepId).ToHashSet(StringComparer.Ordinal);
+            var building = path.Where(step => addresses.Contains(step.RecordedStep.StepId)).ToList();
+            if (building.Count == 0) building.AddRange(path.Where(step => step.KindText is not ("Rule level" or "Word")));
+            foreach (var step in building) step.IsSeparatePlainEvent = false;
+            if (SelectedStep is { } selected && building.All(step => step.RecordedStep.StepId != selected.RecordedStep.StepId))
+            {
+                selected.IsSeparatePlainEvent = true;
+                building.Add(selected);
+            }
+            return building;
+        }
+    }
 
-    /// <summary>How much recorded context the Plain rows fold away.</summary>
-    public string PlainFoldText => _expertTree.Count(step => step.KindText is "Rule level" or "Lexical lookup") is > 0 and var count
-        ? $"{count:N0} rule steps · open in Expert" : string.Empty;
+    /// <summary>The measured number of additional recorded events available in Expert.</summary>
+    public string PlainFoldText
+    {
+        get
+        {
+            var shown = PlainSteps.Select(step => step.RecordedStep.StepId).ToHashSet(StringComparer.Ordinal);
+            var count = _expertTree.Count(step => step.Type != "WordAnalysis" && !shown.Contains(step.RecordedStep.StepId));
+            return count > 0 ? $"{count:N0} more rule steps · open in Expert" : string.Empty;
+        }
+    }
 
     /// <summary>The Plain row for the selected recorded event, including events selected in Expert.</summary>
     public TraceStepViewModel? PlainSelectedStep

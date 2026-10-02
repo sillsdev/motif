@@ -67,7 +67,7 @@ public sealed class TraceWordViewModelTests
     {
         var reason = TraceStepKinds.ExplainReason("FutureUnificationMechanism");
         Assert.Contains("FutureUnificationMechanism", reason);
-        Assert.Contains("not recorded", reason);
+        Assert.Contains("unfamiliar reason", reason);
         Assert.DoesNotContain("future unification mechanism", reason);
     }
 
@@ -367,7 +367,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(2, candidate.Morphs.Count);
         Assert.Equal("Refused by -lu ‘APPL’", candidate.StopHeadline);
         Assert.Equal(captured ? "No rule may apply after the final template."
-            : "Explanation not recorded (reason code: NonPartialRuleProhibitedAfterFinalTemplate).", candidate.StopReason);
+            : TraceFailureSentences.Explain("NonPartialRuleProhibitedAfterFinalTemplate", "-lu ‘APPL’"), candidate.StopReason);
         Assert.Equal(captured ? "No rule may apply after the final template." : null, candidate.Explanation);
         Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", candidate.ParserCode);
         Assert.True(candidate.HasParserCode);
@@ -423,7 +423,7 @@ public sealed class TraceWordViewModelTests
     {
         var group = new TraceStopGroupViewModel("lu", "SomeNewReason", null, 2);
 
-        Assert.Equal("Explanation not recorded (reason code: SomeNewReason).", group.ReasonText);
+        Assert.Equal(TraceFailureSentences.Explain("SomeNewReason"), group.ReasonText);
     }
 
     [Fact]

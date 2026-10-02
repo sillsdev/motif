@@ -43,16 +43,11 @@ public static class TraceStepKinds
     /// <summary>Why the parser refused a step, in words, for a reason code no sentence was recorded for.</summary>
     /// <param name="reasonCode">The parser's own reason code.</param>
     public static string ExplainReason(string reasonCode) =>
-        $"Explanation not recorded (reason code: {reasonCode}).";
+        SIL.Motif.Commands.Queries.TraceFailureSentences.Explain(reasonCode);
 
-    /// <summary>A known refusal explanation in the window's words, or null when the reason is unknown.</summary>
-    /// <param name="reasonCode">The parser's reason code.</param>
-    /// <returns>The window's explanation for a known reason.</returns>
-    public static string? PlainExplanation(string reasonCode) => reasonCode switch
-    {
-        "NonPartialRuleProhibitedAfterFinalTemplate" => "it can't apply after the last template.",
-        _ => null,
-    };
+    /// <summary>The recorded refusal code in the window's words, without inferring its owner.</summary>
+    public static string? PlainExplanation(string reasonCode) =>
+        SIL.Motif.Commands.Queries.TraceFailureSentences.Explain(reasonCode);
 
     // "SomeFutureStepKind" reads "Some future step kind".
     internal static string Humanise(string pascalCase)

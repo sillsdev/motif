@@ -157,3 +157,24 @@ public static class WordTraceDiagnosticReader
         }
     }
 }
+
+/// <summary>Folds one recorded path into its forward building events without treating siblings as ancestors.</summary>
+public static class TraceBuildingStory
+{
+    public static IReadOnlyList<TraceStep> Steps(IReadOnlyList<TraceStep> path)
+    {
+        var building = path.Where(step => step.Type == "StratumSynthesisInput" ||
+            step.Type.Contains("Synthesis", StringComparison.Ordinal) && !step.Type.StartsWith("Stratum", StringComparison.Ordinal) ||
+            step.Type is "Successful" or "Failed" ||
+            step.Type == "LexicalLookup" && step.EventEvidence?.LookupResult is { MatchCount: > 0 }).ToList();
+        if (building.Any(step => step.Type.Contains("Synthesis", StringComparison.Ordinal)) &&
+            building.All(step => step.Type != "StratumSynthesisInput" && step.Type != "LexicalLookup"))
+        {
+            var first = path.ToList().IndexOf(building[0]);
+            var stem = path.Take(first).LastOrDefault(step => step.Type.Contains("Analysis", StringComparison.Ordinal) &&
+                step.Output is { Length: > 0 });
+            if (stem is not null) building.Insert(0, stem);
+        }
+        return building;
+    }
+}

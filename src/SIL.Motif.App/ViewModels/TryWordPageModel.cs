@@ -48,6 +48,10 @@ public sealed class TryWordPageModel : PageModel
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
         });
         Context.Assess.Words.PropertyChanged += OnWordsPropertyChanged;
+        Context.Evidence.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(FieldWorksContextIsStale));
+        };
         RefreshExpected(Trace.WordToTry);
     }
 
@@ -65,7 +69,7 @@ public sealed class TryWordPageModel : PageModel
     {
         null or { HasBaseline: false } => "FieldWorks word context unavailable",
         { IsInFieldWorks: null } => "FieldWorks membership not recorded",
-        { IsInFieldWorks: false } => "Word absent from the captured FieldWorks Baseline",
+        { IsInFieldWorks: false } => "Not in FieldWorks",
         { Analyses.Count: 0 } => "No stored analyses in the captured FieldWorks Baseline",
         _ => "Stored analyses for " + ResultWordContext.Word,
     };
@@ -77,8 +81,8 @@ public sealed class TryWordPageModel : PageModel
               ? $" · Baseline captured {LocalDate(DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture))}"
               : " · Baseline identity not recorded");
 
-    /// <summary>Whether the shared context query found a later FieldWorks save than the captured source save.</summary>
-    public bool FieldWorksContextIsStale => ResultWordContext?.IsStale == true;
+    /// <summary>The shared workspace freshness used by the top bar and this page.</summary>
+    public bool FieldWorksContextIsStale => Context.Evidence.IsStale;
 
     private string LocalDate(DateTimeOffset value)
     {
@@ -89,11 +93,11 @@ public sealed class TryWordPageModel : PageModel
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 
-    /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
+    /// <summary>Stored analyses grouped by their interlinear display, retaining every recorded Opinion count.</summary>
     public IReadOnlyList<TryWordStoredAnalysis> FieldWorksAnalyses { get; private set; } = [];
 
     /// <summary>The distinct opinions actually stored for the returned word.</summary>
-    public IReadOnlyList<TryWordOpinion> ResultOpinions => FieldWorksAnalyses.Select(analysis => analysis.Opinion)
+    public IReadOnlyList<TryWordOpinion> ResultOpinions => (ResultWordContext?.Analyses ?? []).Select(analysis => WindowWords.OpinionOf(analysis.StoredAnalysisOpinion))
         .Distinct().Select(opinion => new TryWordOpinion(opinion, WindowWords.Of(opinion) + " in FieldWorks")).ToArray();
 
     /// <summary>A comparison meaning only when the trace establishes a completed search with no analysis.</summary>
@@ -104,6 +108,30 @@ public sealed class TryWordPageModel : PageModel
 
     public string ResultMeaning => ResultComparison.Word;
     public Mark ResultMeaningMark => Mark.Of(ResultComparison.Tone);
+
+    private bool? SameAsFieldWorks
+    {
+        get
+        {
+            if (Trace.Result is not { Complete: true, Parsed: true } || Trace.Reading is not { } reading ||
+                ResultWordContext is not { Analyses.Count: > 0 } context ||
+                context.Analyses.Any(analysis => analysis.Identity is null || analysis.StoredAnalysisId is null) ||
+                reading.Analyses.Count == 0 || reading.Analyses.Any(analysis => analysis.ProjectionStatus != "available" ||
+                    analysis.Morphs.Any(morph => morph.IdentityQuality != "authored" ||
+                        !Guid.TryParse(morph.FormId, out _) || !Guid.TryParse(morph.MsaId, out _)))) return null;
+            var actual = reading.Analyses.Select(analysis => new ParseAnalysis(analysis.Morphs.Select(morph =>
+                new ParseMorph(morph.FormId, morph.MsaId, morph.InflTypeId, morph.GuessedString)).ToArray())).ToArray();
+            var comparison = CompareSemantics.Compare(new CompareWordFacts(Standing(context), "analysed", false,
+                new ParseWordEvidence("trace", 0, reading.Word, 0, false, false, false, actual, []), null, 0)
+            { StoredAnalyses = context.Analyses, StoredAnalysesAvailable = true });
+            return comparison.Outcome == WordRowOutcome.Same;
+        }
+    }
+
+    public string ResultOutcomeText => SameAsFieldWorks is { } same ? same ? "Same" : "Different"
+        : Trace.Result is { Complete: true, Parsed: true }
+            ? $"Parsed · {Trace.Analyses.Count} {(Trace.Analyses.Count == 1 ? "analysis" : "analyses")}" : Trace.AnswerText;
+    public Mark ResultOutcomeMark => SameAsFieldWorks is { } same ? same ? Mark.Same : Mark.Different : Trace.AnswerMark;
 
     private static string Standing(WordContextResponse context) => !context.IsInFieldWorks!.Value
         ? ProjectStanding.NotPresent
@@ -312,7 +340,9 @@ public sealed class TryWordPageModel : PageModel
     {
         ResultWordContext = context;
         FieldWorksAnalyses = context is { HasBaseline: true, IsInFieldWorks: true }
-            ? context.Analyses.Select(reading => new TryWordStoredAnalysis(reading)).ToArray()
+            ? context.Analyses.GroupBy(reading => System.Text.Json.JsonSerializer.Serialize(reading.Morphs.Select(morph =>
+                new { morph.Form, morph.Gloss, morph.Category, morph.InflectionType })), StringComparer.Ordinal)
+                .Select(group => new TryWordStoredAnalysis(group.ToArray(), Trace.Reading)).ToArray()
             : [];
         OnPropertyChanged(nameof(ResultWordContext));
         OnPropertyChanged(nameof(FieldWorksContextStatus));
@@ -322,6 +352,8 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(ResultOpinions));
         OnPropertyChanged(nameof(ResultMeaning));
         OnPropertyChanged(nameof(ResultMeaningMark));
+        OnPropertyChanged(nameof(ResultOutcomeText));
+        OnPropertyChanged(nameof(ResultOutcomeMark));
     }
 
     private void TrackRecent(string word)
@@ -420,13 +452,64 @@ public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, strin
 }
 
 /// <summary>One stored analysis, with its FieldWorks opinion rendered in the window's words.</summary>
-public sealed class TryWordStoredAnalysis(ParserReading reading)
+public sealed class TryWordStoredAnalysis
 {
-    public OpinionMarkKind Opinion { get; } = WindowWords.OpinionOf(reading.StoredAnalysisOpinion);
-    public Mark OpinionMark => Mark.Of(Opinion);
-    public string OpinionLabel => WindowWords.Of(Opinion);
-    public string Text { get; } = string.Join(" + ", reading.Morphs.Select(morph => morph.Form)) + " = " +
-        string.Join(" + ", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+    public TryWordStoredAnalysis(IReadOnlyList<ParserReading> readings, WordTraceReading? trace)
+    {
+        var reading = readings[0];
+        Opinion = WindowWords.OpinionOf(reading.StoredAnalysisOpinion);
+        HasMultipleOpinions = readings.Select(item => WindowWords.OpinionOf(item.StoredAnalysisOpinion)).Distinct().Count() > 1;
+        OpinionLabel = readings.Count == 1 ? WindowWords.Of(Opinion) : string.Join(" · ", readings
+            .GroupBy(item => WindowWords.OpinionOf(item.StoredAnalysisOpinion))
+            .OrderBy(group => group.Key).Select(group => $"{WindowWords.Of(group.Key)} {group.Count()}"));
+        Text = string.Join(" + ", reading.Morphs.Select(morph => morph.Form));
+        Morphs = reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
+        Pieces = reading.Morphs.Select((morph, index) => new TryWordTracePiece(
+            readings.Select(item => item.Morphs[index]).ToArray(), trace)).ToArray();
+    }
+
+    public OpinionMarkKind Opinion { get; }
+    public Mark OpinionMark => HasMultipleOpinions ? Mark.Of(MeaningTone.Neutral) : Mark.Of(Opinion);
+    public bool HasMultipleOpinions { get; private set; }
+    public string OpinionLabel { get; }
+    public string Text { get; }
+    public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+    public IReadOnlyList<TryWordTracePiece> Pieces { get; }
+}
+
+/// <summary>A stored piece and only the trace events that name its exact authored identity.</summary>
+public sealed class TryWordTracePiece
+{
+    public TryWordTracePiece(ParserReadingMorph morph, WordTraceReading? trace) : this([morph], trace) { }
+
+    public TryWordTracePiece(IReadOnlyList<ParserReadingMorph> morphs, WordTraceReading? trace)
+    {
+        Morphs = [new ParserReadingMorphViewModel(morphs[0])];
+        var statuses = morphs.Select(morph => StatusFor(morph, trace)).Distinct(StringComparer.Ordinal).ToArray();
+        Status = statuses.Length == 1 ? statuses[0] : "Trace marks differ";
+    }
+
+    private static string StatusFor(ParserReadingMorph morph, WordTraceReading? trace)
+    {
+        var steps = trace is null ? [] : Flatten(trace.Root).Where(step =>
+            step.SourceIdentityQuality == "authored" && step.SourceIdentityKind == "morphRule" &&
+            Guid.TryParse(step.SourceIdentityId, out var source) &&
+            Guid.TryParse(morph.GrammaticalInfoId, out var msa) && source == msa).ToArray();
+        var refusal = steps.FirstOrDefault(step => step.FailureReason is { Length: > 0 });
+        var built = steps.Any(step => step.OutcomeStatus is "success" or "successful" or "succeeded");
+        return built && refusal is not null ? "✓ built · ✗ refused" : refusal is not null ? "✗ refused"
+            : built ? "✓ built" : steps.Length > 0 ? "Tried" : "· No step recorded";
+    }
+
+    public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+    public string Status { get; }
+
+    private static IEnumerable<TraceStep> Flatten(TraceStep step)
+    {
+        yield return step;
+        foreach (var child in step.Children)
+            foreach (var descendant in Flatten(child)) yield return descendant;
+    }
 }
 
 /// <summary>An opinion with its explicit FieldWorks source for the result line.</summary>

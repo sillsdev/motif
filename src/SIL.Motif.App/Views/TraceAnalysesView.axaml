@@ -21,6 +21,7 @@
                                          IsVisible="{Binding HasRepeatedRecords}"
                                          ToolTip.Tip="The trace recorded this result more than once; distinct derivations are not established." />
               </Grid>
+              <views:CopyableTextBlock Text="{Binding LegacyMorphemesText}" IsVisible="{Binding HasLegacyMorphemes}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                                        IsVisible="{Binding HasProjectionError}"
                                        Classes="muted" TextWrapping="Wrap" />

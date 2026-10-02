@@ -59,7 +59,8 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         WithPanel(model, (window, texts) =>
         {
             Assert.Contains(texts, text => text.Contains(expected, StringComparison.Ordinal));
-            Assert.Contains("Stopping rule not recorded", texts);
+            Assert.DoesNotContain("Stopping rule not recorded", texts);
+            Assert.All(model.StopGroups, group => Assert.Contains(group.ReasonText, texts));
             Assert.DoesNotContain(texts, text => text.Contains("rules stopped", StringComparison.Ordinal));
             Assert.DoesNotContain("no rule", texts);
         });

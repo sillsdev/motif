@@ -13,6 +13,15 @@ public sealed partial class DiagnosticPanel : UserControl
     public static readonly StyledProperty<bool> ShowResultSummaryProperty =
         AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowResultSummary), defaultValue: true);
 
+    public static readonly StyledProperty<bool> ShowFullDerivationProperty =
+        AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowFullDerivation), defaultValue: true);
+
+    public bool ShowFullDerivation
+    {
+        get => GetValue(ShowFullDerivationProperty);
+        set => SetValue(ShowFullDerivationProperty, value);
+    }
+
     public static readonly StyledProperty<bool> ShowAttemptSummariesProperty =
         AvaloniaProperty.Register<DiagnosticPanel, bool>(nameof(ShowAttemptSummaries), defaultValue: true);
 

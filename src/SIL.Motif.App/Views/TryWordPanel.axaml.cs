@@ -18,9 +18,10 @@ public sealed partial class TryWordPanel : UserControl
         Trace = model.Trace;
         DataContext = model;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content =
-            new DiagnosticPanel(model.Diagnostics, showResultSummary: false, showAnalyses: false,
-                showAttemptSummaries: true);
+        var diagnostic = new DiagnosticPanel(model.Diagnostics, showResultSummary: false, showAnalyses: false,
+            showAttemptSummaries: true);
+        diagnostic.Bind(DiagnosticPanel.ShowFullDerivationProperty, new Avalonia.Data.Binding("IsExpert"));
+        this.FindControl<ContentControl>("RichDiagnosticHost")!.Content = diagnostic;
         model.SavedDiagnosticOpened += OnSavedDiagnosticOpened;
     }
 

@@ -97,6 +97,6 @@ public sealed class ExpertTraceReadingTests
         Assert.Contains("unchanged", trace.ExpertRawRecord);
         Assert.Contains("future", trace.ExpertRawRecord);
         Assert.DoesNotContain("children", trace.ExpertRawRecord);
-        Assert.Contains("not recorded", trace.ExpertReadableText);
+        Assert.Contains(TraceFailureSentences.Explain(null), trace.ExpertReadableText);
     }
 }

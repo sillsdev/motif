@@ -303,11 +303,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         : !result.Complete ? "Search incomplete" : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
 
     /// <summary>
-    /// The mark that answer wears: a trace that built the word is a built step, one that reached a limit is Stopped,
+    /// The mark that answer wears: a trace that built the word has no action glyph, a limit is Stopped,
     /// and one that finished without building it is No parse.
     /// </summary>
     public Mark AnswerMark => Result is { Complete: false } ? Mark.Stopped
-        : Result is { Parsed: true } ? Mark.Of(TraceStepMark.Built)
+        : Result is { Parsed: true } ? new Mark(MarkKind.Outcome, "parsed", string.Empty, "Parsed")
         : Mark.NoParse;
 
     /// <summary>Recorded stopped attempts grouped by explicit attribution and reason; empty when nothing failed.</summary>
@@ -361,6 +361,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         [.. MatchingAttempts().Take(ShowEveryAttempt ? int.MaxValue : ClosestShown)];
 
     public bool HasClosestAttempts => ClosestAttempts.Count > 0;
+    public string ClosestAttemptsHeading => ClosestAttempts.Count == 1 ? "The attempt that got furthest" : "Attempts that got furthest";
 
     /// <summary>The analysis the project approves for the Results word being tried, which the parser missed.</summary>
     public IReadOnlyList<ParserReadingMorphViewModel> ExpectedMorphs { get; private set; } = [];
@@ -430,9 +431,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private void RebuildStopGroups()
     {
         _stopGroups = _reading?.StopGroups.Select(group => new TraceStopGroupViewModel(
-            _labels.Resolve(group.RuleRefId, group.Rule), group.ReasonCode, group.Explanation, group.Count, group.RuleId,
+            _labels.Resolve(group.RuleRefId, group.Rule), group.ReasonCode,
+            group.Explanation ?? TraceFailureSentences.Explain(group.ReasonCode,
+                _labels.Resolve(group.RuleRefId, group.Rule), group.Attempts.FirstOrDefault()?.FailureRequired), group.Count, group.RuleId,
             group.Attempts.Select(attempt => attempt.AttemptId!).ToHashSet(StringComparer.Ordinal))).ToArray() ?? [];
-        var largest = _stopGroups.Count == 0 ? 0 : _stopGroups.Max(group => group.Count);
+        var largest = _stopGroups.Count <= 1 ? 0 : _stopGroups.Max(group => group.Count);
         foreach (var group in _stopGroups) group.SetShare(largest);
         SelectedStopGroup = null;
         OnPropertyChanged(nameof(StopGroups));
@@ -448,6 +451,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ClosestAttempts));
         OnPropertyChanged(nameof(HasClosestAttempts));
+        OnPropertyChanged(nameof(ClosestAttemptsHeading));
         OnPropertyChanged(nameof(ShowsStopGroups));
         OnPropertyChanged(nameof(ShowsClosestAttempts));
         OnPropertyChanged(nameof(MoreAttemptsText));
@@ -1008,7 +1012,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         ReasonCode = reasonCode;
         Explanation = explanation;
         Count = count;
-        RuleText = rule is { Length: > 0 } named ? named : "Stopping rule not recorded";
+        RuleText = rule is { Length: > 0 } named ? named : "Recorded refusal";
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "PanGloss didn't record why.";
@@ -1024,7 +1028,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 
     public string? Explanation { get; }
 
-    /// <summary>The rule's name for a heading, reading "Stopping rule not recorded" when attribution is absent.</summary>
+    /// <summary>The recorded rule name, or a neutral heading when no rule was attributed.</summary>
     public string RuleText { get; }
 
     /// <summary>Why the attempts stopped, in the plain language FieldWorks uses where there is one.</summary>
@@ -1038,6 +1042,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 
     /// <summary>How long this group's bar is: 1 for the largest group.</summary>
     public double Share { get; private set; }
+    public bool ShowsShare => Share > 0;
 
     /// <summary>Whether the attempt list is filtered to this group.</summary>
     [ObservableProperty]
@@ -1047,6 +1052,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
     {
         Share = largest <= 0 ? 0 : (double)Count / largest;
         OnPropertyChanged(nameof(Share));
+        OnPropertyChanged(nameof(ShowsShare));
     }
 
     private readonly IReadOnlySet<string>? _attemptIds;
@@ -1093,7 +1099,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
             : StoppedByRule is { Length: > 0 } rule ? $"Refused by {rule}"
             : "No analysis found";
         StopReason = Explanation is { Length: > 0 } explanation ? explanation
-            : FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
+            : FailureReason is { Length: > 0 } code ? TraceFailureSentences.Explain(code, StoppedByRule, FailureRequired)
             : "Reason not recorded";
     }
 
@@ -1243,6 +1249,27 @@ public sealed class TraceStepViewModel : ObservableObject
         get => _isSelected;
         set => SetProperty(ref _isSelected, value);
     }
+    private bool _isSeparatePlainEvent;
+    public bool IsSeparatePlainEvent
+    {
+        get => _isSeparatePlainEvent;
+        set => SetProperty(ref _isSeparatePlainEvent, value);
+    }
+    public bool CanInspectBuilding => CanInspect && !Type.Contains("Analysis", StringComparison.Ordinal);
+    public bool HasUnlinkedBuildingSource => HasUnlinkedSource && !Type.Contains("Analysis", StringComparison.Ordinal);
+
+    public string BuildingText => Type.Contains("Analysis", StringComparison.Ordinal) && Output is { Length: > 0 }
+            ? "Stem form · " + Output
+        : Type == "StratumSynthesisInput" ? "Stem used · " + Input
+        : Type == "LexicalLookup" && RecordedStep.EventEvidence?.LookupResult is { MatchCount: > 0 }
+            ? "Stem found · " + Input
+        : Type == "Successful" ? "Built the word"
+        : Type == "Failed" ? "No analysis found"
+        : Type.Contains("MorphologicalRule", StringComparison.Ordinal) ? "Affix"
+        : Type.Contains("PhonologicalRule", StringComparison.Ordinal) ? "Sound rule" : KindText;
+
+    public bool ShowsBuildingOutcome => Type.Contains("Synthesis", StringComparison.Ordinal) && Type != "StratumSynthesisInput";
+
     public string PlainLabel => string.Join(" · ", new[] { RecordedLabel, Source, RecordedOutcomeText }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
     public string ShapeText => Input is { Length: > 0 } input && Output is { Length: > 0 } output
@@ -1254,7 +1281,7 @@ public sealed class TraceStepViewModel : ObservableObject
     public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? $"Producer: {source}" : null;
     public string? CapturedSourceText => Reference?.CapturedFieldWorksLabel is { Length: > 0 } captured &&
         !string.Equals(captured, RecordedStep.Source, StringComparison.Ordinal) ? $"Captured FieldWorks: {captured}" : null;
-    public string? SourceLabel => CapturedSourceText ?? Source;
+    public string? SourceLabel => Source;
 
     /// <summary>The inspector subject from this event's recorded typed key; absent without that key.</summary>
     public InspectorSubject? InspectSubject => Reference is { TimingKey: { Identity: not null } key } reference
@@ -1272,7 +1299,7 @@ public sealed class TraceStepViewModel : ObservableObject
     public bool CanInspect => InspectSubject is not null;
     public bool HasUnlinkedSource => !CanInspect && SourceLabel is { Length: > 0 };
 
-    public string RecordedOutcomeText => OutcomeStatus?.ToLowerInvariant() switch
+    public string RecordedOutcomeText => IsFailure ? "Refused" : OutcomeStatus?.ToLowerInvariant() switch
     {
         "attempted" => "Tried",
         "success" or "succeeded" or "successful" => "Applied",
@@ -1307,7 +1334,7 @@ public sealed class TraceStepViewModel : ObservableObject
     public string RecordedReasonText => RecordedStep.ReasonAvailability == TraceEvidenceAvailability.Recorded
         ? RecordedStep.FailureReason! : "Reason not recorded";
     public string RecordedExplanationText => RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
-        ? RecordedStep.ReasonExplanation! : "Explanation not recorded";
+        ? RecordedStep.ReasonExplanation! : TraceFailureSentences.Explain(FailureReason, Source, FailureRequired);
     public string RecordedRejectionText => RecordedStep.RejectionDetailsAvailability == TraceEvidenceAvailability.NotRecorded &&
         TraceEvidenceDisplay.Details(RecordedStep).Count == 0
         ? "Rejection details not recorded" : string.Join("\n", new[]
@@ -1333,13 +1360,9 @@ public sealed class TraceStepViewModel : ObservableObject
         get
         {
             if (!IsFailure) return string.Empty;
-            var explanation = RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded &&
-                !string.IsNullOrWhiteSpace(RecordedStep.ReasonExplanation)
-                ? RecordedStep.ReasonExplanation
-                : FailureReason is { Length: > 0 } reason ? TraceStepKinds.PlainExplanation(reason) : null;
-            if (string.IsNullOrWhiteSpace(explanation)) return "PanGloss didn't record why.";
-            var subject = Type.Contains("Rule", StringComparison.OrdinalIgnoreCase) ? "this rule" : "this step";
-            return $"PanGloss refused {subject} here: {explanation}";
+            return RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+                ? RecordedStep.ReasonExplanation!
+                : TraceFailureSentences.Explain(FailureReason, Source, FailureRequired);
         }
     }
     public TraceStepViewModel(TraceStep step, string? deepestStepId,

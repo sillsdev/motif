@@ -669,8 +669,6 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<Expander>() is { } expander &&
                 AutomationProperties.GetName(expander) == "Expert phonological rules" &&
                 ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase)),
-        new("expert event classification", "Views/ExpertTracePanel.axaml", "The producer's recorded event classification, without inferred success.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's recorded event classification, without inferred success."),
         new("expert subrule index", "Views/ExpertTracePanel.axaml", "The producer's subrule index. No allomorph identity is inferred from it.", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's subrule index. No allomorph identity is inferred from it."),
         new("expert environment token", "Views/ExpertTracePanel.axaml", "{Binding Explanation}", TooltipScene.ExpertTrace,

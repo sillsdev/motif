@@ -89,13 +89,14 @@
                     <DockPanel LastChildFill="True">
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}" VerticalAlignment="Center">
                         <ProgressBar Width="{DynamicResource Component.TryWord.ProgressWidth}" MinWidth="{DynamicResource Component.TryWord.ProgressWidth}" Height="{DynamicResource Intent.Space.Snug}" Minimum="0" Maximum="1" Value="{Binding Share}"
-                                     IsHitTestVisible="False" />
+                                     IsHitTestVisible="False" IsVisible="{Binding ShowsShare}" />
                         <TextBlock Text="{Binding CountText}" FontWeight="SemiBold" TextAlignment="Right" />
                       </StackPanel>
-                      <TextBlock Text="{Binding RuleText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                      <TextBlock Text="{Binding RuleText}" IsVisible="{Binding HasRule}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                  VerticalAlignment="Center" />
                     </DockPanel>
-                    <TextBlock Classes="stopReason" Text="{Binding ReasonText}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}" />
+                    <TextBlock Classes="stopReason" Text="{Binding ReasonText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ReasonCode}" Classes="traceNotation" />
                   </StackPanel>
                 </Button>
               </DataTemplate>
@@ -107,7 +108,7 @@
       <!-- The attempts that came closest, each as its own story. -->
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding ShowsClosestAttempts}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:CopyableTextBlock Text="Attempts that got furthest" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding ClosestAttemptsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." />
         </StackPanel>
         <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
@@ -192,12 +193,7 @@
       <views:RefusalBlock x:Name="ErrorRefusal" DataContext="{Binding $parent[views:DiagnosticPanel].Tools.Error}"
                           AutomationProperties.Name="Diagnostic file error" />
 
-      <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasNoAnalyses}">
-        <views:CopyableTextBlock Text="Analyses" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-        <views:CopyableTextBlock Classes="muted" Text="Analysis not recorded." />
-      </StackPanel>
-
-      <Expander Header="Full derivation" IsExpanded="False" AutomationProperties.Name="Full derivation tree">
+      <Expander Header="Full derivation" IsVisible="{Binding $parent[views:DiagnosticPanel].ShowFullDerivation}" IsExpanded="False" AutomationProperties.Name="Full derivation tree">
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
           <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
             <TextBox Text="{Binding SearchText}" PlaceholderText="Search all recorded steps..."
