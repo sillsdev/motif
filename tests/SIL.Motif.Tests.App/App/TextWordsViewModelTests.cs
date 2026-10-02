@@ -28,6 +28,62 @@ public sealed class TextWordsViewModelTests
         return (fake, selection, words);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RestoredAssessmentKeepsEachVisibleHomographsOwnProjectFacts(bool reverse)
+    {
+        var firstId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var approved = Analysis("book", "book") with
+            { StoredAnalysisId = "book-id", StoredAnalysisOpinion = ReadingGrade.Approved };
+        var rejected = Analysis("love", "love") with
+            { StoredAnalysisId = "love-id", StoredAnalysisOpinion = ReadingGrade.Disapproved };
+        var first = new TextWord("kitabu", firstId.ToString(),
+            [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "approved", approved)], [approved], [])
+            { Analyses = [approved] };
+        var other = new TextWord("kitabu", otherId.ToString(),
+            [new WordOccurrence(TextId, "Alpha", 2, "kitabu", "disapproved", rejected)], [], [rejected])
+            { Analyses = [rejected] };
+        var (fake, _, words) = NewViewModel();
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(reverse ? [other, first] : [first, other], [], true));
+        await words.SetProjectAsync(ProjectPath);
+        await words.ReloadAsync();
+        var own = words.Rows.Single(row => row.WordformId == firstId);
+        var homograph = words.Rows.Single(row => row.WordformId == otherId);
+        Assert.Equal("book", own.Listed.Row.Gloss);
+        Assert.Equal("love", homograph.Listed.Row.Gloss);
+        var assessed = new AssessWordsViewModel();
+        assessed.Load([new AssessmentWordResult("kitabu", "analysed", false, "Complete", 4, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            Comparison = new WordComparison(ProjectStanding.Approved, WordRowOutcome.Same,
+                "kept", "Shared spelling comparison", WordRowTone.Fine),
+            StoredAnalyses = [new ParserReading(approved.Morphs)
+                { StoredAnalysisId = approved.StoredAnalysisId, StoredAnalysisOpinion = ReadingGrade.Approved }],
+            ExpectedAnalysis = new ParserReading(approved.Morphs),
+            ReadingGrades = [ReadingGrade.Approved],
+            Readings = [new ParserReading(approved.Morphs)],
+        }]);
+
+        words.ShowAssessment(assessed.Find);
+
+        Assert.Equal(Mark.Approved, own.Listed.Row.OpinionMark);
+        Assert.Equal(Mark.Disapproved, homograph.Listed.Row.OpinionMark);
+        Assert.Equal("book", own.Listed.Row.Gloss);
+        Assert.Equal("love", homograph.Listed.Row.Gloss);
+        Assert.Equal("love-id", Assert.Single(homograph.Listed.Card!.Marking.FieldWorksAnalyses).StoredAnalysisId);
+        Assert.Equal(ReadingGrade.Disapproved,
+            Assert.Single(homograph.Listed.Card.Marking.FieldWorksAnalyses).Opinion);
+        Assert.NotEqual(ParserOutcome.Same, homograph.Listed.Row.Outcome);
+        Assert.Equal("×1", homograph.Listed.Row.PlacesText);
+        Assert.Equal(Mark.Disapproved, homograph.Listed.Card!.WordRow.OpinionMark);
+        Assert.Equal("love", homograph.Listed.Card.WordRow.Gloss);
+        Assert.NotEqual(assessed.Find("kitabu")!.Comparison, homograph.Listed.Card.Source.Comparison);
+        words.ShowAssessment(null);
+        Assert.Equal("love", homograph.Listed.Row.Gloss);
+    }
+
     [Fact]
     public async Task WordsAreListedMostFrequentFirstWithTheLatestAssessmentsResult()
     {
@@ -82,7 +138,9 @@ public sealed class TextWordsViewModelTests
         Assert.Equal(["kitabu"], tried);
 
         var na = words.Rows.Single(row => row.Form == "na").Listed;
-        Assert.Same(assessed.Find("na")!.WordRow, na.Row);
+        Assert.Equal(assessed.Find("na")!.WordRow.Outcome, na.Row.Outcome);
+        Assert.Equal(ProjectStanding.NotPresent, na.Row.Row.Opinion);
+        Assert.Equal("×1", na.Row.PlacesText);
         Assert.True(na.HasCard);
     }
 

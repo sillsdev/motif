@@ -251,6 +251,75 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.True(Assert.Single(outcome.Value!.Words, item => item.Form == DualForm).IncorrectSpelling);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SameSpellingWordformsKeepTheirOwnFactsInEitherEncounterOrder(bool reverse)
+    {
+        using var cache = _pristine.NewScratch();
+        var services = cache.ServiceLocator;
+        Guid textId = default, approvedId = default, otherId = default;
+        Guid approvedAnalysisId = default, disapprovedAnalysisId = default;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var entry = services.GetInstance<ILexEntryRepository>().GetObject(_pristine.Seed.FirstEntryId);
+            var approved = services.GetInstance<IWfiWordformFactory>().Create();
+            var other = services.GetInstance<IWfiWordformFactory>().Create();
+            approved.Form.set_String(cache.DefaultVernWs, "homograph");
+            other.Form.set_String(cache.DefaultVernWs, "homograph");
+            other.SpellingStatus = 2;
+            var approvedAnalysis = MakeSingleBundleAnalysis(cache, approved, entry.LexemeFormOA!,
+                entry.MorphoSyntaxAnalysesOC.First(), entry.SensesOS[0]);
+            var disapprovedAnalysis = MakeSingleBundleAnalysis(cache, other, entry.LexemeFormOA!,
+                entry.MorphoSyntaxAnalysesOC.First(), entry.SensesOS[0]);
+            MakeSingleBundleAnalysis(cache, other, entry.LexemeFormOA!,
+                entry.MorphoSyntaxAnalysesOC.First(), entry.SensesOS[0]);
+            cache.LangProject.DefaultUserAgent.SetEvaluation(approvedAnalysis, Opinions.approves);
+            cache.LangProject.DefaultUserAgent.SetEvaluation(disapprovedAnalysis, Opinions.disapproves);
+            var text = services.GetInstance<ITextFactory>().Create();
+            text.Name.set_String(cache.DefaultAnalWs, "Homographs");
+            var contents = services.GetInstance<IStTextFactory>().Create();
+            text.ContentsOA = contents;
+            foreach (var analysis in reverse ? new[] { disapprovedAnalysis, approvedAnalysis }
+                         : new[] { approvedAnalysis, disapprovedAnalysis })
+                AddOneWordLine(cache, contents, "homograph", cache.DefaultVernWs, analysis);
+            (textId, approvedId, otherId) = (text.Guid, approved.Guid, other.Guid);
+            (approvedAnalysisId, disapprovedAnalysisId) = (approvedAnalysis.Guid, disapprovedAnalysis.Guid);
+        });
+        new FwDataProjectLoader().Save(cache);
+        Capture(cache.ProjectId.Path);
+
+        var outcome = TextWordsQuery.Query(new TextWordsRequest(cache.ProjectId.Path, [textId]));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var words = outcome.Value!.Words;
+        Assert.Equal(2, words.Count);
+        Assert.All(words, word => Assert.Equal("homograph", word.Form));
+        var own = Assert.Single(words, word => word.WordformGuid == approvedId.ToString("D"));
+        Assert.Equal(CanonicalId.FromGuid(approvedAnalysisId).Value, Assert.Single(own.Approved).StoredAnalysisId);
+        Assert.Empty(own.Disapproved);
+        Assert.False(own.IncorrectSpelling);
+        Assert.Equal(0, own.CandidateCount);
+        Assert.Single(own.Occurrences);
+        var otherWord = Assert.Single(words, word => word.WordformGuid == otherId.ToString("D"));
+        Assert.Empty(otherWord.Approved);
+        Assert.Equal(CanonicalId.FromGuid(disapprovedAnalysisId).Value,
+            Assert.Single(otherWord.Disapproved).StoredAnalysisId);
+        Assert.True(otherWord.IncorrectSpelling);
+        Assert.Equal(1, otherWord.CandidateCount);
+        Assert.Single(otherWord.Occurrences);
+        Assert.Equal(2, outcome.Value.OccurrenceCount);
+        var tokens = Assert.Single(outcome.Value.Texts).Lines.SelectMany(line => line.Tokens).ToArray();
+        var approvedToken = Assert.Single(tokens, token => token.WordformId == approvedId);
+        var disapprovedToken = Assert.Single(tokens, token => token.WordformId == otherId);
+        Assert.Equal(CanonicalId.FromGuid(approvedAnalysisId).Value, approvedToken.Analysis!.StoredAnalysisId);
+        Assert.Equal(ReadingGrade.Approved, approvedToken.Analysis.StoredAnalysisOpinion);
+        Assert.Equal(CanonicalId.FromGuid(approvedId).Value, approvedToken.Analysis.Identity!.SourceWordformGuid);
+        Assert.Equal(CanonicalId.FromGuid(disapprovedAnalysisId).Value, disapprovedToken.Analysis!.StoredAnalysisId);
+        Assert.Equal(ReadingGrade.Disapproved, disapprovedToken.Analysis.StoredAnalysisOpinion);
+        Assert.Equal(CanonicalId.FromGuid(otherId).Value, disapprovedToken.Analysis.Identity!.SourceWordformGuid);
+    }
+
     private const string DualForm = "dualword";
 
     // Three occurrences of one wordform: the first two differ only by sense; the third differs by MSA.

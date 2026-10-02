@@ -86,12 +86,16 @@ public sealed class ResultsInTextViewModelTests
         Func<WordReadStateRequest, CancellationToken, Task<CommandOutcome<WordReadStateResponse>>>? readStateHandler = null,
         bool waitForReadState = true,
         Func<ResultsInTextViewModel, ChangesViewModel, FakeCommandClient, Task>? afterAssessment = null,
-        IReadOnlyList<AssessmentWordResult>? assessmentWords = null)
+        IReadOnlyList<AssessmentWordResult>? assessmentWords = null,
+        IReadOnlyList<TextWord>? projectWords = null, Action<Func<Task>>? captureReload = null,
+        Action<AssessViewModel>? captureAssess = null)
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
         var texts = new TextWordsViewModel(fake, selection);
+        captureReload?.Invoke(() => texts.ReloadAsync());
         var assess = new AssessViewModel(fake, selection) { ProjectPath = ProjectPath };
+        captureAssess?.Invoke(assess);
         var shown = new List<string>();
         var changes = new ChangesViewModel(fake);
         if (pending is not null) fake.PendingChangesIs(pending);
@@ -135,7 +139,7 @@ public sealed class ResultsInTextViewModelTests
             return Task.FromResult(CommandOutcome<WordReadStateResponse>.Success(new WordReadStateResponse(
                 readState.Where(occurrence => occurrence.TextId == request.TextId).ToArray(), true)));
         }));
-        fake.ListTextWordsCompletesWith(new TextWordsResponse([], loadedTexts, HasBaseline: true));
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(projectWords ?? [], loadedTexts, HasBaseline: true));
         await texts.SetProjectAsync(ProjectPath);
 
         fake.AssessCompletesWith(new AssessCommandResponse(
@@ -842,6 +846,214 @@ public sealed class ResultsInTextViewModelTests
         Assert.True(token.Marking.IsUnread);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TokensUseTheirOwnHomographsProjectFacts(bool reverse)
+    {
+        var approved = Stored(Book, "book");
+        var disapproved = Stored(Love, "love") with { StoredAnalysisOpinion = ReadingGrade.Disapproved };
+        var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var tokens = new[] { Word("kitabu", approved, 0),
+            Word("kitabu", disapproved, 1) with { WordformId = otherId, IncorrectSpelling = true } };
+        var words = new[]
+        {
+            new TextWord("kitabu", ownId.ToString("D"),
+                [new WordOccurrence(TextId, "Alpha", 1, "kitabu kitabu", "approved", approved)], [approved], [])
+                { Analyses = [approved] },
+            new TextWord("kitabu", otherId.ToString("D"),
+                [new WordOccurrence(TextId, "Alpha", 1, "kitabu kitabu", "unapproved", disapproved)], [],
+                [disapproved], IncorrectSpelling: true) { Analyses = [disapproved] },
+        };
+        if (reverse) { Array.Reverse(tokens); Array.Reverse(words); }
+        var (inText, _, _) = await Loaded(sourceLines:
+            [new TextLine(1, tokens) { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true }],
+            projectWords: words);
+
+        Assert.True(inText.HasLines);
+        var displayed = inText.VisibleLines[0].Tokens;
+        var own = Assert.Single(displayed, token => token.WordformId == ownId);
+        var other = Assert.Single(displayed, token => token.WordformId == otherId);
+        Assert.Equal("Approved", own.ProjectStatusLabel);
+        Assert.Single(own.ProjectApprovedAnalyses);
+        Assert.Equal("book", own.ProjectSummary);
+        Assert.Equal("Incorrect spelling", other.ProjectStatusLabel);
+        Assert.Empty(other.ProjectApprovedAnalyses);
+        Assert.Equal("FieldWorks marks this spelling as incorrect", other.ProjectSummary);
+    }
+
+    [Fact]
+    public async Task EvidenceRefreshKeepsTheSelectedTextIdentityWhenTitlesAreEqual()
+    {
+        Func<Task>? reload = null;
+        var (inText, _, client) = await Loaded(sourceTexts:
+            [new TextLines(TextId, "Same title", []), new TextLines(OtherTextId, "Same title", [])],
+            captureReload: action => reload = action);
+        inText.SelectedText = inText.Texts[1];
+        client.ListTextWordsCompletesWith(new TextWordsResponse([],
+            [new TextLines(TextId, "Same title", []), new TextLines(OtherTextId, "Renamed title", [])], true));
+        await reload!();
+
+        Assert.Equal(OtherTextId, inText.SelectedText!.TextId);
+        Assert.Equal("Renamed title", inText.SelectedText.Title);
+    }
+
+    [Fact]
+    public async Task AssessmentRefreshKeepsTheSecondTextWithTheSameTitleSelected()
+    {
+        AssessViewModel? assess = null;
+        var (inText, _, _) = await Loaded(sourceTexts:
+            [new TextLines(TextId, "Same title", []), new TextLines(OtherTextId, "Same title", [])],
+            captureAssess: value => assess = value);
+        inText.SelectedText = inText.Texts[1];
+
+        assess!.Restore(new WorkspaceEvidence(assess.Result! with { SummaryMarkdown = "new evidence" }, null, false));
+
+        Assert.Equal(OtherTextId, inText.SelectedText!.TextId);
+    }
+
+    [Fact]
+    public async Task EvidenceRefreshFallsBackOnlyWhenTheSelectedTextDisappears()
+    {
+        Func<Task>? reload = null;
+        var (inText, _, client) = await Loaded(sourceTexts:
+            [new TextLines(TextId, "Alpha", []), new TextLines(OtherTextId, "Beta", [])],
+            captureReload: action => reload = action);
+        inText.SelectedText = inText.Texts[1];
+        client.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(TextId, "Alpha", [])], true));
+
+        await reload!();
+
+        Assert.Equal(TextId, inText.SelectedText!.TextId);
+        client.ListTextWordsCompletesWith(new TextWordsResponse([], [], true));
+        await reload();
+        Assert.Null(inText.SelectedText);
+    }
+
+    [Fact]
+    public async Task AWordCardWithoutAnOccurrenceDoesNotBorrowAHomographsProjectFacts()
+    {
+        var approved = Stored(Book, "book");
+        var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var (inText, _, _) = await Loaded(sourceTexts: [], projectWords:
+            [new TextWord("kitabu", ownId.ToString("D"), [], [approved], []) { Analyses = [approved] }]);
+
+        inText.SelectWord("kitabu");
+
+        Assert.Null(inText.SelectedToken!.WordformId);
+        Assert.Empty(inText.SelectedToken.ProjectApprovedAnalyses);
+        Assert.Equal("No project entry is loaded for this word.", inText.SelectedToken.ProjectSummary);
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.IncorrectSpelling)]
+    [InlineData(ChangeKinds.AddCandidate)]
+    public async Task WordformWidePendingMarkersExcludeSameSpellingDifferentWordforms(string kind)
+    {
+        var (inText, _, _) = await HomographsWithPendingChoice(kind);
+        var tokens = inText.VisibleLines[0].Tokens;
+
+        Assert.False(tokens[0].IsPending);
+        Assert.True(tokens[1].IsPending);
+        Assert.True(tokens[2].IsPending);
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.IncorrectSpelling)]
+    [InlineData(ChangeKinds.AddCandidate)]
+    public async Task UndoCheckedWordsCannotRemoveAnotherWordformsSameSpellingChoice(string kind)
+    {
+        var (inText, _, client) = await HomographsWithPendingChoice(kind);
+        inText.VisibleLines[0].Tokens[0].IsSelectedForActions = true;
+
+        await inText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
+
+        Assert.Empty(client.PendingRemoveRequests);
+        Assert.Single(inText.Changes.Items);
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.IncorrectSpelling)]
+    [InlineData(ChangeKinds.AddCandidate)]
+    public async Task UndoEnablementRequiresThePendingWordformIdentity(string kind)
+    {
+        var (inText, _, client) = await HomographsWithPendingChoice(kind);
+        var tokens = inText.VisibleLines[0].Tokens;
+        tokens[0].IsSelectedForActions = true;
+        Assert.False(inText.UndoChangesCommand.CanExecute(AnalysisOperationScope.CheckedWords));
+        tokens[0].IsSelectedForActions = false;
+        tokens[2].IsSelectedForActions = true;
+        Assert.True(inText.UndoChangesCommand.CanExecute(AnalysisOperationScope.CheckedWords));
+
+        await inText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
+
+        Assert.Equal("homograph-choice", Assert.Single(client.PendingRemoveRequests).ChangeId);
+        Assert.All(tokens, token => Assert.False(token.IsPending));
+    }
+
+    [Theory]
+    [InlineData(AnalysisOperationScope.CheckedWords)]
+    [InlineData(AnalysisOperationScope.SelectedText)]
+    public async Task ScopedUndoDoesNotExpandAnAcceptedGroup(AnalysisOperationScope scope)
+    {
+        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var pending = new PendingChangesSnapshot("draft/group", "revision/group",
+            [new PendingChange("own", Wordform("kitabu"), "kitabu", ChangeKinds.AddCandidate, null, null, [])
+                { GroupId = "accepted-group" },
+             new PendingChange("other", CanonicalId.FromGuid(otherId).Value, "kitabu", ChangeKinds.AddCandidate,
+                 null, null, []) { GroupId = "accepted-group" }], []);
+        var (inText, _, client) = await Loaded(pending: pending, sourceTexts:
+            [new TextLines(TextId, "Alpha", [new TextLine(1, [Word("kitabu", null)])
+                { ParagraphId = ParagraphId, SegmentId = SegmentId }]),
+             new TextLines(OtherTextId, "Beta", [new TextLine(1,
+                 [Word("kitabu", null) with { WordformId = otherId }])
+                { ParagraphId = OtherParagraphId, SegmentId = OtherSegmentId }])]);
+        inText.Texts[0].Lines[0].Tokens[0].IsSelectedForActions = true;
+
+        await inText.UndoChangesCommand.ExecuteAsync(scope);
+
+        Assert.Equal("own", Assert.Single(client.PendingRemoveRequests).ChangeId);
+        Assert.Equal("other", Assert.Single(inText.Changes.Items).ChangeId);
+        Assert.False(inText.Texts[0].Lines[0].Tokens[0].IsPending);
+        Assert.True(inText.Texts[1].Lines[0].Tokens[0].IsPending);
+    }
+
+    [Theory]
+    [InlineData(ChangeKinds.IncorrectSpelling)]
+    [InlineData(ChangeKinds.AddCandidate)]
+    public async Task RefusedUndoRetainsOnlyTheAddressedHomographsMarkers(string kind)
+    {
+        var (inText, _, client) = await HomographsWithPendingChoice(kind);
+        client.PendingRemoveHandler = (_, _) => Task.FromResult(CommandOutcome<PendingChangesSnapshot>.Refused(
+            new Refusal("change.cannot-compose", FailureReason.Refused, "Removal refused.")));
+        inText.VisibleLines[0].Tokens[1].IsSelectedForActions = true;
+
+        await inText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords);
+
+        Assert.Single(inText.Changes.Items);
+        Assert.False(inText.VisibleLines[0].Tokens[0].IsPending);
+        Assert.All(inText.VisibleLines[0].Tokens.Skip(1), token =>
+        {
+            Assert.True(token.IsPending);
+            Assert.Single(token.StagedChanges);
+        });
+    }
+
+    private static Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)>
+        HomographsWithPendingChoice(string kind)
+    {
+        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var pending = new PendingChangesSnapshot("draft/homographs", "revision/homographs",
+            [new PendingChange("homograph-choice", CanonicalId.FromGuid(otherId).Value, "kitabu", kind,
+                null, null, [])], []);
+        return Loaded(pending: pending, sourceLines:
+        [new TextLine(1, [Word("kitabu", null, 0),
+            Word("kitabu", null, 1) with { WordformId = otherId },
+            Word("kitabu", null, 2) with { WordformId = otherId }])
+            { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true }]);
+    }
+
     [Fact]
     public async Task UndoInASelectedTextLeavesTheSameWordInAnotherTextStaged()
     {
@@ -987,7 +1199,7 @@ public sealed class ResultsInTextViewModelTests
         Assert.NotNull(occurrence);
         occurrence.SetValue(fit, anchor);
         var (inText, _, _) = await Loaded(new PendingChangesSnapshot("draft/uncertain", "revision/uncertain",
-            [new PendingChange("uncertain", "wordform/kitabu", "kitabu", ChangeKinds.Approve, null, null, [])],
+            [new PendingChange("uncertain", Wordform("kitabu"), "kitabu", ChangeKinds.Approve, null, null, [])],
             [fit]));
 
         var change = Assert.Single(inText.Changes.Items);
@@ -1013,7 +1225,7 @@ public sealed class ResultsInTextViewModelTests
                  new OccurrenceWordToken(3, CanonicalId.FromGuid(Guid.Parse("aaaaaaaa-0000-0000-0000-000000000014")).Value, "zzz")]),
         };
         var (inText, _, _) = await Loaded(new PendingChangesSnapshot("draft/uncertain", "revision/uncertain",
-            [new PendingChange("uncertain", "wordform/kitabu", "kitabu", ChangeKinds.Approve, null, null, [])],
+            [new PendingChange("uncertain", Wordform("kitabu"), "kitabu", ChangeKinds.Approve, null, null, [])],
             [fit]));
         var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .First(candidate => candidate.Form == "anapenda");
@@ -1157,9 +1369,9 @@ public sealed class ResultsInTextViewModelTests
             .Where(token => token.Form == "kitabu").ToArray();
         var selected = tokens[0];
         inText.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Reject, "kitabu", "book",
-            occurrence: selected.Occurrence, storedAnalysisId: "stored-book"));
+            occurrence: selected.Occurrence, storedAnalysisId: "stored-book", wordformId: Wordform("kitabu")));
         inText.Changes.Items.Add(new ChangeViewModel(ChangeKinds.AddCandidate, "kitabu", "extra reading",
-            readingIndex: 1));
+            readingIndex: 1, wordformId: Wordform("kitabu")));
 
         Assert.Equal(2, selected.Marking.StagedTransitions.Count);
         Assert.Contains(selected.Marking.StagedTransitions,

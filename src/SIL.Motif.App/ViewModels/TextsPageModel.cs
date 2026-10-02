@@ -13,7 +13,8 @@ public sealed record OpenTextsRequest(TextsTab Tab, IReadOnlyList<TextsListCell>
 
 /// <summary>Opens one word in the Texts page's word list, with every filter cleared.</summary>
 /// <param name="Word">The word to select.</param>
-public sealed record OpenWordRequest(string Word) : PageRequest(WorkspacePage.Texts);
+/// <param name="WordformId">The exact wordform to select, or null for spelling-only navigation.</param>
+public sealed record OpenWordRequest(string Word, string? WordformId = null) : PageRequest(WorkspacePage.Texts);
 
 /// <summary>The two views inside Analyze texts.</summary>
 public enum AnalyzeTextsView
@@ -171,7 +172,7 @@ public sealed partial class TextsPageModel : PageModel
                 break;
             case OpenWordRequest word:
                 Assess.SelectWord(word.Word);
-                ResultsInText.SelectWord(word.Word);
+                ResultsInText.SelectWord(word.Word, word.WordformId);
                 AnalyzeView = AnalyzeTextsView.TextReader;
                 Tab = TextsTab.AnalyzeTexts;
                 break;

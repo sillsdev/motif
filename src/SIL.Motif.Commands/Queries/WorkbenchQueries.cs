@@ -34,8 +34,8 @@ public sealed record ProjectHistoryEntry(DateTimeOffset At, ProjectHistoryKind K
 public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> TextIds);
 
 /// <summary>
-/// The words of the chosen Texts as they stand in the project: each distinct form once, every place it
-/// occurs with the analysis chosen there, and the analyses the project approves and disapproves for it.
+/// The words of the chosen Texts as they stand in the Baseline: one row per form and wordform identity,
+/// every place that wordform occurs, and the analyses the project approves and disapproves for it.
 /// Also the Texts line by line, for reading the words in place.
 /// </summary>
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was nothing to read.</param>
@@ -43,10 +43,10 @@ public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> Te
 public sealed record TextWordsResponse(
     IReadOnlyList<TextWord> Words, IReadOnlyList<TextLines> Texts, bool HasBaseline, int OccurrenceCount = 0);
 
-/// <summary>One distinct word form in the chosen Texts.</summary>
+/// <summary>One wordform and one of its spellings in the chosen Texts; homographs keep separate rows.</summary>
 /// <param name="Form">The form exactly as a Selection would send it to the parser (NFD).</param>
-/// <param name="WordformGuid">The project's wordform for this form, or <see langword="null"/> when it has none.</param>
-/// <param name="Occurrences">Every place the form occurs in the chosen Texts, in text order.</param>
+/// <param name="WordformGuid">The exact source wordform, or <see langword="null"/> when it has none.</param>
+/// <param name="Occurrences">Every place this wordform uses the form in the chosen Texts, in text order.</param>
 /// <param name="Approved">The analyses the project approves for this form.</param>
 /// <param name="Disapproved">The analyses the project has rejected for this form.</param>
 /// <param name="CandidateCount">

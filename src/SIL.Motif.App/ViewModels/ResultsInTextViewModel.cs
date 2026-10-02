@@ -222,7 +222,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string SelectMenuLabel => HasCheckedWords ? $"{CheckedWordCount} selected ▾" : "Select ▾";
 
     public bool HasCheckedUncertainChanges => CheckedTokens.Any(token =>
-        _changes.Items.Any(change => change.Word == token.Form && change.IsUncertain));
+        _changes.Items.Any(change => change.Addresses(token) && change.IsUncertain));
 
     private ResultsTokenViewModel[] CheckedTokens => _allWords.Where(token => token.IsSelectedForActions).ToArray();
 
@@ -398,11 +398,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public Task MarkSelectionUnreadAsync() => MarkUnreadAsync(SelectedReadStateOccurrences());
 
     /// <summary>Selects a word from any page, building its detail even when it has no chosen-text occurrence.</summary>
-    public void SelectWord(string word)
+    public void SelectWord(string word, string? wordformId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        Guid? identity = CanonicalId.TryParse(wordformId, out var id) ? id.ToGuid() : null;
         var token = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
-            .FirstOrDefault(candidate => candidate.IsWord && candidate.Form == word);
+            .FirstOrDefault(candidate => candidate.IsWord && candidate.Form == word &&
+                (wordformId is null || identity is not null && candidate.WordformId == identity));
         if (token is not null)
         {
             SelectToken(token);
@@ -410,15 +412,31 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         }
 
         var result = _assess.Result?.Words.FirstOrDefault(candidate => candidate.Word == word);
-        if (result is null)
+        if (result is null && wordformId is null)
         {
             SelectedToken = null;
             return;
         }
 
-        var projectWord = _texts.ProjectWords.FirstOrDefault(candidate => candidate.Form == word);
-        SelectToken(new ResultsTokenViewModel("Parsed words", 0, new TextToken(word, word, null, null), result,
-            projectWord, "Not in a chosen text"));
+        // No chosen-text occurrence supplies this wordform's project evidence.
+        result = result is null ? null : result with
+        {
+            Comparison = null,
+            AnalysisComparison = null,
+            StoredAnalyses = [],
+            StoredAnalysesAvailable = false,
+            ExpectedAnalysis = null,
+            ProjectStanding = null,
+            ReadingGrades = null,
+            MissedApproved = null,
+            Correctness = null,
+            FixFirst = null,
+            TryWordLink = null,
+            OccurrenceCount = null,
+        };
+        SelectToken(new ResultsTokenViewModel("Parsed words", 0, new TextToken(word, word, null, null)
+            { WordformId = identity }, result,
+            location: "Not in a chosen text"));
     }
 
     partial void OnSelectedTextChanged(ResultsTextViewModel? value)
@@ -475,11 +493,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     {
         foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         var readStateGeneration = _readStateGeneration;
-        var previousTitle = SelectedText?.Title;
+        var previousTextId = SelectedText?.TextId;
         var results = (_assess.Result?.Words ?? [])
             .GroupBy(word => word.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-        var projectWords = _texts.ProjectWords.ToDictionary(row => row.Form, StringComparer.Ordinal);
+        var projectWords = _texts.ProjectWords.Where(row => row.WordformId is not null)
+            .ToDictionary(row => (row.WordformId!.Value, row.Form));
 
         Texts.Clear();
         if (_texts.Response is { } response)
@@ -530,7 +549,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectMenuLabel));
         NotifyScopeCommands();
 
-        var reselected = Texts.FirstOrDefault(text => text.Title == previousTitle) ?? Texts.FirstOrDefault();
+        var reselected = Texts.FirstOrDefault(text => text.TextId == previousTextId) ?? Texts.FirstOrDefault();
         if (ReferenceEquals(reselected, SelectedText)) RefreshLines();
         else SelectedText = reselected;
     }
@@ -916,16 +935,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void RefreshPendingMarkers()
     {
-        var pending = _changes.Items.GroupBy(item => item.Word, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
         {
-            pending.TryGetValue(token.Form, out var changes);
-            var relevant = changes?.Where(change => change.Occurrence is null ||
-                change.Occurrence == token.Occurrence).ToArray();
+            var relevant = _changes.Items.Where(change => change.Addresses(token)).ToArray();
             token.PendingState = PendingChangeStates.FromChanges(relevant);
             token.IsPending = token.PendingState != PendingChangeState.None;
-            token.SetStagedMarkings(relevant ?? []);
+            token.SetStagedMarkings(relevant);
             token.IsUncertainChanged = false;
         }
         foreach (var line in Texts.SelectMany(text => text.Lines))
@@ -967,7 +982,7 @@ public sealed record TextOccurrenceLocation(int TextOrder, int LineOrder, int Wo
 public sealed class ResultsTextViewModel
 {
     public ResultsTextViewModel(TextLines text, IReadOnlyDictionary<string, AssessmentWordResult> results,
-        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null)
+        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
@@ -988,7 +1003,7 @@ public sealed class ResultsTextViewModel
 public sealed class ResultsLineViewModel : ObservableObject
 {
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
-        IReadOnlyDictionary<string, TextWordRowViewModel>? projectWords = null, Guid textId = default)
+        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null, Guid textId = default)
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
@@ -997,7 +1012,8 @@ public sealed class ResultsLineViewModel : ObservableObject
         SegmentId = line.SegmentId;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
             token.Form is { } form && results.TryGetValue(form, out var result) ? result : null,
-            token.Form is { } projectForm && projectWords is not null && projectWords.TryGetValue(projectForm, out var projectWord)
+            token.WordformId is { } wordformId && token.Form is { } projectForm && projectWords is not null &&
+                projectWords.TryGetValue((wordformId, projectForm), out var projectWord)
                 ? projectWord : null,
             occurrence: token.Form is not null && textId != Guid.Empty && line.ParagraphId != Guid.Empty &&
                 line.SegmentId != Guid.Empty && token.OccurrenceIndex >= 0

@@ -197,35 +197,22 @@ public sealed partial class ResultsInTextViewModel
     private bool CanUndoChanges(AnalysisOperationScope scope) => scope != AnalysisOperationScope.AssessmentSelection &&
         HasChangesFor(TokensFor(scope));
 
-    private bool HasChangesFor(IEnumerable<ResultsTokenViewModel> tokens)
+    private bool HasChangesFor(IEnumerable<ResultsTokenViewModel> tokens) => ChangesFor(tokens).Length > 0;
+
+    private ChangeViewModel[] ChangesFor(IEnumerable<ResultsTokenViewModel> tokens)
     {
-        var forms = tokens.Where(token => token.IsWord).Select(token => token.Form)
-            .ToHashSet(StringComparer.Ordinal);
-        return _changes.Items.Any(change => forms.Contains(change.Word));
+        var wordTokens = tokens.Where(token => token.IsWord).ToArray();
+        return _changes.Items.Where(change => wordTokens.Any(change.Addresses))
+            .DistinctBy(change => change.ChangeId).ToArray();
     }
 
     private async Task UndoChangesAsync(AnalysisOperationScope scope)
     {
-        var tokens = TokensFor(scope).ToArray();
-        var forms = tokens.Where(token => token.IsWord).Select(token => token.Form)
-            .ToHashSet(StringComparer.Ordinal);
-        var occurrences = tokens.Select(token => token.Occurrence).OfType<OccurrenceAnchor>().ToHashSet();
-        var count = _changes.Items.Count(change => forms.Contains(change.Word) &&
-            (change.Occurrence is null || occurrences.Contains(change.Occurrence)));
-        if (count == 0) return;
+        var changes = ChangesFor(TokensFor(scope));
+        if (changes.Length == 0) return;
         using var usageAction = _commands.BeginUsageAction("remove-pending-change",
-            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", count));
-        await UndoChangesAsync(tokens).ConfigureAwait(true);
-    }
-
-    private async Task UndoChangesAsync(IEnumerable<ResultsTokenViewModel> tokens)
-    {
-        var wordTokens = tokens.Where(token => token.IsWord).ToArray();
-        var forms = wordTokens.Select(token => token.Form).ToHashSet(StringComparer.Ordinal);
-        var occurrences = wordTokens.Select(token => token.Occurrence).OfType<OccurrenceAnchor>().ToHashSet();
-        foreach (var change in _changes.Items.Where(change => forms.Contains(change.Word) &&
-                     (change.Occurrence is null || occurrences.Contains(change.Occurrence)))
-                     .DistinctBy(change => change.ChangeId).ToArray())
+            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", changes.Length));
+        foreach (var change in changes)
             await _changes.RemoveCommand.ExecuteAsync(change).ConfigureAwait(true);
     }
 

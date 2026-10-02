@@ -54,6 +54,15 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         using var cache = _pristine.NewScratch();
         var firstText = SeededProject.SeedText(cache, _pristine.Seed);
         var secondText = SeededProject.SeedText(cache, _pristine.Seed);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var secondSegment = cache.ServiceLocator.GetInstance<ISegmentRepository>()
+                .GetObject(secondText.FirstSegmentId);
+            var sharedAnalysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>()
+                .GetObject(firstText.ApprovedAnalysisId);
+            secondSegment.AnalysesRS[0] = sharedAnalysis;
+        });
+        secondText = secondText with { AnalysedWordformId = firstText.AnalysedWordformId };
         new FwDataProjectLoader().Save(cache);
         var fwDataPath = cache.ProjectId.Path;
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());

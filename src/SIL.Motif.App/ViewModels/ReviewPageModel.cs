@@ -40,7 +40,7 @@ public sealed class ReviewPageModel : PageModel
         ShowContextCommand = new RelayCommand<ChangeViewModel>(ShowContext);
         GoToTextCommand = new RelayCommand<ChangeViewModel>(change =>
         {
-            if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word);
+            if (change is not null) Context.OpenOccurrence(change.Occurrence, change.Word, change.WordformId);
         });
         MeasureCommand = new AsyncRelayCommand(MeasureAsync,
             () => Changes.HasItems && Context.HasProject && !IsMeasuring);
@@ -461,7 +461,7 @@ public sealed class ReviewPageModel : PageModel
         var wasOpen = change.Listed?.IsOpen == true;
         change.Listed = Context.Assess.Words.Listed(change.Word, new WordRowRoutes
         {
-            OpenInText = word => Context.OpenOccurrence(change.Occurrence, word),
+            OpenInText = word => Context.OpenOccurrence(change.Occurrence, word, change.WordformId),
             TryWord = Context.TryWord,
         });
         change.Listed.IsOpen = wasOpen;

@@ -27,7 +27,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(LcmCacheTestCollection.Name)]
-public sealed class ReviewUndoRealClientTests(PristineProjectFixture pristine)
+public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pristine)
 {
     [Fact]
     public async Task RemoveAnalysisStagesAsRemovedAndUndoUsesTheRealClient()
@@ -72,7 +72,8 @@ public sealed class ReviewUndoRealClientTests(PristineProjectFixture pristine)
         Assert.All(changes.Items, item => Assert.Equal("Added as Unknown from accepting a set", item.SourceText));
         var groupId = Assert.Single(changes.Items.Select(item => item.GroupId).Distinct());
         Assert.False(string.IsNullOrWhiteSpace(groupId));
-        await changes.RemoveCommand.ExecuteAsync(changes.Items[0]);
+        var group = new ReviewChangeGroupViewModel("Added", changes.Items.ToArray(), changes);
+        await group.UndoAllCommand.ExecuteAsync(null);
 
         Assert.Empty(changes.Items);
         Assert.Empty(changes.Snapshot.Changes);

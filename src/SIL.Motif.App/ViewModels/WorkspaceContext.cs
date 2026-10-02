@@ -525,14 +525,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));
 
-    public void OpenOccurrence(OccurrenceAnchor? occurrence, string word)
+    public void OpenOccurrence(OccurrenceAnchor? occurrence, string word, string? wordformId = null)
     {
         if (occurrence is { } anchor && _occurrenceNavigator?.Invoke(anchor) == true)
         {
             OpenTexts(TextsTab.AnalyzeTexts);
             return;
         }
-        OpenWord(word);
+        Open(new OpenWordRequest(word, wordformId));
     }
 
     /// <summary>Registers the Texts page as the source of loaded sentence context.</summary>

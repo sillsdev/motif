@@ -5,6 +5,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -755,6 +756,60 @@ public sealed class WorkspaceContextTests
         Assert.Equal(string.Empty, review.Badge);
     }
 
+    [Theory]
+    [InlineData(ChangeKinds.IncorrectSpelling, false, false, false)]
+    [InlineData(ChangeKinds.IncorrectSpelling, true, false, true)]
+    [InlineData(ChangeKinds.AddCandidate, false, false, true)]
+    [InlineData(ChangeKinds.AddCandidate, true, false, false)]
+    [InlineData(ChangeKinds.IncorrectSpelling, false, true, false)]
+    [InlineData(ChangeKinds.AddCandidate, false, true, true)]
+    public async Task ReviewNavigationPreservesAnOccurrenceFreeHomographsIdentity(
+        string kind, bool reverse, bool absent, bool rowRoute)
+    {
+        var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var otherId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var (fake, context) = NewContextWithFake();
+        var texts = new TextsPageModel(context);
+        var review = new ReviewPageModel(context);
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
+            [new PendingChange("other", CanonicalId.FromGuid(otherId).Value, "dogs", kind, null, null, [])], []));
+        var own = new TextToken("dogs", "dogs", null, null) { WordformId = ownId };
+        var other = own with { WordformId = otherId };
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Alpha",
+            [new TextLine(1, absent ? [own] : reverse ? [other, own] : [own, other])])], true));
+        await context.OpenProjectAsync(ProjectPath);
+        await texts.Words.ReloadAsync();
+        var evidence = new WorkspaceEvidence(Assessment() with
+        {
+            Words = [new AssessmentWordResult("dogs", "no-analysis", false, "Complete", 1, null)
+            {
+                ProjectStanding = ProjectStanding.Approved,
+                Comparison = new WordComparison(ProjectStanding.Approved, WordRowOutcome.Same,
+                    "kept", "Shared spelling comparison", WordRowTone.Fine)
+                    { Availability = AnalysisComparisonAvailability.Available },
+            }],
+        }, null, false);
+        context.Assess.Restore(evidence);
+        context.PublishEvidence(evidence);
+        var change = Assert.Single(context.Changes.Items);
+
+        Assert.Single(review.ReviewGroups);
+        if (rowRoute) change.Listed!.Row.OpenInTextCommand.Execute(null);
+        else review.GoToTextCommand.Execute(change);
+
+        var selected = Assert.IsType<ResultsTokenViewModel>(texts.ResultsInText.SelectedToken);
+        Assert.Equal(otherId, selected.WordformId);
+        if (absent)
+        {
+            Assert.Equal("Not in a chosen text", selected.Location);
+            Assert.Empty(selected.ProjectApprovedAnalyses);
+            Assert.Equal(AnalysisComparisonAvailability.Unavailable, selected.Comparison.Availability);
+            Assert.Empty(selected.FieldWorksAnalyses);
+        }
+        else Assert.Contains(texts.ResultsInText.Texts.SelectMany(text => text.Lines)
+            .SelectMany(line => line.Tokens), token => ReferenceEquals(token, selected));
+    }
+
     [Fact]
     public void OpeningATypedAssessedWordThroughTheContextSelectsItsReadingDetail()
     {
@@ -898,11 +953,12 @@ public sealed class WorkspaceContextTests
     {
         var (fake, context) = NewContextWithFake();
         var texts = new TextsPageModel(context);
+        var wordformId = Guid.NewGuid();
         await context.Changes.OpenProjectAsync(ProjectPath);
         fake.ListTextWordsCompletesWith(new TextWordsResponse(
-            [new TextWord("kitabu", null,
+            [new TextWord("kitabu", wordformId.ToString("D"),
                 [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], [])],
-            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null)])])],
+            [new TextLines(TextId, "Alpha", [new TextLine(1, [new TextToken("kitabu", "kitabu", null, null) { WordformId = wordformId }])])],
             HasBaseline: true, OccurrenceCount: 1));
         await texts.Words.SetProjectAsync(ProjectPath);
         context.Assess.Result = Assessment() with { Words = [ApprovedUnparsed("kitabu")] };
@@ -921,7 +977,8 @@ public sealed class WorkspaceContextTests
         Assert.Equal("Not applied yet", list.PendingChangeStatus);
 
         context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "kitabu", "",
-            fit: new ChangeFit("stale-change", false, ["The project changed."])));
+            fit: new ChangeFit("stale-change", false, ["The project changed."]),
+            wordformId: CanonicalId.FromGuid(wordformId).Value));
 
         Assert.Equal(PendingChangeState.NoLongerFits, token.PendingState);
         Assert.Equal(PendingChangeState.NoLongerFits, Assert.Single(texts.Assess.Compare.Words).PendingState);

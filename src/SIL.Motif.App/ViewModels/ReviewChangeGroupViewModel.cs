@@ -78,11 +78,16 @@ public sealed class ReviewChangeGroupViewModel
         foreach (var item in Items)
         {
             if (_changes.ProjectGeneration != _projectGeneration) return;
-            var key = item.GroupId ?? item.ChangeId;
+            var wholeGroup = item.GroupId is { } groupId &&
+                _changes.Items.Where(change => change.GroupId == groupId)
+                    .All(change => Items.Any(visible => visible.ChangeId == change.ChangeId));
+            var key = wholeGroup ? item.GroupId! : item.ChangeId;
             if (!removals.Add(key)) continue;
-            var current = _changes.Items.FirstOrDefault(change => (change.GroupId ?? change.ChangeId) == key);
-            if (current is not null)
-                await _changes.RemoveCommand.ExecuteAsync(current).ConfigureAwait(true);
+            var current = _changes.Items.FirstOrDefault(change =>
+                (wholeGroup ? change.GroupId : change.ChangeId) == key);
+            if (current is null) continue;
+            if (wholeGroup) await _changes.RemoveGroupAsync(current).ConfigureAwait(true);
+            else await _changes.RemoveCommand.ExecuteAsync(current).ConfigureAwait(true);
         }
     }
 }

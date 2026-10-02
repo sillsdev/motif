@@ -820,6 +820,7 @@ public sealed class PageScreenshots
                 stored.Length > 0 ? "unapproved" : "unanalysed")
             {
                 Analysis = stored.FirstOrDefault(), StoredAnalyses = stored,
+                WordformId = Guid.Parse(Id("wordform " + form, 0)),
                 StoredAnalysisId = stored.FirstOrDefault()?.StoredAnalysisId,
                 WordLink = "silfw://localhost/link?tool=Analyses",
             };
@@ -841,7 +842,7 @@ public sealed class PageScreenshots
                 .Where(token => token.Form == word.Word).Select(token => new WordOccurrence(text.TextId, text.Title,
                     line.Number, string.Join(" ", line.Tokens.Select(token => token.Text)), token.Status!, token.Analysis))))
                 .ToArray();
-            return new TextWord(word.Word, null, occurrences,
+            return new TextWord(word.Word, Id("wordform " + word.Word, 0), occurrences,
                 stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved).ToArray(),
                 stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved).ToArray(),
                 stored.Count(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Candidate)) { Analyses = stored };

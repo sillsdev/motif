@@ -53,27 +53,28 @@ public static class TextWordsQuery
             var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity);
             var textsById = current.Projection.Texts.ToDictionary(text => text.TextId);
             var wordformsById = current.Projection.Wordforms.ToDictionary(wordform => wordform.WordformId);
-            var order = new List<string>();
-            var accumulators = new Dictionary<string, WordAccumulator>(StringComparer.Ordinal);
+            var order = new List<(string Form, Guid? WordformId)>();
+            var accumulators = new Dictionary<(string Form, Guid? WordformId), WordAccumulator>();
             var texts = new List<TextLines>();
 
             foreach (var textId in request.TextIds)
             {
                 if (cancellationToken.IsCancellationRequested) return Cancelled();
                 if (!textsById.TryGetValue(textId, out var text)) continue;
-                var analyses = text.Analyses.ToDictionary(
-                    stored => stored.Key, stored => ReadAnalysis(stored, string.Empty, navigation.LinkFor), StringComparer.Ordinal);
                 var lines = new List<TextLine>();
                 foreach (var line in text.Lines)
                 {
                     var tokens = new List<TextToken>();
                     foreach (var token in line.Tokens)
                     {
-                        var analysis = token.AnalysisKey is { } key ? analyses[key] : null;
                         var storedAnalyses = token.WordformId is { } storedWordformId &&
                             wordformsById.TryGetValue(storedWordformId, out var storedWordform)
                                 ? storedWordform.Analyses.Select(item => ReadAnalysis(item, string.Empty, navigation.LinkFor)).ToArray()
                                 : Array.Empty<ProjectAnalysis>();
+                        var storedAnalysisId = token.AnalysisId is { } analysisId
+                            ? CanonicalId.FromGuid(analysisId).Value : null;
+                        var analysis = storedAnalysisId is not null
+                            ? storedAnalyses.FirstOrDefault(item => item.StoredAnalysisId == storedAnalysisId) : null;
                         var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0]);
                         tokens.Add(new TextToken(token.Text, primary.Length == 0 ? null : primary,
                             GlossOf(analysis), token.Status)
@@ -84,8 +85,7 @@ public static class TextWordsQuery
                             Category = token.Category,
                             WordformId = token.WordformId,
                             OccurrenceIndex = token.OccurrenceIndex,
-                            StoredAnalysisId = token.AnalysisId is { } analysisId
-                                ? CanonicalId.FromGuid(analysisId).Value : null,
+                            StoredAnalysisId = storedAnalysisId,
                             IncorrectSpelling = token.WordformId is { } markedWordformId &&
                                 wordformsById.TryGetValue(markedWordformId, out var markedWordform) &&
                                 markedWordform.IncorrectSpelling,
@@ -98,11 +98,12 @@ public static class TextWordsQuery
                         {
                             var form = Canonicalize(raw);
                             if (form.Length == 0) continue;
-                            if (!accumulators.TryGetValue(form, out var accumulator))
+                            var wordKey = (form, token.WordformId);
+                            if (!accumulators.TryGetValue(wordKey, out var accumulator))
                             {
                                 accumulator = new WordAccumulator(token.WordformId);
-                                accumulators.Add(form, accumulator);
-                                order.Add(form);
+                                accumulators.Add(wordKey, accumulator);
+                                order.Add(wordKey);
                             }
                             accumulator.Occurrences.Add(new WordOccurrence(
                                 text.TextId, text.Title, line.Number, line.Sentence, token.Status, analysis));
@@ -118,9 +119,9 @@ public static class TextWordsQuery
                 texts.Add(new TextLines(text.TextId, text.Title, lines));
             }
 
-            var words = order.Select(form =>
+            var words = order.Select(wordKey =>
             {
-                var accumulator = accumulators[form];
+                var accumulator = accumulators[wordKey];
                 var wordform = accumulator.WordformId is { } id && wordformsById.TryGetValue(id, out var found)
                     ? found : null;
                 var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
@@ -129,7 +130,7 @@ public static class TextWordsQuery
                     ?? Array.Empty<ProjectAnalysis>();
                 var all = wordform?.Analyses.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                return new TextWord(form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
+                return new TextWord(wordKey.Form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
                     approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false)
                 {
                     Analyses = all,

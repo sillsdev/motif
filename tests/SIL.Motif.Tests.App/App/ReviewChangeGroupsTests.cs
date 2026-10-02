@@ -95,7 +95,7 @@ public sealed class ReviewChangeGroupsTests
         Assert.Equal("Added as Unknown from accepting a set",
             group.Items.Single(item => item.ChangeId == "accepted").SourceText);
         Assert.Equal("· 2 words", group.WordCountText);
-        Assert.Equal("Undo accepted set containing: accepted",
+        Assert.Equal("Undo: accepted",
             group.Items.Single(item => item.ChangeId == "accepted").UndoAutomationName);
     }
 
@@ -150,6 +150,26 @@ public sealed class ReviewChangeGroupsTests
 
         Assert.Equal(["first", "second"], fake.PendingRemoveRequests.Select(request => request.ChangeId));
         Assert.Equal("other", Assert.Single(page.Context.Changes.Items).ChangeId);
+    }
+
+    [Fact]
+    public async Task UndoAllInOneVisibleGroupKeepsOtherMembersOfTheAcceptedSet()
+    {
+        var (page, fake) = await OpenReviewAsync(
+        [
+            Change("stale", "kitabu", ChangeKinds.AddCandidate, groupId: "accepted-set"),
+            Change("kept", "kitabu", ChangeKinds.AddCandidate, groupId: "accepted-set"),
+        ]);
+        fake.PendingChangesIs(page.Context.Changes.Snapshot with
+        {
+            FitSummary = [new ChangeFit("stale", false, []), new ChangeFit("kept", true, [])],
+        });
+        await page.Context.Changes.ReloadAsync();
+
+        await page.ReviewGroups.Single(group => group.IsNoLongerFits).UndoAllCommand.ExecuteAsync(null);
+
+        Assert.Equal("stale", Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Equal("kept", Assert.Single(page.Context.Changes.Items).ChangeId);
     }
 
     [Fact]

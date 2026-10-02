@@ -365,7 +365,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             CancellationToken.None).ConfigureAwait(true);
     }
 
-    private async Task RemoveAsync(ChangeViewModel? change)
+    private Task RemoveAsync(ChangeViewModel? change) => RemoveAsync(change, wholeGroup: false);
+
+    internal Task RemoveGroupAsync(ChangeViewModel change) => RemoveAsync(change, wholeGroup: true);
+
+    private async Task RemoveAsync(ChangeViewModel? change, bool wholeGroup)
     {
         if (change is null) return;
         if (ProjectPath is not { } path) return;
@@ -373,7 +377,8 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             UsageArgumentShape.Text("changeId"));
         var generation = _projectGeneration;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
-            path, MotifProductVersion.CurrentText, Snapshot.Revision, change.GroupId ?? change.ChangeId),
+            path, MotifProductVersion.CurrentText, Snapshot.Revision,
+            wholeGroup ? change.GroupId ?? change.ChangeId : change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
@@ -448,7 +453,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             return new ChangeViewModel(change.Kind, change.Word,
                 change.DisplayReading ?? "", change.ChangeId, fit, change.Analyses, change.OriginPage,
                 fit?.Occurrence ?? change.Occurrence, change.StoredAnalysisId, change.ReadingIndex,
-                change.GroupId);
+                change.GroupId, change.WordformId);
         }).ToArray());
     }
 
@@ -493,12 +498,13 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 public sealed partial class ChangeViewModel(string kind, string word, string reading,
     string? changeId = null, ChangeFit? fit = null, IReadOnlyList<ReviewAnalysis>? analyses = null,
     string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
-    int? readingIndex = null, string? groupId = null) : ObservableObject
+    int? readingIndex = null, string? groupId = null, string? wordformId = null) : ObservableObject
 {
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public string? GroupId { get; } = groupId;
+    public string? WordformId { get; } = wordformId;
     public ChangeFit? Fit { get; } = fit;
     public OccurrenceAnchor? Occurrence { get; } = occurrence;
     private string _whereText = occurrence is null ? "Not tied to a text occurrence" : "Text location not loaded";
@@ -511,6 +517,22 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         OnPropertyChanged(nameof(WhereText));
         OnPropertyChanged(nameof(DetailText));
         OnPropertyChanged(nameof(HasDetailText));
+    }
+
+    /// <summary>
+    /// Whether this choice addresses the token's exact wordform and, for an occurrence-specific choice, its
+    /// exact Text location. A choice without either identity cannot be associated with a token by spelling.
+    /// </summary>
+    public bool Addresses(ResultsTokenViewModel token)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        if (!token.IsWord) return false;
+        if (WordformId is not null)
+        {
+            if (token.WordformId is not { } id || WordformId != CanonicalId.FromGuid(id).Value) return false;
+        }
+        else if (Occurrence is null) return false;
+        return Occurrence is null || Occurrence == token.Occurrence;
     }
 
     public string? StoredAnalysisId { get; } = storedAnalysisId;
@@ -645,8 +667,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         ? $"Approve 1 of {analyses.Count} analyses" : Label;
     public string Word { get; } = word;
     public string CheckAgainAutomationName => $"Check again: {Word}";
-    public string UndoAutomationName => GroupId is null ? $"Undo: {Word}"
-        : $"Undo accepted set containing: {Word}";
+    public string UndoAutomationName => $"Undo: {Word}";
 
     /// <summary>The parser's reading, for a change that sends it to FieldWorks or judges it.</summary>
     public string Reading { get; } = reading;

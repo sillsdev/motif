@@ -215,7 +215,7 @@ public sealed class PendingChangesViewModelTests
     }
 
     [Fact]
-    public async Task UndoingAcceptedTextUsesGroupIdToRemoveEveryReading()
+    public async Task UndoingOneAcceptedChoiceKeepsTheOtherReading()
     {
         const string groupId = "accept/group";
         var first = new PendingChange("change/one", "wordform/one", "one", "add-candidate", "assessment/one",
@@ -230,8 +230,8 @@ public sealed class PendingChangesViewModelTests
 
         await changes.RemoveCommand.ExecuteAsync(changes.Items[0]);
 
-        Assert.Equal(groupId, Assert.Single(fake.PendingRemoveRequests).ChangeId);
-        Assert.Empty(changes.Items);
+        Assert.Equal(first.ChangeId, Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Equal(second.ChangeId, Assert.Single(changes.Items).ChangeId);
     }
 
     [Fact]

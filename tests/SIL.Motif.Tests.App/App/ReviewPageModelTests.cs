@@ -550,6 +550,27 @@ public sealed class ReviewPageModelTests
     private static PendingChange Change(string id, string word) =>
         new(id, "wordform/" + id, word, "approve", "assessment/one", "reading", ["operation/" + id]);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RemovingOneGroupedReviewChoiceKeepsTheOtherHomograph(bool nonFitting)
+    {
+        var first = Change("own", "kitabu") with { WordformId = "AAAAAAAAAAAAAAAAAAAAAQ", GroupId = "accepted" };
+        var other = Change("other", "kitabu") with { WordformId = "AAAAAAAAAAAAAAAAAAAAAg", GroupId = "accepted" };
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [first, other],
+            [new ChangeFit(first.ChangeId, !nonFitting, []), new ChangeFit(other.ChangeId, true, [])]));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        if (nonFitting) await page.RemoveNonFittingCommand.ExecuteAsync(null);
+        else await context.Changes.RemoveCommand.ExecuteAsync(context.Changes.Items[0]);
+
+        Assert.Equal("own", Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Equal("other", Assert.Single(context.Changes.Items).ChangeId);
+    }
+
     private static WorkspaceContext NewContext(FakeCommandClient fake)
     {
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));

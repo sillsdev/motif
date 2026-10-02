@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -79,7 +80,7 @@ public static class WordProjectStatuses
 }
 
 /// <summary>
-/// Reads words from the selected Texts for the Words table: one row per distinct form, its
+/// Reads words from the selected Texts for the Words table: one row per form and wordform identity, its
 /// occurrences, and what the project holds for it. Reloads whenever <see cref="SelectionViewModel.ChosenTextIds"/>
 /// changes. A newer selection cancels the read it replaces, and only the current generation's answer is ever
 /// applied, so a rapid run of checkbox clicks shows the last one's words. A read that fails clears the words it
@@ -302,7 +303,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
             foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
             _all.Clear();
-            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes)));
+            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes,
+                Path.GetFileNameWithoutExtension(path))));
             foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
             OnPropertyChanged(nameof(CheckedWordCount));
             HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
@@ -446,7 +448,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 }
 
-/// <summary>One distinct word form as the Words table shows it: its occurrences and the project's own analyses.</summary>
+/// <summary>One wordform spelling as the Words table shows it: its occurrences and its own project analyses.</summary>
 public sealed partial class TextWordRowViewModel : ObservableObject
 {
     [ObservableProperty]
@@ -473,13 +475,46 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     partial void OnLastResultChanged(AssessWordRowViewModel? value)
     {
         var wasOpen = _listed?.IsOpen == true;
-        _listed = value is null ? null : ListedWordViewModel.Of(value);
+        _listed = value is null ? null : ListedWordViewModel.Of(ProjectAssessment(value), _routes);
         if (_listed is not null) _listed.IsOpen = wasOpen;
         else if (wasOpen) _notParsed.IsOpen = true;
     }
 
     private ListedWordViewModel? _listed;
     private readonly ListedWordViewModel _notParsed;
+    private readonly TextWord _word;
+    private readonly WordRowRoutes? _routes;
+    private readonly string? _projectName;
+
+    private AssessWordRowViewModel ProjectAssessment(AssessWordRowViewModel result)
+    {
+        var stored = _word.Analyses.Select(analysis => new ParserReading(analysis.Morphs)
+        {
+            StoredAnalysisId = analysis.StoredAnalysisId,
+            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+            Identity = analysis.Identity,
+        }).ToArray();
+        var expected = stored.FirstOrDefault(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved)
+            ?? (stored.Length == 1 ? stored[0] : null);
+        // A spelling's retained comparison cannot establish a particular wordform's matches or opinions.
+        var source = result.Source with
+        {
+            Comparison = null,
+            AnalysisComparison = null,
+            ReadingGrades = null,
+            Correctness = null,
+            MissedApproved = null,
+            FixFirst = null,
+            TryWordLink = _projectName is not null && WordformId is { } wordformId
+                ? FieldWorksLinks.ForTarget(_projectName, new FieldWorksLinkTarget("Analyses", wordformId)) : null,
+            StoredAnalyses = stored,
+            StoredAnalysesAvailable = true,
+            ExpectedAnalysis = expected,
+            ProjectStanding = WordProjectStatuses.StandingOf(_word),
+            OccurrenceCount = OccurrenceCount,
+        };
+        return new AssessWordRowViewModel(source, OccurrenceCount, _routes);
+    }
 
     /// <summary>
     /// The word as the Word list shows it: its row and card from the latest parse, or, before one reaches it, what
@@ -487,10 +522,14 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     /// </summary>
     public ListedWordViewModel Listed => _listed ?? _notParsed;
 
-    public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null)
+    public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null)
     {
         ArgumentNullException.ThrowIfNull(word);
+        _word = word;
+        _routes = routes;
+        _projectName = projectName;
         Form = word.Form;
+        WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
         var held = word.Approved.FirstOrDefault() ?? (word.Analyses.Count == 1 ? word.Analyses[0] : null);
         _notParsed = new ListedWordViewModel(WordRowViewModel.NotParsed(word.Form, WordProjectStatuses.StandingOf(word),
             held?.Morphs, word.Occurrences.Count, routes));
@@ -519,6 +558,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     }
 
     public string Form { get; }
+    public Guid? WordformId { get; }
     public int OccurrenceCount { get; }
     public bool HasApproved { get; }
     public WordProjectStatus Status { get; }
