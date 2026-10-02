@@ -13,7 +13,7 @@ public static class HermitCrabFailureExplanations
     {
         ["SurfaceFormMismatch"] = "The synthesized surface form does not match the input word.",
         ["BoundRoot"] = "A bound stem or root was found completely by itself. These must have at least one other morpheme present.",
-        ["PartialParse"] = "This parse does not include all analyzed morphemes. Perhaps the missing morphemes are in an inflectional template that is not available at this point in the synthesis.",
+        ["PartialParse"] = "This candidate ended as a partial parse; it did not include all analyzed morphemes.",
         ["NonPartialRuleProhibitedAfterFinalTemplate"] = "Further derivation is prohibited after a final template.",
         ["NonPartialRuleRequiredAfterNonFinalTemplate"] = "Further derivation is required after a non-final template, but this affix is not derivational.",
         ["RequiredStemName"] = "This allomorph's stem-name label requires an inflectional affix with a matching label, but there are no such affixes.",

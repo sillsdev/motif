@@ -19,7 +19,14 @@ internal static class TraceDiagnosticCapture
 {
     internal static WordTraceResponse Attach(WordTraceResponse response, BaselineRecord baseline, ProjectLocator project)
     {
-        if (string.IsNullOrEmpty(response.DiagnosticJson)) return response;
+        var baselineSource = new TraceBaselineSource(baseline.Token, baseline.SourceLastWriteUtc, baseline.PublishedUtc,
+            $"Saved FieldWorks project as of {baseline.SourceLastWriteUtc:O}; Baseline captured {baseline.Token.CapturedUtc}.");
+        if (string.IsNullOrEmpty(response.DiagnosticJson)) return response with
+        {
+            HostCapture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
+                response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow, response.ElapsedMs, [])
+                { Baseline = baselineSource },
+        };
         using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
         var container = cache.ServiceLocator.WritingSystems;
         var inventory = WritingSystemInventoryReader.Read(cache);
@@ -34,7 +41,10 @@ internal static class TraceDiagnosticCapture
             .Concat(inventory.Analysis.Select(ws => Describe(ws, false))).ToArray();
         var capture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
             response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow,
-            response.ElapsedMs, systems);
+            response.ElapsedMs, systems)
+        {
+            Baseline = baselineSource,
+        };
         var sourceIdentity = ReadSourceIdentity(project.FullFwDataPath);
         var baselineMatches = Guid.TryParse(baseline.Token.ProjectIdentity, out var baselineIdentity) &&
             baselineIdentity == cache.LangProject.Guid;

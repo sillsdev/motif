@@ -39,6 +39,9 @@ public sealed record WorkspaceBaseline(
     /// <summary>Whether FieldWorks holds the project open, preventing a direct Apply.</summary>
     public bool FieldWorksHeldProject { get; init; }
 
+    /// <summary>Exact capture identity for checking display hints against returned trace evidence.</summary>
+    public SIL.Motif.Contract.Baselines.BaselineToken? Token { get; init; }
+
     /// <summary>The FieldWorks save the Baseline copies, or <see langword="null"/> before any capture.</summary>
     public DateTimeOffset? SourceLastWriteUtc { get; init; }
 

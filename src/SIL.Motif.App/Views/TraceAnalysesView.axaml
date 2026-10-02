@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TraceAnalysesView"
              x:DataType="vm:TraceWordViewModel">
@@ -8,7 +9,7 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
     <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-    <views:CopyableTextBlock Classes="muted" Text="In the order the parser found them." TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="Logical summaries in first-recorded order." TextWrapping="Wrap" />
     <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
@@ -17,9 +18,9 @@
               <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                 <views:CopyableTextBlock Text="{Binding Label}" FontWeight="SemiBold" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding Surface}" ToolTip.Tip="{Binding LegacyMorphemesTip}" />
-                <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding WaysFoundText}"
-                                         IsVisible="{Binding HasSeveralWays}"
-                                         ToolTip.Tip="The parser reached this analysis by more than one order of steps." />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted" Text="{Binding RecordedCountText}"
+                                         IsVisible="{Binding HasRepeatedRecords}"
+                                         ToolTip.Tip="The trace recorded this result more than once; distinct derivations are not established." />
               </Grid>
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                                        IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
@@ -70,5 +71,21 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <Expander Header="Recorded source analyses" IsExpanded="False">
+      <ItemsControl ItemsSource="{Binding SourceAnalyses}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="responses:TraceAnalysis">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
+              <views:CopyableTextBlock Text="{Binding AnalysisId, StringFormat='Producer id: {0}'}" />
+              <views:CopyableTextBlock Text="{Binding Index, StringFormat='Recorded index: {0}'}" />
+              <views:CopyableTextBlock Text="{Binding Surface}" />
+              <views:CopyableTextBlock Text="{Binding ProjectionStatus, StringFormat='Projection status: {0}'}" />
+              <views:CopyableTextBlock Text="{Binding ProjectionErrorCode}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding ProjectionError}" TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Expander>
   </StackPanel>
 </UserControl>

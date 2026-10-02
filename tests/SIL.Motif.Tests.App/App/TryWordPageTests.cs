@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TryWordPageTests
 {
     [Fact]
-    public void RulesRowsDisplayCapturedFieldWorksNamesAndInspectTheirRecordedIdentity()
+    public void TreeContextDisplaysCapturedFieldWorksNamesWithoutBecomingABestPath()
     {
         RunOnAvalonia(async () =>
         {
@@ -30,6 +30,32 @@ public sealed class TryWordPageTests
             context.ProjectPath = ProjectPath;
             context.Assess.ProjectPath = ProjectPath;
             fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!);
+            var page = new TryWordPageModel(context);
+            context.TryWord("word");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.Empty(page.RulesOnBestPath);
+            Assert.Equal("Vowel harmony", page.Trace.Root!.Children[0].Source);
+            page.Trace.Candidates[0].IsTreeContextExpanded = true;
+            Assert.Equal("Vowel harmony", page.Trace.Candidates[0].RecordedTreeContext[0].Source);
+            Assert.Equal("Producer name", Assert.Single(page.Trace.Reading!.Refs).Label);
+        });
+    }
+
+    [Fact]
+    public void AncestorRuleRowsDisplayCapturedFieldWorksNamesAndInspectTheirRecordedIdentity()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var diagnostic = System.Text.Json.Nodes.JsonNode.Parse(TraceEnvelope.CapturedRuleLabel)!;
+            var children = diagnostic["trace"]!["children"]!.AsArray();
+            var terminal = children[1]!.DeepClone();
+            children.RemoveAt(1);
+            children[0]!["children"]!.AsArray().Add(terminal);
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(diagnostic.ToJsonString()).Value!);
             var page = new TryWordPageModel(context);
             var timing = new TimingPageModel(context);
             context.TryWord("word");
@@ -455,7 +481,7 @@ public sealed class TryWordPageTests
     // Parser class names such as MorphologicalRuleSynthesis, its reason codes, and Motif's own placeholders.
     private static readonly System.Text.RegularExpressions.Regex EngineWords = new(
         @"^\?$|[A-Z][a-z]+(?:Rule|Stratum|Template)?(?:Analysis|Synthesis)(?:Input|Output)?\b|MorphologicalRule|" +
-        @"NonPartialRule|recorded attempt|Not recorded|not recorded|\bMSA\b|stratum|ordinal|GUID|Projection");
+        @"NonPartialRule|recorded attempt|\bMSA\b|stratum|ordinal|GUID|Projection");
 
     [Fact]
     public void TheSeededTraceOfMatinluReadsInPlainWords()
@@ -474,8 +500,10 @@ public sealed class TryWordPageTests
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;
             Assert.True(page.Trace.HasResult);
-            Assert.Equal(2, Assert.Single(page.Trace.Analyses).WaysFound);
-            Assert.Equal("Parsed: 1 analysis, found 2 ways", page.Trace.AnalysesHeading);
+            Assert.Equal(2, page.Trace.Analyses.Count);
+            Assert.All(page.Trace.Analyses, analysis => Assert.Equal(1, analysis.RecordCount));
+            Assert.Equal(["analysis-0", "analysis-1"], page.Trace.SourceAnalyses.Select(analysis => analysis.AnalysisId));
+            Assert.Equal("Parsed: 2 analyses", page.Trace.AnalysesHeading);
             Assert.All(page.RulesOnBestPath, row => Assert.Equal("tried", row.Outcome));
             // The rules read in building order, outward from the stem, each with the affix's own form.
             Assert.Equal(["ma", "lu"], page.RulesOnBestPath.Select(row => row.Rule));
@@ -492,7 +520,7 @@ public sealed class TryWordPageTests
                 window.Show();
                 Settle(window);
                 visible.AddRange(VisibleTexts(view));
-                analysesTop = TopOf(view, "Parsed: 1 analysis, found 2 ways", window);
+                analysesTop = TopOf(view, "Parsed: 2 analyses", window);
                 rulesTop = view.GetLogicalDescendants().OfType<Border>().Single(border =>
                         AutomationProperties.GetName(border) == "Rules on this word's best path")
                     .TranslatePoint(default, window)!.Value.Y;
@@ -507,18 +535,18 @@ public sealed class TryWordPageTests
             }
         });
 
-        // A parsed word leads with its one analysis; the paths the parser dropped wait, folded, under a count.
-        Assert.Contains("Parsed: 1 analysis, found 2 ways", visible);
+        // A parsed word leads with its recorded analyses; the paths the parser dropped wait, folded, under a count.
+        Assert.Contains("Parsed: 2 analyses", visible);
         Assert.Contains("4 other paths the parser tried and dropped (normal)", visible);
         Assert.True(analysesTop < rulesTop, $"the analyses sit at {analysesTop:F0} px, below the rules at {rulesTop:F0} px");
         Assert.DoesNotContain("Why the other attempts stopped", visible);
         Assert.DoesNotContain("Further derivation is prohibited after a final template.", visible);
         Assert.Single(visible, text => text == "Analysis 1");
-        Assert.DoesNotContain("Analysis 2", visible);
+        Assert.Contains("Analysis 2", visible);
         Assert.Contains("Taking the word apart found ma- · tin · -lu", visible);
 
         Assert.Contains("Why the other attempts stopped", unfolded);
-        Assert.Contains("Further derivation is prohibited after a final template.", unfolded);
+        Assert.Contains("This candidate ended as a partial parse; it did not include all analyzed morphemes.", unfolded);
         foreach (var texts in new[] { visible, unfolded })
         {
             Assert.Contains("Morphological rule", texts);

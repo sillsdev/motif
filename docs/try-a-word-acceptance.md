@@ -4,7 +4,7 @@
 
 - A successful root-plus-affix analysis retains ordered authored form/MSA identities and independently captured linguistic labels.
 - Multiple successful analyses retain multiplicity and parser order; no invented ranking.
-- Failed branches retain their precise source rule, subrule, input/output, and recorded contextual reason. A missing fact is marked unavailable, never guessed from a name.
+- Terminal outcomes retain their own reasons and operands; rule rejections retain their own source, subrule and forms. Sibling proximity never establishes a cause. Missing reasons, rejection details and grammar sources are typed as not recorded.
 - Trace-only enrichment does not change parser results or ordinary trace output.
 - All category counters survive: attempts, work, outputs, notApplied, noRoot, surfaceMismatch, uses. Unsupported timing remains null, not zero.
 - Overall elapsed time and parser elapsed time retain their distinct meanings. Category totals are never labelled individual-step or detour measurements.
@@ -46,3 +46,12 @@ The final App diagnostic slice passed 22 focused tests. Headless coverage verifi
 The primary final producer gate passed `pg.ps1 -Mode check -Package pg-cli` and all 7 trace-focused CLI tests, including ordinary trace goldens, deep-tree serialization, and authored-headword retention. The final emitted XML fixture was copied into Motif and its separate human error and diagnostic errorCode assertions were verified.
 
 The isolated Motif suite previously passed 1906 tests with 38 skipped and the two baseline walkthrough failures. The final fixture verification passed 1905 with 38 skipped and those same two failures plus one intermittent RunnerSpineTests queued-job failure. A focused rerun after the managed build passed all 62 trace/runner tests, with 2 parser-dependent tests skipped; the runner failure did not reproduce. This is not a claim that the full suite is green. A supplemental build in the shared checkout also passed; its unrelated in-progress Results in Text and walkthrough failures are outside this feature commit.
+
+## Shared reader boundaries
+
+Every consumer keeps the same recorded evidence. Source analyses remain one-for-one in original order; a separately named logical summary compacts records only with equal exact ordered authored morphology from available projections. Unknown or unavailable projections remain separate, without asserting distinct derivations.
+
+- A terminal attempt ends at a Successful or Failed event, with actual ancestors as its path. Earlier siblings are recorded tree context with unknown membership, never derivation steps or borrowed causes.
+- Blocked is an intermediate event, recording lexical-family replacement in PanGloss v0.5.2. Its output and continued search remain visible.
+- A trace returns the exact Baseline token, source-save time, publication time and capture description it selected. Page descriptions require exact token equality; same-save recapture and publication between request and execution are covered.
+- Interrupted search retains tree progress even with no terminal attempt. An analysis-only capture never acquires a fabricated building pass.

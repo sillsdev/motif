@@ -96,8 +96,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var directions = WritingSystemsById(value);
         _reading = value?.Reading;
         _labels = new TraceDisplayLabels(_reading?.Refs ?? []);
-        _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions, _labels)).ToArray() ?? [];
-        _analyses = _reading?.Analyses.Select((analysis, index) => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions, index + 1)).ToArray() ?? [];
+        _candidates = _reading?.Attempts.Select(candidate => new TraceCandidateViewModel(candidate, allowLiveLinks, directions, _labels, _reading.Root)).ToArray() ?? [];
+        _analyses = _reading is null ? [] : _reading.LogicalAnalyses.Count > 0
+            ? _reading.LogicalAnalyses.Select((summary, index) => new TraceAnalysisViewModel(
+                _reading.Analyses[summary.SourcePositions[0]], allowLiveLinks, directions, index + 1, summary.RecordCount)).ToArray()
+            : _reading.Analyses.Select((analysis, index) => new TraceAnalysisViewModel(analysis, allowLiveLinks, directions, index + 1)).ToArray();
         var candidateViews = _candidates.ToDictionary(candidate => candidate.AttemptId!, StringComparer.Ordinal);
         _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate.AttemptId!]).ToArray() ?? [];
         ShowDroppedPaths = false;
@@ -112,6 +115,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(StopReason));
         OnPropertyChanged(nameof(HasStopReason));
         OnPropertyChanged(nameof(Analyses));
+        OnPropertyChanged(nameof(SourceAnalyses));
         OnPropertyChanged(nameof(HasAnalyses));
         OnPropertyChanged(nameof(HasNoAnalyses));
         OnPropertyChanged(nameof(AnalysesHeading));
@@ -148,7 +152,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (result.ParserElapsedMs is { } parserMs) parts.Add($"{FormatMs(parserMs)} in the parser");
             if (result.HostCapture?.WallElapsedMs is { } hostMs) parts.Add($"{FormatMs(hostMs)} overall");
             else if (result.ElapsedMs > 0) parts.Add($"{FormatMs(result.ElapsedMs)} overall");
-            if (HasComparison) parts.Add("approved analysis expected");
+            if (!result.Complete && result.Reading.Attempts.Count == 0) parts.Add("No terminal attempt recorded; tree progress retained");
+            if (HasComparison) parts.Add("Expected analysis source not recorded for this trace");
             return string.Join(" · ", parts);
         }
     }
@@ -188,10 +193,11 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public IReadOnlyList<TraceStepViewModel> Roots => Root is { } root ? [root] : [];
 
     /// <summary>
-    /// The analyses the diagnostic producer recorded, in its order, each once: the traced search is unmerged, so it
-    /// can report one analysis once for every order it found it in.
+    /// Logical summaries in first-recorded order, each with the number of source records it represents.
+    /// Individual source records remain available through <see cref="SourceAnalyses"/>.
     /// </summary>
     public IReadOnlyList<TraceAnalysisViewModel> Analyses => _analyses;
+    public IReadOnlyList<TraceAnalysis> SourceAnalyses => _reading?.Analyses ?? [];
 
     /// <summary>The trace as the inspector names it, with the Baseline it read; <see langword="null"/> before a trace.</summary>
     public InspectorTrace? InspectorTrace => Result is { } result
@@ -202,14 +208,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
     /// <summary>Whether a result is shown that recorded no analysis at all.</summary>
     public bool HasNoAnalyses => HasResult && !HasAnalyses;
 
-    /// <summary>Over the analyses: the answer and how many there are, such as "Parsed: 1 analysis, found 2 ways".</summary>
+    /// <summary>Over the analyses: the answer and how many there are, such as "Parsed: 1 analysis, 2 source records".</summary>
     public string AnalysesHeading
     {
         get
         {
-            var ways = _analyses.Sum(analysis => analysis.WaysFound);
+            var records = _analyses.Sum(analysis => analysis.RecordCount);
             var count = _analyses.Count == 1 ? "1 analysis" : $"{_analyses.Count:N0} analyses";
-            if (ways > _analyses.Count) count += $", found {ways:N0} ways";
+            if (records > _analyses.Count) count += $", {records:N0} source records";
             return Result is { Parsed: true } ? $"Parsed: {count}" : count;
         }
     }
@@ -251,27 +257,29 @@ public sealed partial class TraceWordViewModel : ObservableObject
         : Result is { Complete: false } ? Mark.Stopped
         : Mark.NoParse;
 
-    /// <summary>The rules that stopped the failed attempts, the busiest first; empty when nothing failed.</summary>
+    /// <summary>Recorded stopped attempts grouped by explicit attribution and reason; empty when nothing failed.</summary>
     public IReadOnlyList<TraceStopGroupViewModel> StopGroups => _stopGroups;
 
     public bool HasStopGroups => _stopGroups.Count > 0;
 
-    /// <summary>Whether the word failed before any attempt got far enough to record, so there is no story to tell.</summary>
-    public bool NoAttemptRecorded => Result is { Parsed: false, InvalidShape: false } && !HasStopGroups;
+    /// <summary>Whether the diagnostic recorded no terminal event.</summary>
+    public bool NoAttemptRecorded => Result is { InvalidShape: false } && _reading?.Attempts.Count == 0;
+    public string NoAttemptNotice => Result is { Complete: false }
+        ? "No terminal attempt was recorded before the search stopped. Recorded progress is retained."
+        : "No terminal attempt was recorded.";
 
     /// <summary>Over the groups: why the word failed, or, for a word that parsed, why its other attempts did.</summary>
     public string StopGroupsHeading => Result is { Parsed: true } ? "Why the other attempts stopped" : "Why it did not parse";
 
-    /// <summary>One line over the groups: how many rules account for how many attempts.</summary>
+    /// <summary>One line over the groups counting recorded stopped attempts.</summary>
     public string StopGroupsSummary
     {
         get
         {
             if (_stopGroups.Count == 0) return string.Empty;
             var attempts = _stopGroups.Sum(group => group.Count);
-            var rules = _stopGroups.Count == 1 ? "1 rule" : $"{_stopGroups.Count} rules";
             var tries = attempts == 1 ? "1 attempt" : $"{attempts:N0} attempts";
-            return $"{rules} stopped all {tries} · choose one to see only its attempts";
+            return $"{tries} stopped · choose a group to see its recorded outcomes";
         }
     }
 
@@ -377,6 +385,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(StopGroups));
         OnPropertyChanged(nameof(HasStopGroups));
         OnPropertyChanged(nameof(NoAttemptRecorded));
+        OnPropertyChanged(nameof(NoAttemptNotice));
         OnPropertyChanged(nameof(StopGroupsHeading));
         OnPropertyChanged(nameof(StopGroupsSummary));
         RaiseAttempts();
@@ -450,6 +459,15 @@ public sealed partial class TraceWordViewModel : ObservableObject
             Add("Grammar hash semantics", result.GrammarHashSemantics ?? capture?.GrammarHashSemantics);
             Add("Project identity", capture?.ProjectIdentity);
             Add("Bundle digest", capture?.BundleDigest);
+            if (capture?.Baseline is { } baseline)
+            {
+                parts.Add($"Baseline captured: {baseline.Token.CapturedUtc}");
+                parts.Add($"Source saved: {baseline.SourceLastWriteUtc:u}");
+                parts.Add(baseline.CaptureDescription);
+            }
+            else parts.Add("Baseline source not recorded");
+            if (result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded)
+                parts.Add("Grammar source not recorded");
             if (capture?.CapturedUtc is { } capturedUtc) parts.Add($"Captured: {capturedUtc:u}");
             if (capture?.WallElapsedMs is { } elapsed) parts.Add($"Host elapsed: {elapsed:N0} ms");
             return parts.Count == 0 ? "Capture details not recorded." : string.Join(" · ", parts);
@@ -684,7 +702,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 /// <summary>One recorded parser analysis, kept distinct from trace attempts.</summary>
 public sealed class TraceAnalysisViewModel
 {
-    public TraceAnalysisViewModel(TraceAnalysis analysis, bool allowLiveLinks, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, int? position = null)
+    public TraceAnalysisViewModel(TraceAnalysis analysis, bool allowLiveLinks, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, int? position = null, int recordCount = 1)
     {
         ArgumentNullException.ThrowIfNull(analysis);
         AnalysisId = analysis.AnalysisId;
@@ -694,7 +712,7 @@ public sealed class TraceAnalysisViewModel
         ProjectionStatus = analysis.ProjectionStatus;
         ProjectionError = analysis.ProjectionError;
         LegacyMorphemes = analysis.LegacyMorphemes;
-        WaysFound = analysis.FoundWays;
+        RecordCount = recordCount;
         Position = position;
         Morphs = analysis.Morphs.Select(morph => new TraceMorphViewModel(morph, allowLiveLinks, directions)).ToArray();
     }
@@ -715,13 +733,14 @@ public sealed class TraceAnalysisViewModel
     /// <summary>The analysis's place among the distinct analyses, from 1, once duplicates are merged.</summary>
     public int? Position { get; private init; }
 
-    /// <summary>How many times the search recorded this analysis, each by a different order of steps.</summary>
-    public int WaysFound { get; private init; } = 1;
+    /// <summary>How many times the search recorded this analysis, without asserting distinct derivations.</summary>
+    public int RecordCount { get; private init; } = 1;
 
-    public bool HasSeveralWays => WaysFound > 1;
+    public bool HasRepeatedRecords => RecordCount > 1;
 
-    /// <summary>"Found 2 ways" for an analysis recorded more than once, otherwise empty.</summary>
-    public string WaysFoundText => HasSeveralWays ? $"Found {WaysFound:N0} ways" : string.Empty;
+    /// <summary>"Recorded twice" for an analysis recorded more than once, otherwise empty.</summary>
+    public string RecordedCountText => RecordCount == 2 ? "Recorded twice"
+        : HasRepeatedRecords ? $"Recorded {RecordCount:N0} times" : string.Empty;
 
     public string Label => Position is { } position ? $"Analysis {position}"
         : Index is { } index ? $"Analysis {index + 1}" : AnalysisId is { Length: > 0 } id ? $"Analysis {id}" : "Recorded analysis";
@@ -903,8 +922,7 @@ public sealed class TraceMorphViewModel
 }
 
 /// <summary>
-/// One rule that stopped attempts, with how many it stopped: the answer to "why did this word not parse",
-/// before any single attempt is read. A group with no rule holds the attempts that simply ran out.
+/// Recorded stopped attempts sharing an explicit stopping ref and reason, or one unattributed terminal outcome.
 /// </summary>
 public sealed partial class TraceStopGroupViewModel : ObservableObject
 {
@@ -917,7 +935,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         ReasonCode = reasonCode;
         Explanation = explanation;
         Count = count;
-        RuleText = rule is { Length: > 0 } named ? named : "no rule";
+        RuleText = rule is { Length: > 0 } named ? named : "Stopping rule not recorded";
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "The attempt stopped without a recorded reason.";
@@ -933,10 +951,10 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 
     public string? Explanation { get; }
 
-    /// <summary>The rule's name for a heading, reading "no rule" when the attempts simply ran out.</summary>
+    /// <summary>The rule's name for a heading, reading "Stopping rule not recorded" when attribution is absent.</summary>
     public string RuleText { get; }
 
-    /// <summary>Why this rule stopped them, in the plain language FieldWorks uses where there is one.</summary>
+    /// <summary>Why the attempts stopped, in the plain language FieldWorks uses where there is one.</summary>
     public string ReasonText { get; }
 
     public int Count { get; }
@@ -945,7 +963,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 
     public bool HasRule => Rule is { Length: > 0 };
 
-    /// <summary>How long this group's bar is: 1 for the rule that stopped the most attempts.</summary>
+    /// <summary>How long this group's bar is: 1 for the largest group.</summary>
     public double Share { get; private set; }
 
     /// <summary>Whether the attempt list is filtered to this group.</summary>
@@ -965,10 +983,11 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
 }
 
 /// <summary>One candidate attempt, kept separate from recorded analyses.</summary>
-public sealed class TraceCandidateViewModel
+public sealed class TraceCandidateViewModel : ObservableObject
 {
     public TraceCandidateViewModel(TraceCandidate candidate, bool allowLiveLinks = false,
-        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null)
+        IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null,
+        TraceStep? root = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         Morphs = candidate.Morphs
@@ -988,6 +1007,9 @@ public sealed class TraceCandidateViewModel
         SourceIdentity = candidate.SourceIdentityId is { Length: > 0 }
             ? $"{candidate.SourceIdentityKind ?? "source"}: {candidate.SourceIdentityId} ({candidate.SourceIdentityQuality ?? "quality not recorded"})"
             : "Source identity not recorded";
+        HasTreeContext = candidate.TreeContext.Count > 0;
+        _loadContext = () => root is null ? [] : TraceTreeContextRange.Resolve(root, candidate.TreeContext)
+            .Select(step => new TraceStepViewModel(step, null, directions, labels)).ToArray();
         Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions, labels)).ToArray();
         Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : Steps.LastOrDefault()?.Source ?? "Recorded attempt";
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
@@ -999,7 +1021,7 @@ public sealed class TraceCandidateViewModel
             : "Stopped";
         StopReason = Explanation is { Length: > 0 } explanation ? explanation
             : FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
-            : string.Empty;
+            : "Reason not recorded";
     }
 
     /// <summary>The parser's own reason code, kept out of the sentence and shown only among the steps.</summary>
@@ -1012,7 +1034,7 @@ public sealed class TraceCandidateViewModel
 
     public bool HasSurface => Surface is { Length: > 0 };
 
-    /// <summary>The rule whose step failed just before the attempt ended, by its FieldWorks name when known.</summary>
+    /// <summary>The explicitly linked stopping rule, by its captured FieldWorks name when known.</summary>
     public string? StoppedByRule { get; }
     public string? StoppedByRuleId { get; }
 
@@ -1041,9 +1063,22 @@ public sealed class TraceCandidateViewModel
         ? text
         : "Failure context not recorded";
     public IReadOnlyList<TraceStepViewModel> Steps { get; }
+    private readonly Func<IReadOnlyList<TraceStepViewModel>> _loadContext;
+    private IReadOnlyList<TraceStepViewModel>? _context;
+    private bool _isTreeContextExpanded;
+    public bool HasTreeContext { get; }
+    public bool IsTreeContextExpanded
+    {
+        get => _isTreeContextExpanded;
+        set
+        {
+            if (SetProperty(ref _isTreeContextExpanded, value)) OnPropertyChanged(nameof(RecordedTreeContext));
+        }
+    }
+    public IReadOnlyList<TraceStepViewModel> RecordedTreeContext => !IsTreeContextExpanded ? [] : _context ??= _loadContext();
     public string Text { get; }
     public string Gloss { get; }
-    public string StatusText => IsBlocked ? "not repeated (would feed itself)" : Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
+    public string StatusText => IsBlocked ? "Blocked" : Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
 
     /// <summary>How this attempt ended: it built the word, a rule refused it, or it was only tried.</summary>
     public Mark StepMark => Mark.Of(Succeeded ? TraceStepMark.Built : IsFailure ? TraceStepMark.Refused : TraceStepMark.Tried);
@@ -1133,6 +1168,7 @@ public sealed class TraceStepViewModel
         IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null)
     {
         ArgumentNullException.ThrowIfNull(step);
+        RecordedStep = step;
         Type = step.Type;
         Source = labels?.Resolve(step.RefId, step.Source) ?? step.Source;
         Input = step.Input;
@@ -1154,6 +1190,8 @@ public sealed class TraceStepViewModel
         _directions = directions;
         Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }
+
+    public TraceStep? RecordedStep { get; private init; }
 
     private readonly IReadOnlyDictionary<string, TraceWritingSystem>? _directions;
 
@@ -1193,7 +1231,7 @@ public sealed class TraceStepViewModel
         Type.Contains("success", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>What happened at the step, in the words a linguist uses: applied, stopped, or only tried.</summary>
-    public string StatusText => IsBlocked ? "not repeated (would feed itself)" : IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
+    public string StatusText => IsBlocked ? "Blocked" : IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
 
     /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
     public string KindText => TraceStepKinds.Describe(Type);
@@ -1201,6 +1239,8 @@ public sealed class TraceStepViewModel
     public string SubruleText => Subrule is { } subrule ? $"Subrule: {subrule}" : "Subrule not recorded";
 
     public string ContextText => string.Join("\n", new[] {
+        FailureReason is null ? "Reason not recorded" : RecordedStep?.ReasonExplanation ?? TraceStepKinds.ExplainReason(FailureReason),
+        RecordedStep?.RejectionDetailsAvailability == TraceEvidenceAvailability.Recorded ? null : "Rejection details not recorded",
         ContextualFailure,
         FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,
         FailureActual is { Length: > 0 } ? $"Actual: {FailureActual}" : null,
@@ -1216,7 +1256,7 @@ public sealed class TraceStepViewModel
     public TraceStepViewModel WithChildren(IReadOnlyList<TraceStepViewModel> children, bool expandForFilter = false) =>
         new(Type, Source, Input, Output, FailureReason, Subrule, OutcomeStatus, OutcomeEventType,
             ContextualFailure, FailureRequired, FailureActual, FailureEnvironment, SourceIdentityKind, SourceIdentityId, SourceIdentityQuality,
-            AttemptedMorphs, _directions, children, IsDeepest, expandForFilter);
+            AttemptedMorphs, _directions, children, IsDeepest, expandForFilter) { RecordedStep = RecordedStep };
 
     private TraceStepViewModel(string type, string? source, string? input, string? output, string? failureReason,
         int? subrule, string? outcomeStatus, string? outcomeEventType, string? contextualFailure,

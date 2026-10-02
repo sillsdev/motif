@@ -189,7 +189,7 @@ public sealed class TraceRefsTests : IDisposable
             Assert.Null(rule.TimingKey);
         });
         var stop = Assert.Single(reading.StopGroups);
-        Assert.Contains(rules, rule => rule.Id == stop.RuleRefId);
+        Assert.Null(stop.RuleRefId);
         Assert.Equal(stop.RuleRefId, Assert.Single(stop.Attempts).StoppedByRefId);
     }
 

@@ -17,12 +17,19 @@ public sealed class TraceReadingBuilderTests
     public void MatinluFailureEvidenceBelongsToTheEventThatSuppliesTheReason()
     {
         var reading = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!.Reading;
+        var terminal = reading.Root.Children[2].Children[0].Children[3].Children[2];
+        var rejection = reading.Root.Children[2].Children[0].Children[3].Children[1];
+        Assert.Equal("0.2.0.3.2", terminal.StepId);
+        Assert.Equal("PartialParse", terminal.FailureReason);
+        Assert.Equal("0.2.0.3.1", rejection.StepId);
+        Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", rejection.FailureReason);
+        Assert.Null(reading.Attempts.Single(attempt => attempt.AttemptId == terminal.StepId).StoppedByRefId);
         var failures = reading.Attempts.Where(attempt => !attempt.Succeeded).ToArray();
 
         Assert.NotEmpty(failures);
         Assert.All(failures, attempt =>
         {
-            Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", attempt.FailureReason);
+            Assert.Equal("PartialParse", attempt.FailureReason);
             Assert.Equal(attempt.FailureReason, attempt.FailureEvidence!.ReasonCode);
         });
     }
@@ -30,7 +37,7 @@ public sealed class TraceReadingBuilderTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void AStoppingEventNeverBorrowsTheTerminalEventsFailureOperands(bool hasContext)
+    public void ATerminalEventNeverBorrowsSiblingRejectionOperands(bool hasContext)
     {
         var context = hasContext ? """
             {"reasonCode":"RequiredSyntacticFeatureStruct","reason":"rule context",
@@ -47,12 +54,12 @@ public sealed class TraceReadingBuilderTests
         var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("", tree)));
         var attempt = Assert.Single(reading.Attempts);
 
-        Assert.Equal("RequiredSyntacticFeatureStruct", attempt.FailureReason);
-        Assert.Equal(hasContext ? "rule context" : null, attempt.ContextualFailure);
-        Assert.Equal(hasContext ? "rule required" : null, attempt.FailureRequired);
-        Assert.Equal(hasContext ? "rule actual" : null, attempt.FailureActual);
-        Assert.Equal(hasContext ? "rule environment" : null, attempt.FailureEnvironment);
-        Assert.Equal(hasContext ? attempt.FailureReason : null, attempt.FailureEvidence?.ReasonCode);
+        Assert.Equal("PartialParse", attempt.FailureReason);
+        Assert.Equal("terminal context", attempt.ContextualFailure);
+        Assert.Equal("terminal required", attempt.FailureRequired);
+        Assert.Equal("terminal actual", attempt.FailureActual);
+        Assert.Equal("terminal environment", attempt.FailureEnvironment);
+        Assert.Equal(attempt.FailureReason, attempt.FailureEvidence?.ReasonCode);
     }
 
     [Fact]
@@ -134,12 +141,12 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
-    public void MatinluAttemptsKeepTheStemLookupInTheirStory()
+    public void MatinluAttemptsKeepTheStemLookupAsRecordedTreeContext()
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
 
         Assert.All(response.Reading.Attempts, candidate =>
-            Assert.Contains(candidate.Steps, step => step.Type == "LexicalLookup"));
+            Assert.Contains(TraceTreeContextRange.Resolve(response.Reading.Root, candidate.TreeContext), step => step.Type == "LexicalLookup"));
     }
 
     [Fact]
@@ -151,13 +158,13 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
-    public void DuplicateMatinluAnalysesBecomeOneAnalysis()
+    public void DuplicateMatinluAnalysesRemainSourceRecordsWithASeparateSummary()
     {
         var response = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!;
 
-        var analysis = Assert.Single(response.Reading.Analyses);
-        Assert.Equal(2, analysis.FoundWays);
-        Assert.Equal(["analysis-0", "analysis-1"], analysis.ProducerAnalysisIds);
+        Assert.Equal(["analysis-0", "analysis-1"], response.Reading.Analyses.Select(analysis => analysis.AnalysisId));
+        Assert.Equal(2, response.Reading.LogicalAnalyses.Count);
+        Assert.All(response.Reading.LogicalAnalyses, summary => Assert.Single(summary.SourcePositions));
     }
 
     [Fact]
@@ -192,8 +199,8 @@ public sealed class TraceReadingBuilderTests
         Assert.Equal("kumata", reading.Word);
         Assert.All(reading.Attempts, attempt =>
         {
-            Assert.Contains(attempt.Steps, step => step.Type == "LexicalLookup" && step.Input == "kuma");
-            Assert.Contains(attempt.Steps, step => step.Type == "TemplateSynthesisInput" && step.Source == "NounTemplate");
+            Assert.Contains(TraceTreeContextRange.Resolve(reading.Root, attempt.TreeContext), step => step.Type == "LexicalLookup" && step.Input == "kuma");
+            Assert.Contains(TraceTreeContextRange.Resolve(reading.Root, attempt.TreeContext), step => step.Type == "TemplateSynthesisInput" && step.Source == "NounTemplate");
         });
         var stem = Assert.Single(reading.Analyses).Morphs[0];
         Assert.Equal("00000000-0000-0000-0000-000000000106", stem.FormSourceId);
@@ -202,7 +209,7 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
-    public void APhonologicalLeafSiblingStaysWithItsAttemptWithoutBorrowingAnotherBranch()
+    public void APhonologicalLeafSiblingRemainsTreeContextRatherThanAttemptLineage()
     {
         var tree = """
             {"type":"WordAnalysis","children":[
@@ -218,10 +225,10 @@ public sealed class TraceReadingBuilderTests
             """;
         var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("", tree)));
 
-        Assert.Equal(["Harmony", "Assimilation"], reading.Attempts[0].Steps
+        Assert.Equal(["Harmony", "Assimilation"], TraceTreeContextRange.Resolve(reading.Root, reading.Attempts[0].TreeContext)
             .Where(step => step.Type == "PhonologicalRuleSynthesis").Select(step => step.Source));
         Assert.DoesNotContain(reading.Attempts[1].Steps, step => step.Type is "PhonologicalRuleSynthesis" or "LexicalLookup");
-        Assert.Contains(reading.RulesOnBestPath, rule => rule.Rule == "Harmony");
+        Assert.DoesNotContain(reading.RulesOnBestPath, rule => rule.Rule == "Harmony");
     }
 
     [Fact]

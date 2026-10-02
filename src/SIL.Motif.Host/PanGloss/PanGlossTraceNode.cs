@@ -10,8 +10,8 @@ namespace SIL.Motif.Host.PanGloss;
 /// <param name="Type">The trace node kind — a stratum, template, rule, lookup, or leaf outcome.</param>
 /// <param name="Source">The named rule, stratum, or template that produced this node, absent for the
 /// language-level root and for leaf outcome nodes.</param>
-/// <param name="Subrule">Which subrule or allomorph fired, absent where a rule was not tried.</param>
-/// <param name="FailureReason">Why this node did not apply or succeed, absent when it did.</param>
+/// <param name="Subrule">The recorded subrule or allomorph index; it does not establish that the event applied.</param>
+/// <param name="FailureReason">The recorded failure code, absent when no reason was recorded.</param>
 /// <param name="OutputShape">The word shape this node produced, when it produced one.</param>
 /// <param name="InputShape">The word shape this node consumed, when it consumed one.</param>
 /// <param name="Children">This node's children, in the order PanGloss traced them.</param>

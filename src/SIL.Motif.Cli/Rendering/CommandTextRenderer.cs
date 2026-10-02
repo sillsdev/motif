@@ -628,15 +628,21 @@ public static class CommandTextRenderer
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
+        if (response.HostCapture?.Baseline is { } baseline)
+            text.AppendLine($"  Baseline: {baseline.Token.BundleDigest}, captured {baseline.Token.CapturedUtc}, " +
+                $"source saved {baseline.SourceLastWriteUtc:O}. {baseline.CaptureDescription}");
+        else text.AppendLine("  Baseline source not recorded");
+        if (response.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded)
+            text.AppendLine("  Grammar source not recorded");
         foreach (var analysis in reading.Analyses)
         {
-            var ways = analysis.FoundWays > 1 ? $" (found {analysis.FoundWays:N0} ways)" : "";
-            text.AppendLine("  Analysis: " + string.Join(" + ", analysis.Morphs.Select(MorphText)) + ways);
+            text.AppendLine("  Analysis: " + string.Join(" + ", analysis.Morphs.Select(MorphText)));
         }
+        if (reading.Attempts.Count == 0) text.AppendLine("  No terminal attempt recorded; tree progress retained");
         foreach (var group in reading.StopGroups)
             text.AppendLine($"  Stopped {group.Count:N0} attempt(s): " +
                 (labels.Resolve(group.RuleRefId, group.Rule) is { } name ? name + ": " : "") +
-                (group.Explanation ?? group.ReasonCode ?? "no reason recorded"));
+                (group.Explanation ?? (group.ReasonCode is { } code ? $"Explanation not recorded (reason code: {code})." : "Reason not recorded")));
         if (reading.RulesOnBestPath.Count > 0)
         {
             text.AppendLine(response.Parsed ? "  Rules on the parse:" : "  Rules on the closest attempt:");

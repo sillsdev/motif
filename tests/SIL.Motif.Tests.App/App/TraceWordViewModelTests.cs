@@ -28,10 +28,11 @@ public sealed class TraceWordViewModelTests
 
         foreach (var trace in new[] { live, reopened })
         {
-            Assert.Equal("Stopped by Vowel harmony", Assert.Single(trace.ClosestAttempts).StopHeadline);
-            Assert.Equal("Vowel harmony", Assert.Single(trace.StopGroups).RuleText);
+            Assert.Equal("Stopped", Assert.Single(trace.ClosestAttempts).StopHeadline);
+            Assert.Null(Assert.Single(trace.Reading!.StopGroups).RuleRefId);
             Assert.Equal("Vowel harmony", trace.Root!.Children[0].Source);
-            Assert.Equal("Vowel harmony", trace.Candidates[0].Steps[1].Source);
+            trace.Candidates[0].IsTreeContextExpanded = true;
+            Assert.Equal("Vowel harmony", trace.Candidates[0].RecordedTreeContext[0].Source);
             Assert.Equal("Producer name", Assert.Single(trace.Reading!.Refs).Label);
             trace.RuleFilter = "Vowel harmony";
             Assert.NotEmpty(trace.FilteredRoots);
@@ -67,16 +68,16 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void ABlockedStepSaysWhyItWasNotRepeated()
+    public void ABlockedStepKeepsItsRecordedEventLabel()
     {
         var step = new TraceStepViewModel(new TraceStep("Blocked", "rule", null, null, null, [])
         {
             OutcomeStatus = "blocked",
         }, null);
 
-        Assert.Equal("not repeated (would feed itself)", step.StatusText);
-        Assert.Equal("not repeated (would feed itself)", step.KindText);
-        Assert.Equal("not repeated (would feed itself): rule", step.Label);
+        Assert.Equal("Blocked", step.StatusText);
+        Assert.Equal("Blocked", step.KindText);
+        Assert.Equal("Blocked: rule", step.Label);
         Assert.False(step.IsFailure);
     }
 
@@ -191,7 +192,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal([4, 1], trace.StopGroups.Select(group => group.Count));
         Assert.Equal(1.0, trace.StopGroups[0].Share);
         Assert.Equal(0.25, trace.StopGroups[1].Share);
-        Assert.Contains("2 rules stopped all 5 attempts", trace.StopGroupsSummary, StringComparison.Ordinal);
+        Assert.Contains("5 attempts stopped", trace.StopGroupsSummary, StringComparison.Ordinal);
 
         // Unfiltered, the closest three of all five: most morphemes first.
         Assert.Equal(["hawajafik", "hawafika", "hawajaf"], trace.ClosestAttempts.Select(attempt => attempt.Surface));
@@ -670,12 +671,9 @@ public sealed class TraceWordViewModelTests
     {
         var trace = new TraceWordViewModel(new FakeCommandClient()) { Result = MatinluTrace() };
 
-        // PanGloss reports MA+TIN+LU twice, once for each order it stripped the affixes in: one analysis, two ways.
-        var analysis = Assert.Single(trace.Analyses);
-        Assert.Equal("Analysis 1", analysis.Label);
-        Assert.Equal(2, analysis.WaysFound);
-        Assert.Equal("Found 2 ways", analysis.WaysFoundText);
-        Assert.Equal("Parsed: 1 analysis, found 2 ways", trace.AnalysesHeading);
+        Assert.Equal(2, trace.Analyses.Count);
+        Assert.All(trace.Analyses, analysis => Assert.Equal(1, analysis.RecordCount));
+        Assert.Equal("Parsed: 2 analyses", trace.AnalysesHeading);
 
         // The four attempts that stopped are the search's normal tidying up, so they start folded.
         Assert.True(trace.HasDroppedPaths);
@@ -694,7 +692,7 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void DistinctAnalysesKeepTheirOrderAndCountTheWaysEachWasFound()
+    public void AnalysesWithoutIdentityEvidenceRemainSeparateInSourceOrder()
     {
         static TraceAnalysis Analysis(int index, string morphemes) =>
             new($"analysis-{index}", index, "kitabu", "available", []) { LegacyMorphemes = morphemes };
@@ -705,10 +703,10 @@ public sealed class TraceWordViewModelTests
                 TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [new TraceCandidate([], Succeeded: true, null, null, [])], [Analysis(0, "KI+TABU"), Analysis(1, "KITABU"), Analysis(2, "KI+TABU")])),
         };
 
-        Assert.Equal(["Analysis 1", "Analysis 2"], trace.Analyses.Select(analysis => analysis.Label));
-        Assert.Equal([2, 1], trace.Analyses.Select(analysis => analysis.WaysFound));
-        Assert.False(trace.Analyses[1].HasSeveralWays);
-        Assert.Equal("Parsed: 2 analyses, found 3 ways", trace.AnalysesHeading);
+        Assert.Equal(["Analysis 1", "Analysis 2", "Analysis 3"], trace.Analyses.Select(analysis => analysis.Label));
+        Assert.Equal([1, 1, 1], trace.Analyses.Select(analysis => analysis.RecordCount));
+        Assert.False(trace.Analyses[1].HasRepeatedRecords);
+        Assert.Equal("Parsed: 3 analyses", trace.AnalysesHeading);
         Assert.False(trace.HasDroppedPaths);
 
         trace.Result = trace.Result! with

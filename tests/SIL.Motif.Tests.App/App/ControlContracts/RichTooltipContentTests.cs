@@ -10,6 +10,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -232,6 +233,12 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.TryAWord:
                 Workspace.Context.TryWord("matinlu");
+                await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                Show(WorkspacePage.TryAWord);
+                break;
+            case TooltipScene.TryAWordRepeatedRecords:
+                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.AnalysisRecords()).Value!);
+                Workspace.Context.TryWord("word");
                 await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 Show(WorkspacePage.TryAWord);
                 break;

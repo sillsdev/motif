@@ -663,6 +663,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Baseline.HeldStatusText, Baseline.ShownRefusal?.Sentence)
     {
         FieldWorksHeldProject = Baseline.FieldWorksHeldProject,
+        Token = Baseline.Token,
         SourceLastWriteUtc = Baseline.SourceLastWriteUtc,
         ProjectLastWriteUtc = Baseline.ProjectLastWriteUtc,
     };

@@ -32,5 +32,36 @@ internal static class TraceEnvelope
         ",\"elapsedNs\":287600,\"invalidShape\":" + Bool(invalidShape) + ",\"steps\":17,\"timedOut\":false}," +
         "\"trace\":" + (tree ?? "null") + ",\"word\":\"sagd\"}";
 
+    internal const string InterruptedTree = """
+        {"type":"WordAnalysis","children":[{"type":"MorphologicalRuleAnalysis","source":"plural",
+          "inputShape":"words","outputShape":"word","children":[]}]}
+        """;
+
+    internal static string AnalysisRecords(bool equalRendering = false, bool available = true) =>
+        System.Text.Json.JsonSerializer.Serialize(new
+        {
+            schemaVersion = "pangloss.trace-details.v2", word = "word",
+            search = new { completed = true, capped = false, timedOut = false, invalidShape = false, steps = 3, elapsedNs = 2 },
+            result = new
+            {
+                signature = equalRendering ? "ROOT|word;ROOT|word;ROOT|word" : "A|word;A|word;B|word",
+                guessed = false,
+                analyses = new[] { Record("a0", 8, "A", 1, equalRendering, available), Record("b1", 4, "B", 2, equalRendering, available), Record("a2", 9, "A", 1, equalRendering, available) },
+            },
+            categories = new { }, trace = (object?)null,
+        });
+
+    private static object Record(string id, int index, string text, int identity, bool equalRendering, bool available) => new
+    {
+        analysisId = id, index, morphemes = equalRendering ? "ROOT" : text, surface = "word",
+        projection = new { status = available ? "available" : "unavailable", errorCode = available ? null : "E" },
+        morphs = available ? new object[] { new
+        {
+            form = equalRendering ? "ROOT" : text,
+            identity = new { formId = $"00000000-0000-0000-0000-{identity:000000000000}",
+                msaId = $"00000000-0000-0000-0001-{identity:000000000000}", quality = "authored" },
+        } } : [],
+    };
+
     private static string Bool(bool value) => value ? "true" : "false";
 }

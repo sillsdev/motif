@@ -71,6 +71,7 @@ internal static class TraceDiagnosticProjection
             ParserName = NestedString(root, "provenance", "parser", "name"),
             ParserVersion = NestedString(root, "provenance", "parser", "version"),
             TraceProfile = NestedString(root, "provenance", "parser", "traceProfile"),
+            GrammarSource = NestedString(root, "provenance", "grammar", "sourceKind"),
             GrammarHash = NestedString(root, "provenance", "grammar", "grammarHash"),
             GrammarHashSemantics = NestedString(root, "provenance", "grammar", "grammarHashSemantics"),
         };

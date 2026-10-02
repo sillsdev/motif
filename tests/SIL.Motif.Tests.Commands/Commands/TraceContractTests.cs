@@ -15,7 +15,7 @@ public sealed class TraceContractTests
     [InlineData("attempted", "tried")]
     [InlineData("successful", "applied")]
     [InlineData("failed", "stopped")]
-    [InlineData("blocked", "not repeated (would feed itself)")]
+    [InlineData("blocked", "Blocked")]
     public void RuleOutcomesComeFromTheEventRatherThanItsSuccessfulDescendant(string status, string expected)
     {
         var reading = Read(Rule("Plural", "morphRule", "1", Successful, status));
@@ -49,7 +49,7 @@ public sealed class TraceContractTests
         Assert.Equal(2, reading.RulesOnBestPath.Count);
         var failed = Read(Failure("morphRule") + "," + Failure("phonRule"));
         Assert.Equal(2, failed.StopGroups.Count);
-        Assert.Equal(2, failed.StopGroups.Select(group => group.RuleRefId).Distinct().Count());
+        Assert.All(failed.StopGroups, group => Assert.Null(group.RuleRefId));
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public sealed class TraceContractTests
     {
         var reading = Read(Failure(null) + "," + Failure(null));
         Assert.Equal(2, reading.StopGroups.Count);
-        Assert.Equal(2, reading.StopGroups.Select(group => group.RuleRefId).Distinct().Count());
+        Assert.All(reading.StopGroups, group => Assert.Null(group.RuleRefId));
         Assert.All(reading.StopGroups, group => Assert.Single(group.Attempts));
     }
 

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "pangloss.trace-details.v2",
+  "word": "zodut",
+  "provenance": {"parser": {"name": "PanGloss", "version": "0.5.2"}},
+  "fixture": {"kind": "synthetic", "basis": "Family blocking probe: past2 replaces zodut with vem; blocker identity is absent."},
+  "search": {"completed": true, "capped": false, "timedOut": false, "invalidShape": false, "steps": 3, "elapsedNs": 0},
+  "result": {"signature": "", "guessed": false, "analyses": []},
+  "categories": {},
+  "trace": {
+    "type": "WordAnalysis", "inputShape": "zodut", "children": [
+      {"type": "MorphologicalRuleSynthesis", "source": "past2", "inputShape": "zod", "outputShape": "zodut",
+       "outcome": {"status": "attempted"}, "children": [
+         {"type": "Blocked", "source": "past2", "outputShape": "vem", "outcome": {"status": "blocked"}, "children": []},
+         {"type": "Successful", "outputShape": "vem", "outcome": {"status": "successful"}, "children": []}
+       ]}
+    ]
+  }
+}

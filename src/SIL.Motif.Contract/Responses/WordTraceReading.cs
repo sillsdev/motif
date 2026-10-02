@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -19,6 +20,9 @@ public sealed record WordTraceReading(
     /// goes through identity rather than through display text.
     /// </summary>
     public IReadOnlyList<TraceRef> Refs { get; init; } = [];
+
+    /// <summary>Optional compact summaries; positions address the ordered source records in Analyses.</summary>
+    public IReadOnlyList<TraceLogicalAnalysis> LogicalAnalyses { get; init; } = [];
 }
 
 /// <summary>
@@ -168,6 +172,9 @@ public sealed record WordTraceResponse(
     public string? TraceProfile { get; init; }
     public string? GrammarHash { get; init; }
     public string? GrammarHashSemantics { get; init; }
+    public string? GrammarSource { get; init; }
+    public TraceEvidenceAvailability GrammarSourceAvailability => GrammarSource is null && HostCapture?.Baseline is null
+        ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
 }
 
 public sealed record TraceEffort(
@@ -184,13 +191,20 @@ public sealed record TraceAnalysis(
     string Availability,
     IReadOnlyList<TraceMorph> Morphs)
 {
+    /// <summary>This record’s display rendering; equal renderings do not establish morphology equality.</summary>
     public string? Signature { get; init; }
-    public int FoundWays { get; init; } = 1;
-    public IReadOnlyList<string> ProducerAnalysisIds { get; init; } = [];
     public string? LegacyMorphemes { get; init; }
     public string? ProjectionStatus { get; init; }
     public string? ProjectionError { get; init; }
     public string? ProjectionErrorCode { get; init; }
+}
+
+/// <summary>Source records with equal exact ordered authored morphology; uncertain records remain separate.</summary>
+/// <param name="Signature">The representative display rendering, never an equality key.</param>
+/// <param name="SourcePositions">Zero-based positions in the ordered source Analyses list.</param>
+public sealed record TraceLogicalAnalysis(string Signature, IReadOnlyList<int> SourcePositions)
+{
+    public int RecordCount => SourcePositions.Count;
 }
 
 public sealed record TraceMorph(
@@ -245,6 +259,17 @@ public sealed record TraceCandidate(
     string? Explanation,
     IReadOnlyList<TraceStep> Steps)
 {
+    public TraceEvidenceAvailability ReasonAvailability => FailureReason is { Length: > 0 }
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
+    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" }
+        || FailureRequired is not null || FailureActual is not null || FailureEnvironment is not null
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
+
+    /// <summary>Earlier siblings recorded in the tree; membership in this derivation is not established.</summary>
+    public IReadOnlyList<TraceTreeContextRange> TreeContext { get; init; } = [];
+
+    public TraceEvidenceAvailability ExplanationAvailability => Explanation is null
+        ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
     public string? AttemptId { get; init; }
     public string? OutcomeStatus { get; init; }
     public string? ContextualFailure { get; init; }
@@ -262,8 +287,8 @@ public sealed record TraceCandidate(
     public string? Surface { get; init; }
 
     /// <summary>
-    /// The rule whose step failed just before this attempt ended, by its producer label; <see langword="null"/>
-    /// when the attempt failed on its own terms, such as leaving morphemes unused.
+    /// The rule explicitly linked by the producer to this terminal outcome, by its producer label; <see langword="null"/>
+    /// when no producer link was recorded.
     /// Its captured FieldWorks name, when present, belongs to the ref identified by <see cref="StoppedByRefId"/>.
     /// </summary>
     public string? StoppedByRule { get; init; }
@@ -282,6 +307,15 @@ public sealed record TraceStep(
     string? FailureReason,
     IReadOnlyList<TraceStep> Children)
 {
+    public TraceEvidenceAvailability ReasonAvailability => FailureReason is { Length: > 0 }
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
+    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" }
+        || FailureRequired is not null || FailureActual is not null || FailureEnvironment is not null
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
+
+    public string? ReasonExplanation { get; init; }
+    public TraceEvidenceAvailability ExplanationAvailability => ReasonExplanation is null
+        ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
     public string StepId { get; init; } = string.Empty;
     public int? Subrule { get; init; }
     public string? OutcomeStatus { get; init; }
@@ -319,6 +353,9 @@ public sealed record TraceHostCapture(
 {
     /// <summary>Baseline names keyed by trace ref id, replayed without authorizing live navigation.</summary>
     public IReadOnlyList<TraceCapturedLabel> TraceLabels { get; init; } = [];
+
+    /// <summary>The exact selected Baseline; diagnostic capture time remains CapturedUtc.</summary>
+    public TraceBaselineSource? Baseline { get; init; }
 }
 
 public sealed record TraceWritingSystem(
@@ -337,4 +374,32 @@ public sealed record TraceProvenanceComparison(
     string Warning)
 {
     public bool CanNavigate { get; init; }
+}
+
+/// <summary>Availability of a recorded fact, independent of its display wording.</summary>
+public enum TraceEvidenceAvailability
+{
+    Recorded,
+    NotRecorded,
+}
+
+/// <summary>The saved state selected for tracing and for capture-time FieldWorks names.</summary>
+public sealed record TraceBaselineSource(
+    BaselineToken Token, DateTimeOffset SourceLastWriteUtc, DateTimeOffset PublishedUtc, string CaptureDescription);
+
+/// <summary>A prefix of one parent's children in the authoritative tree, without a membership claim.</summary>
+public sealed record TraceTreeContextRange(string ParentStepId, int BeforeChildIndex)
+{
+    /// <summary>Resolves the preceding sibling roots without copying their descendants.</summary>
+    public static IEnumerable<TraceStep> Resolve(TraceStep root, IReadOnlyList<TraceTreeContextRange> ranges)
+    {
+        foreach (var range in ranges)
+        {
+            var parent = root;
+            var parts = range.ParentStepId.Split('.');
+            for (var index = 1; index < parts.Length; index++)
+                parent = parent.Children[int.Parse(parts[index], System.Globalization.CultureInfo.InvariantCulture)];
+            for (var index = 0; index < range.BeforeChildIndex; index++) yield return parent.Children[index];
+        }
+    }
 }

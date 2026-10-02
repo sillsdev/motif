@@ -56,7 +56,7 @@
 
       <Border Classes="notice" IsVisible="{Binding NoAttemptRecorded}">
         <views:CopyableTextBlock TextWrapping="Wrap"
-                                 Text="No attempt got far enough to record, which usually means no lexicon entry matched a part of this word. The full derivation below lists every step the parser took." />
+                                 Text="{Binding NoAttemptNotice}" />
       </Border>
 
       <ContentControl x:Name="AnalysesHost" />
@@ -65,14 +65,14 @@
       <Expander Header="{Binding DroppedPathsText}" IsExpanded="{Binding ShowDroppedPaths, Mode=TwoWay}"
                 IsVisible="{Binding HasDroppedPaths}" AutomationProperties.Name="Paths the parser dropped" />
 
-      <!-- Why it did not parse: every failed attempt grouped by the rule that stopped it. -->
+      <!-- Recorded terminal outcomes retain attribution only where the producer supplied it. -->
       <Border Classes="card" IsVisible="{Binding ShowsStopGroups}" AutomationProperties.Name="Why it did not parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" Text="{Binding StopGroupsSummary}" />
           </StackPanel>
-          <ItemsControl ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Rules that stopped attempts">
+          <ItemsControl ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Recorded stopped attempts">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TraceStopGroupViewModel">
                 <Button Classes="stopGroup" Classes.chosen="{Binding IsSelected}" HorizontalAlignment="Stretch"
@@ -143,6 +143,18 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    </StackPanel>
+                  </Expander>
+                  <Expander Header="Recorded tree context" IsExpanded="{Binding IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding HasTreeContext}">
+                    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                      <views:CopyableTextBlock Classes="muted" Text="Membership in this derivation is not recorded." TextWrapping="Wrap" />
+                      <ItemsControl ItemsSource="{Binding RecordedTreeContext}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:TraceStepViewModel">
+                            <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
                   </Expander>
                 </StackPanel>

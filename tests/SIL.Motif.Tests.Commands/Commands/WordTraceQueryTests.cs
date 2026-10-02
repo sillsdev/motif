@@ -5,6 +5,7 @@ using System.Threading;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -110,14 +111,14 @@ public sealed class WordTraceQueryTests : IDisposable
 
         var failed = response.Reading.Attempts[1];
         Assert.False(failed.Succeeded);
-        // The ed_suffix step that failed beside the Failed node is what stopped it, not the generic PartialParse.
-        Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", failed.FailureReason);
-        Assert.Equal("ed_suffix", failed.StoppedByRule);
+        Assert.Equal("PartialParse", failed.FailureReason);
+        Assert.Null(failed.StoppedByRule);
         Assert.Equal("sag", failed.Surface);
         Assert.NotNull(failed.Explanation);
         Assert.Empty(failed.Morphs);
         Assert.Equal("Failed", failed.Steps[^1].Type);
-        Assert.Equal(["MorphologicalRuleSynthesis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
+        Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));
+        Assert.Contains(TraceTreeContextRange.Resolve(response.Reading.Root, failed.TreeContext), step => step.FailureReason == "NonPartialRuleProhibitedAfterFinalTemplate");
     }
 
     [Fact]
@@ -144,7 +145,7 @@ public sealed class WordTraceQueryTests : IDisposable
         var bySource = outcome.Value!.Reading.Attempts.ToDictionary(candidate => candidate.Steps[1].Source!);
         Assert.Empty(bySource["first"].Morphs);
         Assert.Empty(bySource["second"].Morphs);
-        Assert.Contains(bySource["first"].Steps, step => step.Type == "LexicalLookup");
+        Assert.Contains(TraceTreeContextRange.Resolve(outcome.Value!.Reading.Root, bySource["first"].TreeContext), step => step.Type == "LexicalLookup");
         Assert.DoesNotContain(bySource["second"].Steps, step => step.Type == "LexicalLookup");
     }
 
@@ -203,6 +204,44 @@ public sealed class WordTraceQueryTests : IDisposable
 
         Assert.False(outcome.Succeeded);
         Assert.Equal("wordtrace.parser-unavailable", outcome.Refusal!.Code);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ARequestUsesTheBaselineSelectedAtExecutionIncludingSameSaveRecapture(bool sameSave)
+    {
+        var path = _pristine.CopyProjectFile();
+        var root = NewManagedRoot();
+        var first = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root,
+            new FixedClock(DateTimeOffset.Parse("2026-01-01T01:00:00Z"))).Value!;
+        var request = new WordTraceRequest(path, "sagd");
+        if (!sameSave) File.SetLastWriteTimeUtc(path, first.SourceLastWriteUtc.UtcDateTime.AddMinutes(1));
+        var second = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root,
+            new FixedClock(DateTimeOffset.Parse("2026-01-01T02:00:00Z"))).Value!;
+        if (sameSave)
+        {
+            Assert.True(second.ReusedExistingBytes);
+            Assert.Equal(first.Token, second.Token);
+            Assert.Equal(first.SourceLastWriteUtc, second.SourceLastWriteUtc);
+        }
+        else
+        {
+            Assert.NotEqual(first.Token, second.Token);
+            Assert.NotEqual(first.SourceLastWriteUtc, second.SourceLastWriteUtc);
+        }
+        var invoker = new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GoldenStandardOutput, string.Empty, TimeSpan.Zero),
+        };
+        var response = WordTraceQuery.Query(request, new PanGlossTracer(invoker), CancellationToken.None).Value!;
+        Assert.Equal(second.FwDataPath, Assert.IsType<PanGlossRequest.Trace>(Assert.Single(invoker.Requests).Request).GrammarPath);
+        var selected = response.HostCapture!.Baseline!;
+        Assert.Equal(second.Token, selected.Token);
+        Assert.Equal(second.SourceLastWriteUtc, selected.SourceLastWriteUtc);
+        Assert.Contains(second.Token.CapturedUtc, selected.CaptureDescription);
+        var loaded = WordTraceQuery.LoadDiagnostic(response.DiagnosticJson).Value!;
+        Assert.Equal(selected, loaded.HostCapture!.Baseline);
     }
 
     private void Capture(string fwDataPath)

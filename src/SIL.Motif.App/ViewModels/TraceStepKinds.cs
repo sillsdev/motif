@@ -23,7 +23,7 @@ public static class TraceStepKinds
         ["Word"] = "Word",
         ["Successful"] = "Built the word",
         ["Failed"] = "Stopped",
-        ["Blocked"] = "not repeated (would feed itself)",
+        ["Blocked"] = "Blocked",
     };
 
     /// <summary>The plain name for a trace step's kind, never the parser's own class name.</summary>

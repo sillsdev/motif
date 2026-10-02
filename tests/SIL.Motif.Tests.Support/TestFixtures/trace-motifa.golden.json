@@ -19,10 +19,16 @@
               "type": "Successful",
               "output": "motifa",
               "children": [],
+              "reasonAvailability": "NotRecorded",
+              "rejectionDetailsAvailability": "NotRecorded",
+              "explanationAvailability": "NotRecorded",
               "stepId": "0.0.0",
               "attemptedMorphs": []
             }
           ],
+          "reasonAvailability": "NotRecorded",
+          "rejectionDetailsAvailability": "NotRecorded",
+          "explanationAvailability": "NotRecorded",
           "stepId": "0.0",
           "attemptedMorphs": [
             {
@@ -45,6 +51,9 @@
           "refId": "stratum:0"
         }
       ],
+      "reasonAvailability": "NotRecorded",
+      "rejectionDetailsAvailability": "NotRecorded",
+      "explanationAvailability": "NotRecorded",
       "stepId": "0",
       "attemptedMorphs": []
     },
@@ -66,6 +75,9 @@
             "type": "WordAnalysis",
             "input": "motifa",
             "children": [],
+            "reasonAvailability": "NotRecorded",
+            "rejectionDetailsAvailability": "NotRecorded",
+            "explanationAvailability": "NotRecorded",
             "stepId": "0",
             "attemptedMorphs": []
           },
@@ -74,6 +86,9 @@
             "source": "Morphology",
             "input": "motifa",
             "children": [],
+            "reasonAvailability": "NotRecorded",
+            "rejectionDetailsAvailability": "NotRecorded",
+            "explanationAvailability": "NotRecorded",
             "stepId": "0.0",
             "attemptedMorphs": [
               {
@@ -99,11 +114,19 @@
             "type": "Successful",
             "output": "motifa",
             "children": [],
+            "reasonAvailability": "NotRecorded",
+            "rejectionDetailsAvailability": "NotRecorded",
+            "explanationAvailability": "NotRecorded",
             "stepId": "0.0.0",
             "attemptedMorphs": []
           }
         ],
+        "reasonAvailability": "NotRecorded",
+        "rejectionDetailsAvailability": "NotRecorded",
+        "treeContext": [],
+        "explanationAvailability": "NotRecorded",
         "attemptId": "0.0.0",
+        "outcomeStatus": "successful",
         "morphAvailability": "recorded",
         "richMorphs": [
           {
@@ -111,7 +134,7 @@
             "form": "motifa",
             "gloss": "first seeded gloss",
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
-            "occurrenceId": "attempt:0.0.0:morph:0",
+            "occurrenceId": "step:0.0:morph:0",
             "formId": "{FirstLexemeFormId}",
             "entryId": "{FirstEntryId}",
             "identityQuality": "authored",
@@ -144,11 +167,7 @@
             "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}"
           }
         ],
-        "signature": "motifa|motifa",
-        "foundWays": 1,
-        "producerAnalysisIds": [
-          "analysis-0"
-        ]
+        "signature": "motifa|motifa"
       }
     ],
     "stopGroups": [],
@@ -180,6 +199,15 @@
           "kind": "lex_entry",
           "key": "{FirstEntryId}"
         }
+      }
+    ],
+    "logicalAnalyses": [
+      {
+        "signature": "motifa|motifa",
+        "sourcePositions": [
+          0
+        ],
+        "recordCount": 1
       }
     ]
   },
@@ -240,7 +268,19 @@
         "refId": "morph:{FirstEntryId}//{FirstLexemeFormId}",
         "label": "motifa ‘first seeded gloss’"
       }
-    ]
+    ],
+    "baseline": {
+      "token": {
+        "projectIdentity": "{ProjectIdentity}",
+        "semanticSnapshotDigest": "<varies>",
+        "projectionVersion": "1",
+        "capturedUtc": "<varies>",
+        "bundleDigest": "<varies>"
+      },
+      "sourceLastWriteUtc": "<varies>",
+      "publishedUtc": "<varies>",
+      "captureDescription": "<varies>"
+    }
   },
   "provenance": {
     "projectIdentityStatus": "match",
@@ -249,5 +289,6 @@
     "isCompatible": false,
     "warning": "Recorded baseline evidence is shown. Current project grammar and writing systems have not been compared.",
     "canNavigate": true
-  }
+  },
+  "grammarSourceAvailability": "Recorded"
 }

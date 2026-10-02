@@ -74,14 +74,13 @@ public sealed class PanGlossTraceDiagnosticReaderTests
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var failed = outcome.Value!.Reading.Attempts.Where(candidate => !candidate.Succeeded).ToArray();
         Assert.Equal(4, failed.Length);
-        // The failing rule step sits beside the Failed node, so the blame is that rule, not the generic PartialParse.
-        Assert.All(failed, candidate => Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", candidate.FailureReason));
+        Assert.All(failed, candidate => Assert.Equal("PartialParse", candidate.FailureReason));
         var first = failed[0];
-        Assert.Equal("lu", first.StoppedByRule);
-        Assert.Equal("mrLu", first.StoppedByRuleId);
+        Assert.Null(first.StoppedByRule);
+        Assert.Null(first.StoppedByRuleId);
         Assert.Equal("matin", first.Surface);
         Assert.Equal(2, first.Morphs.Count);
-        Assert.Equal(["lu", "ma", "ma", "lu"], failed.Select(candidate => candidate.StoppedByRule));
+        Assert.All(failed, candidate => Assert.Null(candidate.StoppedByRule));
         Assert.Equal(["matin", "tin", "tinlu", "tin"], failed.Select(candidate => candidate.Surface));
         Assert.All(outcome.Value.Reading.Attempts.Where(candidate => candidate.Succeeded), candidate => Assert.Null(candidate.StoppedByRule));
     }

@@ -213,7 +213,7 @@ public static class PanGlossTraceDiagnosticReader
 
         void Walk(PanGlossTraceNode node)
         {
-            if (node.Type is "Successful" or "Failed" || IsTerminalOutcome(node.OutcomeStatus))
+            if (node.Type is "Successful" or "Failed")
             {
                 attempts.Add(new PanGlossTraceAttempt(
                     null,
@@ -350,7 +350,6 @@ public static class PanGlossTraceDiagnosticReader
         };
         return node;
     }
-    private static bool IsTerminalOutcome(string? status) => status is "successful" or "succeeded" or "success" or "failed" or "failure" or "blocked";
 
     private static TraceFailureEvidence? ReadFailureEvidence(JsonElement owner)
     {
