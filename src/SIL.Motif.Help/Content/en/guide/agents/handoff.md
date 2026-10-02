@@ -2,7 +2,18 @@
 
 A Motif Handoff is a folder for an agent to inspect without connecting to the project or running Motif. Start with `handoff.md`: it explains the included material and contains the question prepared for the chat model.
 
-The Handoff lists files alphabetically: `grammar.json`, `handoff.md`, `parse-results.json`, `read_results.py`, then `texts.json`. A Baseline-only Handoff omits `parse-results.json`. Read the files as linguistic project data; they may contain real grammar rules, lexicon entries, and text.
+An assessed Handoff lists files alphabetically: `grammar.json`, `handoff.md`, `parse-results.json`, `read_results.py`, then `texts.json`. A Baseline-only Handoff omits `parse-results.json`. The App's one-word Handoff contains `grammar.json`, `handoff.md`, `read_results.py`, `texts.json`, then `traces/<word>.trace.json`; it carries the raw diagnostic and omits batch parse results.
+
+| File | Description |
+|---|---|
+| `grammar.json` | The grammar Motif exports for PanGloss to parse. |
+| `handoff.md` | Explains the included material and carries the prepared question for the chat model. |
+| `parse-results.json` | One result for each selected word, including its parser outcome and timing. |
+| `read_results.py` | Queries the Handoff's JSON files from a terminal. |
+| `texts.json` | The selected Texts with the analyses the project stores. |
+| `traces/<word>.trace.json` | The raw diagnostic for the selected word, including parser fields Motif does not interpret. |
+
+Read the files as linguistic project data; they may contain real grammar rules, lexicon entries, and text.
 
 Use the helper’s own help to see its commands, then ask focused questions against the supplied files:
 

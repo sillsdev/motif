@@ -1,5 +1,7 @@
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Commands.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Assess;
 using SIL.Motif.Worker.Store;
@@ -53,6 +55,88 @@ public sealed class PanGlossAssessorTests : IDisposable
         var cache = Assert.IsType<AssessmentRaw.FileCache>(statistics.Raw);
         Assert.Equal(BatchInvocationEvidence.DigestFile(cache.Path), cache.Digest);
         Assert.Equal(Path.GetDirectoryName(evidence.SourcePath), Path.GetDirectoryName(cache.Path));
+    }
+
+    [Fact]
+    public async Task LazyAssessorForwardsTheStreamingCallback()
+    {
+        var expected = new TrialWordProgress(1, 2, "two")
+        {
+            StoppedWords = [new StoppedParseWord("one", "TIMEOUT", 700)],
+            SlowestWord = new ParseWordTiming("one", 700),
+        };
+        var inner = new FakeAssessor("pangloss", [AssessmentKind.ParseTime])
+        {
+            EmitProgress = publish => publish(expected),
+        };
+        var lazy = new LazyPanGlossAssessor(() => inner);
+        TrialWordProgress? observed = null;
+
+        await lazy.ProduceAsync(Scope(AssessmentKind.ParseTime), _candidate,
+            progress => observed = progress, CancellationToken.None);
+
+        Assert.Equal(expected, observed);
+    }
+
+    [Fact]
+    public async Task FlushedRowsReachTheAssessorBeforeTheNextWordIsReleased()
+    {
+        var release = Path.Combine(_root, "assessor-progress-release");
+        var words = new[] { "fast", "capped", "timed-out", "held" };
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "progress-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            streamProgress = true,
+            holdEachWordUntil = release,
+            words = new[]
+            {
+                new { word = "fast", outcome = "complete", elapsedMs = 2500 },
+                new { word = "capped", outcome = "capped", elapsedMs = 54000 },
+                new { word = "timed-out", outcome = "timed-out", elapsedMs = 55000 },
+                new { word = "held", outcome = "complete", elapsedMs = 12 },
+            },
+        });
+        using var invoker = RealFakeInvoker(parser);
+        var assessor = new PanGlossAssessor(_paths, invoker);
+        var scope = new AssessmentScope(words, [AssessmentKind.ParseTime, AssessmentKind.ObjectTiming],
+            TimeSpan.FromMilliseconds(700), 123);
+        var started = new TaskCompletionSource<TrialWordProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstFinished = new TaskCompletionSource<TrialWordProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stoppedRows = new TaskCompletionSource<TrialWordProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var run = assessor.ProduceAsync(scope, _candidate, progress =>
+        {
+            if (progress is { Completed: 0, CurrentWord: "fast" }) started.TrySetResult(progress);
+            if (progress is { Completed: 1, CurrentWord: "capped" }) firstFinished.TrySetResult(progress);
+            if (progress is { Completed: 3, CurrentWord: "held" }) stoppedRows.TrySetResult(progress);
+        }, CancellationToken.None);
+
+        try
+        {
+            Assert.Equal(new TrialWordProgress(0, 4, "fast"), await started.Task.WaitAsync(TimeSpan.FromSeconds(15)));
+            File.WriteAllText(release + ".0", string.Empty);
+            var afterFirst = await firstFinished.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Equal(1, afterFirst.Completed);
+            Assert.Equal("capped", afterFirst.CurrentWord);
+            File.WriteAllText(release + ".1", string.Empty);
+            File.WriteAllText(release + ".2", string.Empty);
+            var afterStopped = await stoppedRows.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Equal("held", afterStopped.CurrentWord);
+            Assert.Equal(new[]
+            {
+                new StoppedParseWord("capped", "CAP", 54000),
+                new StoppedParseWord("timed-out", "TIMEOUT", 55000),
+            }, afterStopped.StoppedWords);
+            Assert.Equal(new ParseWordTiming("timed-out", 55000), afterStopped.SlowestWord);
+            File.WriteAllText(release + ".3", string.Empty);
+            await run.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Single(FakeParser.Invocations(parser), command => command == "batch");
+        }
+        finally
+        {
+            for (var index = 0; index < words.Length; index++) File.WriteAllText(release + "." + index, string.Empty);
+            if (!run.IsCompleted)
+                await run.WaitAsync(TimeSpan.FromSeconds(15));
+        }
     }
 
     [Fact]
@@ -350,7 +434,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         public string DirectoryFor(string invocationId) => directory;
     }
 
-    private static PanGlossInvoker RealFakeInvoker() => new(FakeParser.ExecutablePath,
+    private static PanGlossInvoker RealFakeInvoker(string? executable = null) => new(executable ?? FakeParser.ExecutablePath,
         new MachinePanGlossQueue(["Local\\MotifAssessorTests-" + Guid.NewGuid().ToString("N")]));
 
     public void Dispose()

@@ -146,6 +146,33 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task ATrialDoesNotInvokeItsAssessorWhenAnotherOwnerHoldsTheProjectLease()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "lease text");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform]);
+        var assessorCalled = false;
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness])
+        {
+            EmitProgress = _ => assessorCalled = true,
+        };
+        var handler = BuildHandler(lanes, assessor);
+        using var lease = ProjectParseLease.TryAcquire(_database);
+        Assert.NotNull(lease);
+        var claim = ClaimedJob.Of(_jobs, job.JobId);
+
+        var outcome = await handler.RunAsync(claim, _project, CancellationToken.None);
+
+        Assert.Equal(JobStatus.Failed, outcome!.Status);
+        Assert.Contains("already running", outcome.ResultJson, StringComparison.OrdinalIgnoreCase);
+        Assert.False(assessorCalled);
+        claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
+        Assert.Equal(JobStatus.Failed, _jobs.Get(job.JobId)!.Status);
+    }
+
+    [Fact]
     public void TrialDoesNotChangeTheProposalsStatus()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);

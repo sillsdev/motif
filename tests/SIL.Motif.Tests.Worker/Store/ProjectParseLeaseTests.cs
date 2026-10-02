@@ -40,11 +40,24 @@ public sealed class ProjectParseLeaseTests : IDisposable
         Assert.NotNull(recovered);
     }
 
-    private MotifDatabase Open()
+    [Fact]
+    public void DifferentProjectStoresCanHoldParseLeasesAtTheSameTime()
+    {
+        using var first = Open("first");
+        using var second = Open("second");
+
+        using var firstLease = ProjectParseLease.TryAcquire(first);
+        using var secondLease = ProjectParseLease.TryAcquire(second);
+
+        Assert.NotNull(firstLease);
+        Assert.NotNull(secondLease);
+    }
+
+    private MotifDatabase Open(string name = "project")
     {
         Directory.CreateDirectory(_root);
-        return MotifDatabase.OpenOwned(Path.Combine(_root, "project.motif.db"),
-            new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project"), MotifSchema.CurrentSchema, new Version(1, 0));
+        return MotifDatabase.OpenOwned(Path.Combine(_root, name + ".motif.db"),
+            new ProjectLocator(Path.Combine(_root, name + ".fwdata"), name), MotifSchema.CurrentSchema, new Version(1, 0));
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);

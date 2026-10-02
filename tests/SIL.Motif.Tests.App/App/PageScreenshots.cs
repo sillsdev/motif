@@ -16,6 +16,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -590,7 +591,7 @@ public sealed class PageScreenshots
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
         fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 1140",
             Capture(), new SelectionProjection([], []),
-            ["handoff.md", "parse-results.json", "texts.json", "grammar.json", "read_results.py"], ["assessment/one"])
+            HandoffFileExpectations.Assessed.Select(file => file.RelativePath).ToArray(), ["assessment/one"])
         {
             InvocationId = "assessment/one",
             HandoffMarkdown = SampleHandoffMarkdown,

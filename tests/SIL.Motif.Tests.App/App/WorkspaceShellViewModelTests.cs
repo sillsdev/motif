@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -771,11 +772,21 @@ public sealed class WorkspaceShellViewModelTests
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
         await workspace.RefreshCommand.ExecuteAsync(null);
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."),
-            new AssessmentProgress(AssessmentStage.Parsing, 312, 1040, "Parsing words"));
+            new AssessmentProgress(AssessmentStage.Parsing, 312, 1040, "Parsing words")
+            {
+                CurrentWord = "word-312",
+                PerWordLimitMs = 700,
+                SlowestWord = new ParseWordTiming("word-200", 54000),
+                StoppedWords = [new StoppedParseWord("word-201", "TIMEOUT", 700)],
+            });
 
         var parsing = workspace.ParseAllWordsCommand.ExecuteAsync(null);
         Assert.True(workspace.ShowsParseAllWordsProgress);
         Assert.Equal("Parsing 312 of 1,040 words", workspace.ParseAllWordsProgressText);
+        Assert.Same(workspace.Assess.ParseProgress, workspace.ActiveParseProgress);
+        Assert.Equal("312 of 1,040 words done · Parsing word-312", workspace.ActiveParseProgress.ProgressText);
+        Assert.Equal("Slowest so far: word-200 · 54 s", workspace.ActiveParseProgress.SlowestText);
+        Assert.Equal("1 word timed out after 0.7 s (word-201)", workspace.ActiveParseProgress.StoppedText);
         Assert.True(workspace.PageModel<TextsPageModel>().ShowParsePrompt);
         workspace.Assess.CancelCommand.Execute(null);
         await parsing;

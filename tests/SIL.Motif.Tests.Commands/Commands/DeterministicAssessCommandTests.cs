@@ -15,6 +15,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -1335,7 +1336,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void ProgressReportsOnlyTheCommandOwnedStagesWithNoPerWordTick()
+    public void ProgressReportsCommandStagesWhenTheAssessorDoesNotStreamWords()
     {
         using var seeded = NewSeededScratch();
         var stages = new List<AssessmentProgress>();
@@ -1355,9 +1356,39 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 AssessmentStage.Complete,
             },
             stages.Select(stage => stage.Stage));
-        // One Parsing step names the whole Selection up front; PanGloss exposes no per-word tick to report.
         var parsing = Assert.Single(stages, stage => stage.Stage == AssessmentStage.Parsing);
         Assert.Equal(2, parsing.Total);
+    }
+
+    [Fact]
+    public void ProgressForwardsTheAssessorWordAndLimitDetails()
+    {
+        using var seeded = NewSeededScratch();
+        var stopped = new StoppedParseWord("motifa", "CAP", 54000);
+        var slowest = new ParseWordTiming("motifa", 54000);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds)
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(
+                _managedRootsParent, scope, candidate),
+            EmitProgress = publish => publish(new TrialWordProgress(1, 2, "motifb")
+            {
+                StoppedWords = [stopped],
+                SlowestWord = slowest,
+            }),
+        };
+        var stages = new List<AssessmentProgress>();
+
+        var outcome = AssessCommand.Run(
+            new AssessRequest(seeded.FwDataPath, AllWordforms, PerWordLimitMs: 700), NewManagedRoot(), assessor,
+            NewInvoker(), stages.Add, CancellationToken.None);
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var forwarded = Assert.Single(stages, stage => stage.Stage == AssessmentStage.Parsing && stage.CurrentWord == "motifb");
+        Assert.Equal(1, forwarded.Completed);
+        Assert.Equal(2, forwarded.Total);
+        Assert.Equal(700, forwarded.PerWordLimitMs);
+        Assert.Equal([stopped], forwarded.StoppedWords);
+        Assert.Equal(slowest, forwarded.SlowestWord);
     }
 
     // The parser existing is not the parser working: a subcommand it lacks must refuse, not kill the app.

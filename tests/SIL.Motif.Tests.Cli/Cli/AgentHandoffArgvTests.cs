@@ -46,15 +46,7 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Assert.Equal(Path.GetFullPath(destination), Path.GetFullPath(handoff.OutputDirectory));
         Assert.Equal(assessed.InvocationId, handoff.InvocationId);
         Assert.Equal(assessed.AssessmentIds.Order(StringComparer.Ordinal), handoff.AssessmentIds.Order(StringComparer.Ordinal));
-        Assert.Equal(5, handoff.Files.Count);
-        Assert.Equal(new[]
-        {
-            "grammar.json",
-            "handoff.md",
-            "parse-results.json",
-            "read_results.py",
-            "texts.json",
-        }, handoff.Files);
+        Assert.Equal(HandoffFileExpectations.Assessed.Select(file => file.RelativePath), handoff.Files);
         Assert.All(handoff.Files, file => Assert.True(File.Exists(Path.Combine(destination, file.Replace('/', Path.DirectorySeparatorChar))), file));
         using var assessmentDocument = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")));
         Assert.Equal("motifa", Assert.Single(assessmentDocument.RootElement.EnumerateArray())

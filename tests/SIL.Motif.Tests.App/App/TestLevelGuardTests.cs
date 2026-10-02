@@ -157,6 +157,8 @@ public sealed class TestLevelGuardTests
     [InlineData(typeof(RealClient.TryWordRealClientTests), "Integration")]
     [InlineData(typeof(RealClient.FieldWorksAnalysisDriftRealClientTests), "Integration")]
     [InlineData(typeof(RealClient.WindowRefusalRealClientTests), "Integration")]
+    [InlineData(typeof(ReviewUndoRealClientTests), "Integration")]
+    [InlineData(typeof(InspectorIdentityBoundaryTests), "Integration")]
     [InlineData(typeof(CompareOverviewParityTests), "Integration")]
     [InlineData(typeof(WalkthroughHelpers.WalkthroughScriptLoaderTests), "Unit")]
     [InlineData(typeof(WalkthroughHelpers.WalkthroughArtifactTests), "Unit")]

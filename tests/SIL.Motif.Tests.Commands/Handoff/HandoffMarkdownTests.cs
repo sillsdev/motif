@@ -1,4 +1,5 @@
 using SIL.Motif.Commands.Handoff;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Handoff;
@@ -26,11 +27,8 @@ public sealed class HandoffMarkdownTests
     {
         var markdown = HandoffWriter.BuildHandoffMarkdown(true, "example-key", "mirusi");
 
-        Assert.Contains("`grammar.json`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`texts.json`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`parse-results.json`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`read_results.py`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`handoff.md`", markdown, StringComparison.Ordinal);
+        foreach (var file in HandoffFileExpectations.Assessed)
+            Assert.Contains($"`{file.RelativePath}`", markdown, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -39,7 +37,9 @@ public sealed class HandoffMarkdownTests
         var markdown = HandoffWriter.BuildHandoffMarkdown(true, "example-key", "mirusi", hasTrace: true);
 
         Assert.Contains("six files", markdown, StringComparison.Ordinal);
-        Assert.Contains("`mirusi.trace.json`", markdown, StringComparison.Ordinal);
+        var tracePath = HandoffFileExpectations.TraceDiagnostic.RelativePath
+            .Replace("<word>", "mirusi", StringComparison.Ordinal);
+        Assert.Contains($"`{Path.GetFileName(tracePath)}`", markdown, StringComparison.Ordinal);
         Assert.DoesNotContain("`traces/", markdown, StringComparison.Ordinal);
         Assert.Contains("Completion is `unknown`", markdown, StringComparison.Ordinal);
         Assert.Contains("preserves its recorded parser fields", markdown, StringComparison.Ordinal);

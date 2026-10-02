@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Help;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -74,6 +75,25 @@ public sealed class HelpCatalogTests
             "Available", "RecordedGradesOnly", "Unavailable", "matched analysis identities", "individual opinions" })
             Assert.Contains(text, page, StringComparison.Ordinal);
         Assert.Contains("incomplete search", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HandoffHelpMatchesTheIndependentFileSpecification()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var commandPage = catalog.GetHelpPage(HelpEntryKind.Command, "handoff")!;
+        var agentPage = catalog.GetHelpPage(HelpEntryKind.Guide, "agents/handoff")!;
+
+        AssertInOrder(commandPage, HandoffFileExpectations.Assessed.Select(file => file.RelativePath));
+        AssertInOrder(agentPage, HandoffFileExpectations.Assessed.Select(file => file.RelativePath));
+        AssertInOrder(agentPage, HandoffFileExpectations.BaselineOnly.Select(file => file.RelativePath));
+        AssertInOrder(agentPage, HandoffFileExpectations.OneWordTrace.Select(file => file.RelativePath));
+        foreach (var file in HandoffFileExpectations.Assessed
+                     .Concat(HandoffFileExpectations.OneWordTrace)
+                     .DistinctBy(file => file.RelativePath))
+            Assert.Contains($"| `{file.RelativePath}` | {file.Description} |", agentPage, StringComparison.Ordinal);
+        Assert.Contains("omits `parse-results.json`", commandPage, StringComparison.Ordinal);
+        Assert.Contains("does not interpret", agentPage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -246,5 +266,16 @@ public sealed class HelpCatalogTests
         var error = Assert.Single(HelpCatalog.ValidateLinks(entries));
 
         Assert.Equal("guide 'overview' links to missing guide 'missing'.", error);
+    }
+
+    private static void AssertInOrder(string page, IEnumerable<string> paths)
+    {
+        var previous = -1;
+        foreach (var path in paths)
+        {
+            var current = page.IndexOf($"`{path}`", previous + 1, StringComparison.Ordinal);
+            Assert.True(current > previous, $"The Help page is missing or misorders `{path}`.");
+            previous = current;
+        }
     }
 }

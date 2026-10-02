@@ -114,7 +114,10 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         var tracePath = Path.Combine(destination, "traces", selectedWord + ".trace.json");
         Assert.True(File.Exists(tracePath));
-        Assert.Contains("traces/" + selectedWord + ".trace.json", outcome.Value!.Files);
+        Assert.Equal(HandoffFileExpectations.Assessed.Select(file => file.RelativePath)
+                .Append(HandoffFileExpectations.TraceDiagnostic.RelativePath.Replace(
+                    "<word>", selectedWord, StringComparison.Ordinal)).Order(StringComparer.Ordinal),
+            outcome.Value!.Files);
 
         using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")));
         var record = Assert.Single(assessment.RootElement.EnumerateArray());
@@ -212,7 +215,8 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(exported.RootElement.GetProperty("search").GetProperty("completed").GetBoolean());
         Assert.Equal(selectedTrace.Value.HostCapture!.WallElapsedMs,
             exported.RootElement.GetProperty("hostCapture").GetProperty("wallElapsedMs").GetInt64());
-        Assert.False(File.Exists(Path.Combine(destination, "parse-results.json")));
+        Assert.Equal(HandoffFileExpectations.OneWordTrace.Select(file => file.RelativePath.Replace(
+            "<word>", selectedWord, StringComparison.Ordinal)), outcome.Value.Files);
     }
 
     [Fact]
@@ -557,13 +561,8 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal(2, response.AssessmentIds.Count);
         Assert.True(response.Selection.Words.Count > 0);
 
-        // No sixth file and no subfolder: exactly the five files ADR 0045 names.
-        Assert.Equal(
-            new[]
-            {
-                "grammar.json", "handoff.md", "parse-results.json",
-                "read_results.py", "texts.json",
-            },
+        Assert.Equal(HandoffFileExpectations.Assessed.Select(file => file.RelativePath), response.Files);
+        Assert.Equal(HandoffFileExpectations.Assessed.Select(file => file.RelativePath),
             Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
 
         AssertFile(destination, "grammar.json");
@@ -818,6 +817,7 @@ public sealed class HandoffWriterTests : IDisposable
 
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Empty(outcome.Value!.AssessmentIds);
+        Assert.Equal(HandoffFileExpectations.BaselineOnly.Select(file => file.RelativePath), outcome.Value.Files);
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "texts.json");
         AssertFile(destination, "read_results.py");

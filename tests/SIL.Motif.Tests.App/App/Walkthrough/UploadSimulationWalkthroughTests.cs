@@ -29,6 +29,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 var baselineDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
                 walkthrough.Check(SeededProject.TextTitle);
+                var baselineToken = walkthrough.Workspace.Baseline.Token;
                 WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
                 var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
@@ -39,9 +40,24 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");
 
+                var handoff = walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+                Assert.Equal(Path.GetFullPath(outputDirectory), Path.GetFullPath(handoff.OutputDirectory!));
+                Assert.NotNull(handoff.Result);
+                Assert.Equal(baselineToken, handoff.Result!.Baseline.Token);
+                Assert.Equal(HandoffFileExpectations.Assessed.Select(file => file.RelativePath),
+                    handoff.Files.Select(file => file.RelativePath));
+                Assert.All(handoff.Files, file =>
+                {
+                    Assert.True(File.Exists(file.FullPath), file.FullPath);
+                    Assert.StartsWith(Path.GetFullPath(outputDirectory) + Path.DirectorySeparatorChar,
+                        Path.GetFullPath(file.FullPath), StringComparison.OrdinalIgnoreCase);
+                });
+
                 var receiver = new FakeChatReceiver(output);
                 walkthrough.DragAllFiles();
                 receiver.Drop(walkthrough.DraggedPaths);
+                Assert.Equal(HandoffFileExpectations.Assessed.Select(file => Path.GetFileName(file.RelativePath)),
+                    receiver.Files.Keys.Order(StringComparer.Ordinal));
 
                 walkthrough.Click("Copy the starter prompt");
                 var clipboard = walkthrough.Window.Clipboard
