@@ -462,7 +462,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void InTheOpenCardEachMorphemesFormIsItsLinkToFieldWorks()
+    public void InTheOpenCardLinksWaitForHoverOrKeyboardFocus()
     {
         avalonia.Invoke(() =>
         {
@@ -470,8 +470,10 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
             compare.Load([new AssessWordRowViewModel(new AssessmentWordResult("kitabu", "analysed", false, "Search completed", 3, null)
             {
                 ProjectStanding = ProjectStanding.NotPresent,
-                Readings = [new ParserReading([new ParserReadingMorph("ki-", "7", "n", null, false, LexiconLink),
-                    new ParserReadingMorph("tabu", "book", "n", null, false, LexiconLink)])],
+                Readings = [new ParserReading([new ParserReadingMorph("ki-", "7", "n", null, false, LexiconLink)
+                        { AllomorphId = "allomorph-ki", GrammaticalInfoId = "msa-ki" },
+                    new ParserReadingMorph("tabu", "book", "n", null, false, LexiconLink)
+                        { AllomorphId = "allomorph-tabu", GrammaticalInfoId = "msa-tabu" }])],
                 Morphology = new ParseWordEvidence("v1", 0, "kitabu", 3, false, false, false, [new ParseAnalysis([])], []),
             })]);
             var window = new Window { Content = new ComparePanel(compare), Width = 1400, Height = 1000 };
@@ -483,16 +485,36 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
 
                 var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
                 var links = card.GetVisualDescendants().OfType<HyperlinkButton>().Where(link => link.IsEffectivelyVisible).ToArray();
-                Assert.Equal(["ki-", "tabu"], links.Select(link => link.GetVisualDescendants().OfType<TextBlock>().First().Text));
+                Assert.Equal(2, links.Length);
+                Assert.Equal(["ki-", "tabu"], card.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(text => text.Classes.Contains("morphForm")).Select(text => text.Text));
                 Assert.All(links, link =>
                 {
                     Assert.Contains("morphLink", link.Classes);
+                    Assert.Contains("revealLink", link.Classes);
+                    Assert.Equal("↗", link.Content);
                     Assert.Equal(new Uri(LexiconLink), link.NavigateUri);
+                    Assert.Equal(0, link.Opacity);
+                    Assert.False(link.IsHitTestVisible);
                 });
-                Assert.Equal(["Open ki- in Lexicon Edit", "Open tabu in Lexicon Edit"], links.Select(link => ToolTip.GetTip(link)));
+                Assert.Equal(["Open the entry for ki- in Lexicon Edit", "Open the entry for tabu in Lexicon Edit"],
+                    links.Select(link => ToolTip.GetTip(link)));
                 var morphs = compare.Words.Single().Readings.Single().Morphs;
                 Assert.Equal(morphs.Select(morph => morph.LinkName), links.Select(AutomationProperties.GetName));
-                Assert.DoesNotContain(card.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("Lexicon Edit") == true);
+                var blocks = card.GetVisualDescendants().OfType<Border>()
+                    .Where(block => block.Classes.Contains("morph") && block.Tag is ParserReadingMorphViewModel).ToArray();
+                Assert.Equal(2, blocks.Length);
+                Assert.All(blocks, block => Assert.Contains("hoverReveal", block.Classes));
+                var requested = new List<InspectorSubject>();
+                window.AddHandler(InspectLink.RequestedEvent, (_, e) => requested.Add(e.Subject));
+                blocks[0].RaiseEvent(new KeyEventArgs
+                    { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = blocks[0] });
+                Assert.Equal(morphs[0].InspectSubject, Assert.Single(requested));
+                Assert.True(links[0].Focus(NavigationMethod.Tab));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(1, links[0].Opacity);
+                Assert.True(links[0].IsHitTestVisible);
             }
             finally
             {

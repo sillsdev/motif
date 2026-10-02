@@ -9,15 +9,27 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Compare matrix in Texts: what the project held against what the parser built.</summary>
 public sealed partial class ComparePanel : UserControl
 {
+    private const double ExpandedMatrixLabelWidth = 1000;
+
     public ComparePanel(CompareViewModel compare)
     {
         ArgumentNullException.ThrowIfNull(compare);
         Compare = compare;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        SizeChanged += (_, e) => SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
+        SetExpandedMatrixLabel(Bounds.Width >= ExpandedMatrixLabelWidth);
     }
 
     public CompareViewModel Compare { get; }
+
+    private void SetExpandedMatrixLabel(bool expanded)
+    {
+        var isExpanded = Classes.Contains("wideMatrix");
+        if (expanded == isExpanded) return;
+        if (expanded) Classes.Add("wideMatrix");
+        else Classes.Remove("wideMatrix");
+    }
 
     /// <summary>The words a sort choice is shown with.</summary>
     public static readonly IValueConverter SortLabel = new FuncValueConverter<CompareSort, string>(sort => sort switch

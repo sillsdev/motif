@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
@@ -9,6 +10,9 @@ namespace SIL.Motif.App.Views;
 /// <summary>The Timing page: where an Assessment's parse time went, once there is an Assessment.</summary>
 public sealed partial class TimingPage : UserControl
 {
+    public static readonly IValueConverter InspectorKindColumnWidth = new FuncValueConverter<object?, GridLength>(
+        inspector => inspector is null ? new GridLength(1.7, GridUnitType.Star) : new GridLength(0));
+
     private const double SidePanelLayoutWidth = 900;
     private Grid? _shareLayout;
     private Control? _sidePanel;

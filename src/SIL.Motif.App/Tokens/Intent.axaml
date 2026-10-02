@@ -146,8 +146,9 @@
     Intent.Type.Body              ordinary control text
     Intent.Type.Status            the freshness line
     Intent.Type.Small             chips and filter chips
-    Intent.Type.Caption           a menu entry's second line
+    Intent.Type.Caption           a secondary label or a line label in Analyze texts
     Intent.Type.Label             badges, compact chips, the sidebar footer, disclosure marks
+    Intent.Type.Dense             glosses in an interlinear word strip
     Intent.Type.Micro             a badge on the collapsed sidebar
 
   Transforms:
@@ -219,8 +220,9 @@
   <StaticResource x:Key="Intent.Type.Body" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Type.Status" ResourceKey="Primitive.Type.12p5" />
   <StaticResource x:Key="Intent.Type.Small" ResourceKey="Primitive.Type.12" />
-  <StaticResource x:Key="Intent.Type.Caption" ResourceKey="Primitive.Type.11p5" />
+  <StaticResource x:Key="Intent.Type.Caption" ResourceKey="Primitive.Type.11" />
   <StaticResource x:Key="Intent.Type.Label" ResourceKey="Primitive.Type.11" />
+  <StaticResource x:Key="Intent.Type.Dense" ResourceKey="Primitive.Type.10p5" />
   <StaticResource x:Key="Intent.Type.Micro" ResourceKey="Primitive.Type.10p5" />
 
 

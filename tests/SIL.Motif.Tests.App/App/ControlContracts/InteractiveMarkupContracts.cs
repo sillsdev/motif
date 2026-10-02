@@ -94,7 +94,7 @@ internal static class InteractiveMarkupContracts
             [InteractiveControlFamily.Tree] = new(typeof(TryWordPageTests),
                 nameof(TryWordPageTests.ASelectedOccurrenceSurvivesBothMountedTreesAndFiltering)),
             [InteractiveControlFamily.Morpheme] = new(typeof(WordRowControlTests),
-                nameof(WordRowControlTests.InTheOpenCardEachMorphemesFormIsItsLinkToFieldWorks)),
+                nameof(WordRowControlTests.InTheOpenCardLinksWaitForHoverOrKeyboardFocus)),
             [InteractiveControlFamily.FocusableSurface] = new(typeof(KeyboardInteractionContractTests),
                 nameof(KeyboardInteractionContractTests.ClosingTheCardReturnsFocusToItsOccurrence)),
             [InteractiveControlFamily.Occurrence] = new(typeof(KeyboardInteractionContractTests),

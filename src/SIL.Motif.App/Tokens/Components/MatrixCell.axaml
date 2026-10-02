@@ -7,7 +7,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.MatrixCell.Padding" ResourceKey="Primitive.Inset.10_8_10_8" />
+    <StaticResource x:Key="Component.MatrixCell.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
@@ -16,7 +16,7 @@
     <StaticResource x:Key="Component.MatrixCell.MarkerMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.MatrixCell.SharedPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.MatrixCell.SharedRadius" ResourceKey="Primitive.Radius.6" />
-    <StaticResource x:Key="Component.MatrixCell.ChosenPadding" ResourceKey="Primitive.Inset.8_12_8_12" />
+    <StaticResource x:Key="Component.MatrixCell.ChosenPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />

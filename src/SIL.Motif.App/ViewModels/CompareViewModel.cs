@@ -523,7 +523,8 @@ public sealed partial class CompareViewModel : ObservableObject
             ? ObjectUsesQuery.SharedBy(listed.Select(word => word.Source).ToArray(), listed.Select(word => word.Word).ToArray())
             : [];
         foreach (var morpheme in shared.Take(SharedShown))
-            Shared.Add(new CompareSharedMorphemeViewModel(morpheme.Morpheme.Form, morpheme.Morpheme.Gloss, morpheme.Count));
+            Shared.Add(new CompareSharedMorphemeViewModel(
+                new ParserReadingMorphViewModel(morpheme.Morpheme), morpheme.Count));
         SharedMoreText = shared.Count > SharedShown ? $"and {shared.Count - SharedShown:N0} more" : null;
         OnPropertyChanged(nameof(HasShared));
     }
@@ -877,11 +878,16 @@ public sealed record PanGlossLegendItem(AnalysisMarkingClass Kind, string Label)
 }
 
 /// <summary>A morpheme some listed words share by identity, and how many of them use it.</summary>
-/// <param name="Form">The morpheme's form, as the first word that uses it shows it.</param>
-/// <param name="Gloss">Its gloss.</param>
+/// <param name="Morpheme">The first word's reading, including the identity used to open the inspector.</param>
 /// <param name="Count">How many of the listed words use it.</param>
-public sealed record CompareSharedMorphemeViewModel(string Form, string Gloss, int Count)
+public sealed record CompareSharedMorphemeViewModel(ParserReadingMorphViewModel Morpheme, int Count)
 {
+    public IReadOnlyList<ParserReadingMorphViewModel> Morphs => [Morpheme];
+
+    public string Form => Morpheme.Form;
+
+    public string Gloss => Morpheme.Gloss;
+
     public string CountText => $"in {Count:N0}";
 
     public string AccessibleName => (Gloss.Length == 0 ? Form : $"{Form} {Gloss}") +

@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Styling;
 using Avalonia.Media;
 using Avalonia.Automation;
+using Avalonia.Input;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
@@ -355,6 +356,17 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
         {
             var compare = CompareViewModelTests.LostWords(new AssessmentWordResult("polepole", "timed-out", true,
                 "Search stopped at its time limit", 10, null) { ProjectStanding = ProjectStanding.NotPresent });
+            var linkedWords = compare.Words.Select(word => word.Source with
+            {
+                StoredAnalyses = word.Source.StoredAnalyses.Select(analysis => analysis with
+                {
+                    Morphs = analysis.Morphs.Select(morph => morph with
+                    {
+                        FieldWorksLink = "silfw://localhost/link",
+                    }).ToArray(),
+                }).ToArray(),
+            }).ToArray();
+            compare.Load(linkedWords.Select(word => new AssessWordRowViewModel(word)));
             compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                 cell.Column == CompareColumnKind.NoParse), additive: false);
             WithPanel(compare, 1000, window =>
@@ -369,6 +381,23 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains("in 2", stripTexts);
                 Assert.Contains(strip.GetVisualDescendants().OfType<Control>(), control =>
                     AutomationProperties.GetName(control) == "kat cut: 2 of these words use it");
+                var sharedMorphs = strip.GetVisualDescendants().OfType<MorphemeRow>().ToArray();
+                Assert.NotEmpty(sharedMorphs);
+                var kat = sharedMorphs.SelectMany(row => row.Children.OfType<Border>())
+                    .Single(block => block.Tag is ParserReadingMorphViewModel { Form: "kat" });
+                Assert.True(kat.Focusable);
+                Assert.Contains("hoverReveal", kat.Classes);
+                var link = Assert.Single(kat.GetVisualDescendants().OfType<HyperlinkButton>());
+                Assert.Contains("revealLink", link.Classes);
+                Assert.Equal(0, link.Opacity);
+                Assert.False(link.IsHitTestVisible);
+                var katMorph = Assert.IsType<ParserReadingMorphViewModel>(kat.Tag);
+                var requested = new List<InspectorSubject>();
+                window.AddHandler(InspectLink.RequestedEvent, (_, e) => requested.Add(e.Subject));
+                kat.RaiseEvent(new KeyEventArgs
+                    { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = kat });
+                var subject = Assert.Single(requested);
+                Assert.Equal(katMorph.InspectSubject, subject);
 
                 var heading = Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
                     control.Classes.Contains("matrixChosenHeading"));
@@ -431,6 +460,64 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     cell.Column == CompareColumnKind.NoParse), additive: false);
                 HeadsStayApart(["WORD", "FieldWorks", "PanGloss", "PLACES"]);
             });
+        });
+    }
+
+    [Fact]
+    public void TheMatrixFitsAllFiveColumnsAt1240Pixels()
+    {
+        avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1036, window =>
+        {
+            var columns = window.GetVisualDescendants().OfType<Button>()
+                .Where(button => button.DataContext is CompareColumnViewModel)
+                .OrderBy(button => button.TranslatePoint(default, window)!.Value.X).ToArray();
+            Assert.Equal(5, columns.Length);
+            Assert.All(columns, column => Assert.True(column.IsEffectivelyVisible));
+            var last = columns[^1].TranslatePoint(new Point(columns[^1].Bounds.Width, 0), window)!.Value.X;
+            Assert.True(last <= window.Bounds.Width,
+                $"The Not parsed column ends at {last:0.#} px in a {window.Bounds.Width:0.#} px window.");
+            var notInFieldWorks = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                AutomationProperties.GetName(button) == "Choose the words not in FieldWorks");
+            var rowLabel = Assert.Single(notInFieldWorks.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Text == "Not in FieldWorks");
+            var availableWidth = rowLabel.Bounds.Width;
+            rowLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Assert.True(rowLabel.DesiredSize.Width <= availableWidth,
+                $"The '{rowLabel.Text}' row label needs {rowLabel.DesiredSize.Width:0.#} px but has {availableWidth:0.#} px.");
+        }));
+    }
+
+    [Fact]
+    public void TheChosenWordListStartsWithAWholeRowAt1240Pixels()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = CompareViewModelTests.LostWords();
+            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                cell.Column == CompareColumnKind.NoParse), additive: false);
+            var window = new Window
+            {
+                Content = new ComparePanel(compare),
+                RequestedThemeVariant = ThemeVariant.Light,
+                Width = 1036,
+                Height = 640,
+            };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), box =>
+                    AutomationProperties.GetName(box) == "Words in the chosen cells");
+                var first = list.GetVisualDescendants().OfType<WordRow>()
+                    .OrderBy(row => row.TranslatePoint(default, window)!.Value.Y).First();
+                var bottom = first.TranslatePoint(new Point(0, first.Bounds.Height), window)!.Value.Y;
+                Assert.True(bottom <= window.Bounds.Height,
+                    $"The first word row ends at {bottom:0.#} px below the {window.Bounds.Height:0.#} px window.");
+            }
+            finally
+            {
+                window.Close();
+            }
         });
     }
 

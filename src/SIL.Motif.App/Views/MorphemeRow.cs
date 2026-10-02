@@ -29,6 +29,9 @@ public sealed class MorphemeRow : WrapPanel
     public static readonly StyledProperty<bool> RevealLinksProperty =
         AvaloniaProperty.Register<MorphemeRow, bool>(nameof(RevealLinks));
 
+    public static readonly StyledProperty<bool> CompactLinksProperty =
+        AvaloniaProperty.Register<MorphemeRow, bool>(nameof(CompactLinks));
+
     public static readonly StyledProperty<bool> FormLinksProperty =
         AvaloniaProperty.Register<MorphemeRow, bool>(nameof(FormLinks));
 
@@ -38,6 +41,7 @@ public sealed class MorphemeRow : WrapPanel
         ShowCategoryProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         SeparatorsProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         RevealLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
+        CompactLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
         FormLinksProperty.Changed.AddClassHandler<MorphemeRow>((row, _) => row.Rebuild());
     }
 
@@ -71,6 +75,13 @@ public sealed class MorphemeRow : WrapPanel
         set => SetValue(RevealLinksProperty, value);
     }
 
+    /// <summary>Whether a revealed FieldWorks link shows only its arrow while keeping its full accessible name.</summary>
+    public bool CompactLinks
+    {
+        get => GetValue(CompactLinksProperty);
+        set => SetValue(CompactLinksProperty, value);
+    }
+
     /// <summary>
     /// Whether each linked morpheme's form is itself the link into FieldWorks, marked with a small arrow, instead of a
     /// separate link under it; for a row where many morphemes would otherwise each repeat the tool's name.
@@ -99,9 +110,10 @@ public sealed class MorphemeRow : WrapPanel
             { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
         if (ShowCategory && morph.Category is { Length: > 0 })
             column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
-        if (morph.HasLink && !formIsLink) column.Children.Add(Link(morph, RevealLinks));
+        if (morph.HasLink && !formIsLink) column.Children.Add(Link(morph, RevealLinks, CompactLinks));
 
         var block = new Border { Child = column, Classes = { "morph" }, Tag = morph };
+        if (RevealLinks && morph.HasLink) block.Classes.Add("hoverReveal");
         if (last) block.Classes.Add("last");
         else if (Separators) block.Classes.Add("morphEdge");
         if (morph.InspectSubject is not { } reference) return block;
@@ -145,11 +157,11 @@ public sealed class MorphemeRow : WrapPanel
         return button;
     }
 
-    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, bool reveal)
+    private static HyperlinkButton Link(ParserReadingMorphViewModel morph, bool reveal, bool compact)
     {
         var button = new HyperlinkButton
         {
-            Content = morph.LinkText,
+            Content = compact ? "↗" : morph.LinkText,
             NavigateUri = morph.Link,
             Padding = new Thickness(0),
             Classes = { "morphLink" },

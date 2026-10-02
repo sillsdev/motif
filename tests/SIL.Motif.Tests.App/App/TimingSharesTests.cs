@@ -335,6 +335,51 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
+    public void TheRuleTableHidesKindAndUsesTheSpaceWhenTheInspectorOpens()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            var timing = await LoadedTiming(NineWords, Kinds, Rules);
+            var window = new Window { Width = 1240, Height = 1400, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var header = Assert.Single(window.GetVisualDescendants().OfType<Grid>(), grid =>
+                    grid.Classes.Contains("timingTableHeader"));
+                var ruleGrids = window.GetVisualDescendants().OfType<Grid>()
+                    .Where(grid => grid.Classes.Contains("timingColumns") &&
+                        grid.FindAncestorOfType<Button>()?.Classes.Contains("timingRuleRow") == true)
+                    .ToArray();
+                Assert.NotEmpty(ruleGrids);
+                var kindCells = ruleGrids.SelectMany(ruleGrid => ruleGrid.GetVisualDescendants().OfType<TextBlock>())
+                    .Where(text => text.Text == "Morphological rules").ToArray();
+                Assert.NotEmpty(kindCells);
+                var kindHeader = Assert.Single(header.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "KIND");
+                var ruleWidth = header.ColumnDefinitions[0].ActualWidth;
+                var kindWidth = header.ColumnDefinitions[1].ActualWidth;
+                Assert.True(kindHeader.IsEffectivelyVisible);
+                Assert.All(kindCells, cell => Assert.True(cell.IsEffectivelyVisible));
+
+                timing.Context.OpenInspector(InspectorSubject.Rule(new TraceTimingKey("morph_rule", "rule")));
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                Assert.False(kindHeader.IsEffectivelyVisible);
+                Assert.All(kindCells, cell => Assert.False(cell.IsEffectivelyVisible));
+                Assert.True(header.ColumnDefinitions[1].ActualWidth < kindWidth);
+                Assert.True(header.ColumnDefinitions[0].ActualWidth > ruleWidth);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public void TimingControlsStayInOneRowAndCallsOpenOnRequest()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

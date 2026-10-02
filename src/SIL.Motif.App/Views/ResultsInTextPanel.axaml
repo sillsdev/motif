@@ -175,20 +175,20 @@
         <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
-              <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}">
+              <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">
               <StackPanel Classes="lineHead" Orientation="Horizontal">
                 <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}" />
                 <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}" />
                 <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}" />
               </StackPanel>
-              <DockPanel LastChildFill="True">
-                <StackPanel DockPanel.Dock="Left" Classes="gutter stripRows">
+              <Grid Classes="resultsLineBody" ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
+                <StackPanel Classes="gutter stripRows">
                   <TextBlock Classes="gutterLabel wordRow" Text="Word" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="FieldWorks" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding Tokens}">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" HorizontalAlignment="Stretch" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                       <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
@@ -329,7 +329,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </DockPanel>
+              </Grid>
               <ContentControl Content="{Binding OpenCard}" IsVisible="{Binding HasOpenCard}"
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>

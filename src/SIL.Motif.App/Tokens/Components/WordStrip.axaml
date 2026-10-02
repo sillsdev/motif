@@ -20,14 +20,11 @@
     <!-- A short word's rows keep at least this width, so its strip stays wide enough to aim at. -->
     <StaticResource x:Key="Component.WordStrip.RowsMinWidth" ResourceKey="Primitive.Size.70" />
     <StaticResource x:Key="Component.WordStrip.GutterMargin" ResourceKey="Primitive.Inset.0_1_6_0" />
-    <StaticResource x:Key="Component.WordStrip.GutterType" ResourceKey="Primitive.Type.9" />
     <StaticResource x:Key="Component.WordStrip.GutterWordPadding" ResourceKey="Primitive.Inset.0_5_0_0" />
     <StaticResource x:Key="Component.WordStrip.MorphType" ResourceKey="Primitive.Type.11" />
-    <StaticResource x:Key="Component.WordStrip.GlossType" ResourceKey="Primitive.Type.9p5" />
     <StaticResource x:Key="Component.WordStrip.MorphLine" ResourceKey="Primitive.Size.14" />
-    <StaticResource x:Key="Component.WordStrip.GlossLine" ResourceKey="Primitive.Size.13" />
+    <StaticResource x:Key="Component.WordStrip.GlossLine" ResourceKey="Primitive.Size.14" />
     <StaticResource x:Key="Component.WordStrip.NoteType" ResourceKey="Primitive.Type.10" />
-    <StaticResource x:Key="Component.WordStrip.HeadType" ResourceKey="Primitive.Type.10" />
   </Styles.Resources>
   <Style Selector="Border.wordStrip">
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
@@ -94,7 +91,7 @@
     <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.MorphLine}" />
   </Style>
   <Style Selector="TextBlock.stripMorphGloss">
-    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.GlossType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Dense}" />
     <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.GlossLine}" />
   </Style>
   <Style Selector="Border.warningMorphUnderline">
@@ -136,7 +133,7 @@
     <Setter Property="Margin" Value="{DynamicResource Component.WordStrip.GutterMargin}" />
   </Style>
   <Style Selector="TextBlock.gutterLabel">
-    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.GutterType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
     <Setter Property="TextAlignment" Value="Right" />
   </Style>
@@ -147,11 +144,11 @@
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector=":is(TextBlock).lineNumber">
-    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.HeadType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector=":is(TextBlock).lineSentence">
-    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.HeadType}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
 </Styles>

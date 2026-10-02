@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
@@ -468,8 +469,43 @@ public sealed class AnalyzeTextsLayoutTests
                         BoundsIn(row, panel).Top < BoundsIn(gutter, panel).Bottom,
                         $"{label} sits at {BoundsIn(gutter, panel).Top}, its row at {BoundsIn(row, panel).Top}.");
                 }
+                var lineBody = Assert.Single(line.GetVisualDescendants().OfType<Grid>(), grid =>
+                    grid.Classes.Contains("resultsLineBody"));
+                Assert.True(Math.Abs(lineBody.Bounds.Width - line.Bounds.Width) <= 1,
+                    $"The line uses {lineBody.Bounds.Width:0.#} of its {line.Bounds.Width:0.#} px available width.");
+                Assert.Equal(11, Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Word").FontSize);
+                Assert.Equal(10.5, Assert.Single(Part(sungura, "pangloss").GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Classes.Contains("stripMorphGloss")).FontSize);
                 Assert.Contains(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Sungura alikula chakula." && text.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
+    public void OpeningTheInspectorFoldsTheTextSelectionListButLeavesTheTextPickerVisible()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var selection = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
+                var picker = Assert.Single(window.GetVisualDescendants().OfType<ComboBox>(), combo =>
+                    AutomationProperties.GetName(combo) == "Text to read");
+                Assert.True(selection.IsEffectivelyVisible);
+                Assert.True(picker.IsEffectivelyVisible);
+
+                workspace.Context.OpenInspector(InspectorSubject.Morpheme("allomorph", "grammatical-info")!);
+                Settle(window);
+
+                Assert.False(selection.IsEffectivelyVisible);
+                Assert.True(picker.IsEffectivelyVisible);
             }
             finally
             {

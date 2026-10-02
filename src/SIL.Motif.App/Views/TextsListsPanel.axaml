@@ -77,7 +77,7 @@
                            ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
                            IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
               <views:WordRow.Card>
-                <views:ListWordCard />
+                    <views:WordRowCard DataContext="{Binding}" />
               </views:WordRow.Card>
             </views:WordRow>
           </DataTemplate>

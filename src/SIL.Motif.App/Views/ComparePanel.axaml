@@ -16,9 +16,15 @@
       <Setter Property="HorizontalContentAlignment" Value="Left" />
       <Setter Property="Padding" Value="{DynamicResource Component.TextsPage.HeaderButtonPadding}" />
     </Style>
+    <Style Selector=":is(Control).matrixRowLabel">
+      <Setter Property="Width" Value="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}" />
+    </Style>
+    <Style Selector=":is(UserControl).wideMatrix :is(Control).matrixRowLabel">
+      <Setter Property="Width" Value="{DynamicResource Component.TextsPage.WideMatrixRowLabelWidth}" />
+    </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}"
         Margin="{DynamicResource Component.TextsPage.PageInset}" IsVisible="{Binding Compare.HasWords}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
@@ -46,8 +52,7 @@
 
     <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Compact}" AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
-                                 Classes="columnHeader" Text="FieldWorks ↓  PanGloss →" VerticalAlignment="Center"
+        <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →" VerticalAlignment="Center"
                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
         <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
@@ -80,8 +85,7 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareRowViewModel">
             <Grid ColumnDefinitions="Auto,*">
-              <Button Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
-                      Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
+              <Button Classes="header matrixRowLabel" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
                       HorizontalContentAlignment="Stretch"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectRowCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding AccessibleName}">
@@ -147,7 +151,7 @@
     </Border>
 
     <Border Grid.Row="3" Classes="card matrixChosen">
-      <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
         <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
           <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
                       Margin="{DynamicResource Intent.Gap.AfterGroup}">
@@ -175,7 +179,8 @@
           <DockPanel VerticalAlignment="Center">
             <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
                                      Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}"
+                                     TextTrimming="CharacterEllipsis" />
           </DockPanel>
         </DockPanel>
 
@@ -196,12 +201,7 @@
                 <DataTemplate x:DataType="vm:CompareSharedMorphemeViewModel">
                   <StackPanel Classes="matrixSharedItem" Orientation="Horizontal"
                               AutomationProperties.Name="{Binding AccessibleName}">
-                    <Border Classes="wordRowMorph">
-                      <StackPanel>
-                        <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Form}" />
-                        <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding Gloss}" />
-                      </StackPanel>
-                    </Border>
+                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
                     <TextBlock Classes="matrixSharedCount" Text="{Binding CountText}" />
                   </StackPanel>
                 </DataTemplate>
