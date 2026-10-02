@@ -45,6 +45,29 @@ public sealed class TraceRefsTests : IDisposable
     }
 
     [Fact]
+    public void TraceCaptureReadsAnIndependentCopyWhileTheExactBaselineIsHeld()
+    {
+        var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), _managedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var baseline = captured.Value!;
+        var original = File.ReadAllBytes(baseline.FwDataPath);
+        using var held = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        var heldPath = held.ProjectId.Path;
+
+        var response = QueryCaptured(fwDataPath, phonRule, affixMsa);
+
+        Assert.Equal(baseline.Token, response.HostCapture!.Baseline!.Token);
+        Assert.Equal(baseline.Token.BundleDigest, response.HostCapture.BundleDigest);
+        Assert.NotEmpty(response.HostCapture.WritingSystems);
+        var rule = Assert.Single(response.Reading.Refs, reference => reference.Kind == "phonologicalRule");
+        Assert.Equal("Vowel harmony", rule.CapturedFieldWorksLabel);
+        Assert.NotNull(rule.FieldWorks);
+        Assert.Equal(heldPath, held.ProjectId.Path);
+        Assert.Equal(original, File.ReadAllBytes(baseline.FwDataPath));
+    }
+
+    [Fact]
     public void CapturedFieldWorksLabelsRoundTripWithoutChangingProducerNames()
     {
         var (fwDataPath, phonRule, _, affixMsa) = ProjectWithRules();

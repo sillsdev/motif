@@ -7,7 +7,7 @@ using System.Text.Json.Nodes;
 using System.Xml;
 using SIL.LCModel;
 using SIL.Motif.Contract.Projects;
-using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.WritingSystems;
 using SIL.Motif.Worker.Baselines;
@@ -27,7 +27,8 @@ internal static class TraceDiagnosticCapture
                 response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow, response.ElapsedMs, [])
                 { Baseline = baselineSource },
         };
-        using var cache = new FwDataProjectLoader().LoadScratchCache(baseline.FwDataPath);
+        using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+        var cache = reader.Cache;
         var container = cache.ServiceLocator.WritingSystems;
         var inventory = WritingSystemInventoryReader.Read(cache);
         var definitions = container.CurrentVernacularWritingSystems.Concat(container.CurrentAnalysisWritingSystems).ToLookup(ws => ws.Id);

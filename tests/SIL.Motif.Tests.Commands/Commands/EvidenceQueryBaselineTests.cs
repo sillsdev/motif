@@ -284,6 +284,30 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
     }
 
     [Fact]
+    public async Task TraceCaptureRemainsReadableAcrossProcessesWhileTheExactBaselineIsHeld()
+    {
+        var project = Capture();
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "trace-parser"));
+        FakeParser.BehaveBesideExecutable(parser,
+            FakeParser.TraceBehavior(SeededProject.AnalysedWordForm, "held-baseline", "seeded rule"));
+        var original = File.ReadAllBytes(project.Baseline.FwDataPath);
+        using var held = new FwDataProjectLoader().LoadScratchCache(project.Baseline.FwDataPath);
+        var heldPath = held.ProjectId.Path;
+
+        var child = await CliProcess.RunAsync(Path.Combine(_root, "worker"), parser, true,
+            "trace", "--project", project.Path, "--word", SeededProject.AnalysedWordForm, "--json");
+
+        Assert.True(child.ExitCode == 0, child.FailureDetails);
+        var trace = ProjectionJson.Deserialize<WordTraceResponse>(child.Output)!;
+        Assert.Equal(SeededProject.AnalysedWordForm, trace.Word);
+        Assert.Equal(project.Baseline.Token, trace.HostCapture!.Baseline!.Token);
+        Assert.NotEmpty(trace.HostCapture.WritingSystems);
+        Assert.Contains("parse", FakeParser.Invocations(parser));
+        Assert.Equal(heldPath, held.ProjectId.Path);
+        Assert.Equal(original, File.ReadAllBytes(project.Baseline.FwDataPath));
+    }
+
+    [Fact]
     public void NumericQueriesDoNotOpenAnUnusedBaselineCache()
     {
         var project = Capture();
