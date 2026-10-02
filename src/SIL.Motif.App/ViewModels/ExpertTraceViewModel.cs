@@ -89,9 +89,9 @@ public sealed partial class TraceWordViewModel
     public bool HasExpertEnvironment => ExpertEnvironmentTokens.Count > 0;
 
     public string ExpertScopeText => ExpertWholeTree
-        ? "Whole tree: attempt membership of neighboring events is not established."
-        : SelectedCandidate is null ? "Choose an attempt to read its recorded path."
-        : $"Attempt {SelectedCandidate.AttemptId}: recorded ancestors and terminal event only.";
+        ? "Showing every step"
+        : SelectedCandidate is null ? string.Empty
+        : $"Showing attempt {SelectedCandidate.AttemptId}'s recorded path.";
 
     public string ExpertReadableText => SelectedStep is not { } step ? "Choose a recorded event."
         : $"{step.KindText}{(step.Source is { Length: > 0 } source ? $" ({source})" : string.Empty)}: {step.RecordedOutcomeText}. {step.RecordedExplanationText}";

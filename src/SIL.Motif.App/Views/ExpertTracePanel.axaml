@@ -8,7 +8,7 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}">
       <ComboBox ItemsSource="{Binding ExpertAttempts}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
-                PlaceholderText="Choose an attempt" AutomationProperties.Name="Expert attempt">
+                PlaceholderText="Show one analysis path" AutomationProperties.Name="Expert attempt">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TraceCandidateViewModel">
             <TextBlock Text="{Binding AttemptId, StringFormat='Attempt {0}'}" />
@@ -18,7 +18,8 @@
       <CheckBox Content="Whole tree" IsChecked="{Binding ExpertWholeTree, Mode=TwoWay}"
                 AutomationProperties.Name="Expert whole tree" ToolTip.Tip="Turn off to show only the chosen attempt's recorded ancestors and terminal event." />
     </WrapPanel>
-    <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
+               IsVisible="{Binding ExpertScopeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Text="Event · source" />
       <TextBlock Grid.Column="1" Text="Input → output" />
@@ -47,20 +48,23 @@
               </StackPanel>
               <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
                 <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}"
-                                          ToolTip.Tip="Recorded input shape, in the parser's direction. Missing input remains unknown.">
-                  <TextBlock Text="{Binding Input, TargetNullValue='Input not recorded'}" TextWrapping="Wrap" />
+                                          ToolTip.Tip="{Binding InputTip}" AutomationProperties.Name="{Binding InputTip}">
+                  <TextBlock Text="{Binding Input}" TextWrapping="Wrap" />
                 </views:TraceNotationToken>
                 <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}"
-                                          ToolTip.Tip="Recorded output shape. A recorded output alone does not prove application.">
-                  <TextBlock Text="{Binding Output, TargetNullValue='Output not recorded'}" TextWrapping="Wrap" />
+                                          ToolTip.Tip="{Binding OutputTip}" AutomationProperties.Name="{Binding OutputTip}">
+                  <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />
                 </views:TraceNotationToken>
               </StackPanel>
               <StackPanel Grid.Column="2" Spacing="{DynamicResource Intent.Space.Minimal}">
                 <TextBlock Text="{Binding RecordedOutcomeText}" TextWrapping="Wrap" />
-                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}" ToolTip.Tip="The producer's recorded event classification, without inferred success.">
-                  <TextBlock Text="{Binding Notation}" TextWrapping="Wrap" />
+                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}"
+                                          ToolTip.Tip="The producer's recorded event classification, without inferred success."
+                                          IsVisible="{Binding HasExpertClassification}">
+                  <TextBlock Text="{Binding ExpertClassificationText}" TextWrapping="Wrap" />
                 </views:TraceNotationToken>
-                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}" ToolTip.Tip="The producer's subrule index. No allomorph identity is inferred from it.">
+                <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}" ToolTip.Tip="The producer's subrule index. No allomorph identity is inferred from it."
+                                          IsVisible="{Binding HasSubrule}">
                   <TextBlock Text="{Binding SubruleText}" TextWrapping="Wrap" />
                 </views:TraceNotationToken>
               </StackPanel>
@@ -83,8 +87,14 @@
                   <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
                 </Button>
                 <StackPanel Grid.Column="1">
-                  <TextBlock Text="{Binding Input, TargetNullValue='Input not recorded'}" Classes="traceNotation" TextWrapping="Wrap" />
-                  <TextBlock Text="{Binding Output, TargetNullValue='Output not recorded'}" Classes="traceNotation" TextWrapping="Wrap" />
+                  <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}"
+                                            ToolTip.Tip="{Binding InputTip}" AutomationProperties.Name="{Binding InputTip}">
+                    <TextBlock Text="{Binding Input}" TextWrapping="Wrap" />
+                  </views:TraceNotationToken>
+                  <views:TraceNotationToken Classes="traceToken" Theme="{DynamicResource BorderlessButton}"
+                                            ToolTip.Tip="{Binding OutputTip}" AutomationProperties.Name="{Binding OutputTip}">
+                    <TextBlock Text="{Binding Output}" TextWrapping="Wrap" />
+                  </views:TraceNotationToken>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                   <TextBlock Text="{Binding RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />

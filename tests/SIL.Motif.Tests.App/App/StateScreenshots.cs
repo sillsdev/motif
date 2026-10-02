@@ -242,6 +242,15 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         return Task.CompletedTask;
     }
 
+    private static async Task SetupTryWordInspector(Stage stage)
+    {
+        await stage.TryTheSampleWord();
+        stage.Workspace.Assess.Trace.IsExpert = true;
+        PageScreenshots.Settle(stage.Window);
+        await stage.Until(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
+            border.Tag is ParserReadingMorphViewModel { Form: "ja-" }).Any(), "the recorded ja- morpheme");
+    }
+
     private static IEnumerable<State> States()
     {
         // The shell: menus and buttons in the top bar and the sidebar, on whichever page is behind them.
@@ -419,14 +428,13 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("try-a-word", "why-section", stage =>
         {
             stage.Open(WorkspacePage.TryAWord);
-            var section = stage.Named<Border>("Why it did not parse");
+            var section = stage.Named<Border>("Recorded trace context");
             section.BringIntoView();
             PageScreenshots.Settle(stage.Window);
             Assert.True(section.IsEffectivelyVisible);
             var group = Assert.Single(stage.Workspace.PageModel<TryWordPageModel>().Trace.StopGroups);
             Assert.Equal("Stopping rule not recorded", group.RuleText);
-            return Task.FromResult($"The why section shows {group.Count} recorded attempt stopped by " +
-                $"{group.RuleText}: {group.ReasonText}");
+            return Task.FromResult("The Plain trace keeps its recorded context visible; the stopped attempt's rule is not recorded.");
         })
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "expert-attempt", stage =>
@@ -498,7 +506,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
                 border.Tag is ParserReadingMorphViewModel { Form: "ja-" }).First(), "the recorded ja- morpheme");
         })
-        { Setup = stage => stage.TryTheSampleWord() };
+        { Setup = SetupTryWordInspector, Teardown = stage => ResetTraceView(stage) };
         yield return new("inspector", "from-timing", stage => stage.Inspect(() =>
         {
             stage.Open(WorkspacePage.Timing);
@@ -1181,7 +1189,7 @@ public sealed class TryWordReviewScreenshots
                         await Show(sample, timing: true);
                         SelectPlain("0.2.0.3.1");
                         var selectedCard = window.GetVisualDescendants().OfType<TextBlock>()
-                            .Single(block => block.IsEffectivelyVisible && block.Text == "Selected recorded step");
+                            .Single(block => block.IsEffectivelyVisible && block.Text == trace.SelectedStep!.PlainRefusalText);
                         var card = selectedCard.FindAncestorOfType<Border>()!;
                         card.BringIntoView();
                         PageScreenshots.Settle(window);
@@ -1205,6 +1213,7 @@ public sealed class TryWordReviewScreenshots
                         Save("interrupted-progress");
                         trace.Result = interrupted with { StopReason = null };
                         Save("incomplete-reason-unavailable");
+                        trace.IsExpert = true;
                         await Show(sample, timing: true);
                         window.Height = 2400;
                         Named<Expander>("Full derivation tree").IsExpanded = true;
@@ -1213,8 +1222,9 @@ public sealed class TryWordReviewScreenshots
                         Named<Expander>("Full derivation tree").BringIntoView();
                         Save("expanded-filters");
 
+                        trace.IsExpert = true;
                         await Show(sample, timing: true);
-                        window.Height = 3000;
+                        window.Height = 5000;
                         trace.ShowDroppedPaths = true;
                         var groupIndex = trace.Reading!.StopGroups.ToList().FindIndex(group =>
                             group.Attempts.Any(attempt => attempt.AttemptId == "0.2.0.3.2"));
@@ -1236,6 +1246,7 @@ public sealed class TryWordReviewScreenshots
                         Save("steps-expanded");
 
                         window.Height = 1500;
+                        trace.IsExpert = true;
                         await Show(sample with
                         {
                             HostCapture = (sample.HostCapture ?? new TraceHostCapture(null, null, null, null, null, null, [])) with
@@ -1273,6 +1284,7 @@ public sealed class TryWordReviewScreenshots
                             Save(scene);
                         }
                         client!.WordContextHandler = null;
+                        trace.IsExpert = false;
                     }
                 }
             }
@@ -1293,8 +1305,7 @@ public sealed class TryWordReviewScreenshots
                 workspace.Context.TryWord(response.Word);
                 await trace.TryCommand.ExecutionTask!;
                 PageScreenshots.Settle(window);
-                var full = Named<Expander>("Full derivation tree");
-                full.IsExpanded = false;
+                if (trace.IsExpert) Named<Expander>("Full derivation tree").IsExpanded = false;
                 var panel = window.GetVisualDescendants().OfType<TryWordPanel>().Single();
                 panel.GetVisualDescendants().OfType<ScrollViewer>().First().Offset = default;
                 window.FocusManager?.Focus(null, NavigationMethod.Unspecified, KeyModifiers.None);

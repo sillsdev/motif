@@ -39,7 +39,7 @@ public sealed class ExpertTraceReadingTests
     internal static string NotationDiagnostic => TraceEnvelope.Of("", """
         {"type":"WordAnalysis","inputShape":"ab","children":[
           {"type":"TemplateAnalysisInput","source":"Template","inputShape":"ab","children":[
-            {"type":"MorphologicalRuleSynthesis","source":"Suffix","inputShape":"a","outputShape":"ab",
+          {"type":"MorphologicalRuleSynthesis","source":"Suffix","inputShape":"a","outputShape":"ab","subrule":1,
              "outcome":{"status":"attempted"},"children":[
               {"type":"PhonologicalRuleSynthesis","source":"Vowel harmony","inputShape":"ab","outputShape":"ab",
                "sourceIdentity":{"kind":"phonRule","id":"rule-id","quality":"authored"},
@@ -66,7 +66,7 @@ public sealed class ExpertTraceReadingTests
         trace.ExpertWholeTree = true;
         Assert.Equal(["0.0", "0.1"], trace.ExpertPhonologicalEvents.Select(row => row.RecordedStep.StepId));
         Assert.Equal(["Tried", "Applied"], trace.ExpertPhonologicalEvents.Select(row => row.RecordedOutcomeText));
-        Assert.Contains("membership", trace.ExpertScopeText);
+        Assert.Equal("Showing every step", trace.ExpertScopeText);
         trace.SelectedStep = trace.ExpertPhonologicalEvents[0];
         Assert.Contains("Tried", trace.ExpertReadableText);
         Assert.DoesNotContain("Applied", trace.ExpertReadableText);

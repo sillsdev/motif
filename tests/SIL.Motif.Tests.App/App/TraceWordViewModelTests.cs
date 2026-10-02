@@ -81,7 +81,15 @@ public sealed class TraceWordViewModelTests
 
         Assert.Equal("Search incomplete", trace.AnswerText);
         Assert.Equal(Mark.Stopped, trace.AnswerMark);
-        Assert.Contains("this traced search", trace.PageSummaryText);
+        Assert.StartsWith("Parsed · ", trace.PageSummaryText);
+    }
+
+    [Fact]
+    public void PageSummaryNamesTheAnswerAnalysisCountAndParserTime()
+    {
+        var trace = new TraceWordViewModel { Result = MatinluTrace() };
+
+        Assert.Equal("Parsed · 2 analyses · 0.32 ms", trace.PageSummaryText);
     }
 
     [Theory]
@@ -177,7 +185,7 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void ATraceWithoutRecordedMeasurementsHasNoSummaryFragment()
+    public void AnUnparsedTraceStillNamesItsResultWithoutMeasurements()
     {
         var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!;
         var trace = new TraceWordViewModel
@@ -185,7 +193,7 @@ public sealed class TraceWordViewModelTests
             Result = response with { Complete = true, ElapsedMs = 0, ParserSteps = null, ParserElapsedMs = null, HostCapture = null },
         };
         Assert.NotEmpty(trace.Candidates);
-        Assert.Empty(trace.PageSummaryText);
+        Assert.Equal("No parse", trace.PageSummaryText);
     }
 
     private static TraceStep Leaf(string type, string? source = null, string? failure = null) =>

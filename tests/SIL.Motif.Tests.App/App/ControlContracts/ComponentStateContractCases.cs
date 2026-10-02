@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
@@ -245,10 +246,18 @@ internal static class ComponentStateContractCases
         yield return new("ToolTip:open :is(TextBlock)", "open", OpenTip, StateStimulus.None, StatePart.Self,
             TextBlock.FontSizeProperty, "Intent.Type.Small");
 
-        yield return new("Button.traceMode.chosen", "selected", () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Button.traceMode.chosen", "selected edge", () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
-            StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Accent");
+        yield return new("Button.traceMode.chosen /template/ ContentPresenter#PART_ContentPresenter", "selected",
+            () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Emphasis.Fill");
+        yield return new("Button.traceMode.chosen /template/ ContentPresenter#PART_ContentPresenter", "selected label",
+            () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
+            StatePart.Face, ContentPresenter.ForegroundProperty, "Intent.Emphasis.Text");
+        yield return new("Button.traceMode.chosen:pointerover /template/ ContentPresenter#PART_ContentPresenter", "selected and hovered",
+            () => Alone(Press("traceMode", "chosen")), StateStimulus.Pointer, StatePart.Face,
+            ContentPresenter.BackgroundProperty, "Intent.Emphasis.Fill");
+        yield return new("Button.traceMode.chosen:pressed /template/ ContentPresenter#PART_ContentPresenter", "selected and pressed",
+            () => Alone(Press("traceMode", "chosen")), StateStimulus.Press, StatePart.Face,
+            ContentPresenter.BackgroundProperty, "Intent.Emphasis.Fill");
 
         yield return new("Button.stopGroup.chosen", "selected", () => Alone(Press("stopGroup", "chosen")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Danger.Fill");
@@ -588,10 +597,24 @@ internal static class TooltipOwners
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event."),
         new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details."),
-        new("expert input shape", "Views/ExpertTracePanel.axaml", "Recorded input shape, in the parser's direction. Missing input remains unknown.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Recorded input shape, in the parser's direction. Missing input remains unknown."),
-        new("expert output shape", "Views/ExpertTracePanel.axaml", "Recorded output shape. A recorded output alone does not prove application.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Recorded output shape. A recorded output alone does not prove application."),
+        new("expert input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
+                control.FindAncestorOfType<Expander>() is null &&
+                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase)),
+        new("expert output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
+                control.FindAncestorOfType<Expander>() is null &&
+                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase)),
+        new("expert phonological input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
+                control.FindAncestorOfType<Expander>() is { } expander &&
+                AutomationProperties.GetName(expander) == "Expert phonological rules" &&
+                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase)),
+        new("expert phonological output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
+                control.FindAncestorOfType<Expander>() is { } expander &&
+                AutomationProperties.GetName(expander) == "Expert phonological rules" &&
+                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase)),
         new("expert event classification", "Views/ExpertTracePanel.axaml", "The producer's recorded event classification, without inferred success.", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's recorded event classification, without inferred success."),
         new("expert subrule index", "Views/ExpertTracePanel.axaml", "The producer's subrule index. No allomorph identity is inferred from it.", TooltipScene.ExpertTrace,

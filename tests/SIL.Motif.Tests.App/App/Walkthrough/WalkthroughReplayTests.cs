@@ -16,6 +16,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.Views;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
@@ -108,8 +109,10 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
                 .SingleOrDefault(control => control.Text == "seeded gloss");
             Assert.NotNull(displayedGloss);
             Assert.True(displayedGloss.IsEffectivelyVisible);
-            Assert.False(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .Single(control => control.Text == "Analysis not recorded.").IsEffectivelyVisible);
+            Assert.False(trace.IsExpert);
+            var page = walkthrough.Window.GetLogicalDescendants().OfType<TryWordPanel>().Single();
+            var diagnosticHost = page.FindControl<ContentControl>("RichDiagnosticHost")!;
+            Assert.False(diagnosticHost.IsVisible);
             Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
             Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
             Assert.Contains("parse", FakeParser.Invocations(parserPath));

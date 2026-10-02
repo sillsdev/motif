@@ -9,7 +9,6 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
     <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-    <views:CopyableTextBlock Classes="muted" Text="Logical summaries in first-recorded order." TextWrapping="Wrap" />
     <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
@@ -22,8 +21,11 @@
                                          IsVisible="{Binding HasRepeatedRecords}"
                                          ToolTip.Tip="The trace recorded this result more than once; distinct derivations are not established." />
               </Grid>
+              <views:CopyableTextBlock Text="{Binding LegacyMorphemesText}" Classes="muted"
+                                       IsVisible="{Binding HasLegacyMorphemes}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
-                                       IsVisible="{Binding HasProjectionError}" Classes="muted" TextWrapping="Wrap" />
+                                       IsVisible="{Binding HasProjectionError}"
+                                       Classes="muted" TextWrapping="Wrap" />
               <ItemsControl ItemsSource="{Binding Morphs}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -71,7 +73,7 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <Expander Header="Recorded source analyses" IsExpanded="False">
+    <Expander Header="Recorded source analyses" IsExpanded="False" IsVisible="{Binding IsExpert}">
       <ItemsControl ItemsSource="{Binding SourceAnalyses}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="responses:TraceAnalysis">

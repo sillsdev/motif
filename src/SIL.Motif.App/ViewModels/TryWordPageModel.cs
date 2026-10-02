@@ -69,11 +69,24 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The save recorded by the shared context query; never the trace's grammar provenance.</summary>
     public string FieldWorksContextSource => ResultWordContext is not { HasBaseline: true } context ? string.Empty
-        : (context.SourceLastWriteUtc is { } saved ? $"FieldWorks save: {saved:O}" : "FieldWorks save not recorded") +
-          (context.Baseline is { } baseline ? $"; Baseline captured: {baseline.CapturedUtc}" : "; Baseline identity not recorded");
+        : (context.SourceLastWriteUtc is { } saved ? $"FieldWorks saved {LocalDate(saved)}" : "FieldWorks save time not recorded") +
+          (context.Baseline is { } baseline
+              ? $" · Baseline captured {LocalDate(DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture))}"
+              : " · Baseline identity not recorded");
 
-    /// <summary>The context's own freshness warning, independent of the traced grammar.</summary>
-    public bool FieldWorksContextIsStale => ResultWordContext?.IsStale == true;
+    /// <summary>The context save is newer than the Baseline capture time.</summary>
+    public bool FieldWorksContextIsStale => ResultWordContext is
+        { SourceLastWriteUtc: { } saved, Baseline: { } baseline } &&
+        saved > DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture);
+
+    private string LocalDate(DateTimeOffset value)
+    {
+        var clock = Context.Clock;
+        var local = TimeZoneInfo.ConvertTime(value, clock.LocalTimeZone);
+        return local.Date == clock.GetLocalNow().Date
+            ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
+            : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
+    }
 
     /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
     public IReadOnlyList<ParserReadingViewModel> FieldWorksAnalyses { get; private set; } = [];

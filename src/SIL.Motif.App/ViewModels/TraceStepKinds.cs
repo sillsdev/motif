@@ -45,6 +45,15 @@ public static class TraceStepKinds
     public static string ExplainReason(string reasonCode) =>
         $"Explanation not recorded (reason code: {reasonCode}).";
 
+    /// <summary>A known refusal explanation in the window's words, or null when the reason is unknown.</summary>
+    /// <param name="reasonCode">The parser's reason code.</param>
+    /// <returns>The window's explanation for a known reason.</returns>
+    public static string? PlainExplanation(string reasonCode) => reasonCode switch
+    {
+        "NonPartialRuleProhibitedAfterFinalTemplate" => "it can't apply after the last template.",
+        _ => null,
+    };
+
     // "SomeFutureStepKind" reads "Some future step kind".
     internal static string Humanise(string pascalCase)
     {

@@ -41,16 +41,18 @@
               </Flyout>
             </Button.Flyout>
           </Button>
-          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-            <Button Content="Plain" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
-                    Classes.chosen="{Binding !Trace.IsExpert}" AutomationProperties.Name="Plain trace view">
-              <Button.CommandParameter><x:Boolean>False</x:Boolean></Button.CommandParameter>
-            </Button>
-            <Button Content="Expert" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
-                    Classes.chosen="{Binding Trace.IsExpert}" AutomationProperties.Name="Expert trace view">
-              <Button.CommandParameter><x:Boolean>True</x:Boolean></Button.CommandParameter>
-            </Button>
-          </StackPanel>
+          <Border DockPanel.Dock="Right" Classes="traceModeGroup" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Plain" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+                      Classes.chosen="{Binding !Trace.IsExpert}" AutomationProperties.Name="Plain trace view">
+                <Button.CommandParameter><x:Boolean>False</x:Boolean></Button.CommandParameter>
+              </Button>
+              <Button Content="Expert" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+                      Classes.chosen="{Binding Trace.IsExpert}" AutomationProperties.Name="Expert trace view">
+                <Button.CommandParameter><x:Boolean>True</x:Boolean></Button.CommandParameter>
+              </Button>
+            </StackPanel>
+          </Border>
           <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}" Classes="Primary"
                   Theme="{DynamicResource SolidButton}" AutomationProperties.Name="Try the word"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
@@ -80,7 +82,8 @@
           </DockPanel>
           <views:CopyableTextBlock Text="{Binding Trace.PageSummaryText}" Classes="muted" TextWrapping="Wrap" AutomationProperties.Name="Try a Word summary" />
           <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap" IsVisible="{Binding !Trace.Result.Complete}" AutomationProperties.Name="Search completeness" />
-          <views:CopyableTextBlock Text="{Binding Trace.GrammarSourceText}" Classes="muted" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding Trace.GrammarSourceText}" Classes="muted" TextWrapping="Wrap"
+                                   IsVisible="{Binding Trace.IsExpert}" />
         </StackPanel>
       </Border>
       <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="FieldWorks beside the parser">
@@ -89,7 +92,7 @@
           <views:CopyableTextBlock Text="{Binding FieldWorksContextStatus}" Classes="muted" TextWrapping="Wrap" />
           <views:CopyableTextBlock Text="{Binding FieldWorksContextSource}" Classes="muted" TextWrapping="Wrap"
                                    IsVisible="{Binding FieldWorksContextSource, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-          <views:CopyableTextBlock Text="FieldWorks has been saved since this Baseline" Classes="status"
+          <views:CopyableTextBlock Text="FieldWorks saved since" Classes="status"
                                    IsVisible="{Binding FieldWorksContextIsStale}" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
             <ItemsControl.ItemTemplate>
@@ -121,38 +124,24 @@
             </TreeView.Styles>
             <TreeView.ItemTemplate>
               <TreeDataTemplate x:DataType="vm:TraceStepViewModel" ItemsSource="{Binding Children}">
-                <Grid ColumnDefinitions="2*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <TextBlock Text="{Binding RecordedLabel}" FontWeight="SemiBold" />
-                    <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
-                                       HorizontalAlignment="Left">
-                      <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
-                    </views:InspectLink>
-                    <TextBlock Text="{Binding SourceLabel}" IsVisible="{Binding HasUnlinkedSource}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" />
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
-                    <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
-                                             IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  </StackPanel>
-                </Grid>
+                <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                  <TextBlock Text="{Binding RecordedLabel}" FontWeight="SemiBold" />
+                  <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
+                                     HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
+                  </views:InspectLink>
+                  <TextBlock Text="{Binding SourceLabel}" IsVisible="{Binding HasUnlinkedSource}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" />
+                </StackPanel>
               </TreeDataTemplate>
             </TreeView.ItemTemplate>
           </TreeView>
           <Border Classes="card" IsVisible="{Binding Trace.SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
             <StackPanel DataContext="{Binding Trace.SelectedStep}" Spacing="{DynamicResource Intent.Space.Snug}">
-              <TextBlock Text="Selected recorded step" FontWeight="SemiBold" />
-              <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
-                                       IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-              <views:CopyableTextBlock Text="{Binding CapturedSourceText}" TextWrapping="Wrap"
-                                       IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-              <views:CopyableTextBlock Text="{Binding Input, StringFormat='Input: {0}'}" IsVisible="{Binding Input, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding Output, StringFormat='Output: {0}'}" IsVisible="{Binding Output, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding RecordedReasonText}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding RecordedExplanationText}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding RecordedRejectionText}" Classes="muted" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding KindText}" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap"
+                         IsVisible="{Binding SourceLabel, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+              <TextBlock Text="{Binding PlainRefusalText}" TextWrapping="Wrap" IsVisible="{Binding IsFailure}" />
             </StackPanel>
           </Border>
         </StackPanel>
@@ -182,7 +171,7 @@
           <views:CopyableTextBlock Text="{Binding EarlierOverrunText}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding EarlierOverrunText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
-      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.ShowsPlainTrace}" />
+      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.ShowsExpertTrace}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

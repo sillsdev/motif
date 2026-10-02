@@ -152,21 +152,18 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public string SummaryText => Result is not { } result ? string.Empty : Summarize(result);
 
-    /// <summary>Parser and host timings shown on the Try a Word page.</summary>
+    /// <summary>The result, logical analysis count, and recorded parser time shown on the Try a Word page.</summary>
     public string PageSummaryText
     {
         get
         {
             if (Result is not { } result) return string.Empty;
 
-            var parts = new List<string>();
-            if (result.ParserSteps is { } steps) parts.Add($"{steps:N0} steps");
-            if (result.ParserElapsedMs is { } parserMs) parts.Add($"{FormatMs(parserMs)} in the parser");
-            if (result.HostCapture?.WallElapsedMs is { } hostMs) parts.Add($"{FormatMs(hostMs)} overall");
-            else if (result.ElapsedMs > 0) parts.Add($"{FormatMs(result.ElapsedMs)} overall");
-            if (!result.Complete && result.Reading.Attempts.Count == 0) parts.Add("No terminal attempt recorded; tree progress retained");
-            if (HasComparison) parts.Add("Expected analysis source not recorded for this trace");
-            return parts.Count == 0 ? string.Empty : string.Join(" · ", parts) + " in this traced search";
+            var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse" };
+            if (result.Parsed)
+                parts.Add($"{_analyses.Count:N0} {(_analyses.Count == 1 ? "analysis" : "analyses")}");
+            if (result.ParserElapsedMs is { } parserMs) parts.Add(FormatMs(parserMs));
+            return string.Join(" · ", parts);
         }
     }
 
@@ -766,6 +763,10 @@ public sealed class TraceAnalysisViewModel
     public string? ProjectionError { get; }
     public string? LegacyMorphemes { get; }
     public bool HasLegacyMorphemes => LegacyMorphemes is { Length: > 0 };
+    /// <summary>The parser's recorded morphemes, shown without assigning FieldWorks identities or roles.</summary>
+    public string LegacyMorphemesText => HasLegacyMorphemes
+        ? $"Morphemes: {string.Join(" + ", LegacyMorphemes!.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))}"
+        : string.Empty;
 
     /// <summary>The parser's own names for the analysis's morphemes, kept for the tooltip on its surface form.</summary>
     public string? LegacyMorphemesTip => HasLegacyMorphemes ? $"The parser's morphemes: {LegacyMorphemes}" : null;
@@ -1240,6 +1241,16 @@ public sealed class TraceStepViewModel
     public string RecordedLabel => Type == "Blocked" ? "Blocked" : KindText;
     public string Notation => string.Join(" · ", new[] { Type, OutcomeStatus, OutcomeEventType }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
+    /// <summary>The event's recorded classification without repeating its event name.</summary>
+    public string ExpertClassificationText => string.Join(" · ", new[] { OutcomeStatus,
+        string.Equals(OutcomeEventType, Type, StringComparison.Ordinal) ? null : OutcomeEventType }
+        .Where(value => !string.IsNullOrWhiteSpace(value)));
+    /// <summary>Whether this event has a separate recorded classification to show.</summary>
+    public bool HasExpertClassification => ExpertClassificationText.Length > 0;
+    /// <summary>The event's recorded input, or why its empty expert token has no value.</summary>
+    public string InputTip => Input is null ? "Input not recorded" : "Recorded input shape, in the parser's direction.";
+    /// <summary>The event's recorded output, or why its empty expert token has no value.</summary>
+    public string OutputTip => Output is null ? "Output not recorded" : "Recorded output shape. A recorded output alone does not prove application.";
     /// <summary>This event's address in Motif's unchanged saved tree, independently of its producer event ID.</summary>
     public string RecordedEventAddress => RecordedStep.StepId is { Length: > 0 } address
         ? $"Recorded event: {address}" : "Event address not recorded";
@@ -1273,6 +1284,21 @@ public sealed class TraceStepViewModel
         RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? $"Evidence environment: {environment}" : null,
     }.Where(value => value is not null).Concat(TraceEvidenceDisplay.Details(RecordedStep))) is { Length: > 0 } text
         ? text : "Rejection details not recorded";
+    /// <summary>A known refusal explanation in the window's words, without parser codes or evidence details.</summary>
+    public string PlainRefusalText
+    {
+        get
+        {
+            if (!IsFailure) return string.Empty;
+            var explanation = RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded &&
+                !string.IsNullOrWhiteSpace(RecordedStep.ReasonExplanation)
+                ? RecordedStep.ReasonExplanation
+                : FailureReason is { Length: > 0 } reason ? TraceStepKinds.PlainExplanation(reason) : null;
+            if (string.IsNullOrWhiteSpace(explanation)) return "PanGloss didn't record why.";
+            var subject = Type.Contains("Rule", StringComparison.OrdinalIgnoreCase) ? "this rule" : "this step";
+            return $"PanGloss refused {subject} here: {explanation}";
+        }
+    }
     public TraceStepViewModel(TraceStep step, string? deepestStepId,
         IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null, IReadOnlyDictionary<string, TraceRef>? refs = null)
     {
@@ -1344,7 +1370,10 @@ public sealed class TraceStepViewModel
     /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
     public string KindText => TraceStepKinds.Describe(Type);
 
-    public string SubruleText => Subrule is { } subrule ? $"Subrule: {subrule}" : "Subrule not recorded";
+    /// <summary>Whether this event recorded a positive subrule index.</summary>
+    public bool HasSubrule => Subrule is > 0;
+    /// <summary>The recorded subrule index, when it has one.</summary>
+    public string SubruleText => HasSubrule ? $"Subrule: {Subrule}" : string.Empty;
 
     public string ContextText => string.Join("\n", new[] {
         FailureReason is null ? "Reason not recorded" : RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
