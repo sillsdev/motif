@@ -110,6 +110,27 @@ public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void MatchingNormalizedKindCannotOverrideAConflictingSourceClass()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var msa = Author(cache)["msa"];
+        var reach = WarningReachReader.Reach(Subject(msa) with { SourceClass = "LexSense" }, () => cache)!;
+        Assert.Equal(WarningAttributionReason.WrongClass, reach.Reason);
+        Assert.Empty(reach.GrammaticalInfoIds);
+    }
+
+    [Fact]
+    public void GenericGrammaticalInfoKindUsesItsExactGuid()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());
+        var msa = Author(cache)["msa"];
+        var reach = WarningReachReader.Reach(Subject(msa) with
+            { FieldWorksKind = "MoMorphSynAnalysis", SourceClass = msa.ClassName }, () => cache)!;
+        Assert.Equal(WarningWordsPath.Uses, reach.Path);
+        Assert.Equal([msa.Guid.ToString("D")], reach.GrammaticalInfoIds);
+    }
+
+    [Fact]
     public void EmptyProjectResourcesHaveNoWordAttribution()
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(pristine.CopyProjectFile());

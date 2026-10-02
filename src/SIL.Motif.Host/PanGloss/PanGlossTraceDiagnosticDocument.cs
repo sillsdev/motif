@@ -88,7 +88,7 @@ public sealed record PanGlossTraceDiagnosticDocument(
     IReadOnlyList<PanGlossTraceAttempt> Attempts,
     string RawJson)
 {
-    public bool IsV2 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV2, StringComparison.Ordinal);
+    public bool IsV3 => string.Equals(SchemaVersion, PanGlossTraceDiagnosticReader.SchemaV3, StringComparison.Ordinal);
 }
 
 public sealed class PanGlossTraceDiagnosticFormatException : FormatException
@@ -99,8 +99,7 @@ public sealed class PanGlossTraceDiagnosticFormatException : FormatException
 
 public static class PanGlossTraceDiagnosticReader
 {
-    public const string SchemaV1 = "pangloss.trace-details.v1";
-    public const string SchemaV2 = "pangloss.trace-details.v2";
+    public const string SchemaV3 = "pangloss.trace-details.v3";
 
     public static PanGlossTraceDiagnosticDocument Read(string json)
     {
@@ -135,9 +134,9 @@ public static class PanGlossTraceDiagnosticReader
             throw new PanGlossTraceDiagnosticFormatException("The diagnostic document must be a JSON object.");
 
         var schema = RequiredString(envelope, "schemaVersion");
-        if (schema is not SchemaV1 and not SchemaV2)
+        if (schema != SchemaV3)
             throw new PanGlossTraceDiagnosticFormatException(
-                $"Unsupported diagnostic schema '{schema}'. Motif supports {SchemaV1} and {SchemaV2}.");
+                $"Unsupported diagnostic schema '{schema}'. Motif requires {SchemaV3}. Update PanGloss and Motif together.");
 
         var search = RequiredObject(envelope, "search");
         var result = RequiredObject(envelope, "result");
@@ -343,6 +342,7 @@ public static class PanGlossTraceDiagnosticReader
             FailureActual = ReadContextField(element, "actual"),
             FailureEnvironment = ReadContextField(element, "environment"),
             FailureEvidence = ReadFailureEvidence(element),
+            EventEvidence = ReadEventEvidence(element),
             SourceIdentityKind = ReadIdentityField(element, "kind"),
             SourceIdentityId = ReadIdentityField(element, "id"),
             SourceIdentityQuality = ReadIdentityField(element, "quality"),
@@ -358,8 +358,38 @@ public static class PanGlossTraceDiagnosticReader
         return new TraceFailureEvidence(OptionalString(context, "kind"), OptionalString(context, "source"),
             OptionalString(context, "reasonCode"), OptionalString(context, "status"),
             OptionalString(context, "unavailableReason"), OptionalString(context, "reason"),
-            RecordedValue(context, "required"), RecordedValue(context, "actual"), RecordedValue(context, "environment"));
+            RecordedValue(context, "required"), RecordedValue(context, "actual"), RecordedValue(context, "environment"))
+        {
+            Payload = OptionalJson(context, "evidence"),
+        };
     }
+
+    private static TraceEventEvidence ReadEventEvidence(JsonElement owner)
+    {
+        var blocked = OptionalJson(owner, "blockedByEntry");
+        var lookup = OptionalJson(owner, "lookupResult");
+        var slots = OptionalJson(owner, "slots");
+        return new TraceEventEvidence(OptionalString(owner, "stepId"), OptionalString(owner, "blockReason"),
+            blocked is { } identity ? new TraceRecordedIdentity(RequiredString(identity, "kind"),
+                RequiredString(identity, "id"), RequiredString(identity, "quality")) : null,
+            lookup is { } result ? ReadLookup(result) : null,
+            slots is { ValueKind: JsonValueKind.Array } values ? values.EnumerateArray().Select(value => value.Clone()).ToArray()
+                : slots is null ? [] : throw new PanGlossTraceDiagnosticFormatException("\"slots\" must be a JSON array."),
+            OptionalString(owner, "partialParseCause"), OptionalJson(owner, "nonUnapplicationReason"));
+    }
+
+    private static TraceLookupResult ReadLookup(JsonElement value)
+    {
+        var result = new TraceLookupResult(RequiredString(value, "status"), RequiredBool(value, "completed"),
+            RequiredLong(value, "matchCount"), RequiredString(value, "mode"));
+        if (result.MatchCount < 0 || !result.Completed || result.Mode is not ("lexicon" or "guesser") ||
+            result.Status != (result.MatchCount == 0 ? "zeroMatches" : "matches"))
+            throw new PanGlossTraceDiagnosticFormatException("The recorded lookup result is inconsistent.");
+        return result;
+    }
+
+    private static JsonElement? OptionalJson(JsonElement owner, string name) =>
+        owner.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null ? value.Clone() : null;
 
     private static string? RecordedValue(JsonElement owner, string name) =>
         !owner.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null ? null

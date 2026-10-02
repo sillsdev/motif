@@ -8,7 +8,7 @@ internal static class TraceEnvelope
     internal const string CapturedRuleId = "aaaaaaaa-0000-0000-0000-000000000001";
 
     internal const string UnresolvedRuleTiming = """
-        {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
          "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":3,"elapsedNs":2},
          "result":{"signature":"","guessed":false,"analyses":[]},"categories":{},
          "trace":{"type":"MorphologicalRuleSynthesis","source":"Rule",
@@ -17,7 +17,7 @@ internal static class TraceEnvelope
         """;
 
     internal const string CapturedRuleLabel = """
-        {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
          "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":3,"elapsedNs":2},
          "result":{"signature":"","guessed":false,"analyses":[]},"categories":{},
          "hostCapture":{"traceLabels":[{"refId":"phonRule:aaaaaaaa-0000-0000-0000-000000000001","label":"Vowel harmony"}]},
@@ -38,7 +38,7 @@ internal static class TraceEnvelope
         "\"rootIndex\":{\"attempts\":2,\"noRoot\":1,\"notApplied\":0,\"outputs\":0,\"selfElapsedNs\":null," +
         "\"surfaceMismatch\":0,\"timingAvailable\":false,\"uses\":0,\"work\":11}}," +
         "\"result\":{\"analyses\":[],\"guessed\":" + Bool(guessed) + ",\"signature\":\"" + signature + "\"}," +
-        "\"schemaVersion\":\"pangloss.trace-details.v1\"," +
+        "\"schemaVersion\":\"pangloss.trace-details.v3\"," +
         "\"search\":{\"capped\":" + Bool(capped) + ",\"completed\":" + Bool(!capped && !invalidShape) +
         ",\"elapsedNs\":287600,\"invalidShape\":" + Bool(invalidShape) + ",\"steps\":17,\"timedOut\":false}," +
         "\"trace\":" + (tree ?? "null") + ",\"word\":\"sagd\"}";
@@ -51,7 +51,7 @@ internal static class TraceEnvelope
     internal static string AnalysisRecords(bool equalRendering = false, bool available = true) =>
         System.Text.Json.JsonSerializer.Serialize(new
         {
-            schemaVersion = "pangloss.trace-details.v2", word = "word",
+            schemaVersion = "pangloss.trace-details.v3", word = "word",
             search = new { completed = true, capped = false, timedOut = false, invalidShape = false, steps = 3, elapsedNs = 2 },
             result = new
             {

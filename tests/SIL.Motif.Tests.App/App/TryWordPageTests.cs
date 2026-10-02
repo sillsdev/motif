@@ -284,7 +284,11 @@ public sealed class TryWordPageTests
                 Reading = response.Reading with
                 {
                     Root = new TraceStep("Failed", null, "in", "out", "FutureReason", [])
-                    { StepId = "0", ReasonExplanation = explanation },
+                    {
+                        StepId = "0", ReasonExplanation = explanation,
+                        FailureEvidence = new TraceFailureEvidence("decisionGate", "owner", "FutureReason", "captured",
+                            null, explanation, null, null, null),
+                    },
                 },
             };
             page.Trace.SelectedStep = Assert.Single(page.Trace.RecordedRoots);
@@ -398,7 +402,7 @@ public sealed class TryWordPageTests
         {
             var page = new TryWordPageModel(NewContext(out _));
             page.Trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
-                AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
+                AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             page.Trace.RuleFilter = "lu";
             var window = new Window
             {
@@ -1156,7 +1160,7 @@ public sealed class TryWordPageTests
             var (context, fake) = NewContext();
             context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
             fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(
-                Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!);
+                Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!);
             var page = new TryWordPageModel(context);
             context.TryWord("matinlu");
             await page.Trace.TryCommand.ExecutionTask!;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
 
 namespace SIL.Motif.Contract.Responses;
@@ -297,15 +298,16 @@ public sealed record TraceCandidate(
 {
     public TraceEvidenceAvailability ReasonAvailability => FailureReason is { Length: > 0 }
         ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
-    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" }
+    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" or "captured" }
         || FailureRequired is not null || FailureActual is not null || FailureEnvironment is not null
         ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
 
     /// <summary>Earlier siblings recorded in the tree; membership in this derivation is not established.</summary>
     public IReadOnlyList<TraceTreeContextRange> TreeContext { get; init; } = [];
 
-    public TraceEvidenceAvailability ExplanationAvailability => Explanation is null
-        ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
+    public TraceEvidenceAvailability ExplanationAvailability => Explanation is { Length: > 0 } &&
+        Explanation == FailureEvidence?.RecordedExplanation
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
     public string? AttemptId { get; init; }
     public string? OutcomeStatus { get; init; }
     public string? ContextualFailure { get; init; }
@@ -313,6 +315,7 @@ public sealed record TraceCandidate(
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
     public TraceFailureEvidence? FailureEvidence { get; init; }
+    public TraceEventEvidence? EventEvidence { get; init; }
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
     public string? SourceIdentityQuality { get; init; }
@@ -345,13 +348,14 @@ public sealed record TraceStep(
 {
     public TraceEvidenceAvailability ReasonAvailability => FailureReason is { Length: > 0 }
         ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
-    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" }
+    public TraceEvidenceAvailability RejectionDetailsAvailability => FailureEvidence is { Status: "available" or "recorded" or "captured" }
         || FailureRequired is not null || FailureActual is not null || FailureEnvironment is not null
         ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
 
     public string? ReasonExplanation { get; init; }
-    public TraceEvidenceAvailability ExplanationAvailability => ReasonExplanation is null
-        ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
+    public TraceEvidenceAvailability ExplanationAvailability => ReasonExplanation is { Length: > 0 } &&
+        ReasonExplanation == FailureEvidence?.RecordedExplanation
+        ? TraceEvidenceAvailability.Recorded : TraceEvidenceAvailability.NotRecorded;
     /// <summary>Motif's child-index address, stable only inside one unchanged saved tree, never across traces.</summary>
     public string StepId { get; init; } = string.Empty;
     /// <summary>The saved grammar or diagnostic scope for local object ordinals.</summary>
@@ -366,6 +370,7 @@ public sealed record TraceStep(
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
     public TraceFailureEvidence? FailureEvidence { get; init; }
+    public TraceEventEvidence? EventEvidence { get; init; }
     public IReadOnlyList<TraceMorph> AttemptedMorphs { get; init; } = [];
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
@@ -379,7 +384,16 @@ public sealed record TraceStep(
 /// <summary>Recorded failure-owner evidence; structured operands remain diagnostic JSON, never authored notation.</summary>
 public sealed record TraceFailureEvidence(
     string? Kind, string? Source, string? ReasonCode, string? Status, string? UnavailableReason,
-    string? Reason, string? Required, string? Actual, string? Environment);
+    string? Reason, string? Required, string? Actual, string? Environment)
+{
+    /// <summary>The owner's explanation only when its evidence is explicitly available and includes that text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? RecordedExplanation => Status is "available" or "recorded" or "captured" && Reason is { Length: > 0 }
+        ? Reason : null;
+
+    /// <summary>Typed owner operands, retained without converting grammar-local IDs into authored notation.</summary>
+    public JsonElement? Payload { get; init; }
+}
 
 /// <summary>A captured FieldWorks name keyed by a ref's exact identity within this diagnostic.</summary>
 public sealed record TraceCapturedLabel(string RefId, string Label);

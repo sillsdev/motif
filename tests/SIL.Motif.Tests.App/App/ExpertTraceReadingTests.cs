@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class ExpertTraceReadingTests
 {
     internal static string EnvironmentOperandDiagnostic(string operandJson) => $$"""
-        {"schemaVersion":"pangloss.trace-details.v2","word":"ab",
+        {"schemaVersion":"pangloss.trace-details.v3","word":"ab",
          "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},
          "trace":{"type":"Failed","children":[],"failureReason":"EnvironmentMismatch",

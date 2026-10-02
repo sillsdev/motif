@@ -1038,7 +1038,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
         Succeeded = candidate.Succeeded;
         AttemptId = candidate.AttemptId;
         FailureReason = candidate.FailureReason;
-        Explanation = candidate.Explanation;
+        Explanation = candidate.ExplanationAvailability == TraceEvidenceAvailability.Recorded ? candidate.Explanation : null;
         ContextualFailure = candidate.ContextualFailure;
         FailureRequired = candidate.FailureRequired;
         FailureActual = candidate.FailureActual;
@@ -1219,7 +1219,12 @@ public sealed class TraceStepViewModel
     /// <summary>This event's recorded details, shown apart from the inspector's current Baseline facts.</summary>
     public IReadOnlyList<InspectorDetail> Captured => InspectorDetail.Recorded(("Kind", Type),
         ("Producer", RecordedStep.Source), ("Captured FieldWorks", Reference?.CapturedFieldWorksLabel),
-        ("Outcome", OutcomeStatus), ("Event", OutcomeEventType), ("Reason", FailureReason));
+        ("Producer event ID", RecordedStep.EventEvidence?.ProducerStepId), ("Tree address", RecordedStep.StepId),
+        ("Subrule", Subrule?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        ("Input", Input), ("Output", Output),
+        ("Outcome", OutcomeStatus), ("Event", OutcomeEventType), ("Reason", FailureReason),
+        ("Explanation", RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+            ? RecordedStep.ReasonExplanation : null), ("Evaluator details", RecordedRejectionText));
     public bool CanInspect => InspectSubject is not null;
     public bool HasUnlinkedSource => !CanInspect && SourceLabel is { Length: > 0 };
 
@@ -1235,19 +1240,28 @@ public sealed class TraceStepViewModel
     public string RecordedLabel => Type == "Blocked" ? "Blocked" : KindText;
     public string Notation => string.Join(" · ", new[] { Type, OutcomeStatus, OutcomeEventType }
         .Where(value => !string.IsNullOrWhiteSpace(value)));
+    /// <summary>This event's address in Motif's unchanged saved tree, independently of its producer event ID.</summary>
     public string RecordedEventAddress => RecordedStep.StepId is { Length: > 0 } address
         ? $"Recorded event: {address}" : "Event address not recorded";
+
+    /// <summary>The producer's captured event ID, shown separately from Motif's tree address; never synthesized.</summary>
+    public string RecordedProducerEventAddress => RecordedStep.EventEvidence?.ProducerStepId is { Length: > 0 } producer
+        ? $"Producer event ID: {producer}" + (RecordedStep.StepId is { Length: > 0 } treeAddress
+            ? $" (tree address {treeAddress})" : "; tree address not recorded")
+        : RecordedStep.StepId is { Length: > 0 } address ? $"Tree address: {address}; producer event ID not recorded"
+            : "Producer event ID not recorded";
     public string RecordedReasonText => RecordedStep.ReasonAvailability == TraceEvidenceAvailability.Recorded
         ? RecordedStep.FailureReason! : "Reason not recorded";
     public string RecordedExplanationText => RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
         ? RecordedStep.ReasonExplanation! : "Explanation not recorded";
-    public string RecordedRejectionText => RecordedStep.RejectionDetailsAvailability == TraceEvidenceAvailability.NotRecorded
+    public string RecordedRejectionText => RecordedStep.RejectionDetailsAvailability == TraceEvidenceAvailability.NotRecorded &&
+        TraceEvidenceDisplay.Details(RecordedStep).Count == 0
         ? "Rejection details not recorded" : string.Join("\n", new[]
     {
         FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,
         FailureActual is { Length: > 0 } ? $"Actual: {FailureActual}" : null,
         FailureEnvironment is { Length: > 0 } ? $"Environment: {FailureEnvironment}" : null,
-        RecordedStep.FailureEvidence is not null ? "Rejection details recorded" : null,
+        RecordedStep.FailureEvidence is { Status: "available" or "recorded" or "captured" } ? "Rejection details recorded" : null,
         RecordedStep.FailureEvidence?.Status is { Length: > 0 } status ? $"Evidence status: {status}" : null,
         RecordedStep.FailureEvidence?.Kind is { Length: > 0 } kind ? $"Evidence kind: {kind}" : null,
         RecordedStep.FailureEvidence?.Source is { Length: > 0 } source ? $"Evidence source: {source}" : null,
@@ -1257,7 +1271,8 @@ public sealed class TraceStepViewModel
         RecordedStep.FailureEvidence?.Required is { Length: > 0 } required ? $"Evidence required: {required}" : null,
         RecordedStep.FailureEvidence?.Actual is { Length: > 0 } actual ? $"Evidence actual: {actual}" : null,
         RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? $"Evidence environment: {environment}" : null,
-    }.Where(value => value is not null)) is { Length: > 0 } text ? text : "Rejection details recorded";
+    }.Where(value => value is not null).Concat(TraceEvidenceDisplay.Details(RecordedStep))) is { Length: > 0 } text
+        ? text : "Rejection details not recorded";
     public TraceStepViewModel(TraceStep step, string? deepestStepId,
         IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null, IReadOnlyDictionary<string, TraceRef>? refs = null)
     {
@@ -1332,7 +1347,8 @@ public sealed class TraceStepViewModel
     public string SubruleText => Subrule is { } subrule ? $"Subrule: {subrule}" : "Subrule not recorded";
 
     public string ContextText => string.Join("\n", new[] {
-        FailureReason is null ? "Reason not recorded" : RecordedStep?.ReasonExplanation ?? TraceStepKinds.ExplainReason(FailureReason),
+        FailureReason is null ? "Reason not recorded" : RecordedStep.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+            ? RecordedStep.ReasonExplanation : TraceStepKinds.ExplainReason(FailureReason),
         RecordedStep?.RejectionDetailsAvailability == TraceEvidenceAvailability.Recorded ? null : "Rejection details not recorded",
         ContextualFailure,
         FailureRequired is { Length: > 0 } ? $"Required: {FailureRequired}" : null,

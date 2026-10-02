@@ -12,7 +12,7 @@ public sealed class TraceDiagnosticCaptureTests
     public void ExplicitIncompleteSearchIsNotReinterpretedAsComplete()
     {
         const string json = """
-        {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+        {"schemaVersion":"pangloss.trace-details.v3","word":"word",
          "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
          "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
         """;
@@ -53,7 +53,7 @@ public sealed class TraceDiagnosticCaptureTests
     public void SavedEnvelopeRetainsHostTimingUnknownFieldsAndProjectionError()
     {
         var json = """
-        {"schemaVersion":"pangloss.trace-details.v2","word":"sagd",
+        {"schemaVersion":"pangloss.trace-details.v3","word":"sagd",
          "search":{"completed":false,"capped":true,"timedOut":false,"invalidShape":false,"steps":12,"elapsedNs":9},
          "result":{"signature":"root:sagd","guessed":false,"analyses":[{"analysisId":"analysis-0","index":0,"morphemes":"root","surface":"sagd","projection":{"status":"unavailable","error":"recorded projection failed","errorCode":"Example"},"morphs":[]}]},
          "categories":{},"trace":null,"extension":{"preserve":[1,2,3]},

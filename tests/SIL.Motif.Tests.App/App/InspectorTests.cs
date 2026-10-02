@@ -493,6 +493,43 @@ public sealed class InspectorTests
         }, Deadline);
     }
 
+    [Theory]
+    [InlineData("numobel", "step-8", "mpr1", "mpr2", null)]
+    [InlineData("kumata", "step-11", "owner-payload-not-captured", "", 0)]
+    public void SelectedCompoundOperandsAndProducerEventStayInTheInspectorsTraceSection(
+        string word, string producerId, string firstOperand, string secondOperand, int? subrule)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
+                "TestFixtures", $"trace-details-v3-{word}.json"));
+            var response = WordTraceQuery.LoadDiagnostic(raw).Value!;
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
+            try
+            {
+                var step = Steps(response.Reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
+                var selected = new TraceStepViewModel(step, null, refs: response.Reading.Refs.ToDictionary(item => item.Id));
+                Assert.NotNull(selected.InspectSubject);
+                workspace.Context.OpenInspector(selected.InspectSubject!, word,
+                    new InspectorTrace(word, null), selected.Captured);
+                await workspace.Inspector.Loading;
+                Settle(window);
+                Assert.True(workspace.Inspector.IsOpen);
+                Assert.Equal($"In this trace of {word}", workspace.Inspector.TraceTitle);
+                var details = workspace.Inspector.TraceDetails;
+                Assert.Contains(details, detail => detail.Label == "Producer event ID" && detail.Value == producerId);
+                Assert.Contains(details, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal) &&
+                    detail.Value.Contains(secondOperand, StringComparison.Ordinal));
+                if (subrule is not null)
+                    Assert.Contains(details, detail => detail.Label == "Subrule" && detail.Value == subrule.ToString());
+                Assert.DoesNotContain(workspace.Inspector.Facts, detail => detail.Value.Contains(firstOperand, StringComparison.Ordinal));
+            }
+            finally { window.Close(); }
+        }, Deadline);
+
+        static IEnumerable<TraceStep> Steps(TraceStep step) => new[] { step }.Concat(step.Children.SelectMany(Steps));
+    }
+
     [Fact]
     public void ContradictoryNamesShowNoFactsAndSayWhy()
     {

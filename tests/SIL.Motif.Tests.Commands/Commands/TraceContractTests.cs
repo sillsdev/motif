@@ -91,7 +91,7 @@ public sealed class TraceContractTests
     public void ProjectionCodeAndFailureOwnerEvidenceSurviveTypedProjection()
     {
         const string json = """
-            {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+            {"schemaVersion":"pangloss.trace-details.v3","word":"word",
              "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":2},
              "result":{"signature":"x","guessed":false,"analyses":[{"analysisId":"a","projection":{
                 "status":"unavailable","error":"Projection failed","errorCode":"RecordedCode"},"morphs":[]}]},
@@ -118,7 +118,11 @@ public sealed class TraceContractTests
     [Fact]
     public void AnUnknownFailureCodeHasNoInventedExplanation()
     {
-        Assert.Null(HermitCrabFailureExplanations.Explain("FutureUnificationMechanism"));
+        var reading = WordTraceQuery.LoadDiagnostic(TraceEnvelope.Of("", """
+            {"type":"Failed","failureReason":"FutureUnificationMechanism","children":[]}
+            """)).Value!.Reading;
+        Assert.Null(reading.Root.ReasonExplanation);
+        Assert.Null(Assert.Single(reading.Attempts).Explanation);
     }
 
     private const string Successful = "{\"type\":\"Successful\",\"outcome\":{\"status\":\"successful\"},\"children\":[]}";

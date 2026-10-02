@@ -28,6 +28,14 @@ public sealed record GrammarWarning(
 
     /// <summary>What a person can do in FieldWorks to address the diagnostic.</summary>
     public string? Guidance { get; init; }
+    public string? Title { get; init; }
+    public string? Explanation { get; init; }
+    public string? HelpPath { get; init; }
+    public string? HelpBody { get; init; }
+    public string? HelpUrl { get; init; }
+    public string? Locale { get; init; }
+    public GrammarSubjectStatus Scope { get; init; }
+    public IReadOnlyList<GrammarFieldWorksPlace> FieldWorksPlaces { get; init; } = [];
 
     /// <summary>Whether the finding came from checking the grammar or importing it.</summary>
     public GrammarFindingOrigin Origin { get; init; }
@@ -120,6 +128,9 @@ public sealed record GrammarWarningPart(
 
     /// <summary>The subject's FieldWorks GUID, if PanGloss recorded one.</summary>
     public string? SubjectGuid { get; init; }
+    public GrammarSubjectStatus Status { get; init; }
+    public string? Field { get; init; }
+    public string? SourceClass { get; init; }
 
     /// <summary>The report's internal identity for the subject, when available.</summary>
     public string? InternalId { get; init; }
@@ -308,6 +319,8 @@ public enum WarningAttributionReason
     [JsonStringEnumMemberName("no_subject")] NoSubject,
     /// <summary>A subject is named without a valid project GUID.</summary>
     [JsonStringEnumMemberName("named_without_project_guid")] NamedWithoutProjectGuid,
+    /// <summary>PanGloss captured an unresolved reference, independently of later project data.</summary>
+    [JsonStringEnumMemberName("unresolved_reference")] UnresolvedReference,
     /// <summary>The checked Baseline contains no object with this GUID.</summary>
     [JsonStringEnumMemberName("stale_guid")] StaleGuid,
     /// <summary>The GUID belongs to a different FieldWorks class.</summary>
@@ -419,3 +432,6 @@ public sealed record WarningWordsTouched(int Words, int NoParse, IReadOnlyList<O
     /// <summary>Distinct membership candidates without exact evidence, excluded from Words.</summary>
     public int ByMembershipOnly { get; init; }
 }
+
+/// <summary>A verified FieldWorks destination supplied by the diagnostic's advice owner.</summary>
+public sealed record GrammarFieldWorksPlace(string Tool, string Field);

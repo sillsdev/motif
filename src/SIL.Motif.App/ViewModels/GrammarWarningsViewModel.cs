@@ -1,10 +1,10 @@
 using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
 using Avalonia.Collections;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Help;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -48,8 +48,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private readonly List<GrammarWarningRowViewModel> _all = [];
     private readonly WarningMeanings _meanings;
 
-    /// <summary>Builds the page's table, reading each warning's plain meaning from <paramref name="meanings"/>.</summary>
-    /// <param name="meanings">The meaning table, or the one for the current UI culture when omitted.</param>
+    /// <summary>Builds the page's table with localized FieldWorks kind labels from <paramref name="meanings"/>.</summary>
+    /// <param name="meanings">The FieldWorks label table, or the one for the current UI culture when omitted.</param>
     public GrammarWarningsViewModel(WarningMeanings? meanings = null)
     {
         _meanings = meanings ?? DefaultMeanings.Value;
@@ -269,7 +269,7 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
     public string Code { get; }
     public string Name { get; }
 
-    /// <summary>Whether Motif's table has a plain meaning for this code, rather than only the parser's words.</summary>
+    /// <summary>Whether PanGloss supplied an explanation for this code.</summary>
     public bool IsKnown { get; }
     /// <summary>The structured error, warning, or information level used to choose its bucket.</summary>
     public GrammarDiagnosticLevel Level { get; }
@@ -289,22 +289,15 @@ public sealed partial class GrammarFindingGroupViewModel : ObservableObject
 
 /// <summary>One diagnostic row with its subjects and text ready for display, search, and sorting.</summary>
 /// <remarks>
-/// The row leads with Motif's plain meaning for the warning's code, and keeps the parser's own sentence to show
-/// small beneath it, since that sentence is what an AI Handoff or a bug report quotes. Opened, it shows PanGloss's
-/// advice for the code, whose FieldWorks places read "In Lexicon &gt; Lexicon Edit, …".
+/// The row keeps PanGloss's explanation, description and advice distinct. Verified FieldWorks places come from
+/// structured producer fields, independently of how its guidance is worded or localized.
 /// </remarks>
 public sealed class GrammarWarningRowViewModel
 {
-    // An area or menu, " > ", a tool, to the clause's end; a lone "." ends it, a command's "..." does not.
-    private static readonly Regex FieldWorksPlace = new(
-        @"\b(?:Lexicon|Grammar|Lists|Words|Texts|Notebook|Tools|File) > [^,;]+?(?=[,;]|(?<!\.)\.(?!\.)|$)",
-        RegexOptions.CultureInvariant);
-
     public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WarningMeanings? meanings = null)
     {
         ArgumentNullException.ThrowIfNull(warning);
         var table = meanings ?? GrammarWarningsViewModel.DefaultMeanings.Value;
-        var meaning = table.For(warning.Code, warning.Group);
         RepeatCount = repeatCount;
         Description = warning.Description;
         Guidance = warning.Guidance ?? string.Empty;
@@ -316,17 +309,18 @@ public sealed class GrammarWarningRowViewModel
         Problem = PlainText(warning.Problem);
         Text = warning.Text;
         GroupCode = warning.Code ?? string.Empty;
-        GroupName = meaning.Title;
-        Meaning = meaning.Meaning ?? string.Empty;
+        GroupName = warning.Title ?? warning.Group ?? warning.CodeLabel;
+        Meaning = warning.Explanation ?? string.Empty;
+        HelpBody = warning.HelpBody ?? string.Empty;
+        HelpUrl = warning.HelpUrl is { } helpUrl ? new Uri(helpUrl) : null;
         KindLabel = table.KindLabel(warning.Subject.FirstOrDefault(part => part.FieldWorksKind is { Length: > 0 })?.FieldWorksKind
             ?? (warning.Subject.Count > 0 ? "Unknown" : null));
-        Places = [.. FieldWorksPlace.Matches(Guidance).Select(match => match.Value.Trim()).Distinct(StringComparer.Ordinal)];
+        Places = warning.FieldWorksPlaces.Select(place => $"{FieldWorksLinks.ToolName(place.Tool)} > {place.Field}")
+            .Distinct(StringComparer.Ordinal).ToArray();
     }
 
     /// <summary>What to do about this finding in FieldWorks: PanGloss's advice, or why there is none.</summary>
-    public string Advice => HasAdvice ? Guidance.Trim()
-        : IsInfo ? "Nothing to change in FieldWorks: this note says how PanGloss reads your grammar."
-        : "PanGloss gives no advice for this kind of finding.";
+    public string Advice => HasAdvice ? Guidance : "PanGloss gives no advice for this kind of finding.";
 
     public bool HasAdvice => !string.IsNullOrWhiteSpace(Guidance);
 
@@ -354,7 +348,7 @@ public sealed class GrammarWarningRowViewModel
     private static string JoinPlaces(IReadOnlyList<string> places) => places.Count == 1 ? places[0]
         : $"{string.Join(", ", places.Take(places.Count - 1))} and {places[^1]}";
 
-    /// <summary>The kind's plain title, from Motif's table or, for a code it lacks, the parser's own name.</summary>
+    /// <summary>The producer's title for this kind of diagnostic.</summary>
     public string GroupName { get; }
     public string GroupCode { get; }
     public GrammarDiagnosticLevel Level { get; }
@@ -365,7 +359,7 @@ public sealed class GrammarWarningRowViewModel
     /// <summary>How often the parser reported this warning, as the Seen column shows it.</summary>
     public string SeenText => $"{RepeatCount:N0}×";
 
-    /// <summary>What the warning means in plain words, or empty when Motif's table does not know its code.</summary>
+    /// <summary>What PanGloss says the warning means, or empty when no explanation was supplied.</summary>
     public string Meaning { get; }
     public bool HasMeaning => Meaning.Length > 0;
 
@@ -374,6 +368,10 @@ public sealed class GrammarWarningRowViewModel
     public bool HasWhere => SubjectParts.Count > 0;
     public string Description { get; }
     public string Guidance { get; }
+    public string HelpBody { get; }
+    public bool HasHelpBody => HelpBody.Length > 0;
+    public Uri? HelpUrl { get; }
+    public bool HasHelpUrl => HelpUrl is not null;
     public string Severity { get; }
     public bool IsInfo => Level == GrammarDiagnosticLevel.Information;
     public string Where { get; }

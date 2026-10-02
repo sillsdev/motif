@@ -143,6 +143,16 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void MissingProducerIdDoesNotReplaceTheSavedTreeAddressOrInventAProducerId()
+    {
+        var step = new TraceStepViewModel(new TraceStep("WordAnalysis", null, null, null, null, [])
+            { StepId = "0.0" }, null);
+        Assert.Equal("Recorded event: 0.0", step.RecordedEventAddress);
+        Assert.Equal("Tree address: 0.0; producer event ID not recorded", step.RecordedProducerEventAddress);
+        Assert.DoesNotContain(step.Captured, detail => detail.Label == "Producer event ID");
+    }
+
+    [Fact]
     public void RepeatedTreeContextLabelsShowTheirOriginalEventAddresses()
     {
         var model = MatinluContext();
@@ -159,7 +169,12 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
                 .Where(group => group.Count() > 1).ToArray();
             Assert.NotEmpty(repeated);
             foreach (var step in repeated.SelectMany(group => group))
+            {
+                Assert.Contains(step.RecordedEventAddress, texts);
                 Assert.Contains($"Recorded event: {step.RecordedStep.StepId}", texts);
+                Assert.Contains($"Producer event ID: {step.RecordedStep.EventEvidence!.ProducerStepId} " +
+                    $"(tree address {step.RecordedStep.StepId})", texts);
+            }
             Assert.Contains("Membership in this derivation is not recorded.", texts);
         });
     }
@@ -235,9 +250,9 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
 
     private static TraceWordViewModel Scene(string scene) => scene switch
     {
-        "matinlu" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))),
+        "matinlu" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))),
         "matinlu-context" => MatinluContext(),
-        "zodut" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-zodut-synthetic.json"))),
+        "zodut" => Model(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-zodut-synthetic.json"))),
         "missing" => Model(TraceEnvelope.Of("", "{\"type\":\"Failed\",\"children\":[]}")),
         "unknown" => Model(TraceEnvelope.Of("", "{\"type\":\"Failed\",\"failureReason\":\"FutureReason\",\"children\":[]}")),
         "captured-label" => Model(TraceEnvelope.CapturedRuleLabel),

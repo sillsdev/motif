@@ -216,7 +216,7 @@ public sealed class PanGlossInvokerTests : IDisposable
     public async Task GrammarHealthReturnsItsReportWhenPanGlossExitsNonzero()
     {
         var grammar = Project("grammar-health-error");
-        const string report = "{\"schema_version\":3,\"fieldworks_project\":{\"name\":\"p\",\"source\":\"argument\"},\"summary\":[],\"diagnostics\":[]}";
+        const string report = "{\"schema_version\":4,\"locale\":\"en\",\"fieldworks_project\":{\"name\":\"p\",\"source\":\"argument\"},\"summary\":[],\"diagnostics\":[]}";
         FakeParser.Behave(_root, new { ExitCode = 1, GrammarHealthReportJson = report });
         using var invoker = Invoker();
 

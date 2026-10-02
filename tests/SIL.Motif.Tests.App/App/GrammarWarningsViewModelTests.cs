@@ -16,6 +16,7 @@ public sealed class GrammarWarningsViewModelTests
         "warning: hc-unresolved-morph-type: msa does not resolve within this entry")
     {
         Group = "Unresolved morph type",
+        Explanation = "The morph type reference could not be resolved.",
         Code = "hc-unresolved-morph-type",
         Origin = GrammarFindingOrigin.Import,
     };
@@ -30,6 +31,52 @@ public sealed class GrammarWarningsViewModelTests
         Code = "hc-unused-phoneme",
         Origin = GrammarFindingOrigin.Check,
     };
+
+    [Fact]
+    public void TypedTraceOperandsAreVisibleInRecordedDetails()
+    {
+        var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory,
+            "TestFixtures", "trace-details-v3-numobel.json"));
+        var result = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(raw);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var step = Steps(result.Value!.Reading.Root).First(item => item.FailureEvidence?.Kind == "mprFeatures");
+        Assert.Contains("mpr1", new TraceStepViewModel(step, null).RecordedRejectionText, System.StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("step-11")]
+    [InlineData("step-12")]
+    public void SelectedCompoundStepShowsUnknownCauseAndRecordedCode(string producerId)
+    {
+        var raw = System.IO.File.ReadAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory,
+            "TestFixtures", "trace-details-v3-kumata.json"));
+        var reading = SIL.Motif.Commands.Queries.WordTraceQuery.LoadDiagnostic(raw).Value!.Reading;
+        var step = Steps(reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
+        var selected = new TraceStepViewModel(step, null);
+        Assert.Equal("Pattern", selected.RecordedReasonText);
+        Assert.Equal("Explanation not recorded", selected.RecordedExplanationText);
+        Assert.Contains("owner-payload-not-captured", selected.RecordedRejectionText, System.StringComparison.Ordinal);
+        Assert.DoesNotContain("did not match", selected.ContextText, System.StringComparison.Ordinal);
+    }
+
+    private static System.Collections.Generic.IEnumerable<TraceStep> Steps(TraceStep root) =>
+        new[] { root }.Concat(root.Children.SelectMany(Steps));
+
+    [Fact]
+    public void ProducerAdviceAndPlacesReplaceTheConsumerCatalogAndProseParsing()
+    {
+        var warning = System.Text.Json.JsonSerializer.Deserialize<GrammarWarning>("""
+            {"Severity":"warning","kind":"Producer title","Subject":[],"Problem":[],"Text":"producer line",
+             "Code":"fwdata.unknown-morph-type-guid","Group":"Producer title","Description":"description",
+             "Explanation":"Producer explanation in its locale","Guidance":"Producer guidance without a menu path",
+             "HelpBody":"# Producer background","FieldWorksPlaces":[{"Tool":"lexiconEdit","Field":"Morph Type"}]}
+            """);
+        var row = new GrammarWarningRowViewModel(warning!);
+        Assert.Equal("Producer title", row.GroupName);
+        Assert.Equal("Producer explanation in its locale", row.Meaning);
+        Assert.Equal("Producer guidance without a menu path", row.Advice);
+        Assert.Equal("Lexicon Edit > Morph Type", Assert.Single(row.Places));
+    }
 
     [Fact]
     public void LoadingShowsEveryRowAndCountsThem()
@@ -121,6 +168,7 @@ public sealed class GrammarWarningsViewModelTests
             Code = "grammar.future.unresolved-info",
             Group = "Unresolved grammatical info",
             Description = "The entry points at grammatical info it does not own.",
+            Explanation = "The entry points at grammatical info it does not own.",
             Guidance = "Choose the entry's grammatical info again in FieldWorks.",
         };
         var table = new GrammarWarningsViewModel();
@@ -131,8 +179,7 @@ public sealed class GrammarWarningsViewModelTests
         Assert.Equal("The entry points at grammatical info it does not own.", group.Description);
         Assert.Equal("Choose the entry's grammatical info again in FieldWorks.", table.Rows
             .Cast<GrammarWarningRowViewModel>().Single(row => row.GroupName == group.Name).Advice);
-        Assert.Equal("No form in the lexicon uses this phoneme.",
-            table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).Description);
+        Assert.Null(table.WarningGroups.Concat(table.InformationGroups).Single(kind => kind != group).Description);
     }
 
     [Fact]
@@ -147,11 +194,11 @@ public sealed class GrammarWarningsViewModelTests
 
         table.WhereFilter = string.Empty;
         table.WhereFilter = "kuona";
-        Assert.Equal("Morph type couldn't be found", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
+        Assert.Equal("Unresolved morph type", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
 
         table.WhereFilter = string.Empty;
         table.ProblemFilter = "not modelled";
-        Assert.Equal("Phoneme never used", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
+        Assert.Equal("Unused phoneme", Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupName);
     }
 
     [Fact]
@@ -178,19 +225,19 @@ public sealed class GrammarWarningsViewModelTests
     }
 
     [Fact]
-    public void AKnownCodeReadsInMotifsPlainWordsWithTheParsersLineBeneath()
+    public void AProducerExplanationStaysDistinctFromTheDescription()
     {
         var table = new GrammarWarningsViewModel();
 
         table.Load([EntryWarning, PhonemeWarning]);
 
         var row = table.Rows.Cast<GrammarWarningRowViewModel>().Single(row => row.GroupCode == "hc-unresolved-morph-type");
-        Assert.Equal("Morph type couldn't be found", row.GroupName);
+        Assert.Equal("Unresolved morph type", row.GroupName);
         Assert.True(row.HasMeaning);
-        Assert.StartsWith("An allomorph's morph type can't be found", row.Meaning, StringComparison.Ordinal);
+        Assert.Equal("The morph type reference could not be resolved.", row.Meaning);
         Assert.Equal("msa 0c686afa-8d21-4e3b-bc0e-41812150cf4c does not resolve within this entry", row.Problem);
         var group = table.WarningGroups.Single(group => group.Code == "hc-unresolved-morph-type");
-        Assert.Equal("Morph type couldn't be found", group.Name);
+        Assert.Equal("Unresolved morph type", group.Name);
         Assert.Equal(row.Meaning, group.Description);
     }
 
@@ -199,7 +246,7 @@ public sealed class GrammarWarningsViewModelTests
     {
         var future = EntryWarning with
         {
-            Code = "grammar.future.thing", Group = "Future thing could not be loaded",
+            Code = "grammar.future.thing", Group = "Future thing could not be loaded", Explanation = null,
             Description = "The future thing could not be loaded.",
         };
         var table = new GrammarWarningsViewModel();
@@ -247,7 +294,7 @@ public sealed class GrammarWarningsViewModelTests
         var table = new GrammarWarningsViewModel();
         table.Load([EntryWarning, PhonemeWarning]);
 
-        table.ProblemFilter = "stem or an affix";
+        table.ProblemFilter = "reference could not";
 
         Assert.Equal("hc-unresolved-morph-type",
             Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows)).GroupCode);

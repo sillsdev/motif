@@ -170,7 +170,7 @@ public sealed class TraceRefsTests : IDisposable
     [Fact]
     public void KumataNamesEveryStepAndMorphByTheIdentityPanGlossRecorded()
     {
-        var reading = Load("trace-details-v2-kumata.json").Reading!;
+        var reading = Load("trace-details-v3-kumata.json").Reading!;
         var refs = reading.Refs.ToDictionary(reference => reference.Id);
 
         Assert.Equal(reading.Refs.Count, refs.Count);

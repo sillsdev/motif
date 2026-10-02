@@ -54,8 +54,8 @@ public sealed class WarningsPageWordsTests
                     .Where(block => !block.GetVisualAncestors().OfType<WrapPanel>().Any(line => line.Classes.Contains("parserLine")))
                     .Select(block => block.Text!)
                     .ToList();
-                Assert.Contains("Environment couldn't be read", visible);
-                Assert.Contains("Stem with no category", visible);
+                Assert.Contains("Invalid phonological environment", visible);
+                Assert.Contains("Stem has no category", visible);
                 Assert.Contains("Grammar-wide", visible);
                 Assert.Contains("no single place", visible);
                 Assert.Contains("Check the grammar again", panel.GetVisualDescendants().OfType<Button>()

@@ -26,6 +26,8 @@ Hover over the result or use keyboard focus to reveal **Analyze texts**, **Timin
 
 Capture details name the Baseline that actually produced the trace, including its capture time and the source project's save time. A Refresh published while a request waits can change which Baseline it uses. An older workspace description cannot relabel the returned evidence.
 
+Recorded details can include the replacement lexical entry for a Blocked event, the template slots a branch applied or skipped, and the completion gate that ended a partial attempt. A completed lookup records how many possible roots it returned; those are not counts of successful analyses. Typed rejection details retain the operands PanGloss actually tested, including any authored environment identity and text. A phonological step with an unavailable reason remains unknown.
+
 A Blocked event records an intermediate result. In the supported parser it means replacement by a compatible entry in the same lexical family; search can continue. Missing reasons, rejection details and grammar sources are shown as not recorded, and unfamiliar reason codes keep their raw notation with an unavailable explanation.
 
 

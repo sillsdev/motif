@@ -1,0 +1,117 @@
+{
+  "schema_version": 4,
+  "locale": "en",
+  "fieldworks_project": {
+    "name": "Synthetic",
+    "source": "argument"
+  },
+  "summary": [
+    {
+      "code": "grammar.template.slot-unresolved",
+      "group_name": "Affix template slot is unresolved",
+      "level": "warning",
+      "count": 1
+    },
+    {
+      "code": "hc-stem-no-grammatical-category",
+      "group_name": "Stem has no category",
+      "level": "error",
+      "count": 1
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "error",
+      "code": "hc-stem-no-grammatical-category",
+      "group_name": "Stem has no category",
+      "origin": "check",
+      "description": "Lexical entry 'kuma' (dog) has no grammatical category.",
+      "guidance": "In Lexicon > Lexicon Edit, open the named entry and set Grammatical Info. > Category for its stem analysis.",
+      "title": "Stem has no category",
+      "explanation": "This stem is marked partial because its grammatical category is missing. Its category restrictions cannot be enforced as authored.",
+      "help_path": "docs/diagnostics/hc-stem-no-grammatical-category.md",
+      "help_body": "# Stems and the lexicon\n\nThe lexicon stores words and the grammatical information the parser uses to build analyses. An entry can have a stem, a gloss, a grammatical category, and one or more allomorphs. These pieces serve different purposes.\n\nFor an illustrative English example, *walk* is a stem, “move on foot” is a gloss, and *verb* is its category. The gloss helps a person recognize the entry; it does not supply a missing stem or category. A form such as *walked* needs the stem and a usable past-tense affix with the required grammatical links.\n\nWhen a word fails, check that the expected stem exists in the relevant writing system. Then check its category and grammatical analysis. A stem without a category may not combine with affixes that require one. A category by itself cannot replace a missing stem.\n\nFor an affix, check that its analysis is classified as intended and that the needed allomorph has a usable form. Inflectional affixes are loaded through template slots. An inflectional affix outside every slot has no slot through which the template can load it, but a partial rule can still be retained; check the finding against the intended template restrictions. An unclassified affix, with neither inflectional nor derivational classification, is a different case and can attach too freely.\n\nIf the source analysis looks complete but the parser still cannot use it, read the diagnostic for the exact missing reference or unsupported construction. Preserve a valid analysis and report a parser limitation instead of guessing a replacement.\n\nThe examples are illustrative. Real entries and analyses depend on the language and the choices made in its FieldWorks project.\n",
+      "fieldworks_places": [
+        {
+          "tool": "lexiconEdit",
+          "field": "Grammatical Info. > Category"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "LexEntry",
+          "status": "object",
+          "field": null,
+          "source_class": null,
+          "title": "kuma",
+          "subtitle": "dog",
+          "guid": "00000000-0000-0000-0000-000000000104",
+          "internal_id": "lex_entry#0:00000000-0000-0000-0000-000000000104",
+          "fieldworks": {
+            "status": "available",
+            "guid": "00000000-0000-0000-0000-000000000104",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3DSynthetic%26tool%3DlexiconEdit%26guid%3D00000000-0000-0000-0000-000000000104%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "warning",
+      "code": "grammar.template.slot-unresolved",
+      "group_name": "Affix template slot is unresolved",
+      "origin": "import",
+      "description": "Affix template references a slot that does not resolve; the slot was skipped.",
+      "guidance": "In Grammar > Category Edit, repair the template's slot reference if the slot is missing.",
+      "title": "Affix template slot is unresolved",
+      "explanation": "An affix template refers to a slot that cannot be resolved.",
+      "help_path": "docs/diagnostics/grammar.template.slot-unresolved.md",
+      "help_body": "# How the parser uses a FieldWorks project\n\nThe importer reads FieldWorks project data and builds a grammar the parser can run. A diagnostic identifies a source condition or a construction the parser could not represent. Read its description for the named object, field, and observed cause.\n\nSome findings describe source data that is missing or inconsistent. Others describe a valid construction that the current parser skips, approximates, or handles with a reduced set of constraints. The next step depends on the outcome: repair a demonstrated source defect, and preserve valid linguistic data when the finding describes a parser limitation.\n\nA FieldWorks destination is included only when the relevant tool path is known. A missing destination means the finding is grammar-wide, its source owner varies, or no verified editable field is established. Use the diagnostic description to locate the source data, then report a valid case the parser cannot preserve.\n",
+      "fieldworks_places": [
+        {
+          "tool": "posEdit",
+          "field": "Affix Templates"
+        },
+        {
+          "tool": "posEdit",
+          "field": "Affix Slots"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "MoInflAffixTemplate",
+          "status": "object",
+          "field": "SuffixSlots",
+          "source_class": null,
+          "title": "NounTemplate",
+          "subtitle": null,
+          "guid": "00000000-0000-0000-0000-000000000103",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "00000000-0000-0000-0000-000000000103",
+            "tool": "posEdit",
+            "url": "silfw://localhost/link?database%3DSynthetic%26tool%3DposEdit%26guid%3D00000000-0000-0000-0000-000000000103%26tag%3D"
+          }
+        },
+        {
+          "kind": "MoInflAffixSlot",
+          "status": "unresolved_reference",
+          "field": "SuffixSlots",
+          "source_class": null,
+          "title": "Unnamed affix template slot",
+          "subtitle": null,
+          "guid": "11111111-1111-1111-1111-111111111111",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "unavailable",
+            "reason": "unresolved_reference",
+            "guid": "11111111-1111-1111-1111-111111111111"
+          }
+        }
+      ]
+    }
+  ]
+}

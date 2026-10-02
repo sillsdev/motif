@@ -31,7 +31,10 @@ internal static class SeededGrammarFindings
                 findings.Add(new GrammarWarning(GrammarDiagnosticLevel.Warning, group,
                     subject is null ? [] : [subject], [new GrammarWarningPart(problem, GrammarWarningPartRole.Text)], text)
                 {
-                    Group = group, Code = code, Description = problem, Guidance = guidance, Origin = origin,
+                    Group = group, Title = group, Code = code, Description = problem,
+                    Explanation = "PanGloss could not use this part of the grammar as authored.",
+                    Guidance = guidance, Origin = origin,
+                    FieldWorksPlaces = subject?.FieldWorksTool is { } tool ? [new(tool, "Form")] : [],
                 });
             }
         }

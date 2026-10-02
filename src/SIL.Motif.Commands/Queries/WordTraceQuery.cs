@@ -157,6 +157,7 @@ public static class WordTraceQuery
             FailureEnvironment = node.FailureEnvironment,
             AttemptedMorphs = node.AttemptedMorphs.Select(morph => TraceReadingBuilder.ToMorph(morph)).ToArray(),
             FailureEvidence = node.FailureEvidence,
+            EventEvidence = node.EventEvidence,
             SourceIdentityKind = node.SourceIdentityKind,
             SourceIdentityId = node.SourceIdentityId,
             SourceIdentityQuality = node.SourceIdentityQuality,

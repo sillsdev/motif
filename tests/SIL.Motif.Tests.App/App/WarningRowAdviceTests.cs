@@ -32,6 +32,7 @@ public sealed class WarningRowAdviceTests
         Code = "conversion.unsegmentable-form",
         Group = "Allomorph form cannot be segmented",
         Guidance = guidance,
+        FieldWorksPlaces = [new("lexiconEdit", "Form")],
     };
 
     [Fact]
@@ -52,28 +53,21 @@ public sealed class WarningRowAdviceTests
 
         Assert.True(row.NamesNoItem);
         Assert.Contains("can't open it in FieldWorks", row.NoItemText, StringComparison.Ordinal);
-        Assert.Equal("Look in Lexicon > Lexicon Edit.", row.WhereToLookText);
+        Assert.Equal("Look in Lexicon Edit > Form.", row.WhereToLookText);
     }
 
-    [Theory]
-    [InlineData("In Grammar > Environments, correct the expression for phonological environment 'the item'.",
-        "Look in Grammar > Environments.")]
-    [InlineData("In Lexicon > Lexicon Edit, correct the form or add the missing phoneme in Grammar > Phonemes.",
-        "Look in Lexicon > Lexicon Edit and Grammar > Phonemes.")]
-    [InlineData("In Grammar > Environments, add the missing environment; in Lexicon > Lexicon Edit, correct its reference.",
-        "Look in Grammar > Environments and Lexicon > Lexicon Edit.")]
-    [InlineData("In Grammar > Category Edit > the category's Affix Templates, check the named template's slots.",
-        "Look in Grammar > Category Edit > the category's Affix Templates.")]
-    [InlineData("In Words > Edit Parser Parameters..., correct the named parser setting.",
-        "Look in Words > Edit Parser Parameters...")]
-    [InlineData("In Lexicon > Lexicon Edit, fix one; in Lexicon > Lexicon Edit, fix the other.",
-        "Look in Lexicon > Lexicon Edit.")]
-    [InlineData("Restore the missing item.", "PanGloss doesn't say where in FieldWorks to look.")]
-    public void WhereToLookNamesEachFieldWorksPlaceTheAdviceNamesOnce(string guidance, string whereToLook)
+    [Fact]
+    public void StructuredPlacesStayDistinctFromLocalizedGuidanceAndRepeatedDestinationsAppearOnce()
     {
-        var row = new GrammarWarningRowViewModel(Finding(GrammarDiagnosticLevel.Warning, guidance, named: false));
-
-        Assert.Equal(whereToLook, row.WhereToLookText);
+        var finding = Finding(GrammarDiagnosticLevel.Warning, "Localized producer guidance", named: false) with
+        {
+            FieldWorksPlaces = [new("EnvironmentEdit", "Representation"), new("lexiconEdit", "Form"),
+                new("EnvironmentEdit", "Representation")],
+        };
+        var row = new GrammarWarningRowViewModel(finding);
+        Assert.Equal("Look in Environments > Representation and Lexicon Edit > Form.", row.WhereToLookText);
+        var withoutPlaces = new GrammarWarningRowViewModel(finding with { FieldWorksPlaces = [] });
+        Assert.Equal("PanGloss doesn't say where in FieldWorks to look.", withoutPlaces.WhereToLookText);
     }
 
     [Fact]
@@ -83,7 +77,7 @@ public sealed class WarningRowAdviceTests
 
         Assert.False(row.HasAdvice);
         Assert.False(row.ShowsFixSteps);
-        Assert.StartsWith("Nothing to change", row.Advice, StringComparison.Ordinal);
+        Assert.Equal("PanGloss gives no advice for this kind of finding.", row.Advice);
     }
 
     [Fact]
@@ -140,7 +134,7 @@ public sealed class WarningRowAdviceTests
 
                 shown = VisibleTexts(panel);
                 Assert.Contains(shown, text => text.Contains("can't open it in FieldWorks", StringComparison.Ordinal));
-                Assert.Contains("Look in Lexicon > Lexicon Edit.", shown);
+                Assert.Contains("Look in Lexicon Edit > Form.", shown);
             }
             finally
             {

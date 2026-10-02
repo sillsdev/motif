@@ -381,10 +381,10 @@ internal static class Program
         return 86;
     }
 
-    // The pangloss.trace-details.v1 document, with the tree embedded verbatim so a malformed tree stays malformed.
+    // The embedded tree stays verbatim so malformed-tree tests exercise the consumer boundary.
     private static string TraceEnvelope(string word, string signature, string? treeJson, bool capped, bool timedOut,
         IReadOnlyList<JsonElement>? analyses) =>
-        "{\"schemaVersion\":\"pangloss.trace-details.v1\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
+        "{\"schemaVersion\":\"pangloss.trace-details.v3\",\"word\":" + JsonSerializer.Serialize(word, Unescaped) +
         ",\"search\":{\"completed\":" + (capped || timedOut ? "false" : "true") +
         ",\"capped\":" + (capped ? "true" : "false") +
         ",\"timedOut\":" + (timedOut ? "true" : "false") +
@@ -448,7 +448,7 @@ internal static class Program
             };
         var json = behaviour.GrammarHealthReportJson ?? JsonSerializer.Serialize(new
         {
-            schema_version = 3,
+            schema_version = 4, locale = "en",
             fieldworks_project = new { name = projectName, source = projectSource },
             summary = new[]
             {
@@ -466,11 +466,13 @@ internal static class Program
                     origin = "import",
                     description = "A boundary marker has no representation.",
                     guidance = "Add a representation to the named boundary marker.",
+                    title = "Empty item representation", explanation = "A boundary marker has no representation.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "object",
                     subjects = new object[]
                     {
                         new
                         {
-                            kind = "PhBdryMarker",
+                            kind = "PhBdryMarker", status = "object", field = (string?)null, source_class = (string?)null,
                             title = "+",
                             subtitle = (string?)null,
                             guid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -488,6 +490,8 @@ internal static class Program
                     origin = "import",
                     description = "Only the first phoneme set is loaded.",
                     guidance = "Check the project's phoneme sets.",
+                    title = "Only first list item is used", explanation = "Only the first phoneme set is loaded.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "project_settings",
                     subjects = Array.Empty<object>(),
                 },
                 new
@@ -498,11 +502,13 @@ internal static class Program
                     origin = "check",
                     description = "Phonemes /n/ and /s/ share the same feature values.",
                     guidance = "Assign distinct feature values to these phonemes.",
+                    title = "Duplicate segment features", explanation = "Phonemes /n/ and /s/ share the same feature values.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "object",
                     subjects = new object[]
                     {
                         new
                         {
-                            kind = "PhPhonemeSet",
+                            kind = "PhPhonemeSet", status = "object", field = (string?)null, source_class = (string?)null,
                             title = "Main phoneme set",
                             subtitle = (string?)null,
                             guid = (string?)null,

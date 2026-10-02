@@ -31,13 +31,14 @@ public sealed record PanGlossTraceNode(
     public string? FailureActual { get; init; }
     public string? FailureEnvironment { get; init; }
     public TraceFailureEvidence? FailureEvidence { get; init; }
+    public TraceEventEvidence? EventEvidence { get; init; }
     public string? SourceIdentityKind { get; init; }
     public string? SourceIdentityId { get; init; }
     public string? SourceIdentityQuality { get; init; }
     public IReadOnlyList<PanGlossTraceMorph> AttemptedMorphs { get; init; } = [];
 }
 
-/// <summary>Producer context attached to a v2 trace node when available.</summary>
+/// <summary>Producer context attached to a trace node when available.</summary>
 public static class PanGlossTraceNodeContext
 {
     public const string Unavailable = "unavailable";

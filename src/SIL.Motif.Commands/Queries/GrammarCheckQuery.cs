@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
@@ -86,13 +87,15 @@ public static class GrammarCheckQuery
 
             GrammarWarning[] findings;
             GrammarWarningSummary[] summary;
+            string locale;
             try
             {
                 var report = ReadReport(output);
+                locale = report.Locale!;
                 findings = (report.Diagnostics ?? throw new JsonException(
                         "The grammar-health report is incomplete."))
                     .Select(diagnostic => ToGrammarWarning(diagnostic ?? throw new JsonException(
-                        "A diagnostic is incomplete.")))
+                        "A diagnostic is incomplete."), locale))
                     .ToArray();
                 summary = (report.Summary ?? throw new JsonException(
                         "The grammar-health report is incomplete."))
@@ -110,10 +113,10 @@ public static class GrammarCheckQuery
                 return CommandOutcome<GrammarCheckResponse>.Refused(new Refusal(
                     "grammarcheck.unsupported-schema", FailureReason.Refused,
                     $"PanGloss grammar-health schema version {exception.Version} is unsupported; this Motif build " +
-                    "expects versions 2 and 3. Update PanGloss and Motif together.",
+                    "expects version 4. Update PanGloss and Motif together.",
                     Fact(("projectPath", request.ProjectPath),
                         ("actualSchemaVersion", exception.Version.ToString(CultureInfo.InvariantCulture)),
-                        ("expectedSchemaVersion", "2 or 3"))));
+                        ("expectedSchemaVersion", "4"))));
             }
             catch (JsonException exception)
             {
@@ -135,6 +138,7 @@ public static class GrammarCheckQuery
                     .ToArray(), HasBaseline: true)
                 {
                     Summary = summary,
+                    Locale = locale,
                 };
                 var baselineToken = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
                 var selectionSha256 = SelectionDigest(database, Cache, baselineToken);
@@ -182,9 +186,10 @@ public static class GrammarCheckQuery
         if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("schema_version", out var version) ||
             !version.TryGetInt32(out var schemaVersion))
             throw new JsonException("The grammar-health report must be an object with an integer schema_version.");
-        if (schemaVersion is not (2 or 3)) throw new UnsupportedGrammarHealthSchemaException(schemaVersion);
+        if (schemaVersion != 4) throw new UnsupportedGrammarHealthSchemaException(schemaVersion);
         var report = root.Deserialize<GrammarHealthReportJson>(JsonOptions)
             ?? throw new JsonException("Missing grammar-health report.");
+        if (string.IsNullOrWhiteSpace(report.Locale)) throw new JsonException("The report locale is missing.");
         var fieldWorksProject = report.FieldWorksProject
             ?? throw new JsonException("The grammar-health report is incomplete.");
         var summary = report.Summary
@@ -204,14 +209,34 @@ public static class GrammarCheckQuery
         {
             if (diagnostic is null || string.IsNullOrWhiteSpace(diagnostic.Code) ||
                 string.IsNullOrWhiteSpace(diagnostic.GroupName) ||
-                string.IsNullOrWhiteSpace(diagnostic.Description) || diagnostic.Subjects is null)
+                string.IsNullOrWhiteSpace(diagnostic.Description) || string.IsNullOrWhiteSpace(diagnostic.Title) ||
+                diagnostic.Subjects is null || diagnostic.FieldWorksPlaces is null)
                 throw new JsonException("A diagnostic is incomplete.");
+            if (diagnostic.HelpPath is { } helpPath &&
+                helpPath != $"docs/diagnostics/{diagnostic.Code}.md")
+                throw new JsonException("A diagnostic help path is invalid.");
+            foreach (var place in diagnostic.FieldWorksPlaces)
+                if (place is null || string.IsNullOrWhiteSpace(place.Tool) || string.IsNullOrWhiteSpace(place.Field))
+                    throw new JsonException("A FieldWorks place is incomplete.");
+            var scope = diagnostic.Subjects.Any(subject => subject?.Status == GrammarSubjectStatus.Object)
+                ? GrammarSubjectStatus.Object : diagnostic.Subjects.Any(subject => subject?.Status == GrammarSubjectStatus.UnresolvedReference)
+                    ? GrammarSubjectStatus.UnresolvedReference : GrammarSubjectStatus.ProjectSettings;
+            if (diagnostic.Scope != scope) throw new JsonException("A diagnostic scope contradicts its subjects.");
             foreach (var subject in diagnostic.Subjects)
             {
                 if (subject is null || string.IsNullOrWhiteSpace(subject.Kind) ||
                     string.IsNullOrWhiteSpace(subject.Title) ||
                     subject.FieldWorks is null)
                     throw new JsonException("A diagnostic subject is incomplete.");
+                if (subject.Status != GrammarSubjectStatus.Object &&
+                    (subject.FieldWorks.Status != FieldWorksLinkStatus.Unavailable || subject.OpensIn is not null ||
+                     subject.FieldWorks.Tool is not null || subject.FieldWorks.Url is not null ||
+                     subject.FieldWorks.Reason != (subject.Status == GrammarSubjectStatus.UnresolvedReference
+                         ? FieldWorksLinkReason.UnresolvedReference : FieldWorksLinkReason.ProjectSettings)))
+                    throw new JsonException("An unresolved reference or project setting cannot have live navigation.");
+                if (subject.Status == GrammarSubjectStatus.Object &&
+                    subject.FieldWorks.Reason is FieldWorksLinkReason.UnresolvedReference or FieldWorksLinkReason.ProjectSettings)
+                    throw new JsonException("An object has a non-object navigation reason.");
                 if (subject.OpensIn is not null && (string.IsNullOrWhiteSpace(subject.OpensIn.Tool) ||
                     string.IsNullOrWhiteSpace(subject.OpensIn.Guid)))
                     throw new JsonException("A diagnostic subject has an invalid open target.");
@@ -228,7 +253,7 @@ public static class GrammarCheckQuery
         return report;
     }
 
-    private static GrammarWarning ToGrammarWarning(GrammarHealthDiagnosticJson finding)
+    private static GrammarWarning ToGrammarWarning(GrammarHealthDiagnosticJson finding, string locale)
     {
         var subjects = finding.Subjects!.Select(subject => SubjectPart(subject!)).ToArray();
         var description = finding.Description!;
@@ -240,6 +265,14 @@ public static class GrammarCheckQuery
             Code = finding.Code,
             Description = description,
             Guidance = finding.Guidance,
+            Title = finding.Title,
+            Explanation = finding.Explanation,
+            HelpPath = finding.HelpPath,
+            HelpBody = finding.HelpBody,
+            HelpUrl = finding.HelpPath is { } path ? $"https://github.com/sillsdev/PanGloss/blob/{HandoffWriter.PanGlossRef}/{path}" : null,
+            Locale = locale,
+            Scope = finding.Scope,
+            FieldWorksPlaces = finding.FieldWorksPlaces!.Select(place => place!).ToArray(),
             Origin = finding.Origin,
         };
     }
@@ -252,12 +285,17 @@ public static class GrammarCheckQuery
         var objectId = part.Guid ?? part.InternalId;
         return new GrammarWarningPart(
             text,
-            objectId is null ? GrammarWarningPartRole.Text : GrammarWarningPartRole.Object,
+            part.Status == GrammarSubjectStatus.UnresolvedReference ? GrammarWarningPartRole.Missing
+                : part.Status == GrammarSubjectStatus.ProjectSettings || objectId is null
+                    ? GrammarWarningPartRole.Text : GrammarWarningPartRole.Object,
             objectId,
             part.Kind,
             fieldWorks.Status == FieldWorksLinkStatus.Available ? fieldWorks.Url : null)
         {
             Title = title,
+            Status = part.Status,
+            Field = part.Field,
+            SourceClass = part.SourceClass,
             Subtitle = part.Subtitle,
             SubjectGuid = part.Guid,
             InternalId = part.InternalId,
@@ -284,6 +322,7 @@ public static class GrammarCheckQuery
 
         [JsonPropertyName("fieldworks_project")]
         public required FieldWorksProjectJson? FieldWorksProject { get; init; }
+        public required string? Locale { get; init; }
         public required IReadOnlyList<GrammarHealthSummaryJson?>? Summary { get; init; }
         public required IReadOnlyList<GrammarHealthDiagnosticJson?>? Diagnostics { get; init; }
     }
@@ -318,6 +357,15 @@ public static class GrammarCheckQuery
         public required GrammarFindingOrigin Origin { get; init; }
         public required string? Description { get; init; }
         public required string? Guidance { get; init; }
+        public required string? Title { get; init; }
+        public required string? Explanation { get; init; }
+        public required GrammarSubjectStatus Scope { get; init; }
+        [JsonPropertyName("help_path")]
+        public required string? HelpPath { get; init; }
+        [JsonPropertyName("help_body")]
+        public required string? HelpBody { get; init; }
+        [JsonPropertyName("fieldworks_places")]
+        public required IReadOnlyList<GrammarFieldWorksPlace?>? FieldWorksPlaces { get; init; }
         public required IReadOnlyList<GrammarHealthSubjectJson?>? Subjects { get; init; }
     }
 
@@ -326,6 +374,10 @@ public static class GrammarCheckQuery
         public GrammarHealthSubjectJson() { }
 
         public required string? Kind { get; init; }
+        public required GrammarSubjectStatus Status { get; init; }
+        public required string? Field { get; init; }
+        [JsonPropertyName("source_class")]
+        public required string? SourceClass { get; init; }
         public required string? Title { get; init; }
         public required string? Subtitle { get; init; }
         public required string? Guid { get; init; }

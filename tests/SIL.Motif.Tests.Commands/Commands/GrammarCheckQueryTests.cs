@@ -8,6 +8,9 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Generator;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -32,6 +35,149 @@ public sealed class GrammarCheckQueryTests : IDisposable
     {
         try { Directory.Delete(_managedRootsParent, recursive: true); }
         catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    [Theory]
+    [InlineData("FsClosedValue", false)]
+    [InlineData("FsFeatStruc", false)]
+    [InlineData("FsClosedValue", true)]
+    [InlineData("FsFeatStruc", true)]
+    public void NormalizedFeatureSubjectSurvivesReportStorageAndYourWords(string sourceClass, bool conflicting)
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        string guid;
+        string msaId;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var services = cache.ServiceLocator;
+            var msa = (IMoStemMsa)services.GetInstance<ILexEntryRepository>()
+                .GetObject(_pristine.Seed.FirstEntryId).MorphoSyntaxAnalysesOC.First();
+            IFsClosedValue spec = null!;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                msa.MsFeaturesOA = services.GetInstance<IFsFeatStrucFactory>().Create();
+                spec = services.GetInstance<IFsClosedValueFactory>().Create();
+                msa.MsFeaturesOA.FeatureSpecsOC.Add(spec);
+            });
+            guid = (sourceClass == "FsClosedValue" ? spec.Guid : msa.MsFeaturesOA.Guid).ToString("D");
+            msaId = msa.Guid.ToString("D");
+            loader.Save(cache);
+        }
+        Capture(fwDataPath);
+        var report = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "GrammarHealth", "schema-v4-producer.json")))!;
+        var diagnostic = report["diagnostics"]![0]!;
+        diagnostic["subjects"] = System.Text.Json.Nodes.JsonNode.Parse($$$"""
+            [{"status":"object","guid":"{{{guid}}}","kind":"Unknown",
+              "source_class":"{{{(conflicting ? "LexSense" : sourceClass)}}}","field":"Value","title":"Specification",
+              "subtitle":null,"internal_id":null,
+              "fieldworks":{"status":"unavailable","guid":"{{{guid}}}","reason":"unsupported_kind"}}]
+            """);
+        report["diagnostics"] = new System.Text.Json.Nodes.JsonArray(diagnostic.DeepClone());
+        var result = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(report.ToJsonString(), string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        foreach (var findings in new[] { result.Value!.Findings, stored.Value!.Check!.Findings })
+        {
+            var finding = Assert.Single(findings);
+            var subject = Assert.Single(finding.Subject, part => part.SubjectGuid is not null);
+            Assert.Equal("Unknown", subject.FieldWorksKind);
+            Assert.Equal(conflicting ? "LexSense" : sourceClass, subject.SourceClass);
+            var reach = subject.Reach!;
+            var word = new AssessmentWordResult("synthetic", "no-analysis", false, "Search completed", 1, null)
+            {
+                StoredAnalyses = [new ParserReading([new ParserReadingMorph("synthetic", "", "", null, false, null)
+                    { GrammaticalInfoId = msaId }]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
+            };
+            var attributed = WarningWordsQuery.YourWordsOf(finding, [word], [])!;
+            if (conflicting)
+            {
+                Assert.Equal(WarningAttributionReason.WrongClass, reach.Reason);
+                Assert.Empty(attributed.Words);
+            }
+            else
+            {
+                Assert.Equal(WarningWordsPath.ThroughFeatureOwners, reach.Path);
+                Assert.Equal([msaId], reach.GrammaticalInfoIds);
+                Assert.Equal(WarningAttributionState.ExactUses, attributed.State);
+                Assert.Equal("synthetic", Assert.Single(attributed.Words).Row.Word);
+            }
+        }
+    }
+
+    [Fact]
+    public void CapturedSubjectStatusPreventsLiveReachEvenWhenTheGuidNowExists()
+    {
+        var subject = new GrammarWarningPart("Missing entry", GrammarWarningPartRole.Missing,
+            _pristine.Seed.FirstEntryId.ToString("D"), "LexEntry")
+        {
+            SubjectGuid = _pristine.Seed.FirstEntryId.ToString("D"), Status = GrammarSubjectStatus.UnresolvedReference,
+        };
+        var unresolved = SIL.Motif.Projection.Grammar.WarningReachReader.Reach(subject,
+            () => throw new InvalidOperationException("Captured unresolved references never resolve against a later project."));
+        Assert.Equal(WarningWordsPath.MissingObject, unresolved!.Path);
+        Assert.Equal("UnresolvedReference", unresolved.Reason.ToString());
+        var settings = SIL.Motif.Projection.Grammar.WarningReachReader.Reach(subject with
+        {
+            Status = GrammarSubjectStatus.ProjectSettings,
+        }, () => throw new InvalidOperationException("Settings never resolve as objects."));
+        Assert.Equal(WarningWordsPath.ProjectWide, settings!.Path);
+    }
+
+    [Theory]
+    [InlineData("locale")]
+    [InlineData("explanation")]
+    [InlineData("status")]
+    [InlineData("live-link")]
+    public void SchemaFourMissingFieldsAndFalseLiveLinksAreRefused(string defect)
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var raw = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "GrammarHealth", "schema-v4-producer.json")))!.AsObject();
+        var finding = raw["diagnostics"]![1]!;
+        var subject = finding["subjects"]![1]!;
+        if (defect == "locale") raw.Remove("locale");
+        else if (defect == "explanation") finding.AsObject().Remove("explanation");
+        else if (defect == "status") subject.AsObject().Remove("status");
+        else subject["fieldworks"] = raw["diagnostics"]![0]!["subjects"]![0]!["fieldworks"]!.DeepClone();
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(raw.ToJsonString(), string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("grammarcheck.malformed-findings", outcome.Refusal!.Code);
+    }
+
+    [Fact]
+    public void ProducerSchemaFourRetainsAdviceAndUnresolvedSubjects()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth", "schema-v4-producer.json"));
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(raw, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        using var projected = JsonDocument.Parse(JsonSerializer.Serialize(outcome.Value));
+        Assert.Equal("en", projected.RootElement.GetProperty("Locale").GetString());
+        var finding = projected.RootElement.GetProperty("Findings")[1];
+        Assert.Equal("An affix template refers to a slot that cannot be resolved.", finding.GetProperty("Explanation").GetString());
+        Assert.Equal("posEdit", finding.GetProperty("FieldWorksPlaces")[0].GetProperty("Tool").GetString());
+        var subject = finding.GetProperty("Subject")[1];
+        Assert.Equal("unresolved_reference", subject.GetProperty("Status").GetString());
+        Assert.Equal("SuffixSlots", subject.GetProperty("Field").GetString());
+        Assert.Null(subject.GetProperty("FieldWorksLink").GetString());
+        Assert.Equal("unresolved_reference", subject.GetProperty("LinkReason").GetString());
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        Assert.Contains("An affix template refers", JsonSerializer.Serialize(stored.Value), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -142,12 +288,12 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void AVersionThreeReportRetainsErrorsAsDistinctFindings()
+    public void AVersionFourReportRetainsErrorsAsDistinctFindings()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var fixturePath = Path.Combine(RepoPaths.FindRepoRoot(), "tests", "SIL.Motif.Tests.Support",
-            "TestFixtures", "GrammarHealth", "schema-v3-error.json");
+            "TestFixtures", "GrammarHealth", "schema-v4-error.json");
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(File.ReadAllText(fixturePath), string.Empty, TimeSpan.Zero),
@@ -169,8 +315,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Capture(fwDataPath);
         var report = JsonSerializer.Serialize(new
         {
-            schema_version = 3,
-            fieldworks_project = new { name = "Sena 3", source = "argument" },
+            schema_version = 4, locale = "en",
+            fieldworks_project = new { name = "Synthetic", source = "argument" },
             summary = new[]
             {
                 new { code = "grammar.msa.no-allomorphs", group_name = "No usable entry allomorphs", level = "error", count = 1 },
@@ -183,6 +329,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
                     group_name = "No usable entry allomorphs", origin = "import",
                     description = "Lexical entry 'kat' has no usable allomorphs.",
                     guidance = "Add or correct an allomorph for the named lexical entry.",
+                    title = "No usable entry allomorphs", explanation = "Lexical entry 'kat' has no usable allomorphs.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "project_settings",
                     subjects = Array.Empty<object>(),
                 },
             },
@@ -229,7 +377,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":3,\"summary\":[],\"findings\":[]}",
+                "{\"schema_version\":4,\"summary\":[],\"findings\":[]}",
                 string.Empty, TimeSpan.Zero),
         };
 
@@ -241,7 +389,9 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     [Theory]
     [InlineData(1)]
-    [InlineData(4)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(5)]
     public void AnUnsupportedSchemaVersionNamesTheVersionAndUpdateRequirement(int schemaVersion)
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -257,13 +407,13 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("grammarcheck.unsupported-schema", outcome.Refusal!.Code);
         Assert.Contains($"version {schemaVersion}", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("versions 2 and 3", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("version 4", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("update PanGloss and Motif", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
     [InlineData("[]")]
-    [InlineData("{\"schema_version\":3,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
+    [InlineData("{\"schema_version\":4,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
     public void AReportWithoutTheReportObjectAndDiagnosticsEnvelopeIsMalformed(string report)
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -287,10 +437,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":3,\"fieldworks_project\":{\"name\":null,\"source\":null}," +
-                "\"summary\":[],\"diagnostics\":[{\"level\":\"info\",\"code\":\"hc-undeclared-segment\"," +
-                "\"group_name\":\"Undeclared segment\",\"origin\":\"check\",\"description\":\"Segment x is undeclared.\"," +
-                "\"guidance\":null,\"subjects\":[]}]}",
+                GrammarHealthReports.With(("hc-undeclared-segment", [])),
                 string.Empty, TimeSpan.Zero),
         };
         var request = new GrammarCheckRequest(fwDataPath);
@@ -323,8 +470,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     private static string Report(string entryGuid, string openGuid) => JsonSerializer.Serialize(new
     {
-        schema_version = 3,
-        fieldworks_project = new { name = "Sena 3", source = "argument" },
+        schema_version = 4, locale = "en",
+        fieldworks_project = new { name = "Synthetic", source = "argument" },
         summary = new[]
         {
             new { code = "hc-partial-morpheme", group_name = "Partial morpheme analysis", level = "warning", count = 1 },
@@ -340,11 +487,13 @@ public sealed class GrammarCheckQueryTests : IDisposable
                 origin = "import",
                 description = "Lexical entry 'mbo' has no grammatical category.",
                 guidance = "In Lexicon > Lexicon Edit, set Grammatical Info. > Category.",
+                    title = "Partial morpheme analysis", explanation = "Lexical entry 'mbo' has no grammatical category.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "object",
                 subjects = new object[]
                 {
                     new
                     {
-                        kind = "LexEntry", title = "mbo", subtitle = "ADD", guid = entryGuid,
+                        kind = "LexEntry", status = "object", field = (string?)null, source_class = (string?)null, title = "mbo", subtitle = "ADD", guid = entryGuid,
                         internal_id = (string?)null,
                         opens_in = new { tool = "lexiconEdit", guid = openGuid },
                         fieldworks = new
@@ -355,7 +504,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
                     },
                     new
                     {
-                        kind = "PhPhoneme", title = "ng", subtitle = (string?)null, guid = (string?)null,
+                        kind = "PhPhoneme", status = "object", field = (string?)null, source_class = (string?)null, title = "ng", subtitle = (string?)null, guid = (string?)null,
                         internal_id = (string?)null,
                         fieldworks = new { status = "unavailable", reason = "unsupported_kind", guid = (string?)null },
                     },
@@ -365,6 +514,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
             {
                 level = "info", code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features",
                 origin = "check", description = "Two phonemes share the same feature values.", guidance = (string?)null,
+                    title = "Duplicate segment features", explanation = "Two phonemes share the same feature values.", help_path = (string?)null, help_body = (string?)null,
+                    fieldworks_places = Array.Empty<object>(), scope = "project_settings",
                 subjects = Array.Empty<object>(),
             },
         },

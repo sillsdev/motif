@@ -591,7 +591,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             Setup = async stage =>
             {
                 stage.Client.AssessRefusesWith(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
-                    "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.5.2)."));
+                    "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.0)."));
                 await stage.Workspace.Assess.RunCommand.ExecuteAsync(null);
             },
             Teardown = stage => stage.ParseAgain(),
@@ -602,7 +602,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             {
                 stage.Client.OnTraceWord((_, _) => Task.FromResult(CommandOutcome<WordTraceResponse>.Refused(
                     new Refusal(RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused,
-                        "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.5.2)."))));
+                        "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.0)."))));
                 stage.Workspace.Context.TryWord("kitabu");
                 await stage.Workspace.Assess.Trace.TryCommand.ExecutionTask!;
             },
@@ -990,7 +990,7 @@ public sealed class TryWordReviewScreenshots
             var trace = page.Trace;
             var project = workspace.Context.ProjectPath;
             var sample = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
-                AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
+                AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
             var captured = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel).Value!;
             var unknown = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel
                 .Replace("RequiredSyntacticFeatureStruct", "UnknownFutureCode", StringComparison.Ordinal)).Value!;

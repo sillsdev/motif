@@ -12,6 +12,75 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class TraceEvidenceBoundaryTests
 {
+    [Theory]
+    [InlineData("step-11")]
+    [InlineData("step-12")]
+    public void UnavailableCompoundCauseCannotBecomeARecordedExplanation(string producerId)
+    {
+        var reading = Fixture("kumata");
+        var step = Walk(reading.Root).Single(item => item.EventEvidence?.ProducerStepId == producerId);
+        Assert.Equal("Pattern", step.FailureReason);
+        Assert.Equal("owner-payload-not-captured", step.FailureEvidence!.UnavailableReason);
+        Assert.Equal(TraceEvidenceAvailability.NotRecorded, step.ExplanationAvailability);
+        Assert.Null(step.ReasonExplanation);
+        var summarized = TraceReadingBuilder.Build(reading.Word, reading.Root,
+            [new TraceCandidate([], false, null, null, [step])], []);
+        var summary = Assert.Single(summarized.RulesOnBestPath);
+        Assert.Equal("Explanation not recorded (reason code: Pattern).", summary.Explanation);
+    }
+
+    [Fact]
+    public void RequiredCoOccurrenceRetainsItsPolarityWithoutAProhibitionExplanation()
+    {
+        var reading = Fixture("tarona-required");
+        var attempt = Assert.Single(reading.Attempts, item => item.FailureReason == "MorphemeCoOccurrenceRules");
+        var payload = attempt.FailureEvidence!.Payload!.Value;
+        Assert.True(payload.GetProperty("require").GetBoolean());
+        Assert.Equal("mrEmph", payload.GetProperty("constraintOwner").GetProperty("id").GetString());
+        Assert.Equal("mrPast", payload.GetProperty("others")[0].GetProperty("id").GetString());
+        Assert.Equal(TraceEvidenceAvailability.NotRecorded, attempt.ExplanationAvailability);
+        Assert.Null(attempt.Explanation);
+        Assert.Null(attempt.Steps.Last().ReasonExplanation);
+        Assert.Null(Assert.Single(reading.StopGroups, group => group.ReasonCode == "MorphemeCoOccurrenceRules").Explanation);
+        Assert.Contains(payload.GetRawText(), string.Join("\n", TraceEvidenceDisplay.Details(attempt.Steps.Last())),
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("captured", "Owner explanation", TraceEvidenceAvailability.Recorded)]
+    [InlineData("unavailable", "Owner explanation", TraceEvidenceAvailability.NotRecorded)]
+    [InlineData("captured", "Consumer explanation", TraceEvidenceAvailability.NotRecorded)]
+    public void OnlyAnAvailableOwnersExplanationCountsAsRecorded(string status, string text, TraceEvidenceAvailability expected)
+    {
+        var evidence = new TraceFailureEvidence("decisionGate", "owner", "Pattern", status, null,
+            "Owner explanation", null, null, null);
+        var step = new TraceStep("Failed", null, null, null, "Pattern", [])
+            { ReasonExplanation = text, FailureEvidence = evidence };
+        var attempt = new TraceCandidate([], false, "Pattern", text, [step]) { FailureEvidence = evidence };
+        Assert.Equal(expected, step.ExplanationAvailability);
+        Assert.Equal(expected, attempt.ExplanationAvailability);
+    }
+
+    [Fact]
+    public void CapturedOwnerReasonIsUsedByTheStepAttemptAndSummary()
+    {
+        var reading = Read("""
+            {"type":"Failed","failureReason":"Pattern","failureContext":{
+              "status":"captured","source":"rejection-owner","reasonCode":"Pattern",
+              "reason":"Owner explanation"},"children":[]}
+            """);
+        Assert.Equal("Owner explanation", reading.Root.ReasonExplanation);
+        Assert.Equal("Owner explanation", Assert.Single(reading.Attempts).Explanation);
+        Assert.Equal("Owner explanation", Assert.Single(reading.StopGroups).Explanation);
+    }
+
+    private static WordTraceReading Fixture(string name) => WordTraceQuery.LoadDiagnostic(
+        System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", $"trace-details-v3-{name}.json"))).Value!.Reading;
+
+    private static System.Collections.Generic.IEnumerable<TraceStep> Walk(TraceStep step) =>
+        new[] { step }.Concat(step.Children.SelectMany(Walk));
+
     [Fact]
     public void SeveralSiblingRejectionsRemainContextRatherThanTerminalCauses()
     {
@@ -29,28 +98,31 @@ public sealed class TraceEvidenceBoundaryTests
         Assert.Null(Assert.Single(reading.StopGroups).RuleRefId);
         Assert.Equal(["WordAnalysis", "Failed"], attempt.Steps.Select(step => step.Type));
         Assert.Equal(["Pattern", "RequiredMprFeatures"], TraceTreeContextRange.Resolve(reading.Root, attempt.TreeContext).Select(step => step.FailureReason));
-        Assert.DoesNotContain("template", attempt.Explanation!, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(attempt.Explanation);
     }
 
     [Fact]
-    public void ZodutFamilyReplacementIsAnEventAndSearchContinuesToVem()
+    public void ZodutFamilyReplacementRetainsTheReplacementAndPartialSearch()
     {
         var json = System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "trace-details-v2-zodut-synthetic.json"));
+            "TestFixtures", "trace-details-v3-zodut-synthetic.json"));
         var document = PanGlossTraceDiagnosticReader.Read(json);
         var response = WordTraceQuery.LoadDiagnostic(json).Value!;
-        Assert.Single(document.Attempts);
-        var attempt = Assert.Single(response.Reading.Attempts);
-        Assert.True(attempt.Succeeded);
-        Assert.Equal("vem", attempt.Surface);
-        var blocked = Assert.Single(TraceTreeContextRange.Resolve(response.Reading.Root, attempt.TreeContext));
-        Assert.Equal("Blocked", blocked.Type);
+        Assert.Equal(2, document.Attempts.Count);
+        Assert.Equal(2, response.Reading.Attempts.Count);
+        Assert.All(response.Reading.Attempts, attempt => Assert.False(attempt.Succeeded));
+        var blocked = Assert.Single(Walk(response.Reading.Root), step => step.Type == "Blocked");
         Assert.Equal("past2", blocked.Source);
         Assert.Equal("vem", blocked.Output);
         Assert.Null(blocked.FailureReason);
-        Assert.Equal(TraceEvidenceAvailability.NotRecorded, blocked.ReasonAvailability);
-        Assert.Empty(response.Reading.StopGroups);
+        Assert.Equal("LexicalFamilyReplacement", blocked.EventEvidence!.BlockReason);
+        Assert.Equal("eVem", blocked.EventEvidence.BlockedByEntry!.Id);
+        Assert.Contains(response.Reading.Attempts, attempt => attempt.Surface == "vem");
+        Assert.Empty(response.Reading.Analyses);
         Assert.Equal(json, response.DiagnosticJson);
+
+        static System.Collections.Generic.IEnumerable<TraceStep> Walk(TraceStep step) =>
+            new[] { step }.Concat(step.Children.SelectMany(Walk));
     }
 
     [Fact]

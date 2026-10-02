@@ -194,21 +194,21 @@ public sealed class TraceReadingBuilderTests
     }
 
     [Fact]
-    public void GenericMorphologicalStepsDoNotClaimToBeAffixRules()
+    public void CapturedCompoundRulesDoNotClaimToBeAffixRules()
     {
         var reading = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "trace-details-v2-kumata.json"))).Value!.Reading!;
+            "TestFixtures", "trace-details-v3-kumata.json"))).Value!.Reading!;
 
         var compounds = reading.Refs.Where(reference => reference.Label.Contains("Compounding")).ToArray();
         Assert.Equal(2, compounds.Length);
-        Assert.All(compounds, reference => Assert.Equal("morphologicalRule", reference.Kind));
+        Assert.All(compounds, reference => Assert.Equal("compoundRule", reference.Kind));
         Assert.All(reading.RulesOnBestPath.Where(rule => rule.Kind.Contains("Affix rule")),
             rule => Assert.Fail("A generic morphological event cannot identify an affix rule."));
     }
 
     private static WordTraceReading AlternateGuidReading(bool mixedSpellings = true)
     {
-        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-kumata.json"));
+        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json"));
         var json = JsonNode.Parse(text.Replace("00000000-0000-0000-0000-000000000109",
             "12345678-1234-1234-abcd-123456789abc", StringComparison.Ordinal))!;
         var rewritten = false;
@@ -282,7 +282,7 @@ public sealed class TraceReadingBuilderTests
     public void KumataKeepsTheStemLookupTemplateAndMorphIdentity()
     {
         var document = PanGlossTraceDiagnosticReader.Read(File.ReadAllText(
-            Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-kumata.json")));
+            Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json")));
         var reading = TraceReadingBuilder.Build(document);
 
         Assert.Equal("kumata", reading.Word);
@@ -368,5 +368,5 @@ public sealed class TraceReadingBuilderTests
     }
 
     private static string ReadFixture() => File.ReadAllText(
-        Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"));
+        Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"));
 }

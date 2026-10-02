@@ -14,8 +14,8 @@ namespace SIL.Motif.Tests.Commands;
 /// <summary>
 /// Pins <see cref="WordTraceQuery"/> over a canned trace, the same captured <c>sagd</c> derivation
 /// <see cref="SIL.Motif.Tests.PanGloss.PanGlossTracerTests"/> pins at the reader level: no Baseline is a
-/// typed Refusal, a completed trace maps to a successful and a failed candidate with the failure explained
-/// in FieldWorks' own words, and a declined parser is a typed Refusal rather than an exception.
+/// typed Refusal, a completed trace maps to successful and failed candidates while preserving missing owner
+/// explanations, and a declined parser is a typed Refusal rather than an exception.
 /// </summary>
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 public sealed class WordTraceQueryTests : IDisposable
@@ -71,7 +71,7 @@ public sealed class WordTraceQueryTests : IDisposable
     }
 
     [Fact]
-    public void ACompletedTraceMapsOneSuccessfulAndOneFailedCandidate_WithThePlainEnglishExplanation()
+    public void ACompletedTraceMapsSuccessfulAndFailedCandidatesWithoutInventingAnExplanation()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
@@ -114,7 +114,8 @@ public sealed class WordTraceQueryTests : IDisposable
         Assert.Equal("PartialParse", failed.FailureReason);
         Assert.Null(failed.StoppedByRule);
         Assert.Equal("sag", failed.Surface);
-        Assert.NotNull(failed.Explanation);
+        Assert.Null(failed.Explanation);
+        Assert.Equal(TraceEvidenceAvailability.NotRecorded, failed.ExplanationAvailability);
         Assert.Empty(failed.Morphs);
         Assert.Equal("Failed", failed.Steps[^1].Type);
         Assert.Equal(["MorphologicalRuleAnalysis", "Failed"], failed.Steps.TakeLast(2).Select(step => step.Type));

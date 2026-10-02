@@ -28,7 +28,7 @@ After `./build.ps1`, run the CLI and App from `bin/<Configuration>`:
 
 Use `Release` in place of `Debug` for a release build. Windows apphosts use `.exe`; Linux and macOS apphosts have no extension. See the [build output layout](AGENTS.md#where-the-build-lands).
 
-PanGloss is optional for opening the App and required for parsing. Motif pins release artifacts by version and SHA-256 in [`pangloss-release.json`](pangloss-release.json) (currently v0.5.2) and bundles the matching executable in release packages. For a local parser, set `MOTIF_PANGLOSS_EXE` to its path; that override is authoritative, and a missing configured file stops discovery. Otherwise a repository build searches the sibling `../PanGloss/dist/*/` and `../PanGloss/rust/target/release/` locations, then the Motif executable directory. The error message gives the local `cargo build --release -p pg-cli` command when no parser is found.
+PanGloss is optional for opening the App and required for parsing. Motif pins release artifacts by version and SHA-256 in [`pangloss-release.json`](pangloss-release.json) (currently v0.6.0) and bundles the matching executable in release packages. For a local parser, set `MOTIF_PANGLOSS_EXE` to its path; that override is authoritative, and a missing configured file stops discovery. Otherwise a repository build searches the sibling `../PanGloss/dist/*/` and `../PanGloss/rust/target/release/` locations, then the Motif executable directory. The error message gives the local `cargo build --release -p pg-cli` command when no parser is found.
 
 To stage a self-contained release payload, install the pinned Velopack CLI and run the package script. It verifies the pinned PanGloss file before packaging:
 

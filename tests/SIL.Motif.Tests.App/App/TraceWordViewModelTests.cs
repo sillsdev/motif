@@ -337,8 +337,10 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(0, rows[1].TimeHeat);
     }
 
-    [Fact]
-    public void AFailedAttemptSaysWhichRuleStoppedItAndWhy()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AFailedAttemptUsesOnlyTheRecordedOwnersExplanation(bool captured)
     {
         var candidate = new TraceCandidateViewModel(new TraceCandidate(
             [new ParserReadingMorph("ma-", "PFV", "v", null, false, null), new ParserReadingMorph("tin", "cut", "v", null, false, null)],
@@ -347,13 +349,18 @@ public sealed class TraceWordViewModelTests
             Surface = "matin",
             StoppedByRule = "-lu ‘APPL’",
             OutcomeStatus = "failed",
+            FailureEvidence = captured ? new TraceFailureEvidence("decisionGate", "rejection-owner",
+                "NonPartialRuleProhibitedAfterFinalTemplate", "captured", null,
+                "No rule may apply after the final template.", null, null, null) : null,
         });
 
         Assert.True(candidate.IsFailure);
         Assert.Equal("matin", candidate.Surface);
         Assert.Equal(2, candidate.Morphs.Count);
         Assert.Equal("Stopped by -lu ‘APPL’", candidate.StopHeadline);
-        Assert.Equal("No rule may apply after the final template.", candidate.StopReason);
+        Assert.Equal(captured ? "No rule may apply after the final template."
+            : "Explanation not recorded (reason code: NonPartialRuleProhibitedAfterFinalTemplate).", candidate.StopReason);
+        Assert.Equal(captured ? "No rule may apply after the final template." : null, candidate.Explanation);
         Assert.Equal("NonPartialRuleProhibitedAfterFinalTemplate", candidate.ParserCode);
         Assert.True(candidate.HasParserCode);
     }
@@ -712,7 +719,7 @@ public sealed class TraceWordViewModelTests
     public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
     {
         const string json = """
-            {"schemaVersion":"pangloss.trace-details.v2","word":"sagd",
+            {"schemaVersion":"pangloss.trace-details.v3","word":"sagd",
              "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":1,"elapsedNs":9},
              "result":{"signature":"a","guessed":false,"analyses":[
                {"analysisId":"analysis-0","index":0,"surface":"sagd","morphemes":"root",
@@ -838,5 +845,5 @@ public sealed class TraceWordViewModelTests
     }
 
     private static WordTraceResponse MatinluTrace() => WordTraceQuery.LoadDiagnostic(File.ReadAllText(
-        Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"))).Value!;
+        Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
 }

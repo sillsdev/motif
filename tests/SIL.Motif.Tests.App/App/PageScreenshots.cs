@@ -606,7 +606,7 @@ public sealed class PageScreenshots
     internal static string SampleTrace() => TraceFixture();
 
     private static string TraceFixture() =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-matinlu.json"));
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"));
 
     private static BaselineToken Token() =>
         new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));

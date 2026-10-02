@@ -29,7 +29,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         File.WriteAllText(path, TraceEnvelope.CapturedRuleLabel);
         var text = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path);
         Assert.True(text.ExitCode == 0, text.Error);
-        Assert.Contains("Stopped 1 attempt(s): This candidate ended as a partial parse", text.Output);
+        Assert.Contains("Stopped 1 attempt(s): Explanation not recorded (reason code: PartialParse).", text.Output);
         Assert.Empty(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!.Reading.RulesOnBestPath);
         Assert.Contains("phonologicalRule Vowel harmony", text.Output);
         Assert.DoesNotContain("Producer name", text.Output);
@@ -78,7 +78,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     [Fact]
     public async Task ASavedTraceLoadsIntoTheReadingTheWindowBuildsFromIt()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v2-kumata.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json");
 
         var result = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path, "--json");
 

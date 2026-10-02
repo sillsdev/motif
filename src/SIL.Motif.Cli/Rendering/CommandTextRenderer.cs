@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Host.PanGloss;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
 namespace SIL.Motif.Cli.Rendering;
@@ -365,6 +366,32 @@ public static class CommandTextRenderer
         foreach (var finding in response.Findings)
         {
             text.AppendLine($"  {finding.Text}");
+            if (finding.Explanation is { Length: > 0 } explanation) text.AppendLine($"    {explanation}");
+            if (finding.Guidance is { Length: > 0 } guidance) text.AppendLine($"    {guidance}");
+            foreach (var place in finding.FieldWorksPlaces)
+                text.AppendLine($"    In FieldWorks: {FieldWorksLinks.ToolName(place.Tool)} > {place.Field}");
+            foreach (var subject in finding.Subject)
+            {
+                var state = subject.Status switch
+                {
+                    GrammarSubjectStatus.UnresolvedReference => "unresolved reference",
+                    GrammarSubjectStatus.ProjectSettings => "project setting",
+                    _ => "object",
+                };
+                text.AppendLine($"    {subject.Text} ({state})" + (subject.Field is { } field ? $" > {field}" : ""));
+                if (subject.LinkStatus == FieldWorksLinkStatus.Unavailable)
+                    text.AppendLine($"      FieldWorks link unavailable: {subject.LinkReason switch
+                    {
+                        FieldWorksLinkReason.UnresolvedReference => "the referenced item is absent or unusable as the expected class",
+                        FieldWorksLinkReason.ProjectSettings => "a project setting has no individual FieldWorks object",
+                        FieldWorksLinkReason.MissingProject => "no FieldWorks project name supplied",
+                        FieldWorksLinkReason.GuidNotRecorded => "source item has no FieldWorks GUID",
+                        FieldWorksLinkReason.InvalidGuid => "source item has an invalid FieldWorks GUID",
+                        FieldWorksLinkReason.UnsupportedKind => "source item has no verified FieldWorks tool",
+                        _ => "reason not recorded",
+                    }}");
+            }
+            if (finding.HelpUrl is { } helpUrl) text.AppendLine($"    PanGloss reference: {helpUrl}");
             text.AppendLine($"    {YourWordsLine(finding)}");
             var limits = finding.AttributionLimits.Where(reason => reason != finding.AttributionReason).ToArray();
             if (limits.Length > 0)
@@ -402,6 +429,7 @@ public static class CommandTextRenderer
         WarningAttributionState.ProjectWide => "Your words: project-wide; no word attribution",
         WarningAttributionState.MissingObject => "Your words: missing object; " + (finding.AttributionReason switch
         {
+            WarningAttributionReason.UnresolvedReference => "PanGloss recorded an unresolved reference",
             WarningAttributionReason.WrongClass => "its GUID belongs to a different FieldWorks class",
             _ => "its GUID is absent from the checked Baseline",
         }),
@@ -420,6 +448,7 @@ public static class CommandTextRenderer
         WarningAttributionReason.UnresolvedEnvironmentNotation => "environment notation does not identify a natural-class object",
         WarningAttributionReason.UnsupportedKind => "an owner's class has no supported route to words",
         WarningAttributionReason.NoWordAttribution => "an owner has no word attribution",
+        WarningAttributionReason.UnresolvedReference => "PanGloss recorded an unresolved reference",
         WarningAttributionReason.StaleGuid => "a subject's GUID is absent from the checked Baseline",
         WarningAttributionReason.WrongClass => "a subject's GUID belongs to a different FieldWorks class",
         WarningAttributionReason.NamedWithoutProjectGuid => "a named subject has no project GUID",
@@ -659,6 +688,9 @@ public static class CommandTextRenderer
                 text.AppendLine($"    {rule.Kind} {labels.Resolve(rule.RefId, rule.Rule)}, {rule.Outcome}: {rule.Explanation} " +
                     $"(steps {string.Join(", ", rule.StepIds)})");
         }
+        foreach (var step in Walk(reading.Root))
+            foreach (var detail in TraceEvidenceDisplay.Details(step))
+                text.AppendLine($"  Recorded event {step.EventEvidence?.ProducerStepId ?? step.StepId}: {detail}");
         if (reading.Refs.Count > 0)
         {
             text.AppendLine("  Names:");
@@ -667,6 +699,9 @@ public static class CommandTextRenderer
                     (reference.FieldWorks is { } fieldWorks ? $"  opens in {fieldWorks.ToolName}: {fieldWorks.Link}" : ""));
         }
         return text.ToString();
+
+        static IEnumerable<TraceStep> Walk(TraceStep step) =>
+            new[] { step }.Concat(step.Children.SelectMany(Walk));
 
         static string MorphText(TraceMorph morph) =>
             (morph.Form ?? morph.GuessedString ?? "?") + (morph.Gloss is { Length: > 0 } gloss ? $" ({gloss})" : "");

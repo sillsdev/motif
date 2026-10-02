@@ -20,6 +20,10 @@ public static partial class WarningReachReader
     {
         ArgumentNullException.ThrowIfNull(part);
         ArgumentNullException.ThrowIfNull(cache);
+        if (part.Status == GrammarSubjectStatus.ProjectSettings)
+            return Unavailable(WarningWordsPath.ProjectWide, WarningAttributionReason.NoWordAttribution);
+        if (part.Status == GrammarSubjectStatus.UnresolvedReference)
+            return Unavailable(WarningWordsPath.MissingObject, WarningAttributionReason.UnresolvedReference);
         var kind = part.FieldWorksKind ?? string.Empty;
         if (part.ObjectId is null && kind.Length == 0) return null;
         if (!Guid.TryParse(part.SubjectGuid, out var guid) || guid == Guid.Empty)
@@ -28,7 +32,13 @@ public static partial class WarningReachReader
         var project = cache();
         if (!project.ServiceLocator.ObjectRepository.TryGetObject(guid, out var found))
             return Unavailable(WarningWordsPath.MissingObject, WarningAttributionReason.StaleGuid);
-        if (!IsKind(found, kind))
+        if (kind == "Unknown")
+        {
+            if (part.SourceClass is not { Length: > 0 } rawClass)
+                return Unavailable(WarningWordsPath.UnresolvedIdentity, WarningAttributionReason.UnsupportedKind);
+            kind = rawClass;
+        }
+        if (!IsKind(found, kind) || part.SourceClass is { Length: > 0 } sourceClass && !IsKind(found, sourceClass))
             return Unavailable(WarningWordsPath.MissingObject, WarningAttributionReason.WrongClass);
         var id = guid.ToString("D");
         if (kind == "PhPhoneme") return Spelling(part, project);
@@ -36,7 +46,7 @@ public static partial class WarningReachReader
         {
             "MoForm" or "MoStemAllomorph" or "MoAffixAllomorph" or "MoAffixProcess" =>
                 new WarningReach(WarningWordsPath.Uses) { AllomorphIds = [id] },
-            "MoStemMsa" or "MoInflAffMsa" or "MoDerivAffMsa" or "MoUnclassifiedAffixMsa" =>
+            "MoMorphSynAnalysis" or "MoStemMsa" or "MoInflAffMsa" or "MoDerivAffMsa" or "MoUnclassifiedAffixMsa" =>
                 new WarningReach(WarningWordsPath.Uses) { GrammaticalInfoIds = [id] },
             "PhRegularRule" or "PhMetathesisRule" =>
                 new WarningReach(WarningWordsPath.RuleTimes) { TimingKeys = [new TraceTimingKey(PhonRule, id)] },

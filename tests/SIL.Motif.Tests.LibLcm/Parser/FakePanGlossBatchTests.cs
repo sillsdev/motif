@@ -70,7 +70,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
         var root = report.RootElement;
-        Assert.Equal(3, root.GetProperty("schema_version").GetInt32());
+        Assert.Equal(4, root.GetProperty("schema_version").GetInt32());
         var project = root.GetProperty("fieldworks_project");
         Assert.Equal("grammar", project.GetProperty("name").GetString());
         Assert.Equal("fwdata_path", project.GetProperty("source").GetString());

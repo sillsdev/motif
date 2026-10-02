@@ -56,6 +56,19 @@ public enum FieldWorksLinkReason
     InvalidGuid,
     [JsonStringEnumMemberName("unsupported_kind")]
     UnsupportedKind,
+    [JsonStringEnumMemberName("unresolved_reference")]
+    UnresolvedReference,
+    [JsonStringEnumMemberName("project_settings")]
+    ProjectSettings,
+}
+
+/// <summary>Source existence as captured by PanGloss, independent of later Baseline contents.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<GrammarSubjectStatus>))]
+public enum GrammarSubjectStatus
+{
+    [JsonStringEnumMemberName("object")] Object,
+    [JsonStringEnumMemberName("unresolved_reference")] UnresolvedReference,
+    [JsonStringEnumMemberName("project_settings")] ProjectSettings,
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<GrammarFieldWorksProjectSource>))]

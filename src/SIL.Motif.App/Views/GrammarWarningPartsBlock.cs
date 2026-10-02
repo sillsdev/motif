@@ -42,10 +42,12 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private static Control ControlFor(GrammarWarningPart part)
     {
-        if (part.Role == GrammarWarningPartRole.Object && part.FieldWorksLink is { } link)
+        if (part.Status == GrammarSubjectStatus.Object && part.Role == GrammarWarningPartRole.Object && part.FieldWorksLink is { } link)
             return LinkFor(part, link);
 
-        var text = part.Role == GrammarWarningPartRole.Missing ? $"missing object {part.Text}" : part.Text;
+        var text = part.Status == GrammarSubjectStatus.ProjectSettings ? $"Project setting: {part.Text}"
+            : part.Role == GrammarWarningPartRole.Missing ? $"missing object {part.Text}" : part.Text;
+        if (part.Field is { Length: > 0 } field) text += $" > {field}";
         if (part.LinkStatus == FieldWorksLinkStatus.Unavailable)
             text += $" (FieldWorks link unavailable: {UnavailableReason(part.LinkReason)})";
         var block = new CopyableTextBlock
@@ -75,6 +77,8 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         FieldWorksLinkReason.GuidNotRecorded => "PanGloss did not record a GUID",
         FieldWorksLinkReason.InvalidGuid => "the recorded GUID is invalid",
         FieldWorksLinkReason.UnsupportedKind => "FieldWorks cannot open this kind",
+        FieldWorksLinkReason.UnresolvedReference => "the referenced item is absent or unusable as the expected class",
+        FieldWorksLinkReason.ProjectSettings => "a project setting has no individual FieldWorks object",
         _ => "the reason was not provided",
     };
 

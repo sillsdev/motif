@@ -37,6 +37,28 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void WarningTextRetainsProducerAdvicePlacesAndMissingReferenceState()
+    {
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Producer title",
+            [new("Missing slot", GrammarWarningPartRole.Missing, "missing", "MoInflAffixSlot")
+            {
+                Status = GrammarSubjectStatus.UnresolvedReference, Field = "SuffixSlots",
+                LinkStatus = FieldWorksLinkStatus.Unavailable, LinkReason = FieldWorksLinkReason.UnresolvedReference,
+            }], [], "producer description")
+        {
+            Explanation = "Producer explanation", Guidance = "Producer guidance",
+            FieldWorksPlaces = [new("posEdit", "Affix Templates")],
+        };
+        var text = CommandTextRenderer.Render(CommandOutcome<WarningsResponse>.Success(
+            new(true, true, [finding], [], 1, 0)), asJson: false).Output;
+        Assert.Contains("Producer explanation", text);
+        Assert.Contains("Producer guidance", text);
+        Assert.Contains("Affix Templates", text);
+        Assert.Contains("unresolved reference", text);
+        Assert.Contains("SuffixSlots", text);
+    }
+
+    [Fact]
     public void TimingTextCarriesTheKindAlongsideTheKey()
     {
         var response = new TimingResponse("assessment", "all", "rule", 1, 1, 1, [],

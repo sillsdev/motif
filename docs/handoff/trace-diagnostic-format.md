@@ -1,6 +1,6 @@
 # Try a Word diagnostic JSON: guide for people and AI
 
-Motif reads `pangloss.trace-details.v1` and `pangloss.trace-details.v2`. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
+Motif reads only `pangloss.trace-details.v3`. Older and unknown future schemas are refused; update Motif and PanGloss together. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
 
 ```text
 pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --trace-details
@@ -8,7 +8,7 @@ pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --t
 
 Use the trace file when running through a build or process wrapper: the wrapper's console messages are not JSON. Ordinary parsing and ordinary trace output remain separate interfaces.
 
-The producer contract is documented in [PanGloss trace details v2](https://github.com/sillsdev/PanGloss/blob/main/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
+The producer contract is documented in [PanGloss trace details v3](https://github.com/sillsdev/PanGloss/blob/v0.6.0/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
 
 ## How to interpret a diagnostic
 
@@ -35,7 +35,7 @@ Then inspect the trace as diagnostic evidence. Do not invent an association betw
 
 ### Analyses and morphology
 
-Each v2 analysis retains `morphemes` and `surface` alongside `analysisId`, `index`, `projection`, and `morphs`. `projection.profile` names the authoritative analysis projector. `projection.status` is `available` or `unavailable`; an unavailable projection carries an `error` message string and diagnostic `errorCode`. A failed projection does not erase the underlying recorded analysis.
+Each v3 analysis retains `morphemes` and `surface` alongside `analysisId`, `index`, `projection`, and `morphs`. `projection.profile` names the authoritative analysis projector. `projection.status` is `available` or `unavailable`; an unavailable projection carries an `error` message string and diagnostic `errorCode`. A failed projection does not erase the underlying recorded analysis.
 
 A morph's `identity` can contain authored form, entry, MSA, and inflection-type IDs. `quality` distinguishes authored, grammar-local, synthetic, and unknown identities. Never treat a dense grammar ordinal as a FieldWorks GUID.
 
@@ -51,7 +51,17 @@ The original node fields remain: `type`, `source`, `subrule`, `inputShape`, `out
 
 `failureContext` is a sibling of `outcome`. Its `required`, `actual`, and `environment` values come from the rejection owner when recorded. An unavailable context is explicitly marked and must not be filled by guessing from the failure enum or rerunning a predicate. Surface mismatch values are input text and the reconstructed surface display. Some feature/environment gate values are producer diagnostic representations of compiled structures, not authored labels or a stable expression language.
 
-A Blocked event is intermediate, not a terminal attempt. In pinned PanGloss v0.5.2 it records a rule result replaced by a compatible entry in the same lexical family; the replacement output is recorded, but the blocker identity is not. It does not mean a self-feeding guard. A green descendant does not establish that every ancestor successfully applied. Preserve parser traversal order; do not describe the first failed node as the most likely cause.
+A Blocked event is intermediate, not a terminal attempt. PanGloss v0.6.0 records the replacement output, `blockReason` and `blockedByEntry`, identifying the compatible lexical-family entry that replaced the rule result. It does not mean a self-feeding guard. A green descendant does not establish that every ancestor successfully applied. Preserve parser traversal order; do not describe the first failed node as the most likely cause.
+
+### Evidence added by trace v3
+
+`stepId` is the producer's document-local event identifier. Motif retains it in `eventEvidence.producerStepId` separately from its tree address (`stepId` in the projected reading). Neither address establishes a causal link to a result analysis.
+
+`lookupResult` records `status`, `completed`, `matchCount` and `mode`. Its count is materialized root candidates returned by one lookup, including allomorph expansion, never successful analyses. A completed lookup can be followed by an incomplete search. An absent lookup result means completion was not captured.
+
+Template output `slots` retain slot index, identity, name, status and selected rule in producer order. `Applied`, `OptionalSkipped`, `RequiredUnfilled` and `NotReached` describe that retained branch, without inventing one rule responsible for an unfilled batch. `partialParseCause` names the completion gate that fired; absent causal links remain absent.
+
+`failureContext.evidence` retains typed syntactic-feature, MPR-feature, co-occurrence and environment operands as diagnostic JSON in `failureEvidence.payload`. Feature ordinals and bitsets are grammar-local. Ordered partner lists, evaluated alternatives, authored environment identities and text must survive; do not reconstruct them from legacy display strings. `nonUnapplicationReason` keeps an explicit unavailable reason when the phonological evaluator returned only a boolean.
 
 ### Timing and counts
 
@@ -79,15 +89,13 @@ FieldWorks links are live actions, not trusted document data. Motif resolves aut
 
 Only events typed `Successful` or `Failed` end attempts. A rule's own successful/failed status describes that rule event, not a new terminal attempt. `attempt.steps` contains actual ancestors and the terminal node. Earlier sibling subtrees along those ancestors are addressed by ordered `attempt.treeContext` ranges (`parentStepId`, `beforeChildIndex`), each selecting a prefix of that parent’s children in the authoritative root; no sibling kind in the supported schemas has a verified membership guarantee. They remain tree context, including lookups, templates, phonological events, and rejections. The window resolves context only when its expander opens. Context may include an earlier whole branch and must never be interpreted as a linear derivation. With no terminal event, the root still preserves interrupted progress; no best path is fabricated. An analysis-only document has analyses without a building pass.
 
-`reasonAvailability`, `rejectionDetailsAvailability`, and `explanationAvailability` use `Recorded` / `NotRecorded`. Missing reason, missing operands, and a recorded unknown code are separate states. A step's `reasonExplanation` is a reviewed general explanation, not producer evidence; unknown codes retain the raw code and an unavailable explanation. `grammarSourceAvailability` accompanies the response's optional producer `grammarSource`; a returned Baseline is also a recorded grammar source. Present missing sections as “Reason not recorded”, “Rejection details not recorded”, and “Grammar source not recorded”. Original JSON remains authoritative for future producer fields such as block reason/blocker, lookup status, rejection context, slot outcomes, and PartialParse cause until a versioned adapter supports them.
+`reasonAvailability`, `rejectionDetailsAvailability`, and `explanationAvailability` use `Recorded` / `NotRecorded`. Missing reason, missing operands, and a recorded unknown code are separate states. A step's `reasonExplanation` and an attempt's `explanation` contain only an explicitly available owner's recorded `reason` text. Their availability is `Recorded` only when that text matches the owner evidence; catalog prose cannot establish it. Broad codes such as `Pattern` and co-occurrence codes retain their recorded code and typed operands without a consumer-invented mechanism or polarity. Missing owner explanations stay `NotRecorded` even when operands or completion gates were captured. `grammarSourceAvailability` accompanies the response's optional producer `grammarSource`; a returned Baseline is also a recorded grammar source. Present missing sections as “Reason not recorded”, “Rejection details not recorded”, and “Grammar source not recorded”. The v3 adapter retains captured block reasons and replacement identities, completed lookup results, slot decisions, typed rejection context and PartialParse causes in `eventEvidence` and `failureEvidence.payload`. Original JSON remains authoritative for unknown fields.
+
+The recorded tree context labels each occurrence `Recorded event: <Motif tree address>`. A separate line shows `Producer event ID` and the tree address, or says the producer ID was not recorded. Motif's child-index address never supplies a missing producer ID.
 
 Reading refs use canonical GUIDs or exact typed grammar-local identities. Missing identities use occurrence addresses scoped to this diagnostic, never labels. `stepId` and a morph's `occurrenceId` are local addresses, not portable project identities. `rulesOnBestPath` keeps every rule event in traversal order, including repeated applications, and derives each outcome from that event alone. Stop groups summarize terminal outcomes and their own reasons. A neighboring rejection cannot supply a cause, operands, or stopping ref. Without an explicit producer link, `stoppedByRule`, `stoppedByRuleId`, and `stoppedByRefId` remain absent.
 
 The typed display projection retains `projectionErrorCode` on analyses and `failureEvidence` on steps and attempts. Failure evidence includes the owner's `kind`, `source`, `reasonCode`, `status`, `unavailableReason`, `reason`, `required`, `actual`, and `environment`. Structured operands are retained as diagnostic JSON text, not translated into authored notation. An unknown reason code has no inferred explanation.
-
-### Version 1
-
-The v1 adapter retains the full envelope, existing analyses and their multiplicity/order, tree, subrules, and all counters. It does not pretend v2 morph projections, failure operands, or provenance were recorded. Display unavailable richer fields as not recorded. Export retains the original supported document rather than converting it into a display-model JSON format.
 
 ## AI interpretation checklist
 

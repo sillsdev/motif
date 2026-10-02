@@ -80,24 +80,100 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
 
     private const string Report = """
         {
-          "schema_version": 3,
-          "fieldworks_project": { "name": null, "source": null },
+          "schema_version": 4,
+          "fieldworks_project": {
+            "name": null,
+            "source": null
+          },
           "summary": [
-            { "code": "hc-invalid-feature-system", "group_name": "Invalid feature system", "level": "error", "count": 1 },
-            { "code": "hc-unused-rule", "group_name": "Unused rule", "level": "warning", "count": 1 },
-            { "code": "hc-undeclared-segment", "group_name": "Undeclared segment", "level": "info", "count": 1 },
-            { "code": "fwdata.no-usable-allomorphs", "group_name": "No usable entry allomorphs", "level": "error", "count": 1 }
+            {
+              "code": "hc-invalid-feature-system",
+              "group_name": "Invalid feature system",
+              "level": "error",
+              "count": 1
+            },
+            {
+              "code": "hc-unused-rule",
+              "group_name": "Unused rule",
+              "level": "warning",
+              "count": 1
+            },
+            {
+              "code": "hc-undeclared-segment",
+              "group_name": "Undeclared segment",
+              "level": "info",
+              "count": 1
+            },
+            {
+              "code": "fwdata.no-usable-allomorphs",
+              "group_name": "No usable entry allomorphs",
+              "level": "error",
+              "count": 1
+            }
           ],
           "diagnostics": [
-            { "level": "error", "code": "hc-invalid-feature-system", "group_name": "Invalid feature system",
-              "origin": "check", "description": "A feature system could not be loaded.", "guidance": null, "subjects": [] },
-            { "level": "warning", "code": "hc-unused-rule", "group_name": "Unused rule",
-              "origin": "check", "description": "Rule x is unused.", "guidance": null, "subjects": [] },
-            { "level": "info", "code": "hc-undeclared-segment", "group_name": "Undeclared segment",
-              "origin": "check", "description": "Segment x is undeclared.", "guidance": null, "subjects": [] },
-            { "level": "error", "code": "fwdata.no-usable-allomorphs", "group_name": "No usable entry allomorphs",
-              "origin": "import", "description": "The entry has no usable allomorph.", "guidance": null, "subjects": [] }
-          ]
+            {
+              "level": "error",
+              "code": "hc-invalid-feature-system",
+              "group_name": "Invalid feature system",
+              "origin": "check",
+              "description": "A feature system could not be loaded.",
+              "guidance": null,
+              "subjects": [],
+              "title": "Invalid feature system",
+              "explanation": "A feature system could not be loaded.",
+              "help_path": null,
+              "help_body": null,
+              "fieldworks_places": [],
+              "scope": "project_settings"
+            },
+            {
+              "level": "warning",
+              "code": "hc-unused-rule",
+              "group_name": "Unused rule",
+              "origin": "check",
+              "description": "Rule x is unused.",
+              "guidance": null,
+              "subjects": [],
+              "title": "Unused rule",
+              "explanation": "Rule x is unused.",
+              "help_path": null,
+              "help_body": null,
+              "fieldworks_places": [],
+              "scope": "project_settings"
+            },
+            {
+              "level": "info",
+              "code": "hc-undeclared-segment",
+              "group_name": "Undeclared segment",
+              "origin": "check",
+              "description": "Segment x is undeclared.",
+              "guidance": null,
+              "subjects": [],
+              "title": "Undeclared segment",
+              "explanation": "Segment x is undeclared.",
+              "help_path": null,
+              "help_body": null,
+              "fieldworks_places": [],
+              "scope": "project_settings"
+            },
+            {
+              "level": "error",
+              "code": "fwdata.no-usable-allomorphs",
+              "group_name": "No usable entry allomorphs",
+              "origin": "import",
+              "description": "The entry has no usable allomorph.",
+              "guidance": null,
+              "subjects": [],
+              "title": "No usable entry allomorphs",
+              "explanation": "The entry has no usable allomorph.",
+              "help_path": null,
+              "help_body": null,
+              "fieldworks_places": [],
+              "scope": "project_settings"
+            }
+          ],
+          "locale": "en"
         }
         """;
 }

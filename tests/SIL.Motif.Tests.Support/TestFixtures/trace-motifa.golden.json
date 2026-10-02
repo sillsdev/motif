@@ -25,6 +25,9 @@
               "stepId": "0.0.0",
               "identityScope": "{DiagnosticScope}",
               "documentScope": "{DiagnosticScope}",
+              "eventEvidence": {
+                "slots": []
+              },
               "attemptedMorphs": []
             }
           ],
@@ -34,6 +37,9 @@
           "stepId": "0.0",
           "identityScope": "{DiagnosticScope}",
           "documentScope": "{DiagnosticScope}",
+          "eventEvidence": {
+            "slots": []
+          },
           "attemptedMorphs": [
             {
               "identity": "{FirstLexemeFormId}",
@@ -63,6 +69,9 @@
       "stepId": "0",
       "identityScope": "{DiagnosticScope}",
       "documentScope": "{DiagnosticScope}",
+      "eventEvidence": {
+        "slots": []
+      },
       "attemptedMorphs": []
     },
     "attempts": [
@@ -89,6 +98,9 @@
             "stepId": "0",
             "identityScope": "{DiagnosticScope}",
             "documentScope": "{DiagnosticScope}",
+            "eventEvidence": {
+              "slots": []
+            },
             "attemptedMorphs": []
           },
           {
@@ -102,6 +114,9 @@
             "stepId": "0.0",
             "identityScope": "{DiagnosticScope}",
             "documentScope": "{DiagnosticScope}",
+            "eventEvidence": {
+              "slots": []
+            },
             "attemptedMorphs": [
               {
                 "identity": "{FirstLexemeFormId}",
@@ -134,6 +149,9 @@
             "stepId": "0.0.0",
             "identityScope": "{DiagnosticScope}",
             "documentScope": "{DiagnosticScope}",
+            "eventEvidence": {
+              "slots": []
+            },
             "attemptedMorphs": []
           }
         ],
@@ -143,6 +161,9 @@
         "explanationAvailability": "NotRecorded",
         "attemptId": "0.0.0",
         "outcomeStatus": "successful",
+        "eventEvidence": {
+          "slots": []
+        },
         "morphAvailability": "recorded",
         "richMorphs": [
           {
@@ -250,7 +271,7 @@
     }
   ],
   "diagnosticJson": "<varies>",
-  "diagnosticFormat": "pangloss.trace-details.v1",
+  "diagnosticFormat": "pangloss.trace-details.v3",
   "searchStatus": "complete",
   "invalidShape": false,
   "hostCapture": {

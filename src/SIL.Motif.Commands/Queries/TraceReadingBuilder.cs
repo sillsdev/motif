@@ -54,7 +54,8 @@ public static class TraceReadingBuilder
             .ThenByDescending(candidate => candidate.Steps.Count).ToArray();
         var stops = closest.GroupBy(candidate => (Identity: candidate.StoppedByRefId ?? candidate.AttemptId, candidate.FailureReason))
             .Select(group => new TraceStopGroup(group.First().StoppedByRule, TraceRefIds.CanonicalIdentity(group.First().StoppedByRuleId),
-                group.Key.FailureReason, group.First().Explanation, group.ToArray())
+                group.Key.FailureReason, group.First().ExplanationAvailability == TraceEvidenceAvailability.Recorded
+                    ? group.First().Explanation : null, group.ToArray())
                 { RuleRefId = group.First().StoppedByRefId })
             .OrderByDescending(group => group.Count).ToArray();
         var best = attempts.FirstOrDefault(candidate => candidate.Succeeded) ?? closest.FirstOrDefault();
@@ -197,8 +198,8 @@ public static class TraceReadingBuilder
     private static string Explain(IReadOnlyList<TraceStep> steps, IReadOnlyList<TraceStep> path)
     {
         var failed = steps.FirstOrDefault(step => step.FailureReason is { Length: > 0 });
-        if (failed is not null) return failed.ContextualFailure is { Length: > 0 } context && context != "unavailable" ? context
-            : HermitCrabFailureExplanations.Explain(failed.FailureReason!) ?? $"Explanation not recorded (reason code: {failed.FailureReason}).";
+        if (failed is not null) return failed.ExplanationAvailability == TraceEvidenceAvailability.Recorded
+            ? failed.ReasonExplanation! : $"Explanation not recorded (reason code: {failed.FailureReason}).";
         var synthesis = steps.Where(step => step.Type.Contains("Synthesis", StringComparison.Ordinal)).ToArray();
         foreach (var step in synthesis.Length > 0 ? synthesis : steps)
         {
@@ -282,7 +283,7 @@ public static class TraceReadingBuilder
                     ?.AttemptedMorphs ?? [];
                 var succeeded = node.Type == "Successful";
                 candidates.Add(new TraceCandidate(morphs.Select(ToReadingMorph).ToArray(), succeeded,
-                    node.FailureReason, node.FailureReason is null ? null : HermitCrabFailureExplanations.Explain(node.FailureReason),
+                    node.FailureReason, node.FailureEvidence?.RecordedExplanation,
                     path.ToArray())
                 {
                     AttemptId = id,
@@ -296,6 +297,7 @@ public static class TraceReadingBuilder
                     FailureActual = node.FailureActual,
                     FailureEnvironment = node.FailureEnvironment,
                     FailureEvidence = node.FailureEvidence,
+                    EventEvidence = node.EventEvidence,
                     SourceIdentityKind = node.SourceIdentityKind,
                     SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId, node.SourceIdentityQuality ?? TraceRefIds.UnknownQuality),
                     SourceIdentityQuality = node.SourceIdentityQuality,
@@ -333,7 +335,7 @@ public static class TraceReadingBuilder
         new(node.Type, node.Source, node.InputShape, node.OutputShape, node.FailureReason, children)
         {
             StepId = id,
-            ReasonExplanation = node.FailureReason is null ? null : HermitCrabFailureExplanations.Explain(node.FailureReason),
+            ReasonExplanation = node.FailureEvidence?.RecordedExplanation,
             Subrule = node.Subrule,
             OutcomeStatus = node.OutcomeStatus,
             OutcomeEventType = node.OutcomeEventType,
@@ -342,6 +344,7 @@ public static class TraceReadingBuilder
             FailureActual = node.FailureActual,
             FailureEnvironment = node.FailureEnvironment,
             FailureEvidence = node.FailureEvidence,
+            EventEvidence = node.EventEvidence,
             AttemptedMorphs = node.AttemptedMorphs.Select((morph, index) => ToMorph(morph, $"step:{id}:morph:{index}")).ToArray(),
             SourceIdentityKind = node.SourceIdentityKind,
             SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId, node.SourceIdentityQuality ?? TraceRefIds.UnknownQuality),

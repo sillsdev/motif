@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "fieldworks_project": {
     "name": "Sena 3",
     "source": "argument"
@@ -20,7 +20,14 @@
       "origin": "check",
       "description": "A feature system could not be loaded.",
       "guidance": "Repair the feature system in FieldWorks.",
-      "subjects": []
+      "subjects": [],
+      "title": "Invalid feature system",
+      "explanation": "A feature system could not be loaded.",
+      "help_path": null,
+      "help_body": null,
+      "fieldworks_places": [],
+      "scope": "project_settings"
     }
-  ]
+  ],
+  "locale": "en"
 }
