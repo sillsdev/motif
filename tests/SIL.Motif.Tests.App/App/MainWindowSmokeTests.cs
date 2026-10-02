@@ -69,9 +69,9 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "A word stopped by the step limit needs a larger step limit";
+                const string expectedSentence = "raise Step limit after a step-limit stop";
                 const string expectedSection = "Slowest words in Timing";
-                const string expectedOpening = "shows the measured total word time";
+                const string expectedOpening = "opens on All";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bool TimingIsRendered()
                 {
@@ -98,7 +98,7 @@ public sealed class MainWindowSmokeTests
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);
-                Assert.Contains(expectedSentence, help.Markdown);
+                Assert.Contains("raise **Step limit** after a step-limit stop", help.Markdown);
                 Assert.Contains(expectedSection, help.Markdown);
             }
             finally

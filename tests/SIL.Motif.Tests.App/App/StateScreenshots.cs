@@ -712,7 +712,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 await stage.Workspace.Assess.Trace.TryCommand.ExecutionTask!;
             },
         };
-        yield return new("timing", "empty-selection", async stage =>
+        yield return new("timing", "empty-step-limit", async stage =>
         {
             stage.Client.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
                 new TimingResponse(request.AssessmentId ?? "assessment/one", request.WordSet, request.By,
@@ -723,9 +723,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 })));
             stage.Open(WorkspacePage.Timing);
             var timing = stage.Workspace.PageModel<TimingPageModel>();
-            await timing.SelectWordSetCommand.ExecuteAsync("all");
+            await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
             await stage.Until(() => timing.ShowEmptySelection, "Timing's empty selection");
-            return "Timing when the selected words have no recorded parse times.";
+            return "Timing when no words stopped at the step limit.";
         });
     }
 

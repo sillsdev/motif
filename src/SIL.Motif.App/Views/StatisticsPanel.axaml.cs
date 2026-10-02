@@ -44,8 +44,6 @@ public sealed partial class StatisticsPanel : UserControl
         }
     }
 
-    private void OnOpenTimeLimitClick(object? sender, RoutedEventArgs e) => Statistics.OpenTimeLimit?.Invoke();
-
     private void OnTrySlowestClick(object? sender, RoutedEventArgs e)
     {
         if (Statistics.SlowestWord?.Word is { } word) Statistics.TryWord?.Invoke(word);

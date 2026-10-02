@@ -24,6 +24,7 @@ public sealed class StatsRowViewModel
         var capped = ReadBoolean(row, "capped");
         var timedOut = ReadBoolean(row, "timed_out");
         IsIncomplete = capped == true || timedOut == true;
+        SearchFinished = capped == false && timedOut == false ? true : IsIncomplete ? false : null;
         CompletionStatus = Word is null ? null : IsIncomplete
             ? "INCOMPLETE — parsing did not finish (" +
                 (capped == true && timedOut == true ? "step and time limits" : capped == true ? "step limit" : "time limit") + ")"
@@ -43,16 +44,22 @@ public sealed class StatsRowViewModel
     public double? Passes { get; }
     public double? ElapsedMs { get; }
     public bool IsIncomplete { get; private set; }
+    /// <summary>Whether parser or Assessment evidence says this word's search finished.</summary>
+    internal bool? SearchFinished { get; private set; }
     public string? CompletionStatus { get; private set; }
 
     /// <summary>
     /// Takes the Assessment's own answer on whether this word finished, so Statistics and Results agree; the
     /// statistics pass parses again under its own time limit and can stop at a limit differently.
     /// </summary>
-    internal void UseAssessment(bool incomplete, string completionStatus)
+    /// <param name="incomplete">Whether the Assessment says a limit stopped this word's search.</param>
+    /// <param name="wasAttempted">Whether the Assessment attempted this word.</param>
+    /// <param name="completionStatus">The Assessment's display text for how the search ended.</param>
+    internal void UseAssessment(bool incomplete, bool wasAttempted, string completionStatus)
     {
         IsIncomplete = incomplete;
-        CompletionStatus = completionStatus;
+        SearchFinished = wasAttempted && !incomplete;
+        CompletionStatus = incomplete ? completionStatus : wasAttempted ? "Search completed" : "Not attempted";
     }
 
     /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>

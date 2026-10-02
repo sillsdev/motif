@@ -456,20 +456,22 @@
                                 </ItemsControl.ItemTemplate>
                               </ItemsControl>
                             </StackPanel>
-                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                              <views:CopyableTextBlock Classes="muted" Text="This word's rule timing share" />
-                              <ItemsControl ItemsSource="{Binding TimingShares}" IsVisible="{Binding HasTimingShares}">
-                                <ItemsControl.ItemTemplate>
-                                  <DataTemplate x:DataType="vm:TimingShareViewModel">
-                                    <DockPanel LastChildFill="False">
-                                      <views:CopyableTextBlock Text="{Binding Name}" />
-                                      <views:CopyableTextBlock DockPanel.Dock="Right" Text="{Binding ShareLabel}" />
-                                    </DockPanel>
-                                  </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                              <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedShareLabel}" />
-                            </StackPanel>
+                          </StackPanel>
+                        </Border>
+                        <Border Classes="wordCardSection hoverReveal" IsVisible="{Binding HasTimingEvidence}">
+                          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                            <views:CopyableTextBlock Classes="wordCardHeading" Text="Time by rule" />
+                            <ItemsControl ItemsSource="{Binding TimingShares}" IsVisible="{Binding HasTimingShares}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TimingShareViewModel">
+                                  <DockPanel LastChildFill="False">
+                                    <views:CopyableTextBlock Text="{Binding Name}" />
+                                    <views:CopyableTextBlock DockPanel.Dock="Right" Text="{Binding ShareLabel}" />
+                                  </DockPanel>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedShareLabel}" />
                           </StackPanel>
                         </Border>
                         <Border Classes="wordCardSection last">

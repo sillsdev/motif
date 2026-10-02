@@ -223,6 +223,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string NotAttributedShareLabel { get; private set; } = "Timing unavailable for this word";
     /// <summary>The stored share of this word's time that no object timer recorded, when known.</summary>
     public double? NotAttributedShare { get; private set; }
+    /// <summary>Whether a Timing response was read for this word.</summary>
+    public bool HasTimingEvidence { get; private set; }
     /// <summary>Whether an exact grammar finding names this word.</summary>
     public bool HasNamedWarning => NamedWarnings.Count > 0;
     /// <summary>Whether the card has no exact finding naming this word.</summary>
@@ -299,6 +301,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     internal void SetTimingEvidence(TimingResponse? timing, bool responseAvailable)
     {
+        HasTimingEvidence = responseAvailable;
         var timingShares = timing?.Aggregates
             .Where(row => row.ShareOfWordTime is > 0)
             .Select(row => new TimingShareViewModel(row.Name, row.ShareOfWordTime!.Value))
@@ -313,8 +316,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         TimingShares = timingShares;
         NotAttributedShare = timing?.Attribution.NotAttributedShare;
         NotAttributedShareLabel = NotAttributedShare is { } share
-            ? $"Not attributed · {share:P1}"
+            ? $"Not attributed · {share:P0}"
             : responseAvailable ? "Not attributed · no object time recorded" : "Timing unavailable for this word";
+        OnPropertyChanged(nameof(HasTimingEvidence));
         OnPropertyChanged(nameof(TimingShares));
         OnPropertyChanged(nameof(NotAttributedShareLabel));
         OnPropertyChanged(nameof(NotAttributedShare));
@@ -579,7 +583,7 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
 public sealed record TimingShareViewModel(string Name, double Share)
 {
     /// <summary>The stored share formatted as a percentage.</summary>
-    public string ShareLabel => Share.ToString("P1", System.Globalization.CultureInfo.CurrentCulture);
+    public string ShareLabel => Share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
 }
 
 internal sealed record ResultsWarningEvidence(

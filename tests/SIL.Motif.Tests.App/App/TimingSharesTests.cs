@@ -106,6 +106,15 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
+    public void WordCardTimingSharesUseWholePercentages()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+
+        Assert.Equal("36%", new TimingShareViewModel("Subject agreement", 0.36).ShareLabel);
+        Assert.Equal("15%", new TimingShareViewModel("Other time", 0.15).ShareLabel);
+    }
+
+    [Fact]
     public async Task RuleRowsAreOrderedByTheirShareOfWholeWordTime()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));

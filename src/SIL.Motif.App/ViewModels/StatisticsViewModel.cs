@@ -108,15 +108,19 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// </summary>
     public Func<string, AssessWordRowViewModel?>? AssessedWord { get; set; }
 
-    /// <summary>Opens wherever the per-word time limit is set, for the card that suggests raising it.</summary>
-    public Action? OpenTimeLimit { get; set; }
-
     /// <summary>Tries a word in Try a Word, for the card that names the slowest word.</summary>
     public Action<string>? TryWord { get; set; }
 
-    /// <summary>The word that took longest, or <see langword="null"/> when no word rows are loaded.</summary>
-    public StatsRowViewModel? SlowestWord => ScopeRows.Where(row => row.Word is not null && row.ElapsedMs is not null)
-        .MaxBy(row => row.ElapsedMs);
+    /// <summary>The slowest finished word, or the slowest measured word when none finished.</summary>
+    public StatsRowViewModel? SlowestWord
+    {
+        get
+        {
+            var timedWords = ScopeRows.Where(row => row.Word is not null && row.ElapsedMs is not null);
+            return timedWords.Where(row => row.SearchFinished == true).MaxBy(row => row.ElapsedMs)
+                ?? timedWords.MaxBy(row => row.ElapsedMs);
+        }
+    }
 
     public bool HasSlowestWord => SlowestWord is not null;
 
@@ -135,11 +139,31 @@ public sealed partial class StatisticsViewModel : ObservableObject
         _ => $"{IncompleteCount:N0} words stopped at a limit",
     };
 
-    public string IncompleteDetail => IncompleteCount == 0
-        ? "No word reached the time or step limit, so every No parse is the grammar's answer."
-        : "Each was still searching when its time or step limit ran out, so it may parse with longer.";
+    public string IncompleteDetail
+    {
+        get
+        {
+            var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
+            if (stopped.Length == 0)
+                return "No word reached the time or step limit, so every No parse is the grammar's answer.";
+            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("step", StringComparison.OrdinalIgnoreCase) == true);
+            var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
+            return (stepLimit, timeLimit) switch
+            {
+                (true, true) => "Searches stopped at the step limit and ran out of time. " +
+                    "Adjust Seconds per word and Step limit in Things to do here.",
+                (true, false) => "Stopped at the step limit. Raise the step limit in Things to do here.",
+                (false, true) => "Ran out of time. Increase Seconds per word in Things to do here.",
+                _ => "Each search stopped at a limit. See the stop reason on its row.",
+            };
+        }
+    }
 
-    public string SlowestHeadline => SlowestWord is { } row ? $"Slowest word: {row.Word}" : string.Empty;
+    public string SlowestHeadline => SlowestWord is { } row
+        ? row.SearchFinished == true ? $"Slowest word that finished: {row.Word}"
+        : row.IsIncomplete ? $"Slowest stopped word: {row.Word}"
+        : $"Slowest measured word: {row.Word}"
+        : string.Empty;
 
     public string SlowestDetail => SlowestWord is { } row
         ? $"{row.ElapsedText} ms{(row.Attempts is null ? string.Empty : $" and {row.AttemptsText} search steps")}" +
@@ -157,8 +181,8 @@ public sealed partial class StatisticsViewModel : ObservableObject
     };
 
     public string PassesDetail => SeveralReadingsCount == 0
-        ? "Each word the parser built, it built one way."
-        : "Homographs, or a grammar that allows more than it should. Sort by Readings to see them.";
+        ? "No search produced more than one reading."
+        : "Sort by Readings to see these words.";
 
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]
@@ -288,7 +312,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
             if (AssessedWord is { } assessed)
                 foreach (var row in _allRows)
                     if (row.Word is { } word && assessed(word) is { } result)
-                        row.UseAssessment(result.StoppedAtALimit, result.CompletionStatus);
+                        row.UseAssessment(result.StoppedAtALimit, result.Outcome != "skipped", result.CompletionStatus);
             RaiseSummary();
             IsStale = false;
             Refusal = null;

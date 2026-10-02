@@ -291,6 +291,12 @@ public sealed class StatisticsViewModelTests
         Assert.Equal($"INCOMPLETE — parsing did not finish ({reason})", statistics.Rows[0].CompletionStatus);
         Assert.False(statistics.Rows[1].IsIncomplete);
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
+        Assert.Equal(reason switch
+        {
+            "step limit" => "Stopped at the step limit. Raise the step limit in Things to do here.",
+            "time limit" => "Ran out of time. Increase Seconds per word in Things to do here.",
+            _ => "Searches stopped at the step limit and ran out of time. Adjust Seconds per word and Step limit in Things to do here.",
+        }, statistics.IncompleteDetail);
     }
 
     [Fact]
@@ -306,8 +312,8 @@ public sealed class StatisticsViewModelTests
         statistics.AssessedWord = words.Find;
         // The statistics pass parsed again and finished "slow", then ran out of time on "quick".
         fake.StatsCompletesWith(RowsResponse(
-            """{"form":"slow","attempts":9,"passes":0,"elapsed_ns":900000000,"capped":false,"timed_out":false}""",
-            """{"form":"quick","attempts":5,"passes":0,"elapsed_ns":1000000000,"capped":false,"timed_out":true}"""));
+            """{"form":"slow","attempts":9,"passes":0,"elapsed_ns":1000000000,"capped":false,"timed_out":false}""",
+            """{"form":"quick","attempts":5,"passes":0,"elapsed_ns":900000000,"capped":false,"timed_out":true}"""));
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
@@ -316,7 +322,61 @@ public sealed class StatisticsViewModelTests
         Assert.Equal(1, statistics.IncompleteCount);
         Assert.Equal("1 word stopped at a limit", statistics.IncompleteHeadline);
         Assert.False(statistics.AnyPasses);
-        Assert.Equal("Slowest word: quick", statistics.SlowestHeadline);
+        Assert.Equal("Slowest word that finished: quick", statistics.SlowestHeadline);
+        Assert.Equal("900 ms and 5 search steps.", statistics.SlowestDetail);
+    }
+
+    [Fact]
+    public async Task SlowestStatisticsCardLabelsItsStoppedWordWhenNoWordFinished()
+    {
+        var (fake, statistics) = NewViewModel();
+        var words = new AssessWordsViewModel();
+        words.Load(
+        [
+            new AssessmentWordResult("stopped", "timed-out", true,
+                "INCOMPLETE — parsing did not finish (step limit)", 700, null),
+        ]);
+        statistics.AssessedWord = words.Find;
+        fake.StatsCompletesWith(RowsResponse(
+            """{"form":"stopped","attempts":5,"elapsed_ns":700000000,"capped":true,"timed_out":false}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Slowest stopped word: stopped", statistics.SlowestHeadline);
+        Assert.Equal("700 ms and 5 search steps before a limit stopped it.", statistics.SlowestDetail);
+    }
+
+    [Fact]
+    public async Task ANoParseWithNoLimitIsEligibleForTheSlowestFinishedCard()
+    {
+        var (fake, statistics) = NewViewModel();
+        var words = new AssessWordsViewModel();
+        words.Load(
+        [
+            new AssessmentWordResult("no-parse", "no-analysis", false,
+                "INCOMPLETE — step limit", 48, null),
+        ]);
+        statistics.AssessedWord = words.Find;
+        fake.StatsCompletesWith(RowsResponse(
+            """{"form":"no-parse","attempts":148,"elapsed_ns":48000000,"capped":false,"timed_out":false}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Slowest word that finished: no-parse", statistics.SlowestHeadline);
+        Assert.Equal("48 ms and 148 search steps.", statistics.SlowestDetail);
+        Assert.Equal("Completed", statistics.Rows.Single().CompletionShort);
+        Assert.Equal("Search completed", statistics.Rows.Single().CompletionStatus);
+    }
+
+    [Fact]
+    public async Task MultipleReadingsDoNotSuggestWhyTheParserBuiltThem()
+    {
+        var (fake, statistics) = NewViewModel();
+        fake.StatsCompletesWith(RowsResponse("""{"form":"alpha","passes":4}"""));
+
+        await statistics.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Sort by Readings to see these words.", statistics.PassesDetail);
     }
 
     [Theory]

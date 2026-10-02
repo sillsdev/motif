@@ -130,8 +130,16 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
                 var cardText = string.Join(" ", cardLines.Select(line => line.Text)
                     .Where(text => !string.IsNullOrWhiteSpace(text)));
+                Assert.Contains("Time by rule", cardText);
                 Assert.Contains("Subject agreement", cardText);
                 Assert.Contains("Not attributed", cardText);
+                var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
+                    border.Classes.Contains("wordCardSection") &&
+                    border.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Any(line => line.Text == "Why it might not parse"));
+                var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
+                Assert.DoesNotContain("Time by rule", whyText);
+                Assert.DoesNotContain("Subject agreement", whyText);
                 Assert.Contains("anapenda", cardText);
                 Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
                 Assert.Contains(token.WarningMarkedFieldWorksMorphs,

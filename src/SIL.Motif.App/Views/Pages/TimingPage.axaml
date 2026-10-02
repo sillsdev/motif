@@ -111,8 +111,11 @@
                                    TextWrapping="Wrap" />
         </Border>
         <Border Classes="card" IsVisible="{Binding ShowEmptySelection}">
-          <views:CopyableTextBlock Text="No words in this selection have recorded parse time. Try All or choose another group."
-                                   TextWrapping="Wrap" />
+          <WrapPanel>
+            <views:CopyableTextBlock Text="{Binding EmptySelectionText}" TextWrapping="Wrap" />
+            <Button Content="Show all words" Command="{Binding SelectWordSetCommand}" CommandParameter="all"
+                    IsVisible="{Binding CanShowAllWords}" AutomationProperties.Name="Show all words in Timing" />
+          </WrapPanel>
         </Border>
 
         <Grid x:Name="TimingShareLayout" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
@@ -297,8 +300,8 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
             <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
-            <views:CopyableTextBlock Classes="muted" Text="Step limit means the search ran out of steps; giving it more time alone will not finish it."
-                                     TextWrapping="Wrap" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding StoppedWordsAdviceText}"
+                                     IsVisible="{Binding HasStoppedWords}" TextWrapping="Wrap" />
             <views:CopyableTextBlock Text="Slowest words" FontWeight="SemiBold" />
             <StackPanel Grid.IsSharedSizeScope="True">
               <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />

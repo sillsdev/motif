@@ -1033,21 +1033,6 @@ public sealed class WorkspaceContextTests
     }
 
     [Fact]
-    public void ALinkOnOnePageOpensAnotherThroughTheContextWithoutTheWorkspace()
-    {
-        var context = NewContext();
-        var texts = new TextsPageModel(context);
-        var timing = new TimingPageModel(context);
-
-        timing.Statistics.OpenTimeLimit!.Invoke();
-        Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
-        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
-
-        texts.ShowPageCommand.Execute(WorkspacePage.Review);
-        Assert.Equal(WorkspacePage.Review, context.CurrentPage);
-    }
-
-    [Fact]
     public async Task APageDefinedOutsideTheAppRunsItsOwnQueryAndIsOpenedThroughARegistryEntryAndTheContextAlone()
     {
         var (fake, context) = NewContextWithFake();

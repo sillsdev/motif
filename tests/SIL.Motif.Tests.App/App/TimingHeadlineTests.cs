@@ -44,6 +44,30 @@ public sealed class TimingHeadlineTests
         Assert.Equal("9 ms", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
         Assert.Equal("stopped at the step limit", timing.HeadlineStoppedCaption);
+        Assert.True(timing.IsAllSelected);
+        Assert.True(timing.HasStoppedWords);
+        Assert.Equal("Stopped at the step limit. Raise the step limit in Things to do here.",
+            timing.StoppedWordsAdviceText);
+    }
+
+    [Fact]
+    public async Task TimedOutWordsPointToThePerWordTimeControl()
+    {
+        var (fake, context) = NewContext();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            Response(request) with
+            {
+                Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms,
+                    word.Word == "mwalimu" ? "Time limit" : word.Completion)).ToArray(),
+            })));
+        await context.OpenProjectAsync(ProjectPath);
+
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        await context.EvidencePublication;
+
+        Assert.True(timing.HasStoppedWords);
+        Assert.Equal("Ran out of time. Increase Seconds per word in Things to do here.", timing.StoppedWordsAdviceText);
     }
 
     [Fact]
@@ -178,6 +202,47 @@ public sealed class TimingHeadlineTests
                 Assert.Equal(context.Assess.RunCommand.CanExecute(null), parseAgain.IsEffectivelyVisible);
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
                     Equals(button.Content, "Parse all words"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void EmptyStepLimitFilterNamesTheFilterAndOffersAllWords()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var timing = new TimingPageModel(context);
+            fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+                request.WordSet == "step-limit"
+                    ? Response(request) with { WordCount = 0, Words = [], SlowestWords = [] }
+                    : Response(request))));
+            await context.OpenProjectAsync(ProjectPath);
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+            await context.EvidencePublication;
+            await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
+
+            var window = new Window { Width = 900, Height = 700, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var text = string.Join(" ", window.GetLogicalDescendants().OfType<TextBlock>()
+                    .Where(item => item.IsEffectivelyVisible).Select(item => item.Text));
+                Assert.Contains("No words stopped at the step limit.", text);
+                var allWords = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
+                    button => Equals(button.Content, "Show all words"));
+                Assert.True(allWords.IsEffectivelyVisible);
+                Assert.True(allWords.IsTabStop);
+                allWords.Command!.Execute(allWords.CommandParameter);
+                await timing.SelectWordSetCommand.ExecutionTask!;
+                Assert.True(timing.IsAllSelected);
+                Assert.True(timing.HasHeadline);
             }
             finally
             {

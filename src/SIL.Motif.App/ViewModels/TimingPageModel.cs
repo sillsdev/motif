@@ -33,7 +33,6 @@ public sealed partial class TimingPageModel : PageModel
         Statistics = new StatisticsViewModel(context.Commands);
         Statistics.AssessedWord = context.Assess.Words.Find;
         Statistics.TryWord = context.TryWord;
-        Statistics.OpenTimeLimit = () => context.OpenTexts(TextsTab.AnalyzeTexts);
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
         SelectWordSetCommand = new AsyncRelayCommand<string>(SelectWordSetAsync);
@@ -139,6 +138,19 @@ public sealed partial class TimingPageModel : PageModel
     public bool ShowNoTimingRecorded => Context.ProjectPath is not null && !Context.NeedsAssessment &&
         KindTiming is null && !_isLoadingTiming && TimingRefusal is null;
 
+    /// <summary>What an empty Timing result says about the words the current choice included.</summary>
+    public string EmptySelectionText => Focus is not null || _explicitWords is not null
+        ? "No parse times were recorded for these selected words."
+        : _wordSet switch
+        {
+            TimingWordSet.StepLimited => "No words stopped at the step limit.",
+            TimingWordSet.Slowest => "No words in this group have recorded parse time.",
+            _ => "No words in this selection have recorded parse time.",
+        };
+
+    /// <summary>Whether the empty result came from a choice other than All.</summary>
+    public bool CanShowAllWords => !IsAllSelected;
+
     /// <summary>Whether the chosen words have measured parse times to lead the page with.</summary>
     public bool HasHeadline => MeasuredWords.Count > 0;
 
@@ -164,6 +176,24 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The caption under the stopped-word count.</summary>
     public string HeadlineStoppedCaption => "stopped at the step limit";
+
+    /// <summary>Whether a word in the selected group stopped at either recorded parse limit.</summary>
+    public bool HasStoppedWords => HasStepLimitedWords || HasTimeLimitedWords;
+
+    /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
+    public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
+    {
+        (true, true) => "Timing recorded both step-limit and time-limit stops. Adjust both limits in Things to do here.",
+        (true, false) => "Stopped at the step limit. Raise the step limit in Things to do here.",
+        (false, true) => "Ran out of time. Increase Seconds per word in Things to do here.",
+        _ => string.Empty,
+    };
+
+    private bool HasStepLimitedWords => KindTiming?.Words.Any(word =>
+        word.Completion == TimingCompletion.StepLimit) == true;
+
+    private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
+        word.Completion == "Time limit") == true;
 
     /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
     public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
@@ -765,6 +795,8 @@ public sealed partial class TimingPageModel : PageModel
             nameof(SlowestWordRows), nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
             nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(ScopeLabel),
+            nameof(EmptySelectionText), nameof(CanShowAllWords),
+            nameof(HasStoppedWords), nameof(StoppedWordsAdviceText),
             nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),
             nameof(ShowNoTimingRecorded), nameof(HasHeadline), nameof(HeadlineTotal),
             nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),

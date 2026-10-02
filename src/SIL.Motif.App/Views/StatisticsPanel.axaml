@@ -15,11 +15,6 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
           <views:CopyableTextBlock Text="{Binding Statistics.IncompleteHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
-          <HyperlinkButton Padding="{DynamicResource Intent.Inset.None}" Click="OnOpenTimeLimitClick"
-                           AutomationProperties.Name="Give each word longer: Texts, Options"
-                           IsVisible="{Binding Statistics.AnyIncomplete}">
-            <TextBlock Text="Give each word longer: Texts, Options" TextWrapping="Wrap" />
-          </HyperlinkButton>
         </StackPanel>
       </Border>
       <Border Grid.Column="1" Classes="card" IsVisible="{Binding Statistics.HasSlowestWord}">
