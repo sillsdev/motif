@@ -1,3 +1,4 @@
+using SIL.LCModel;
 using SIL.Motif.Host.Baselines;
 using System.Globalization;
 using System.IO;
@@ -44,6 +45,9 @@ public sealed record CurrentEvidenceSnapshot(
     /// <summary>Readable parser results for the stored Assessment's morph identifiers, keyed by word.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> ResolvedReadingsByWord { get; init; } =
         new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+
+    /// <summary>Whether the selected Baseline word context was successfully read, including an empty result.</summary>
+    public bool WordContextAvailable { get; init; }
 
     /// <summary>The Selection's stored Baseline analyses, including added words, keyed by word form.</summary>
     public IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> StoredAnalysesByWord { get; init; } =
@@ -162,37 +166,9 @@ public static class CurrentEvidenceQuery
         }
 
         var evidenceSet = assessment is null ? null : AssessmentEvidenceSet.Create(assessment, reruns);
-        var effectiveWords = evidenceSet?.Words ?? [];
         var navigation = includeWordContext && current is not null
             ? SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity) : null;
-        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> resolvedReadings =
-            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        IReadOnlyDictionary<string, IReadOnlyList<ParserReading>> storedAnalyses =
-            new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
-        IReadOnlyDictionary<string, string> wordLinks = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (includeWordContext && assessment is not null && current is not null)
-        {
-            if (!File.Exists(current.Baseline.FwDataPath))
-            {
-                return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
-                    "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
-                    "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
-            }
-            else
-            {
-                using var reader = BaselineReadCache.Open(current.Baseline.FwDataPath);
-                var cache = reader.Cache;
-                var context = BaselineWordContext.Read(cache, navigation!, effectiveWords.Select(word => word.Word).ToArray());
-                storedAnalyses = context.Analyses;
-                wordLinks = context.WordLinks;
-                if (includeResolvedReadings)
-                    resolvedReadings = effectiveWords.Where(word => word.Morphology is not null).ToDictionary(
-                        word => word.Word,
-                        word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(cache, string.Empty, word.Morphology!, navigation!.LinkFor),
-                        StringComparer.Ordinal);
-            }
-        }
-        return CommandOutcome<CurrentEvidenceSnapshot>.Success(new CurrentEvidenceSnapshot(
+        var snapshot = new CurrentEvidenceSnapshot(
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
@@ -201,10 +177,51 @@ public static class CurrentEvidenceQuery
             EvidenceSet = evidenceSet,
             MatchingCorrectnessAssessmentId = correctnessAssessmentId,
             MatchingObjectTimingAssessmentId = objectTimingAssessmentId,
-            ResolvedReadingsByWord = resolvedReadings,
-            StoredAnalysesByWord = storedAnalyses,
-            WordAnalysesLinksByWord = wordLinks,
-        });
+        };
+        return includeWordContext ? ReadWordContext(snapshot, project.FullFwDataPath, includeResolvedReadings) :
+            CommandOutcome<CurrentEvidenceSnapshot>.Success(snapshot);
+    }
+
+    /// <summary>
+    /// Hydrates the exact evidence already selected, without consulting current run pointers again.
+    /// A missing Baseline is a refusal, allowing numeric-only callers to retain the original snapshot.
+    /// </summary>
+    internal static CommandOutcome<CurrentEvidenceSnapshot> ReadWordContext(CurrentEvidenceSnapshot snapshot,
+        string projectPath, bool includeResolvedReadings = true)
+    {
+        if (snapshot.MatchingAssessment is null || snapshot.Baseline is not { } baseline)
+            return CommandOutcome<CurrentEvidenceSnapshot>.Success(snapshot);
+        if (!File.Exists(baseline.FwDataPath))
+            return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
+                "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
+                "The exact Baseline file for this Assessment is unavailable. Capture a new Baseline and assess it."));
+        try
+        {
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            var navigation = snapshot.Navigation ?? SavedProjectNavigation.Read(projectPath, baseline.Token.ProjectIdentity);
+            var context = BaselineWordContext.Read(reader.Cache, navigation,
+                snapshot.EffectiveWords.Select(word => word.Word).ToArray());
+            var resolvedReadings = includeResolvedReadings
+                ? snapshot.EffectiveWords.Where(word => word.Morphology is not null).ToDictionary(
+                    word => word.Word,
+                    word => (IReadOnlyList<ParserReading>)ParserReadingReader.Read(reader.Cache, string.Empty, word.Morphology!, navigation.LinkFor),
+                    StringComparer.Ordinal)
+                : new Dictionary<string, IReadOnlyList<ParserReading>>(StringComparer.Ordinal);
+            return CommandOutcome<CurrentEvidenceSnapshot>.Success(snapshot with
+            {
+                Navigation = navigation,
+                WordContextAvailable = true,
+                StoredAnalysesByWord = context.Analyses,
+                WordAnalysesLinksByWord = context.WordLinks,
+                ResolvedReadingsByWord = resolvedReadings,
+            });
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or LcmInitializationException)
+        {
+            return CommandOutcome<CurrentEvidenceSnapshot>.Refused(new Refusal(
+                "current-evidence.baseline-unavailable", FailureReason.StoreInconsistent,
+                "The exact Baseline word context is unavailable: " + exception.Message));
+        }
     }
 
     /// <summary>Resolves one saved Selection from the project inventory captured with its Baseline.</summary>

@@ -151,7 +151,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
     [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 1)]
     [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped, CompareColumnKind.Timeout, "Search stopped at a limit", 1)]
     [InlineData("incorrect-no-parse", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 0)]
-    [InlineData("incorrect-capped", "capped", true, AnalysisMarkingClass.Conflict, CompareColumnKind.Timeout, "Conflicts with a FieldWorks opinion", 1)]
+    [InlineData("incorrect-capped", "capped", true, AnalysisMarkingClass.Conflict, CompareColumnKind.Timeout, "Search stopped at a limit", 1)]
     [InlineData("rebuilt-disapproved", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.Match, "Conflicts with a FieldWorks opinion", 1)]
     public async Task AStoredAssessmentReadThroughTheCommandClientBuildsTheMarkingClass(
         string name, string outcome, bool capped, AnalysisMarkingClass expected, CompareColumnKind expectedColumn,

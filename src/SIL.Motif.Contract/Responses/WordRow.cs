@@ -44,6 +44,15 @@ public enum WordRowTone
 /// <param name="Tone">The tone that <paramref name="Meaning"/> takes.</param>
 public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning, WordRowTone Tone)
 {
+    /// <summary>The stable comparison identity used for grouping, independent of Meaning's wording.</summary>
+    public string MeaningCode { get; init; } = "not-parsed";
+
+    /// <summary>The full comparison evidence used to place and describe this word, when projected.</summary>
+    public WordComparison? Comparison { get; init; }
+
+    /// <summary>A second line qualifying the headline, or empty when none is needed.</summary>
+    public string MeaningDetail { get; init; } = string.Empty;
+
     /// <summary>The FieldWorks analysis's glosses, morph by morph, or empty when FieldWorks holds none.</summary>
     public string Gloss { get; init; } = string.Empty;
 

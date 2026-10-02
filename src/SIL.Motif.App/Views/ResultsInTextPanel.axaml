@@ -387,6 +387,8 @@
                                           Command="{Binding Actions.OpenPanGlossGuideCommand}"
                                           AutomationProperties.Name="About PanGloss" />
                                 </DockPanel>
+                                <views:CopyableTextBlock Classes="hint" Text="{Binding ComparisonDetail}"
+                                                         IsVisible="{Binding HasComparisonDetail}" TextWrapping="Wrap" />
                                 <ItemsControl ItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ResultsReadingViewModel">

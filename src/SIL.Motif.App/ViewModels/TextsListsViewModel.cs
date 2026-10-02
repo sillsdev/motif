@@ -36,8 +36,7 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
     public bool HasWords => WordCount > 0;
 
     /// <summary>Whether the list's words carry more than one meaning, so its rows need their meaning column.</summary>
-    public bool HasSeveralMeanings =>
-        Compare.Cells.Where(IsCell).Where(cell => cell.WordCount > 0).Select(cell => cell.Label).Distinct().Count() > 1;
+    public bool HasSeveralMeanings => Compare.ShowsMeaningsInCells(Cells);
 
     public bool HasPendingChanges => PendingState != PendingChangeState.None;
 

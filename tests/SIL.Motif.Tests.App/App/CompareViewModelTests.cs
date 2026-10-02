@@ -52,6 +52,71 @@ public sealed class CompareViewModelTests
     private static (WordProjectStatus, CompareColumnKind) PlaceOne(AssessmentWordResult word) =>
         CompareViewModel.Place(new AssessWordRowViewModel(word));
 
+    [Theory]
+    [InlineData(ProjectStanding.Candidate, false)]
+    [InlineData(ProjectStanding.Approved, false)]
+    [InlineData(ProjectStanding.Candidate, true)]
+    [InlineData(ProjectStanding.Approved, true)]
+    public void MixedOpinionsAndPartialSearchShareOneComparisonAcrossMatrixRowsAndTexts(string standing, bool incomplete)
+    {
+        var opinion = standing == ProjectStanding.Approved ? ReadingGrade.Approved : ReadingGrade.Candidate;
+        var word = Word("mixed", "analysed", standing, [ReadingGrade.Disapproved, ReadingGrade.NoOpinion], incomplete);
+        word = word with { StoredAnalyses = [.. word.StoredAnalyses, StoredFor("undecided", opinion)] };
+        var row = new AssessWordRowViewModel(word);
+        var matrix = new CompareViewModel();
+        matrix.Load([row]);
+        var token = new TextToken("mixed", "mixed", null, null)
+        {
+            StoredAnalyses = word.StoredAnalyses.Select(analysis => new ProjectAnalysis("", analysis.Morphs)
+            {
+                StoredAnalysisId = analysis.StoredAnalysisId, StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+                Identity = analysis.Identity,
+            }).ToArray(),
+        };
+        var text = new ResultsTokenViewModel("Text", 1, token, word);
+        var expectedOutcome = incomplete ? WordRowOutcome.Stopped : WordRowOutcome.Different;
+
+        Assert.Equal(expectedOutcome, row.Comparison.Outcome);
+        Assert.Equal(expectedOutcome, row.WordRow.Row.Outcome);
+        Assert.Equal(row.WordRow.Meaning, Assert.Single(matrix.Words).Meaning);
+        Assert.Equal(row.Comparison.MeaningCode, text.Comparison.MeaningCode);
+        Assert.Equal(row.Comparison.Outcome, text.Comparison.Outcome);
+        Assert.Equal(row.Comparison.Readings[0].Matches, text.Comparison.Readings[0].Matches);
+        Assert.Equal(ReadingGrade.Disapproved, Assert.Single(row.Comparison.RebuiltDisapproved).Opinion);
+        Assert.Equal([1], row.Comparison.ExtraReadingIndices);
+        Assert.Equal(incomplete ? 0 : opinion == ReadingGrade.Approved ? 1 : 0, row.Comparison.MissingApproved.Count);
+        if (incomplete)
+        {
+            Assert.Empty(row.Comparison.UndecidedNotBuilt);
+            Assert.True(text.IsPanGlossCapped);
+            Assert.Equal("Unknown yet", row.WordRow.Meaning);
+        }
+        else
+        {
+            Assert.Equal("Rebuilt an analysis you Disapproved", text.PanGlossSummary);
+            Assert.True(matrix.ShowsMeaning);
+            if (opinion == ReadingGrade.Candidate)
+                Assert.Equal("Your undecided analysis wasn't built", row.WordRow.MeaningDetail);
+        }
+    }
+
+    [Fact]
+    public void UndecidedWordWithOnlyItsDisapprovedAnalysisRebuiltIsDifferent()
+    {
+        var word = Word("mixed", "analysed", ProjectStanding.Candidate, [ReadingGrade.Disapproved]);
+        word = word with
+        {
+            StoredAnalyses = [.. word.StoredAnalyses, StoredFor("undecided", ReadingGrade.Candidate)],
+        };
+        var row = new AssessWordRowViewModel(word);
+        var matrix = new CompareViewModel();
+        matrix.Load([row]);
+
+        Assert.Equal((WordProjectStatus.Candidate, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
+        Assert.Equal("Rebuilt an analysis you Disapproved", Assert.Single(matrix.Words).Meaning);
+        Assert.Equal(row.WordRow.Meaning, Assert.Single(matrix.Words).Meaning);
+    }
+
     [Fact]
     public void AnApprovedWordIsKeptOnlyWhenEveryApprovedAnalysisWasRebuilt()
     {
@@ -596,6 +661,22 @@ public sealed class CompareViewModelTests
     }
 
     [Fact]
+    public void AStoppedWordCardDoesNotPresentUnreachedApprovedAnalysesAsNotBuilt()
+    {
+        var a = Approved("a", "kit", "abu");
+        var b = Approved("b", "ki", "tabu");
+        var source = CardWord(stored: [a, b], built: [a], missed: [b]).Source with { IsIncomplete = true };
+        var compare = new CompareViewModel();
+        compare.Load([new AssessWordRowViewModel(source)]);
+
+        var word = Assert.Single(compare.Words);
+
+        Assert.Equal(CompareColumnKind.Timeout, word.Column);
+        Assert.Empty(word.NotBuiltAnalyses);
+        Assert.False(word.ShowsMissedApproved);
+    }
+
+    [Fact]
     public void TheCardNamesEveryApprovedAnalysisPanGlossMissed_ExceptTheOneTheRowShows()
     {
         var a = Approved("a", "kit", "abu");
@@ -736,6 +817,35 @@ public sealed class CompareViewModelTests
 
     private static CompareCellViewModel Cell(CompareViewModel compare, WordProjectStatus row, CompareColumnKind column) =>
         compare.Cells.Single(cell => cell.Row == row && cell.Column == column);
+
+    [Fact]
+    public void FixFirstKeepsTheSharedReasonWhenApprovedAndDisapprovedAnalysesWereBothBuilt()
+    {
+        var approved = StoredFor("shared", ReadingGrade.Approved) with { StoredAnalysisId = "approved" };
+        var disapproved = approved with
+        {
+            StoredAnalysisId = "disapproved", StoredAnalysisOpinion = ReadingGrade.Disapproved,
+        };
+        var word = new AssessmentWordResult("mixed", "analysed", false, "Search completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            StoredAnalyses = [approved, disapproved],
+            ReadingGrades = [ReadingGrade.Approved],
+            Readings = [approved],
+            Morphology = new ParseWordEvidence("v1", 0, "mixed", 10, false, false, false,
+                [new ParseAnalysis([new ParseMorph("shared", "n", null, null)])], []),
+        };
+        word = word with { FixFirst = CompareSemantics.FixFirst(CompareWordFacts.Of(word), []) };
+        var compare = new CompareViewModel();
+        compare.Load([new AssessWordRowViewModel(word)]);
+
+        var row = Assert.Single(compare.FixFirstRows);
+        Assert.Equal(CompareColumnKind.NoMatch, row.Word.Column);
+        Assert.Empty(row.MissedApproved);
+        Assert.Equal("Rebuilt an analysis you Disapproved", row.Word.Meaning);
+        Assert.Equal("Rebuilt an analysis you Disapproved", row.Priority.Explanation);
+        Assert.Equal(row.Priority.Explanation, row.Explanation);
+    }
 
     [Fact]
     public void FixFirstRanksTheNamedProblemsByFrequencyAndLeavesUnknownOut()

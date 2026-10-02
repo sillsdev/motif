@@ -42,6 +42,73 @@ public sealed class WordRowProjectionTests
             TryWordLink = "silfw://localhost/link?tool=Analyses",
         };
 
+    [Fact]
+    public void RebuiltDisapprovedReadingNeverConfirmsAnUndecidedAnalysis()
+    {
+        var candidate = Stored(ReadingGrade.Candidate, A) with
+        {
+            Identity = new ApprovedMorphology([new ApprovedMorph("candidate", "msa", null, [])]),
+        };
+        var disapproved = Stored(ReadingGrade.Disapproved, Kul) with
+        {
+            Identity = new ApprovedMorphology([new ApprovedMorph("disapproved", "msa", null, [])]),
+        };
+        var word = new AssessmentWordResult("word", "analysed", false, "Search completed", 1, null)
+        {
+            ProjectStanding = ProjectStanding.Candidate,
+            StoredAnalyses = [candidate, disapproved],
+            ReadingGrades = [ReadingGrade.Disapproved],
+            Morphology = new ParseWordEvidence("v1", 0, "word", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph("disapproved", "msa", null, null)])], []),
+        };
+
+        var row = WordRowProjection.Of(word);
+
+        Assert.Equal(WordRowOutcome.Different, row.Outcome);
+        Assert.Equal("Rebuilt an analysis you Disapproved", row.Meaning);
+        Assert.Equal(WordRowTone.Problem, row.Tone);
+    }
+
+    [Fact]
+    public void FixFirstExplainsARebuiltDisapprovedAnalysisWithoutInventingAMissingApprovedOne()
+    {
+        var facts = new CompareWordFacts(ProjectStanding.Approved, "analysed", false,
+            new ParseWordEvidence("v1", 0, "word", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph("form", "msa", null, null)])], []),
+            [ReadingGrade.Approved], 0)
+        {
+            AnalysisComparison = new WordAnalysisComparison(
+                [new ComparedReading(0, [new("approved", ReadingGrade.Approved),
+                    new("disapproved", ReadingGrade.Disapproved)], ReadingGrade.Approved)], [], []),
+        };
+
+        var priority = CompareSemantics.FixFirst(facts, []);
+
+        Assert.NotNull(priority);
+        Assert.Equal("Rebuilt an analysis you Disapproved", priority.Explanation);
+    }
+
+    [Fact]
+    public void MeaningGroupsUseStableIdentityWhenWordingCoincidesOrChanges()
+    {
+        var rows = new[]
+        {
+            new ObjectUseWord(new WordRow("a", WordRowOutcome.NoParse, "same translation", WordRowTone.Look)
+                { MeaningCode = "lost" }),
+            new ObjectUseWord(new WordRow("b", WordRowOutcome.Same, "same translation", WordRowTone.Look)
+                { MeaningCode = "confirmed" }),
+            new ObjectUseWord(new WordRow("c", WordRowOutcome.NoParse, "revised translation", WordRowTone.Look)
+                { MeaningCode = "lost" }),
+        };
+
+        var grouped = ObjectUsesQuery.Split(rows);
+
+        Assert.Equal(2, grouped.ByMeaning.Count);
+        Assert.Equal(2, grouped.ByMeaning.Single(group => group.MeaningCode == "lost").Words);
+        Assert.Equal("Lost", grouped.ByMeaning.Single(group => group.MeaningCode == "lost").Meaning);
+        Assert.Equal(WordRowTone.Problem, grouped.ByMeaning.Single(group => group.MeaningCode == "lost").Tone);
+    }
+
     [Theory]
     [InlineData("form-A", "form-a", false)]
     [InlineData("{AAAAAAAA-0000-0000-0000-000000000001}", "aaaaaaaa-0000-0000-0000-000000000001", true)]
@@ -55,7 +122,7 @@ public sealed class WordRowProjectionTests
     [Fact]
     public void ForAlikula_FieldWorksKulAgainstPanGlossKuAndL_MarksPositionsThreeAndFour()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])), CompareColumnKind.NoMatch);
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])));
 
         Assert.Equal(WordRowOutcome.Different, row.Outcome);
         Assert.Equal(["a-", "li-", "kul", "-a"], row.FieldWorksMorphemes.Select(morph => morph.Form));
@@ -106,7 +173,7 @@ public sealed class WordRowProjectionTests
     [Fact]
     public void TheRowCarriesTheWordsFormGlossOpinionPlacesTimeAndWordAnalysesLink()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])), CompareColumnKind.NoMatch);
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])));
 
         Assert.Equal("alikula", row.Word);
         Assert.Equal("3SG PST cut FV", row.Gloss);
@@ -123,7 +190,7 @@ public sealed class WordRowProjectionTests
     [Fact]
     public void TheFieldWorksMorphemesKeepTheirAllomorphAndGrammaticalInfoIds()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])), CompareColumnKind.NoMatch);
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Ku, L, Fv])));
 
         Assert.Equal(["form-a", "form-li", "form-kul", "form-fv"], row.FieldWorksMorphemes.Select(morph => morph.AllomorphId));
         Assert.Equal(["msa-a", "msa-li", "msa-kul", "msa-fv"], row.FieldWorksMorphemes.Select(morph => morph.GrammaticalInfoId));
@@ -133,7 +200,7 @@ public sealed class WordRowProjectionTests
     public void WhenDifferent_TheReadingClosestToFieldWorksIsShown()
     {
         var row = WordRowProjection.Of(
-            Alikula(new ParserReading([Ku, L]), new ParserReading([A, Li, Ku, L, Fv])), CompareColumnKind.NoMatch);
+            Alikula(new ParserReading([Ku, L]), new ParserReading([A, Li, Ku, L, Fv])));
 
         Assert.Equal(["a-", "li-", "ku-", "l", "-a"], row.PanGlossMorphemes.Select(morph => morph.Form));
         Assert.Equal(2, row.PanGlossReadingCount);
@@ -142,7 +209,10 @@ public sealed class WordRowProjectionTests
     [Fact]
     public void WhenSame_PanGlossMorphemesAreNotRepeated()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Kul, Fv])), CompareColumnKind.Match);
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A, Li, Kul, Fv])) with
+        {
+            ReadingGrades = [ReadingGrade.Approved],
+        });
 
         Assert.Equal((WordRowOutcome.Same, "Kept", WordRowTone.Fine), (row.Outcome, row.Meaning, row.Tone));
         Assert.Empty(row.PanGlossMorphemes);
@@ -168,7 +238,7 @@ public sealed class WordRowProjectionTests
             StoredAnalyses = [],
         };
 
-        var row = WordRowProjection.Of(word, CompareColumnKind.NoMatch);
+        var row = WordRowProjection.Of(word);
 
         Assert.Equal(("New: PanGloss proposes", WordRowTone.Look), (row.Meaning, row.Tone));
         Assert.Empty(row.FieldWorksMorphemes);
@@ -191,9 +261,9 @@ public sealed class WordRowProjectionTests
         };
         var one = reopened with { StoredAnalyses = [Stored(ReadingGrade.Candidate, Ku, L)] };
 
-        Assert.Equal(4, WordRowProjection.Of(reopened, CompareColumnKind.Match).FieldWorksMorphemes.Count);
-        Assert.Empty(WordRowProjection.Of(two, CompareColumnKind.Match).FieldWorksMorphemes);
-        Assert.Equal(["ku-", "l"], WordRowProjection.Of(one, CompareColumnKind.Match).FieldWorksMorphemes
+        Assert.Equal(4, WordRowProjection.Of(reopened).FieldWorksMorphemes.Count);
+        Assert.Empty(WordRowProjection.Of(two).FieldWorksMorphemes);
+        Assert.Equal(["ku-", "l"], WordRowProjection.Of(one).FieldWorksMorphemes
             .Select(morph => morph.Form));
     }
 
@@ -202,13 +272,13 @@ public sealed class WordRowProjectionTests
     {
         var word = Alikula(new ParserReading([A])) with { ExpectedAnalysis = Stored(ReadingGrade.Approved, A, Morph("x", "", "x")) };
 
-        Assert.Equal("3SG ?", WordRowProjection.Of(word, CompareColumnKind.Match).Gloss);
+        Assert.Equal("3SG ?", WordRowProjection.Of(word).Gloss);
     }
 
     [Fact]
     public void ReadStateAndPlacesComeFromThePageWhenItKnowsThem()
     {
-        var row = WordRowProjection.Of(Alikula(new ParserReading([A])), CompareColumnKind.Match,
+        var row = WordRowProjection.Of(Alikula(new ParserReading([A])),
             new WordRowFacts(Places: 7, IsUnread: true));
 
         Assert.Equal((7, true), (row.Places, row.IsUnread));

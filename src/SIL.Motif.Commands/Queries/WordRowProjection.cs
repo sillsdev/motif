@@ -13,30 +13,21 @@ public sealed record WordRowFacts(int? Places = null, bool? IsUnread = null);
 /// </summary>
 public static class WordRowProjection
 {
-    /// <summary>The row for <paramref name="word"/>, placed by <see cref="CompareSemantics.Place"/>.</summary>
+    /// <summary>The row for a word, from the shared comparison rather than a caller-selected Matrix column.</summary>
     public static WordRow Of(AssessmentWordResult word, WordRowFacts? facts = null)
     {
         ArgumentNullException.ThrowIfNull(word);
-        var placement = CompareSemantics.Place(new CompareWordFacts(word.ProjectStanding, word.Outcome,
-            word.IsIncomplete, word.Morphology, word.ReadingGrades, word.MissedApproved?.Count ?? 0));
-        return Of(word, placement.Column, facts);
-    }
-
-    /// <summary>
-    /// The row for <paramref name="word"/> in the Matrix column <paramref name="column"/>: the window passes the
-    /// column its Matrix placed the word in, so the row never contradicts the cell the word sits in.
-    /// </summary>
-    public static WordRow Of(AssessmentWordResult word, CompareColumnKind column, WordRowFacts? facts = null)
-    {
-        ArgumentNullException.ThrowIfNull(word);
-        var (meaning, family) = CompareSemantics.MeaningOf(word.ProjectStanding, column);
+        var comparison = CompareSemantics.Compare(word);
         var fieldWorks = FieldWorksAnalysisOf(word);
         var fieldWorksMorphs = fieldWorks?.Morphs ?? [];
-        var outcome = OutcomeOf(column);
+        var outcome = comparison.Outcome;
         var panGloss = outcome == WordRowOutcome.Different ? ClosestReading(fieldWorksMorphs, word.Readings ?? []) : null;
         var panGlossMorphs = panGloss?.Morphs ?? [];
-        return new WordRow(word.Word, outcome, meaning, ToneOf(family))
+        return new WordRow(word.Word, outcome, comparison.Headline, comparison.Tone)
         {
+            Comparison = comparison,
+            MeaningCode = comparison.MeaningCode,
+            MeaningDetail = comparison.Detail,
             Gloss = string.Join(" ", fieldWorksMorphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
             Opinion = word.ProjectStanding,
             FieldWorksAnalysisId = fieldWorks?.StoredAnalysisId,

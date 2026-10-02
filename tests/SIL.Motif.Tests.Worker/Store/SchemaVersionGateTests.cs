@@ -39,7 +39,7 @@ public sealed class SchemaVersionGateTests : IDisposable
     [Fact]
     public void StoresWithLabelBasedNaturalClassReachAreRefusedWithoutRewrite()
     {
-        Assert.Equal(35, MotifSchema.CurrentSchema);
+        Assert.Equal(36, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "natural-class-reach.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
@@ -57,9 +57,30 @@ public sealed class SchemaVersionGateTests : IDisposable
     }
 
     [Fact]
+    public void StoresWithoutAnalysisComparisonAreRefusedWithoutRewrite()
+    {
+        var path = Path.Combine(_root, "no-analysis-comparison.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version = 35;";
+            command.ExecuteNonQuery();
+        }
+
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
+            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+
+        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(35, PragmaUserVersion(path));
+    }
+
+    [Fact]
     public void AnOlderBuildIsRefusedWithSomethingTheUserCanActOn()
     {
-        Assert.Equal(35, MotifSchema.CurrentSchema);
+        Assert.Equal(36, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "project.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

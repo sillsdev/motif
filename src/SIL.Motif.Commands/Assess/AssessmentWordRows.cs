@@ -55,8 +55,7 @@ internal static class AssessmentWordRows
     /// parser missed; set those on the row before asking.
     /// </summary>
     internal static FixFirstPriority? FixFirst(AssessmentWordResult row) =>
-        CompareSemantics.FixFirst(new CompareWordFacts(row.ProjectStanding, row.Outcome, row.IsIncomplete,
-            row.Morphology, row.ReadingGrades, row.MissedApproved?.Count ?? 0), row.MissedApproved);
+        CompareSemantics.FixFirst(CompareWordFacts.Of(row), row.MissedApproved);
 
     /// <summary>How many searches completed, stopped at a limit, or were not attempted, in one sentence.</summary>
     internal static string CompletionSummary(IReadOnlyCollection<AssessmentWordResult> words) =>
@@ -79,6 +78,7 @@ internal static class AssessmentWordRows
         {
             IsIncomplete = word.IsIncomplete || row.IsIncomplete,
             ReadingGrades = word.ReadingGrades,
+            AnalysisComparison = word.AnalysisComparison,
             ProjectStanding = word.ProjectStanding,
             OccurrenceCount = word.OccurrenceCount,
             MissedApproved = word.MissedApproved,
@@ -109,8 +109,10 @@ internal static class AssessmentWordRows
                 ? row with { StoredAnalyses = stored, ExpectedAnalysis = ExpectedAnalysis(stored) } : row;
             row = snapshot.WordAnalysesLinksByWord.TryGetValue(word.Word, out var link)
                 ? row with { TryWordLink = link } : row;
-            return snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
+            row = row with { StoredAnalysesAvailable = snapshot.WordContextAvailable };
+            row = snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
                 ? row with { Readings = readings } : row;
+            return row with { Comparison = CompareSemantics.Compare(row) };
         }).ToArray();
         var summary = CompletionSummary(words);
         var invocationId = assessment.Invocation?.InvocationId ?? string.Empty;

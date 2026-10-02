@@ -210,6 +210,7 @@ public sealed class AssessWordRowViewModel
         ArgumentNullException.ThrowIfNull(word);
         Source = word;
         Marking = AnalysisMarkingState.Create(word);
+        Comparison = CompareSemantics.Compare(word);
         Word = word.Word;
         Outcome = word.Outcome;
         Morphology = word.Morphology;
@@ -261,7 +262,7 @@ public sealed class AssessWordRowViewModel
         Unavailable = word.Correctness?.Unavailable ?? word.Morphology?.Unavailable ?? [];
         Detail = $"{word.CompletionStatus}. {word.EvidenceStatus}";
         CompletionStatus = word.CompletionStatus;
-        WordRow = new WordRowViewModel(WordRowProjection.Of(word, CompareViewModel.Place(this).Column,
+        WordRow = new WordRowViewModel(WordRowProjection.Of(word,
             new WordRowFacts(Places: OccurrenceCount)), routes);
     }
 
@@ -277,6 +278,9 @@ public sealed class AssessWordRowViewModel
     /// <summary>The Assessment's result for the word, which identity queries such as shared morphemes read.</summary>
     public AssessmentWordResult Source { get; }
     public AnalysisMarkingState Marking { get; }
+
+    /// <summary>The shared comparison used for placement and wording, independently of marking actions.</summary>
+    public WordComparison Comparison { get; }
     public string Outcome { get; }
     public ParseWordEvidence? Morphology { get; }
     public FixFirstPriority? FixFirst { get; }

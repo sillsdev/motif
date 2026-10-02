@@ -222,6 +222,16 @@ public sealed partial class CompareViewModel : ObservableObject
             .Select(word => word.Word).ToArray();
     }
 
+    /// <summary>Whether rows in these cells need meanings beyond the cells' default headings.</summary>
+    public bool ShowsMeaningsInCells(IReadOnlyList<TextsListCell> cells)
+    {
+        var chosen = cells.ToHashSet();
+        var words = _all.Where(word => chosen.Contains(new TextsListCell(word.Row, word.Column))).ToArray();
+        return words.Select(word => word.WordRow.Row.MeaningCode).Distinct(StringComparer.Ordinal).Take(2).Count() > 1 ||
+            words.Any(word => word.WordRow.Row.MeaningCode !=
+                CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column));
+    }
+
     /// <summary>Gets checked words placed in any of the given matrix cells, in Assessment order.</summary>
     public IReadOnlyList<string> CheckedWordsInCells(IReadOnlyList<TextsListCell> cells)
     {
@@ -317,7 +327,8 @@ public sealed partial class CompareViewModel : ObservableObject
     /// Whether the word rows show their meaning column: only when the listed cells mix meanings, since the heading
     /// already names a list's one meaning.
     /// </summary>
-    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1;
+    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1 || Words.Any(word =>
+        word.WordRow.Row.MeaningCode != CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column));
 
     /// <summary>
     /// The one meaning every listed word shares, for a chip after a heading that names no single cell; otherwise
@@ -337,7 +348,8 @@ public sealed partial class CompareViewModel : ObservableObject
         return (chosen.Length == 0 ? Cells : chosen).Where(cell => cell.WordCount > 0);
     }
 
-    private IEnumerable<string> ListedMeanings() => ListedCells().Select(cell => cell.Label).Distinct(StringComparer.Ordinal);
+    private IEnumerable<string> ListedMeanings() => Words.Select(word => word.WordRow.Row.MeaningCode)
+        .Distinct(StringComparer.Ordinal);
 
     /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
     public string ListExplanation => Cells.Count(cell => cell.IsSelected) switch
@@ -494,9 +506,6 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(ChosenCell));
         OnPropertyChanged(nameof(ListHeading));
         OnPropertyChanged(nameof(ListExplanation));
-        OnPropertyChanged(nameof(ShowsMeaning));
-        OnPropertyChanged(nameof(ListMeaning));
-        OnPropertyChanged(nameof(ListMeaningMark));
         ApplyFilter();
     }
 
@@ -563,6 +572,9 @@ public sealed partial class CompareViewModel : ObservableObject
         Words.Clear();
         foreach (var word in matches) Words.Add(word);
         RefreshShared(chosen.Count > 0);
+        OnPropertyChanged(nameof(ShowsMeaning));
+        OnPropertyChanged(nameof(ListMeaning));
+        OnPropertyChanged(nameof(ListMeaningMark));
         OnPropertyChanged(nameof(ListSummary));
         OnPropertyChanged(nameof(HandOffLabel));
         OnPropertyChanged(nameof(CheckedWordCount));
@@ -573,32 +585,12 @@ public sealed partial class CompareViewModel : ObservableObject
         ChosenCellsChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Places the word from its morphology-backed marking class. Rebuilt rejected readings still occupy
-    /// Match when every parser reading matches a stored analysis, so the rejected row names that conflict.
-    /// </summary>
+    /// <summary>Places a word by the same comparison used by the commands and common word rows.</summary>
     public static (WordProjectStatus Row, CompareColumnKind Column) Place(AssessWordRowViewModel word)
     {
         ArgumentNullException.ThrowIfNull(word);
-        var row = word.Standing ?? WordProjectStatus.NotPresent;
-        var column = word.StoppedAtALimit ? CompareColumnKind.Timeout
-            : word.Outcome == "skipped" ? CompareColumnKind.Skipped
-            : !word.IsParsed || word.ReadingCount == 0 ? CompareColumnKind.NoParse
-            : word.Marking.PanGlossClass switch
-        {
-            AnalysisMarkingClass.Same => CompareColumnKind.Match,
-            AnalysisMarkingClass.Conflict when word.Marking.PanGlossReadings.Count > 0 &&
-                word.Marking.PanGlossReadings.All(reading => reading.MatchesStored) &&
-                word.Marking.FieldWorksAnalyses.Where(analysis => analysis.Opinion == ReadingGrade.Approved)
-                    .All(analysis => word.Marking.PanGlossReadings.Any(reading =>
-                        reading.MatchingAnalysisIds.Contains(analysis.StoredAnalysisId, StringComparer.Ordinal)))
-                => CompareColumnKind.Match,
-            AnalysisMarkingClass.None => CompareColumnKind.NoParse,
-            AnalysisMarkingClass.Capped => CompareColumnKind.Timeout,
-            AnalysisMarkingClass.NotAssessed => CompareColumnKind.Skipped,
-            _ => CompareColumnKind.NoMatch,
-        };
-        return (row, column);
+        var placement = CompareSemantics.PlacementOf(word.Comparison);
+        return (WordProjectStatuses.FromStanding(placement.Standing), placement.Column);
     }
 
     /// <summary>What a cell means and how it is coloured, one entry per combination.</summary>
@@ -927,7 +919,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         AccessibleName = $"{Word}: {CompareViewModel.HeldInFieldWorks(OpinionLabel)}, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
-        (Meaning, Family) = CompareViewModel.MeaningOf(Row, Column);
+        Meaning = word.Comparison.Headline;
+        Family = CompareSemantics.MeaningOfCode(word.Comparison.MeaningCode).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
         RowMark = WordProjectStatuses.MarkOf(Row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
@@ -935,7 +928,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ColumnMark = Mark.Of(Outcome);
         Readings = word.Readings;
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
-        MissedApproved = word.MissedApproved;
+        MissedApproved = word.Comparison.MissingApproved.Select((reading, index) =>
+            new ParserReadingViewModel(index + 1, reading, "missed")).ToArray();
         FixFirst = word.FixFirst;
         NoReadingsText = word.NoReadingsText;
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
@@ -1068,10 +1062,9 @@ public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, FixFirs
         _ => "Unknown, grammar can't build it",
     };
 
-    // A stored reason naming a missed approved analysis is kept; the rule's own reason is in the CLI's words.
-    public string Explanation => Word.MissedApproved.Count > 0 ? Priority.Explanation : Priority.Category switch
+    public string Explanation => Priority.Category switch
     {
-        FixFirstCategory.ApprovedNoParse or FixFirstCategory.ApprovedNoMatch => "An approved analysis was not built.",
+        FixFirstCategory.ApprovedNoParse or FixFirstCategory.ApprovedNoMatch => Priority.Explanation,
         FixFirstCategory.RejectedRebuilt => "The grammar still builds an analysis you disapproved.",
         _ => "The grammar could not build this Unknown analysis.",
     };

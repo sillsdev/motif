@@ -46,6 +46,24 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
         Marking = AnalysisMarkingState.Create(token, result, _isUnread);
+        var contextAnalyses = token.StoredAnalyses.Select(analysis => new ParserReading(analysis.Morphs)
+        {
+            StoredAnalysisId = analysis.StoredAnalysisId,
+            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+            Identity = analysis.Identity,
+        }).ToArray();
+        var standing = token.IncorrectSpelling ? ProjectStanding.IncorrectSpelling :
+            contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
+            contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
+                ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
+        var comparisonWord = (result ?? new AssessmentWordResult(Form, "skipped", false, "Not parsed", null, null)) with
+        {
+            Comparison = null,
+            ProjectStanding = token.IncorrectSpelling ? ProjectStanding.IncorrectSpelling : result?.ProjectStanding ?? standing,
+            StoredAnalyses = contextAnalyses,
+            StoredAnalysesAvailable = true,
+        };
+        Comparison = CompareSemantics.Compare(comparisonWord);
         var storedId = token.Analysis?.StoredAnalysisId;
         var analyses = result?.Morphology?.Analyses ?? [];
         var resolved = result?.Readings;
@@ -58,13 +76,13 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
                 resolved is not null && index < resolved.Count ? resolved[index] : null))
             .ToArray();
 
-        Verdict = Marking.PanGlossClass switch
+        Verdict = Comparison.Outcome switch
         {
-            AnalysisMarkingClass.Same => OccurrenceVerdict.Matches,
-            AnalysisMarkingClass.Capped => OccurrenceVerdict.Limit,
-            AnalysisMarkingClass.None => OccurrenceVerdict.NoParse,
-            AnalysisMarkingClass.NotAssessed => OccurrenceVerdict.NotAssessed,
-            AnalysisMarkingClass.Different when !Marking.FieldWorksAnalyses.Any() => OccurrenceVerdict.New,
+            WordRowOutcome.Same when Comparison.Tone != WordRowTone.Problem => OccurrenceVerdict.Matches,
+            WordRowOutcome.Stopped => OccurrenceVerdict.Limit,
+            WordRowOutcome.NoParse => OccurrenceVerdict.NoParse,
+            WordRowOutcome.NotParsed => OccurrenceVerdict.NotAssessed,
+            WordRowOutcome.Different when !Marking.FieldWorksAnalyses.Any() => OccurrenceVerdict.New,
             _ => OccurrenceVerdict.Differs,
         };
         var first = Readings.FirstOrDefault()?.Text;
@@ -117,6 +135,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool IsWord { get; }
 
     public AnalysisMarkingState Marking { get; private set; }
+
+    /// <summary>The common word comparison, independent of this occurrence's action selection.</summary>
+    public WordComparison Comparison { get; }
     /// <summary>Every stored analysis with its opinion mark and interlinear morphemes.</summary>
     public IReadOnlyList<FieldWorksAnalysisDisplayViewModel> FieldWorksAnalyses { get; }
 
@@ -128,33 +149,42 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool HasFieldWorksAnalyses => FieldWorksAnalyses.Count > 0;
 
     /// <summary>Whether PanGloss agrees with every stored reading.</summary>
-    public bool IsPanGlossSame => Marking.PanGlossClass == AnalysisMarkingClass.Same;
+    public bool IsPanGlossSame => Comparison.Outcome == WordRowOutcome.Same && Comparison.Tone != WordRowTone.Problem;
 
     /// <summary>Whether PanGloss conflicts with a stored reading or opinion.</summary>
-    public bool IsPanGlossDifferent => Marking.PanGlossClass is AnalysisMarkingClass.Conflict or
-        AnalysisMarkingClass.Different;
+    public bool IsPanGlossDifferent => Comparison.Outcome == WordRowOutcome.Different ||
+        Comparison.Outcome == WordRowOutcome.Same && Comparison.Tone == WordRowTone.Problem;
 
     /// <summary>Whether PanGloss has readings beyond the approved FieldWorks readings.</summary>
-    public bool IsPanGlossExtra => Marking.PanGlossClass == AnalysisMarkingClass.Extra;
+    public bool IsPanGlossExtra => !IsPanGlossCapped && !HasOpinionConflict &&
+        Comparison.Readings.Any(reading => reading.Matches.Any(match => match.Opinion == ReadingGrade.Approved) ||
+            reading.RecordedGrade == ReadingGrade.Approved) &&
+        (Comparison.ExtraReadingIndices.Count > 0 ||
+            Comparison.Availability == AnalysisComparisonAvailability.RecordedGradesOnly &&
+            Comparison.Readings.Any(reading => reading.RecordedGrade == ReadingGrade.NoOpinion));
 
     /// <summary>Whether PanGloss completed without finding a reading.</summary>
-    public bool IsPanGlossNone => Marking.PanGlossClass == AnalysisMarkingClass.None;
+    public bool IsPanGlossNone => Comparison.Outcome == WordRowOutcome.NoParse;
 
     /// <summary>Whether PanGloss stopped before completing its search.</summary>
-    public bool IsPanGlossCapped => Marking.PanGlossClass == AnalysisMarkingClass.Capped;
+    public bool IsPanGlossCapped => Comparison.Outcome == WordRowOutcome.Stopped;
 
     /// <summary>The short PanGloss result shown in the word strip and hover summary.</summary>
-    public string PanGlossSummary => Marking.PanGlossClass switch
+    public string PanGlossSummary => Comparison.Outcome switch
     {
-        AnalysisMarkingClass.Same => "Agrees with FieldWorks",
-        AnalysisMarkingClass.Conflict => "Conflicts with a FieldWorks opinion",
-        AnalysisMarkingClass.Different => "Different from FieldWorks",
-        AnalysisMarkingClass.Extra => "Has additional readings",
-        AnalysisMarkingClass.None => "No parse",
-        AnalysisMarkingClass.Capped => "Search stopped at a limit",
-        _ when _assessment is null => "Not parsed yet",
-        _ => "Skipped: a character the grammar does not define",
+        WordRowOutcome.Stopped => "Search stopped at a limit",
+        WordRowOutcome.NotParsed when _assessment is null => "Not parsed yet",
+        WordRowOutcome.NotParsed => "Skipped: a character the grammar does not define",
+        WordRowOutcome.NoParse => "No parse",
+        _ when Comparison.MeaningCode == "disapproved-rebuilt" => Comparison.Headline,
+        _ when HasOpinionConflict => "Conflicts with a FieldWorks opinion",
+        _ when IsPanGlossSame => "Agrees with FieldWorks",
+        _ when IsPanGlossExtra => "Has additional readings",
+        _ => "Different from FieldWorks",
     };
+
+    private bool HasOpinionConflict => Comparison.Standing == ProjectStanding.IncorrectSpelling ||
+        HasDisapprovedReading || Comparison.MissingApprovedAnalyses.Count > 0 || Comparison.MissingApproved.Count > 0;
 
     /// <summary>Whether the strip marks the word Unread; a word nobody has parsed has nothing to read yet.</summary>
     public bool ShowUnread => Marking.IsUnread && _assessment is not null;
@@ -343,19 +373,23 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string MorePanGlossLabel => $"+{Readings.Count - 1}";
 
     /// <summary>The strip's PanGloss line when it shows no reading, in Round 4's short words.</summary>
-    public string PanGlossNote => Marking.PanGlossClass switch
-    {
-        AnalysisMarkingClass.Same => $"{Mark.Same.Glyph} same",
-        AnalysisMarkingClass.None => $"{Mark.NoParse.Glyph} {Mark.NoParse.Word}",
-        AnalysisMarkingClass.Capped => "Stopped at the step limit",
-        _ => PanGlossSummary,
-    };
+    public string PanGlossNote => IsPanGlossCapped
+        ? _assessment is { Outcome: "capped" } or { Morphology.Capped: true }
+            ? "Stopped at the step limit" : "Search stopped at a limit"
+        : IsPanGlossSame ? $"{Mark.Same.Glyph} same"
+        : IsPanGlossNone ? $"{Mark.NoParse.Glyph} {Mark.NoParse.Word}"
+        : PanGlossSummary;
 
     /// <summary>Whether a staged change replaces the strip's actions with its Staged note.</summary>
     public bool HasStagedChanges => StagedChanges.Count > 0;
 
     /// <summary>Whether the strip offers its actions, which it does until a change is staged for the word.</summary>
     public bool ShowsActions => !HasStagedChanges;
+
+    /// <summary>The shared qualification on the comparison headline.</summary>
+    public string ComparisonDetail => Comparison.Detail;
+
+    public bool HasComparisonDetail => ComparisonDetail.Length > 0;
 
     /// <summary>The read-only hover summary for the stored opinion and current PanGloss result.</summary>
     public string HoverSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";
@@ -471,10 +505,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public IReadOnlyList<StagedMarkingDisplayViewModel> StagedChanges { get; private set; } = [];
 
     /// <summary>What PanGloss built for this occurrence against what FieldWorks stores here.</summary>
-    public ParserOutcome Outcome => WindowWords.OutcomeOf(Marking.PanGlossClass);
+    public ParserOutcome Outcome => WindowWords.OutcomeOf(CompareSemantics.PlacementOf(Comparison).Column);
 
     /// <summary>Whether the parser also produced a reading FieldWorks has disapproved for this word.</summary>
-    public bool HasDisapprovedReading => Readings.Any(reading => reading.IsDisapproved);
+    public bool HasDisapprovedReading => Comparison.RebuiltDisapproved.Count > 0 ||
+        Comparison.Readings.Any(reading => reading.RecordedGrade == ReadingGrade.Disapproved);
 
     /// <summary>The disapproved marker's mark: the Problem tone the Matrix gives a disapproved word PanGloss builds.</summary>
     public Mark DisapprovedMark => Mark.Of(DisapprovedMeaning.Tone);

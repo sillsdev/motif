@@ -86,8 +86,24 @@ public sealed class WordRowViewModelTests
     public void TheRowsOutcomeMeaningAndToneAreTheMatrixs(string standing, CompareColumnKind column)
     {
         var row = new WordRowViewModel(WordRowProjection.Of(
-            new AssessmentWordResult("w", "analysed", false, "Search completed", 1, null) { ProjectStanding = standing },
-            column));
+            new AssessmentWordResult("w", column switch
+            {
+                CompareColumnKind.Skipped => "skipped",
+                CompareColumnKind.NoParse => "no-analysis",
+                _ => "analysed",
+            }, column == CompareColumnKind.Timeout, "Search completed", 1, null)
+            {
+                ProjectStanding = standing,
+                ReadingGrades = [column == CompareColumnKind.Match ? standing switch
+                {
+                    ProjectStanding.Approved => ReadingGrade.Approved,
+                    ProjectStanding.Candidate => ReadingGrade.Candidate,
+                    ProjectStanding.Rejected => ReadingGrade.Disapproved,
+                    _ => ReadingGrade.Approved,
+                } : ReadingGrade.NoOpinion],
+                Morphology = new ParseWordEvidence("v1", 0, "w", 1, false, false, false,
+                    [new ParseAnalysis([new ParseMorph("form", "msa", null, null)])], []),
+            }));
         var (word, tone) = WindowWords.MeaningOf(standing, WindowWords.OutcomeOf(column));
 
         Assert.Equal(WindowWords.OutcomeOf(column), row.Outcome);

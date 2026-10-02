@@ -383,6 +383,14 @@ public static class AssessCommand
                                 wordContext.Approved.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
                                 wordContext.Rejected.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>(),
                                 wordContext.Candidates.GetValueOrDefault(word.Word) ?? Array.Empty<ApprovedMorphology>()),
+                            AnalysisComparison = CompareSemantics.Capture(new CompareWordFacts(
+                                wordContext.Standings.GetValueOrDefault(word.Word), word.Outcome, word.IsIncomplete,
+                                word.Morphology, null, word.Correctness?.Unmatched.Count ?? 0)
+                            {
+                                StoredAnalyses = storedContext.Analyses.GetValueOrDefault(word.Word) ?? [],
+                                StoredAnalysesAvailable = true,
+                                MissedApproved = NameMissed(word.Word, word.Correctness),
+                            }),
                             MissedApprovedCount = word.Correctness?.Unmatched.Count,
                             MissedApproved = NameMissed(word.Word, word.Correctness),
                         };
@@ -404,6 +412,8 @@ public static class AssessCommand
                     composition.Descriptor, assessor.Name, scopeJson, scopeDigest, invocation.InvocationId,
                     pendingRecords.Select(record => new RetainedInvocationMember(record.Kind, record.AssessmentId))
                         .ToArray());
+                var comparisonByWord = pendingRecords.FirstOrDefault(record => record.Kind == AssessmentKind.ParseTime.ToStoredKind())
+                    ?.Words.ToDictionary(word => word.Word, word => word.AnalysisComparison, StringComparer.Ordinal);
                 var timing = produced.FirstOrDefault(item => item.Kind == AssessmentKind.ParseTime);
                 var words = timing?.Raw is AssessmentRaw.Batch batch
                     ? batch.Analysis.Words.Select(word => AssessmentWordRows.Row(word.Word,
@@ -444,10 +454,12 @@ public static class AssessCommand
                             MissedApproved = missedApproved,
                             ExpectedAnalysis = AssessmentWordRows.ExpectedAnalysis(storedAnalyses),
                             StoredAnalyses = storedAnalyses,
+                            StoredAnalysesAvailable = true,
+                            AnalysisComparison = comparisonByWord?.GetValueOrDefault(word.Word),
                             Attempts = stats?.Attempts,
                             Passes = stats?.Passes,
                         };
-                        return row with { FixFirst = AssessmentWordRows.FixFirst(row) };
+                        return row with { FixFirst = AssessmentWordRows.FixFirst(row), Comparison = CompareSemantics.Compare(row) };
                     }).ToArray();
                 }
 

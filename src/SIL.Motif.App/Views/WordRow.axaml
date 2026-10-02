@@ -95,8 +95,16 @@
               </DockPanel>
 
               <Panel x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center">
-                <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
-                                HorizontalAlignment="Left" />
+                <StackPanel>
+                  <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
+                                  IsVisible="{Binding !HasSpecificMeaning}" HorizontalAlignment="Left" />
+                  <Border Classes="markChip compact meaning problem" IsVisible="{Binding HasSpecificMeaning}">
+                    <views:CopyableTextBlock Classes="markWord meaning problem" Text="{Binding Meaning}"
+                                             TextWrapping="Wrap" />
+                  </Border>
+                  <views:CopyableTextBlock Text="{Binding MeaningDetail}" IsVisible="{Binding HasMeaningDetail}"
+                                           Classes="wordRowNote" TextWrapping="Wrap" />
+                </StackPanel>
               </Panel>
 
               <Panel x:Name="WarningsCell" Grid.Column="4" Classes="wordRowWarnings" VerticalAlignment="Center">

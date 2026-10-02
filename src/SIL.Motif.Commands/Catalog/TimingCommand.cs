@@ -163,7 +163,7 @@ public static class TimingCommand
 
     private static ComparePlacement Place(AssessedWord word) => CompareSemantics.Place(new CompareWordFacts(
         word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology,
-        word.ReadingGrades, word.MissedApprovedCount ?? 0));
+        word.ReadingGrades, word.MissedApprovedCount ?? 0) { AnalysisComparison = word.AnalysisComparison });
 
     private static bool IsStepLimited(AssessedWord word) =>
         word.Outcome == WordOutcome.Capped.ToStoredOutcome() || word.Morphology?.Capped == true;

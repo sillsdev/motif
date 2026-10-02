@@ -33,6 +33,9 @@ public sealed record AssessedWord(
     public string? ProjectStanding { get; init; }
     public int? OccurrenceCount { get; init; }
     public IReadOnlyList<string>? ReadingGrades { get; init; }
+
+    /// <summary>Every matched analysis identity and opinion captured against the measured Baseline.</summary>
+    public SIL.Motif.Contract.Responses.WordAnalysisComparison? AnalysisComparison { get; init; }
     public int? MissedApprovedCount { get; init; }
 
     /// <summary>

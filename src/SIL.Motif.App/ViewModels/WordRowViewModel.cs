@@ -71,6 +71,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         var (meaning, family) = CompareSemantics.MeaningOf(opinion, CompareColumnKind.Skipped);
         var row = new WordRow(word, WordRowOutcome.NotParsed, meaning, WordRowProjection.ToneOf(family))
         {
+            MeaningCode = "not-parsed",
             Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
             Opinion = opinion,
             FieldWorksMorphemes = morphs,
@@ -123,6 +124,14 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>What the opinion and the outcome mean together, in the Matrix's words.</summary>
     public string Meaning => _row.Meaning;
+
+    /// <summary>The qualification on the comparison headline.</summary>
+    public string MeaningDetail => _row.MeaningDetail;
+
+    public bool HasMeaningDetail => MeaningDetail.Length > 0;
+
+    /// <summary>Whether the word carries a specific rebuilt-opinion headline beyond its cell's default meaning.</summary>
+    public bool HasSpecificMeaning => _row.MeaningCode == "disapproved-rebuilt";
 
     public MeaningTone Tone { get; }
 

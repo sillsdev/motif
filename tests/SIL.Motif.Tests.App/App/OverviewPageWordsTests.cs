@@ -571,7 +571,8 @@ public sealed class OverviewPageWordsTests
         LookFirst = new OverviewLookFirst(
             ["lost-1", "lost-2", "lost-3", "lost-4", "lost-5", "lost-6"],
             [new OverviewSharedMorpheme("kat", 3, true), new OverviewSharedMorpheme("ja-", 3, false)],
-            ["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], 33600, 3),
+            ["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], 33600, 3)
+        { SharedLostMorphemesAvailable = true },
         SelectionResolved = true,
         WordCoveragePercent = 83.1,
         ProjectFileName = "Sample.fwdata",

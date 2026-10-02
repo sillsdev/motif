@@ -12,6 +12,31 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class CatalogTextRenderingTests
 {
     [Fact]
+    public void AssessmentTextAndJsonCarryTheSharedComparisonHeadlineAndQualification()
+    {
+        var comparison = new WordComparison(ProjectStanding.Candidate, WordRowOutcome.Different,
+            "disapproved-rebuilt", "Rebuilt an analysis you Disapproved", WordRowTone.Problem)
+        {
+            Detail = "Your undecided analysis wasn't built",
+        };
+        var word = new AssessmentWordResult("mixed", "analysed", false, "Search completed", 1, null)
+            { Comparison = comparison };
+        var response = new AssessCommandResponse(new BaselineCaptureResponse(
+            new("project", "sha256:" + new string('a', 64), "version", "2026-10-01T00:00:00.0000000Z",
+                "sha256:" + new string('b', 64)), "project.fwdata", DateTimeOffset.UtcNow, false, true),
+            new SelectionProjection(["mixed"], []), ["assessment"], "Search completed") { Words = [word] };
+
+        var outcome = CommandOutcome<AssessCommandResponse>.Success(response);
+        var text = CommandTextRenderer.Render(outcome, asJson: false).Output;
+        var json = CommandTextRenderer.Render(outcome, asJson: true).Output;
+
+        Assert.Contains("mixed: " + comparison.Headline, text, StringComparison.Ordinal);
+        Assert.Contains(comparison.Detail, text, StringComparison.Ordinal);
+        Assert.Contains("disapproved-rebuilt", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("PanGloss confirms", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TimingTextCarriesTheKindAlongsideTheKey()
     {
         var response = new TimingResponse("assessment", "all", "rule", 1, 1, 1, [],

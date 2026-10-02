@@ -556,10 +556,10 @@ public sealed class AssessmentRepository : IAssessmentRepository
             INSERT INTO AssessedWords
                 (AssessmentId, OrdinalIndex, Word, Outcome, ElapsedMs, ElapsedNs, RawSignature, MorphologyJson, CorrectnessJson,
                  ProjectStanding, OccurrenceCount, ReadingGradesJson, MissedApprovedCount, MissedApprovedJson,
-                 IsIncomplete, Attempts, Passes)
+                 IsIncomplete, Attempts, Passes, AnalysisComparisonJson)
             VALUES
                 ($id, $ordinal, $word, $outcome, $elapsed, $elapsedNs, $signature, $morphology, $correctness,
-                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete, $attempts, $passes);
+                 $standing, $occurrences, $grades, $missed, $missedReadings, $incomplete, $attempts, $passes, $analysisComparison);
             """;
         var assessmentIdParam = insertWord.Parameters.Add("$id", SqliteType.Text);
         var wordOrdinalParam = insertWord.Parameters.Add("$ordinal", SqliteType.Integer);
@@ -573,6 +573,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         var standingParam = insertWord.Parameters.Add("$standing", SqliteType.Text);
         var occurrenceParam = insertWord.Parameters.Add("$occurrences", SqliteType.Integer);
         var gradesParam = insertWord.Parameters.Add("$grades", SqliteType.Text);
+        var comparisonParam = insertWord.Parameters.Add("$analysisComparison", SqliteType.Text);
         var missedParam = insertWord.Parameters.Add("$missed", SqliteType.Integer);
         var missedReadingsParam = insertWord.Parameters.Add("$missedReadings", SqliteType.Text);
         var incompleteParam = insertWord.Parameters.Add("$incomplete", SqliteType.Integer);
@@ -613,6 +614,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
             standingParam.Value = (object?)word.ProjectStanding ?? DBNull.Value;
             occurrenceParam.Value = (object?)word.OccurrenceCount ?? DBNull.Value;
             gradesParam.Value = word.ReadingGrades is null ? DBNull.Value : JsonSerializer.Serialize(word.ReadingGrades);
+            comparisonParam.Value = word.AnalysisComparison is null ? DBNull.Value
+                : JsonSerializer.Serialize(word.AnalysisComparison, ParseMorphEvidence.JsonOptions);
             missedParam.Value = (object?)word.MissedApprovedCount ?? DBNull.Value;
             missedReadingsParam.Value = word.MissedApproved is null ? DBNull.Value
                 : JsonSerializer.Serialize(word.MissedApproved, ParseMorphEvidence.JsonOptions);
@@ -778,7 +781,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             SELECT aw.AssessedWordId, aw.Word, aw.Outcome, aw.ElapsedMs, aw.ElapsedNs,
                    pa.CategoryGuid, pa.MorphemeGuidsJson, pa.RootIndex, pa.IdentityDigest, aw.RawSignature,
                    aw.MorphologyJson, aw.CorrectnessJson, aw.OrdinalIndex, aw.ProjectStanding, aw.OccurrenceCount,
-                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes
+                   aw.ReadingGradesJson, aw.MissedApprovedCount, aw.IsIncomplete, aw.MissedApprovedJson, aw.Attempts, aw.Passes, aw.AnalysisComparisonJson
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
             WHERE aw.AssessmentId = $id
@@ -801,6 +804,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         string? currentStanding = null;
         int? currentOccurrenceCount = null;
         IReadOnlyList<string>? currentReadingGrades = null;
+        WordAnalysisComparison? currentComparison = null;
         int? currentMissedApprovedCount = null;
         IReadOnlyList<ParserReading>? currentMissedApproved = null;
         bool currentIncomplete = false;
@@ -818,7 +822,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
                     { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
-                        ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
+                        ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
                         Attempts = currentAttempts, Passes = currentPasses });
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
@@ -842,6 +846,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     : JsonSerializer.Deserialize<ParserReading[]>(reader.GetString(18), ParseMorphEvidence.JsonOptions);
                 currentAttempts = reader.IsDBNull(19) ? null : reader.GetInt32(19);
                 currentPasses = reader.IsDBNull(20) ? null : reader.GetInt32(20);
+                currentComparison = reader.IsDBNull(21) ? null
+                    : JsonSerializer.Deserialize<WordAnalysisComparison>(reader.GetString(21), ParseMorphEvidence.JsonOptions);
                 currentAnalyses = [];
             }
 
@@ -859,7 +865,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
             { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
-                ReadingGrades = currentReadingGrades, MissedApprovedCount = currentMissedApprovedCount,
+                ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
                         Attempts = currentAttempts, Passes = currentPasses });
         return words;

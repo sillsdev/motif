@@ -507,6 +507,82 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
         Assert.Null(overview.Value!.Warnings!.YourWords);
     }
 
+    [Fact]
+    public void OverviewReadsSharedLostMorphemesFromItsSelectedBaseline()
+    {
+        var project = Capture(secondaryForm: "beta");
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm, "beta"])).Succeeded);
+        RecordAssessment(project, [SeededProject.AnalysedWordForm, "beta"], parsed: false);
+        var check = GrammarCheckQuery.Query(new GrammarCheckRequest(project.Path), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(GrammarHealthReports.With(
+                ("allomorph", [new("MoForm", "motifa", _pristine.Seed.FirstLexemeFormId)])),
+                string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(check.Succeeded, check.Refusal?.Message);
+
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        var uses = ObjectUsesQuery.Query(new ObjectUsesRequest(project.Path,
+            new ObjectUseRef { AllomorphId = _pristine.Seed.FirstLexemeFormId.ToString("D") }));
+
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.True(uses.Succeeded, uses.Refusal?.Message);
+        var shared = Assert.Single(overview.Value!.LookFirst.SharedLostMorphemes, item => item.NamedByWarning);
+        Assert.Equal(uses.Value!.Uses!.Words.Count, shared.WordCount);
+        Assert.Equal(2, shared.WordCount);
+        Assert.True(shared.NamedByWarning);
+        Assert.Equal(2, overview.Value.TextCoverage.NoParseWords);
+        File.Delete(project.Baseline.FwDataPath);
+        var missing = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        Assert.True(missing.Succeeded, missing.Refusal?.Message);
+        Assert.Equal(overview.Value.TextCoverage, missing.Value!.TextCoverage);
+        Assert.Empty(missing.Value.LookFirst.SharedLostMorphemes);
+        Assert.Contains("\"sharedLostMorphemesAvailable\": false", ProjectionJson.Serialize(missing.Value.LookFirst));
+    }
+
+    [Theory]
+    [InlineData(ProjectStanding.Candidate, false)]
+    [InlineData(ProjectStanding.Approved, false)]
+    [InlineData(ProjectStanding.Candidate, true)]
+    [InlineData(ProjectStanding.Approved, true)]
+    public void NumericQueriesKeepEveryMatchedOpinionWithoutBaselineContext(string standing, bool incomplete)
+    {
+        var project = Capture();
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            project.Path, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        var evidence = new WordAnalysisComparison(
+            [new ComparedReading(0, [new ComparedAnalysis("approved", ReadingGrade.Approved),
+                new ComparedAnalysis("disapproved", ReadingGrade.Disapproved)], ReadingGrade.Approved)], [],
+            incomplete ? [] : [new ComparedAnalysis("undecided", ReadingGrade.Candidate)]);
+        using (var database = ProjectMotifDatabase.Open(project.Path))
+        {
+            new AssessmentRepository(database).Record(new NewAssessmentRecord(
+                "mixed", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "sha256:scope",
+                "whitespace", "1", JsonSerializer.Serialize(project.Baseline.Token, MotifJson.CreateOptions()),
+                Selection.Create("Default", [SeededProject.AnalysedWordForm]), "sha256:outcome", "sha256:semantic",
+                "sha256:grammar", "fingerprint", "pipeline", 0,
+                [new AssessedWord(SeededProject.AnalysedWordForm, "analysed", [], 1)
+                {
+                    ProjectStanding = standing, IsIncomplete = incomplete, Morphology = project.Morphology,
+                    ReadingGrades = [ReadingGrade.Approved], AnalysisComparison = evidence,
+                }]));
+            var stored = Assert.Single(new AssessmentRepository(database).Get("mixed").Words!);
+            Assert.Equal(ProjectionJson.Serialize(evidence), ProjectionJson.Serialize(stored.AnalysisComparison));
+        }
+        File.Delete(project.Baseline.FwDataPath);
+        var overview = SIL.Motif.Commands.Catalog.OverviewCommand.Overview(new OverviewRequest(project.Path));
+        var cell = new TimingWordSet.MatrixCell(standing == ProjectStanding.Candidate ? TimingStanding.Candidate :
+            TimingStanding.Approved, incomplete ? CompareColumnKind.Timeout : CompareColumnKind.NoMatch);
+        var timing = SIL.Motif.Commands.Catalog.TimingCommand.Timing(new TimingRequest(project.Path, WordSet: cell.ToWireValue()));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(1, timing.Value!.WordCount);
+        Assert.Equal(incomplete ? 0 : 1, overview.Value!.Accuracy.Violations);
+        Assert.Equal(1, overview.Value.Accuracy.RejectedAnalysesRebuilt);
+        Assert.Equal(0, overview.Value.Accuracy.CandidatesConfirmed);
+    }
+
     private CapturedProject Capture(bool analysedWordOutsideText = false, bool includeOtherOpinions = false, string? secondaryForm = null)
     {
         string path;

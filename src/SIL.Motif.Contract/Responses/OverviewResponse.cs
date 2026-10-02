@@ -124,6 +124,9 @@ public sealed record OverviewLookFirst(
     double? StepLimitedWordTimeMs,
     int UnknownDifferentWordCount)
 {
+    /// <summary>Whether shared lost-morpheme associations were read; false means unknown, rather than none.</summary>
+    public bool SharedLostMorphemesAvailable { get; init; }
+
     /// <summary>An empty list of priorities when the project has no matching Parse all words.</summary>
     public static OverviewLookFirst Empty { get; } = new([], [], [], null, 0);
 }

@@ -40,6 +40,43 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void OverviewHelpDoesNotTreatAggregateStandingAsEveryAnalysisOpinion()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var page = catalog.GetHelpPage(HelpEntryKind.Guide, "overview")!;
+
+        Assert.DoesNotContain("has no saved project opinion for that analysis", page, StringComparison.Ordinal);
+        Assert.Contains("Unknown and Disapproved analyses", page, StringComparison.Ordinal);
+        Assert.Contains("Rebuilt an analysis you Disapproved", page, StringComparison.Ordinal);
+        Assert.Contains("Your undecided analysis wasn't built", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TextsHelpExplainsSpecificMixedOpinionsAndIncompleteSearches()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var page = catalog.GetHelpPage(HelpEntryKind.Guide, "texts")!;
+
+        Assert.Contains("Unknown × Different", page, StringComparison.Ordinal);
+        Assert.Contains("Rebuilt an analysis you Disapproved", page, StringComparison.Ordinal);
+        Assert.Contains("Your undecided analysis wasn't built", page, StringComparison.Ordinal);
+        Assert.Contains("different meanings within the same cell", page, StringComparison.Ordinal);
+        Assert.Contains("does not establish that an analysis was not built", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AssessHelpDescribesPerWordComparisonEvidenceAndAvailability()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var page = catalog.GetHelpPage(HelpEntryKind.Command, "assess")!;
+
+        foreach (var text in new[] { "headline", "qualification", "comparison", "meaningCode", "availability",
+            "Available", "RecordedGradesOnly", "Unavailable", "matched analysis identities", "individual opinions" })
+            Assert.Contains(text, page, StringComparison.Ordinal);
+        Assert.Contains("incomplete search", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MissingLocaleUsesEnglishMetadataAndHelpPages()
     {
         var english = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));

@@ -272,7 +272,8 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "Word|TEXT|1|0|", "Outcome|TEXT|1|0|", "ElapsedMs|INTEGER|0|0|", "ElapsedNs|INTEGER|0|0|",
                 "RawSignature|TEXT|0|0|",
                 "MorphologyJson|TEXT|0|0|", "CorrectnessJson|TEXT|0|0|", "ProjectStanding|TEXT|0|0|",
-                "OccurrenceCount|INTEGER|0|0|", "ReadingGradesJson|TEXT|0|0|", "MissedApprovedCount|INTEGER|0|0|",
+                "OccurrenceCount|INTEGER|0|0|", "ReadingGradesJson|TEXT|0|0|", "AnalysisComparisonJson|TEXT|0|0|",
+                "MissedApprovedCount|INTEGER|0|0|",
                 "MissedApprovedJson|TEXT|0|0|",
                 "IsIncomplete|INTEGER|1|0|0", "Attempts|INTEGER|0|0|", "Passes|INTEGER|0|0|"],
             ["AssessmentObjectTimings"] = ["AssessmentId|TEXT|1|1|", "OrdinalIndex|INTEGER|1|2|", "Kind|TEXT|1|0|",
@@ -507,17 +508,17 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
     [Fact]
     public void PreviousSchemaIsRefusedWithoutMigration()
     {
-        const int previousSchema = 33;
-        var path = DatabasePath("schema-33.fwdata");
+        const int previousSchema = 35;
+        var path = DatabasePath("schema-35.fwdata");
         using (var connection = NewConnection(path))
             Execute(connection, $"PRAGMA application_id = {MotifSchema.ApplicationId}; PRAGMA user_version = {previousSchema};");
 
-        Assert.Equal(35, MotifSchema.CurrentSchema);
+        Assert.Equal(36, MotifSchema.CurrentSchema);
         var refusal = Assert.Throws<MotifStoreVersionException>(() => MotifDatabase.OpenOwned(
-            path, Locator("schema-33.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
+            path, Locator("schema-35.fwdata"), MotifSchema.CurrentSchema, new Version(1, 0)));
 
-        Assert.Contains("schema 33", refusal.Message);
         Assert.Contains("schema 35", refusal.Message);
+        Assert.Contains("schema 36", refusal.Message);
         Assert.Contains("recreate", refusal.Message);
         using var check = NewConnection(path);
         Assert.Equal(previousSchema, PragmaInt(check, "user_version"));

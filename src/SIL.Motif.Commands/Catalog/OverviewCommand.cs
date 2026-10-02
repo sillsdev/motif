@@ -37,10 +37,22 @@ public static class OverviewCommand
             var timing = TimingAggregation.SummarizeWords(assessedWords, evidence.EffectiveObjectTimings);
             var storedCheck = evidence.Baseline is null ? null : new GrammarCheckRepository(database).GetLatest(
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
-            if (storedCheck is { Findings.Count: > 0 } && evidence.Baseline is { } checkedBaseline)
-                storedCheck = WarningWordsQuery.WithYourWords(database, project, storedCheck, checkedBaseline.Token);
-            var lookFirst = evidence.Assessment is { } assessmentRows
-                ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck)
+            var needsAssociations = assessedWords.Count(word => word.ProjectStanding == ProjectStanding.Approved &&
+                word.Outcome == "no-analysis" && !word.IsIncomplete) >= 2 || storedCheck is { Findings.Count: > 0 };
+            var context = needsAssociations ? CurrentEvidenceQuery.ReadWordContext(evidence, project.FullFwDataPath, includeResolvedReadings: false)
+                : CommandOutcome<CurrentEvidenceSnapshot>.Success(evidence);
+            var associationEvidence = context.Succeeded ? context.Value! : evidence;
+            var assessmentRows = associationEvidence.Assessment;
+            if (storedCheck is not null)
+                storedCheck = associationEvidence.WordContextAvailable && assessmentRows is not null
+                    ? WarningWordsQuery.WithYourWords(storedCheck, assessmentRows.Words, evidence.EffectiveObjectTimings)
+                    : storedCheck with
+                    {
+                        Findings = storedCheck.Findings.Select(finding => finding with { YourWords = null }).ToArray(),
+                    };
+            var lookFirst = assessmentRows is not null
+                ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck,
+                    associationEvidence.WordContextAvailable)
                 : OverviewLookFirst.Empty;
             var warningCounts = WarningsCommand.FromCheck(storedCheck);
             var largestKind = warningCounts.ByKind.FirstOrDefault();
@@ -120,12 +132,13 @@ internal static class OverviewMetrics
                 if (assessedWords.Count > 0) unknown++;
                 continue;
             }
-            var placement = CompareSemantics.Place(new CompareWordFacts(
-                word.ProjectStanding, word.Outcome,
-                word.IsIncomplete, word.Morphology,
-                word.ReadingGrades, word.MissedApprovedCount ?? 0));
-            rejectedAnalysesRebuilt += word.ReadingGrades?.Count(grade =>
-                StringComparer.Ordinal.Equals(grade, ReadingGrade.Disapproved)) ?? 0;
+            var comparison = CompareSemantics.Compare(new CompareWordFacts(word.ProjectStanding, word.Outcome,
+                word.IsIncomplete, word.Morphology, word.ReadingGrades, word.MissedApprovedCount ?? 0)
+            { AnalysisComparison = word.AnalysisComparison });
+            var placement = CompareSemantics.PlacementOf(comparison);
+            rejectedAnalysesRebuilt += comparison.Availability == AnalysisComparisonAvailability.Available
+                ? comparison.Readings.Count(reading => reading.Matches.Any(match => match.Opinion == ReadingGrade.Disapproved))
+                : word.ReadingGrades?.Count(grade => grade == ReadingGrade.Disapproved) ?? 0;
             switch (placement.Column)
             {
                 case CompareColumnKind.Match:
@@ -148,7 +161,7 @@ internal static class OverviewMetrics
                     skipped++;
                     break;
             }
-            var meaning = CompareSemantics.MeaningOf(placement.Standing, placement.Column);
+            var meaning = CompareSemantics.MeaningOfCode(comparison.MeaningCode);
             if (StringComparer.Ordinal.Equals(placement.Standing, SIL.Motif.Contract.Responses.ProjectStanding.Approved))
             {
                 approved++;
@@ -211,7 +224,8 @@ internal static class OverviewMetrics
 internal static class OverviewLookFirstBuilder
 {
     public static OverviewLookFirst Build(IReadOnlyList<AssessmentWordResult> words,
-        IReadOnlyList<AssessedWord> measuredWords, GrammarCheckResponse? grammarCheck)
+        IReadOnlyList<AssessedWord> measuredWords, GrammarCheckResponse? grammarCheck,
+        bool associationsAvailable = true)
     {
         var lost = words.Where(word => Place(word) is
             { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoParse }).ToArray();
@@ -222,7 +236,8 @@ internal static class OverviewLookFirstBuilder
         var namedIds = (grammarCheck?.Findings ?? []).SelectMany(finding => finding.Subject)
             .Where(part => part.Reach is not null).SelectMany(part => part.Reach!.AllomorphIds
                 .Concat(part.Reach.GrammaticalInfoIds)).Select(IdKey).ToHashSet(StringComparer.Ordinal);
-        var sharedGroups = ObjectUsesQuery.SharedBy(words, lost.Select(word => word.Word).ToArray());
+        var sharedGroups = associationsAvailable
+            ? ObjectUsesQuery.SharedBy(words, lost.Select(word => word.Word).ToArray()) : [];
         var distinctiveSharedGroups = sharedGroups.Where(item => item.Words.Count < lost.Length).ToArray();
         var shared = (distinctiveSharedGroups.Length > 0 ? distinctiveSharedGroups : sharedGroups)
             .Take(2)
@@ -235,12 +250,14 @@ internal static class OverviewLookFirstBuilder
         return new OverviewLookFirst(lost.Select(word => word.Word).ToArray(), shared,
             stopped.Select(word => word.Word).ToArray(), stoppedTimes.Length == stopped.Length && stopped.Length > 0
                 ? stoppedTimes.Sum() : null,
-            candidateDifferent);
+            candidateDifferent)
+        {
+            SharedLostMorphemesAvailable = associationsAvailable,
+        };
     }
 
-    private static ComparePlacement Place(AssessmentWordResult word) => CompareSemantics.Place(new CompareWordFacts(
-        word.ProjectStanding, word.Outcome, word.IsIncomplete, word.Morphology, word.ReadingGrades,
-        word.MissedApproved?.Count ?? 0));
+    private static ComparePlacement Place(AssessmentWordResult word) =>
+        CompareSemantics.PlacementOf(CompareSemantics.Compare(word));
 
     private static string IdKey(string id) => Guid.TryParse(id, out var guid) ? guid.ToString("D") : id;
 }

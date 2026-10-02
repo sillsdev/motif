@@ -313,7 +313,11 @@ public sealed record ObjectUseWord(WordRow Row)
 /// <param name="Meaning">The meaning, in the Matrix's words, such as <c>Lost</c>.</param>
 /// <param name="Tone">The tone that meaning takes.</param>
 /// <param name="Words">How many of the words hold it.</param>
-public sealed record ObjectUseMeaning(string Meaning, WordRowTone Tone, int Words);
+public sealed record ObjectUseMeaning(string Meaning, WordRowTone Tone, int Words)
+{
+    /// <summary>The stable comparison category, independent of the displayed phrase.</summary>
+    public string MeaningCode { get; init; } = "not-parsed";
+}
 
 /// <summary>A morpheme some words share: one allomorph in one grammatical info, matched by identity.</summary>
 /// <param name="Morpheme">The morph as the first word that uses it shows it.</param>

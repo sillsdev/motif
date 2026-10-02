@@ -242,7 +242,13 @@ public static class CommandTextRenderer
             text.AppendLine("    " + entry.Source + ": " + entry.Count);
         text.AppendLine("  Assessments: " + string.Join(", ", response.AssessmentIds));
         text.AppendLine();
-        text.Append(response.SummaryMarkdown);
+        text.AppendLine(response.SummaryMarkdown);
+        foreach (var word in response.Words)
+        {
+            if (word.Comparison is not { } comparison) continue;
+            text.AppendLine($"  {word.Word}: {comparison.Headline}");
+            if (comparison.Detail.Length > 0) text.AppendLine("    " + comparison.Detail);
+        }
         return text.ToString();
     }
 
@@ -596,6 +602,7 @@ public static class CommandTextRenderer
                 $", {CountLabel(word.Calls, "call", "calls")}, " +
                 (word.ElapsedNs is { } ns ? (ns / 1_000_000d).ToString("N3", CultureInfo.CurrentCulture) + " ms" : "time not recorded");
             text.AppendLine($"    {word.Row.Word}: {word.Row.Meaning}{timing}");
+            if (word.Row.MeaningDetail.Length > 0) text.AppendLine("      " + word.Row.MeaningDetail);
         }
         if (words.NotCountingDisapproved > 0)
             text.AppendLine($"    Not counting {words.NotCountingDisapproved:N0} disapproved");

@@ -215,7 +215,8 @@ public sealed partial class OverviewPageModel : PageModel
             var rows = new List<OverviewLookFirstRow>();
             if (data.ApprovedLostWords.Count > 0)
             {
-                var detail = string.Join(" · ", data.SharedLostMorphemes.Select(morpheme =>
+                var detail = !data.SharedLostMorphemesAvailable ? "Shared morpheme information is unavailable." :
+                    string.Join(" · ", data.SharedLostMorphemes.Select(morpheme =>
                     $"{SpeedText.Count(morpheme.WordCount, "word", "words")} use {morpheme.Form}" +
                     (morpheme.NamedByWarning ? " (named by a grammar warning)" : string.Empty)));
                 rows.Add(new OverviewLookFirstRow("1",

@@ -931,6 +931,79 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal("Morphology evidence unavailable: invalid shape.", response.Words[4].EvidenceStatus);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void AssessmentCapturesEveryMatchedOpinionAndNumericQueriesUseIt(bool undecided, bool incomplete)
+    {
+        using var seeded = NewSeededScratch();
+        ApprovedMorphology disapprovedMorphology;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(seeded.FwDataPath))
+        {
+            var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+                .Single(word => word.Form.VernacularDefaultWritingSystem.Text == SeededProject.AnalysedWordForm);
+            var source = wordform.HumanApprovedAnalyses.Single();
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                if (undecided) cache.LangProject.DefaultUserAgent.SetEvaluation(source, Opinions.noopinion);
+                var disapproved = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(disapproved);
+                foreach (var original in undecided ? source.MorphBundlesOS.Take(1) : source.MorphBundlesOS)
+                {
+                    var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                    disapproved.MorphBundlesOS.Add(bundle);
+                    bundle.MorphRA = original.MorphRA;
+                    bundle.MsaRA = original.MsaRA;
+                }
+                cache.LangProject.DefaultUserAgent.SetEvaluation(disapproved, Opinions.disapproves);
+            });
+            disapprovedMorphology = Assert.Single(ApprovedMorphologyReader.ReadDisapproved(cache)[SeededProject.AnalysedWordForm]);
+            new FwDataProjectLoader().Save(cache);
+        }
+        var morphology = new ParseWordEvidence(SIL.Motif.Host.Parser.ParseMorphEvidence.Schema, 0,
+            SeededProject.AnalysedWordForm, 5, incomplete, false, false,
+            [new ParseAnalysis(disapprovedMorphology.Morphs.Select(morph =>
+                new ParseMorph(morph.Form, morph.Msa, morph.InflType, null)).ToArray())], []);
+        var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind == AssessmentKind.ParseTime
+            ? new AssessmentRaw.Batch(new SIL.Motif.Host.Parser.BatchAnalysis(
+                [new(0, SeededProject.AnalysedWordForm, 5, SIL.Motif.Host.Parser.WordOutcome.Analysed, "sig")
+                    { Morphology = morphology }], 1000, seeded.FwDataPath, []) { PerWordStepLimit = 200000 })
+            : new AssessmentRaw.WordMeasurements([]))
+        {
+            CaptureEvidence = (scope, candidate) => FakeAssessmentEvidence.Capture(_managedRootsParent, scope, candidate),
+        };
+        var outcome = AssessCommand.Run(new AssessRequest(seeded.FwDataPath,
+            new SelectionRequest(false, [], [SeededProject.AnalysedWordForm], false, null)),
+            NewManagedRoot(), assessor, NewInvoker(), null, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var row = Assert.Single(outcome.Value!.Words);
+        Assert.Equal(incomplete ? WordRowOutcome.Stopped : WordRowOutcome.Different, row.Comparison!.Outcome);
+        Assert.Single(row.Comparison.RebuiltDisapproved);
+        if (!incomplete && undecided) Assert.Equal("Your undecided analysis wasn't built", row.Comparison.Detail);
+        if (!undecided) Assert.Equal(2, Assert.Single(row.Comparison.Readings).Matches.Count);
+        var parse = outcome.Value.AssessmentIds.Select(OpenRepository(seeded.FwDataPath).Get)
+            .Single(record => record.Kind == AssessmentKinds.ParseTime);
+        var stored = Assert.Single(parse.Words!);
+        Assert.NotNull(stored.AnalysisComparison);
+        Assert.Equal(ProjectionJson.Serialize(row.AnalysisComparison), ProjectionJson.Serialize(stored.AnalysisComparison));
+        Assert.True(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [], [SeededProject.AnalysedWordForm])).Succeeded);
+        var current = CurrentEvidenceQuery.ReadCurrentEvidence(seeded.FwDataPath);
+        Assert.True(current.Succeeded, current.Refusal?.Message);
+        Assert.Equal(ProjectionJson.Serialize(row.Comparison), ProjectionJson.Serialize(Assert.Single(current.Value!.Assessment!.Words).Comparison));
+        var overview = OverviewCommand.Overview(new OverviewRequest(seeded.FwDataPath));
+        Assert.True(overview.Succeeded, overview.Refusal?.Message);
+        Assert.Equal(incomplete ? 0 : 1, overview.Value!.Accuracy.Violations);
+        Assert.Equal(1, overview.Value.Accuracy.RejectedAnalysesRebuilt);
+        var cell = new TimingWordSet.MatrixCell(undecided ? TimingStanding.Candidate : TimingStanding.Approved,
+            incomplete ? CompareColumnKind.Timeout : CompareColumnKind.NoMatch);
+        var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, WordSet: cell.ToWireValue()));
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Equal(1, timing.Value!.WordCount);
+    }
+
     [Fact]
     public void AReadingMatchingACandidateIsGradedCandidate()
     {

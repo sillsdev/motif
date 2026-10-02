@@ -30,6 +30,15 @@ public sealed record AssessCommandResponse(
 public sealed record AssessmentWordResult(
     string Word, string Outcome, bool IsIncomplete, string CompletionStatus, int? ElapsedMs, string? RawSignature)
 {
+    /// <summary>The shared comparison supplied by the command, including analysis matches and meaning identity.</summary>
+    public WordComparison? Comparison { get; init; }
+
+    /// <summary>Analysis identities and opinions captured against the measured Baseline.</summary>
+    public WordAnalysisComparison? AnalysisComparison { get; init; }
+
+    /// <summary>Whether Baseline analyses were read, including a word with no stored analyses.</summary>
+    public bool StoredAnalysesAvailable { get; init; }
+
     public ParseWordEvidence? Morphology { get; init; }
     /// <summary><see cref="ParseWordEvidence.Analyses"/>, reading for reading, as forms, glosses and categories.</summary>
     public IReadOnlyList<ParserReading>? Readings { get; init; }

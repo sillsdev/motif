@@ -22,7 +22,11 @@ motif assess "C:\FieldWorks\Projects\Koro\Koro.fwdata" --words words.txt --repla
 
 ## What it prints
 
-Human output reports the Selection and stored Assessment ids. JSON returns the Baseline, Selection, and Assessment results. No grammar verdict is inferred from the measurements.
+Human output reports the Selection and stored Assessment ids, followed by each word's comparison headline and any qualification on a second line. For example, when a completed search builds a Disapproved analysis but misses the word's undecided analysis, it prints “Rebuilt an analysis you Disapproved” and “Your undecided analysis wasn't built”.
+
+JSON returns the Baseline, Selection, and Assessment results. Each word's `comparison` carries its standing, outcome, stable `meaningCode`, headline, detail, completion flag and tone, plus matched analysis identities and their individual opinions, missing Approved analyses, rebuilt Disapproved analyses and extra readings. This is the same comparison used by the window; display wording is not a grouping identity.
+
+The comparison's `availability` distinguishes `Available` (analysis identities were compared), `RecordedGradesOnly` (recorded reading grades are known, but matched analysis identities are unknown), and `Unavailable` (no morphology comparison was recorded or reconstructed). Unavailable evidence is not a known empty set. An incomplete search makes no claim that an Approved or undecided analysis was not built. No grammar verdict is inferred from the measurements.
 
 ## Related commands
 

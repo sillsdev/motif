@@ -179,8 +179,15 @@ public static class ObjectUsesQuery
         .SelectMany(analysis => analysis.Morphs);
 
     internal static ObjectUseWords Split(IReadOnlyList<ObjectUseWord> words) => new(words, words
-        .GroupBy(word => (word.Row.Meaning, word.Row.Tone))
-        .Select(group => new ObjectUseMeaning(group.Key.Meaning, group.Key.Tone, group.Count()))
+        .GroupBy(word => word.Row.MeaningCode, StringComparer.Ordinal)
+        .Select(group =>
+        {
+            var (meaning, family) = CompareSemantics.MeaningOfCode(group.Key);
+            return new ObjectUseMeaning(meaning, WordRowProjection.ToneOf(family), group.Count())
+            {
+                MeaningCode = group.Key,
+            };
+        })
         .OrderByDescending(meaning => meaning.Words).ToArray());
 
     private static bool SameId(string? left, string? right) =>
