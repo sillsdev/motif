@@ -15,7 +15,7 @@
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
-      <CheckBox Content="Whole tree" IsChecked="{Binding ExpertWholeTree, Mode=TwoWay}"
+      <CheckBox Content="Every step" IsChecked="{Binding ExpertWholeTree, Mode=TwoWay}"
                 AutomationProperties.Name="Expert whole tree" ToolTip.Tip="Turn off to show only the chosen attempt's recorded ancestors and terminal event." />
     </WrapPanel>
     <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
@@ -30,6 +30,7 @@
         <DataTemplate x:DataType="vm:TraceStepViewModel">
           <Border Classes="hoverReveal" BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
                   Padding="{DynamicResource Component.TryWord.SmallInset}" Background="{DynamicResource Intent.Clear}">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                 <views:TraceNotationToken Classes="traceToken" Command="{Binding $parent[views:ExpertTracePanel].((vm:TraceWordViewModel)DataContext).SelectExpertStepCommand}" CommandParameter="{Binding}"
@@ -69,6 +70,8 @@
                 </views:TraceNotationToken>
               </StackPanel>
             </Grid>
+            <views:CopyableTextBlock Text="{Binding ReadableText}" IsVisible="{Binding IsSelected}" TextWrapping="Wrap" />
+            </StackPanel>
           </Border>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
@@ -114,12 +117,13 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <TextBlock Text="Readable" />
             <views:CopyableTextBlock Text="{Binding ExpertReadableText}" TextWrapping="Wrap" />
-            <views:CopyableTextBlock Text="{Binding SelectedStep.RecordedRejectionText}" TextWrapping="Wrap" />
+            <Expander Header="Recorded rejection details" IsExpanded="False">
+              <views:CopyableTextBlock Text="{Binding SelectedStep.RecordedRejectionText}" TextWrapping="Wrap" />
+            </Expander>
           </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Snug}">
-            <TextBlock Text="Parser record" />
+          <Expander Grid.Column="1" Header="Parser record" IsExpanded="False">
             <views:CopyableTextBlock Text="{Binding ExpertRawRecord}" Classes="traceNotation" TextWrapping="Wrap" />
-          </StackPanel>
+          </Expander>
         </Grid>
         <Expander Header="Environment notation" IsExpanded="False" AutomationProperties.Name="Expert environment notation">
           <StackPanel>

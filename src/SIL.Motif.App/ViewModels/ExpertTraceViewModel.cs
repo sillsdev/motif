@@ -44,6 +44,9 @@ public sealed partial class TraceWordViewModel
     partial void OnSelectedCandidateChanged(TraceCandidateViewModel? value) => NotifyExpertRows();
     partial void OnSelectedStepChanged(TraceStepViewModel? value)
     {
+        foreach (var step in _expertTree.Concat(Candidates.SelectMany(candidate => candidate.Steps)))
+            step.IsSelected = value?.RecordedStep.StepId == step.RecordedStep.StepId;
+        OnPropertyChanged(nameof(PlainSelectedStep));
         OnPropertyChanged(nameof(ExpertReadableText));
         OnPropertyChanged(nameof(ExpertRawRecord));
         OnPropertyChanged(nameof(ExpertEnvironmentTokens));
@@ -53,6 +56,9 @@ public sealed partial class TraceWordViewModel
     private void RebuildExpert()
     {
         _expertTree = Roots.SelectMany(Flatten).ToArray();
+        OnPropertyChanged(nameof(PlainSteps));
+        OnPropertyChanged(nameof(PlainFoldText));
+        OnPropertyChanged(nameof(PlainSelectedStep));
         OnPropertyChanged(nameof(ExpertAttempts));
         NotifyExpertVisibility();
         NotifyExpertRows();
@@ -77,6 +83,26 @@ public sealed partial class TraceWordViewModel
         OnPropertyChanged(nameof(ExpertPhonologicalEvents));
         OnPropertyChanged(nameof(ExpertScopeText));
         OnPropertyChanged(nameof(HasExpertPhonologicalEvents));
+    }
+
+    /// <summary>Compact recorded events; context-only levels and lookups stay available in Expert.</summary>
+    public IReadOnlyList<TraceStepViewModel> PlainSteps => _expertTree.Where(step =>
+        step.KindText is not ("Rule level" or "Lexical lookup" or "Word")).ToArray();
+
+    /// <summary>How much recorded context the Plain rows fold away.</summary>
+    public string PlainFoldText => _expertTree.Count(step => step.KindText is "Rule level" or "Lexical lookup") is > 0 and var count
+        ? $"{count:N0} rule steps · open in Expert" : string.Empty;
+
+    /// <summary>The Plain row for the selected recorded event, including events selected in Expert.</summary>
+    public TraceStepViewModel? PlainSelectedStep
+    {
+        get => PlainSteps.FirstOrDefault(step => step.RecordedStep.StepId == SelectedStep?.RecordedStep.StepId);
+        set
+        {
+            // A filtered Plain list must not clear Expert's selected event.
+            if (value is not null && value.RecordedStep.StepId != SelectedStep?.RecordedStep.StepId)
+                SelectedStep = value;
+        }
     }
 
     /// <summary>Recorded events in parser traversal order; lineage uses only the returned ancestor path.</summary>

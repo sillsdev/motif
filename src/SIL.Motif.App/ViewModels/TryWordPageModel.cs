@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
@@ -22,6 +23,7 @@ public sealed class TryWordPageModel : PageModel
     private CancellationTokenSource? _resultContextCancellation;
     private int _timingGeneration;
     private string? _assessmentId;
+    private TimingResponse? _earlierTiming;
     private int _wordContextGeneration;
     private CancellationTokenSource? _wordContextCancellation;
 
@@ -87,7 +89,40 @@ public sealed class TryWordPageModel : PageModel
     }
 
     /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
-    public IReadOnlyList<ParserReadingViewModel> FieldWorksAnalyses { get; private set; } = [];
+    public IReadOnlyList<TryWordStoredAnalysis> FieldWorksAnalyses { get; private set; } = [];
+
+    /// <summary>The distinct opinions actually stored for the returned word.</summary>
+    public IReadOnlyList<TryWordOpinion> ResultOpinions => FieldWorksAnalyses.Select(analysis => analysis.Opinion)
+        .Distinct().Select(opinion => new TryWordOpinion(opinion, WindowWords.Of(opinion) + " in FieldWorks")).ToArray();
+
+    /// <summary>A comparison meaning only when the trace establishes a completed search with no analysis.</summary>
+    private (string Word, MeaningTone Tone) ResultComparison => Trace.Result is { Parsed: false, Complete: true, InvalidShape: false } &&
+        ResultWordContext is { HasBaseline: true, IsInFieldWorks: not null } context
+        ? WindowWords.MeaningOf(Standing(context), ParserOutcome.NoParse)
+        : (string.Empty, MeaningTone.Neutral);
+
+    public string ResultMeaning => ResultComparison.Word;
+    public Mark ResultMeaningMark => Mark.Of(ResultComparison.Tone);
+
+    private static string Standing(WordContextResponse context) => !context.IsInFieldWorks!.Value
+        ? ProjectStanding.NotPresent
+        : context.Analyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved
+        : context.Analyses.Any(analysis => WindowWords.OpinionOf(analysis.StoredAnalysisOpinion) == OpinionMarkKind.Unknown)
+            ? ProjectStanding.Candidate
+        : context.Analyses.Count > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
+
+    /// <summary>The returned trace's grammar capture, never borrowed from the current workspace.</summary>
+    public string TracedGrammarText => Trace.Result?.HostCapture?.Baseline is { } baseline
+        ? "Traced with the grammar of the Baseline from " + LocalDate(DateTimeOffset.Parse(
+            baseline.Token.CapturedUtc, CultureInfo.InvariantCulture))
+        : Trace.Result?.GrammarSource is { Length: > 0 } ? "Traced with a saved grammar; its Baseline was not recorded."
+        : "The grammar of this trace was not recorded.";
+
+    /// <summary>Different recorded project states, without inferring that their grammars or outcomes differ.</summary>
+    public string TraceBaselineWarning => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&
+        _earlierTiming?.Baseline is { } measured && !traced.HasSameSemanticIdentity(measured) &&
+        _earlierTiming.Words.Any(word => word.Word == Trace.Result.Word && word.Origin is not null)
+        ? "This trace and the earlier parse used different Baselines. Refresh and try again." : string.Empty;
 
     /// <summary>The diagnostic tools beside the page's trace.</summary>
     public DiagnosticToolsViewModel Diagnostics { get; }
@@ -199,6 +234,10 @@ public sealed class TryWordPageModel : PageModel
             RefreshExpected(Trace.WordToTry);
         else if (e.PropertyName == nameof(TraceWordViewModel.Result))
         {
+            OnPropertyChanged(nameof(TracedGrammarText));
+            _timingGeneration++;
+            ShowEarlierTiming(null);
+            if (Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
             _ = RefreshResultContextAsync();
             OpenInTextsCommand.NotifyCanExecuteChanged();
             HandOffCommand.NotifyCanExecuteChanged();
@@ -206,12 +245,6 @@ public sealed class TryWordPageModel : PageModel
         }
         else if (e.PropertyName == nameof(TraceWordViewModel.IsLoading) && Trace.IsLoading)
             TrackRecent(Trace.WordToTry.Trim());
-        else if (e.PropertyName == nameof(TraceWordViewModel.Candidates))
-        {
-            _timingGeneration++;
-            ShowEarlierTiming(null);
-            if (Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
-        }
     }
 
     private void OnWordsPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -277,13 +310,16 @@ public sealed class TryWordPageModel : PageModel
     {
         ResultWordContext = context;
         FieldWorksAnalyses = context is { HasBaseline: true, IsInFieldWorks: true }
-            ? context.Analyses.Select((reading, index) => new ParserReadingViewModel(index + 1, reading, null)).ToArray()
+            ? context.Analyses.Select(reading => new TryWordStoredAnalysis(reading)).ToArray()
             : [];
         OnPropertyChanged(nameof(ResultWordContext));
         OnPropertyChanged(nameof(FieldWorksContextStatus));
         OnPropertyChanged(nameof(FieldWorksContextSource));
         OnPropertyChanged(nameof(FieldWorksContextIsStale));
         OnPropertyChanged(nameof(FieldWorksAnalyses));
+        OnPropertyChanged(nameof(ResultOpinions));
+        OnPropertyChanged(nameof(ResultMeaning));
+        OnPropertyChanged(nameof(ResultMeaningMark));
     }
 
     private void TrackRecent(string word)
@@ -322,6 +358,8 @@ public sealed class TryWordPageModel : PageModel
 
     private void ShowEarlierTiming(TimingResponse? timing)
     {
+        _earlierTiming = timing;
+        OnPropertyChanged(nameof(TraceBaselineWarning));
         EarlierRuleTimes.Clear();
         EarlierTimingTitle = EarlierTimingSource = EarlierShareHeader = EarlierOverrunText = string.Empty;
         if (timing is { Aggregates.Count: > 0 } && Trace.Result is { } result &&
@@ -342,7 +380,7 @@ public sealed class TryWordPageModel : PageModel
                     IsOtherTime: false));
             }
             if (timing.Attribution.NotAttributedMs is { } other && other >= TimingShare.SmallestShownMs)
-                EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Other time", string.Empty,
+                EarlierRuleTimes.Add(new TryWordEarlierRuleTime("Not attributed", string.Empty,
                     SpeedText.PerWord(other), ShareOf(timing.Attribution.NotAttributedShare), IsOtherTime: true));
             EarlierTimingTitle = $"Time from the parse of {origin.MeasuredUtc.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}";
             EarlierTimingSource = "Not from this traced search. " + (wordMs is { } took
@@ -375,4 +413,20 @@ public sealed record TryWordEarlierRuleTime(string Rule, string KindLabel, strin
 {
     /// <summary>The recorded timing kind, absent for rows that gather several kinds or record no object time.</summary>
     public string? KindTip => KindLabel.Length > 0 ? KindLabel : null;
+}
+
+/// <summary>One stored analysis, with its FieldWorks opinion rendered in the window's words.</summary>
+public sealed class TryWordStoredAnalysis(ParserReading reading)
+{
+    public OpinionMarkKind Opinion { get; } = WindowWords.OpinionOf(reading.StoredAnalysisOpinion);
+    public Mark OpinionMark => Mark.Of(Opinion);
+    public string OpinionLabel => WindowWords.Of(Opinion);
+    public string Text { get; } = string.Join(" + ", reading.Morphs.Select(morph => morph.Form)) + " = " +
+        string.Join(" + ", reading.Morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss));
+}
+
+/// <summary>An opinion with its explicit FieldWorks source for the result line.</summary>
+public sealed record TryWordOpinion(OpinionMarkKind Opinion, string Label)
+{
+    public Mark Mark => Mark.Of(Opinion);
 }

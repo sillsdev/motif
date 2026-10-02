@@ -108,7 +108,7 @@
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding ShowsClosestAttempts}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Text="Attempts that got furthest" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before they stopped." />
+          <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." />
         </StackPanel>
         <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
           <ItemsControl.ItemTemplate>

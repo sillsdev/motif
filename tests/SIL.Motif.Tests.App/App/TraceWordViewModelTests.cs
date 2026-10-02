@@ -28,7 +28,7 @@ public sealed class TraceWordViewModelTests
 
         foreach (var trace in new[] { live, reopened })
         {
-            Assert.Equal("Stopped", Assert.Single(trace.ClosestAttempts).StopHeadline);
+            Assert.Equal("No analysis found", Assert.Single(trace.ClosestAttempts).StopHeadline);
             Assert.Null(Assert.Single(trace.Reading!.StopGroups).RuleRefId);
             Assert.Equal("Vowel harmony", trace.Root!.Children[0].Source);
             trace.Candidates[0].IsTreeContextExpanded = true;
@@ -305,7 +305,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal([4, 1], trace.StopGroups.Select(group => group.Count));
         Assert.Equal(1.0, trace.StopGroups[0].Share);
         Assert.Equal(0.25, trace.StopGroups[1].Share);
-        Assert.Contains("5 attempts stopped", trace.StopGroupsSummary, StringComparison.Ordinal);
+        Assert.Contains("5 attempts failed", trace.StopGroupsSummary, StringComparison.Ordinal);
 
         // Unfiltered, the closest three of all five: most morphemes first.
         Assert.Equal(["hawajafik", "hawafika", "hawajaf"], trace.ClosestAttempts.Select(attempt => attempt.Surface));
@@ -318,7 +318,7 @@ public sealed class TraceWordViewModelTests
 
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
         Assert.Equal(3, trace.ClosestAttempts.Count);
-        Assert.Equal("Show the other attempt stopped by -a", trace.MoreAttemptsText);
+        Assert.Equal("Show the other attempt refused by -a", trace.MoreAttemptsText);
         trace.ShowEveryAttemptCommand.Execute(null);
         Assert.Equal(4, trace.ClosestAttempts.Count);
 
@@ -365,7 +365,7 @@ public sealed class TraceWordViewModelTests
         Assert.True(candidate.IsFailure);
         Assert.Equal("matin", candidate.Surface);
         Assert.Equal(2, candidate.Morphs.Count);
-        Assert.Equal("Stopped by -lu ‘APPL’", candidate.StopHeadline);
+        Assert.Equal("Refused by -lu ‘APPL’", candidate.StopHeadline);
         Assert.Equal(captured ? "No rule may apply after the final template."
             : "Explanation not recorded (reason code: NonPartialRuleProhibitedAfterFinalTemplate).", candidate.StopReason);
         Assert.Equal(captured ? "No rule may apply after the final template." : null, candidate.Explanation);
@@ -408,11 +408,11 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void StepOutcomesReadAsAppliedStoppedOrTried()
+    public void StepOutcomesReadAsAppliedRefusedOrTried()
     {
         Assert.Equal("applied", new TraceStepViewModel(
             new TraceStep("MorphologicalRule", "lu", "a", "b", null, []) { OutcomeStatus = "succeeded" }, null).StatusText);
-        Assert.Equal("stopped", new TraceStepViewModel(
+        Assert.Equal("refused", new TraceStepViewModel(
             new TraceStep("MorphologicalRule", "lu", "a", null, "Pattern", []), null).StatusText);
         Assert.Equal("tried", new TraceStepViewModel(
             new TraceStep("MorphologicalRule", "lu", "a", "b", null, []) { OutcomeStatus = "attempted" }, null).StatusText);
@@ -733,7 +733,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal("Search incomplete: The search reached its limit.", trace.SearchStatusText);
         Assert.Equal("4", trace.Effort[0].Uses);
         Assert.Equal("2", trace.Effort[0].Work);
-        Assert.Equal("stopped", trace.Candidates[1].StatusText);
+        Assert.Equal("refused", trace.Candidates[1].StatusText);
     }
     [Fact]
     public void LoadingProducerEnvelopeKeepsRawJsonAndRecordedRichAnalysis()
@@ -765,7 +765,7 @@ public sealed class TraceWordViewModelTests
         Assert.Equal(1234, trace.Result!.HostCapture!.WallElapsedMs);
         Assert.Contains("ar", trace.WritingSystemSummary, StringComparison.Ordinal);
         Assert.Contains("project-a", trace.CaptureDetails, StringComparison.Ordinal);
-        Assert.Equal("stopped", trace.Root!.StatusText);
+        Assert.Equal("refused", trace.Root!.StatusText);
     }
 
     [Fact]

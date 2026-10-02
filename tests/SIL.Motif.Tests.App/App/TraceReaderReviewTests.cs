@@ -50,8 +50,8 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Theory]
-    [InlineData("matinlu", "4 attempts stopped")]
-    [InlineData("captured-label", "1 attempt stopped")]
+    [InlineData("matinlu", "4 attempts failed")]
+    [InlineData("captured-label", "1 attempt failed")]
     public void UnattributedTerminalOutcomesHaveNoRuleCauseClaim(string scene, string expected)
     {
         var model = Scene(scene);
@@ -239,7 +239,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
                     if (scene == "zodut") model.SelectedStep = model.FilteredRoots[0].Children[0].Children[0];
                 }
                 if (scene == "unavailable")
-                    window.GetVisualDescendants().OfType<Expander>().Single(expander => expander.Header?.ToString() == "Recorded source analyses").IsExpanded = true;
+                    window.GetVisualDescendants().OfType<Expander>().Single(expander => Avalonia.Automation.AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
                 PageScreenshots.Settle(window);
                 using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No trace frame rendered.");
                 frame.Save(Path.Combine(folder, $"trace-review-{scene}-{theme}-{width}.png"), PngBitmapEncoderOptions.Default);

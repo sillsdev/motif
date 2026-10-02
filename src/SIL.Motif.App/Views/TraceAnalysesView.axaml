@@ -21,8 +21,6 @@
                                          IsVisible="{Binding HasRepeatedRecords}"
                                          ToolTip.Tip="The trace recorded this result more than once; distinct derivations are not established." />
               </Grid>
-              <views:CopyableTextBlock Text="{Binding LegacyMorphemesText}" Classes="muted"
-                                       IsVisible="{Binding HasLegacyMorphemes}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                                        IsVisible="{Binding HasProjectionError}"
                                        Classes="muted" TextWrapping="Wrap" />
@@ -73,7 +71,7 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <Expander Header="Recorded source analyses" IsExpanded="False" IsVisible="{Binding IsExpert}">
+    <Expander Header="Parser record" AutomationProperties.Name="Recorded source analyses" IsExpanded="{Binding ShowParserRecord, Mode=TwoWay}" IsVisible="{Binding IsExpert}">
       <ItemsControl ItemsSource="{Binding SourceAnalyses}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="responses:TraceAnalysis">
@@ -81,6 +79,7 @@
               <views:CopyableTextBlock Text="{Binding AnalysisId, StringFormat='Producer id: {0}'}" />
               <views:CopyableTextBlock Text="{Binding Index, StringFormat='Recorded index: {0}'}" />
               <views:CopyableTextBlock Text="{Binding Surface}" />
+              <views:CopyableTextBlock Text="{Binding LegacyMorphemes, StringFormat='Parser morphemes: {0}'}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionStatus, StringFormat='Projection status: {0}'}" />
               <views:CopyableTextBlock Text="{Binding ProjectionErrorCode}" TextWrapping="Wrap" />
               <views:CopyableTextBlock Text="{Binding ProjectionError}" TextWrapping="Wrap" />

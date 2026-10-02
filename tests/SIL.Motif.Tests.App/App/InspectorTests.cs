@@ -341,8 +341,8 @@ public sealed class InspectorTests
             .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible);
 
     private static InspectLink RecordedRuleLink(Window window, TraceTimingKey? timingKey = null) =>
-        window.GetVisualDescendants().OfType<TreeView>()
-            .Single(tree => AutomationProperties.GetName(tree) == "Recorded trace tree")
+        window.GetVisualDescendants().OfType<ListBox>()
+            .Single(list => AutomationProperties.GetName(list) == "Plain trace steps")
             .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible &&
                 (timingKey is null || link.DataContext is TraceStepViewModel step &&
                     step.Reference?.TimingKey == timingKey));

@@ -89,6 +89,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
     [ObservableProperty]
     private TraceStepViewModel? _selectedStep;
 
+    [ObservableProperty]
+    private bool _showParserRecord;
+
     public IReadOnlyList<TraceCandidateViewModel> Candidates => _candidates;
     public WordTraceReading? Reading => _reading;
 
@@ -113,6 +116,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         var candidateViews = _candidates.ToDictionary(candidate => candidate.AttemptId!, StringComparer.Ordinal);
         _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate.AttemptId!]).ToArray() ?? [];
         ShowDroppedPaths = false;
+        ShowParserRecord = false;
         Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
         OnPropertyChanged(nameof(Effort));
         OnPropertyChanged(nameof(InspectorTrace));
@@ -306,7 +310,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         : "No terminal attempt was recorded.";
 
     /// <summary>Over the groups: why the word failed, or, for a word that parsed, why its other attempts did.</summary>
-    public string StopGroupsHeading => Result is { Parsed: true } ? "Why the other attempts stopped" : "Why it did not parse";
+    public string StopGroupsHeading => Result is { Parsed: true } ? "Why the other attempts failed" : "Why it did not parse";
 
     /// <summary>One line over the groups counting recorded stopped attempts.</summary>
     public string StopGroupsSummary
@@ -316,7 +320,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (_stopGroups.Count == 0) return string.Empty;
             var attempts = _stopGroups.Sum(group => group.Count);
             var tries = attempts == 1 ? "1 attempt" : $"{attempts:N0} attempts";
-            return $"{tries} stopped · choose a group to see its recorded outcomes";
+            return $"{tries} failed · choose a group to see its recorded outcomes";
         }
     }
 
@@ -393,7 +397,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             var hidden = MatchingAttempts().Count() - ClosestAttempts.Count;
             var others = hidden == 1 ? "attempt" : $"{hidden:N0} attempts";
             return hidden <= 0 ? string.Empty
-                : SelectedStopGroup is { } group ? $"Show the other {others} stopped by {group.RuleText}"
+                : SelectedStopGroup is { } group ? $"Show the other {others} refused by {group.RuleText}"
                 : $"Show the other {others}";
         }
     }
@@ -983,7 +987,7 @@ public sealed partial class TraceStopGroupViewModel : ObservableObject
         RuleText = rule is { Length: > 0 } named ? named : "Stopping rule not recorded";
         ReasonText = explanation is { Length: > 0 } sentence ? sentence
             : reasonCode is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
-            : "The attempt stopped without a recorded reason.";
+            : "PanGloss didn't record why.";
         CountText = count.ToString("N0");
     }
 
@@ -1062,8 +1066,8 @@ public sealed class TraceCandidateViewModel : ObservableObject
         StoppedByRule = labels?.Resolve(candidate.StoppedByRefId, candidate.StoppedByRule) ?? candidate.StoppedByRule;
         StoppedByRuleId = candidate.StoppedByRuleId;
         StopHeadline = Succeeded ? "Built the word"
-            : StoppedByRule is { Length: > 0 } rule ? $"Stopped by {rule}"
-            : "Stopped";
+            : StoppedByRule is { Length: > 0 } rule ? $"Refused by {rule}"
+            : "No analysis found";
         StopReason = Explanation is { Length: > 0 } explanation ? explanation
             : FailureReason is { Length: > 0 } code ? TraceStepKinds.ExplainReason(code)
             : "Reason not recorded";
@@ -1123,7 +1127,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
     public IReadOnlyList<TraceStepViewModel> RecordedTreeContext => !IsTreeContextExpanded ? [] : _context ??= _loadContext();
     public string Text { get; }
     public string Gloss { get; }
-    public string StatusText => IsBlocked ? "Blocked" : Succeeded ? "built the word" : IsFailure ? "stopped" : "tried";
+    public string StatusText => IsBlocked ? "Blocked" : Succeeded ? "built the word" : IsFailure ? "refused" : "tried";
 
     /// <summary>How this attempt ended: it built the word, a rule refused it, or it was only tried.</summary>
     public Mark StepMark => Mark.Of(Succeeded ? TraceStepMark.Built : IsFailure ? TraceStepMark.Refused : TraceStepMark.Tried);
@@ -1206,9 +1210,21 @@ public sealed class TraceEffortViewModel
     public double TimeHeat { get; }
 }
 
-/// <summary>One node of the derivation tree, wrapped for a TreeView with its own children.</summary>
-public sealed class TraceStepViewModel
+/// <summary>One recorded derivation event, with its own children and shared row selection state.</summary>
+public sealed class TraceStepViewModel : ObservableObject
 {
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+    public string PlainLabel => string.Join(" · ", new[] { RecordedLabel, Source, RecordedOutcomeText }
+        .Where(value => !string.IsNullOrWhiteSpace(value)));
+    public string ShapeText => Input is { Length: > 0 } input && Output is { Length: > 0 } output
+        ? $"{input} → {output}" : Output ?? Input ?? string.Empty;
+    public string ReadableText => IsFailure ? PlainRefusalText : $"{PlainLabel}.";
+
     public TraceStep RecordedStep { get; private init; } = null!;
     public TraceRef? Reference { get; private init; }
     public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? $"Producer: {source}" : null;
@@ -1364,8 +1380,8 @@ public sealed class TraceStepViewModel
         Type.Contains("successful", StringComparison.OrdinalIgnoreCase) ||
         Type.Contains("success", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>What happened at the step, in the words a linguist uses: applied, stopped, or only tried.</summary>
-    public string StatusText => IsBlocked ? "Blocked" : IsFailure ? "stopped" : IsSuccessful ? "applied" : "tried";
+    /// <summary>What happened at the step, in the words a linguist uses: applied, refused, or only tried.</summary>
+    public string StatusText => IsBlocked ? "Blocked" : IsFailure ? "refused" : IsSuccessful ? "applied" : "tried";
 
     /// <summary>The step's kind in plain words, such as "Affix rule".</summary>
     public string KindText => TraceStepKinds.Describe(Type);

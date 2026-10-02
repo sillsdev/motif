@@ -444,6 +444,26 @@ public sealed class PageScreenshots
         Assert.Empty(inspection.RanIn.Value!.Words);
     }
 
+    [Fact]
+    public void SampleTryWordUsesTheSharedApprovedAnalysisAndNamesItsGrammar()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenOverSampleData();
+            try
+            {
+                await TryTheSampleWord(workspace);
+                var page = workspace.PageModel<TryWordPageModel>();
+                Assert.Equal("Approved", Assert.Single(page.FieldWorksAnalyses).OpinionLabel);
+                Assert.Contains("ha- + wa- + ja- + fik + -a", page.FieldWorksAnalyses[0].Text);
+                Assert.Equal(workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
+                    page.Trace.Result!.HostCapture!.Baseline!.Token);
+                Assert.Null(page.Trace.Result.ParserElapsedMs);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromSeconds(15));
+    }
+
     private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
         workspace.Context.TryWord("hawajafika");
@@ -517,7 +537,26 @@ public sealed class PageScreenshots
         });
 
         // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
-        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
+        fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value! with
+        {
+            ParserElapsedMs = null,
+            HostCapture = new TraceHostCapture(Token().ProjectIdentity, null, null, Token().BundleDigest, null, null, [])
+            {
+                Baseline = new TraceBaselineSource(Token(), DateTimeOffset.Parse("2026-09-22T09:48:00Z"),
+                    DateTimeOffset.Parse(Token().CapturedUtc), "Sample grammar capture"),
+            },
+        });
+        fake.WordContextHandler = (request, _) =>
+        {
+            var word = Assessment().Words.FirstOrDefault(word => word.Word == request.Word);
+            return Task.FromResult(CommandOutcome<WordContextResponse>.Success(new(request.Word, true)
+            {
+                IsInFieldWorks = word is not null,
+                Baseline = Token(), SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T09:48:00Z"),
+                Analyses = word?.StoredAnalyses ?? [],
+                ExpectedAnalysis = word?.StoredAnalyses.FirstOrDefault(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved),
+            }));
+        };
         fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(SampleInspection(request.Subject))));
         OverviewTimingScreenshots.ReadOverviewAndTiming(fake, Assessment());
         if (!parse) fake.OverviewCompletesWith(EmptyOverview());

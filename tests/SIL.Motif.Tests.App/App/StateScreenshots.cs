@@ -12,6 +12,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
@@ -427,7 +428,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             () => stage.Named<Button>("Try a Word tools"), "Try a Word tools"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "recorded-step-focus", stage => stage.FocusFromKeyboard(WorkspacePage.TryAWord,
-            () => stage.Named<TreeView>("Recorded trace tree"), "the recorded trace"))
+            () => stage.Named<ListBox>("Plain trace steps"), "the recorded trace"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "steps-expanded", async stage =>
         {
@@ -1164,6 +1165,7 @@ public sealed class TryWordReviewScreenshots
             });
             var page = workspace.PageModel<TryWordPageModel>();
             var trace = page.Trace;
+            var defaultWordContext = client!.WordContextHandler;
             var project = workspace.Context.ProjectPath;
             var sample = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
                 AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!;
@@ -1274,9 +1276,26 @@ public sealed class TryWordReviewScreenshots
                             },
                         });
                         Save("grammar-source");
+                        var measuredBaseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token;
+                        var differentBaseline = new BaselineToken(measuredBaseline.ProjectIdentity,
+                            "sha256:" + new string('c', 64), measuredBaseline.ProjectionVersion,
+                            "2026-09-22T11:00:00Z", "sha256:" + new string('d', 64));
+                        await Show(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value! with
+                        {
+                            ParserElapsedMs = null,
+                            HostCapture = new TraceHostCapture(null, null, null, differentBaseline.BundleDigest, null, null, [])
+                            {
+                                Baseline = new TraceBaselineSource(differentBaseline,
+                                    DateTimeOffset.Parse("2026-09-22T10:48:00Z"), DateTimeOffset.Parse(differentBaseline.CapturedUtc),
+                                    "Different Baseline capture"),
+                            },
+                        }, timing: true, timingBaseline: measuredBaseline);
+                        Assert.NotEmpty(page.TraceBaselineWarning);
+                        Save("different-baselines");
+
                         await Show(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.AnalysisRecords()).Value!);
                         window.GetVisualDescendants().OfType<Expander>()
-                            .Single(expander => expander.Header?.ToString() == "Recorded source analyses").IsExpanded = true;
+                            .Single(expander => AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
                         Save("source-analyses");
 
                         window.Height = 1500;
@@ -1300,7 +1319,7 @@ public sealed class TryWordReviewScreenshots
                             await Show(sample);
                             Save(scene);
                         }
-                        client!.WordContextHandler = null;
+                        client!.WordContextHandler = defaultWordContext;
                         trace.IsExpert = false;
                     }
                 }
@@ -1311,7 +1330,7 @@ public sealed class TryWordReviewScreenshots
                 window.Close();
             }
 
-            async Task Show(WordTraceResponse response, bool timing = false)
+            async Task Show(WordTraceResponse response, bool timing = false, BaselineToken? timingBaseline = null)
             {
                 trace.RuleFilter = string.Empty;
                 trace.SearchText = string.Empty;
@@ -1319,6 +1338,10 @@ public sealed class TryWordReviewScreenshots
                 client!.TraceWordCompletesWith(response);
                 if (timing) OverviewTimingScreenshots.ReadOverviewAndTiming(client, workspace.Context.Evidence.Assessment!.Assessment);
                 else client.TimingCompletesWith(new TimingResponse("assessment/one", "selected", "rule", 0, 0, 0, [], [], []));
+                if (timingBaseline is not null)
+                    client.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+                        SampleEvidence.Timing(workspace.Context.Evidence.Assessment!.Assessment, request.By, request.Rule,
+                            request.ExplicitWords) with { Baseline = timingBaseline })));
                 workspace.Context.TryWord(response.Word);
                 await trace.TryCommand.ExecutionTask!;
                 PageScreenshots.Settle(window);
@@ -1333,16 +1356,12 @@ public sealed class TryWordReviewScreenshots
             void SelectPlain(string address)
             {
                 PageScreenshots.Settle(window);
-                var tree = Named<TreeView>("Recorded trace tree");
-                var node = Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0));
-                foreach (var index in address.Split('.').Skip(1).Select(int.Parse))
-                {
-                    node.IsExpanded = true;
-                    PageScreenshots.Settle(window);
-                    node = Assert.IsType<TreeViewItem>(node.ContainerFromIndex(index));
-                }
-                node.IsSelected = true;
-                node.BringIntoView();
+                var list = Named<ListBox>("Plain trace steps");
+                var step = trace.PlainSteps.Single(step => step.RecordedStep.StepId == address);
+                list.SelectedItem = step;
+                PageScreenshots.Settle(window);
+                var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(step));
+                row.BringIntoView();
                 PageScreenshots.Settle(window);
                 Assert.Equal(address, trace.SelectedStep!.RecordedStep.StepId);
             }

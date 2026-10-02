@@ -22,7 +22,7 @@ public static class TraceStepKinds
         ["CompoundingRule"] = "Compound rule",
         ["Word"] = "Word",
         ["Successful"] = "Built the word",
-        ["Failed"] = "Stopped",
+        ["Failed"] = "No analysis found",
         ["Blocked"] = "Blocked",
     };
 
