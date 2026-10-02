@@ -73,8 +73,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                             AutomationProperties.GetName(expander) == "Expert environment notation");
                         section.IsExpanded = true;
                         PageScreenshots.Settle(window);
-                        var token = Assert.Single(panel.GetVisualDescendants().OfType<TraceNotationToken>().Where(control =>
-                            control.IsEffectivelyVisible && control.DataContext is EnvironmentToken));
+                        var token = Assert.Single(panel.GetVisualDescendants().OfType<TraceNotationToken>(), control =>
+                            control.IsEffectivelyVisible && control.DataContext is EnvironmentToken);
                         Assert.Equal("Authored environment notation unavailable", ToolTip.GetTip(token));
                         PageScreenshots.Save(window, Path.Combine(folder, $"state-try-a-word-environment-{name}-{width}-{theme}.png"));
                     }
@@ -177,6 +177,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 foreach (var state in States())
                 {
                     if (state.Setup is not null) await state.Setup(stage);
+                    stage.CurrentState = $"{state.Page}/{state.Name}";
                     foreach (var (theme, variant) in Themes)
                     {
                         Application.Current!.RequestedThemeVariant = variant;
@@ -186,6 +187,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                             window.Height = state.Height;
                             PageScreenshots.Settle(window);
                             var note = await state.Show(stage);
+                            PageScreenshots.AssertSceneHasExpectedErrorState(window, workspace,
+                                $"{state.Page}/{state.Name}", state.ExpectedRefusalCode);
                             var file = $"state-{state.Page}-{state.Name}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
                             notes.Add($"{file}\t{note}");
@@ -206,6 +209,16 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         foreach (var note in notes) output.WriteLine(note);
     }
 
+    [Fact]
+    public void MissingInspectorTargetNamesItsState()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => Stage.FindTarget(
+            "inspector/inspector-open", "the recorded ja- morpheme", () => Enumerable.Empty<Control>().First()));
+
+        Assert.Equal("State 'inspector/inspector-open' could not find the recorded ja- morpheme.", exception.Message);
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
     /// <summary>One interactive state: its page, how one picture reaches it, and any run it needs.</summary>
     private sealed record State(string Page, string Name, Func<Stage, Task<string>> Show)
     {
@@ -213,11 +226,21 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 
         public Func<Stage, Task>? Teardown { get; init; }
 
+        public string? ExpectedRefusalCode { get; init; }
+
         public int Height { get; init; } = 780;
     }
 
     private const string MatrixWords = "Words in the chosen cells";
     private const string ListWords = "Words in the selected list";
+
+    private static Task ResetTraceView(Stage stage)
+    {
+        var trace = stage.Workspace.Assess.Trace;
+        trace.IsExpert = false;
+        trace.ExpertWholeTree = true;
+        return Task.CompletedTask;
+    }
 
     private static IEnumerable<State> States()
     {
@@ -393,6 +416,65 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 string.Join(", ", expanders.Concat(more).Select(expander => expander.Header).Distinct());
         })
         { Height = 2600, Setup = stage => stage.TryTheSampleWord() };
+        yield return new("try-a-word", "why-section", stage =>
+        {
+            stage.Open(WorkspacePage.TryAWord);
+            var section = stage.Named<Border>("Why it did not parse");
+            section.BringIntoView();
+            PageScreenshots.Settle(stage.Window);
+            Assert.True(section.IsEffectivelyVisible);
+            var group = Assert.Single(stage.Workspace.PageModel<TryWordPageModel>().Trace.StopGroups);
+            Assert.Equal("Stopping rule not recorded", group.RuleText);
+            return Task.FromResult($"The why section shows {group.Count} recorded attempt stopped by " +
+                $"{group.RuleText}: {group.ReasonText}");
+        })
+        { Setup = stage => stage.TryTheSampleWord() };
+        yield return new("try-a-word", "expert-attempt", stage =>
+        {
+            stage.Open(WorkspacePage.TryAWord);
+            var trace = stage.Workspace.Assess.Trace;
+            trace.SelectedCandidate = Assert.Single(trace.ExpertAttempts);
+            trace.ExpertWholeTree = false;
+            Assert.NotEmpty(trace.ExpertEvents);
+            trace.SelectedStep = trace.ExpertEvents.Last();
+            trace.IsExpert = true;
+            PageScreenshots.Settle(stage.Window);
+            var panel = Assert.Single(stage.Visible<ExpertTracePanel>(_ => true));
+            var events = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(), control =>
+                AutomationProperties.GetName(control) == "Expert trace events");
+            Assert.Equal(trace.ExpertEvents.Count, events.Items.Count);
+            return Task.FromResult($"Expert view of attempt {trace.SelectedCandidate.AttemptId}: " +
+                $"{trace.ExpertEvents.Count} recorded events.");
+        })
+        {
+            Setup = stage => stage.TryTheSampleWord(),
+            Teardown = stage => ResetTraceView(stage),
+            Height = 1500,
+        };
+        yield return new("try-a-word", "expert-whole-tree", stage =>
+        {
+            stage.Open(WorkspacePage.TryAWord);
+            var trace = stage.Workspace.Assess.Trace;
+            trace.ExpertWholeTree = false;
+            trace.ExpertWholeTree = true;
+            trace.IsExpert = true;
+            PageScreenshots.Settle(stage.Window);
+            var panel = Assert.Single(stage.Visible<ExpertTracePanel>(_ => true));
+            var events = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(), control =>
+                AutomationProperties.GetName(control) == "Expert trace events");
+            Assert.NotEmpty(trace.ExpertEvents);
+            Assert.Equal(trace.ExpertEvents.Count, events.Items.Count);
+            var visibleLabels = events.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible && text.Bounds.Height > 0)
+                .Select(text => text.Text).ToArray();
+            Assert.All(trace.ExpertEvents, step => Assert.Contains(step.Type, visibleLabels));
+            return Task.FromResult($"Expert view of the whole recorded tree: {trace.ExpertEvents.Count} events.");
+        })
+        {
+            Setup = stage => stage.TryTheSampleWord(),
+            Teardown = stage => ResetTraceView(stage),
+            Height = 1500,
+        };
 
         // The inspector, beside each page that opens it, and one step down its breadcrumb.
         yield return new("inspector", "from-analyze", async stage =>
@@ -410,26 +492,13 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.Inspect(() => stage.Named<InspectLink>("Inspect w-"), "its allomorph w-");
         })
         { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
-        yield return new("inspector", "from-try-a-word", async stage =>
+        yield return new("inspector", "inspector-open", async stage =>
         {
             stage.Open(WorkspacePage.TryAWord);
-            return await stage.Inspect(() => stage.Visible<InspectLink>(link =>
-                link.FindAncestorOfType<TreeView>() is { } tree &&
-                AutomationProperties.GetName(tree) == "Recorded trace tree").First(),
-                "the first recorded rule with an inspector identity");
+            return await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
+                border.Tag is ParserReadingMorphViewModel { Form: "ja-" }).First(), "the recorded ja- morpheme");
         })
-        {
-            Setup = stage =>
-            {
-                stage.Client.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities());
-                return stage.TryTheSampleWord();
-            },
-            Teardown = stage =>
-            {
-                stage.Client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value!);
-                return stage.TryTheSampleWord();
-            },
-        };
+        { Setup = stage => stage.TryTheSampleWord() };
         yield return new("inspector", "from-timing", stage => stage.Inspect(() =>
         {
             stage.Open(WorkspacePage.Timing);
@@ -482,7 +551,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("warnings", "part-link-hover", stage => stage.Hover(WorkspacePage.Warnings,
             () => stage.Visible<Button>(button => ToolTip.GetTip(button) is string tip && tip.StartsWith("Open this")).First(),
             "a FieldWorks link in a finding"));
-        yield return new("warnings", "row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
+        yield return new("warnings", "warning-row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
         { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
         yield return new("warnings", "unnamed-row-opened",
             stage => stage.OpenWarningRow("grammar.msa.no-rule-form-allomorphs", named: false))
@@ -622,6 +691,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         };
         yield return new("texts", "parse-refusal", stage => stage.ExpandRefusal(WorkspacePage.Texts, TextsTab.Matrix))
         {
+            ExpectedRefusalCode = RefusalCodes.AssessParserUnavailable,
             Setup = async stage =>
             {
                 stage.Client.AssessRefusesWith(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
@@ -632,6 +702,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         };
         yield return new("try-a-word", "refusal", stage => stage.ExpandRefusal(WorkspacePage.TryAWord, null))
         {
+            ExpectedRefusalCode = RefusalCodes.WordTraceParserUnavailable,
             Setup = async stage =>
             {
                 stage.Client.OnTraceWord((_, _) => Task.FromResult(CommandOutcome<WordTraceResponse>.Refused(
@@ -689,6 +760,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public MainWindow Window { get; } = window;
 
         public FakeCommandClient Client { get; } = client;
+
+        public string CurrentState { get; set; } = "unknown state";
 
         public Task? Running { get; set; }
 
@@ -887,7 +960,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         /// <summary>Clicks the name <paramref name="target"/> finds, and waits for the inspector to read it.</summary>
         public async Task<string> Inspect(Func<Control> target, string what)
         {
-            var name = target();
+            var name = FindTarget(CurrentState, what, target);
             var centre = CentreOf(name);
             Window.MouseMove(centre);
             PageScreenshots.Settle(Window);
@@ -902,9 +975,21 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 $"breadcrumb {string.Join(" › ", Workspace.Inspector.Crumbs.Select(crumb => crumb.Label))}.";
         }
 
+        public static Control FindTarget(string state, string what, Func<Control> target)
+        {
+            try
+            {
+                return target();
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException($"State '{state}' could not find {what}.", exception);
+            }
+        }
+
         public Task TryTheSampleWord()
         {
-            Workspace.Context.TryWord("matinlu");
+            Workspace.Context.TryWord("hawajafika");
             return Workspace.Assess.Trace.TryCommand.ExecutionTask!;
         }
 
@@ -1222,8 +1307,12 @@ public sealed class TryWordReviewScreenshots
             T Named<T>(string name) where T : Control => window.GetVisualDescendants().OfType<T>()
                 .Single(control => AutomationProperties.GetName(control) == name);
 
-            void Save(string scene) => PageScreenshots.Save(window,
-                Path.Combine(folder, $"state-try-a-word-{scene}-{(int)window.Width}-{(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark ? "dark" : "light")}.png"));
+            void Save(string scene)
+            {
+                PageScreenshots.AssertSceneHasExpectedErrorState(window, workspace, $"try-a-word/{scene}");
+                PageScreenshots.Save(window,
+                    Path.Combine(folder, $"state-try-a-word-{scene}-{(int)window.Width}-{(Application.Current!.RequestedThemeVariant == ThemeVariant.Dark ? "dark" : "light")}.png"));
+            }
         }, TimeSpan.FromMinutes(3));
     }
 }

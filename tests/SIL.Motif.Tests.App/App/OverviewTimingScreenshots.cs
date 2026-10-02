@@ -68,7 +68,9 @@ public sealed class OverviewTimingScreenshots
     /// <summary>Gives the sample data a read Overview and stored parse times.</summary>
     internal static void ReadOverviewAndTiming(FakeCommandClient fake, AssessCommandResponse assessment)
     {
-        fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
+        var overview = OverviewPageWordsTests.Populated();
+        OverviewPageWordsTests.AssertCaptureStopCounts(overview, "overview and timing");
+        fake.OverviewCompletesWith(overview);
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             request.ExplicitWords is ["matinlu"] ? MatinluTiming() : Timing(request.By))));
         fake.AssessCompletesWith(assessment with

@@ -1,0 +1,184 @@
+{
+  "schemaVersion": "pangloss.trace-details.v3",
+  "word": "hawajafika",
+  "search": {
+    "completed": true,
+    "capped": false,
+    "timedOut": false,
+    "invalidShape": false,
+    "steps": 3,
+    "elapsedNs": 0
+  },
+  "result": {
+    "signature": "",
+    "guessed": false,
+    "analyses": []
+  },
+  "fixture": {
+    "kind": "synthetic",
+    "basis": "Synthetic capture fixture; step count and elapsedNs are scaffolding, not parser measurements."
+  },
+  "categories": {},
+  "provenance": {
+    "grammar": {
+      "name": "Sample",
+      "sourceKind": "snapshot"
+    },
+    "parser": {
+      "name": "pangloss",
+      "traceProfile": "pangloss.trace-details.v3",
+      "version": "0.6.0"
+    },
+    "project": "Sample",
+    "writingSystems": {
+      "analysis": ["en"],
+      "vernacular": ["sw"]
+    }
+  },
+  "trace": {
+    "type": "WordAnalysis",
+    "outcome": {
+      "eventType": "WordAnalysis",
+      "status": "attempted"
+    },
+    "inputShape": "hawajafika",
+    "children": [
+      {
+        "type": "Failed",
+        "inputShape": "hawajafika",
+        "failureReason": "RequiredSyntacticFeatureStruct",
+        "failureContext": {
+          "kind": "decisionGate",
+          "reasonCode": "RequiredSyntacticFeatureStruct",
+          "source": "TraceSink.failure_reason",
+          "status": "unavailable",
+          "unavailableReason": "owner-payload-not-captured"
+        },
+        "outcome": {
+          "eventType": "Failed",
+          "status": "failed"
+        },
+        "attemptedMorphs": [
+          {
+            "status": "Real",
+            "order": 0,
+            "form": {
+              "text": "ha-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000201"
+            },
+            "headword": {
+              "text": "ha-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000201"
+            },
+            "gloss": {
+              "text": "NEG",
+              "writingSystem": "en",
+              "sourceId": "00000000-0000-0000-0000-000000000202"
+            },
+            "identity": {
+              "entryId": "00000000-0000-0000-0000-000000000203",
+              "msaId": "00000000-0000-0000-0000-000000000204",
+              "formId": "00000000-0000-0000-0000-000000000201",
+              "quality": "authored"
+            },
+            "msa": {
+              "kind": "inflectional",
+              "category": {
+                "id": "00000000-0000-0000-0000-000000000205",
+                "name": "Verb",
+                "abbreviation": "v"
+              },
+              "features": {
+                "status": "unavailable"
+              }
+            },
+            "features": {
+              "status": "unavailable"
+            }
+          },
+          {
+            "status": "Real",
+            "order": 1,
+            "form": {
+              "text": "wa-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000211"
+            },
+            "headword": {
+              "text": "wa-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000211"
+            },
+            "gloss": {
+              "text": "3PL",
+              "writingSystem": "en",
+              "sourceId": "00000000-0000-0000-0000-000000000212"
+            },
+            "identity": {
+              "entryId": "00000000-0000-0000-0000-000000000213",
+              "msaId": "00000000-0000-0000-0000-000000000214",
+              "formId": "00000000-0000-0000-0000-000000000211",
+              "quality": "authored"
+            },
+            "msa": {
+              "kind": "inflectional",
+              "category": {
+                "id": "00000000-0000-0000-0000-000000000215",
+                "name": "Verb",
+                "abbreviation": "v"
+              },
+              "features": {
+                "status": "unavailable"
+              }
+            },
+            "features": {
+              "status": "unavailable"
+            }
+          },
+          {
+            "status": "Real",
+            "order": 2,
+            "form": {
+              "text": "ja-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000221"
+            },
+            "headword": {
+              "text": "ja-",
+              "writingSystem": "sw",
+              "sourceId": "00000000-0000-0000-0000-000000000221"
+            },
+            "gloss": {
+              "text": "NEG.PERF",
+              "writingSystem": "en",
+              "sourceId": "00000000-0000-0000-0000-000000000222"
+            },
+            "identity": {
+              "entryId": "00000000-0000-0000-0000-000000000223",
+              "msaId": "00000000-0000-0000-0000-000000000224",
+              "formId": "00000000-0000-0000-0000-000000000221",
+              "quality": "authored"
+            },
+            "msa": {
+              "kind": "inflectional",
+              "category": {
+                "id": "00000000-0000-0000-0000-000000000225",
+                "name": "Verb",
+                "abbreviation": "v"
+              },
+              "features": {
+                "status": "unavailable"
+              }
+            },
+            "features": {
+              "status": "unavailable"
+            }
+          }
+        ],
+        "children": []
+      }
+    ]
+  }
+}

@@ -25,6 +25,9 @@ public sealed class OverviewPageWordsTests
     private static readonly string[] EngineWords =
         ["violation", "rejected", "Parser finding", "Assessment", "Unknown (timed out)", "Baseline"];
 
+    private const int TimedOutWordCount = 2;
+    private static readonly string[] StepLimitedWords = ["stopped-1", "stopped-2", "stopped-3"];
+
     [Fact]
     public async Task TheSpeedTileLeadsWithTheStoredWordCountAndTotalParseTime()
     {
@@ -67,6 +70,15 @@ public sealed class OverviewPageWordsTests
         Assert.Equal("median 0.123456 ms a word · 95th percentile 0.654321 ms", page.SpeedMedian);
         Assert.Equal([("z-slowest", "0.800001 ms"), ("a-next", "0.8 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
+    }
+
+    [Fact]
+    public void PopulatedOverviewCaptureFixtureKeepsStoppedCountsConsistent()
+    {
+        var overview = Populated();
+
+        AssertCaptureStopCounts(overview, "populated");
+        Assert.Equal(TimedOutWordCount, overview.TextCoverage.UnknownWords - overview.Timing.StepLimitedWordCount);
     }
 
     [Fact]
@@ -357,7 +369,7 @@ public sealed class OverviewPageWordsTests
         Assert.Contains("6 approved words are Lost", rows[0].Summary);
         Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
         Assert.Equal("2", rows[1].Number);
-        Assert.Contains("5 words stopped at the step limit", rows[1].Summary);
+        Assert.Contains("3 words stopped at the step limit", rows[1].Summary);
         Assert.Equal("33.6 s of 38 s total word time", rows[1].Detail);
         Assert.Equal("3", rows[2].Number);
         Assert.Contains("3 Unknown words differ", rows[2].Summary);
@@ -368,7 +380,7 @@ public sealed class OverviewPageWordsTests
             texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
                 .Select(cell => new TextsListCell(cell.Row, cell.Column)));
         rows[1].OpenCommand.Execute(null);
-        Assert.Equal(["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], timing.Focus!.Words);
+        Assert.Equal(StepLimitedWords, timing.Focus!.Words);
         rows[2].OpenCommand.Execute(null);
         Assert.Equal([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)],
             texts.Assess.Compare.Cells.Where(cell => cell.IsSelected)
@@ -552,7 +564,7 @@ public sealed class OverviewPageWordsTests
         "Sample", DateTimeOffset.Parse("2026-09-30T08:00:00Z"), DateTimeOffset.Parse("2026-09-30T06:11:00Z"),
         142, 2, 0, 611, 1318, 47, 862, "assessment/one", DateTimeOffset.Parse("2026-09-30T08:51:00Z"), 38,
         "sha256:" + new string('c', 64), "sha256:" + new string('d', 64),
-        new OverviewTextCoverage(118, 17, 5, 2, 611, 540)
+        new OverviewTextCoverage(118, 17, StepLimitedWords.Length + TimedOutWordCount, 2, 611, 540)
         {
             SameWords = 81,
             DifferentWords = 37,
@@ -564,7 +576,8 @@ public sealed class OverviewPageWordsTests
             ApprovedWordsNoParse = 8,
             ApprovedWordsUnknown = 2,
         },
-        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)], 3)
+        new OverviewTiming(6.4, 48.2, [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48)],
+            StepLimitedWords.Length)
         {
             MeasuredWordCount = 142,
             Kinds =
@@ -595,7 +608,7 @@ public sealed class OverviewPageWordsTests
         LookFirst = new OverviewLookFirst(
             ["lost-1", "lost-2", "lost-3", "lost-4", "lost-5", "lost-6"],
             [new OverviewSharedMorpheme("kat", 3, true), new OverviewSharedMorpheme("ja-", 3, false)],
-            ["stopped-1", "stopped-2", "stopped-3", "stopped-4", "stopped-5"], 33600, 3)
+            StepLimitedWords, 33600, 3)
         { SharedLostMorphemesAvailable = true },
         SelectionResolved = true,
         WordCoveragePercent = 83.1,
@@ -603,4 +616,13 @@ public sealed class OverviewPageWordsTests
         BaselineCapturedUtc = DateTimeOffset.Parse("2026-09-22T06:00:00Z"),
         BaselineSourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T05:40:00Z"),
     };
+
+    internal static void AssertCaptureStopCounts(OverviewResponse overview, string scene)
+    {
+        Assert.True(overview.TextCoverage.UnknownWords >= overview.Timing.StepLimitedWordCount,
+            $"Overview scene '{scene}' has more step-limited words than generally stopped words.");
+        Assert.True(overview.LookFirst.StepLimitedWords.Count == overview.Timing.StepLimitedWordCount,
+            $"Overview scene '{scene}' reports {overview.Timing.StepLimitedWordCount} step-limited words but " +
+            $"lists {overview.LookFirst.StepLimitedWords.Count}.");
+    }
 }

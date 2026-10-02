@@ -98,6 +98,7 @@ public sealed class ContrastScreenshots
     private static void RequireTheSampleBehindSetup(WorkspaceShellViewModel workspace)
     {
         var overview = workspace.PageModel<OverviewPageModel>();
+        OverviewPageWordsTests.AssertCaptureStopCounts(overview.Overview!, "setup wizard");
         Assert.False(overview.HasOverviewRefusal, overview.OverviewRefusalLine);
         Assert.True(overview.ShowNumbers);
         var words = workspace.PageModel<TextsPageModel>().Words;
@@ -120,6 +121,7 @@ public sealed class ContrastScreenshots
             TextCoverage = new OverviewTextCoverage(0, 0, 0, 0, 9, 0),
             Accuracy = new OverviewAccuracy(0, 9, 0, 0, 0, 0, 0, 0),
             Timing = new OverviewTiming(null, null, [], 0),
+            LookFirst = OverviewLookFirst.Empty,
         };
     }
 }

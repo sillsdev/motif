@@ -1,6 +1,6 @@
 <#
   .SYNOPSIS
-  Run the Unit and Integration test levels, or the full suite with -All.
+  Run the Unit and Integration test levels, the System level, or the full suite with -All.
 
   .DESCRIPTION
   With no level switch, this runs Unit and Integration only for a quick developer loop. That default
@@ -37,6 +37,9 @@
   .PARAMETER All
   Run Unit, Integration and System tests. This is the merge-gate mode.
 
+  .PARAMETER System
+  Run only System tests, without selecting the full suite.
+
   .PARAMETER Project
   Run only the named test project.
 
@@ -57,6 +60,7 @@ param(
     [string] $Configuration = 'Debug',
     [switch] $SkipBuild,
     [switch] $All,
+    [switch] $System,
     [string] $Project,
     [string] $Filter,
     [switch] $AllowRunningTestHosts
@@ -89,7 +93,8 @@ $env:DOTNET_TC_CallCounting = '0'
 # Shards take classes by recorded seconds, not by hash; tools/Update-TestShardWeights.ps1 renews the file.
 $shardWeights = Join-Path $PSScriptRoot 'tests/test-shard-weights.json'
 if (Test-Path $shardWeights) { $env:MOTIF_TEST_SHARD_WEIGHTS = $shardWeights }
-$levelSelection = if ($All) { 'All' } else { 'Unit,Integration' }
+if ($All -and $System) { throw 'Choose either -All or -System.' }
+$levelSelection = if ($All) { 'All' } elseif ($System) { 'System' } else { 'Unit,Integration' }
 
 if ($Filter -and -not $Project) { throw '-Filter requires -Project.' }
 
@@ -155,7 +160,7 @@ foreach ($projectFile in Get-ChildItem -LiteralPath $testsRoot -Filter '*.csproj
     if ($defaultLevel -notin @('Unit', 'Integration', 'System')) {
         throw "MotifTestDefaultLevel must be Unit, Integration or System in $projectPath"
     }
-    if (-not $All -and $defaultLevel -eq 'System') { continue }
+    if (-not $All -and -not $System -and $defaultLevel -eq 'System') { continue }
     if ($Project -and $projectFile.BaseName -ne $Project) { continue }
     $testProjects += [pscustomobject]@{
         Name = $projectFile.BaseName; Path = $projectPath; Shards = $shards; DefaultLevel = $defaultLevel

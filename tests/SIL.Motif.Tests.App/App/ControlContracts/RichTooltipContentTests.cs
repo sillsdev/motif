@@ -231,7 +231,9 @@ internal sealed class TooltipScenes
                 if (Lists.SelectedList != list) Lists.SelectListCommand.Execute(list);
                 await Until(() => Lists.SelectedList == list && Lists.Compare.Words.Count > 0, "the chosen list's words");
                 break;
-            case TooltipScene.TryAWord:
+            case TooltipScene.TryAWordRecordedDetails:
+                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
+                    AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!);
                 Workspace.Context.TryWord("matinlu");
                 await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 Show(WorkspacePage.TryAWord);

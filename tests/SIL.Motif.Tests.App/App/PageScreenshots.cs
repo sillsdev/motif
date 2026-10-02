@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -50,7 +51,11 @@ public sealed class PageScreenshots
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenOverSampleData(configure: (fake, _) =>
-                fake.OverviewCompletesWith(OverviewPageWordsTests.Populated()));
+            {
+                var overview = OverviewPageWordsTests.Populated();
+                OverviewPageWordsTests.AssertCaptureStopCounts(overview, "every page");
+                fake.OverviewCompletesWith(overview);
+            });
             try
             {
                 var overview = workspace.PageModel<OverviewPageModel>().Overview;
@@ -70,9 +75,11 @@ public sealed class PageScreenshots
                             // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
                             if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
                             workspace.CurrentPage = page;
+                            AssertSceneHasExpectedErrorState(window, workspace, name);
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}.png"));
                             if (page != WorkspacePage.TryAWord) continue;
                             window.Height = 1500;
+                            AssertSceneHasExpectedErrorState(window, workspace, $"{name} tall");
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
                             foreach (var height in new[] { 780, 1500 })
                             {
@@ -107,7 +114,9 @@ public sealed class PageScreenshots
             {
                 var (workspace, window) = await OpenOverSampleData(parse: state != "empty", configure: (fake, _) =>
                 {
-                    fake.OverviewCompletesWith(state == "empty" ? EmptyOverview() : OverviewFor(state));
+                    var overview = state == "empty" ? EmptyOverview() : OverviewFor(state);
+                    OverviewPageWordsTests.AssertCaptureStopCounts(overview, $"overview {state}");
+                    fake.OverviewCompletesWith(overview);
                     if (state == "stale")
                     {
                         var saved = DateTimeOffset.UtcNow;
@@ -127,6 +136,7 @@ public sealed class PageScreenshots
                         {
                             window.Width = width;
                             window.Height = 780;
+                            AssertSceneHasExpectedErrorState(window, workspace, $"overview {state}");
                             var file = $"overview-{state}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
                             states.Add($"{file}\tOverview {state}, {width} px, {theme} theme.");
@@ -181,6 +191,59 @@ public sealed class PageScreenshots
     ];
 
     [Fact]
+    public void ScreenshotTraceFixtureIsFieldWorksSnapshotForAnUnparsedWord()
+    {
+        using var document = JsonDocument.Parse(TraceFixture());
+        var root = document.RootElement;
+        var grammar = root.GetProperty("provenance").GetProperty("grammar");
+        Assert.Equal("pangloss.trace-details.v3", root.GetProperty("schemaVersion").GetString());
+        Assert.Equal("synthetic", root.GetProperty("fixture").GetProperty("kind").GetString());
+        var failed = Descendants(root.GetProperty("trace"))
+            .Single(node => node.TryGetProperty("type", out var type) && type.GetString() == "Failed");
+        var morphs = failed.GetProperty("attemptedMorphs").EnumerateArray().ToArray();
+        var morph = morphs.Single(item => item.GetProperty("form").GetProperty("text").GetString() == "ja-");
+        var identity = morph.GetProperty("identity");
+        var trace = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!;
+        var stopped = Assert.Single(trace.Reading.StopGroups);
+        var ja = trace.Reading.Refs.Single(reference => reference.Label == "ja-");
+
+        Assert.Equal("hawajafika", root.GetProperty("word").GetString());
+        Assert.Equal("snapshot", grammar.GetProperty("sourceKind").GetString());
+        Assert.False(grammar.TryGetProperty("grammarHash", out _));
+        Assert.Empty(root.GetProperty("result").GetProperty("analyses").EnumerateArray());
+        Assert.Equal(["ha-", "wa-", "ja-"], morphs.Select(item => item.GetProperty("form").GetProperty("text").GetString()));
+        Assert.Equal("RequiredSyntacticFeatureStruct", failed.GetProperty("failureReason").GetString());
+        Assert.Null(stopped.Rule);
+        Assert.Equal("RequiredSyntacticFeatureStruct", stopped.ReasonCode);
+        Assert.Equal(1, stopped.Count);
+        Assert.Equal("NEG.PERF", ja.Gloss);
+        Assert.Equal("authored", ja.IdentityQuality);
+        Assert.Equal("ja-", morph.GetProperty("form").GetProperty("text").GetString());
+        Assert.Equal("NEG.PERF", morph.GetProperty("gloss").GetProperty("text").GetString());
+        Assert.Equal("authored", identity.GetProperty("quality").GetString());
+        Assert.True(Guid.TryParse(identity.GetProperty("formId").GetString(), out _));
+        Assert.True(Guid.TryParse(identity.GetProperty("msaId").GetString(), out _));
+    }
+
+    private static IEnumerable<JsonElement> Descendants(JsonElement element)
+    {
+        yield return element;
+        if (element.ValueKind != JsonValueKind.Object) yield break;
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Value.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var descendant in Descendants(property.Value)) yield return descendant;
+            }
+            else if (property.Value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in property.Value.EnumerateArray())
+                    foreach (var descendant in Descendants(item)) yield return descendant;
+            }
+        }
+    }
+
+    [Fact]
     public void ScreenshotAssessmentHasProjectStandingsAndTextOccurrences()
     {
         var assessment = Assessment();
@@ -220,8 +283,26 @@ public sealed class PageScreenshots
 
     private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
-        workspace.Context.TryWord("matinlu");
+        workspace.Context.TryWord("hawajafika");
         await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+    }
+
+    internal static void AssertSceneHasExpectedErrorState(MainWindow window, WorkspaceShellViewModel workspace,
+        string scene, string? expectedCode = null)
+    {
+        Settle(window);
+        var codes = window.GetVisualDescendants().OfType<RefusalBlock>()
+            .Where(block => block.IsEffectivelyVisible)
+            .Select(block => (block.DataContext as WindowRefusal)?.Code ?? "unbound refusal")
+            .ToList();
+        if (workspace.CurrentPage == WorkspacePage.Overview &&
+            workspace.PageModel<OverviewPageModel>().OverviewRefusal is { } overviewRefusal)
+            codes.Add(overviewRefusal.Code);
+
+        if (expectedCode is null)
+            Assert.True(codes.Count == 0, $"Scene '{scene}' displays error state(s): {string.Join(", ", codes)}.");
+        else
+            Assert.Equal([expectedCode], codes);
     }
 
     internal static void Save(MainWindow window, string path)
@@ -446,16 +527,13 @@ public sealed class PageScreenshots
         };
     }
 
-    // The sample trace records no forms; a real one names matinlu's morphemes as FieldWorks spells them.
     private static readonly (string Form, string Gloss)[] TraceMorphemes = [("tin", "see"), ("ma-", "PST"), ("-lu", "3SG")];
 
-    /// <summary>
-    /// The sample trace with the FieldWorks identities a real project's trace records: its morphs by allomorph and
-    /// grammatical info, and its rules by the key Timing records them under.
-    /// </summary>
+    /// <summary>The Inspector test trace with authored identities added to its recorded morphemes.</summary>
     internal static WordTraceResponse TraceWithIdentities()
     {
-        var document = System.Text.Json.Nodes.JsonNode.Parse(TraceFixture())!;
+        var document = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json")))!;
         void Walk(System.Text.Json.Nodes.JsonNode? node)
         {
             if (node is System.Text.Json.Nodes.JsonArray array)
@@ -606,7 +684,7 @@ public sealed class PageScreenshots
     internal static string SampleTrace() => TraceFixture();
 
     private static string TraceFixture() =>
-        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"));
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-hawajafika.json"));
 
     private static BaselineToken Token() =>
         new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));

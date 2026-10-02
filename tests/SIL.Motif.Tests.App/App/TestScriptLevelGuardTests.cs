@@ -29,6 +29,17 @@ public sealed class TestScriptLevelGuardTests
                     script.IndexOf("dotnet test (", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void SystemSelectsOnlyThatLevelWithoutSelectingAll()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
+
+        Assert.Contains("[switch] $System", script, StringComparison.Ordinal);
+        Assert.Contains("elseif ($System) { 'System' }", script, StringComparison.Ordinal);
+        Assert.Contains("-not $System", script, StringComparison.Ordinal);
+        Assert.Contains("if ($All -and $System)", script, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
