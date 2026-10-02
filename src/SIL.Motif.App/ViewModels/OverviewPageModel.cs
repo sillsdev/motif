@@ -219,10 +219,13 @@ public sealed partial class OverviewPageModel : PageModel
                     string.Join(" · ", data.SharedLostMorphemes.Select(morpheme =>
                     $"{SpeedText.Count(morpheme.WordCount, "word", "words")} use {morpheme.Form}" +
                     (morpheme.NamedByWarning ? " (named by a grammar warning)" : string.Empty)));
-                rows.Add(new OverviewLookFirstRow("1",
-                    $"{SpeedText.Count(data.ApprovedLostWords.Count, "approved word", "approved words")} " +
-                    (data.ApprovedLostWords.Count == 1 ? "is Lost; the grammar builds nothing for it." :
-                        "are Lost; the grammar builds nothing for them."), detail, "Approved × No parse →",
+                var approvedLostWordCount = data.ApprovedLostWords.Count;
+                var approvedLostSummary = $"{SpeedText.Count(approvedLostWordCount, "approved word", "approved words")} " +
+                    (approvedLostWordCount == 1 ? "is Lost; the grammar builds nothing for it." :
+                        "are Lost; the grammar builds nothing for them.");
+                var approvedLostLink = approvedLostWordCount == 1 ? "See the word" :
+                    $"See the {SpeedText.Count(approvedLostWordCount, "word", "words")}";
+                rows.Add(new OverviewLookFirstRow("1", approvedLostSummary, detail, approvedLostLink,
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
             }
             if (data.StepLimitedWords.Count > 0)
@@ -232,13 +235,14 @@ public sealed partial class OverviewPageModel : PageModel
                     : string.Empty;
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
                     $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at the step limit.",
-                    detail, "Timing: the stopped words →",
+                    detail, $"See the {SpeedText.Count(data.StepLimitedWords.Count, "word", "words")}",
                     new RelayCommand(() => Context.OpenTiming(data.StepLimitedWords, null))));
             }
             if (data.UnknownDifferentWordCount > 0)
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
                     $"{SpeedText.Count(data.UnknownDifferentWordCount, "Unknown word", "Unknown words")} differ " +
-                    "from what PanGloss builds.", string.Empty, "Unknown × Different →",
+                    "from what PanGloss builds.", string.Empty,
+                    $"See the {SpeedText.Count(data.UnknownDifferentWordCount, "word", "words")}",
                     new RelayCommand(() => OpenCell(WordProjectStatus.Candidate, CompareColumnKind.NoMatch))));
             return rows;
         }
@@ -311,7 +315,7 @@ public sealed partial class OverviewPageModel : PageModel
             ApprovedSegment(Mark.Of(MeaningTone.Problem), overview.Accuracy.ApprovedWordsNoParse,
                 "lost", CompareColumnKind.NoParse, "Lost"),
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsUnknown,
-                "unknown yet", CompareColumnKind.Timeout, "Unknown yet"),
+                "stopped", CompareColumnKind.Timeout, "No result"),
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsSkipped,
                 "not parsed", CompareColumnKind.Skipped, "Not parsed"));
 

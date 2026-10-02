@@ -32,7 +32,7 @@ public enum ParserOutcome
 /// </summary>
 public enum MeaningTone
 {
-    /// <summary>Kept, PanGloss confirms, Fine, Correct.</summary>
+    /// <summary>Kept, Parses; nothing in FieldWorks yet, Fine, Correct.</summary>
     Fine,
 
     /// <summary>Differs: have a look, New: PanGloss proposes, Grammar can't build it, and the like.</summary>
@@ -41,7 +41,7 @@ public enum MeaningTone
     /// <summary>Lost, Built something else, Built anyway.</summary>
     Problem,
 
-    /// <summary>Unknown yet, Not parsed, Nobody can analyze, Nothing to compare.</summary>
+    /// <summary>No result, Not parsed, Nobody can analyze, Nothing to compare.</summary>
     Neutral,
 }
 
@@ -246,13 +246,13 @@ public static class WindowWords
         _ => "Not in FieldWorks",
     };
 
-    /// <summary>The tone's word: Fine, Have a look, Problem or Unknown yet.</summary>
+    /// <summary>The tone's default word: Fine, Have a look, Problem or No result.</summary>
     public static string Of(MeaningTone tone) => tone switch
     {
         MeaningTone.Fine => "Fine",
         MeaningTone.Look => "Have a look",
         MeaningTone.Problem => "Problem",
-        _ => "Unknown yet",
+        _ => "No result",
     };
 
     /// <summary>The grammar-check level's word.</summary>
@@ -348,6 +348,10 @@ public static class WindowWords
     public static (string Word, MeaningTone Tone) MeaningOf(string? standing, ParserOutcome outcome)
     {
         var (word, family) = CompareSemantics.MeaningOf(standing, ColumnOf(outcome));
-        return (word, ToneOf(family));
+        var tone = ToneOf(family);
+        if (outcome == ParserOutcome.Stopped) return ("No result", MeaningTone.Neutral);
+        if (standing == ProjectStanding.Candidate && outcome == ParserOutcome.Same)
+            return ("Parses; nothing in FieldWorks yet", tone);
+        return (word, tone);
     }
 }

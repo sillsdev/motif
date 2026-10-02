@@ -386,8 +386,10 @@ public sealed class WorkspacePageTests
         workspace.Context.RecordApplied();
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Equal("Numbers need refresh", workspace.FreshnessLabel);
-        Assert.Contains("numbers are stale until you refresh", workspace.FreshnessDetail);
+        Assert.Equal("Changes applied", workspace.FreshnessLabel);
+        Assert.StartsWith("after these numbers", workspace.FreshnessDetail);
+        Assert.Contains("Baseline", workspace.FreshnessDetail);
+        Assert.Contains("Refresh to update.", workspace.FreshnessDetail);
     }
 
     [Fact]
@@ -422,7 +424,7 @@ public sealed class WorkspacePageTests
         await workspace.CheckFreshnessAsync();
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Equal("FieldWorks saved since", workspace.FreshnessLabel);
+        Assert.Equal("FieldWorks saved", workspace.FreshnessLabel);
         Assert.Empty(fake.CaptureBaselineRequests);
         Assert.Empty(fake.AssessRequests);
     }
@@ -649,7 +651,9 @@ public sealed class WorkspacePageTests
         Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence.MeasuredSaveUtc);
         Assert.False(workspace.Context.NeedsAssessment);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Contains("the numbers still describe", workspace.FreshnessDetail);
+        Assert.StartsWith("at ", workspace.FreshnessDetail);
+        Assert.Contains("Baseline", workspace.FreshnessDetail);
+        Assert.Contains("Refresh to update.", workspace.FreshnessDetail);
     }
 
     [Fact]

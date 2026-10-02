@@ -23,7 +23,16 @@ public sealed partial class StatisticsPanel : UserControl
 
     private void OnStatisticsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(StatisticsViewModel.SelectedGroup) or nameof(StatisticsViewModel.AnyPasses)) ShowColumnsForGroup();
+        if (e.PropertyName == nameof(StatisticsViewModel.SelectedGroup))
+        {
+            ShowColumnsForGroup();
+            if (Statistics.HasLoaded)
+            {
+                Statistics.HasLoaded = false;
+                _ = Statistics.LoadCommand.ExecuteAsync(null);
+            }
+        }
+        else if (e.PropertyName == nameof(StatisticsViewModel.AnyPasses)) ShowColumnsForGroup();
     }
 
     // Each grouping shows only its own columns, named by its own units, and Passes only once some row needed one.

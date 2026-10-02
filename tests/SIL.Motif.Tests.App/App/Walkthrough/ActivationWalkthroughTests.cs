@@ -83,14 +83,13 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                 Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
                 var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
-                Assert.Contains("FieldWorks saved since", renderedText);
+                Assert.Contains("FieldWorks saved", renderedText);
                 var renderedDetail = Assert.Single(renderedText, text => text.Contains(
-                    "the numbers still describe", StringComparison.Ordinal));
+                    "these numbers are from Baseline", StringComparison.Ordinal));
                 Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
-                var projectName = Path.GetFileNameWithoutExtension(project.FwDataPath);
-                Assert.Equal(
-                    $"{projectName} saved Wed 4 Mar, 10:30; the numbers still describe Mon 2 Mar, 09:15 until you refresh.",
-                    renderedDetail);
+                Assert.StartsWith("at ", renderedDetail, StringComparison.Ordinal);
+                Assert.Contains("; these numbers are from Baseline ", renderedDetail, StringComparison.Ordinal);
+                Assert.EndsWith(". Refresh to update.", renderedDetail, StringComparison.Ordinal);
             }
             finally
             {

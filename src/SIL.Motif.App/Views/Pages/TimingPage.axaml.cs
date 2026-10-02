@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -26,6 +27,13 @@ public sealed partial class TimingPage : UserControl
 
     /// <summary>The page model used by row templates to choose a rule.</summary>
     public TimingPageModel Page { get; }
+
+    private async void OnStatisticsExpanded(object? sender, RoutedEventArgs e)
+    {
+        var statistics = Page.Statistics;
+        if (statistics.HasLoaded || statistics.LoadCommand.IsRunning) return;
+        await statistics.LoadCommand.ExecuteAsync(null);
+    }
 
     private void ArrangeSidePanel(double width)
     {

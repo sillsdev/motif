@@ -313,7 +313,7 @@ public sealed class TimingSharesTests
         {
             using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var timing = await LoadedTiming(NineWords, Kinds, Rules);
-            var window = new Window { Width = 1040, Height = 1400, Content = new TimingPage(timing) };
+            var window = new Window { Width = 988, Height = 1400, Content = new TimingPage(timing) };
             try
             {
                 window.Show();
@@ -329,6 +329,13 @@ public sealed class TimingSharesTests
                     return (Top: top, Bottom: top + control.Bounds.Height);
                 }).ToArray();
                 Assert.True(bounds.Max(control => control.Top) < bounds.Min(control => control.Bottom));
+                var rightmost = visibleControls.Max(control =>
+                    control.TranslatePoint(default, window)!.Value.X + control.Bounds.Width);
+                var page = window.GetLogicalDescendants().OfType<Border>()
+                    .Single(border => border.Classes.Contains("timingPage"));
+                var pageRight = page.TranslatePoint(default, window)!.Value.X + page.Bounds.Width - page.Padding.Right;
+                Assert.True(rightmost <= pageRight,
+                    $"Timing controls extend to {rightmost:F1} px past the page's {pageRight:F1} px content edge.");
 
                 var calls = window.GetLogicalDescendants().OfType<Button>()
                     .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");

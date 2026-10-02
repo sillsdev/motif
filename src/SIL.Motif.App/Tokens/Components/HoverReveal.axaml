@@ -44,4 +44,10 @@
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
     <Setter Property="IsHitTestVisible" Value="True" />
   </Style>
+  <Style Selector="Border.hoverReveal :is(TextBlock).revealOnHover">
+    <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.HiddenOpacity}" />
+  </Style>
+  <Style Selector="Border.hoverReveal:pointerover :is(TextBlock).revealOnHover, Border.hoverReveal:focus-within :is(TextBlock).revealOnHover, Border.hoverReveal.open :is(TextBlock).revealOnHover">
+    <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
+  </Style>
 </Styles>

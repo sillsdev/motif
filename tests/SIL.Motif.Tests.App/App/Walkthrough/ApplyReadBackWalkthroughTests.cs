@@ -125,9 +125,9 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             var freshnessDetail = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Classes.Contains("freshDetail"));
             Assert.True(freshnessLabel.IsEffectivelyVisible);
-            Assert.Equal("Numbers need refresh", freshnessLabel.Text);
+            Assert.Equal("Changes applied", freshnessLabel.Text);
             Assert.True(freshnessDetail.IsEffectivelyVisible);
-            Assert.Contains("stale until you refresh", freshnessDetail.Text,
+            Assert.Contains("after these numbers", freshnessDetail.Text,
                 StringComparison.Ordinal);
             InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
                 InteractiveControlFamily.Action,

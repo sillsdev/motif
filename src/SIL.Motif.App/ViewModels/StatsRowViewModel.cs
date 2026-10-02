@@ -64,7 +64,7 @@ public sealed class StatsRowViewModel
 
     /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>
     public string CompletionShort => CompletionStatus is null ? string.Empty
-        : !IsIncomplete ? (CompletionStatus == "Search completed" ? "Completed" : "Unknown")
+        : !IsIncomplete ? (CompletionStatus == "Search completed" ? "Completed" : "No result")
         : CompletionStatus.Contains("step and time", StringComparison.Ordinal) ? "Step and time limits"
         : CompletionStatus.Contains("step", StringComparison.Ordinal) ? "Step limit" : "Time limit";
 

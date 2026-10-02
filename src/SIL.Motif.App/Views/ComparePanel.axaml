@@ -82,13 +82,14 @@
             <Grid ColumnDefinitions="Auto,*">
               <Button Width="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}"
                       Classes="header" Theme="{DynamicResource BorderlessButton}" VerticalAlignment="Stretch"
+                      HorizontalContentAlignment="Stretch"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectRowCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding AccessibleName}">
                 <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Intent.Space.Minimal}">
-                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                     <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}" />
-                    <TextBlock Text="{Binding OpinionLabel}" FontWeight="SemiBold" />
-                  </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding OpinionLabel}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                  </Grid>
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
                 </StackPanel>
               </Button>
@@ -148,8 +149,6 @@
     <Border Grid.Row="3" Classes="card matrixChosen">
       <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
         <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
-          <Button DockPanel.Dock="Right" VerticalAlignment="Top" Content="{Binding Compare.HandOffLabel}"
-                  Command="{Binding Compare.HandOffCommand}" AutomationProperties.Name="AI Handoff for the listed words" />
           <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
                       Margin="{DynamicResource Intent.Gap.AfterGroup}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
@@ -215,7 +214,7 @@
           <ComboBox DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
                     SelectedItem="{Binding Compare.Sort}"
                     MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
-                    Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                     AutomationProperties.Name="Order the listed words">
             <ComboBox.ItemTemplate>
               <DataTemplate x:DataType="vm:CompareSort">
@@ -224,20 +223,25 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
           <TextBox DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
-                   Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
-                   Text="{Binding Compare.SearchText}" PlaceholderText="Search these words..."
+                   Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                   Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
                    AutomationProperties.Name="Search the listed words" />
           <WrapPanel HorizontalAlignment="Right">
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.CheckedWordText}" IsVisible="{Binding Compare.HasCheckedWords}"
-                                     Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}" VerticalAlignment="Center" />
+            <Button Content="AI Handoff" Command="{Binding Compare.HandOffCommand}"
+                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                    AutomationProperties.Name="AI Handoff for the listed words" />
             <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
-                    Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                    IsVisible="{Binding Compare.HasCheckedWords}"
+                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                    ToolTip.Tip="{Binding Compare.CheckedWordText}"
                     AutomationProperties.Name="Add checked words as Unknown" />
             <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
-                    Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                    IsVisible="{Binding Compare.HasCheckedWords}"
+                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                    ToolTip.Tip="{Binding Compare.CheckedWordText}"
                     AutomationProperties.Name="Mark checked words as incorrect spelling" />
             <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
-                         IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.ActionButtonMargin}"
+                         IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                          ToolTip.Tip="Parse the stopped and unparsed words again"
                          views:ClearTipPlacement.IsEnabled="True"
                          AutomationProperties.Name="Parse the stopped and unparsed words again">
@@ -262,7 +266,7 @@
         </StackPanel>
 
         <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" />
+          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="RESULT" />
           <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                    KeyboardNavigation.TabNavigation="Continue"
                    AutomationProperties.Name="Words in the chosen cells">

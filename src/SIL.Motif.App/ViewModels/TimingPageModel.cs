@@ -183,9 +183,9 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
     public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
     {
-        (true, true) => "Timing recorded both step-limit and time-limit stops. Adjust both limits in Things to do here.",
-        (true, false) => "Stopped at the step limit. Raise the step limit in Things to do here.",
-        (false, true) => "Ran out of time. Increase Seconds per word in Things to do here.",
+        (true, true) => "Timing recorded both step-limit and time-limit stops. Adjust both limits in the Timing controls on this page.",
+        (true, false) => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
+        (false, true) => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
         _ => string.Empty,
     };
 
@@ -384,7 +384,7 @@ public sealed partial class TimingPageModel : PageModel
     private decimal _rerunSeconds = 30;
 
     [ObservableProperty]
-    private decimal? _rerunSteps;
+    private decimal? _rerunSteps = StepCap.DefaultSteps;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RerunProgressText))]

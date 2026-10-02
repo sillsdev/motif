@@ -1,4 +1,3 @@
-using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -11,15 +10,14 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins why a walkthrough settles an Assessment's evidence publication before it clicks on the Timing page: the
-/// timing that publication reads arrives above the detailed statistics and pushes their Refresh button down, so
-/// a click aimed before it lands is a click on whatever took the button's place.
+/// Checks that opening Detailed statistics starts its read once, without a second refresh control on the page.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TimingStatisticsRefreshTests
@@ -32,7 +30,7 @@ public sealed class TimingStatisticsRefreshTests
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
-    public void RefreshStatisticsAimedBeforeTheTimingArrivesIsMissedAndAimedAfterItLoads()
+    public void DetailedStatisticsLoadWhenOpenedWithoutASeparateRefreshButton()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -53,30 +51,26 @@ public sealed class TimingStatisticsRefreshTests
                 workspace.CurrentPage = WorkspacePage.Timing;
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(Run(), Saved, WasRerun: false));
                 Settle(window);
-                window.GetLogicalDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, "Detailed statistics")).IsExpanded = true;
-                Settle(window);
                 var statistics = workspace.PageModel<TimingPageModel>().Statistics;
-                var refresh = window.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => AutomationProperties.GetName(button) == "Refresh statistics");
-                Assert.True(refresh.IsEffectivelyEnabled);
+                Assert.Equal(30, workspace.PageModel<TimingPageModel>().RerunSeconds);
+                Assert.Equal(StepCap.DefaultSteps, workspace.PageModel<TimingPageModel>().RerunSteps);
+                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Refresh statistics");
                 Assert.False(workspace.Context.EvidencePublication.IsCompleted);
 
-                // Each headless pointer call pumps the dispatcher first, so the timing lands between aim and press.
-                var aimed = CentreOf(refresh, window);
-                kindTiming.SetResult(CommandOutcome<TimingResponse>.Success(Timing("kind")));
-                Press(window, aimed);
-
-                Assert.NotEqual(aimed, CentreOf(refresh, window));
-                Assert.Null(statistics.LoadCommand.ExecutionTask);
-                Assert.Empty(fake.StatsRequests);
-
-                await workspace.Context.EvidencePublication;
-                refresh.BringIntoView();
+                var details = window.GetLogicalDescendants().OfType<Expander>()
+                    .Single(expander => Equals(expander.Header, "Detailed statistics"));
+                details.IsExpanded = true;
                 Settle(window);
-                Press(window, CentreOf(refresh, window));
-
                 Assert.NotNull(statistics.LoadCommand.ExecutionTask);
+                await statistics.LoadCommand.ExecutionTask!;
+                Assert.Single(fake.StatsRequests);
+
+                kindTiming.SetResult(CommandOutcome<TimingResponse>.Success(Timing("kind")));
+                await workspace.Context.EvidencePublication;
+                details.IsExpanded = false;
+                details.IsExpanded = true;
+                Settle(window);
                 Assert.Single(fake.StatsRequests);
             }
             finally
@@ -91,17 +85,6 @@ public sealed class TimingStatisticsRefreshTests
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
         Dispatcher.UIThread.RunJobs();
-    }
-
-    private static Point CentreOf(Control control, Window window) =>
-        control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)
-        ?? throw new InvalidOperationException("The control is not positioned in the window.");
-
-    private static void Press(Window window, Point point)
-    {
-        window.MouseMove(point);
-        window.MouseDown(point, MouseButton.Left);
-        window.MouseUp(point, MouseButton.Left);
     }
 
     private static TimingResponse Timing(string by) => new("assessment-parse", "all", by, 3, 5, 8,

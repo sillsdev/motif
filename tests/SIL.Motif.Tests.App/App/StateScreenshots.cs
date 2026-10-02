@@ -292,9 +292,13 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "tile-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
             () => stage.Named<Button>("Open Speed in Timing"), "the Speed tile"));
         yield return new("overview", "lookfirst-link-hover", stage => stage.Hover(WorkspacePage.Overview,
-            () => stage.Named<HyperlinkButton>("Approved × No parse →"), "Approved × No parse"));
+            () => stage.Visible<Button>(link => link.Classes.Contains("overviewLookFirstRow") &&
+                link.DataContext is OverviewLookFirstRow).First(),
+            "the first Look first row"));
         yield return new("overview", "lookfirst-link-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
-            () => stage.Named<HyperlinkButton>("Approved × No parse →"), "Approved × No parse"));
+            () => stage.Visible<Button>(link => link.Classes.Contains("overviewLookFirstRow") &&
+                link.DataContext is OverviewLookFirstRow).First(),
+            "the first Look first row"));
         yield return new("overview", "history-expanded", stage => stage.Expand(WorkspacePage.Overview,
             () => stage.Named<Expander>("Project history"), "Project history"))
         { Height = 1000 };

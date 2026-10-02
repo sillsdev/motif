@@ -86,14 +86,14 @@
     Intent.Outcome.Stopped        ◐ Stopped: the search reached a limit, so the result is unknown
     Intent.Outcome.NotParsed      – Not parsed: no result for this word yet
   Meaning, what an opinion and an outcome mean together:
-    Intent.Consequence.Fine       Fine, in text only: Kept, PanGloss confirms, Fine, Correct
+    Intent.Consequence.Fine       Fine, in text only: Kept, parses while Unknown, Fine, Correct
     Intent.Consequence.Look       Have a look: text on Look.Fill
     Intent.Consequence.Look.Fill  behind a Have a look meaning
     Intent.Consequence.Look.Edge  the edge of a Have a look meaning
     Intent.Consequence.Problem    Problem: text on Problem.Fill, such as Lost or Built anyway
     Intent.Consequence.Problem.Fill behind a Problem meaning
     Intent.Consequence.Problem.Edge the edge of a Problem meaning
-    Intent.Consequence.Neutral    Unknown yet, in text only
+    Intent.Consequence.Neutral    No result, Not parsed, Nobody can analyze, Nothing to compare
   Severity, what the grammar check says:
     Intent.Severity.Warning       a warning's mark and count
     Intent.Severity.Warning.Fill  behind a warning count

@@ -293,9 +293,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "step limit" => "Stopped at the step limit. Raise the step limit in Things to do here.",
-            "time limit" => "Ran out of time. Increase Seconds per word in Things to do here.",
-            _ => "Searches stopped at the step limit and ran out of time. Adjust Seconds per word and Step limit in Things to do here.",
+            "step limit" => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
+            "time limit" => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
+            _ => "Searches stopped at the step limit and ran out of time. Adjust Seconds per word and Step limit in the Timing controls on this page.",
         }, statistics.IncompleteDetail);
     }
 

@@ -322,7 +322,8 @@ public sealed record AnalysisMarkingState(
 
         var parserOnlyReadings = readings.Select((reading, index) => (reading, index))
             .Where(item => item.reading.IsParserOnly).ToArray();
-        if (markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0 &&
+        var hasApprovedReading = stored.Any(analysis => analysis.Opinion == ReadingGrade.Approved);
+        if (!hasApprovedReading && markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0 &&
             stored.Any(analysis => analysis.Opinion == ReadingGrade.Disapproved))
         {
             foreach (var (reading, index) in parserOnlyReadings)
@@ -372,12 +373,15 @@ public sealed record AnalysisMarkingState(
             choices.Add(Choice(AnalysisMarkingActionKind.Add, "Add as Unknown",
                 "Not in FieldWorks → Unknown", null, reading.Analysis, index,
                 "Not in FieldWorks", "Unknown", ChangeKinds.AddCandidate));
-            var label = markingClass == AnalysisMarkingClass.Different &&
-                stored.Any(analysis => analysis.Opinion == ReadingGrade.Disapproved)
-                ? "Accept PanGloss's reading" : "Add as Approved";
-            choices.Add(Choice(AnalysisMarkingActionKind.Add, label,
-                "Not in FieldWorks → Approved", null, reading.Analysis, index,
-                "Not in FieldWorks", "Approved", ChangeKinds.Approve));
+            if (!hasApprovedReading)
+            {
+                var label = markingClass == AnalysisMarkingClass.Different &&
+                    stored.Any(analysis => analysis.Opinion == ReadingGrade.Disapproved)
+                    ? "Accept PanGloss's reading" : "Add as Approved";
+                choices.Add(Choice(AnalysisMarkingActionKind.Add, label,
+                    "Not in FieldWorks → Approved", null, reading.Analysis, index,
+                    "Not in FieldWorks", "Approved", ChangeKinds.Approve));
+            }
             if (markingClass == AnalysisMarkingClass.Extra && stored.Any(analysis =>
                     analysis.Opinion == ReadingGrade.Approved))
                 choices.Add(Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove the extra reading",
@@ -385,7 +389,7 @@ public sealed record AnalysisMarkingState(
                     "Not in FieldWorks", "Disapproved", ChangeKinds.Reject));
         }
 
-        if (markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0)
+        if (!hasApprovedReading && markingClass == AnalysisMarkingClass.Different && parserOnlyReadings.Length > 0)
             AddAcceptNewSetChoice(choices);
 
         if (stored.Count > 0 && markingClass is AnalysisMarkingClass.Conflict or AnalysisMarkingClass.Different or
@@ -417,7 +421,7 @@ public sealed record AnalysisMarkingState(
     }
 
     private static void AddAcceptNewSetChoice(List<AnalysisMarkingChoice> choices) =>
-        choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Accept the new set as present",
+        choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Add PanGloss's readings as Unknown",
             "Parser-only readings → Unknown", null, null, null,
             "FieldWorks set", "Parser set with missing readings Unknown", null));
 

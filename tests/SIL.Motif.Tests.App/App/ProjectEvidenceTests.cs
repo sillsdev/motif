@@ -103,8 +103,8 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(stale, overview.OverviewIsStale);
         Assert.Equal(!stale, review.CanApply);
         Assert.Equal(stale, review.ApplyBlockReason.Contains("Refresh", StringComparison.Ordinal));
-        Assert.Equal(state == "applied-since" ? "Numbers need refresh"
-            : stale ? "FieldWorks saved since" : "Current", workspace.FreshnessLabel);
+        Assert.Equal(state == "applied-since" ? "Changes applied"
+            : stale ? "FieldWorks saved" : "Current", workspace.FreshnessLabel);
     }
 
     [Fact]

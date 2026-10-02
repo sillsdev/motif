@@ -82,6 +82,7 @@ public sealed class CompareViewModelTests
         Assert.Equal(row.Comparison.MeaningCode, text.Comparison.MeaningCode);
         Assert.Equal(row.Comparison.Outcome, text.Comparison.Outcome);
         Assert.Equal(row.Comparison.Readings[0].Matches, text.Comparison.Readings[0].Matches);
+        Assert.Equal(incomplete ? "No result" : row.WordRow.Meaning, Assert.Single(matrix.Words).Meaning);
         Assert.Equal(ReadingGrade.Disapproved, Assert.Single(row.Comparison.RebuiltDisapproved).Opinion);
         Assert.Equal([1], row.Comparison.ExtraReadingIndices);
         Assert.Equal(incomplete ? 0 : opinion == ReadingGrade.Approved ? 1 : 0, row.Comparison.MissingApproved.Count);
@@ -89,7 +90,7 @@ public sealed class CompareViewModelTests
         {
             Assert.Empty(row.Comparison.UndecidedNotBuilt);
             Assert.True(text.IsPanGlossCapped);
-            Assert.Equal("Unknown yet", row.WordRow.Meaning);
+            Assert.Equal("No result", row.WordRow.Meaning);
         }
         else
         {
@@ -563,7 +564,7 @@ public sealed class CompareViewModelTests
         var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
         var kept = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match);
 
-        Assert.Equal("2", lost.CountText);
+        Assert.Equal("2 words · 9 places", lost.CountText);
         Assert.Equal("9 places", lost.PlacesText);
         Assert.Equal("1 place", kept.PlacesText);
         Assert.True(lost.ShowsPlaces);
@@ -751,7 +752,7 @@ public sealed class CompareViewModelTests
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Stopped"));
         Assert.False(compare.ShowsMeaning);
         Assert.Equal("5 cells chosen", compare.ListHeading);
-        Assert.Equal("Unknown yet", compare.ListMeaning);
+        Assert.Equal("No result", compare.ListMeaning);
         Assert.Equal("neutral", compare.ListMeaningMark?.Value);
 
         compare.ClearSelectionCommand.Execute(null);

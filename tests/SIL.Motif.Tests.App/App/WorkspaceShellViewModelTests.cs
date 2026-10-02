@@ -707,7 +707,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal($"1 text, 1 pasted word, step cap {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
+        Assert.Equal($"1 text, 1 pasted word, step limit {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
     }
 
     [Fact]

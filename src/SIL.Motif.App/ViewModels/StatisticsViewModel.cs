@@ -151,9 +151,9 @@ public sealed partial class StatisticsViewModel : ObservableObject
             return (stepLimit, timeLimit) switch
             {
                 (true, true) => "Searches stopped at the step limit and ran out of time. " +
-                    "Adjust Seconds per word and Step limit in Things to do here.",
-                (true, false) => "Stopped at the step limit. Raise the step limit in Things to do here.",
-                (false, true) => "Ran out of time. Increase Seconds per word in Things to do here.",
+                    "Adjust Seconds per word and Step limit in the Timing controls on this page.",
+                (true, false) => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
+                (false, true) => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
                 _ => "Each search stopped at a limit. See the stop reason on its row.",
             };
         }
@@ -207,6 +207,10 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary><c>true</c> once a refusal left an earlier successful load's rows displayed as stale.</summary>
     [ObservableProperty]
     private bool _isStale;
+
+    /// <summary>Whether Detailed statistics has read rows for its current group.</summary>
+    [ObservableProperty]
+    private bool _hasLoaded;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShownRefusal))]
@@ -266,6 +270,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// </remarks>
     public void Reset()
     {
+        HasLoaded = false;
         _allRows.Clear();
         Rows.Clear();
         SortColumn = null;
@@ -315,6 +320,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
                         row.UseAssessment(result.StoppedAtALimit, result.Outcome != "skipped", result.CompletionStatus);
             RaiseSummary();
             IsStale = false;
+            HasLoaded = true;
             Refusal = null;
             ApplyView();
         }

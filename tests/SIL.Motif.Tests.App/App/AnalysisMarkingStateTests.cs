@@ -252,11 +252,23 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Accept the new set as present",
+        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Add PanGloss's readings as Unknown",
             "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
         Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);
         Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[1].ChangeKind);
+    }
+
+    [Fact]
+    public void AnApprovedWordCanAddANewPanGlossReadingAsUnknownButNotApproveTheNewSet()
+    {
+        var state = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("different", Child));
+
+        Assert.Equal(["Disapprove", "Add as Unknown", "Keep FieldWorks", "Remove analysis"],
+            state.FixChoices.Select(choice => choice.Label));
+        Assert.DoesNotContain(state.FixChoices, choice => choice.ChangeKind == ChangeKinds.Approve ||
+            choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);
     }
 
     [Fact]

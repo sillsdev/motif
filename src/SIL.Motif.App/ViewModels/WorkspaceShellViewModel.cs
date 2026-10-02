@@ -291,7 +291,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         ProjectFreshness.NoBaseline => "No Baseline yet",
         ProjectFreshness.Current => "Current",
-        ProjectFreshness.SavedSince => Context.Evidence.AppliedSinceRefresh ? "Numbers need refresh" : "FieldWorks saved since",
+        ProjectFreshness.SavedSince => Context.Evidence.AppliedSinceRefresh ? "Changes applied" : "FieldWorks saved",
         ProjectFreshness.Refreshing => "Refreshing",
         ProjectFreshness.Refreshed => "Refreshed",
         _ => string.Empty,
@@ -317,7 +317,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                     : "The words you chose have been parsed.",
                 _ => string.Empty,
             };
-            if (Baseline.FieldWorksHeldProject != true) return detail;
+            if (Baseline.FieldWorksHeldProject != true || FreshnessIsStale) return detail;
             return string.IsNullOrEmpty(detail) ? Baseline.HeldStatusText : $"{detail} · {Baseline.HeldStatusText}";
         }
     }
@@ -394,11 +394,10 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private string SavedSinceText()
     {
         var evidence = Context.Evidence;
+        var baseline = Baseline.CapturedUtc is { } captured ? When(captured) : "time unavailable";
         if (evidence.AppliedSinceRefresh)
-            return "Changes were applied to the FieldWorks project. The numbers are stale until you refresh.";
-        var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
-        return $"{stem} saved {When(evidence.LatestSaveUtc!.Value)}; the numbers still describe " +
-            $"{When(evidence.MeasuredSaveUtc!.Value)} until you refresh.";
+            return $"after these numbers (Baseline {baseline}). Refresh to update.";
+        return $"at {When(evidence.LatestSaveUtc!.Value)}; these numbers are from Baseline {baseline}. Refresh to update.";
     }
 
     private string BaselineAndSaveText()

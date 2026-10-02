@@ -68,6 +68,7 @@
       <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
             IsVisible="{Binding ShowAnalyzeTextsContent}">
         <ContentControl x:Name="SelectionHost" Width="{DynamicResource Component.TextsPage.SelectionPanelWidth}"
+                        IsVisible="{Binding ShowSelectionPanel}"
                         IsEnabled="{Binding Context.ProjectAndSelectionEnabled}" />
         <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">

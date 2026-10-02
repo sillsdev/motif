@@ -266,7 +266,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (PerWordStepLimitUnbounded)
             parts.Add("no step limit");
         else if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
-            parts.Add($"step cap {steps:N0}");
+            parts.Add($"step limit {steps:N0}");
         return string.Join(", ", parts);
     }
 

@@ -17,12 +17,9 @@
                Margin="{DynamicResource Component.MatrixCell.MarkerMargin}"
                ToolTip.Tip="{Binding PendingChangeStatus}" views:ClearTipPlacement.IsEnabled="True" />
       <StackPanel VerticalAlignment="Center">
-        <StackPanel Classes="matrixCellCounts" Orientation="Horizontal">
-          <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" />
-          <TextBlock Classes="matrixCellPlaces" Text="{Binding PlacesText}" IsVisible="{Binding ShowsPlaces}" />
-        </StackPanel>
+        <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" />
         <TextBlock Classes="matrixCellLabel" Text="{Binding Label}" IsVisible="{Binding ShowsLabel}"
-                   TextTrimming="CharacterEllipsis" />
+                   TextWrapping="Wrap" />
       </StackPanel>
     </DockPanel>
   </Border>

@@ -48,7 +48,9 @@ public sealed partial class WordRowViewModel : ObservableObject
         PanGlossMorphemes = row.PanGlossMorphemes.Select((morph, index) =>
             new WordRowMorphemeViewModel(new ParserReadingMorphViewModel(morph), differing.Contains(index + 1))).ToArray();
         Outcome = OutcomeOf(row.Outcome);
-        Tone = ToneOf(row.Tone);
+        Tone = row.MeaningCode == "disapproved-rebuilt"
+            ? ToneOf(row.Tone)
+            : WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
         WordAnalysesLink = row.WordAnalysesLink is { } link ? new Uri(link) : null;
         OpenInTextCommand = new RelayCommand(() => _routes?.OpenInText?.Invoke(Word));
         TryWordCommand = new RelayCommand(() => _routes?.TryWord?.Invoke(Word));
@@ -129,7 +131,9 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
 
     /// <summary>What the opinion and the outcome mean together, in the Matrix's words.</summary>
-    public string Meaning => _row.Meaning;
+    public string Meaning => _row.MeaningCode == "disapproved-rebuilt"
+        ? _row.Meaning
+        : WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
 
     /// <summary>The qualification on the comparison headline.</summary>
     public string MeaningDetail => _row.MeaningDetail;

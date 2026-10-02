@@ -108,11 +108,11 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoMatch, "Built something else")]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoParse, "Lost")]
     [InlineData(WordProjectStatus.Rejected, CompareColumnKind.Match, "Built anyway")]
-    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, "PanGloss confirms")]
+    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, "Parses; nothing in FieldWorks yet")]
     [InlineData(WordProjectStatus.Candidate, CompareColumnKind.NoMatch, "Differs: have a look")]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.Match, "Nothing to compare")]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, "New: PanGloss proposes")]
-    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, "Unknown yet")]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, "No result")]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Skipped, "Not parsed")]
     public void MatrixCellsSayWhatHappenedInPlainPhrases(WordProjectStatus row, CompareColumnKind column, string expected) =>
         Assert.Equal(expected, CompareViewModel.MeaningOf(row, column).Label);
@@ -136,7 +136,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Assert.Equal("—", cell.CountText);
         Assert.False(cell.ShowsLabel);
         cell.SetCounts(6, 6);
-        Assert.Equal("6", cell.CountText);
+        Assert.Equal("6 places", cell.CountText);
         Assert.False(cell.ShowsLabel);
         Assert.True(new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match).ShowsLabel);
     }

@@ -252,24 +252,34 @@ public sealed class MainWindowSmokeTests
             {
                 const string projectPath = @"C:\projects\aweti.fwdata";
                 var fake = (FakeCommandClient)workspace.Context.Commands;
-                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, DateTimeOffset.UtcNow, false));
+                var baselineSave = new DateTimeOffset(2026, 3, 2, 9, 15, 0, TimeSpan.Zero);
+                var laterSave = baselineSave.AddHours(1);
+                var baselineToken = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                    "2026-03-02T09:15:00Z", "sha256:" + new string('b', 64));
+                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(baselineToken, baselineSave, false)
+                {
+                    ProjectLastWriteUtc = laterSave,
+                });
                 var overview = SampleOverview() with { IsStale = true };
                 fake.OverviewCompletesWith(overview);
                 fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("one", DateTimeOffset.UtcNow,
-                    null, EvidenceFreshness.Stale, null, null, null, null, null));
+                    laterSave, EvidenceFreshness.Stale, null, null, null, null, null));
                 await workspace.Context.OpenProjectAsync(projectPath);
                 Assert.Empty(fake.AssessRequests);
+                Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
-                var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
+                var text = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
                 Assert.Contains(@"C:\projects\aweti.fwdata", Assert.Single(fake.OverviewRequests).ProjectPath);
                 Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("last FieldWorks save", text, StringComparison.Ordinal);
-                Assert.Contains("FieldWorks has changed since the Baseline behind these numbers.", text);
+                Assert.Contains("FieldWorks saved", text);
+                Assert.Contains("these numbers are from Baseline", text);
+                Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
                 Assert.Equal(Mark.NotParsed,

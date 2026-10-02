@@ -46,7 +46,7 @@ public sealed class TimingHeadlineTests
         Assert.Equal("stopped at the step limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Stopped at the step limit. Raise the step limit in Things to do here.",
+        Assert.Equal("Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
             timing.StoppedWordsAdviceText);
     }
 
@@ -67,7 +67,7 @@ public sealed class TimingHeadlineTests
         await context.EvidencePublication;
 
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Ran out of time. Increase Seconds per word in Things to do here.", timing.StoppedWordsAdviceText);
+        Assert.Equal("Ran out of time. Increase Seconds per word in the Timing controls on this page.", timing.StoppedWordsAdviceText);
     }
 
     [Fact]

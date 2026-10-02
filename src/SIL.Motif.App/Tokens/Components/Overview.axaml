@@ -79,10 +79,27 @@
   <Style Selector="Border.overviewTile:pointerover">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
-  <Style Selector="HyperlinkButton.overviewTileLink, HyperlinkButton.overviewLookFirstLink">
+  <Style Selector="HyperlinkButton.overviewTileLink">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+  </Style>
+  <Style Selector="Button.overviewLookFirstRow">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Button.overviewLookFirstRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector=":is(TextBlock).overviewLookFirstAction">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
   <!-- Semi repaints the face under the pointer and on a press, so the tile's hover fill and outline go there too. -->
   <Style Selector="Button.overviewTile:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.overviewTile:pressed /template/ ContentPresenter#PART_ContentPresenter">
@@ -100,10 +117,6 @@
   </Style>
   <Style Selector="StackPanel.overviewLookFirstContent">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
-  </Style>
-  <Style Selector="Grid.overviewLookFirstRow">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
-    <Setter Property="RowSpacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
   <Style Selector="StackPanel.overviewLookFirstWords">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />

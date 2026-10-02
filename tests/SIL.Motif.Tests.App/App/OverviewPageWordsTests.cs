@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
@@ -203,7 +204,7 @@ public sealed class OverviewPageWordsTests
         Assert.All(page.TextCoverageSegments, segment => Assert.NotNull(segment.Command));
         Assert.Equal("71 of 84 rebuilt", page.AccuracyMain);
         Assert.Equal("The grammar still builds 71 of the 84 words you approved in FieldWorks.", page.AccuracyCaption);
-        Assert.Equal(["71 kept", "3 built something else", "8 lost", "2 unknown yet"],
+        Assert.Equal(["71 kept", "3 built something else", "8 lost", "2 stopped"],
             page.AccuracySegments.Select(segment => $"{segment.CountText} {segment.Label}"));
         Assert.All(page.AccuracySegments, segment => Assert.Equal(MarkKind.Meaning, segment.Mark.Kind));
         Assert.Equal("1 disapproved analysis still built · PanGloss confirms 9 of 14 words marked Unknown",
@@ -418,15 +419,16 @@ public sealed class OverviewPageWordsTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var rows = window.GetLogicalDescendants().OfType<Grid>()
-                    .Where(grid => grid.Classes.Contains("overviewLookFirstRow")).ToArray();
+                var rows = window.GetLogicalDescendants().OfType<Button>()
+                    .Where(button => button.Classes.Contains("overviewLookFirstRow")).ToArray();
                 Assert.NotEmpty(rows);
                 foreach (var row in rows)
                 {
-                    var words = row.Children.OfType<StackPanel>().Single(panel => panel.Classes.Contains("overviewLookFirstWords"));
-                    var link = Assert.Single(row.Children.OfType<HyperlinkButton>());
-                    Assert.True(link.Bounds.Top >= words.Bounds.Bottom,
-                        $"{link.Content} should follow the measured text at narrow width.");
+                    Assert.Contains(row.GetLogicalDescendants().OfType<TextBlock>(), text =>
+                        text.Classes.Contains("overviewLookFirstWords") || text.Text?.Contains("word", StringComparison.OrdinalIgnoreCase) == true);
+                    Assert.Equal(0, row.GetLogicalDescendants().OfType<TextBlock>()
+                        .Single(text => text.Classes.Contains("overviewLookFirstAction")).Opacity);
+                    Assert.StartsWith("See the ", AutomationProperties.GetName(row));
                 }
             }
             finally

@@ -34,7 +34,7 @@
                                      TextTrimming="CharacterEllipsis" ToolTip.Tip="PanGloss"
                                      views:ClearTipPlacement.IsEnabled="True"
                                      AutomationProperties.Name="PanGloss" />
-            <views:CopyableTextBlock x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="MEANING" />
+            <views:CopyableTextBlock x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning wordRowHeading" Text="{Binding $parent[views:WordRowHeader].MeaningHeader}" />
             <views:CopyableTextBlock x:Name="WarningsCell" Grid.Column="4" Classes="wordRowWarnings wordRowHeading" Text="{Binding #Self.WarningGlyph}"
                        AutomationProperties.Name="Warnings" />
             <views:CopyableTextBlock x:Name="PlacesCell" Grid.Column="5" Classes="wordRowPlaces wordRowHeading" Text="PLACES" TextAlignment="Right" />

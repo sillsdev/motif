@@ -109,7 +109,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "Finish did not close setup and complete its first run");
 
             var selectedId = Assert.Single(walkthrough.Workspace.Selection.ChosenTextIds);
-            Assert.Equal($"1 text, step cap {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, step limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>

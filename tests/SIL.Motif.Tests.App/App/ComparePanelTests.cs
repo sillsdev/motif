@@ -23,7 +23,10 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var panel = new ComparePanel(new CompareViewModel());
+            var compare = CompareViewModelTests.LostWords();
+            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
+                cell.Column == CompareColumnKind.NoParse), additive: false);
+            var panel = new ComparePanel(compare);
             var window = new Window
             {
                 Content = panel,
@@ -38,7 +41,13 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 window.UpdateLayout();
 
                 var addUnknown = Action("add-candidate");
-                Assert.True(addUnknown.IsVisible);
+                var incorrectSpelling = Action("incorrect-spelling");
+                Assert.False(addUnknown.IsEffectivelyVisible);
+                Assert.False(incorrectSpelling.IsEffectivelyVisible);
+                compare.Words.First().IsChecked = true;
+                window.UpdateLayout();
+                Assert.True(addUnknown.IsEffectivelyVisible);
+                Assert.True(incorrectSpelling.IsEffectivelyVisible);
                 Assert.Equal("Add as Unknown", addUnknown.Content);
                 Assert.Equal("Add checked words as Unknown", AutomationProperties.GetName(addUnknown));
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
@@ -216,7 +225,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void ACellShowsItsWordsBigAndItsPlacesSmall_AndItsTooltipIsOneLine()
+    public void ACellNamesItsWordAndPlaceCountsWithoutRepeatingThem()
     {
         avalonia.Invoke(() => WithPanel(CompareViewModelTests.LostWords(), 1000, window =>
         {
@@ -224,18 +233,59 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
             var texts = lost.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible).ToArray();
             var count = Assert.Single(texts, text => text.Classes.Contains("matrixCellCount"));
-            var places = Assert.Single(texts, text => text.Classes.Contains("matrixCellPlaces"));
-            Assert.Equal("4", count.Text);
-            Assert.Equal("7 places", places.Text);
-            Assert.True(places.FontSize < count.FontSize);
+            Assert.Equal("4 words · 7 places", count.Text);
+            Assert.DoesNotContain(texts, text => text.Classes.Contains("matrixCellPlaces"));
             Assert.Contains(texts, text => text.Text == "Lost");
             Assert.Equal("You approved these in FieldWorks; the grammar builds nothing for them.", ToolTip.GetTip(lost));
+
+            var same = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
+                cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.Match });
+            Assert.Contains(same.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Classes.Contains("matrixCellCount") && text.Text == "1 word · 2 places");
 
             var empty = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Rejected, Column: CompareColumnKind.Match });
             Assert.DoesNotContain(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
                 text.Classes.Contains("matrixCellPlaces") && text.IsEffectivelyVisible);
         }));
+    }
+
+    [Fact]
+    public void MatrixResultTextWrapsInsideItsCell()
+    {
+        avalonia.Invoke(() => WithPanel(MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord),
+            1000, window =>
+            {
+                var cell = window.GetVisualDescendants().OfType<MatrixCell>().Single(candidate =>
+                    candidate.DataContext is CompareCellViewModel
+                    {
+                        Row: WordProjectStatus.Candidate,
+                        Column: CompareColumnKind.Match,
+                    });
+                var label = Assert.Single(cell.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Classes.Contains("matrixCellLabel"));
+
+                Assert.Equal("Parses; nothing in FieldWorks yet", label.Text);
+                Assert.Equal(TextWrapping.Wrap, label.TextWrapping);
+            }));
+    }
+
+    [Fact]
+    public void NotInFieldWorksRowLabelWrapsInsideItsColumn()
+    {
+        avalonia.Invoke(() => WithPanel(MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord),
+            988, window =>
+            {
+                var row = window.GetVisualDescendants().OfType<Button>().Single(button =>
+                    button.DataContext is CompareRowViewModel { Row: WordProjectStatus.NotPresent });
+                var label = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == "Not in FieldWorks");
+
+                Assert.Equal(TextWrapping.Wrap, label.TextWrapping);
+                Assert.True(label.TextLayout.TextLines.Count > 1, "The row label wraps across its narrow column.");
+                Assert.True(label.TextLayout.Width <= label.Bounds.Width + 0.5,
+                    $"The row label needs {label.TextLayout.Width:0.#} px but has {label.Bounds.Width:0.#}.");
+            }));
     }
 
     [Fact]
@@ -252,7 +302,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var empty = CountOf(WordProjectStatus.Rejected, CompareColumnKind.Match);
             var dash = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell => cell.DataContext is CompareCellViewModel { IsNone: true })
                 .GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("matrixCellCount"));
-            Assert.Equal("0", empty.Text);
+            Assert.Equal("0 words", empty.Text);
             Assert.Equal(Resource("Intent.Type.Label"), empty.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), full.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), dash.FontSize);
@@ -269,13 +319,13 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var compare = CompareViewModelTests.LostWords();
             WithPanel(compare, 1000, window =>
             {
-                Assert.Contains("MEANING", MatrixHeads(window));
+                Assert.Contains("RESULT", MatrixHeads(window));
                 Assert.All(MatrixRows(window), row => Assert.True(row.ShowsMeaning));
 
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
                 window.UpdateLayout();
-                Assert.DoesNotContain("MEANING", MatrixHeads(window));
+                Assert.DoesNotContain("RESULT", MatrixHeads(window));
                 Assert.NotEmpty(MatrixRows(window));
                 Assert.All(MatrixRows(window), row =>
                 {
@@ -325,15 +375,19 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains(heading.GetVisualDescendants().OfType<OpinionMark>(), mark => mark.Kind == OpinionMarkKind.Approved);
                 Assert.Contains(heading.GetVisualDescendants().OfType<MarkChip>(), chip => chip.Text == "Lost");
                 Assert.Contains(heading.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "4 words · 7 places");
-                Assert.Contains(heading.GetVisualDescendants().OfType<Button>(), button =>
-                    Equals(button.Content, "AI Handoff for these 4 words"));
+                Assert.DoesNotContain(heading.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "AI Handoff for the listed words");
                 Assert.True(strip.Bounds.Top >= heading.Bounds.Bottom - 1);
+
+                compare.Words.First().IsChecked = true;
+                window.UpdateLayout();
 
                 Control Named(string name) => Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
                     AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
                 var controls = new[]
                 {
                     Named("Order the listed words"), Named("Search the listed words"),
+                    Named("AI Handoff for the listed words"),
                     Named("Add checked words as Unknown"), Named("Mark checked words as incorrect spelling"),
                     Named("Parse the stopped and unparsed words again"),
                 };
@@ -371,7 +425,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     }
                 }
 
-                HeadsStayApart(["WORD", "FW", "PG", "MEANING"]);
+                HeadsStayApart(["WORD", "FW", "PG", "RESULT"]);
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
                 HeadsStayApart(["WORD", "FW", "PG", "PLACES"]);

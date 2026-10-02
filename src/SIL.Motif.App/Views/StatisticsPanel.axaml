@@ -55,9 +55,6 @@
                         IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
       <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Mark="{x:Static vm:Mark.Stopped}" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                         IsActive="{Binding Statistics.OnlyIncomplete}" Click="OnOnlyIncompleteClick" />
-      <Button Content="Refresh"
-              Command="{Binding Statistics.LoadCommand}"
-              AutomationProperties.Name="Refresh statistics" />
     </DockPanel>
 
     <views:CopyableTextBlock DockPanel.Dock="Top" Classes="muted"

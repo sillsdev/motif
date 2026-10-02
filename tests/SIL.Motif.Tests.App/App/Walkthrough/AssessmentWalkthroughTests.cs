@@ -184,7 +184,6 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             details.IsExpanded = true;
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            walkthrough.Click("Refresh statistics");
             var statisticsDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             var statistics = walkthrough.Workspace.PageModel<TimingPageModel>().Statistics;
             try

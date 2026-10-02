@@ -1,6 +1,9 @@
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -55,6 +58,37 @@ public sealed class OverviewTileNavigationTests
                 Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().Assess.Compare.Cells
                     .Where(cell => cell.IsSelected)
                     .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet());
+            }
+            finally
+            {
+                Close(workspace, window);
+            }
+
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void LookFirstRowOpensItsMeasuredWordsFromAnywhereInTheRow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create();
+            try
+            {
+                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
+                window.Show();
+                window.ApplyTemplate();
+                window.UpdateLayout();
+
+                var row = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), link =>
+                    link.DataContext is OverviewLookFirstRow lookFirst && lookFirst.LinkText == "See the 6 words");
+                HeadlessClick.Click(window, row, "Look first row");
+
+                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+                Assert.True(workspace.PageModel<TextsPageModel>().Assess.Compare.Cells.Single(cell =>
+                    cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse).IsSelected);
             }
             finally
             {

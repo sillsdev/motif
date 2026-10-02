@@ -83,6 +83,9 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>The fixed word questions, which select their exact cells in the page's Compare matrix.</summary>
     public TextsListsViewModel TextsLists { get; }
 
+    /// <summary>Whether Texts keeps its Selection list beside the word detail.</summary>
+    public bool ShowSelectionPanel => Context.Inspector is null;
+
     /// <summary>Which view of the words the Texts page is showing.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowMatrix))]
@@ -203,6 +206,8 @@ public sealed partial class TextsPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.Inspector))
+            OnPropertyChanged(nameof(ShowSelectionPanel));
         if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
         {
             OnPropertyChanged(nameof(ShowMatrixContent));

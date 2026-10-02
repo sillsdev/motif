@@ -42,6 +42,7 @@ public sealed class InspectorTests
 
                 var inspector = InspectorPanel(window);
                 Assert.True(inspector.IsEffectivelyVisible);
+                Assert.False(SelectionHost(window).IsEffectivelyVisible);
                 var asked = Assert.Single(fake.InspectRequests).Subject;
                 Assert.Equal(morph.AllomorphId, asked.AllomorphId);
                 Assert.Equal(morph.GrammaticalInfoId, asked.GrammaticalInfoId);
@@ -77,6 +78,7 @@ public sealed class InspectorTests
                 Assert.False(workspace.Inspector.IsOpen);
                 Assert.Null(workspace.Context.Inspector);
                 Assert.False(InspectorPanel(window).IsEffectivelyVisible);
+                Assert.True(SelectionHost(window).IsEffectivelyVisible);
                 Assert.NotNull(AnalyzeTextsLayoutTests.OpenCard(window));
                 Assert.True(CardChip(window, "kul").IsFocused, "Closing puts the keyboard back on the chip it opened from.");
             }
@@ -84,6 +86,7 @@ public sealed class InspectorTests
             {
                 window.Close();
             }
+
         }, Deadline);
     }
 
@@ -232,6 +235,19 @@ public sealed class InspectorTests
                 Assert.Equal(3, uses.Shown.Count);
                 Assert.Equal("Show all 5", uses.ShowAllText);
                 Assert.Equal("Not counting 2 disapproved", uses.NotCountingText);
+                var tryLinks = InspectorPanel(window).GetVisualDescendants().OfType<HyperlinkButton>()
+                    .Where(link => Equals(link.Content, "Try a Word")).ToArray();
+                Assert.NotEmpty(tryLinks);
+                Assert.All(tryLinks, link =>
+                {
+                    Assert.Equal(0, link.Opacity);
+                    Assert.True(link.Focusable);
+                    Assert.Contains("revealOnHover", link.Classes);
+                });
+                tryLinks[0].Focus(NavigationMethod.Tab);
+                Settle(window);
+                Assert.True(tryLinks[0].Opacity > 0);
+
                 uses.ShowAllCommand.Execute(null);
                 Assert.Equal(5, uses.Shown.Count);
 
@@ -244,6 +260,11 @@ public sealed class InspectorTests
                 Assert.Contains(facts, link => (string)link.Content! == "Category Edit ↗");
                 Assert.All(facts, link => Assert.Contains("revealControl", link.Classes));
                 Assert.All(facts, link => Assert.True(link.Focusable, "A link hidden until hover is still reachable by keyboard."));
+                Assert.All(facts, link => Assert.Contains("revealOnHover", link.Classes));
+                Assert.All(facts, link => Assert.Equal(0, link.Opacity));
+                facts[0].Focus(NavigationMethod.Tab);
+                Settle(window);
+                Assert.True(facts[0].Opacity > 0);
                 Assert.All(sections, section => Assert.Contains("hoverReveal", section.Classes));
 
                 var mark = Assert.Single(sections[^1].GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Ellipse>(),
@@ -301,6 +322,10 @@ public sealed class InspectorTests
     }
 
     internal static Inspector InspectorPanel(Window window) => Assert.Single(window.GetLogicalDescendants().OfType<Inspector>());
+
+    private static ContentControl SelectionHost(Window window) =>
+        Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>())
+            .FindControl<ContentControl>("SelectionHost")!;
 
     internal static Border CardChip(Window window, string form) =>
         AnalyzeTextsLayoutTests.OpenCard(window).GetVisualDescendants().OfType<Border>().First(border =>

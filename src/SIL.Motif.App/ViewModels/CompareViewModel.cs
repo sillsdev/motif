@@ -596,7 +596,9 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>What a cell means and how it is coloured, one entry per combination.</summary>
     public static (string Label, CompareFamilyKind Family) MeaningOf(WordProjectStatus row, CompareColumnKind column)
     {
-        return CompareSemantics.MeaningOf(StandingWire(row), column);
+        var standing = StandingWire(row);
+        var (_, family) = CompareSemantics.MeaningOf(standing, column);
+        return (WindowWords.MeaningOf(standing, WindowWords.OutcomeOf(column)).Word, family);
     }
 
     private static string StandingWire(WordProjectStatus? status) => status switch
@@ -774,22 +776,25 @@ public sealed partial class CompareCellViewModel : ObservableObject
 
     /// <summary>How many words fell here; <see cref="Count"/> follows it.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountText))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _wordCount;
 
     /// <summary>How many places in the chosen Texts those words occur.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountText))]
     [NotifyPropertyChangedFor(nameof(PlacesText))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private int _occurrenceCount;
 
     /// <summary>Whether the places were counted: until the chosen Texts load, they are unknown, not 0.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountText))]
     [NotifyPropertyChangedFor(nameof(ShowsPlaces))]
     [NotifyPropertyChangedFor(nameof(AccessibleName))]
     private bool _hasPlaces;
 
-    /// <summary>The places the cell's words occur, the small number beside the words.</summary>
+    /// <summary>The number of text places where the cell's words occur.</summary>
     public string PlacesText => PlacesTextOf(OccurrenceCount);
 
     /// <summary>Whether to show the places; a cell no word fell in shows only its zero.</summary>
@@ -843,8 +848,10 @@ public sealed partial class CompareCellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public string CountText => IsEmptyImpossible
-        ? "—" : Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+    public string CountText => IsEmptyImpossible ? "—"
+        : !HasPlaces || WordCount == 0 ? WordsText(WordCount)
+        : WordCount == OccurrenceCount ? PlacesText
+        : $"{WordsText(WordCount)} · {PlacesText}";
 
     /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
@@ -919,7 +926,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
         AccessibleName = $"{Word}: {CompareViewModel.HeldInFieldWorks(OpinionLabel)}, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
-        Meaning = word.Comparison.Headline;
+        Meaning = word.Comparison.MeaningCode == "disapproved-rebuilt"
+            ? word.Comparison.Headline
+            : WindowWords.MeaningOf(word.WordRow.Row.Opinion, word.WordRow.Outcome).Word;
         Family = CompareSemantics.MeaningOfCode(word.Comparison.MeaningCode).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
         RowMark = WordProjectStatuses.MarkOf(Row);
@@ -971,7 +980,9 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public CompareFamilyKind Family { get; }
 
     /// <summary>The tone the word's meaning takes.</summary>
-    public MeaningTone Tone => WindowWords.ToneOf(Family);
+    public MeaningTone Tone => Outcome == ParserOutcome.Stopped
+        ? MeaningTone.Neutral
+        : WindowWords.ToneOf(Family);
     public bool IsViolation => Family == CompareFamilyKind.Violation;
     public string RowLabel { get; }
 

@@ -22,13 +22,13 @@
                                          Classes.look="{Binding IsLook}" Classes.problem="{Binding IsProblem}"
                                          Text="{Binding Meaning}" IsVisible="{Binding !HasDetail}" />
                 <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" />
-                <HyperlinkButton Grid.Column="2" Classes="inspectorAction revealControl revealLink" Content="Try a Word" Command="{Binding TryWordCommand}"
+                <HyperlinkButton Grid.Column="2" Classes="inspectorAction revealControl revealLink revealOnHover" Content="Try a Word" Command="{Binding TryWordCommand}"
                         AutomationProperties.Name="{Binding TryWordName}" />
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <HyperlinkButton Classes="inspectorAction" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
+        <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="{Binding ShowAllText}" Command="{Binding ShowAllCommand}"
                 IsVisible="{Binding CanShowAll}" />
       </StackPanel>
     </DataTemplate>
@@ -145,9 +145,9 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                <HyperlinkButton Classes="inspectorAction" Content="{Binding ShowAllWarningsText}" Command="{Binding ShowAllWarningsCommand}"
+                <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="{Binding ShowAllWarningsText}" Command="{Binding ShowAllWarningsCommand}"
                         IsVisible="{Binding CanShowAllWarnings}" />
-                <HyperlinkButton Classes="inspectorAction revealControl revealLink" Content="Open Warnings" Command="{Binding OpenWarningsCommand}" />
+                <HyperlinkButton Classes="inspectorAction revealControl revealLink revealOnHover" Content="Open Warnings" Command="{Binding OpenWarningsCommand}" />
               </StackPanel>
             </StackPanel>
           </Border>
@@ -174,7 +174,7 @@
                           <TextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="Normal" />
                         </views:InspectLink>
                         <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding CannotInspect}" />
-                        <HyperlinkButton Classes="revealControl revealLink" Content="{Binding LinkText}"
+                <HyperlinkButton Classes="revealControl revealLink revealOnHover" Content="{Binding LinkText}"
                                          NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
                                          AutomationProperties.Name="{Binding LinkName}" ToolTip.Tip="{Binding LinkName}" />
                       </StackPanel>

@@ -43,7 +43,29 @@
           <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
                   Content="All" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="all" />
+          <views:CopyableTextBlock Classes="muted" Text="Seconds per word" VerticalAlignment="Center" />
+          <NumericUpDown Value="{Binding RerunSeconds}" Minimum="1" Increment="1"
+                         Width="{DynamicResource Component.Timing.SlowestCountWidth}" FormatString="0"
+                         AutomationProperties.Name="Seconds per word" />
+          <views:CopyableTextBlock Classes="muted" Text="Step limit" VerticalAlignment="Center" />
+          <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
+                         Width="{DynamicResource Component.Timing.SlowestCountWidth}" FormatString="N0"
+                         AutomationProperties.Name="Per-word step limit" />
+          <Button Content="Re-run" Command="{Binding RerunWordsCommand}"
+                  AutomationProperties.Name="Re-run chosen words" />
+          <Button Content="AI Handoff" Command="{Binding HandOffWordsCommand}"
+                  AutomationProperties.Name="AI Handoff for these words" />
         </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
+                    IsVisible="{Binding IsRerunning}" AutomationProperties.Name="Re-run progress">
+          <views:CopyableTextBlock Text="{Binding RerunProgressText}" VerticalAlignment="Center" />
+          <ProgressBar Minimum="0" Maximum="{Binding RerunTotal}" Value="{Binding RerunCompleted}"
+                       AutomationProperties.Name="Re-run progress" />
+          <Button Content="Cancel" Command="{Binding CancelRerunCommand}"
+                  AutomationProperties.Name="Cancel re-run" />
+        </StackPanel>
+        <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMessage}" TextWrapping="Wrap"
+                                 IsVisible="{Binding RerunMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
         <Expander Header="More word sources" AutomationProperties.Name="More word sources">
           <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
@@ -105,10 +127,6 @@
                     IsVisible="{Binding $self.IsEffectivelyEnabled}"
                     HorizontalAlignment="Left" AutomationProperties.Name="Parse these words again to measure them" />
           </StackPanel>
-        </Border>
-        <Border Classes="notice" IsVisible="{Binding ShowStaleTiming}">
-          <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers."
-                                   TextWrapping="Wrap" />
         </Border>
         <Border Classes="card" IsVisible="{Binding ShowEmptySelection}">
           <WrapPanel>
@@ -247,29 +265,6 @@
               </StackPanel>
             </Border>
 
-            <Border Classes="card">
-              <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Classes="section-title" Text="Things to do here" />
-                <Button Content="AI Handoff for these words" Command="{Binding HandOffWordsCommand}" />
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                  <views:CopyableTextBlock Text="Seconds per word" VerticalAlignment="Center" />
-                  <NumericUpDown Value="{Binding RerunSeconds}" Minimum="1" Increment="1"
-                                 AutomationProperties.Name="Seconds per word" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                  <views:CopyableTextBlock Text="Step limit" VerticalAlignment="Center" />
-                  <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
-                                 AutomationProperties.Name="Per-word step limit" />
-                </StackPanel>
-                <Button Content="Re-run chosen words" Command="{Binding RerunWordsCommand}" />
-                <views:CopyableTextBlock Text="{Binding RerunProgressText}" IsVisible="{Binding IsRerunning}" />
-                <ProgressBar Minimum="0" Maximum="{Binding RerunTotal}" Value="{Binding RerunCompleted}"
-                             IsVisible="{Binding IsRerunning}" />
-                <Button Content="Cancel" Command="{Binding CancelRerunCommand}"
-                        IsVisible="{Binding IsRerunning}" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMessage}" TextWrapping="Wrap" />
-              </StackPanel>
-            </Border>
           </StackPanel>
         </Grid>
 
@@ -322,7 +317,8 @@
           </StackPanel>
         </Border>
 
-        <Expander Header="Detailed statistics" IsVisible="{Binding ShowStatistics}">
+        <Expander Header="Detailed statistics" IsVisible="{Binding ShowStatistics}"
+                  Expanded="OnStatisticsExpanded">
           <ContentControl x:Name="StatisticsHost" />
         </Expander>
       </StackPanel>

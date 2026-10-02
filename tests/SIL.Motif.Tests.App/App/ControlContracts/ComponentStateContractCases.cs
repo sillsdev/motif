@@ -154,6 +154,19 @@ internal static class ComponentStateContractCases
         yield return new(revealWhenOpen, "revealed when the row is open", () => RevealOwner(open: true), StateStimulus.None,
             StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
 
+        const string textRevealAtRest = "Border.hoverReveal :is(TextBlock).revealOnHover";
+        const string textRevealOnPointer = "Border.hoverReveal:pointerover :is(TextBlock).revealOnHover";
+        const string textRevealOnFocus = "Border.hoverReveal:focus-within :is(TextBlock).revealOnHover";
+        const string textRevealWhenOpen = "Border.hoverReveal.open :is(TextBlock).revealOnHover";
+        yield return new(textRevealAtRest, "at rest", () => RevealTextOwner(), StateStimulus.None,
+            StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
+        yield return new(textRevealOnPointer, "revealed by pointer hover", () => RevealTextOwner(), StateStimulus.Pointer,
+            StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+        yield return new(textRevealOnFocus, "revealed by keyboard focus", () => RevealTextOwner(), StateStimulus.KeyboardFocusInside,
+            StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+        yield return new(textRevealWhenOpen, "revealed when the row is open", () => RevealTextOwner(open: true), StateStimulus.None,
+            StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
+
         yield return new("Button:pressed /template/ ContentPresenter#PART_ContentPresenter", "pressed",
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
             "Intent.Transform.Pressed");
@@ -186,6 +199,10 @@ internal static class ComponentStateContractCases
             yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
                 StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
         }
+
+        const string lookFirstHover = "Button.overviewLookFirstRow:pointerover /template/ ContentPresenter#PART_ContentPresenter";
+        yield return new(lookFirstHover, "hover", () => Alone(Press("overviewLookFirstRow")), StateStimulus.Pointer,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
 
         yield return new("Button.viewChip.active", "selected", () => Alone(Press("viewChip", "active")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Neutral");
@@ -423,6 +440,16 @@ internal static class ComponentStateContractCases
         return (owner, button);
     }
 
+    private static (Control, Control) RevealTextOwner(bool open = false)
+    {
+        var action = new TextBlock { Classes = { "revealOnHover" }, Text = "See the words" };
+        var button = Press("overviewLookFirstRow");
+        button.Content = action;
+        var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button, Width = 200, Height = 40 };
+        if (open) owner.Classes.Add("open");
+        return (owner, button);
+    }
+
     private static (Control, Control) Entry(bool collapsed, bool selected)
     {
         var list = new ListBox { Classes = { "sidebar" } };
@@ -505,6 +532,16 @@ internal static class TooltipOwners
         new("Parse stopped words again", "Views/ComparePanel.axaml", "Parse the stopped and unparsed words again",
             TooltipScene.Matrix,
             control => control is SplitButton && Name(control) == "Parse the stopped and unparsed words again"),
+        new("add checked words as Unknown", "Views/ComparePanel.axaml", "{Binding Compare.CheckedWordText}", TooltipScene.Matrix,
+            control => control is Button && Name(control) == "Add checked words as Unknown")
+        {
+            Pending = "the Matrix scene has no checked words, so the action is hidden",
+        },
+        new("mark checked words as incorrect spelling", "Views/ComparePanel.axaml", "{Binding Compare.CheckedWordText}", TooltipScene.Matrix,
+            control => control is Button && Name(control) == "Mark checked words as incorrect spelling")
+        {
+            Pending = "the Matrix scene has no checked words, so the action is hidden",
+        },
         new("FieldWorks column heading", "Views/WordRowHeader.axaml", "FieldWorks", TooltipScene.Lists,
             control => control is CopyableTextBlock && Name(control) == "FieldWorks" &&
                 control.Classes.Contains("wordRowHeading") && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&

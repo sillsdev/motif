@@ -54,10 +54,6 @@
         </StackPanel>
       </Border>
 
-      <Border Classes="notice" IsVisible="{Binding OverviewIsStale}">
-        <views:CopyableTextBlock Text="FieldWorks has changed since the Baseline behind these numbers. Refresh to update them."
-                                 TextWrapping="Wrap" />
-      </Border>
       <Border Classes="notice" IsVisible="{Binding SelectionIsUnresolved}">
         <views:CopyableTextBlock Text="The default Selection could not be resolved against the current Baseline; its word and occurrence counts are unavailable."
                                  TextWrapping="Wrap" />
@@ -66,24 +62,28 @@
         <views:ParsePrompt DataContext="{Binding Context}" />
       </Border>
 
-      <Border Classes="card overviewLookFirst hoverReveal" IsVisible="{Binding HasLookFirstRows}"
+      <Border Classes="card overviewLookFirst" IsVisible="{Binding HasLookFirstRows}"
               AutomationProperties.Name="Look first">
         <StackPanel Classes="overviewLookFirstContent">
           <TextBlock Classes="overviewTileTitle" Text="Look first" />
           <ItemsControl ItemsSource="{Binding LookFirstRows}" AutomationProperties.Name="Stored results to look at first">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:OverviewLookFirstRow">
-                <Grid Classes="overviewLookFirstRow" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
-                  <TextBlock Classes="overviewLookFirstNumber" Text="{Binding Number}" Grid.RowSpan="2" />
-                  <StackPanel Grid.Column="1" Classes="overviewLookFirstWords">
-                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
-                    <TextBlock Classes="overviewMuted" Text="{Binding Detail}" TextWrapping="Wrap"
-                               IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                  </StackPanel>
-                  <HyperlinkButton Grid.Row="1" Grid.Column="1" Classes="overviewLookFirstLink revealControl revealLink"
-                                   Content="{Binding LinkText}" Command="{Binding OpenCommand}"
-                                   AutomationProperties.Name="{Binding LinkText}" />
-                </Grid>
+                <Border Classes="hoverReveal">
+                  <Button Classes="overviewLookFirstRow" Command="{Binding OpenCommand}"
+                          AutomationProperties.Name="{Binding LinkText}">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                      <TextBlock Classes="overviewLookFirstNumber" Text="{Binding Number}" />
+                      <StackPanel Grid.Column="1" Classes="overviewLookFirstWords">
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+                        <TextBlock Classes="overviewMuted" Text="{Binding Detail}" TextWrapping="Wrap"
+                                   IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Classes="overviewLookFirstAction revealOnHover" Text="{Binding LinkText}"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                  </Button>
+                </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -96,7 +96,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Speed" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Timing →" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Timing →" DockPanel.Dock="Right"
                                Command="{Binding OpenTimingCommand}" AutomationProperties.Name="Open Speed in Timing" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding SpeedMain}" TextWrapping="Wrap"
@@ -153,7 +153,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Text coverage" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Texts →" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Texts →" DockPanel.Dock="Right"
                                Command="{Binding OpenTextCoverageCommand}"
                                AutomationProperties.Name="Open Text coverage in Texts" />
             </DockPanel>
@@ -170,7 +170,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Approved analyses kept" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Matrix →" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Matrix →" DockPanel.Dock="Right"
                                Command="{Binding OpenAccuracyCommand}"
                                AutomationProperties.Name="Open Approved analyses kept in the Matrix" />
             </DockPanel>
@@ -186,7 +186,7 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="Grammar warnings" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink revealControl revealLink" Content="Warnings →" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink revealControl revealLink revealOnHover" Content="Warnings →" DockPanel.Dock="Right"
                                Command="{Binding OpenWarningsCommand}"
                                AutomationProperties.Name="Open Grammar warnings in Warnings" />
             </DockPanel>

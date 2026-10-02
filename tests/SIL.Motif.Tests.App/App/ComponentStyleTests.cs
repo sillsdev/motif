@@ -56,7 +56,8 @@ public sealed partial class ComponentStyleTests
                     window.Show();
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
-                    Assert.True(Application.Current!.TryGetResource(item.Key, variant, out var expected));
+                    Assert.True(Application.Current!.TryGetResource(item.Key, variant, out var expected),
+                        $"{variant} {item.Component}: {item.What} cannot resolve {item.Key}.");
                     var actual = target.GetValue(item.Property);
                     if (!Equals(expected, actual))
                         failures.Add($"{variant} {item.Component}: {item.What} {item.Property.Name} is {actual}, not {item.Key} ({expected}).");
@@ -431,10 +432,8 @@ public sealed partial class ComponentStyleTests
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
         yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
             Border.BackgroundProperty, "Intent.Surface");
-        yield return new("MatrixCell", "a cell's places", host => Within(host, Box("matrixCell"), "matrixCellPlaces"),
+        yield return new("MatrixCell", "a cell's label", host => Within(host, Box("matrixCell"), "matrixCellLabel"),
             TextBlock.FontSizeProperty, "Intent.Type.Label");
-        yield return new("MatrixCell", "a cell's places", host => Within(host, Box("matrixCell"), "matrixCellPlaces"),
-            TextBlock.MarginProperty, "Component.MatrixCell.PlacesMargin");
         yield return new("MatrixCell", "a cell's count", host => Within(host, Box("matrixCell"), "matrixCellCount"),
             TextBlock.FontSizeProperty, "Intent.Type.Title");
         yield return new("MatrixCell", "an empty cell's count", host => Within(host, Box("matrixCell", "empty"), "matrixCellCount"),
@@ -615,6 +614,14 @@ public sealed partial class ComponentStyleTests
             Button.BackgroundProperty, "Intent.Surface");
         yield return new("Overview", "a summary tile", host => Add(host, Press("overviewTile")),
             Button.PaddingProperty, "Component.Overview.TilePadding");
+        yield return new("Overview", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
+            Button.PaddingProperty, "Intent.Inset.None");
+        yield return new("Overview", "the Look first row", host => Add(host, Press("overviewLookFirstRow")),
+            Button.BackgroundProperty, "Intent.Surface");
+        yield return new("Overview", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
+            TextBlock.ForegroundProperty, "Intent.Link");
+        yield return new("Overview", "the Look first action", host => Add(host, Text("overviewLookFirstAction")),
+            TextBlock.FontSizeProperty, "Intent.Type.Small");
         yield return new("Overview", "a framed tile", host => Add(host, Box("overviewTile")),
             Border.BackgroundProperty, "Intent.Surface");
         yield return new("Overview", "a framed tile", host => Add(host, Box("overviewTile")),
@@ -624,6 +631,10 @@ public sealed partial class ComponentStyleTests
         yield return new("Overview", "a handoff icon", host => Add(host,
                 new PathIcon { Classes = { "overviewHandoffIcon" } }),
             Control.WidthProperty, "Component.Overview.HandoffIconSize");
+
+        yield return new("HoverReveal", "a Look first action at rest", host => Within(host,
+                new Border { Classes = { "hoverReveal" } }, "revealOnHover"),
+            TextBlock.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
 
         yield return new("OpinionMark", "an approved fill", host => Add(host, Box("opinionMark", "approved")),
             Border.BackgroundProperty, "Intent.Opinion.Approved.Fill");

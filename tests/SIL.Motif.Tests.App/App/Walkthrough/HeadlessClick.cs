@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 /// <remarks>
 /// Each headless pointer call runs the dispatcher's queued work before it delivers its input, so anything that
 /// arrives between aiming and pressing, such as a page's rows loading above the control, can move the control out
-/// from under the aimed point; pinned by `RefreshStatisticsAimedBeforeTheTimingArrivesIsMissedAndAimedAfterItLoads`.
+/// from under the aimed point; pinned by `DetailedStatisticsLoadWhenOpenedWithoutASeparateRefreshButton`.
 /// The press then lands on whatever took its place. Checking that the press reached the control, and for a
 /// <see cref="Button"/> that it clicked, turns that into a failure naming the miss.
 /// </remarks>
