@@ -70,8 +70,8 @@
                 <views:MarkChip x:Name="OutcomeBesideMorphemes" DockPanel.Dock="Left" Mark="{Binding OutcomeMark}"
                                 Text="{Binding OutcomeLabel}" Compact="True" Classes="wordRowOutcome" VerticalAlignment="Top"
                                 HorizontalAlignment="Left" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-                <views:MarkChip x:Name="OutcomeAlone" DockPanel.Dock="Left" Mark="{Binding OutcomeMark}"
-                                Text="{Binding OutcomeWord}" Compact="True" Classes="wordRowOutcome" IsVisible="False"
+                <views:MarkChip x:Name="OutcomeAlone" DockPanel.Dock="Left" Mark="{Binding CompactOutcomeMark}"
+                                Text="{Binding CompactOutcomeWord}" Compact="True" Classes="wordRowOutcome" IsVisible="False"
                                 VerticalAlignment="Center" HorizontalAlignment="Left" />
                 <Panel x:Name="PanGlossMorphemes">
                 <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
@@ -139,6 +139,9 @@
         </Grid>
         </Border>
 
+        <views:CopyableTextBlock Text="{Binding IdentityDetail}" Classes="wordRowNote" TextWrapping="Wrap"
+                                 Margin="{DynamicResource Component.WordRow.CardPadding}"
+                                 IsVisible="{Binding HasIdentityDetail}" />
         <views:CopyableTextBlock Classes="wordRowNote" Text="{Binding #Self.Note}" TextTrimming="CharacterEllipsis"
                    Margin="{DynamicResource Component.WordRow.CardPadding}"
                    IsVisible="{Binding #Self.Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

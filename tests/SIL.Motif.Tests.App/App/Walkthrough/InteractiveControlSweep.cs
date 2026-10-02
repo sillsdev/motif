@@ -29,6 +29,7 @@ internal static class InteractiveControlSweep
             ["completed Timing"] = [AutomationIds.RefreshProject],
             ["completed Warnings"] = [AutomationIds.RefreshProject],
             ["completed Analyze texts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
+            ["completed Word list with opinion counts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
             ["word card with a reading"] = [AutomationIds.AnalyzeTextsTab],
             ["opened diagnostic window"] = [AutomationIds.TryWordInput, AutomationIds.TryWordRun],
             ["completed Handoff"] = [AutomationIds.WriteHandoff],

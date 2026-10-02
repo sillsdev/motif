@@ -314,15 +314,17 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 stage = "Overview prompt";
                 await ShowPageAsync(session, WorkspacePage.Overview);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                    text.Text == "Nothing parsed since the last Refresh." && text.IsEffectivelyVisible &&
+                    text.GetVisualAncestors().Any(ancestor => ancestor is OverviewPage));
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
                     button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
-                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
+                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand) &&
+                    button.GetVisualAncestors().Any(ancestor => ancestor is OverviewPage));
 
                 stage = "Review prompt";
                 await ShowPageAsync(session, WorkspacePage.Review);
                 Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "These words haven't been parsed since the last Refresh." && text.IsEffectivelyVisible);
+                    text.Text == "Nothing parsed since the last Refresh." && text.IsEffectivelyVisible);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
                     button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
                     ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
@@ -332,9 +334,9 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var texts = workspace.PageModel<TextsPageModel>();
                 Assert.True(texts.ShowParsePrompt);
                 Assert.False(texts.ShowMatrixContent);
-                Assert.Contains("These words haven't been parsed since the last Refresh.",
+                Assert.Contains("Nothing parsed since the last Refresh.",
                     await UntilFound(session.Window, () => "the Texts prompt did not appear",
-                        text => text == "These words haven't been parsed since the last Refresh."));
+                        text => text == "Nothing parsed since the last Refresh."));
                 var parseButton = session.Window.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Parse all words" && button.IsEffectivelyVisible &&
                     button.GetVisualAncestors().Any(ancestor => ancestor.GetType().Name == "TextsPage"));

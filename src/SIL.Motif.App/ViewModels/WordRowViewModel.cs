@@ -119,6 +119,12 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public string OutcomeWord => WindowWords.Of(Outcome);
 
+    /// <summary>The compact result names an opinion conflict instead of implying that a matching reading is good.</summary>
+    public string CompactOutcomeWord => Outcome == ParserOutcome.Same && Tone == MeaningTone.Problem ? Meaning : OutcomeWord;
+
+    /// <summary>The compact result chip uses the comparison tone when a rebuilt reading conflicts with an opinion.</summary>
+    public Mark CompactOutcomeMark => Outcome == ParserOutcome.Same && Tone == MeaningTone.Problem ? MeaningMark : OutcomeMark;
+
     /// <summary>The outcome's word beside its sign; PanGloss's own morphemes take the word's place when shown.</summary>
     public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
 
@@ -127,6 +133,50 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The qualification on the comparison headline.</summary>
     public string MeaningDetail => _row.MeaningDetail;
+
+    /// <summary>Explains differences hidden by identical forms and glosses without guessing an entry or sense.</summary>
+    public string IdentityDetail
+    {
+        get
+        {
+            var fieldWorks = _row.FieldWorksMorphemes;
+            var panGloss = _row.PanGlossMorphemes;
+            var sameText = fieldWorks.Select(morph => (morph.Form, morph.Gloss))
+                .SequenceEqual(panGloss.Select(morph => (morph.Form, morph.Gloss)));
+            var explanations = new List<string>();
+            foreach (var segment in WordRowProjection.Align(fieldWorks, panGloss).Where(segment => !segment.Shared))
+            {
+                if (segment.FieldWorks.Count == 1 && segment.PanGloss.Count == 1)
+                {
+                    var stored = fieldWorks[segment.FieldWorks[0]];
+                    var parsed = panGloss[segment.PanGloss[0]];
+                    if (stored.Form != parsed.Form || stored.Gloss != parsed.Gloss) continue;
+                    var storedForm = ObjectIdentity.Create("form", stored.AllomorphId);
+                    var parsedForm = ObjectIdentity.Create("form", parsed.AllomorphId);
+                    var storedInfo = ObjectIdentity.Create("msa", stored.GrammaticalInfoId);
+                    var parsedInfo = ObjectIdentity.Create("msa", parsed.GrammaticalInfoId);
+                    if (storedForm is null || parsedForm is null || storedInfo is null || parsedInfo is null)
+                        explanations.Add($"identity not recorded: {parsed.Form} ‘{parsed.Gloss}’");
+                    else if (!ObjectIdentity.Same(storedForm, parsedForm) || !ObjectIdentity.Same(storedInfo, parsedInfo))
+                        explanations.Add($"different morpheme identity: {parsed.Form} ‘{parsed.Gloss}’");
+                }
+                else if (sameText)
+                {
+                    var morphs = segment.FieldWorks.Select(index => fieldWorks[index])
+                        .Concat(segment.PanGloss.Select(index => panGloss[index])).ToArray();
+                    var recorded = morphs.All(morph => ObjectIdentity.Create("form", morph.AllomorphId) is not null &&
+                        ObjectIdentity.Create("msa", morph.GrammaticalInfoId) is not null);
+                    var reason = recorded ? "morpheme sequence differs" : "identity not recorded";
+                    explanations.Add(reason + ": " + string.Join(", ",
+                        morphs.Select(morph => $"{morph.Form} ‘{morph.Gloss}’").Distinct()));
+                }
+            }
+            return explanations.Count == 0 ? string.Empty : "Same form and gloss; " +
+                string.Join("; ", explanations.Distinct());
+        }
+    }
+
+    public bool HasIdentityDetail => IdentityDetail.Length > 0;
 
     public bool HasMeaningDetail => MeaningDetail.Length > 0;
 

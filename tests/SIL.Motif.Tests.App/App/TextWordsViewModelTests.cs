@@ -259,7 +259,7 @@ public sealed class TextWordsViewModelTests
 
         await words.ReloadAsync();
 
-        Assert.Equal("2 words to test · 3 occurrences · 1 with an approved analysis", words.SummaryText);
+        Assert.Equal("2 words · 3 occurrences · 1 approved · 1 not in FieldWorks", words.SummaryText);
     }
 
     [Fact]
@@ -275,7 +275,7 @@ public sealed class TextWordsViewModelTests
 
         await words.ReloadAsync();
 
-        Assert.Equal("1 word to test · 17 occurrences · 1 with an approved analysis", words.SummaryText);
+        Assert.Equal("1 word · 17 occurrences · 1 approved", words.SummaryText);
     }
 
     [Fact]

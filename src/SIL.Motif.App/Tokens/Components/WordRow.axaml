@@ -90,6 +90,9 @@
   <Style Selector="Grid.wordRowCells.marksOnly > :is(Control).wordRowPanGloss">
     <Setter Property="MinWidth" Value="{DynamicResource Intent.Space.None}" />
   </Style>
+  <Style Selector="Grid.wordRowCells.fieldWorksMorphemesOnly > :is(Control).wordRowPanGloss">
+    <Setter Property="MinWidth" Value="{DynamicResource Component.WordRow.PanGlossWidth}" />
+  </Style>
   <Style Selector=":is(Control).wordRowMeaning">
     <Setter Property="Width" Value="{DynamicResource Component.WordRow.MeaningWidth}" />
   </Style>

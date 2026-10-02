@@ -50,17 +50,13 @@ public sealed class PageScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await OpenOverSampleData(configure: (fake, _) =>
-            {
-                var overview = OverviewPageWordsTests.Populated();
-                OverviewPageWordsTests.AssertCaptureStopCounts(overview, "every page");
-                fake.OverviewCompletesWith(overview);
-            });
+            var (workspace, window) = await OpenOverSampleData();
             try
             {
                 var overview = workspace.PageModel<OverviewPageModel>().Overview;
                 Assert.NotNull(overview);
-                Assert.Equal(142, overview.SelectionWordCount);
+                OverviewPageWordsTests.AssertCaptureStopCounts(overview, "every page");
+                Assert.Equal(9, overview.SelectionWordCount);
 
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
@@ -155,24 +151,21 @@ public sealed class PageScreenshots
     }
 
     private static OverviewResponse OverviewFor(string state) => state == "stale"
-        ? OverviewPageWordsTests.Populated() with
+        ? SampleEvidence.Overview(Assessment()) with
         {
             IsStale = true,
             LastFieldWorksSaveUtc = DateTimeOffset.UtcNow,
         }
-        : OverviewPageWordsTests.Populated();
+        : SampleEvidence.Overview(Assessment());
 
     private static OverviewResponse EmptyOverview()
     {
-        var saved = DateTimeOffset.UtcNow;
-        return new OverviewResponse("Sample", saved, saved, 0, 0, 0, 0, 0, 0, 0, null, null, null,
-            null, null, new OverviewTextCoverage(0, 0, 0, 0, 0, 0),
-            new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0), new OverviewTiming(null, null, [], 0), null)
+        return SampleEvidence.Overview(Assessment()) with
         {
-            SelectionResolved = true,
-            ProjectFileName = "Sample.fwdata",
-            BaselineCapturedUtc = saved,
-            BaselineSourceLastWriteUtc = saved,
+            AssessmentId = null, AssessedUtc = null, AssessmentElapsedSeconds = null,
+            TextCoverage = new OverviewTextCoverage(0, 0, 0, 0, 9, 0),
+            Accuracy = new OverviewAccuracy(0, 0, 0, 0, 0, 0, 0, 0),
+            Timing = new OverviewTiming(null, null, [], 0), LookFirst = OverviewLookFirst.Empty,
         };
     }
 
@@ -281,6 +274,176 @@ public sealed class PageScreenshots
         Assert.Equal(words.Words.Sum(word => word.Occurrences.Count), words.OccurrenceCount);
     }
 
+    [Fact]
+    public void DefaultTimingSceneShowsTheSamplesRecordedTimes()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenOverSampleData();
+            try
+            {
+                foreach (var (_, page, tab) in Views())
+                {
+                    workspace.PageModel<TextsPageModel>().Tab = tab;
+                    if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
+                    workspace.CurrentPage = page;
+                    if (page == WorkspacePage.Timing) break;
+                }
+                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
+                Settle(window);
+                var timing = workspace.PageModel<TimingPageModel>();
+                Assert.False(timing.ShowNoTimingRecorded);
+                Assert.Equal("all", timing.WordSet);
+                Assert.NotNull(timing.KindTiming);
+                Assert.Equal(9, timing.KindTiming.WordCount);
+                Assert.Equal(Assessment().Words.Select(word => word.Word).Order(),
+                    timing.KindTiming.Words.Select(word => word.Word).Order());
+                Assert.Equal("795 ms", timing.HeadlineTotal);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task SampleOverviewAndTimingDescribeTheSameAssessment()
+    {
+        var fake = new FakeCommandClient();
+        var assessment = Assessment();
+        OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);
+        var overview = (await fake.OverviewAsync(new SIL.Motif.Contract.Requests.OverviewRequest(ProjectPath), default)).Value!;
+        var timing = (await fake.TimingAsync(new SIL.Motif.Contract.Requests.TimingRequest(ProjectPath, WordSet: "all", By: "kind"), default)).Value!;
+        Assert.Equal(assessment.Words.Count, overview.SelectionWordCount);
+        Assert.Equal(assessment.Words.Sum(word => word.ElapsedMs), overview.AssessmentElapsedSeconds * 1000);
+        Assert.Equal(assessment.Words.Select(word => word.Word).Order(), timing.Words.Select(word => word.Word).Order());
+        Assert.Equal(overview.Timing.StepLimitedWordCount, overview.LookFirst.StepLimitedWords.Count);
+        Assert.Equal(overview.Accuracy.ApprovedWordsNoParse, overview.LookFirst.ApprovedLostWords.Count);
+        Assert.Equal(overview.Timing.Kinds.Select(row => row.SelfMs), timing.Aggregates.Select(row => row.SelfMs));
+    }
+
+    [Fact]
+    public void SampleTraceShowsTheSameWordsEarlierAssessmentTiming()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenOverSampleData();
+            try
+            {
+                await TryTheSampleWord(workspace);
+                var page = workspace.PageModel<TryWordPageModel>();
+                Assert.True(page.HasEarlierTiming);
+                Assert.Contains("hawajafika took 48 ms", page.EarlierTimingSource);
+                Assert.Equal("Share of 48 ms", page.EarlierShareHeader);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void SampleTraceMorphemesShareTheAssessmentsStoredIdentities()
+    {
+        var trace = WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!;
+        foreach (var morph in Assert.Single(trace.Reading.Attempts).Morphs)
+        {
+            var subject = InspectorSubject.Morpheme(morph.AllomorphId, morph.GrammaticalInfoId, morph.Form, morph.Gloss)!;
+            var inspection = SampleInspection(subject);
+            Assert.Contains(inspection.Uses.Value!.Words, word => word.Row.Word == "hawajafika");
+        }
+    }
+
+    [Fact]
+    public void SampleOpinionsAndComparisonsAgreeInEveryTextsView()
+    {
+        var assessment = Assessment();
+        var texts = TextWords();
+        foreach (var word in texts.Words)
+        {
+            var result = assessment.Words.Single(row => row.Word == word.Form);
+            Assert.Equal(result.ProjectStanding, WordProjectStatuses.StandingOf(word));
+            foreach (var token in texts.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+                         .Where(token => token.Form == word.Form))
+            {
+                var inText = new ResultsTokenViewModel("Sample", 1, token, result, new TextWordRowViewModel(word));
+                var row = WordRowProjection.Of(result);
+                Assert.Equal(row.Comparison!.MeaningCode, inText.Comparison.MeaningCode);
+                Assert.Equal(row.Outcome, inText.Comparison.Outcome);
+                Assert.Equal(row.Opinion, WordProjectStatuses.StandingOf(word));
+                Assert.Equal(row.FieldWorksMorphemes.Select(morph => morph.Form),
+                    inText.PrimaryFieldWorksMorphs.Select(morph => morph.Form));
+            }
+        }
+    }
+
+    [Fact]
+    public void SampleStatisticsUseTheAssessmentsRecordedTimes()
+    {
+        foreach (var result in Assessment().Words)
+        {
+            var recorded = StatisticsRows().Single(row => row.GetProperty("form").GetString() == result.Word);
+            Assert.Equal(result.ElapsedMs * 1_000_000L, recorded.GetProperty("elapsed_ns").GetInt64());
+        }
+    }
+
+    [Fact]
+    public void SampleStatisticsCountOnlyRecordedReadings()
+    {
+        foreach (var word in Assessment().Words)
+        {
+            var recorded = StatisticsRows().Single(row => row.GetProperty("form").GetString() == word.Word);
+            Assert.Equal(word.Readings!.Count, recorded.GetProperty("passes").GetInt32());
+            Assert.Equal(word.Morphology!.Analyses.Count, recorded.GetProperty("passes").GetInt32());
+        }
+        Assert.All(StatisticsRows().Where(row => row.GetProperty("form").GetString() is "hawajafika" or "mwalimu"),
+            row => Assert.Equal(0, row.GetProperty("passes").GetInt32()));
+    }
+
+    [Fact]
+    public async Task SampleStatisticsHeadlineCountsOneWordWithSeveralReadings()
+    {
+        var fake = new FakeCommandClient();
+        fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
+        var statistics = new StatisticsViewModel(fake) { ProjectPath = ProjectPath, AssessmentId = "assessment/one" };
+        await statistics.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(1, statistics.SeveralReadingsCount);
+        Assert.Equal("1 word has more than one reading", statistics.PassesHeadline);
+    }
+
+    [Fact]
+    public void SampleInspectorReadsEachRulesOwnRecordedTimers()
+    {
+        var timing = SampleEvidence.Timing(Assessment(), "rule");
+        foreach (var rule in timing.Aggregates.Take(3))
+        {
+            var key = new TraceTimingKey(rule.Kind, rule.Key) { IdentityQuality = rule.IdentityQuality, Scope = rule.Scope };
+            var inspection = SampleInspection(InspectorSubject.Rule(key, rule.Name, rule.IdentityQuality));
+            var ran = inspection.RanIn.Value!;
+            Assert.Equal(rule.WordsTouched, ran.Words.Count);
+            Assert.Equal(rule.SelfMs, ran.Words.Sum(word => word.ElapsedNs) / 1_000_000d);
+            Assert.Equal(rule.Calls, ran.Words.Sum(word => word.Calls));
+        }
+    }
+
+    [Fact]
+    public void SampleBeforeParsingKeepsItsProjectCountsAndWarnings()
+    {
+        var empty = EmptyOverview();
+        var parsed = SampleEvidence.Overview(Assessment());
+        Assert.Null(empty.AssessmentId);
+        Assert.Null(empty.AssessmentElapsedSeconds);
+        Assert.Equal((parsed.WordformCount, parsed.RuleCount, parsed.LexemeCount),
+            (empty.WordformCount, empty.RuleCount, empty.LexemeCount));
+        Assert.Equal(GrammarFindings().Count, empty.Warnings!.Count);
+        Assert.Equal(TextWords().Words.Count, empty.SelectionWordCount);
+    }
+
+    [Fact]
+    public void SampleInspectorHasNoTimeForAnUnusedAllomorph()
+    {
+        var subject = InspectorSubject.Morpheme(Id("w-|allomorph", 9), SampleMorph("wa-").GrammaticalInfoId, "w-", "3PL")!;
+        var inspection = SampleInspection(subject);
+        Assert.Empty(inspection.Uses.Value!.Words);
+        Assert.Empty(inspection.RanIn.Value!.Words);
+    }
+
     private static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
         workspace.Context.TryWord("hawajafika");
@@ -335,8 +498,8 @@ public sealed class PageScreenshots
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), DateTimeOffset.UtcNow.AddHours(-2), false));
         fake.ProjectHistoryIs(new ProjectHistoryResponse(
         [
-            new ProjectHistoryEntry(DateTimeOffset.Now.AddMinutes(-20), ProjectHistoryKind.Assessment, "142 words · 118 parsed · 9 differ from stored"),
-            new ProjectHistoryEntry(DateTimeOffset.Now.AddHours(-2), ProjectHistoryKind.Baseline, "Baseline captured · 1,318 entries · 3 texts"),
+            new ProjectHistoryEntry(DateTimeOffset.Now.AddMinutes(-20), ProjectHistoryKind.Assessment, "9 words · 7 parsed · 5 built something else"),
+            new ProjectHistoryEntry(DateTimeOffset.Now.AddHours(-2), ProjectHistoryKind.Baseline, "Baseline captured · 862 lexemes · 2 texts"),
         ]));
         fake.StoredGrammarCheckIs(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
@@ -356,6 +519,8 @@ public sealed class PageScreenshots
         // Try a Word traces through the page's own path: a result set directly is wiped when a word is chosen.
         fake.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!);
         fake.OnInspect((request, _) => Task.FromResult(CommandOutcome<InspectResponse>.Success(SampleInspection(request.Subject))));
+        OverviewTimingScreenshots.ReadOverviewAndTiming(fake, Assessment());
+        if (!parse) fake.OverviewCompletesWith(EmptyOverview());
         configure?.Invoke(fake, Assessment());
 
         var selection = new SelectionViewModel(fake);
@@ -395,6 +560,10 @@ public sealed class PageScreenshots
 
     private static IReadOnlyList<GrammarWarning> GrammarFindings() => SeededGrammarFindings.All();
 
+    private static readonly IReadOnlyDictionary<(string Form, string Gloss), ParserReadingMorph> TraceMorphology =
+        WordTraceQuery.LoadDiagnostic(TraceFixture()).Value!.Reading.Attempts.Single().Morphs
+            .ToDictionary(morph => (morph.Form, morph.Gloss));
+
     private static readonly (string Word, string[] Forms, string[] Glosses)[] Vocabulary =
     [
         ("Sungura", ["sungura"], ["hare"]),
@@ -408,9 +577,10 @@ public sealed class PageScreenshots
         ("kitabu", ["ki-", "tabu"], ["7", "book"]),
     ];
 
-    private static ParseAnalysis Reading(string word, int variant = 0) => new(
-        [.. Vocabulary.Single(item => item.Word == word).Forms.Select((_, index) =>
-            new ParseMorph(Id(word, index + variant * 10), Id(word, 50 + index + variant * 10), null, null))]);
+    private static ParseAnalysis Reading(string word) => RawReading(Resolved(word));
+
+    private static ParseAnalysis RawReading(ParserReading reading) =>
+        new([.. reading.Morphs.Select(morph => new ParseMorph(morph.AllomorphId!, morph.GrammaticalInfoId!, null, null))]);
 
     private static string Id(string word, int index) =>
         new Guid(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(word + index))).ToString("D");
@@ -419,12 +589,15 @@ public sealed class PageScreenshots
     {
         var item = Vocabulary.Single(entry => entry.Word == word);
         return new ParserReading([.. item.Forms.Select((form, index) =>
-            new ParserReadingMorph(form, item.Glosses[index], index == item.Forms.Length - 1 ? "v" : "", null, false,
+        {
+            TraceMorphology.TryGetValue((form, item.Glosses[index]), out var traceMorph);
+            return new ParserReadingMorph(form, item.Glosses[index], index == item.Forms.Length - 1 ? "v" : "", null, false,
                 "silfw://localhost/link?tool=lexiconEdit")
             {
-                AllomorphId = Id("allomorph " + form + item.Glosses[index], 0),
-                GrammaticalInfoId = Id("grammatical info " + item.Glosses[index], 0),
-            })]);
+                AllomorphId = traceMorph?.AllomorphId ?? Id("allomorph " + form + item.Glosses[index], 0),
+                GrammaticalInfoId = traceMorph?.GrammaticalInfoId ?? Id("grammatical info " + item.Glosses[index], 0),
+            };
+        })]);
     }
 
     /// <summary>The first sample morpheme spelled <paramref name="form"/>, with the ids every word that uses it shares.</summary>
@@ -441,22 +614,13 @@ public sealed class PageScreenshots
         {
             AllomorphId = subject.AllomorphId, GrammaticalInfoId = subject.GrammaticalInfoId,
             TimingKind = subject.TimingKey?.Kind, TimingKey = subject.TimingKey?.Key, Label = subject.Label, Gloss = subject.Gloss,
+            TimingIdentityQuality = subject.TimingKey?.IdentityQuality ?? "authored", TimingScope = subject.TimingKey?.Scope,
         };
         var assessment = Assessment();
-        var words = assessment.Words.Select(word => word with
-        {
-            StoredAnalyses = word.Word == "hawajafika" || word.ReadingGrades is { Count: > 0 }
-                ? [Resolved(word.Word) with
-                {
-                    StoredAnalysisOpinion = word.ReadingGrades is [ReadingGrade.Disapproved] ? ReadingGrade.Disapproved : ReadingGrade.Approved,
-                }]
-                : [],
-        }).ToArray();
+        var words = assessment.Words;
         var facts = SampleFacts(asked);
         asked = ObjectUsesQuery.WithTimingKey(asked, facts)!;
-        var timings = asked.TimingKind is null ? [] : words.Take(4).Select((word, index) => new SIL.Motif.Worker.Store.AssessmentObjectTiming(
-            asked.TimingKind, asked.TimingKey!, "authored", "synthesis", asked.Label ?? asked.TimingKey!, word.Word,
-            3 + index, null, (index + 1) * 1_400_000L)).ToArray();
+        var timings = SampleEvidence.ObjectTimings;
         var morpheme = subject.Kind == InspectorSubjectKind.Morpheme;
         return new InspectResponse(subject, InspectorResolution.Resolved)
         {
@@ -564,19 +728,22 @@ public sealed class PageScreenshots
     // Morphemes named by identity, so the Matrix can say what words share; another stem keeps each word's cell.
     private static ParserReading ApprovedInAssessment(string word)
     {
-        var item = Vocabulary.Single(entry => entry.Word == word);
         return new ParserReading([.. Resolved(word).Morphs.Select(morph => morph with
         {
-            AllomorphId = Id((morph.Form.Contains('-') ? "allomorph " : "stem of " + word + " ") + morph.Form + morph.Gloss, 0),
-            GrammaticalInfoId = Id("grammatical info " + morph.Gloss, 0),
+            AllomorphId = morph.Form.Contains('-') ? morph.AllomorphId : Id("stem of " + word + " " + morph.Form + morph.Gloss, 0),
         })])
         {
             StoredAnalysisId = Id(word, 97),
             StoredAnalysisOpinion = ReadingGrade.Approved,
-            Identity = new ApprovedMorphology([.. Reading(word, 7).Morphs.Select((morph, index) =>
-                new ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [item.Forms[index]]))]),
+            Identity = StoredIdentity(word, 7),
         };
     }
+
+    private static ApprovedMorphology StoredIdentity(string word, int variant) =>
+        new([.. Resolved(word).Morphs.Select(morph => new ApprovedMorph(
+            variant == 0 || morph.Form.Contains('-') ? morph.AllomorphId! :
+                Id("stem of " + word + " " + morph.Form + morph.Gloss, 0),
+            morph.GrammaticalInfoId!, null, [morph.Form]))]);
 
     // FieldWorks' kul against PanGloss's ku- + l: the sample's one word whose two analyses part inside a morpheme.
     private static ParserReading AlikulaApproved() =>
@@ -594,52 +761,65 @@ public sealed class PageScreenshots
             GrammaticalInfoId = Id("grammatical info " + gloss, 0),
         };
 
-    private static ProjectAnalysis Stored(string word, int variant = 0)
+    private static ProjectAnalysis Stored(ParserReading reading) => new(
+        reading.StoredAnalysisId!, reading.Morphs)
     {
-        var reading = Reading(word, variant);
-        var entries = Vocabulary.Single(item => item.Word == word).Forms;
-        return new(ProjectAnalysisKey.For(reading), Resolved(word).Morphs)
-        {
-            StoredAnalysisId = Id(word, 90 + variant),
-            StoredAnalysisOpinion = ReadingGrade.Approved,
-            Identity = new ApprovedMorphology([.. reading.Morphs.Select((morph, index) =>
-                new ApprovedMorph(morph.Form, morph.Msa, morph.InflType, [entries[index]]))]),
-        };
-    }
-
-    private static TextToken Token(string word, bool stored = true, int variant = 0) =>
-        new(word, word, null, stored ? "approved" : "unanalysed")
-        {
-            Analysis = stored ? Stored(word, variant) : null,
-            StoredAnalyses = stored ? [Stored(word, variant)] : [],
-            StoredAnalysisId = stored ? Stored(word, variant).StoredAnalysisId : null,
-            WordLink = "silfw://localhost/link?tool=Analyses",
-        };
+        StoredAnalysisId = reading.StoredAnalysisId,
+        StoredAnalysisOpinion = reading.StoredAnalysisOpinion,
+        Identity = reading.Identity,
+    };
 
     private static TextWordsResponse TextWords()
     {
-        var lines = new TextLines(Story, "Hadithi ya sungura",
-        [
-            new TextLine(1, [Token("Sungura"), Token("alikula"), Token("chakula", stored: false), new TextToken(".", null, null, null)]),
-            new TextLine(2, [Token("watoto"), Token("hawajafika"), new TextToken(",", null, null, null), Token("mwalimu", stored: false)]),
-            new TextLine(3, [Token("walikula", variant: 1), Token("anapenda"), Token("kitabu"), new TextToken(".", null, null, null)]),
-        ]);
-        var words = Vocabulary.Select(item => new TextWord(item.Word, null,
-            [new WordOccurrence(Story, "Hadithi ya sungura", 1, "Sungura alikula chakula.", "approved", Stored(item.Word))],
-            [Stored(item.Word)], [])).ToArray();
-        return new TextWordsResponse(words, [lines], HasBaseline: true, words.Sum(word => word.Occurrences.Count));
+        var assessment = Assessment();
+        TextToken Token(string form)
+        {
+            var word = assessment.Words.Single(word => word.Word == form);
+            var stored = word.StoredAnalyses.Select(Stored).ToArray();
+            return new TextToken(form, form, null, word.ProjectStanding == ProjectStanding.Approved ? "approved" :
+                word.ProjectStanding == ProjectStanding.Rejected ? "disapproved" :
+                stored.Length > 0 ? "unapproved" : "unanalysed")
+            {
+                Analysis = stored.FirstOrDefault(), StoredAnalyses = stored,
+                StoredAnalysisId = stored.FirstOrDefault()?.StoredAnalysisId,
+                WordLink = "silfw://localhost/link?tool=Analyses",
+            };
+        }
+        var lines = new[]
+        {
+            new TextLines(Story, "Hadithi ya sungura",
+            [
+                new TextLine(1, [Token("Sungura"), Token("alikula"), Token("chakula"), new TextToken(".", null, null, null)]),
+                new TextLine(2, [Token("watoto"), Token("hawajafika"), new TextToken(",", null, null, null), Token("mwalimu")]),
+            ]),
+            new TextLines(Letter, "Barua kwa mwalimu",
+            [new TextLine(1, [Token("walikula"), Token("anapenda"), Token("kitabu"), new TextToken(".", null, null, null)])]),
+        };
+        var words = assessment.Words.Select(word =>
+        {
+            var stored = word.StoredAnalyses.Select(Stored).ToArray();
+            var occurrences = lines.SelectMany(text => text.Lines.SelectMany(line => line.Tokens
+                .Where(token => token.Form == word.Word).Select(token => new WordOccurrence(text.TextId, text.Title,
+                    line.Number, string.Join(" ", line.Tokens.Select(token => token.Text)), token.Status!, token.Analysis))))
+                .ToArray();
+            return new TextWord(word.Word, null, occurrences,
+                stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved).ToArray(),
+                stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved).ToArray(),
+                stored.Count(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Candidate)) { Analyses = stored };
+        }).ToArray();
+        return new TextWordsResponse(words, lines, HasBaseline: true, words.Sum(word => word.Occurrences.Count));
     }
 
-    private static AssessCommandResponse Assessment()
+    internal static AssessCommandResponse Assessment()
     {
         AssessmentWordResult Word(string word, string outcome, string[] grades, int elapsed, params ParseAnalysis[] analyses) =>
-            new(word, outcome, outcome is "capped", outcome == "analysed" ? "Search completed" : "INCOMPLETE — step limit", elapsed, null)
+            new(word, outcome, outcome is "capped", outcome == "capped" ? "Stopped at the step limit" : "Search completed", elapsed, null)
             {
                 Morphology = new ParseWordEvidence("v1", 0, word, elapsed, outcome == "capped", false, false, analyses, []),
                 Readings = [.. analyses.Select(_ => Resolved(word))],
                 ReadingGrades = grades,
                 Attempts = elapsed * 7,
-                Passes = elapsed,
+                Passes = analyses.Length,
                 ProjectStanding = grades.Contains("approved") ? "approved" :
                     grades.Contains("disapproved") ? "rejected" :
                     outcome == "no-analysis" ? "not-present" : "candidate",
@@ -647,38 +827,53 @@ public sealed class PageScreenshots
                 TryWordLink = "silfw://localhost/link?tool=Analyses",
                 StoredAnalyses = grades.Contains("approved") ? [ApprovedInAssessment(word)] : [],
             };
-        return new AssessCommandResponse(Capture(), new SelectionProjection([], []), ["assessment/one"], "## 142 words\n\n118 parsed, 24 did not.")
+        var response = new AssessCommandResponse(Capture(), new SelectionProjection([], []), ["assessment/one"], "## 9 words\n\n7 parsed, 1 built nothing, 1 stopped.")
         {
             InvocationId = "assessment/one",
-            CompletionSummary = "142 words · 118 parsed · run 12:15",
+            CompletionSummary = "9 words · 7 parsed · run 12:15",
             Words =
             [
                 Word("Sungura", "analysed", ["approved"], 3, Reading("Sungura")),
-                Word("alikula", "analysed", ["approved", "no-opinion"], 11, Reading("alikula"), Reading("alikula", 2)) with
+                Word("alikula", "analysed", ["approved", "no-opinion"], 11, RawReading(new ParserReading([Piece("a-", "3SG"), Piece("li-", "PST"), Piece("ku-", "INF"), Piece("l", "eat"), Piece("-a", "FV")])), Reading("alikula")) with
                 {
                     ExpectedAnalysis = AlikulaApproved(),
-                    StoredAnalyses = [AlikulaApproved()],
+                    StoredAnalyses = [AlikulaApproved() with { Identity = new ApprovedMorphology([.. AlikulaApproved().Morphs.Select(morph =>
+                        new ApprovedMorph(morph.AllomorphId!, morph.GrammaticalInfoId!, null, [morph.Form]))]) }],
                     Readings = [new ParserReading([Piece("a-", "3SG"), Piece("li-", "PST"), Piece("ku-", "INF"), Piece("l", "eat"),
                         Piece("-a", "FV")]), Resolved("alikula")],
                 },
-                Word("chakula", "analysed", ["no-opinion"], 6, Reading("chakula")),
-                Word("hawajafika", "no-analysis", [], 48),
+                Word("chakula", "analysed", ["no-opinion"], 6, Reading("chakula")) with { ProjectStanding = ProjectStanding.NotPresent },
+                Word("hawajafika", "no-analysis", [], 48) with
+                { ProjectStanding = ProjectStanding.Approved, StoredAnalyses = [ApprovedInAssessment("hawajafika")] },
                 Word("watoto", "analysed", ["approved"], 4, Reading("watoto")),
-                Word("walikula", "analysed", ["disapproved"], 12, Reading("walikula")),
-                Word("mwalimu", "capped", [], 700),
+                Word("walikula", "analysed", ["disapproved"], 12, Reading("walikula")) with
+                { StoredAnalyses = [Resolved("walikula") with
+                    { StoredAnalysisId = Id("walikula", 97), StoredAnalysisOpinion = ReadingGrade.Disapproved, Identity = StoredIdentity("walikula", 0) }] },
+                Word("mwalimu", "capped", [], 700) with
+                { StoredAnalyses = [ApprovedInAssessment("mwalimu") with { StoredAnalysisOpinion = ReadingGrade.Candidate }] },
                 Word("anapenda", "analysed", ["approved"], 9, Reading("anapenda")),
                 Word("kitabu", "analysed", ["approved"], 2, Reading("kitabu")),
             ],
         };
+        return response with
+        {
+            Words = response.Words.Select(word => word with
+            {
+                StoredAnalysesAvailable = true,
+                ReadingGrades = (word.Morphology?.Analyses ?? []).Select(reading =>
+                    word.StoredAnalyses.FirstOrDefault(stored => stored.Identity is not null &&
+                        SIL.Motif.Host.Analysis.AnalysisMorphologyMatcher.Matches(reading, stored.Identity))
+                        ?.StoredAnalysisOpinion ?? ReadingGrade.NoOpinion).ToArray(),
+            }).ToArray(),
+        };
     }
 
     private static IReadOnlyList<JsonElement> StatisticsRows() =>
-    [
-        .. Vocabulary.Select((item, index) => JsonDocument.Parse(
-            $"{{\"kind\":\"word\",\"form\":\"{item.Word}\",\"attempts\":{(index + 1) * 37},\"passes\":{index + 2}," +
-            $"\"elapsed_ns\":{(index == 3 ? 48_000_000 : (index + 1) * 1_300_000)},\"capped\":{(index == 6 ? "true" : "false")},\"timed_out\":false}}")
-            .RootElement.Clone()),
-    ];
+        Assessment().Words.Select(word => JsonSerializer.SerializeToElement(new
+        {
+            kind = "word", form = word.Word, attempts = word.Attempts, passes = word.Passes,
+            elapsed_ns = word.ElapsedMs * 1_000_000L, capped = word.Outcome == "capped", timed_out = false,
+        })).ToArray();
 
     /// <summary>The sample trace's document, as PanGloss wrote it.</summary>
     internal static string SampleTrace() => TraceFixture();

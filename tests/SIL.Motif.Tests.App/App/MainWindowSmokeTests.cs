@@ -342,7 +342,7 @@ public sealed class MainWindowSmokeTests
 
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Contains("These words haven't been parsed since the last Refresh.", text);
+                Assert.Contains("Nothing parsed since the last Refresh.", text);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse all words");
                 Assert.Contains("No warning summary is available.", text);

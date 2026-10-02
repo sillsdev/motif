@@ -486,7 +486,7 @@ public sealed class AnalyzeTextsLayoutTests
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
                 Settle(window);
                 var panel = Panel(window);
-                Assert.Equal("= same", VisibleText(Part(StripOf(panel, "anapenda"), "pangloss")));
+                Assert.Contains("wa- 2 toto child", VisibleText(Part(StripOf(panel, "watoto"), "pangloss")));
                 Assert.Equal("∅ No parse", VisibleText(Part(StripOf(panel, "hawajafika"), "pangloss")));
                 Assert.Equal("Stopped at the step limit", VisibleText(Part(StripOf(panel, "mwalimu"), "pangloss")));
                 Assert.StartsWith("Nothing in FieldWorks", VisibleText(Part(StripOf(panel, "chakula"), "fieldworks")), StringComparison.Ordinal);
@@ -571,7 +571,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void ThreeLinesOfTextFitAboveTheFoldAt1240()
+    public void TheSampleTextsFitAboveTheFoldAt1240()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -583,9 +583,16 @@ public sealed class AnalyzeTextsLayoutTests
                 var panel = Panel(window);
                 var viewer = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), candidate =>
                     candidate.IsEffectivelyVisible && candidate.Content is ItemsControl);
-                var kitabu = BoundsIn(StripOf(panel, "kitabu"), viewer);
-                Assert.True(kitabu.Bottom <= viewer.Viewport.Height,
-                    $"Line 3 ends at {kitabu.Bottom}, below the {viewer.Viewport.Height} px the reader shows.");
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                foreach (var text in inText.Texts)
+                {
+                    inText.SelectedText = text;
+                    Settle(window);
+                    var lastWord = text.Lines.Last().Tokens.Last(token => token.IsWord).Form;
+                    var last = BoundsIn(StripOf(panel, lastWord), viewer);
+                    Assert.True(last.Bottom <= viewer.Viewport.Height,
+                        $"{text.Title} ends at {last.Bottom}, below the {viewer.Viewport.Height} px the reader shows.");
+                }
             }
             finally
             {
@@ -605,21 +612,25 @@ public sealed class AnalyzeTextsLayoutTests
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
                 Settle(window);
                 var panel = Panel(window);
-                var strips = Strips(panel).ToArray();
-                bool ShowsReading(Border strip) => Part(strip, "pangloss").GetVisualDescendants().OfType<TextBlock>()
-                    .Any(text => text.Classes.Contains("stripMorphForm") && text.IsEffectivelyVisible);
-                bool HoldsNothing(Border strip) =>
-                    VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
                 var showing = new Dictionary<string, int>(StringComparer.Ordinal)
+                { ["All"] = 0, ["Unread"] = 0, ["Differs"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0 };
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                foreach (var text in inText.Texts)
                 {
-                    ["All"] = strips.Length,
-                    ["Unread"] = strips.Count(strip => HasPart(strip, "unread")),
-                    ["Differs"] = strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip)),
-                    ["Not in FieldWorks"] = strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip)),
-                    ["No parse"] = strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse"),
-                    ["Stopped"] = strips.Count(strip =>
-                        VisibleText(Part(strip, "pangloss")) == "Stopped at the step limit"),
-                };
+                    inText.SelectedText = text;
+                    Settle(window);
+                    var strips = Strips(panel).ToArray();
+                    bool ShowsReading(Border strip) => Part(strip, "pangloss").GetVisualDescendants().OfType<TextBlock>()
+                        .Any(text => text.Classes.Contains("stripMorphForm") && text.IsEffectivelyVisible);
+                    bool HoldsNothing(Border strip) =>
+                        VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
+                    showing["All"] += strips.Length;
+                    showing["Unread"] += strips.Count(strip => HasPart(strip, "unread"));
+                    showing["Differs"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
+                    showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
+                    showing["No parse"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse");
+                    showing["Stopped"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "Stopped at the step limit");
+                }
 
                 var chips = panel.GetVisualDescendants().OfType<FilterChip>()
                     .Where(chip => chip.IsEffectivelyVisible).ToDictionary(chip => chip.Label!, chip => chip.Count);

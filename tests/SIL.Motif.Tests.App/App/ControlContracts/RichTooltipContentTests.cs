@@ -213,6 +213,12 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.Matrix or TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
             case TooltipScene.Reader: Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts); break;
+            case TooltipScene.ReaderDisapproved:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                InText.SelectedText = InText.Texts.Single(text => text.Lines.SelectMany(line => line.Tokens)
+                    .Any(token => token.Form == "walikula"));
+                PageScreenshots.Settle(Window);
+                break;
             case TooltipScene.ReaderStaged:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await StageChakula();
@@ -234,6 +240,12 @@ internal sealed class TooltipScenes
                 var list = Lists.Lists.First(candidate => candidate.HasWords);
                 if (Lists.SelectedList != list) Lists.SelectListCommand.Execute(list);
                 await Until(() => Lists.SelectedList == list && Lists.Compare.Words.Count > 0, "the chosen list's words");
+                break;
+            case TooltipScene.TryAWordEarlierTiming:
+                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value!);
+                Workspace.Context.TryWord("hawajafika");
+                await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                Show(WorkspacePage.TryAWord);
                 break;
             case TooltipScene.TryAWordRecordedDetails:
                 _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(
@@ -308,6 +320,9 @@ internal sealed class TooltipScenes
     {
         switch (scene)
         {
+            case TooltipScene.ReaderDisapproved:
+                InText.SelectedText = InText.Texts.First();
+                break;
             case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
             case TooltipScene.OpenRecent:
                 foreach (var name in new[] { "OpenRecentButton", "ProjectMenuButton" }) Window.FindControl<Button>(name)!.Flyout!.Hide();

@@ -314,6 +314,16 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.FocusableSurface,
                 InteractiveControlFamily.Occurrence,
                 InteractiveControlFamily.Collection);
+            var textsPage = walkthrough.Workspace.PageModel<TextsPageModel>();
+            textsPage.AnalyzeView = AnalyzeTextsView.WordList;
+            walkthrough.WaitUntil(() => walkthrough.Window.GetVisualDescendants().OfType<SIL.Motif.App.Views.TextWordsPanel>()
+                .Any(panel => panel.IsEffectivelyVisible), WalkthroughSteps.Remaining(deadline), "the Word list did not open");
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Word list with opinion counts",
+                InteractiveControlFamily.Action, InteractiveControlFamily.Link, InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry, InteractiveControlFamily.Check, InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List, InteractiveControlFamily.SelectableText, InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Morpheme, InteractiveControlFamily.FocusableSurface, InteractiveControlFamily.Collection);
+            textsPage.AnalyzeView = AnalyzeTextsView.TextReader;
             var inText = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText;
             var panel = AnalyzeTextsLayoutTests.Panel(walkthrough.Window);
             var occurrence = AnalyzeTextsLayoutTests.Strips(panel)

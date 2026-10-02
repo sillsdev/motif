@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
@@ -85,6 +86,40 @@ public sealed class WordRowEverywhereTests
             workspace.PageModel<TextsPageModel>().Tab = TextsTab.WhatChanged;
             workspace.CurrentPage = WorkspacePage.Texts;
         });
+
+    [Fact]
+    public void WordListKeepsControlsAndColumnsUsableAcrossSizes()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                var texts = workspace.PageModel<TextsPageModel>();
+                texts.Tab = TextsTab.AnalyzeTexts;
+                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+                workspace.CurrentPage = WorkspacePage.Texts;
+                foreach (var (width, height) in new[] { (1040, 780), (1240, 780), (1040, 1000), (1240, 1000) })
+                {
+                    window.Width = width;
+                    window.Height = height;
+                    try { PageScreenshots.Settle(window); }
+                    catch (InvalidOperationException exception)
+                    {
+                        throw new InvalidOperationException($"Word list at {width} × {height}: {exception.Message}", exception);
+                    }
+                    var panel = window.GetVisualDescendants().OfType<TextWordsPanel>().Single();
+                    var summary = panel.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Single(block => block.Text == texts.Words.SummaryText);
+                    var search = panel.GetVisualDescendants().OfType<TextBox>().Single();
+                    var summaryRight = summary.TranslatePoint(new Point(summary.Bounds.Width, 0), panel)!.Value.X;
+                    var searchLeft = search.TranslatePoint(default, panel)!.Value.X;
+                    Assert.True(summaryRight <= searchLeft, "The status summary must leave room for Search words.");
+                }
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(1));
+    }
 
     [Fact]
     public void AWordInTheWordListOpensTryAWordOnItsWord() =>

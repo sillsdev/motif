@@ -56,10 +56,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
             contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
                 ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
-        var comparisonWord = (result ?? new AssessmentWordResult(Form, "skipped", false, "Not parsed", null, null)) with
+        var comparisonWord = result ?? new AssessmentWordResult(Form, "skipped", false, "Not parsed", null, null)
         {
-            Comparison = null,
-            ProjectStanding = token.IncorrectSpelling ? ProjectStanding.IncorrectSpelling : result?.ProjectStanding ?? standing,
+            ProjectStanding = standing,
             StoredAnalyses = contextAnalyses,
             StoredAnalysesAvailable = true,
         };

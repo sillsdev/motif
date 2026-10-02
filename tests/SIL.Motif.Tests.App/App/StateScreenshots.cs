@@ -292,9 +292,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "tile-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
             () => stage.Named<Button>("Open Speed in Timing"), "the Speed tile"));
         yield return new("overview", "lookfirst-link-hover", stage => stage.Hover(WorkspacePage.Overview,
-            () => stage.Named<HyperlinkButton>("Unknown × Different →"), "Unknown × Different"));
+            () => stage.Named<HyperlinkButton>("Approved × No parse →"), "Approved × No parse"));
         yield return new("overview", "lookfirst-link-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Overview,
-            () => stage.Named<HyperlinkButton>("Unknown × Different →"), "Unknown × Different"));
+            () => stage.Named<HyperlinkButton>("Approved × No parse →"), "Approved × No parse"));
         yield return new("overview", "history-expanded", stage => stage.Expand(WorkspacePage.Overview,
             () => stage.Named<Expander>("Project history"), "Project history"))
         { Height = 1000 };
@@ -342,10 +342,16 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             () => stage.Strip("hawajafika"), "the hawajafika word strip", TextsTab.AnalyzeTexts));
         yield return new("analyze", "word-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
             () => stage.Strip("Sungura"), "the Sungura word strip", TextsTab.AnalyzeTexts));
-        yield return new("analyze", "disapproved-tooltip", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
+        yield return new("analyze", "disapproved-tooltip", async stage =>
+        {
+            stage.InText.SelectedText = stage.InText.Texts.Single(text => text.Lines.SelectMany(line => line.Tokens)
+                .Any(token => token.Form == "walikula"));
+            return await stage.Hover(WorkspacePage.Texts,
+                () => stage.Strip("walikula").GetVisualDescendants().OfType<Border>()
                 .First(border => border.Classes.Contains("markChip") && border.IsEffectivelyVisible),
-            "the Built anyway mark on walikula", TextsTab.AnalyzeTexts));
+                "the Built anyway mark on walikula", TextsTab.AnalyzeTexts);
+        })
+        { Teardown = stage => { stage.InText.SelectedText = stage.InText.Texts.First(); return Task.CompletedTask; } };
         yield return new("analyze", "fix-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Strip("chakula").GetVisualDescendants().OfType<Button>()
                 .First(button => AutomationProperties.GetName(button) == "Fix actions from the word strip"),
@@ -683,7 +689,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             {
                 stage.Client.AssessBlocksUntilCancelled(
                     new Refusal(RefusalCodes.AssessmentCancelled, FailureReason.Cancelled, "The Assessment run was cancelled."),
-                    new AssessmentProgress(AssessmentStage.Parsing, 57, 142, "Parsing hawajafika"));
+                    new AssessmentProgress(AssessmentStage.Parsing, 4, 9, "Parsing hawajafika"));
                 stage.Running = stage.Workspace.Assess.RunCommand.ExecuteAsync(null);
                 await stage.Until(() => stage.Workspace.ShowsParseAllWordsProgress &&
                     stage.Workspace.Assess.Progress is not null, "Parse all words progress");

@@ -33,7 +33,7 @@ public sealed class TooltipPlacementTests
     // Reported gaps: no side of these reader owners is clear, so each tip takes the side that covers fewest.
     private static readonly Dictionary<string, string> Gaps = new()
     {
-        ["disapproved mark on a strip"] = "at 1040 it sits at the reader's foot, and every side inside the window meets another word strip",
+        ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
         ["word strip"] = "the filter chips are above, the texts list to the left, and other word strips on every other side",
     };
 

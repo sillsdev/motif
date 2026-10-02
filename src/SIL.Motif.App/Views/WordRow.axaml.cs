@@ -413,6 +413,7 @@ internal sealed class WordRowLayout
         SetShown("OutcomeBesideMorphemes", panGloss);
         SetShown("OutcomeAlone", !panGloss);
         _cells.Classes.Set("marksOnly", !panGloss);
+        _cells.Classes.Set("fieldWorksMorphemesOnly", fieldWorks && !panGloss);
         Show(_line, _lineParts, [Shows(WordRowColumns.Tick), true, true]);
         Show(_cells, _cellParts,
         [

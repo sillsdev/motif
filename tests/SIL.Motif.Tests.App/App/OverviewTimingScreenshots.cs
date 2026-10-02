@@ -8,21 +8,12 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Saves the Overview and Timing pages over a read Overview and stored parse times, and Try a Word beside its
-/// earlier parse's timing, the states the every-page capture cannot reach because its sample data configures
-/// neither read.
+/// Saves Overview and Timing over the shared sample's recorded times, and Try a Word beside its earlier timing.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTimingScreenshots
 {
     internal const string SubjectAgreementRuleKey = "c3f310a1-4c53-ff36-88e6-531c157983e6";
-
-    private static readonly (string Word, int Ms, string Completion)[] Words =
-    [
-        ("mwalimu", 700, "Step limit"), ("hawajafika", 48, "Finished"), ("walikula", 12, "Finished"),
-        ("alikula", 9, "Finished"), ("ninakula", 9, "Finished"), ("tunakula", 8, "Finished"),
-        ("wanakula", 7, "Finished"), ("unakula", 6, "Finished"), ("kula", 1, "Finished"),
-    ];
 
     [ScreenshotFact]
     public void CapturePopulatedOverviewAndTiming()
@@ -35,8 +26,9 @@ public sealed class OverviewTimingScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: ReadOverviewAndTiming);
             try
             {
-                workspace.Context.TryWord("matinlu");
+                workspace.Context.TryWord("hawajafika");
                 await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+                Assert.True(workspace.PageModel<TryWordPageModel>().HasEarlierTiming);
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
                     Application.Current!.RequestedThemeVariant = variant;
@@ -68,59 +60,15 @@ public sealed class OverviewTimingScreenshots
     /// <summary>Gives the sample data a read Overview and stored parse times.</summary>
     internal static void ReadOverviewAndTiming(FakeCommandClient fake, AssessCommandResponse assessment)
     {
-        var overview = OverviewPageWordsTests.Populated();
+        var overview = SampleEvidence.Overview(assessment);
         OverviewPageWordsTests.AssertCaptureStopCounts(overview, "overview and timing");
         fake.OverviewCompletesWith(overview);
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
-            request.ExplicitWords is ["matinlu"] ? MatinluTiming() : Timing(request.By))));
+            SampleEvidence.Timing(assessment, request.By, request.Rule, request.ExplicitWords))));
         fake.AssessCompletesWith(assessment with
         {
             Measurements = [new ProducedAssessmentReference("assessment/one", "ParseTime", "assessment/one")],
         });
     }
 
-    // The stored parse kept matinlu's time to the whole millisecond, more than its two rules recorded.
-    private static TimingResponse MatinluTiming() =>
-        new("assessment/one", "all", "rule", 1, 1, 1, [new SlowWordTiming("matinlu", 1)],
-            [
-                new TimingAggregateRow("lu", "lu", 0.4, 0.4, 1) { Kind = "morph_rule" },
-                new TimingAggregateRow("ma", "ma", 0.3, 0.3, 1) { Kind = "morph_rule" },
-            ], [])
-        {
-            Words = [new TimingWordRow("matinlu", 1, TimingCompletion.Finished)
-            {
-                Origin = new WordMeasurementOrigin("assessment/one", "invocation/one",
-                    DateTimeOffset.Parse("2026-09-22T09:18:00Z")),
-            }],
-            Attribution = new WordTimeAttribution(1, 1, 0.7, 0.3, 0.3, 0, false),
-        };
-
-    private static TimingResponse Timing(string by) =>
-        new("assessment/one", "all", by, Words.Length, 9, 700,
-            [new SlowWordTiming("mwalimu", 700), new SlowWordTiming("hawajafika", 48), new SlowWordTiming("walikula", 12)],
-            // The kinds record 680 ms of the words' 800 ms, so the page shows its unattributed time.
-            by == "kind"
-                ?
-                [
-                    new TimingAggregateRow("morph_rule", "morph_rule", 448, 448d / 800, 9)
-                    { Kind = "morph_rule", Calls = 420 },
-                    new TimingAggregateRow("phon_rule", "phon_rule", 160, 160d / 800, 7)
-                    { Kind = "phon_rule", Calls = 70 },
-                    new TimingAggregateRow("lex_entry", "lex_entry", 40, 40d / 800, 9)
-                    { Kind = "lex_entry", Calls = null },
-                    new TimingAggregateRow("root_index", "root_index", 32, 32d / 800, 9)
-                    { Kind = "root_index", Calls = 120 },
-                ]
-                :
-                [
-                    new TimingAggregateRow(SubjectAgreementRuleKey, "Subject agreement", 288, 0.36, 6)
-                    { Kind = "morph_rule", IdentityQuality = "authored" },
-                    new TimingAggregateRow("Past tense li-", "Past tense li-", 152, 0.19, 3) { Kind = "morph_rule" },
-                    new TimingAggregateRow("Vowel harmony", "Vowel harmony", 120, 0.15, 7) { Kind = "phon_rule" },
-                ],
-            by == "kind" ? [] : [new WordRuleTiming("mwalimu", 180, 900), new WordRuleTiming("hawajafika", 34, 200)])
-        {
-            Words = Words.Select(word => new TimingWordRow(word.Word, word.Ms, word.Completion)).ToArray(),
-            Attribution = new WordTimeAttribution(Words.Length, 800, 680, 120, 0.15, 0, false),
-        };
 }

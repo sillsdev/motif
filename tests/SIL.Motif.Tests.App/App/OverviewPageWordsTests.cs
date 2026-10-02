@@ -353,6 +353,20 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
+    public async Task LookFirstDescribesOneLostWordInTheSingular()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var overview = Populated();
+        fake.OverviewCompletesWith(overview with
+        {
+            LookFirst = overview.LookFirst with { ApprovedLostWords = ["hawajafika"] },
+        });
+        await context.OpenProjectAsync(ProjectPath);
+        Assert.Equal("1 approved word is Lost; the grammar builds nothing for it.", page.LookFirstRows[0].Summary);
+    }
+
+    [Fact]
     public async Task LookFirstUsesStoredResultsAndOpensTheExactMatrixCellsOrTimingWords()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));

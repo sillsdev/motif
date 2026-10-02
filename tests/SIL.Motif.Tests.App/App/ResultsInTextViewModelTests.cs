@@ -73,6 +73,12 @@ public sealed class ResultsInTextViewModelTests
             ReadingGrades = readings.Select(_ => ReadingGrade.NoOpinion).ToArray(),
         };
 
+    private static ParserReading AsReading(ProjectAnalysis analysis) => new(analysis.Morphs)
+    {
+        StoredAnalysisId = analysis.StoredAnalysisId, StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+        Identity = analysis.Identity,
+    };
+
     private static async Task<(ResultsInTextViewModel InText, List<string> Shown, FakeCommandClient Client)> Loaded(
         PendingChangesSnapshot? pending = null, IReadOnlyList<TextLine>? sourceLines = null,
         IReadOnlyList<TextLines>? sourceTexts = null,
@@ -141,8 +147,17 @@ public sealed class ResultsInTextViewModelTests
                 "invocation/one")],
             Words = assessmentWords ??
             [
-                Result("kitabu", Book, Child),
-                Result("anapenda", Like),
+                Result("kitabu", Book, Child) with
+                {
+                    ProjectStanding = ProjectStanding.Approved, StoredAnalysesAvailable = true,
+                    StoredAnalyses = [AsReading(Stored(Book, "book"))],
+                    ReadingGrades = [ReadingGrade.Approved, ReadingGrade.NoOpinion],
+                },
+                Result("anapenda", Like) with
+                {
+                    ProjectStanding = ProjectStanding.Approved, StoredAnalysesAvailable = true,
+                    StoredAnalyses = [AsReading(Stored(Love, "love"))],
+                },
                 Result("mtoto", Child),
                 Result("zzz"),
             ],

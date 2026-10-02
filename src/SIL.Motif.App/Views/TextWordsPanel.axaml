@@ -7,13 +7,13 @@
              x:DataType="views:TextWordsPanel">
   <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
         RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-    <DockPanel LastChildFill="False">
-      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
-                               VerticalAlignment="Center" />
+    <DockPanel>
       <Button DockPanel.Dock="Right" Content="AI Handoff" Command="{Binding Words.HandOffCheckedWordsCommand}"
               AutomationProperties.Name="AI Handoff for ticked words in Analyze texts" />
       <TextBox DockPanel.Dock="Right" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                AutomationProperties.Name="Search words" />
+      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
     </DockPanel>
 
     <WrapPanel Grid.Row="1">
@@ -30,7 +30,7 @@
                         IsVisible="{Binding Words.RejectedFilterCount}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
-      <views:FilterChip Label="Not present" Count="{Binding Words.NotPresentFilterCount}" Mark="{x:Static vm:Mark.NotInFieldWorks}"
+      <views:FilterChip Label="Not in FieldWorks" Count="{Binding Words.NotPresentFilterCount}" Mark="{x:Static vm:Mark.NotInFieldWorks}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
       <views:FilterChip Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}"

@@ -209,7 +209,13 @@ public sealed partial class TextWordsViewModel : ObservableObject
         ? _selection.PastedWordEntries.Count is var pasted and > 0
             ? $"{pasted} pasted word{(pasted == 1 ? string.Empty : "s")} to test; check a text to see its words here"
             : "No words to test yet"
-        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} to test · {OccurrenceCount} occurrence{(OccurrenceCount == 1 ? string.Empty : "s")} · {ApprovedCount} with an approved analysis";
+        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount} occurrence{(OccurrenceCount == 1 ? string.Empty : "s")} · " +
+          string.Join(" · ", new[]
+          {
+              (ApprovedFilterCount, "approved"), (CandidateFilterCount, "unknown"),
+              (RejectedFilterCount, "disapproved"), (NotPresentFilterCount, "not in FieldWorks"),
+              (IncorrectSpellingFilterCount, "incorrect spelling"),
+          }.Where(status => status.Item1 > 0).Select(status => $"{status.Item1} {status.Item2}"));
 
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);

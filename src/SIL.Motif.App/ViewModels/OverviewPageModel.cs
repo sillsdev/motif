@@ -220,8 +220,9 @@ public sealed partial class OverviewPageModel : PageModel
                     $"{SpeedText.Count(morpheme.WordCount, "word", "words")} use {morpheme.Form}" +
                     (morpheme.NamedByWarning ? " (named by a grammar warning)" : string.Empty)));
                 rows.Add(new OverviewLookFirstRow("1",
-                    $"{SpeedText.Count(data.ApprovedLostWords.Count, "approved word", "approved words")} are Lost; " +
-                    "the grammar builds nothing for them.", detail, "Approved × No parse →",
+                    $"{SpeedText.Count(data.ApprovedLostWords.Count, "approved word", "approved words")} " +
+                    (data.ApprovedLostWords.Count == 1 ? "is Lost; the grammar builds nothing for it." :
+                        "are Lost; the grammar builds nothing for them."), detail, "Approved × No parse →",
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
             }
             if (data.StepLimitedWords.Count > 0)

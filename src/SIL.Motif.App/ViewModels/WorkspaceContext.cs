@@ -182,7 +182,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>The sentence shared by every page when its measurements need a new parse.</summary>
     public string ParsePromptText => Assess.IsActive
         ? "Parsing… see the top row."
-        : "These words haven't been parsed since the last Refresh.";
+        : "Nothing parsed since the last Refresh.";
 
     /// <summary>The action offered by the shared parse prompt.</summary>
     public string ParsePromptActionText => Setup?.CanRunDefaultSelection == true
