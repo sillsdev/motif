@@ -66,6 +66,16 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 walkthrough.Workspace.Baseline.SourceLastWriteUtc);
 
             walkthrough.ShowPage(WorkspacePage.Review);
+            InteractiveControlSweep.AssertScene(walkthrough, "pending change in Review",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Morpheme,
+                InteractiveControlFamily.FocusableSurface);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             var reviewEntry = walkthrough.Window.GetLogicalDescendants().OfType<ListBoxItem>()
                 .Single(item => Avalonia.Automation.AutomationProperties.GetName(item) == "Review changes page");
@@ -84,6 +94,13 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             walkthrough.WaitUntil(
                 () => review.HasReceipt && review.Changes.Items.Count == 0,
                 WalkthroughSteps.Remaining(deadline), "Apply did not show its Receipt and clear the pending change");
+            InteractiveControlSweep.AssertScene(walkthrough, "Apply receipt",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Collection);
 
             Assert.True(walkthrough.Workspace.Context.Evidence.AppliedSinceRefresh);
             Assert.True(walkthrough.Workspace.Context.Evidence.IsStale);
@@ -112,6 +129,13 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.True(freshnessDetail.IsEffectivelyVisible);
             Assert.Contains("stale until you refresh", freshnessDetail.Text,
                 StringComparison.Ordinal);
+            InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Collection);
 
             var batchInvocationsBeforeRefresh = FakeParser.Invocations(parserPath)
                 .Count(command => command == "batch");

@@ -26,14 +26,44 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-first-batch");
         var measurementStarted = Path.Combine(project.ManagedRoot, "review-measurement-started");
         var releaseMeasurement = Path.Combine(project.ManagedRoot, "release-review-measurement");
+        var firstReading = new
+        {
+            morphs = new[]
+            {
+                new
+                {
+                    form = pristine.Seed.FirstLexemeFormId.ToString("D"),
+                    msa = project.FirstMsaId.ToString("D"),
+                    inflType = (string?)null,
+                    guessedString = (string?)null,
+                },
+            },
+        };
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parser);
+            walkthrough.Show();
+            InteractiveControlSweep.AssertScene(walkthrough, "no project selected",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Collection);
             SetupWalkthroughActions.SelectProject(walkthrough, project.FwDataPath);
             SetupWalkthroughActions.CaptureBaselineAndWaitForSetup(
                 walkthrough, 2, StepTimeout(deadline));
+            InteractiveControlSweep.AssertScene(walkthrough, "first project setup",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Collection);
 
             var setup = walkthrough.Workspace.Context.Setup!;
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: texts");
@@ -48,7 +78,22 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                     {
                         startedPath = batchStarted,
                         holdUntilPath = releaseBatch,
-                        words = new[] { new { word = "motifa", outcome = "complete" } },
+                        words = new object[]
+                        {
+                            new
+                            {
+                                word = SeededProject.AnalysedWordForm,
+                                outcome = "complete",
+                                signature = "authored-reading",
+                                analyses = new[] { firstReading },
+                            },
+                            new
+                            {
+                                word = SeededProject.UnanalysedWordForm,
+                                outcome = "no-analysis",
+                                signature = "-",
+                            },
+                        },
                     },
                     ["parse"] = new
                     {
@@ -78,8 +123,37 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             walkthrough.ShowPage(WorkspacePage.Overview);
             walkthrough.WaitUntil(() => walkthrough.Workspace.PageModel<OverviewPageModel>().Overview is not null,
                 StepTimeout(deadline), "Overview did not load");
+            InteractiveControlSweep.AssertSceneWithReportedGaps(walkthrough, "completed Overview",
+                nameof(AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun),
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Summary,
+                InteractiveControlFamily.StaticText,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.FocusableSurface);
             Assert.True(walkthrough.Find<Border>("Project summary").IsEffectivelyVisible);
             walkthrough.ShowPage(WorkspacePage.Texts);
+            walkthrough.ShowTextsTab(TextsTab.Matrix);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Compare Matrix",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Choice,
+                InteractiveControlFamily.Check,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.MatrixCell,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Morpheme,
+                InteractiveControlFamily.FocusableSurface,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Container);
             Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.CurrentPage);
 
             var changes = walkthrough.Workspace.Context.Changes;
@@ -96,6 +170,16 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 changes.LastRefusal?.Message ?? $"Expected two changes, found {changes.Items.Count}.");
 
             walkthrough.ShowPage(WorkspacePage.Review);
+            InteractiveControlSweep.AssertScene(walkthrough, "pending changes in Review",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Morpheme,
+                InteractiveControlFamily.FocusableSurface);
             var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
             Assert.Equal(["Removed", "Spelling → Incorrect"],
                 review.ReviewGroups.Select(group => group.Title));
@@ -179,6 +263,81 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                     $"pending count='{changes.Items.Count}', revision='{changes.Snapshot.Revision}', " +
                     $"reload refusal='{changes.LastRefusal?.Code}: {changes.LastRefusal?.Message}'");
             }
+            InteractiveControlSweep.AssertScene(walkthrough, "Review receipt",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Collection);
+            walkthrough.ShowPage(WorkspacePage.Timing);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Timing",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Choice,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Grid,
+                InteractiveControlFamily.Morpheme,
+                InteractiveControlFamily.FocusableSurface,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Container);
+            walkthrough.ShowPage(WorkspacePage.Warnings);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Warnings",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.Grid,
+                InteractiveControlFamily.Collection);
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Analyze texts",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Choice,
+                InteractiveControlFamily.Check,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.FocusableSurface,
+                InteractiveControlFamily.Occurrence,
+                InteractiveControlFamily.Collection);
+            var inText = walkthrough.Workspace.PageModel<TextsPageModel>().ResultsInText;
+            var panel = AnalyzeTextsLayoutTests.Panel(walkthrough.Window);
+            var occurrence = AnalyzeTextsLayoutTests.Strips(panel)
+                .Select(strip => Assert.IsType<ResultsTokenViewModel>(strip.Tag))
+                .FirstOrDefault(token => token.HasReadings);
+            Assert.NotNull(occurrence);
+            await inText.OpenTokenCardAsync(occurrence);
+            AnalyzeTextsLayoutTests.Settle(walkthrough.Window);
+            InteractiveControlSweep.AssertScene(walkthrough, "word card with a reading",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Filter,
+                InteractiveControlFamily.TextEntry,
+                InteractiveControlFamily.Choice,
+                InteractiveControlFamily.Check,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.Mark,
+                InteractiveControlFamily.FocusableSurface,
+                InteractiveControlFamily.Occurrence,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Morpheme);
             return;
         }, WalkthroughSteps.Remaining(deadline));
     }

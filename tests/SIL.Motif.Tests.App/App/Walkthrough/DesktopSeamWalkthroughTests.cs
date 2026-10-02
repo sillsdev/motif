@@ -37,6 +37,7 @@ public sealed class DesktopSeamWalkthroughTests
             using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata", clipboard: clipboard);
             walkthrough.Show();
             walkthrough.SkipSetup();
+            walkthrough.ShowPage(WorkspacePage.TryAWord);
 
             walkthrough.DiagnosticFiles.NextOpenCancels();
             OpenSavedTrace(walkthrough.Window);
@@ -51,6 +52,17 @@ public sealed class DesktopSeamWalkthroughTests
             {
                 diagnostic.UpdateLayout();
                 Pump();
+                InteractiveControlSweep.AssertScene(walkthrough, "opened diagnostic window",
+                    InteractiveControlFamily.Action,
+                    InteractiveControlFamily.Link,
+                    InteractiveControlFamily.TextEntry,
+                    InteractiveControlFamily.Choice,
+                    InteractiveControlFamily.Disclosure,
+                    InteractiveControlFamily.List,
+                    InteractiveControlFamily.SelectableText,
+                    InteractiveControlFamily.Mark,
+                    InteractiveControlFamily.Tree,
+                    InteractiveControlFamily.Collection);
                 Assert.Equal(DiagnosticJson, Assert.Single(diagnostic.GetLogicalDescendants().OfType<DiagnosticPanel>())
                     .Tools.Trace.DiagnosticJson);
 
@@ -86,6 +98,7 @@ public sealed class DesktopSeamWalkthroughTests
             using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata");
             walkthrough.Show();
             walkthrough.SkipSetup();
+            walkthrough.ShowPage(WorkspacePage.TryAWord);
 
             walkthrough.DiagnosticFiles.NextOpenReads("{");
             OpenSavedTrace(walkthrough.Window);
@@ -127,6 +140,16 @@ public sealed class DesktopSeamWalkthroughTests
             handoff.State = RunState.Completed;
             walkthrough.Show();
             walkthrough.SkipSetup();
+            walkthrough.ShowPage(WorkspacePage.AiHandoff);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Handoff",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Container);
 
             walkthrough.Click("Copy the starter prompt");
             walkthrough.Click(question);

@@ -50,6 +50,15 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 walkthrough.Workspace.Baseline.ShownRefusal);
             var block = walkthrough.Find<RefusalBlock>("Refresh refusal");
             Assert.True(block.IsEffectivelyVisible);
+            InteractiveControlSweep.AssertScene(walkthrough, "older store refused",
+                InteractiveControlFamily.Action,
+                InteractiveControlFamily.Link,
+                InteractiveControlFamily.Disclosure,
+                InteractiveControlFamily.List,
+                InteractiveControlFamily.SelectableText,
+                InteractiveControlFamily.ContentSurface,
+                InteractiveControlFamily.Collection,
+                InteractiveControlFamily.Container);
             Assert.Contains(storePath, refusal.Sentence, StringComparison.Ordinal);
             var sentence = block.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Text == refusal.Sentence);

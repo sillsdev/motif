@@ -15,6 +15,8 @@ internal sealed class TwoTextWalkthroughProject : IDisposable
         try
         {
             FirstText = SeededProject.SeedText(cache, pristine.Seed);
+            FirstMsaId = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
+                .GetObject(pristine.Seed.FirstEntryId).MorphoSyntaxAnalysesOC.Single().Guid;
             var second = SeededProject.SeedText(cache, pristine.Seed);
             var secondText = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(second.TextId);
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
@@ -36,6 +38,8 @@ internal sealed class TwoTextWalkthroughProject : IDisposable
     public string FwDataPath { get; }
 
     public SeededText FirstText { get; }
+
+    public Guid FirstMsaId { get; }
 
     public string ManagedRoot { get; }
 
