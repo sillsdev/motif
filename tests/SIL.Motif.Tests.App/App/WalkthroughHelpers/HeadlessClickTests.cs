@@ -3,7 +3,9 @@ using Avalonia.Threading;
 using Xunit;
 using Xunit.Sdk;
 
-namespace SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.App.Walkthrough;
+
+namespace SIL.Motif.Tests.App.WalkthroughHelpers;
 
 /// <summary>
 /// Pins that a walkthrough click either reaches the control it aimed at or fails saying so, rather than landing

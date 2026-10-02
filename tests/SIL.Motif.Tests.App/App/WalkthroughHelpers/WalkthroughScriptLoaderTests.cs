@@ -4,7 +4,9 @@ using System.Text.RegularExpressions;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
-namespace SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.App.Walkthrough;
+
+namespace SIL.Motif.Tests.App.WalkthroughHelpers;
 
 public sealed class WalkthroughScriptLoaderTests
 {

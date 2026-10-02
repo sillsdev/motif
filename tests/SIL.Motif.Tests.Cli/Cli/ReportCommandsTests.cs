@@ -16,11 +16,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary>
-/// Drives the real <c>report</c> verb end to end against a paired store, with no <c>.fwdata</c> content
-/// and no Assessor anywhere in the process — proving the registry, the refusal-naming-a-reason contract,
-/// and that a stored rendering survives being read back with nothing that could produce it available.
-/// </summary>
+/// <summary>Checks Report handlers over a paired store, including refusal and persisted rendering.</summary>
 public sealed class ReportCommandsTests : IDisposable
 {
     private const string ProductVersion = "1.0";

@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Xml.Linq;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using Xunit.Sdk;
 
 namespace SIL.Motif.Tests.App.App;
 
@@ -84,7 +85,14 @@ public sealed class TestLevelGuardTests
                         "RunnerSpineTests";
                     var resolvedLevel = TestLevelClassifier.ResolveLevel(
                         testClass.FullName!, defaultLevel, declarations, parserClass);
-                    Assert.Contains(resolvedLevel, ValidLevels);
+                    foreach (var method in testClass.GetMethods().Where(method =>
+                                 method.GetCustomAttributes(inherit: true).Any(attribute => attribute is FactAttribute)))
+                    {
+                        using var testCase = CaseFor(testClass, method);
+                        foreach (var level in ValidLevels)
+                            Assert.Equal(resolvedLevel == level, TestLevelClassifier.IsSelected(
+                                testCase, defaultLevel, new HashSet<string> { level }));
+                    }
                     if (parserClass || walkthroughNamespace || namedSystemClass || defaultLevel == "System")
                         Assert.Equal("System", resolvedLevel);
                 }
@@ -107,7 +115,94 @@ public sealed class TestLevelGuardTests
         Assert.Null(TestLevelClassifier.ParseSelection("All"));
     }
 
-    private static bool HasTests(Type type) => type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
+    [Fact]
+    public void MixedParserCasesAreRejectedForEitherMethod()
+    {
+        foreach (var method in typeof(MixedParserFixture).GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public |
+                                                                   BindingFlags.Instance))
+        {
+            using var testCase = CaseFor(typeof(MixedParserFixture), method);
+            var failure = Assert.Throws<InvalidOperationException>(() =>
+                TestLevelClassifier.IsSelected(testCase, "Integration", new HashSet<string> { "Integration" }));
+            Assert.Contains("mixes RealParserFact", failure.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void AnExplicitSystemClassSelectsEveryMethodTogether()
+    {
+        foreach (var method in typeof(MixedSystemFixture).GetMethods().Where(method =>
+                     method.GetCustomAttributes(inherit: true).Any(attribute => attribute is FactAttribute)))
+        {
+            using var testCase = CaseFor(typeof(MixedSystemFixture), method);
+            Assert.False(TestLevelClassifier.IsSelected(testCase, "Integration", new HashSet<string> { "Integration" }));
+            Assert.True(TestLevelClassifier.IsSelected(testCase, "Integration", new HashSet<string> { "System" }));
+            Assert.True(TestLevelClassifier.IsSelected(testCase, "Integration", null));
+        }
+    }
+
+    [Fact]
+    public void MethodLevelDeclarationsAreRejected()
+    {
+        using var testCase = CaseFor(typeof(MethodLevelFixture), typeof(MethodLevelFixture).GetMethod("Test")!);
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            TestLevelClassifier.IsSelected(testCase, "Unit", new HashSet<string> { "Unit" }));
+        Assert.Contains("class", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(typeof(RealClient.OverviewRealClientTests), "Integration")]
+    [InlineData(typeof(RealClient.WarningsRealClientTests), "Integration")]
+    [InlineData(typeof(RealClient.TimingRealClientTests), "Integration")]
+    [InlineData(typeof(RealClient.TryWordRealClientTests), "Integration")]
+    [InlineData(typeof(RealClient.FieldWorksAnalysisDriftRealClientTests), "Integration")]
+    [InlineData(typeof(RealClient.WindowRefusalRealClientTests), "Integration")]
+    [InlineData(typeof(CompareOverviewParityTests), "Integration")]
+    [InlineData(typeof(WalkthroughHelpers.WalkthroughScriptLoaderTests), "Unit")]
+    [InlineData(typeof(WalkthroughHelpers.WalkthroughArtifactTests), "Unit")]
+    [InlineData(typeof(WalkthroughHelpers.FakeChatReceiverTests), "Unit")]
+    [InlineData(typeof(WalkthroughHelpers.HeadlessClickTests), "Unit")]
+    [InlineData(typeof(WalkthroughHelpers.WalkthroughViewportTests), "Unit")]
+    public void CheapHelpersAndRealClientSeamsSelectTheirIntendedLevel(Type type, string level)
+    {
+        foreach (var method in type.GetMethods().Where(method =>
+                     method.GetCustomAttributes(inherit: true).Any(attribute => attribute is FactAttribute)))
+        {
+            using var testCase = CaseFor(type, method);
+            Assert.True(TestLevelClassifier.IsSelected(testCase, "Unit", new HashSet<string> { level }),
+                $"{type.Name}.{method.Name} must select {level}.");
+        }
+    }
+
+    private static XunitTestCase CaseFor(Type type, MethodInfo method)
+    {
+        var assembly = new TestAssembly(Reflector.Wrap(type.Assembly));
+        var collection = new TestCollection(assembly, null, "level selection");
+        var testClass = new TestClass(collection, Reflector.Wrap(type));
+        return new XunitTestCase(new NullMessageSink(), TestMethodDisplay.ClassAndMethod, TestMethodDisplayOptions.None,
+            new TestMethod(testClass, Reflector.Wrap(method)));
+    }
+
+    public abstract class MixedParserFixture
+    {
+        [Fact]
+        public void Deterministic() { }
+
+        [SIL.Motif.Tests.Parser.RealParserFact]
+        public void Parser() { }
+    }
+
+    [Trait("MotifTestLevel", "System")]
+    public abstract class MixedSystemFixture : MixedParserFixture;
+
+    public abstract class MethodLevelFixture
+    {
+        [Fact]
+        [Trait("MotifTestLevel", "Integration")]
+        public void Test() { }
+    }
+
+    private static bool HasTests(Type type) => !type.IsAbstract && type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic |
                                                                BindingFlags.Instance | BindingFlags.Static)
         .Any(method => method.GetCustomAttributes(inherit: true)
             .Any(attribute => attribute is FactAttribute));

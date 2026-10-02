@@ -12,7 +12,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary>Pins the released command boundary at the real executable and the shared command catalog.</summary>
+/// <summary>Pins catalog dispatch and release policy through the in-process CLI.</summary>
 public sealed class ReleaseSurfaceTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-release-surface-" + Guid.NewGuid().ToString("N"));
@@ -54,7 +54,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void EveryCataloguedCommandIsResolvedFromItsDocumentedUsage()
+    public void DocumentedUsageTokensResolveThroughTheInProcessCli()
     {
         foreach (var descriptor in CliVerbCatalog.All)
         {
@@ -202,18 +202,30 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void EveryReleasedCommandStillDispatchesOnTheReleasedSurface()
+    public void BareReleasedCommandsReturnTheirUsageFailureOrDocumentedResult()
     {
-        // Invoked bare: reaching its own usage complaint is enough to show the boundary let the verb past.
         foreach (var name in CommandCatalog.All
                      .Where(command => command.Surface == CommandSurface.Released)
                      .Select(command => command.Name))
         {
             var result = Run(name + " --json", developerCommands: false);
 
-            Assert.DoesNotContain("command.not-in-release", result.Error, StringComparison.Ordinal);
-            Assert.DoesNotContain("not part of Motif 0.1.0", result.Error, StringComparison.Ordinal);
-            Assert.NotEqual(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+            if (name == "report --list-kinds")
+            {
+                Assert.True(result.ExitCode == 0, result.Error);
+                Assert.Empty(result.Error);
+                Assert.NotEmpty(ProjectionJson.Deserialize<ReportKindListResponse>(result.Output)!.Kinds);
+            }
+            else
+            {
+                Assert.True(result.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument),
+                    $"{name}: exit {result.ExitCode}: {result.Error}");
+                Assert.Empty(result.Output);
+                var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+                Assert.Equal(FailureReason.InvalidArgument, failure.Reason);
+                Assert.Null(failure.Code);
+                Assert.Contains(name.Split(' ')[0], failure.Message, StringComparison.Ordinal);
+            }
         }
     }
 

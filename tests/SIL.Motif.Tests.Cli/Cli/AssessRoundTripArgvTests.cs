@@ -41,14 +41,14 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.Contains("motifa", response.Selection.Words);
         Assert.NotEmpty(response.AssessmentIds);
 
-        var timingResult = CliInProcess.Run(_workerRoot, null, false,
+        var timingResult = await CliProcess.RunAsync(_workerRoot, null, false,
             "timing", "--project", project, "--json");
         Assert.True(timingResult.ExitCode == 0, timingResult.FailureDetails);
         var timing = ProjectionJson.Deserialize<TimingResponse>(timingResult.Output)!;
         Assert.Contains(timing.AssessmentId, response.AssessmentIds);
         Assert.Contains(timing.Words, row => row.Word == "motifa");
 
-        var overviewResult = CliInProcess.Run(_workerRoot, null, false,
+        var overviewResult = await CliProcess.RunAsync(_workerRoot, null, false,
             "overview", "--project", project, "--json");
         Assert.True(overviewResult.ExitCode == 0, overviewResult.FailureDetails);
         var overview = ProjectionJson.Deserialize<OverviewResponse>(overviewResult.Output)!;

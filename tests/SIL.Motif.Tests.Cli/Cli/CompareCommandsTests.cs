@@ -15,11 +15,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary>
-/// Drives the real <c>compare</c> verb end to end against a paired store: two Assessments recorded through
-/// <see cref="AssessmentRepository"/>, joined, stored as a third, and read back exactly as any other
-/// Assessment would be.
-/// </summary>
+/// <summary>Checks comparison handlers over a paired store, including refusal and persisted Difference Assessments.</summary>
 public sealed class CompareCommandsTests : IDisposable
 {
     private const string ProductVersion = "1.0";

@@ -124,12 +124,10 @@ public sealed class ShardedTestFramework(IMessageSink messageSink) : XunitTestFr
             var selectedLevels = TestLevelClassifier.ParseSelection(
                 Environment.GetEnvironmentVariable(TestLevelClassifier.EnvironmentVariable));
             var cases = testCases.ToArray();
-            if (selectedLevels is not null)
-            {
-                var defaultLevel = TestLevelClassifier.ReadAssemblyDefault(Assembly.Load(_assemblyName));
-                cases = cases.Where(testCase => TestLevelClassifier.IsSelected(testCase, defaultLevel, selectedLevels))
-                    .ToArray();
-            }
+            var defaultLevel = TestLevelClassifier.ReadAssemblyDefault(Assembly.Load(_assemblyName));
+            cases = cases.GroupBy(ClassOf)
+                .Where(group => TestLevelClassifier.IsSelected(group.First(), defaultLevel, selectedLevels))
+                .SelectMany(group => group).ToArray();
 
             var shard = CurrentShard();
             if (shard is not { } s)

@@ -692,8 +692,7 @@ try
                 CorpusCommands.CapabilitiesFromFlags(flags),
                 corpusTokeniser,
                 corpusTokeniserVersion,
-                flags.GetValueOrDefault("tokeniser-notes"))),
-                successAsJson: false);
+                flags.GetValueOrDefault("tokeniser-notes"))));
             break;
 
         case "add-document":
@@ -721,8 +720,7 @@ try
                 documentPathOrUrl,
                 flags.GetValueOrDefault("title"),
                 flags.GetValueOrDefault("licence"),
-                documentCapabilities)),
-                successAsJson: false);
+                documentCapabilities)));
             break;
 
         case "add-corpus-bundle":
@@ -730,8 +728,7 @@ try
                 !flags.TryGetValue("bundle", out var bundlePath))
                 return Usage("Usage: motif add-corpus-bundle --project <fwdata> --bundle <path-to-bundle.json>", asJson);
             result = RenderCommand(
-                CorpusCommands.AddBundle(new AddCorpusBundleRequest(addBundleProject, CliProductVersion(), bundlePath)),
-                successAsJson: false);
+                CorpusCommands.AddBundle(new AddCorpusBundleRequest(addBundleProject, CliProductVersion(), bundlePath)));
             break;
 
         case "corpora":

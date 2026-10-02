@@ -23,6 +23,7 @@ using SIL.Motif.Commands.Queries;
 namespace SIL.Motif.Tests.App;
 
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _managedRoot = Path.Combine(Path.GetTempPath(), "Motif.CompareOverviewParity", Guid.NewGuid().ToString("N"));

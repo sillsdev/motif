@@ -184,8 +184,7 @@ public sealed class SampleBuilderExtensionTests
         }
     }
 
-    [RealParserFact]
-    public async Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess()
+    internal async Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -389,4 +388,13 @@ public sealed class SampleBuilderExtensionTests
     }
 
     private sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
+}
+
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
+[Trait("MotifTestLevel", "System")]
+public sealed class RealParserSampleBuilderExtensionTests
+{
+    [RealParserFact]
+    public Task PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess() =>
+        new SampleBuilderExtensionTests().PrefixAffixBuiltBySampleBuilderParsesThroughMotifAssess();
 }

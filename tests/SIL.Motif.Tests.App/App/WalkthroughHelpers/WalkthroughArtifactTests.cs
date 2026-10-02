@@ -6,7 +6,9 @@ using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
 using Xunit;
 
-namespace SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.App.Walkthrough;
+
+namespace SIL.Motif.Tests.App.WalkthroughHelpers;
 
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class WalkthroughArtifactTests

@@ -12,6 +12,7 @@ namespace SIL.Motif.Tests.App.RealClient;
 /// the facts a problem report needs kept beneath them.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "Integration")]
 public sealed partial class WindowRefusalRealClientTests(PristineProjectFixture pristine)
 {
     [GeneratedRegex(@"\bassess\w*", RegexOptions.IgnoreCase)]

@@ -29,10 +29,22 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
             PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(3_100)), CancellationToken.None);
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
 
-        var readBack = await client.ReadDefaultSelectionAsync(new(project.FwDataPath), CancellationToken.None);
+        var reopened = RealCommandClient.Create(project.ManagedRoot);
+        var readBack = await reopened.ReadDefaultSelectionAsync(new(project.FwDataPath), CancellationToken.None);
         Assert.True(readBack.Succeeded, readBack.Refusal?.Message);
         Assert.Equal([project.Text.TextId], readBack.Value!.Selection!.TextIds);
         Assert.Equal(3_100, readBack.Value.Selection.PerWordStepLimit!.Steps);
+        Assert.False(readBack.Value.SetupSkipped);
+
+        var changed = await reopened.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
+            project.FwDataPath, "Configured", [], ["motifb"],
+            PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(6_600)), CancellationToken.None);
+        Assert.True(changed.Succeeded, changed.Refusal?.Message);
+        var changedReadBack = await client.ReadDefaultSelectionAsync(new(project.FwDataPath), CancellationToken.None);
+        Assert.True(changedReadBack.Succeeded, changedReadBack.Refusal?.Message);
+        Assert.Empty(changedReadBack.Value!.Selection!.TextIds);
+        Assert.Equal("motifb", Assert.Single(changedReadBack.Value.Selection.AddedWords));
+        Assert.Equal(6_600, changedReadBack.Value.Selection.PerWordStepLimit!.Steps);
     }
 
     [Fact]

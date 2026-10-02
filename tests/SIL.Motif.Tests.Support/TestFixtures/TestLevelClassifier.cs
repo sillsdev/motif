@@ -49,14 +49,25 @@ internal static class TestLevelClassifier
     internal static bool IsSelected(
         IXunitTestCase testCase, string defaultLevel, IReadOnlySet<string>? selectedLevels)
     {
-        var className = testCase.TestMethod.TestClass.Class.Name;
-        var declarations = testCase.Traits.TryGetValue("MotifTestLevel", out var values)
-            ? values.Cast<string?>()
-            : [];
-        var realParserFact = testCase.TestMethod.Method
-            .GetCustomAttributes(typeof(RealParserFactAttribute).AssemblyQualifiedName!)
-            .Any();
-        var level = ResolveLevel(className, defaultLevel, declarations, realParserFact);
+        var testClass = testCase.TestMethod.TestClass.Class;
+        var className = testClass.Name;
+        var traitName = typeof(Xunit.TraitAttribute).AssemblyQualifiedName!;
+        var declarations = testClass.GetCustomAttributes(traitName)
+            .Select(attribute => attribute.GetConstructorArguments().ToArray())
+            .Where(arguments => arguments[0] as string == "MotifTestLevel")
+            .Select(arguments => arguments[1] as string).ToArray();
+        var methods = testClass.GetMethods(includePrivateMethods: true)
+            .Where(method => method.GetCustomAttributes(typeof(Xunit.FactAttribute).AssemblyQualifiedName!).Any())
+            .ToArray();
+        if (methods.SelectMany(method => method.GetCustomAttributes(traitName))
+            .Any(attribute => attribute.GetConstructorArguments().FirstOrDefault() as string == "MotifTestLevel"))
+            throw new InvalidOperationException($"{className} must declare MotifTestLevel on the class, not a method.");
+        var parserMethods = methods.Count(method =>
+            method.GetCustomAttributes(typeof(RealParserFactAttribute).AssemblyQualifiedName!).Any());
+        if (parserMethods > 0 && parserMethods < methods.Length &&
+            !IsWalkthroughOrSmoke(className) && !declarations.Contains("System"))
+            throw new InvalidOperationException($"{className} mixes RealParserFact with deterministic tests; split the class.");
+        var level = ResolveLevel(className, defaultLevel, declarations, parserMethods > 0);
         return selectedLevels is null || selectedLevels.Contains(level);
     }
 

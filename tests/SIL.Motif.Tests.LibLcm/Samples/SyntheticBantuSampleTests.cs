@@ -59,8 +59,7 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
         }
     }
 
-    [RealParserFact]
-    public async Task SyntheticBantuVariantsMatchDeclaredSymptomsAndPinParserWork()
+    internal async Task SyntheticBantuVariantsMatchDeclaredSymptomsAndPinParserWork()
     {
         var root = NewRoot();
         Directory.CreateDirectory(root);
@@ -418,4 +417,13 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
     };
 
     private static readonly Dictionary<string, string> GrammarWarningReasons = new(StringComparer.Ordinal);
+}
+
+[Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
+[Trait("MotifTestLevel", "System")]
+public sealed class RealParserSyntheticBantuSampleTests(ITestOutputHelper output)
+{
+    [RealParserFact]
+    public Task SyntheticBantuVariantsMatchDeclaredSymptomsAndPinParserWork() =>
+        new SyntheticBantuSampleTests(output).SyntheticBantuVariantsMatchDeclaredSymptomsAndPinParserWork();
 }

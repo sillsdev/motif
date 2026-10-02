@@ -15,11 +15,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
 
-/// <summary>
-/// <see cref="CorpusCommands.StoreFor"/> points at <see cref="SqliteCorpusStore"/> over a project's
-/// paired database; this proves the CLI verbs still work end to end against it, not only the store
-/// in isolation.
-/// </summary>
+/// <summary>Checks Corpus handlers against the SQLite store paired with their project.</summary>
 public sealed class CorpusCommandsSqliteWiringTests : IDisposable
 {
     private readonly string _root =
@@ -53,7 +49,7 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
     }
 
     [Fact]
-    public void StoreForReturnsASqliteBackedStore_AndTheCliVerbsRoundTripThroughIt()
+    public void StoreForReturnsASqliteBackedStore_AndTheHandlersRoundTripThroughIt()
     {
         var project = new ProjectLocator(_fwDataPath, "Project");
         using (var database = MotifDatabase.OpenOwned(
@@ -85,7 +81,6 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         Assert.Equal("Testlang corpus", corpus.Description);
         Assert.Equal("tst-corpus", detailText.Value!.CorpusId);
         Assert.Equal("tst-corpus", detailJson.Value!.CorpusId);
-        // The human text is unchanged (no "error: " prefix); the JSON failure now carries a stable code too.
         var missingText = ShowCorpus(_fwDataPath, "1.0", "missing");
         var missingJson = ShowCorpus(_fwDataPath, "1.0", "missing");
         Assert.False(missingText.Succeeded);
