@@ -27,14 +27,14 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         Directory.CreateDirectory(_managedRoot);
         var path = Path.Combine(_managedRoot, "captured-rule.json");
         File.WriteAllText(path, TraceEnvelope.CapturedRuleLabel);
-        var text = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path);
+        var text = await CliProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path);
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("Stopped 1 attempt(s): Explanation not recorded (reason code: PartialParse).", text.Output);
         Assert.Empty(WordTraceQuery.LoadDiagnostic(TraceEnvelope.CapturedRuleLabel).Value!.Reading.RulesOnBestPath);
         Assert.Contains("phonologicalRule Vowel harmony", text.Output);
         Assert.DoesNotContain("Producer name", text.Output);
 
-        var json = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path, "--json");
+        var json = await CliProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path, "--json");
         Assert.True(json.ExitCode == 0, json.Error);
         var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
         Assert.Equal("Producer name", Assert.Single(response.Reading.Refs).Label);
@@ -46,7 +46,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     {
         var (project, baseline) = TracedProject();
 
-        var result = await CliProcess.RunAsync(_managedRoot, null, true,
+        var result = await CliProcess.RunAsync(_managedRoot, null, false,
             "trace", "--project", project, "--word", SeededProject.FirstForm, "--json");
 
         Assert.True(result.ExitCode == 0, result.Error);
@@ -66,7 +66,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     {
         var (project, _) = TracedProject();
 
-        var result = await CliProcess.RunAsync(_managedRoot, null, true,
+        var result = await CliProcess.RunAsync(_managedRoot, null, false,
             "trace", "--project", project, "--word", SeededProject.FirstForm);
 
         Assert.True(result.ExitCode == 0, result.Error);
@@ -80,7 +80,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     {
         var path = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-kumata.json");
 
-        var result = await CliProcess.RunAsync(_managedRoot, null, true, "trace", "--load", path, "--json");
+        var result = await CliProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path, "--json");
 
         Assert.True(result.ExitCode == 0, result.Error);
         var loaded = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
@@ -100,7 +100,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     [Fact]
     public async Task AMissingSavedTraceIsNotFound()
     {
-        var result = await CliProcess.RunAsync(_managedRoot, null, true,
+        var result = await CliProcess.RunAsync(_managedRoot, null, false,
             "trace", "--load", Path.Combine(_managedRoot, "absent.json"), "--json");
 
         Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.NotFound), result.ExitCode);
@@ -114,7 +114,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
     [InlineData("trace", "--load", "x.json", "--word", "motifa")]
     public async Task InvalidTraceArgumentsPrintTheUsageLine(params string[] arguments)
     {
-        var result = await CliProcess.RunAsync(_managedRoot, null, true, arguments);
+        var result = await CliProcess.RunAsync(_managedRoot, null, false, arguments);
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("Usage: motif trace", result.Error, StringComparison.Ordinal);
