@@ -53,6 +53,10 @@ public sealed class PageScreenshots
                 fake.OverviewCompletesWith(OverviewPageWordsTests.Populated()));
             try
             {
+                var overview = workspace.PageModel<OverviewPageModel>().Overview;
+                Assert.NotNull(overview);
+                Assert.Equal(142, overview.SelectionWordCount);
+
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
                     Application.Current!.RequestedThemeVariant = variant;
