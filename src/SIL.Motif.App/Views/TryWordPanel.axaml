@@ -41,6 +41,16 @@
               </Flyout>
             </Button.Flyout>
           </Button>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
+            <Button Content="Plain" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+                    Classes.chosen="{Binding !Trace.IsExpert}" AutomationProperties.Name="Plain trace view">
+              <Button.CommandParameter><x:Boolean>False</x:Boolean></Button.CommandParameter>
+            </Button>
+            <Button Content="Expert" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
+                    Classes.chosen="{Binding Trace.IsExpert}" AutomationProperties.Name="Expert trace view">
+              <Button.CommandParameter><x:Boolean>True</x:Boolean></Button.CommandParameter>
+            </Button>
+          </StackPanel>
           <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}" Classes="Primary"
                   Theme="{DynamicResource SolidButton}" AutomationProperties.Name="Try the word"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
@@ -99,7 +109,8 @@
         </StackPanel>
       </Border>
       <views:TraceAnalysesView DataContext="{Binding Trace}" />
-      <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="Recorded trace context">
+      <views:ExpertTracePanel DataContext="{Binding Trace}" IsVisible="{Binding ShowsExpertTrace}" />
+      <Border Classes="card" IsVisible="{Binding Trace.ShowsPlainTrace}" AutomationProperties.Name="Recorded trace context">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="Recorded trace" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <TreeView ItemsSource="{Binding Trace.RecordedRoots}" SelectedItem="{Binding Trace.SelectedStep}" AutomationProperties.Name="Recorded trace tree">
@@ -171,7 +182,7 @@
           <views:CopyableTextBlock Text="{Binding EarlierOverrunText}" Classes="muted" TextWrapping="Wrap" IsVisible="{Binding EarlierOverrunText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
-      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.HasResult}" />
+      <ContentControl x:Name="RichDiagnosticHost" IsVisible="{Binding Trace.ShowsPlainTrace}" />
     </StackPanel>
   </ScrollViewer>
 </UserControl>

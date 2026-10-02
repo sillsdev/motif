@@ -236,6 +236,20 @@ internal sealed class TooltipScenes
                 await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
                 Show(WorkspacePage.TryAWord);
                 break;
+            case TooltipScene.ExpertTrace:
+                Window.Height = 2400;
+                var trace = Workspace.Assess.Trace;
+                trace.Result = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic).Result;
+                trace.SelectedCandidate = trace.Candidates.Single();
+                trace.SelectedStep = trace.SelectedCandidate.Steps[3];
+                trace.ExpertWholeTree = false;
+                trace.IsExpert = true;
+                Show(WorkspacePage.TryAWord);
+                PageScreenshots.Settle(Window);
+                foreach (var expander in Visible<ExpertTracePanel>().Single().GetVisualDescendants().OfType<Expander>())
+                    expander.IsExpanded = true;
+                PageScreenshots.Settle(Window);
+                break;
             case TooltipScene.TryAWordRepeatedRecords:
                 _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.AnalysisRecords()).Value!);
                 Workspace.Context.TryWord("word");
@@ -260,6 +274,7 @@ internal sealed class TooltipScenes
     {
         switch (scene)
         {
+            case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
             case TooltipScene.OpenRecent:
                 foreach (var name in new[] { "OpenRecentButton", "ProjectMenuButton" }) Window.FindControl<Button>(name)!.Flyout!.Hide();
                 break;

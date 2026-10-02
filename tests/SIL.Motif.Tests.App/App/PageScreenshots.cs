@@ -74,6 +74,13 @@ public sealed class PageScreenshots
                             if (page != WorkspacePage.TryAWord) continue;
                             window.Height = 1500;
                             Save(window, Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
+                            foreach (var height in new[] { 780, 1500 })
+                            {
+                                workspace.Assess.Trace.IsExpert = true;
+                                window.Height = height;
+                                Save(window, Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
+                            }
+                            workspace.Assess.Trace.IsExpert = false;
                             window.Height = 780;
                         }
                     }

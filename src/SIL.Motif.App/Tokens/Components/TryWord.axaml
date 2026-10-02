@@ -83,4 +83,24 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
+  <Style Selector="Button.traceToken">
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="FontFamily" Value="{DynamicResource Component.TryWord.NotationFont}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector="Button.traceToken TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Button.traceMode.chosen">
+    <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
+  </Style>
 </Styles>

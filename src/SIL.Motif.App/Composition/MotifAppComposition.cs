@@ -29,6 +29,7 @@ namespace SIL.Motif.App.Composition;
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
 /// </param>
+/// <param name="TraceViewPreferences">Where the person’s Plain or Expert trace choice is remembered.</param>
 /// <param name="TechDemoNoticePreferences">Where the installed window remembers acknowledgment of the tech demo notice.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
@@ -42,7 +43,8 @@ public sealed record MotifAppOptions(
     IDiagnosticWindowDialogs? DiagnosticDialogs = null,
     CrashWindowServices? CrashWindow = null,
     bool RememberBounds = false,
-    ITechDemoNoticePreferences? TechDemoNoticePreferences = null)
+    ITechDemoNoticePreferences? TechDemoNoticePreferences = null,
+    ITraceViewPreferences? TraceViewPreferences = null)
 {
     /// <summary>
     /// The installed window's inputs: the root, parser and runner the command line would use
@@ -53,7 +55,8 @@ public sealed record MotifAppOptions(
         var commands = CommandClientOptions.ForInstallation();
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
-            TechDemoNoticePreferences: FileTechDemoNoticePreferences.ForInstallation());
+            TechDemoNoticePreferences: FileTechDemoNoticePreferences.ForInstallation(),
+            TraceViewPreferences: FileTraceViewPreferences.ForInstallation());
     }
 }
 
@@ -83,7 +86,7 @@ public static class MotifAppComposition
         var commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate, options.TimeProvider));
         var selection = new SelectionViewModel(commandClient);
-        var assess = new AssessViewModel(commandClient, selection, options.TimeProvider);
+        var assess = new AssessViewModel(commandClient, selection, options.TimeProvider, options.TraceViewPreferences);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers),
             new BaselineViewModel(commandClient, options.TimeProvider),

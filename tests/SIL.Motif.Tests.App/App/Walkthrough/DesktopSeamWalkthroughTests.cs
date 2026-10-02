@@ -57,6 +57,7 @@ public sealed class DesktopSeamWalkthroughTests
                     InteractiveControlFamily.Link,
                     InteractiveControlFamily.TextEntry,
                     InteractiveControlFamily.Choice,
+                    InteractiveControlFamily.Check,
                     InteractiveControlFamily.Disclosure,
                     InteractiveControlFamily.List,
                     InteractiveControlFamily.SelectableText,

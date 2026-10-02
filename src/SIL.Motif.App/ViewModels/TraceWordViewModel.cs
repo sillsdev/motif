@@ -43,9 +43,10 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
     private string? _diagnosticJson;
 
-    public TraceWordViewModel(ICommandClient? commandClient = null)
+    public TraceWordViewModel(ICommandClient? commandClient = null, ITraceViewPreferences? preferences = null)
     {
         _commandClient = commandClient;
+        InitializeExpert(preferences);
         TryCommand = new AsyncRelayCommand(TryAsync, () => _projectPath is not null && WordToTry.Trim().Length > 0);
         SetViewCommand = new RelayCommand<TraceView>(view => View = view);
         CancelCommand = new RelayCommand(CancelRunning, () => IsLoading);
@@ -142,6 +143,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(CaptureDetails));
         OnPropertyChanged(nameof(HasCaptureDetails));
         RebuildFilteredRoots();
+        RebuildExpert();
     }
 
     public bool HasResult => Result is not null;

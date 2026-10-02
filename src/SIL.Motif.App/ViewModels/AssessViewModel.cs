@@ -21,7 +21,8 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     private readonly TimeProvider _timeProvider;
     private bool _keepShownThroughRun;
 
-    public AssessViewModel(ICommandClient commandClient, SelectionViewModel selection, TimeProvider? timeProvider = null)
+    public AssessViewModel(ICommandClient commandClient, SelectionViewModel selection,
+        TimeProvider? timeProvider = null, ITraceViewPreferences? traceViewPreferences = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         ArgumentNullException.ThrowIfNull(selection);
@@ -29,7 +30,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         _selection = selection;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _selection.PropertyChanged += OnSelectionPropertyChanged;
-        Trace = new TraceWordViewModel(commandClient);
+        Trace = new TraceWordViewModel(commandClient, traceViewPreferences);
         PropertyChanged += OnResultChanged;
         Words.PropertyChanged += OnWordsPropertyChanged;
         Compare.Rerun = RerunAsync;

@@ -243,6 +243,11 @@ internal static class ComponentStateContractCases
         yield return new("ToolTip:open :is(TextBlock)", "open", OpenTip, StateStimulus.None, StatePart.Self,
             TextBlock.FontSizeProperty, "Intent.Type.Small");
 
+        yield return new("Button.traceMode.chosen", "selected", () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
+            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Button.traceMode.chosen", "selected edge", () => Alone(Press("traceMode", "chosen")), StateStimulus.None,
+            StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Accent");
+
         yield return new("Button.stopGroup.chosen", "selected", () => Alone(Press("stopGroup", "chosen")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Danger.Fill");
         foreach (var (how, stimulus) in Hovers)
@@ -441,6 +446,7 @@ internal enum TooltipScene
     Lists,
     TryAWord,
     TryAWordRepeatedRecords,
+    ExpertTrace,
     Timing,
     Statistics,
     Warnings,
@@ -578,6 +584,20 @@ internal static class TooltipOwners
         },
         new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
             control => control is Button && Name(control) == "Apply to FieldWorks project"),
+        new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event."),
+        new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details."),
+        new("expert input shape", "Views/ExpertTracePanel.axaml", "Recorded input shape, in the parser's direction. Missing input remains unknown.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Recorded input shape, in the parser's direction. Missing input remains unknown."),
+        new("expert output shape", "Views/ExpertTracePanel.axaml", "Recorded output shape. A recorded output alone does not prove application.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Recorded output shape. A recorded output alone does not prove application."),
+        new("expert event classification", "Views/ExpertTracePanel.axaml", "The producer's recorded event classification, without inferred success.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's recorded event classification, without inferred success."),
+        new("expert subrule index", "Views/ExpertTracePanel.axaml", "The producer's subrule index. No allomorph identity is inferred from it.", TooltipScene.ExpertTrace,
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's subrule index. No allomorph identity is inferred from it."),
+        new("expert environment token", "Views/ExpertTracePanel.axaml", "{Binding Explanation}", TooltipScene.ExpertTrace,
+            control => control is TraceNotationToken { DataContext: EnvironmentToken }),
         new("earlier timing kind", "Views/TryWordPanel.axaml", "{Binding KindTip}", TooltipScene.TryAWord,
             control => control is TextBlock { DataContext: TryWordEarlierRuleTime }),
         new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWord,

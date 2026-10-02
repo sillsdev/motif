@@ -14,6 +14,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using WordRow = SIL.Motif.App.Views.WordRow;
 using Xunit.Abstractions;
@@ -37,6 +38,118 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         [("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark)];
 
     private static readonly int[] Widths = [1040, 1240];
+
+    [ScreenshotFact]
+    public void CaptureOpaqueEnvironmentOperands()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.TryAWord;
+                window.Height = 1500;
+                foreach (var (name, operand) in new[]
+                {
+                    ("object", "{\"left\":\"word_edge\",\"right\":\"#\"}"),
+                    ("debug-string", "\"[raw environment]\""),
+                })
+                {
+                    var trace = workspace.Assess.Trace;
+                    trace.Result = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.EnvironmentOperandDiagnostic(operand)).Result;
+                    trace.WordToTry = trace.Result!.Word;
+                    trace.SelectedStep = trace.Root!;
+                    trace.IsExpert = true;
+                    foreach (var (theme, variant) in Themes)
+                    foreach (var width in Widths)
+                    {
+                        Application.Current!.RequestedThemeVariant = variant;
+                        window.Width = width;
+                        PageScreenshots.Settle(window);
+                        var panel = window.GetVisualDescendants().OfType<ExpertTracePanel>().Single();
+                        var section = panel.GetVisualDescendants().OfType<Expander>().Single(expander =>
+                            AutomationProperties.GetName(expander) == "Expert environment notation");
+                        section.IsExpanded = true;
+                        PageScreenshots.Settle(window);
+                        var token = Assert.Single(panel.GetVisualDescendants().OfType<TraceNotationToken>().Where(control =>
+                            control.IsEffectivelyVisible && control.DataContext is EnvironmentToken));
+                        Assert.Equal("Authored environment notation unavailable", ToolTip.GetTip(token));
+                        PageScreenshots.Save(window, Path.Combine(folder, $"state-try-a-word-environment-{name}-{width}-{theme}.png"));
+                    }
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    [ScreenshotFact]
+    public void CaptureExpertSwitchAndEnvironmentNotation()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.TryAWord;
+                var trace = workspace.Assess.Trace;
+                trace.Result = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic).Result;
+                trace.WordToTry = trace.Result!.Word;
+                trace.SelectedCandidate = Assert.Single(trace.Candidates);
+                trace.ExpertWholeTree = false;
+                trace.SelectedStep = trace.SelectedCandidate.Steps[3];
+                var step = trace.SelectedStep;
+                var environment = step.RecordedStep.FailureEvidence!.Environment!;
+                foreach (var (theme, variant) in Themes)
+                foreach (var width in Widths)
+                {
+                    Application.Current!.RequestedThemeVariant = variant;
+                    window.Width = width;
+                    window.Height = 1500;
+                    workspace.Context.OpenInspector(step.InspectSubject!, trace: trace.InspectorTrace, captured: step.Captured);
+                    await workspace.Inspector.Loading;
+                    foreach (var expert in new[] { false, true })
+                    {
+                        trace.IsExpert = expert;
+                        PageScreenshots.Settle(window);
+                        Assert.True(workspace.Inspector.IsOpen);
+                        Assert.Equal(step.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
+                        PageScreenshots.Save(window, Path.Combine(folder,
+                            $"state-try-a-word-switch-{(expert ? "expert" : "plain")}-{width}-{theme}.png"));
+                    }
+                    workspace.Inspector.Close();
+                    window.Height = 2400;
+                    PageScreenshots.Settle(window);
+                    var panel = window.GetVisualDescendants().OfType<ExpertTracePanel>().Single();
+                    foreach (var expander in panel.GetVisualDescendants().OfType<Expander>()) expander.IsExpanded = true;
+                    PageScreenshots.Settle(window);
+                    Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), block =>
+                        block.IsEffectivelyVisible && block.Text == environment);
+                    PageScreenshots.Save(window, Path.Combine(folder, $"state-try-a-word-environment-{width}-{theme}.png"));
+                    var token = panel.GetVisualDescendants().OfType<TraceNotationToken>().Single(control =>
+                        control.IsEffectivelyVisible && control.DataContext is EnvironmentToken { Raw: var raw } && raw == environment);
+                    token.Focus(NavigationMethod.Tab);
+                    PageScreenshots.Settle(window);
+                    Assert.True(ToolTip.GetIsOpen(token));
+                    PageScreenshots.Save(window, Path.Combine(folder, $"state-try-a-word-token-focus-{width}-{theme}.png"));
+                    ToolTip.SetIsOpen(token, false);
+                    window.Focus();
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
 
     [ScreenshotFact]
     public void CaptureEveryInteractiveState()
@@ -301,8 +414,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             stage.Open(WorkspacePage.TryAWord);
             return await stage.Inspect(() => stage.Visible<InspectLink>(link =>
-                link.FindAncestorOfType<ItemsControl>() is { } list && AutomationProperties.GetName(list) == "Best path rules").First(),
-                "the first rule on the best path");
+                link.FindAncestorOfType<TreeView>() is { } tree && AutomationProperties.GetName(tree) == "Recorded trace tree").First(),
+                "the first recorded rule with an inspector identity");
         })
         {
             Setup = stage =>
