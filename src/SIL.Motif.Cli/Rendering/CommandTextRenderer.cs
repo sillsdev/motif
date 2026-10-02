@@ -467,7 +467,7 @@ public static class CommandTextRenderer
             "measured word(s); every share below is of this total");
         text.AppendLine($"  By {response.By}:");
         foreach (var row in response.Aggregates)
-            text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Key}]" : string.Empty)}: " +
+            text.AppendLine($"    {row.Name}{(response.By == "rule" ? $" [{row.Kind}:{row.Key}]" : string.Empty)}: " +
                 $"{row.SelfMs:N2} ms ({FormatShare(row.ShareOfWordTime)}), {FormatCalls(row.Calls, row.Kind)}, " +
                 $"{row.WordsTouched:N0} words");
         if (attribution.NotAttributedMs is { } notAttributed)

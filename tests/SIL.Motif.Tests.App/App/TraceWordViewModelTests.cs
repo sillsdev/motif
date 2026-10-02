@@ -388,7 +388,7 @@ public sealed class TraceWordViewModelTests
     public void AStepsKindReadsInPlainWordsNeverAsTheParsersClassName(string type, string kind)
     {
         Assert.Equal(kind, TraceStepKinds.Describe(type));
-        var step = new TraceStepViewModel(new TraceStep(type, "lu", "matinlu", "matin", null, []), deepestRule: null);
+        var step = new TraceStepViewModel(new TraceStep(type, "lu", "matinlu", "matin", null, []), deepestStepId: null);
         Assert.Equal($"{kind}: lu", step.Label);
     }
 
@@ -483,11 +483,24 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
-    public void TheDeepestStepIsMarkedFromTheResponsesDeepestRule()
+    public void ADeepestEventAddressSelectsOnlyThatOccurrenceOfADuplicateLabel()
+    {
+        var root = new TraceStep("WordAnalysis", null, null, null, null,
+        [
+            new TraceStep("MorphologicalRuleAnalysis", "Same", null, null, null, []) { StepId = "0.0" },
+            new TraceStep("MorphologicalRuleAnalysis", "Same", null, null, null, []) { StepId = "0.1" },
+        ]) { StepId = "0" };
+        var trace = new TraceStepViewModel(root, deepestStepId: "0.1");
+        Assert.False(trace.Children[0].IsDeepest);
+        Assert.True(trace.Children[1].IsDeepest);
+    }
+
+    [Fact]
+    public void TheDeepestStepIsMarkedByItsSavedTreeAddress()
     {
         var root = new TraceStep("WordSynthesis", "root", "in", "out", null,
-            [Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked")]);
-        var trace = new TraceStepViewModel(root, deepestRule: "neg-ha-");
+            [Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked") with { StepId = "0.0" }]) { StepId = "0" };
+        var trace = new TraceStepViewModel(root, deepestStepId: "0.0");
 
         Assert.False(trace.IsDeepest);
         Assert.True(trace.Children[0].IsDeepest);
@@ -496,8 +509,8 @@ public sealed class TraceWordViewModelTests
     [Fact]
     public void APassingStepHasNoFailureReasonAndAFailingOneDoes()
     {
-        var passing = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestRule: null);
-        var failing = new TraceStepViewModel(Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked"), deepestRule: null);
+        var passing = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestStepId: null);
+        var failing = new TraceStepViewModel(Leaf("MorphologicalRuleSynthesis", "neg-ha-", "blocked"), deepestStepId: null);
 
         Assert.True(passing.Passed);
         Assert.False(passing.HasFailureReason);
@@ -620,7 +633,7 @@ public sealed class TraceWordViewModelTests
                 Succeeded: true, FailureReason: null, Explanation: null, Steps: [])], [])));
         await trace.TryCommand.ExecuteAsync(null);
         trace.SelectedCandidate = trace.Candidates[0];
-        trace.SelectedStep = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestRule: null);
+        trace.SelectedStep = new TraceStepViewModel(Leaf("LexicalLookup", "fik"), deepestStepId: null);
 
         await trace.TryCommand.ExecuteAsync(null);
 

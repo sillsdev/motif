@@ -197,8 +197,26 @@ public sealed partial class TraceWordViewModel : ObservableObject
         _ => $"{ms:0.0#} ms",
     };
 
+    private static string? DeepestRuleStepId(TraceStep root)
+    {
+        string? result = null;
+        var deepest = -1;
+        Walk(root, 0);
+        return result;
+
+        void Walk(TraceStep step, int depth)
+        {
+            if (depth > deepest && step.Source is not null && step.Type.Contains("Rule", StringComparison.Ordinal))
+            {
+                deepest = depth;
+                result = step.StepId;
+            }
+            foreach (var child in step.Children) Walk(child, depth + 1);
+        }
+    }
+
     public TraceStepViewModel? Root =>
-        Result is { } result ? new TraceStepViewModel(result.Reading.Root, result.DeepestRule, WritingSystemsById(result), _labels, _refs) : null;
+        Result is { } result ? new TraceStepViewModel(result.Reading.Root, DeepestRuleStepId(result.Reading.Root), WritingSystemsById(result), _labels, _refs) : null;
 
     public IReadOnlyList<TraceStepViewModel> Roots => Root is { } root ? [root] : [];
 
@@ -1031,7 +1049,7 @@ public sealed class TraceCandidateViewModel : ObservableObject
         HasTreeContext = candidate.TreeContext.Count > 0;
         _loadContext = () => root is null ? [] : TraceTreeContextRange.Resolve(root, candidate.TreeContext)
             .Select(step => new TraceStepViewModel(step, null, directions, labels, refs)).ToArray();
-        Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestRule: null, directions, labels, refs)).ToArray();
+        Steps = candidate.Steps.Select(step => new TraceStepViewModel(step, deepestStepId: null, directions, labels, refs)).ToArray();
         Text = RichMorphs.Count > 0 ? string.Join(" + ", RichMorphs.Select(morph => morph.Form)) : Morphs.Count > 0 ? string.Join(" + ", Morphs.Select(morph => morph.Form)) : Steps.LastOrDefault()?.Source ?? "Recorded attempt";
         Gloss = string.Join(" + ", Morphs.Select(morph => morph.GlossOrPlaceholder));
         Surface = candidate.Surface;
@@ -1193,7 +1211,7 @@ public sealed class TraceStepViewModel
     public string? SourceLabel => CapturedSourceText ?? Source;
 
     /// <summary>The inspector subject from this event's recorded typed key; absent without that key.</summary>
-    public InspectorSubject? InspectSubject => Reference is { TimingKey: { } key } reference
+    public InspectorSubject? InspectSubject => Reference is { TimingKey: { Identity: not null } key } reference
         ? InspectorSubject.Rule(key, Source, reference.IdentityQuality) : null;
 
     /// <summary>This event's recorded details, shown apart from the inspector's current Baseline facts.</summary>
@@ -1238,7 +1256,7 @@ public sealed class TraceStepViewModel
         RecordedStep.FailureEvidence?.Actual is { Length: > 0 } actual ? $"Evidence actual: {actual}" : null,
         RecordedStep.FailureEvidence?.Environment is { Length: > 0 } environment ? $"Evidence environment: {environment}" : null,
     }.Where(value => value is not null)) is { Length: > 0 } text ? text : "Rejection details recorded";
-    public TraceStepViewModel(TraceStep step, string? deepestRule,
+    public TraceStepViewModel(TraceStep step, string? deepestStepId,
         IReadOnlyDictionary<string, TraceWritingSystem>? directions = null, TraceDisplayLabels? labels = null, IReadOnlyDictionary<string, TraceRef>? refs = null)
     {
         ArgumentNullException.ThrowIfNull(step);
@@ -1260,8 +1278,8 @@ public sealed class TraceStepViewModel
         SourceIdentityId = step.SourceIdentityId;
         SourceIdentityQuality = step.SourceIdentityQuality;
         AttemptedMorphs = step.AttemptedMorphs.Select(morph => new TraceMorphViewModel(morph, false, directions)).ToArray();
-        IsDeepest = deepestRule is not null && string.Equals(step.Source, deepestRule, StringComparison.Ordinal);
-        Children = step.Children.Select(child => new TraceStepViewModel(child, deepestRule, directions, labels, refs)).ToArray();
+        IsDeepest = deepestStepId is not null && step.StepId.Length > 0 && string.Equals(step.StepId, deepestStepId, StringComparison.Ordinal);
+        Children = step.Children.Select(child => new TraceStepViewModel(child, deepestStepId, directions, labels, refs)).ToArray();
         _directions = directions;
         Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }

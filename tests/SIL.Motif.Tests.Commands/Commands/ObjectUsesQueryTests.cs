@@ -60,6 +60,33 @@ public sealed class ObjectUsesQueryTests
     ];
 
     [Fact]
+    public void APartiallySuppliedTimingAddressIsNeverFilledFromAnotherObject()
+    {
+        var reference = new ObjectUseRef { TimingKey = "missing", AllomorphId = "form" };
+        var facts = new ObjectFacts { TimingKey = new TraceTimingKey("morph_rule", "another") };
+        Assert.Equal(reference, ObjectUsesQuery.WithTimingKey(reference, facts));
+    }
+
+    [Fact]
+    public void SharedMorphemesCompareTuplesRatherThanConcatenatedOpaqueKeys()
+    {
+        var first = A with { AllomorphId = "a/b", GrammaticalInfoId = "c" };
+        var second = A with { AllomorphId = "a", GrammaticalInfoId = "b/c" };
+        var words = new[] { Lost("one", first), Lost("two", second) };
+        Assert.Empty(ObjectUsesQuery.SharedBy(words, ["one", "two"]));
+    }
+
+    [Fact]
+    public void StructuralTimingKeysAreNotCanonicalizedEvenWhenTheyLookLikeGuids()
+    {
+        const string key = "aaaaaaaa-0000-0000-0000-000000000001";
+        var timings = new[] { new AssessmentObjectTiming("phon_rule", "{" + key + "}", "structural",
+            "analysis", "Same label", "walikata", 1, null, 1) };
+        Assert.Empty(ObjectUsesQuery.RanIn(LostCell, timings,
+            ObjectUseRef.ForTimingKey(new TraceTimingKey("phon_rule", key) { IdentityQuality = "structural" })).Words);
+    }
+
+    [Fact]
     public void TheLostCellsSixWordsShareKatInThreeAndJaInThree()
     {
         var shared = ObjectUsesQuery.SharedBy(LostCell, LostCell.Select(word => word.Word).ToArray());

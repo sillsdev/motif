@@ -278,7 +278,7 @@ public sealed class AssessCommandTests : IDisposable
         Assert.Equal(99, overview.Value.Timing.Percentile95Ms);
 
         var timing = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "all", "rule", "Verb template", 5));
+            parseAssessment.AssessmentId, "all", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(timing.Succeeded, timing.Refusal?.Message);
         var timingJson = JsonSerializer.SerializeToElement(timing.Value);
         Assert.True(timingJson.TryGetProperty("IsStale", out var isStale));
@@ -292,48 +292,48 @@ public sealed class AssessCommandTests : IDisposable
             word.Completion == "Step limit");
 
         var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "step-limit", "rule", "Verb template", 5));
+            parseAssessment.AssessmentId, "step-limit", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
         Assert.Equal(1, stepLimited.Value!.WordCount);
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
         Assert.Equal("Step limit", Assert.Single(stepLimited.Value.Words).Completion);
 
         var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "slowest", "rule", "Verb template", 1));
+            parseAssessment.AssessmentId, "slowest", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 1));
         Assert.True(slowest.Succeeded, slowest.Refusal?.Message);
         Assert.Equal(1, slowest.Value!.WordCount);
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(slowest.Value.SlowestWords).Word);
 
         var cell = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "cell:approved:unknown", "rule", "Verb template", 5));
+            parseAssessment.AssessmentId, "cell:approved:unknown", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(cell.Succeeded, cell.Refusal?.Message);
         Assert.Equal(1, cell.Value!.WordCount);
 
         var namedSelection = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            WordSet: "Renamed default", By: "rule", Rule: "Verb template", Top: 5));
+            WordSet: "Renamed default", By: "rule", Rule: new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, Top: 5));
         Assert.True(namedSelection.Succeeded, namedSelection.Refusal?.Message);
         Assert.Equal(2, namedSelection.Value!.WordCount);
 
         var explicitWord = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "all", "rule", "Verb template", 5,
+            parseAssessment.AssessmentId, "all", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5,
             [SeededProject.UnanalysedWordForm]));
         Assert.True(explicitWord.Succeeded, explicitWord.Refusal?.Message);
         Assert.Equal(1, explicitWord.Value!.WordCount);
         Assert.Equal(SeededProject.UnanalysedWordForm, Assert.Single(explicitWord.Value.SlowestWords).Word);
 
         var invalidCell = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "cell:not-present:misspelled", "rule", "Verb template", 5));
+            parseAssessment.AssessmentId, "cell:not-present:misspelled", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.False(invalidCell.Succeeded);
         Assert.Equal(FailureReason.InvalidArgument, invalidCell.Refusal!.Reason);
 
         using (var database = OpenDatabase(seeded.FwDataPath))
             new NamedSelectionRepository(database).SetDefault("Deleted Text", [Guid.NewGuid()], []);
         var missingText = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            By: "rule", Rule: "Verb template", Top: 5));
+            By: "rule", Rule: new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, Top: 5));
         Assert.False(missingText.Succeeded);
         Assert.Equal("selection.text-not-found", missingText.Refusal!.Code);
         var namedSelectionWithExplicitAssessment = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
-            parseAssessment.AssessmentId, "Renamed default", "rule", "Verb template", 5));
+            parseAssessment.AssessmentId, "Renamed default", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(namedSelectionWithExplicitAssessment.Succeeded,
             namedSelectionWithExplicitAssessment.Refusal?.Message);
         Assert.Equal(2, namedSelectionWithExplicitAssessment.Value!.WordCount);
@@ -555,7 +555,7 @@ public sealed class AssessCommandTests : IDisposable
     }
 
     [Fact]
-    public void TimingKeepsTwoObjectsWithOneLabelApartAndRefusesTheSharedLabelAsARule()
+    public void TimingKeepsTwoObjectsWithOneLabelApartAndNeverSelectsTheirLabel()
     {
         using var seeded = NewSeededScratch();
         var assessor = new FakeAssessor("fake-assessor", CollectedKinds, kind => kind switch
@@ -594,18 +594,17 @@ public sealed class AssessCommandTests : IDisposable
 
         var byRule = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule"));
         var shared = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule",
-            Rule: "Verb template"));
+            Rule: new TraceTimingKey("morph_rule", "Verb template") { IdentityQuality = "structural" }));
         var keyed = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath, parseId, By: "rule",
-            Rule: "mrule#1:Verb template"));
+            Rule: new TraceTimingKey("morph_rule", "mrule#1:Verb template") { IdentityQuality = "structural" }));
 
         Assert.True(byRule.Succeeded, byRule.Refusal?.Message);
         Assert.Equal(["mrule#1:Verb template", "mrule#0:Verb template"], byRule.Value!.Aggregates.Select(row => row.Key));
         Assert.Equal([0.5, 0.25], byRule.Value.Aggregates.Select(row => row.ShareOfWordTime!.Value));
         Assert.Equal(8, byRule.Value.Attribution.WordTimeMs);
         Assert.Equal(2, byRule.Value.Attribution.NotAttributedMs);
-        Assert.False(shared.Succeeded);
-        Assert.Equal("timing.ambiguous-rule", shared.Refusal!.Code);
-        Assert.Contains("mrule#0:Verb template", shared.Refusal.Message, StringComparison.Ordinal);
+        Assert.True(shared.Succeeded, shared.Refusal?.Message);
+        Assert.Empty(shared.Value!.CostliestWords);
         Assert.True(keyed.Succeeded, keyed.Refusal?.Message);
         Assert.Equal(4, Assert.Single(keyed.Value!.CostliestWords).SelfMs);
     }

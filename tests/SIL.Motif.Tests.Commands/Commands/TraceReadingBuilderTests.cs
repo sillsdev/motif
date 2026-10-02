@@ -14,6 +14,94 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class TraceReadingBuilderTests
 {
     [Fact]
+    public void AnUnresolvedRuleIdentityHasNoTimingAddress()
+    {
+        var response = WordTraceQuery.LoadDiagnostic(TraceEnvelope.UnresolvedRuleTiming);
+        Assert.True(response.Succeeded, response.Refusal?.Message);
+        var rule = Assert.Single(response.Value!.Reading!.Refs);
+        Assert.Equal("Rule", rule.Label);
+        Assert.Null(rule.TimingKey);
+    }
+
+    [Fact]
+    public void MissingIdentityQualityDoesNotMergeIntoAnAuthoredObject()
+    {
+        const string tree = """
+            {"type":"WordAnalysis","children":[
+              {"type":"MorphologicalRuleAnalysis","source":"One","sourceIdentity":
+                {"kind":"morphRule","id":"aaaaaaaa-0000-0000-0000-000000000001"},"children":[]},
+              {"type":"MorphologicalRuleAnalysis","source":"One","sourceIdentity":
+                {"kind":"morphRule","id":"aaaaaaaa-0000-0000-0000-000000000001","quality":"authored"},"children":[]}]}
+            """;
+        var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("a", tree)));
+        Assert.Equal(2, reading.Refs.Count);
+    }
+
+    [Fact]
+    public void MorphsWithoutIdentityQualityKeepTheirExactOpaqueKeys()
+    {
+        var morph = new TraceMorph(null, "form", null, null, null, null, null, null, null, null)
+        {
+            EntryId = "aaaaaaaa-0000-0000-0000-000000000001",
+        };
+        Assert.NotEqual(morph.RefId, (morph with { IdentityQuality = "authored" }).RefId);
+        Assert.NotEqual(morph.RefId, (morph with { EntryId = "{" + morph.EntryId.ToUpperInvariant() + "}" }).RefId);
+    }
+
+    [Fact]
+    public void OpaqueTraceKeysUseOneAddressRegardlessOfTheirQualityName()
+    {
+        var morph = new TraceMorph(null, "form", null, null, null, null, null, null, null, null)
+        {
+            EntryId = "entry/part", MsaId = "msa", IdentityQuality = "authored",
+        };
+        Assert.Equal(morph.RefId, (morph with { IdentityQuality = "structural" }).RefId);
+        Assert.NotEqual(morph.RefId, (morph with { EntryId = "entry", MsaId = "part/msa" }).RefId);
+        Assert.Equal(
+            TraceRefIds.ForSource("MorphologicalRuleAnalysis", null, "morphRule", "local:Rule"),
+            TraceRefIds.ForSource("MorphologicalRuleAnalysis", null, "morphRule", "local:Rule", identityQuality: "structural"));
+    }
+
+    [Fact]
+    public void ProjectProvenanceComparesAuthoredGuidValuesRatherThanTheirSpelling()
+    {
+        const string project = "aaaaaaaa-0000-0000-0000-000000000001";
+        var document = JsonNode.Parse(TraceEnvelope.Of("a", """{"type":"WordAnalysis","children":[]}"""))!;
+        document["hostCapture"] = JsonSerializer.SerializeToNode(new TraceHostCapture(
+            "{" + project.ToUpperInvariant() + "}", null, null, null, null, null, []));
+        var current = new TraceHostCapture(project, null, null, null, null, null, []);
+        var response = WordTraceDiagnosticReader.Read(document.ToJsonString(), current: current);
+        Assert.True(response.Succeeded, response.Refusal?.Message);
+        Assert.Equal("match", response.Value!.Provenance!.ProjectIdentityStatus);
+    }
+
+    [Fact]
+    public void StructuralGuidLookingRuleKeysStayDistinct()
+    {
+        var tree = """
+            {"type":"WordAnalysis","children":[
+              {"type":"MorphologicalRuleAnalysis","source":"One","sourceIdentity":
+                {"kind":"morphRule","id":"aaaaaaaa-0000-0000-0000-000000000001","quality":"synthetic"},"children":[]},
+              {"type":"MorphologicalRuleAnalysis","source":"One","sourceIdentity":
+                {"kind":"morphRule","id":"{AAAAAAAA-0000-0000-0000-000000000001}","quality":"synthetic"},"children":[]}]}
+            """;
+        var reading = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("a", tree)));
+        Assert.Equal(2, reading.Refs.Count);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void LocalObjectsAndUnidentifiedEventsBelongToTheirSavedDiagnostic(bool hasIdentity)
+    {
+        var identity = hasIdentity ? "\"sourceIdentity\":{\"kind\":\"template\",\"id\":\"0\",\"quality\":\"grammar-local\"}," : "";
+        var tree = "{\"type\":\"TemplateAnalysis\",\"source\":\"One\"," + identity + "\"children\":[]}";
+        var first = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("a", tree)));
+        var second = TraceReadingBuilder.Build(PanGlossTraceDiagnosticReader.Read(TraceEnvelope.Of("b", tree)));
+        Assert.NotEqual(Assert.Single(first.Refs).Id, Assert.Single(second.Refs).Id);
+    }
+
+    [Fact]
     public void MatinluFailureEvidenceBelongsToTheEventThatSuppliesTheReason()
     {
         var reading = WordTraceQuery.LoadDiagnostic(ReadFixture()).Value!.Reading;
@@ -91,6 +179,7 @@ public sealed class TraceReadingBuilderTests
             EntryId = "12345678-1234-1234-abcd-123456789abc",
             MsaId = "22345678-1234-1234-abcd-123456789abc",
             FormId = "32345678-1234-1234-abcd-123456789abc",
+            IdentityQuality = "authored",
         };
         var alternate = morph with
         {
@@ -100,7 +189,7 @@ public sealed class TraceReadingBuilderTests
         };
 
         Assert.Equal(morph.RefId, alternate.RefId);
-        Assert.Equal("morphRule:local:Rule", TraceRefIds.ForSource("MorphologicalRuleAnalysis", null,
+        Assert.Contains("local:Rule", TraceRefIds.ForSource("MorphologicalRuleAnalysis", null,
             "morphRule", "local:Rule"));
     }
 

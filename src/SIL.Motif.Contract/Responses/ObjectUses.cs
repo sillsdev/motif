@@ -23,6 +23,13 @@ public sealed record ObjectUseRef
     /// <summary>The object's key in PanGloss's statistics: its FieldWorks GUID when that identity is authored.</summary>
     public string? TimingKey { get; init; }
 
+    /// <summary>The timing address's identity quality; structural keys remain opaque even when GUID-shaped.</summary>
+    public string TimingIdentityQuality { get; init; } = "authored";
+    /// <summary>The saved grammar scope required by a grammar-local timing key.</summary>
+    public string? TimingScope { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ObjectIdentity? TimingIdentity => ObjectIdentity.Create(TimingKind, TimingKey, TimingIdentityQuality, TimingScope);
+
     /// <summary>What the window calls the object, such as <c>kat</c>; display only.</summary>
     public string? Label { get; init; }
 
@@ -51,7 +58,7 @@ public sealed record ObjectUseRef
     public static ObjectUseRef ForTimingKey(TraceTimingKey key, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(key);
-        return new ObjectUseRef { TimingKind = key.Kind, TimingKey = key.Key, Label = label };
+        return new ObjectUseRef { TimingKind = key.Kind, TimingKey = key.Key, TimingIdentityQuality = key.IdentityQuality, TimingScope = key.Scope, Label = label };
     }
 }
 

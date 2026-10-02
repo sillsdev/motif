@@ -18,9 +18,28 @@ public sealed class SchemaVersionGateTests : IDisposable
     public SchemaVersionGateTests() => Directory.CreateDirectory(_root);
 
     [Fact]
+    public void AStoreWithoutTimingIdentityDomainsIsRefusedWithoutRewritingIt()
+    {
+        var path = Path.Combine(_root, "untyped-timing.motif.db");
+        var locator = new ProjectLocator(Path.Combine(_root, "untyped-timing.fwdata"), "untyped-timing");
+        using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version = 33;";
+            command.ExecuteNonQuery();
+        }
+        var refusal = Assert.Throws<MotifStoreVersionException>(() =>
+            MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0)));
+        Assert.Contains("delete", refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(33, PragmaUserVersion(path));
+    }
+
+    [Fact]
     public void AnOlderBuildIsRefusedWithSomethingTheUserCanActOn()
     {
-        Assert.Equal(33, MotifSchema.CurrentSchema);
+        Assert.Equal(34, MotifSchema.CurrentSchema);
         var path = Path.Combine(_root, "project.motif.db");
         var locator = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
         using (MotifDatabase.OpenOwned(path, locator, MotifSchema.CurrentSchema, new Version(1, 0))) { }

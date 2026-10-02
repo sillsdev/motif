@@ -23,6 +23,8 @@
               "rejectionDetailsAvailability": "NotRecorded",
               "explanationAvailability": "NotRecorded",
               "stepId": "0.0.0",
+              "identityScope": "{DiagnosticScope}",
+              "documentScope": "{DiagnosticScope}",
               "attemptedMorphs": []
             }
           ],
@@ -30,6 +32,8 @@
           "rejectionDetailsAvailability": "NotRecorded",
           "explanationAvailability": "NotRecorded",
           "stepId": "0.0",
+          "identityScope": "{DiagnosticScope}",
+          "documentScope": "{DiagnosticScope}",
           "attemptedMorphs": [
             {
               "identity": "{FirstLexemeFormId}",
@@ -37,6 +41,8 @@
               "gloss": "first seeded gloss",
               "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
               "occurrenceId": "step:0.0:morph:0",
+              "identityScope": "{DiagnosticScope}",
+              "documentScope": "{DiagnosticScope}",
               "formId": "{FirstLexemeFormId}",
               "entryId": "{FirstEntryId}",
               "identityQuality": "authored",
@@ -48,13 +54,15 @@
           "sourceIdentityKind": "stratum",
           "sourceIdentityId": "0",
           "sourceIdentityQuality": "grammar-local",
-          "refId": "stratum:0"
+          "refId": "stratum:{\"Kind\":\"stratum\",\"Key\":\"0\",\"Domain\":\"grammar-local\",\"Scope\":\"{DiagnosticScope}\"}"
         }
       ],
       "reasonAvailability": "NotRecorded",
       "rejectionDetailsAvailability": "NotRecorded",
       "explanationAvailability": "NotRecorded",
       "stepId": "0",
+      "identityScope": "{DiagnosticScope}",
+      "documentScope": "{DiagnosticScope}",
       "attemptedMorphs": []
     },
     "attempts": [
@@ -79,6 +87,8 @@
             "rejectionDetailsAvailability": "NotRecorded",
             "explanationAvailability": "NotRecorded",
             "stepId": "0",
+            "identityScope": "{DiagnosticScope}",
+            "documentScope": "{DiagnosticScope}",
             "attemptedMorphs": []
           },
           {
@@ -90,6 +100,8 @@
             "rejectionDetailsAvailability": "NotRecorded",
             "explanationAvailability": "NotRecorded",
             "stepId": "0.0",
+            "identityScope": "{DiagnosticScope}",
+            "documentScope": "{DiagnosticScope}",
             "attemptedMorphs": [
               {
                 "identity": "{FirstLexemeFormId}",
@@ -97,6 +109,8 @@
                 "gloss": "first seeded gloss",
                 "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
                 "occurrenceId": "step:0.0:morph:0",
+                "identityScope": "{DiagnosticScope}",
+                "documentScope": "{DiagnosticScope}",
                 "formId": "{FirstLexemeFormId}",
                 "entryId": "{FirstEntryId}",
                 "identityQuality": "authored",
@@ -108,7 +122,7 @@
             "sourceIdentityKind": "stratum",
             "sourceIdentityId": "0",
             "sourceIdentityQuality": "grammar-local",
-            "refId": "stratum:0"
+            "refId": "stratum:{\"Kind\":\"stratum\",\"Key\":\"0\",\"Domain\":\"grammar-local\",\"Scope\":\"{DiagnosticScope}\"}"
           },
           {
             "type": "Successful",
@@ -118,6 +132,8 @@
             "rejectionDetailsAvailability": "NotRecorded",
             "explanationAvailability": "NotRecorded",
             "stepId": "0.0.0",
+            "identityScope": "{DiagnosticScope}",
+            "documentScope": "{DiagnosticScope}",
             "attemptedMorphs": []
           }
         ],
@@ -135,6 +151,8 @@
             "gloss": "first seeded gloss",
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
             "occurrenceId": "step:0.0:morph:0",
+            "identityScope": "{DiagnosticScope}",
+            "documentScope": "{DiagnosticScope}",
             "formId": "{FirstLexemeFormId}",
             "entryId": "{FirstEntryId}",
             "identityQuality": "authored",
@@ -159,6 +177,8 @@
             "gloss": "first seeded gloss",
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
             "occurrenceId": "analysis:0:morph:0",
+            "identityScope": "{DiagnosticScope}",
+            "documentScope": "{DiagnosticScope}",
             "formId": "{FirstLexemeFormId}",
             "entryId": "{FirstEntryId}",
             "identityQuality": "authored",
@@ -175,7 +195,7 @@
     "rulesOnBestPath": [],
     "refs": [
       {
-        "id": "stratum:0",
+        "id": "stratum:{\"Kind\":\"stratum\",\"Key\":\"0\",\"Domain\":\"grammar-local\",\"Scope\":\"{DiagnosticScope}\"}",
         "kind": "stratum",
         "label": "Morphology",
         "identity": "0",
@@ -197,7 +217,8 @@
         },
         "timingKey": {
           "kind": "lex_entry",
-          "key": "{FirstEntryId}"
+          "key": "{FirstEntryId}",
+          "identityQuality": "authored"
         }
       }
     ],

@@ -42,6 +42,16 @@ public sealed class WordRowProjectionTests
             TryWordLink = "silfw://localhost/link?tool=Analyses",
         };
 
+    [Theory]
+    [InlineData("form-A", "form-a", false)]
+    [InlineData("{AAAAAAAA-0000-0000-0000-000000000001}", "aaaaaaaa-0000-0000-0000-000000000001", true)]
+    public void AlignmentUsesCanonicalGuidsAndExactOpaqueKeys(string left, string right, bool shared)
+    {
+        var first = A with { AllomorphId = left };
+        var second = A with { AllomorphId = right };
+        Assert.Equal(shared, Assert.Single(WordRowProjection.Align([first], [second])).Shared);
+    }
+
     [Fact]
     public void ForAlikula_FieldWorksKulAgainstPanGlossKuAndL_MarksPositionsThreeAndFour()
     {

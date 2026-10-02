@@ -853,11 +853,14 @@ try
                 : null;
             var timingBy = flags.GetValueOrDefault("by", "kind");
             if (timingBy is not ("kind" or "rule") ||
-                (flags.ContainsKey("rule") && timingBy != "rule"))
+                (flags.ContainsKey("rule") && (timingBy != "rule" || TraceTimingKey.Parse(flags["rule"]) is null)))
                 return Usage(UsageLineFor("timing"), asJson);
             result = RenderCommand(TimingCommand.Timing(new TimingRequest(
                 timingProject, flags.GetValueOrDefault("assessment"), flags.GetValueOrDefault("words", "all"),
-                timingBy, flags.GetValueOrDefault("rule"), timingTop, explicitTimingWords)));
+                timingBy, TraceTimingKey.Parse(flags.GetValueOrDefault("rule")) is { } timingKey
+                    ? timingKey with { IdentityQuality = flags.ContainsKey("local") ? "grammar-local"
+                        : flags.ContainsKey("structural") ? "structural" : "authored",
+                        Scope = flags.GetValueOrDefault("scope") } : null, timingTop, explicitTimingWords)));
             break;
 
         case "uses":
@@ -874,6 +877,9 @@ try
                     GrammaticalInfoId = flags.GetValueOrDefault("grammatical-info"),
                     TimingKind = usesTimingParts?[0],
                     TimingKey = usesTimingParts?[1],
+                    TimingIdentityQuality = flags.ContainsKey("local") ? "grammar-local"
+                        : flags.ContainsKey("structural") ? "structural" : "authored",
+                    TimingScope = flags.GetValueOrDefault("scope"),
                 }
                 : null;
             var usesWords = flags.GetValueOrDefault("words")

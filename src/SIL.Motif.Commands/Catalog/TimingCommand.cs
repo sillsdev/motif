@@ -21,7 +21,7 @@ public static class TimingCommand
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Top <= 0 || request.By is not ("kind" or "rule") ||
-            string.IsNullOrWhiteSpace(request.WordSet))
+            string.IsNullOrWhiteSpace(request.WordSet) || request.Rule is not null && request.Rule.Identity is null)
             return CommandOutcome<TimingResponse>.Refused(new Refusal(
                 "timing.invalid-request", FailureReason.InvalidArgument,
                 "Timing requires --by kind|rule and a positive --top value."));
@@ -73,17 +73,7 @@ public static class TimingCommand
             var selectedWords = selected.Value!;
             var selectedNames = selectedWords.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
             var objectRows = evidenceSet.ObjectTimings.Where(row => selectedNames.Contains(row.Word)).ToArray();
-            string? ruleKey = null;
-            if (request.Rule is { } rule)
-            {
-                var keys = TimingAggregation.ResolveRule(objectRows, rule);
-                if (keys.Count > 1)
-                    return CommandOutcome<TimingResponse>.Refused(new Refusal("timing.ambiguous-rule",
-                        FailureReason.InvalidArgument, $"{keys.Count} parser objects are labelled '{rule}'. " +
-                        $"Name one by its key: {string.Join(", ", keys)}."));
-                ruleKey = keys.Count == 1 ? keys[0] : rule;
-            }
-            var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, ruleKey, request.Top);
+            var aggregates = TimingAggregation.Aggregate(selectedWords, objectRows, request.By, request.Rule, request.Top);
             var summary = TimingAggregation.SummarizeWords(selectedWords, request.Top);
             BaselineToken? measuredBaseline;
             try { measuredBaseline = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions()); }

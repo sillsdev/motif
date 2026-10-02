@@ -81,7 +81,8 @@ public sealed record InspectorSubject(InspectorSubjectKind Kind)
 
     /// <summary>A rule by the kind and key PanGloss's statistics record it under, with how far that key can be trusted.</summary>
     public static InspectorSubject Rule(TraceTimingKey key, string? label = null, string identityQuality = "unknown") =>
-        new(InspectorSubjectKind.Rule) { TimingKey = key, Label = label, IdentityQuality = identityQuality };
+        new(InspectorSubjectKind.Rule) { TimingKey = key with { IdentityQuality = identityQuality },
+            Label = label, IdentityQuality = identityQuality };
 }
 
 /// <summary>Whether a section of an inspection could be read, and if not, why.</summary>

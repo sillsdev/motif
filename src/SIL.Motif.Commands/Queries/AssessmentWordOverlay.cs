@@ -45,14 +45,21 @@ public static class AssessmentWordOverlay
         ArgumentNullException.ThrowIfNull(baseline);
         ArgumentNullException.ThrowIfNull(reruns);
         var measured = (baseline.Words ?? []).Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
-        var rows = baseline.ObjectTimings.ToList();
+        var rows = ScopedTimings(baseline).ToList();
         foreach (var rerun in reruns)
         {
             var replaced = (rerun.Words ?? []).Select(word => word.Word).Where(measured.Contains)
                 .ToHashSet(StringComparer.Ordinal);
             rows.RemoveAll(row => replaced.Contains(row.Word));
-            rows.AddRange(rerun.ObjectTimings.Where(row => replaced.Contains(row.Word)));
+            rows.AddRange(ScopedTimings(rerun).Where(row => replaced.Contains(row.Word)));
         }
         return rows;
     }
+
+    private static IEnumerable<AssessmentObjectTiming> ScopedTimings(AssessmentRecord assessment) =>
+        assessment.ObjectTimings.Select(row => row.IdentityQuality == "grammar-local" ? row with
+        {
+            Scope = assessment.Invocation?.InvocationId is { } invocation ? "invocation:" + invocation
+                : "assessment:" + assessment.AssessmentId,
+        } : row);
 }

@@ -17,6 +17,24 @@ public static class TraceReadingBuilder
             { StepId = "0" } : ConvertTree(document.Root, "0");
         var attempts = document.Root is null ? [] : BuildCandidates(document.Root).ToArray();
         var analyses = document.Analyses.Select((analysis, index) => ToAnalysis(analysis, index)).ToArray();
+        using var parsed = JsonDocument.Parse(document.RawJson, new JsonDocumentOptions { MaxDepth = 512 });
+        var producer = System.Text.Json.Nodes.JsonNode.Parse(document.RawJson,
+            documentOptions: new JsonDocumentOptions { MaxDepth = 512 })!.AsObject();
+        producer.Remove("hostCapture");
+        var documentScope = "diagnostic:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(producer.ToJsonString(new JsonSerializerOptions { MaxDepth = 512 }))));
+        var grammar = parsed.RootElement.TryGetProperty("provenance", out var provenance) &&
+            provenance.TryGetProperty("grammar", out var grammarNode) ? grammarNode : default;
+        var grammarScope = grammar.ValueKind == JsonValueKind.Object && grammar.TryGetProperty("grammarHash", out var hash) &&
+            hash.ValueKind == JsonValueKind.String && hash.GetString() is { Length: > 0 } grammarHash
+            ? "grammar:" + grammar.GetRawText() : documentScope;
+        TraceMorph ScopeMorph(TraceMorph morph) => morph with { IdentityScope = grammarScope, DocumentScope = documentScope };
+        TraceStep ScopeStep(TraceStep step) => step with { IdentityScope = grammarScope, DocumentScope = documentScope,
+            AttemptedMorphs = step.AttemptedMorphs.Select(ScopeMorph).ToArray(), Children = step.Children.Select(ScopeStep).ToArray() };
+        root = ScopeStep(root);
+        attempts = attempts.Select(attempt => attempt with { Steps = attempt.Steps.Select(ScopeStep).ToArray(),
+            RichMorphs = attempt.RichMorphs.Select(ScopeMorph).ToArray() }).ToArray();
+        analyses = analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(ScopeMorph).ToArray() }).ToArray();
         return Summarize(document.Word, root, attempts, analyses);
     }
 
@@ -56,7 +74,8 @@ public static class TraceReadingBuilder
         Collect(root);
         foreach (var attempt in attempts) steps.AddRange(attempt.Steps);
         var affixKeys = steps.Where(step => step.SourceIdentityKind == "morphRule" && step.SourceIdentityId is not null)
-            .Select(step => TraceRefIds.CanonicalIdentity(step.SourceIdentityId)!).ToHashSet(StringComparer.Ordinal);
+            .Select(step => ObjectIdentity.Create("morph_rule", step.SourceIdentityId, step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality, step.IdentityScope))
+            .OfType<ObjectIdentity>().ToHashSet();
         var morphs = analyses.SelectMany(analysis => analysis.Morphs)
             .Concat(steps.SelectMany(step => step.AttemptedMorphs))
             .Concat(attempts.SelectMany(attempt => attempt.RichMorphs));
@@ -92,36 +111,41 @@ public static class TraceReadingBuilder
             "stratum" => "stratum",
             _ => identityKind ?? "rule",
         };
-        var identity = step.SourceIdentityKind is null ? null : TraceRefIds.CanonicalIdentity(step.SourceIdentityId);
+        var identity = step.SourceIdentityKind is null ? null : TraceRefIds.CanonicalIdentity(step.SourceIdentityId, step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality);
         var timingKind = identity is null ? null : step.SourceIdentityKind switch
         {
             "morphRule" => "morph_rule",
             "phonRule" => "phon_rule",
             _ => null,
         };
+        var timingKey = timingKind is null ? null : new TraceTimingKey(timingKind, identity!)
+        {
+            IdentityQuality = step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality,
+            Scope = step.SourceIdentityQuality == "grammar-local" ? step.IdentityScope : null,
+        };
         return new TraceRef(id, kind, step.Source ?? identity ?? id)
         {
             Identity = identity,
             IdentityQuality = identity is null ? TraceRefIds.UnknownQuality
                 : step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality,
-            TimingKey = timingKind is null ? null : new TraceTimingKey(timingKind, identity!),
+            TimingKey = timingKey?.Identity is not null ? timingKey : null,
         };
     }
 
     // An affix is timed as the rule that adds it, keyed by its grammatical info; a stem as its entry.
-    private static TraceRef MorphRef(string id, TraceMorph morph, IReadOnlySet<string> affixKeys)
+    private static TraceRef MorphRef(string id, TraceMorph morph, IReadOnlySet<ObjectIdentity> affixKeys)
     {
         var quality = morph.IdentityQuality ?? TraceRefIds.UnknownQuality;
         var keyed = quality is "authored" or "grammar-local";
         var timing = !keyed ? null
-            : TraceRefIds.CanonicalIdentity(morph.MsaId) is { } msa && affixKeys.Contains(msa) ? new TraceTimingKey("morph_rule", msa)
-            : TraceRefIds.CanonicalIdentity(morph.EntryId) is { } entry ? new TraceTimingKey("lex_entry", entry) : null;
+            : TraceRefIds.CanonicalIdentity(morph.MsaId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality) is { } msa && affixKeys.Contains(ObjectIdentity.Create("morph_rule", msa, quality, morph.IdentityScope)!) ? new TraceTimingKey("morph_rule", msa)
+            : TraceRefIds.CanonicalIdentity(morph.EntryId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality) is { } entry ? new TraceTimingKey("lex_entry", entry) : null;
         return new TraceRef(id, "morph", morph.Form ?? morph.GuessedString ?? morph.Headword ?? "?")
         {
             Gloss = morph.Gloss,
-            Identity = TraceRefIds.CanonicalIdentity(morph.EntryId ?? morph.FormId ?? morph.MsaId),
+            Identity = TraceRefIds.CanonicalIdentity(morph.EntryId ?? morph.FormId ?? morph.MsaId, quality),
             IdentityQuality = quality,
-            TimingKey = timing,
+            TimingKey = timing is null ? null : timing with { IdentityQuality = quality, Scope = quality == "grammar-local" ? morph.IdentityScope : null },
         };
     }
 
@@ -139,7 +163,7 @@ public static class TraceReadingBuilder
                 !Guid.TryParse(morph.FormId, out _) || !Guid.TryParse(morph.MsaId, out _) ||
                 morph.InflTypeId is not null && !Guid.TryParse(morph.InflTypeId, out _))) return null;
         return JsonSerializer.Serialize(analysis.Morphs.Select(morph => new {
-            Form = TraceRefIds.CanonicalIdentity(morph.FormId), Msa = TraceRefIds.CanonicalIdentity(morph.MsaId),
+            Form = TraceRefIds.CanonicalIdentity(morph.FormId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality), Msa = TraceRefIds.CanonicalIdentity(morph.MsaId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality),
             InflType = TraceRefIds.CanonicalIdentity(morph.InflTypeId) }));
     }
 
@@ -158,7 +182,7 @@ public static class TraceReadingBuilder
         return path
         .Where(step => !string.IsNullOrWhiteSpace(step.Source) &&
             (step.Type.Contains("Rule", StringComparison.Ordinal) || step.Type.Contains("Template", StringComparison.Ordinal)))
-        .Select(step => new TraceRuleReading(step.Source!, TraceRefIds.CanonicalIdentity(step.SourceIdentityId), Kind(step.Type),
+        .Select(step => new TraceRuleReading(step.Source!, TraceRefIds.CanonicalIdentity(step.SourceIdentityId, step.SourceIdentityQuality ?? TraceRefIds.UnknownQuality), Kind(step.Type),
             step.Type == "Blocked" || step.OutcomeStatus == "blocked" ? "Blocked"
                 : step.FailureReason is { Length: > 0 } || step.OutcomeStatus is "failed" or "failure" ? "stopped"
                 : step.OutcomeStatus is "successful" or "succeeded" or "success" ? "applied" : "tried",
@@ -214,9 +238,9 @@ public static class TraceReadingBuilder
             morph.InflectionClass, morph.Features, morph.GuessedString, morph.FieldWorksLink)
         {
             OccurrenceId = occurrenceId,
-            FormId = TraceRefIds.CanonicalIdentity(morph.FormId),
-            EntryId = TraceRefIds.CanonicalIdentity(morph.EntryId),
-            MsaId = TraceRefIds.CanonicalIdentity(morph.MsaId),
+            FormId = TraceRefIds.CanonicalIdentity(morph.FormId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality),
+            EntryId = TraceRefIds.CanonicalIdentity(morph.EntryId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality),
+            MsaId = TraceRefIds.CanonicalIdentity(morph.MsaId, morph.IdentityQuality ?? TraceRefIds.UnknownQuality),
             InflTypeId = morph.InflTypeId,
             IdentityQuality = morph.IdentityQuality,
             FormWritingSystem = morph.FormWritingSystem,
@@ -273,7 +297,7 @@ public static class TraceReadingBuilder
                     FailureEnvironment = node.FailureEnvironment,
                     FailureEvidence = node.FailureEvidence,
                     SourceIdentityKind = node.SourceIdentityKind,
-                    SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId),
+                    SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId, node.SourceIdentityQuality ?? TraceRefIds.UnknownQuality),
                     SourceIdentityQuality = node.SourceIdentityQuality,
                 });
             }
@@ -320,7 +344,7 @@ public static class TraceReadingBuilder
             FailureEvidence = node.FailureEvidence,
             AttemptedMorphs = node.AttemptedMorphs.Select((morph, index) => ToMorph(morph, $"step:{id}:morph:{index}")).ToArray(),
             SourceIdentityKind = node.SourceIdentityKind,
-            SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId),
+            SourceIdentityId = TraceRefIds.CanonicalIdentity(node.SourceIdentityId, node.SourceIdentityQuality ?? TraceRefIds.UnknownQuality),
             SourceIdentityQuality = node.SourceIdentityQuality,
         };
 

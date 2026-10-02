@@ -43,18 +43,19 @@ public static class TimingAggregation
         return SummarizeWords(words, top) with { Kinds = byKind.Aggregates, Attribution = byKind.Attribution };
     }
 
-    /// <summary>
-    /// The keys of the parser objects <paramref name="rule"/> names: the one whose key it is, or else every object
-    /// whose label it is. More than one key means the label is shared and does not name one object.
-    /// </summary>
-    public static IReadOnlyList<string> ResolveRule(IReadOnlyList<AssessmentObjectTiming> rows, string rule)
+    /// <summary>Finds complete typed addresses matching the request; display labels never select objects.</summary>
+    public static IReadOnlyList<TraceTimingKey> ResolveRule(IReadOnlyList<AssessmentObjectTiming> rows, TraceTimingKey rule)
     {
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(rule);
-        if (rows.FirstOrDefault(row => SameKey(row.Key, rule)) is { } keyed) return [keyed.Key];
-        return rows.Where(row => StringComparer.Ordinal.Equals(row.Object, rule)).Select(row => row.Key)
-            .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        return rows.Select(KeyOf).Where(key => ObjectIdentity.Same(key.Identity, rule.Identity))
+            .DistinctBy(key => key.Identity).ToArray();
     }
+
+    /// <summary>The stored row's typed address, retaining its query-derived local scope.</summary>
+    public static TraceTimingKey KeyOf(AssessmentObjectTiming row) =>
+        new(row.Kind, ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality)!)
+            { IdentityQuality = row.IdentityQuality, Scope = row.Scope };
 
     /// <summary>
     /// Groups object timing rows by kind or by object identity, shares each group's time of the words' total word
@@ -62,7 +63,7 @@ public static class TimingAggregation
     /// </summary>
     public static (IReadOnlyList<TimingAggregateRow> Aggregates, IReadOnlyList<WordRuleTiming> CostliestWords,
         WordTimeAttribution Attribution) Aggregate(IReadOnlyList<AssessedWord> words,
-        IReadOnlyList<AssessmentObjectTiming> rows, string by, string? rule, int top)
+        IReadOnlyList<AssessmentObjectTiming> rows, string by, TraceTimingKey? rule, int top)
     {
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(rows);
@@ -75,18 +76,21 @@ public static class TimingAggregation
         var attribution = Attribute(wordTimes, measured);
         double? ShareOf(double selfMs) => attribution.WordTimeMs > 0 ? selfMs / attribution.WordTimeMs : null;
 
-        var aggregates = measured.GroupBy(row => by == "kind" ? (row.Kind, Key: row.Kind) : (row.Kind, row.Key))
-            .Select(group => (Group: group.Key, Rows: group.ToArray()))
+        var aggregates = measured.Select((row, index) => (Row: row, Identity: by == "kind"
+                ? ObjectIdentity.Create(row.Kind, row.Kind, "structural") : KeyOf(row).Identity, Index: index))
+            .GroupBy(item => (item.Identity, Unresolved: item.Identity is null ? item.Index : -1))
+            .Select(group => (Rows: group.Select(item => item.Row).ToArray(), Identity: group.Key.Identity))
             .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
             .Select(group =>
             {
                 var self = group.Rows.Sum(row => row.ElapsedNs ?? 0) / 1_000_000d;
                 var first = group.Rows[0];
-                return new TimingAggregateRow(group.Group.Key, by == "kind" ? first.Kind : first.Object, self,
+                return new TimingAggregateRow(by == "kind" ? first.Kind : KeyOf(first).Key, by == "kind" ? first.Kind : first.Object, self,
                     ShareOf(self), group.Rows.Select(row => row.Word).Distinct(StringComparer.Ordinal).Count())
                 {
                     Kind = first.Kind,
                     IdentityQuality = by == "kind" ? string.Empty : first.IdentityQuality,
+                    Scope = by == "kind" ? null : first.Scope,
                     Calls = Calls(group.Rows),
                 };
             })
@@ -94,7 +98,7 @@ public static class TimingAggregation
             .ThenBy(row => row.Key, StringComparer.Ordinal).ToArray();
         var costliest = rule is null
             ? Array.Empty<WordRuleTiming>()
-            : measured.Where(row => SameKey(row.Key, rule))
+            : measured.Where(row => ObjectIdentity.Same(KeyOf(row).Identity, rule.Identity))
                 .GroupBy(row => row.Word, StringComparer.Ordinal)
                 .Select(group => (Word: group.Key, Rows: group.ToArray()))
                 .Where(group => group.Rows.Any(row => row.ElapsedNs is not null))
@@ -147,10 +151,6 @@ public static class TimingAggregation
             recorded && wordTime > 0 ? notAttributed / (double)wordTime : null,
             overrun / 1_000_000d, overrun > 0);
     }
-
-    private static bool SameKey(string left, string right) =>
-        Guid.TryParse(left, out var leftGuid) && Guid.TryParse(right, out var rightGuid)
-            ? leftGuid == rightGuid : StringComparer.Ordinal.Equals(left, right);
 
     // Calls are summed within one kind only; an uncounted row leaves the total unknown only if none counted.
     private static long? Calls(IReadOnlyList<AssessmentObjectTiming> rows) =>

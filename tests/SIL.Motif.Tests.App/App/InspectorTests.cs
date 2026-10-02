@@ -186,7 +186,8 @@ public sealed class InspectorTests
                 Settle(window);
                 var asked = fake.InspectRequests[^1].Subject;
                 Assert.Equal(InspectorSubjectKind.Rule, asked.Kind);
-                Assert.Equal(new TraceTimingKey("morph_rule", "Subject agreement"), asked.TimingKey);
+                Assert.Equal(new TraceTimingKey("morph_rule", "Subject agreement") { IdentityQuality = "unknown" }, asked.TimingKey);
+                Assert.Equal("unknown", asked.IdentityQuality);
                 Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
                 Assert.Same(inspector, InspectorPanel(window));
                 Assert.Equal("Timing", workspace.Inspector.Crumbs[0].Label);

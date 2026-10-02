@@ -110,6 +110,11 @@ public sealed record TimingAggregateRow(
     /// </summary>
     public string IdentityQuality { get; init; } = string.Empty;
 
+    /// <summary>The saved grammar scope required by a grammar-local key.</summary>
+    public string? Scope { get; init; }
+    [JsonIgnore]
+    public TraceTimingKey TimingKey => new(Kind, Key) { IdentityQuality = IdentityQuality, Scope = Scope };
+
     /// <summary>
     /// How many times the parser called objects of this one kind, in both directions; null when the kind does
     /// not count calls. A call to one kind is not a call to another, so no total adds calls across kinds.

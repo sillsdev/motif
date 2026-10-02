@@ -114,7 +114,7 @@ public sealed class WorkspaceContextTests
         var calls = 0;
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse(request.AssessmentId!, request.WordSet, request.By, 1, ++calls, calls, [],
-                request.By == "rule" ? [new TimingAggregateRow("Fresh rule", "Fresh rule", 1, 1, 1)] : [], [])
+                request.By == "rule" ? [new TimingAggregateRow("Fresh rule", "Fresh rule", 1, 1, 1) { Kind = "morph_rule" }] : [], [])
             {
                 Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : "Step limit")],
             })));
@@ -141,16 +141,16 @@ public sealed class WorkspaceContextTests
         var refreshed = false;
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-parse", request.WordSet, request.By, 1, 1, 1, [],
-                request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", refreshed ? "New rule" : "Old rule", 1, 1, 1)] : [], []))));
+                request.By == "rule" ? [new TimingAggregateRow(refreshed ? "New rule" : "Old rule", refreshed ? "New rule" : "Old rule", 1, 1, 1) { Kind = "morph_rule" }] : [], []))));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
-        Assert.Equal("Old rule", timing.SelectedRule);
+        Assert.Equal("Old rule", timing.SelectedRule?.Key);
 
         refreshed = true;
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
-        Assert.Equal("New rule", timing.SelectedRule);
-        Assert.Equal("New rule", fake.TimingRequests.Last().Rule);
+        Assert.Equal("New rule", timing.SelectedRule?.Key);
+        Assert.Equal("New rule", fake.TimingRequests.Last().Rule?.Key);
     }
 
     [Fact]
@@ -320,7 +320,7 @@ public sealed class WorkspaceContextTests
                 return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
                     "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1)] : [];
+                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1) { Kind = "morph_rule" }] : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
         });
@@ -417,11 +417,11 @@ public sealed class WorkspaceContextTests
         var refuseChosenRule = false;
         fake.OnTiming((request, _) =>
         {
-            if (refuseChosenRule && request.Rule == "Verb template")
+            if (refuseChosenRule && request.Rule?.Key == "Verb template")
                 return Task.FromResult(CommandOutcome<TimingResponse>.Refused(new Refusal(
                     "timing.refused", FailureReason.Refused, "Timing is unavailable.")));
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1)] : [];
+                ? [new TimingAggregateRow("Verb template", "Verb template", 1, 1, 1) { Kind = "morph_rule" }] : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
         });
@@ -444,7 +444,7 @@ public sealed class WorkspaceContextTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
-        var kindRows = new[] { new TimingAggregateRow("morph_rule", "morph_rule", 12, 1, 2) };
+        var kindRows = new[] { new TimingAggregateRow("morph_rule", "morph_rule", 12, 1, 2) { Kind = "morph_rule" } };
         var ruleRows = new[] { new TimingAggregateRow("Verb template", "Verb template", 10, 10d / 12, 2)
             { Kind = "morph_rule" },
             new TimingAggregateRow("Other rule", "Other rule", 2, 2d / 12, 2) { Kind = "morph_rule" } };
@@ -476,7 +476,7 @@ public sealed class WorkspaceContextTests
         fake.OnTiming((request, _) =>
         {
             IReadOnlyList<TimingAggregateRow> aggregates = request.By == "rule"
-                ? [new TimingAggregateRow("Subject agreement", "Subject agreement", 3, 0.6, 2), new TimingAggregateRow("Past tense li-", "Past tense li-", 2, 0.4, 1)]
+                ? [new TimingAggregateRow("Subject agreement", "Subject agreement", 3, 0.6, 2) { Kind = "morph_rule" }, new TimingAggregateRow("Past tense li-", "Past tense li-", 2, 0.4, 1) { Kind = "morph_rule" }]
                 : [];
             return Task.FromResult(CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 "assessment-1", request.WordSet, request.By, 1, 1, 1, [], aggregates, [])));
@@ -508,7 +508,7 @@ public sealed class WorkspaceContextTests
             new WordRuleTiming($"word{index}", 10 - index, index)).ToArray();
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             new TimingResponse("assessment-1", request.WordSet, request.By, 6, 5, 8, [],
-                request.By == "rule" ? [new TimingAggregateRow("Verb template", "Verb template", 10, 1, 6)] : [],
+                request.By == "rule" ? [new TimingAggregateRow("Verb template", "Verb template", 10, 1, 6) { Kind = "morph_rule" }] : [],
                 request.Rule is null ? [] : costliest))));
         await context.OpenProjectAsync(ProjectPath);
 
@@ -989,7 +989,7 @@ public sealed class WorkspaceContextTests
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var result = new TimingResponse("assessment-1", "all", "kind", 1, 5, 5, [],
-            [new TimingAggregateRow("Affix template", "Affix template", 5, 1, 1)], []);
+            [new TimingAggregateRow("Affix template", "Affix template", 5, 1, 1) { Kind = "morph_rule" }], []);
         fake.TimingCompletesWith(result);
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -1010,22 +1010,23 @@ public sealed class WorkspaceContextTests
     [Fact]
     public async Task OpeningTimingOnARuleQueriesThatRuleForTheChosenWords()
     {
+        var ruleKey = new TraceTimingKey("morph_rule", "aaaaaaaa-0000-0000-0000-000000000001");
         var (fake, context) = NewContextWithFake();
         var timing = new TimingPageModel(context);
         var result = new TimingResponse("assessment-1", "all", "rule", 1, 5, 5, [],
-            [new TimingAggregateRow("Plural", "Plural", 5, 1, 1)], [new WordRuleTiming("dogs", 5, 2)]);
+            [new TimingAggregateRow(ruleKey.Key, "Plural", 5, 1, 1) { Kind = "morph_rule", IdentityQuality = "authored" }], [new WordRuleTiming("dogs", 5, 2)]);
         fake.TimingCompletesWith(result);
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
 
-        context.OpenTiming(["dogs"], "Plural");
+        context.OpenTiming(["dogs"], ruleKey);
         await timing.LoadFocusedTimingCommand.ExecutionTask!;
 
         Assert.Equal(["dogs"], timing.Focus!.Words);
-        var request = Assert.Single(fake.TimingRequests, item => item.Rule == "Plural" &&
+        var request = Assert.Single(fake.TimingRequests, item => item.Rule?.Key == ruleKey.Key &&
             item.ExplicitWords is { Count: > 0 });
         Assert.Equal("rule", request.By);
-        Assert.Equal("Plural", request.Rule);
+        Assert.Equal(ruleKey, request.Rule);
         Assert.Equal(["dogs"], request.ExplicitWords);
         Assert.Same(result, timing.FocusedTiming);
         Assert.Empty(fake.StatsRequests);

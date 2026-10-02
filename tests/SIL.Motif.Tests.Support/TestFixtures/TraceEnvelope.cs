@@ -5,14 +5,25 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// </summary>
 internal static class TraceEnvelope
 {
+    internal const string CapturedRuleId = "aaaaaaaa-0000-0000-0000-000000000001";
+
+    internal const string UnresolvedRuleTiming = """
+        {"schemaVersion":"pangloss.trace-details.v2","word":"word",
+         "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":3,"elapsedNs":2},
+         "result":{"signature":"","guessed":false,"analyses":[]},"categories":{},
+         "trace":{"type":"MorphologicalRuleSynthesis","source":"Rule",
+          "sourceIdentity":{"kind":"morphRule","id":"","quality":"structural"},
+          "children":[{"type":"Successful","children":[]}]}}
+        """;
+
     internal const string CapturedRuleLabel = """
         {"schemaVersion":"pangloss.trace-details.v2","word":"word",
          "search":{"completed":true,"capped":false,"timedOut":false,"invalidShape":false,"steps":3,"elapsedNs":2},
          "result":{"signature":"","guessed":false,"analyses":[]},"categories":{},
-         "hostCapture":{"traceLabels":[{"refId":"phonRule:rule-id","label":"Vowel harmony"}]},
+         "hostCapture":{"traceLabels":[{"refId":"phonRule:aaaaaaaa-0000-0000-0000-000000000001","label":"Vowel harmony"}]},
          "trace":{"type":"WordAnalysis","children":[
            {"type":"PhonologicalRuleSynthesis","source":"Producer name",
-            "sourceIdentity":{"kind":"phonRule","id":"rule-id","quality":"authored"},
+            "sourceIdentity":{"kind":"phonRule","id":"aaaaaaaa-0000-0000-0000-000000000001","quality":"authored"},
             "failureReason":"RequiredSyntacticFeatureStruct","children":[]},
            {"type":"Failed","failureReason":"PartialParse","children":[]}]}}
         """;

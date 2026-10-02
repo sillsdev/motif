@@ -20,7 +20,7 @@ The command prints the selected words' total word time: each word's parse time, 
 
 A word that stopped at a limit counts the time it spent before stopping. Calls are counted per kind of rule, because a call to one kind is not a call to another; they are never added across kinds.
 
-With `--by rule`, each row shows its key in brackets, so two rules with the same name stay apart. `--rule` takes that key, or a name only one rule carries. `--json` returns rows and totals as structured data for further analysis.
+With `--by rule`, each row shows its `kind:key` address in brackets, so two rules with the same name stay apart. `--rule` takes `kind:key`, such as `morph_rule:12345678-1234-1234-abcd-123456789abc`. Names are display labels only. Use `--structural` for an exact parser key even when it looks like a GUID. A grammar-local ordinal needs `--local --scope <scope>` using the scope returned with its timing row; it cannot be joined to a different run without recorded shared grammar provenance. `--json` returns rows and totals as structured data for further analysis.
 
 JSON identifies each word's producing Assessment, invocation and measurement time. It also records the selected run's Baseline and captured FieldWorks save, when available. Its evidence relationship distinguishes Current, Historical, SavedSince and Unknown; current-project freshness is reported separately, so a new Baseline does not make an old measurement current.
 

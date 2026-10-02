@@ -180,6 +180,8 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
             .Replace(seed.FirstEntryId.ToString("D"), "{FirstEntryId}", StringComparison.OrdinalIgnoreCase)
             .Replace(seed.FirstLexemeFormId.ToString("D"), "{FirstLexemeFormId}", StringComparison.OrdinalIgnoreCase)
             .Replace(baseline.Token.ProjectIdentity, "{ProjectIdentity}", StringComparison.OrdinalIgnoreCase);
+        var documentScope = JsonNode.Parse(output)!["reading"]!["root"]!["documentScope"]!.GetValue<string>();
+        text = text.Replace(documentScope, "{DiagnosticScope}", StringComparison.Ordinal);
         var root = JsonNode.Parse(text)!;
         Blank(root);
         return root.ToJsonString(new JsonSerializerOptions

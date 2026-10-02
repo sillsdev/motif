@@ -98,7 +98,7 @@ public static class InspectQuery
                     Same(part.FieldWorksGuid, subject.ObjectId)))).ToArray();
         var ids = new[] { subject.AllomorphId, subject.GrammaticalInfoId, subject.ObjectId }
             .Where(id => id is { Length: > 0 }).Select(id => IdKey(id!)).ToHashSet(StringComparer.Ordinal);
-        if (Guid.TryParse(timingKey?.Key, out var timedGuid)) ids.Add(timedGuid.ToString("D"));
+        if (timingKey?.IdentityQuality == "authored" && Guid.TryParse(timingKey.Key, out var timedGuid)) ids.Add(timedGuid.ToString("D"));
         bool Names(GrammarWarningPart part) =>
             new[] { part.SubjectGuid, part.FieldWorksGuid }.Any(id => id is { Length: > 0 } && ids.Contains(IdKey(id))) ||
             part.Reach is { IsRoute: true } reach && (
@@ -107,7 +107,7 @@ public static class InspectQuery
                 subject.GrammaticalInfoId is { } info && reach.GrammaticalInfoIds.Concat(reach.MembershipGrammaticalInfoIds)
                     .Any(id => Same(id, info)) ||
                 timingKey is { } key && reach.TimingKeys.Concat(reach.MembershipTimingKeys)
-                    .Any(timed => timed.Kind == key.Kind && Same(timed.Key, key.Key)));
+                    .Any(timed => ObjectIdentity.Same(timed.Identity, key.Identity)));
         return findings.Where(finding => finding.Subject.Any(Names)).ToArray();
     }
 
@@ -178,8 +178,8 @@ public static class InspectQuery
     }
 
     private static bool Same(string? left, string? right) =>
-        left is not null && right is not null && StringComparer.Ordinal.Equals(IdKey(left), IdKey(right));
+        ObjectIdentity.Same(ObjectIdentity.Create("model", left), ObjectIdentity.Create("model", right));
 
     // A GUID compares as a GUID, whatever its case or braces; any other key compares exactly.
-    private static string IdKey(string id) => Guid.TryParse(id, out var guid) ? guid.ToString("D") : id;
+    private static string IdKey(string id) => ObjectIdentity.CanonicalKey(id)!;
 }

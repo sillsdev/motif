@@ -17,6 +17,18 @@ public sealed class InspectArgvTests(PristineProjectFixture pristine) : IDisposa
         Path.GetTempPath(), "motif-inspect-argv-" + Guid.NewGuid().ToString("N"));
 
     [Theory]
+    [InlineData("Plural")]
+    [InlineData("phon_rule:")]
+    [InlineData(":rule-id")]
+    public async Task TimingRequiresAnExplicitKindAndKey(string address)
+    {
+        var result = await CliProcess.RunAsync(_managedRoot, null, true,
+            "timing", "--project", "x.fwdata", "--by", "rule", "--rule", address);
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("[--rule <kind>:<key>]", result.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("opaque-rule-key", false, "unknown")]
     [InlineData("6f1d2c3b-0000-4000-8000-000000000001", false, "authored")]
     [InlineData("6f1d2c3b-0000-4000-8000-000000000001", true, "structural")]

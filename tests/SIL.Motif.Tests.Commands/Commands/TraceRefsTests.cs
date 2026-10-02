@@ -156,10 +156,10 @@ public sealed class TraceRefsTests : IDisposable
         var affix = refs["morphRule:00000000-0000-0000-0000-000000000109"];
         Assert.Equal(("morphologicalRule", "-ta", "authored"), (affix.Kind, affix.Label, affix.IdentityQuality));
         Assert.Equal(new TraceTimingKey("morph_rule", "00000000-0000-0000-0000-000000000109"), affix.TimingKey);
-        var template = refs["template:0"];
+        var template = Assert.Single(refs.Values, reference => reference.Kind == "template" && reference.Identity == "0");
         Assert.Equal(("template", "NounTemplate", "grammar-local"), (template.Kind, template.Label, template.IdentityQuality));
         Assert.Null(template.TimingKey);
-        Assert.Equal("stratum", refs["stratum:0"].Kind);
+        Assert.Contains(refs.Values, reference => reference.Kind == "stratum" && reference.Identity == "0");
 
         var morphs = Assert.Single(reading.Analyses).Morphs;
         var stem = refs[morphs[0].RefId!];
@@ -182,7 +182,8 @@ public sealed class TraceRefsTests : IDisposable
         Assert.Equal(3, rules.Select(rule => rule.Id).Distinct().Count());
         Assert.All(rules, rule =>
         {
-            Assert.StartsWith("morphRule:step:", rule.Id);
+            Assert.StartsWith("morphRule:", rule.Id);
+            Assert.Contains("occurrence", rule.Id, StringComparison.Ordinal);
             Assert.Equal("ed_suffix", rule.Label);
             Assert.Null(rule.Identity);
             Assert.Equal(TraceRefIds.UnknownQuality, rule.IdentityQuality);

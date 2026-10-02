@@ -577,7 +577,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public void CloseInspector() => Inspector = null;
 
     /// <summary>Opens the Timing page on <paramref name="words"/>, filtered to <paramref name="rule"/> when named.</summary>
-    public void OpenTiming(IReadOnlyList<string> words, string? rule) => Open(new OpenTimingRequest(words, rule));
+    public void OpenTiming(IReadOnlyList<string> words, TraceTimingKey? rule, string? label = null) => Open(new OpenTimingRequest(words, rule, label));
 
     /// <summary>Opens the AI Handoff page with <paramref name="words"/> as the words it will write.</summary>
     public void HandOff(IReadOnlyList<string> words) => Open(new HandOffRequest(words));

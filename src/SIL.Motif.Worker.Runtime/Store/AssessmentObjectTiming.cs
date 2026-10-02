@@ -12,6 +12,10 @@ public sealed record AssessmentObjectTiming(
     int? Passes,
     long? ElapsedNs)
 {
+    /// <summary>Query-derived scope of a local ordinal; never written into the timing store.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? Scope { get; init; }
+
     /// <summary>The recorded self time in milliseconds, or null when that kind and direction are not timed.</summary>
     public double? ElapsedMs => ElapsedNs is { } elapsed ? elapsed / 1_000_000d : null;
 }

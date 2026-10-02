@@ -143,8 +143,8 @@ public static class WordRowProjection
 
     private static bool SameMorpheme(ParserReadingMorph left, ParserReadingMorph right) =>
         left.AllomorphId is { } allomorph && left.GrammaticalInfoId is { } grammaticalInfo &&
-        StringComparer.OrdinalIgnoreCase.Equals(allomorph, right.AllomorphId) &&
-        StringComparer.OrdinalIgnoreCase.Equals(grammaticalInfo, right.GrammaticalInfoId);
+        ObjectIdentity.Same(ObjectIdentity.Create("form", allomorph), ObjectIdentity.Create("form", right.AllomorphId)) &&
+        ObjectIdentity.Same(ObjectIdentity.Create("msa", grammaticalInfo), ObjectIdentity.Create("msa", right.GrammaticalInfoId));
 }
 
 /// <summary>

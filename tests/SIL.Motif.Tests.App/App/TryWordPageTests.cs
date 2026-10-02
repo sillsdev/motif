@@ -68,7 +68,7 @@ public sealed class TryWordPageTests
             var subject = Assert.IsType<InspectorSubject>(row.InspectSubject);
             Assert.Equal(InspectorSubjectKind.Rule, subject.Kind);
             Assert.Equal("Vowel harmony", subject.Label);
-            Assert.Equal(new TraceTimingKey("phon_rule", "rule-id"), subject.TimingKey);
+            Assert.Equal(new TraceTimingKey("phon_rule", TraceEnvelope.CapturedRuleId) { IdentityQuality = "authored" }, subject.TimingKey);
             Assert.Equal("authored", subject.IdentityQuality);
             Assert.Equal("Producer name", Assert.Single(page.Trace.Reading!.Refs).Label);
             page.OpenTimingCommand.Execute(null);
@@ -118,7 +118,7 @@ public sealed class TryWordPageTests
                 var link = Assert.Single(window.GetVisualDescendants().OfType<InspectLink>(), control =>
                     control.IsEffectivelyVisible && control.DataContext is TraceStepViewModel step &&
                     ReferenceEquals(step.RecordedStep, root.Children[0].RecordedStep));
-                Assert.Equal(new TraceTimingKey("phon_rule", "rule-id"), link.Subject!.TimingKey);
+                Assert.Equal(new TraceTimingKey("phon_rule", TraceEnvelope.CapturedRuleId) { IdentityQuality = "authored" }, link.Subject!.TimingKey);
                 Assert.Equal("Vowel harmony", link.Subject.Label);
                 Assert.Equal("authored", link.Subject.IdentityQuality);
                 Assert.Contains(link.Captured!, detail => detail.Label == "Producer" && detail.Value == "Producer name");
@@ -943,7 +943,8 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(new WordTraceResponse("typed-only", false, true, null, 1, null, 1,
                 TraceReadingBuilder.Build("typed-only", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], false, "failure", "Stopped", [
                     new TraceStep("MorphologicalRule", "Plural", "typed-only", null, "failure", [])
-                    { OutcomeStatus = "failed" }])], [])));
+                    { OutcomeStatus = "failed", SourceIdentityKind = "morphRule", SourceIdentityId = "plural-key",
+                        SourceIdentityQuality = "authored" }])], [])));
 
             context.TryWord("typed-only");
             await page.Trace.TryCommand.ExecutionTask!;
@@ -1030,7 +1031,8 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(new WordTraceResponse("verb", true, true, null, 1, null, 1,
                 TraceReadingBuilder.Build("verb", new TraceStep("WordAnalysis", null, null, null, null, []), [new TraceCandidate([], true, null, "Built the word", [
                     new TraceStep("MorphologicalRule", "Verb template", "stem", "verb", null, [])
-                    { OutcomeStatus = "succeeded" }])], [])));
+                    { OutcomeStatus = "succeeded", SourceIdentityKind = "morphRule", SourceIdentityId = "verb-key",
+                        SourceIdentityQuality = "authored" }])], [])));
 
             context.TryWord("verb");
             await page.Trace.TryCommand.ExecutionTask!;
@@ -1070,6 +1072,52 @@ public sealed class TryWordPageTests
             {
                 window.Close();
             }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SidebarTimingOmitsUnresolvedRulesForTheReturnedWord(bool supplyUnresolvedKey)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var diagnostic = WordTraceQuery.LoadDiagnostic(TraceEnvelope.UnresolvedRuleTiming);
+            Assert.True(diagnostic.Succeeded, diagnostic.Refusal?.Message);
+            var response = diagnostic.Value!;
+            if (supplyUnresolvedKey)
+            {
+                var rule = Assert.Single(response.Reading.Refs);
+                response = response with
+                {
+                    Reading = response.Reading with
+                    {
+                        Refs = [rule with
+                        {
+                            TimingKey = new TraceTimingKey("morph_rule", "") { IdentityQuality = "structural" },
+                        }],
+                    },
+                };
+            }
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            fake.TraceWordCompletesWith(response);
+            var page = new TryWordPageModel(context);
+            var timing = new TimingPageModel(context);
+
+            context.TryWord("word");
+            await page.Trace.TryCommand.ExecutionTask!;
+            page.Trace.WordToTry = "edited";
+
+            Assert.False(Assert.Single(page.Trace.RecordedRoots).CanInspect);
+            Assert.True(page.OpenTimingCommand.CanExecute(null));
+            page.OpenTimingCommand.Execute(null);
+
+            Assert.Equal(WorkspacePage.Timing, context.CurrentPage);
+            Assert.Equal(["word"], timing.Focus!.Words);
+            Assert.Null(timing.Focus.Rule);
+            Assert.Null(timing.Focus.Label);
         });
     }
 

@@ -184,7 +184,6 @@ public sealed partial record WindowRefusal
         [C.TextsWordsCancelled] = "Reading the texts' words was cancelled.",
         [C.TextsWordsQueryFailed] = "Motif could not read the words of the chosen texts. Try again.",
 
-        [C.TimingAmbiguousRule] = "More than one rule has that name. Choose the rule in the table.",
         [C.TimingInvalidOverride] = "A re-run does not belong to these measurements. Re-run the words again.",
         [C.TimingNoAssessment] = "No timings are stored yet. Measure the words first.",
         [C.TimingNoBaseline] = "Refresh the project before looking at timings.",

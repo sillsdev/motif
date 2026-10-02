@@ -24,6 +24,7 @@ public static class ObjectFactsReader
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(reference);
         ArgumentNullException.ThrowIfNull(fieldWorks);
+        if (InspectorSubjectResolver.Resolve(cache, reference).Ref is null) return null;
         var allomorph = Find<IMoForm>(cache, reference.AllomorphId);
         var timed = reference.TimingKind is null ? null : Find<ICmObject>(cache, reference.TimingKey);
         var msa = Find<IMoMorphSynAnalysis>(cache, reference.GrammaticalInfoId) ?? timed as IMoMorphSynAnalysis;

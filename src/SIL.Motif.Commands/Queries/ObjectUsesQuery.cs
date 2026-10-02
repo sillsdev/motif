@@ -112,8 +112,7 @@ public static class ObjectUsesQuery
         ArgumentNullException.ThrowIfNull(timings);
         ArgumentNullException.ThrowIfNull(reference);
         var byWord = timings
-            .Where(row => StringComparer.Ordinal.Equals(row.Kind, reference.TimingKind) &&
-                SameId(reference.TimingKey, row.Key) && (row.Attempts is not 0 || row.ElapsedNs is not (null or 0)))
+            .Where(row => ObjectIdentity.Same(reference.TimingIdentity, ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, row.Scope)) && (row.Attempts is not 0 || row.ElapsedNs is not (null or 0)))
             .GroupBy(row => row.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         return Split(words.Where(word => byWord.ContainsKey(word.Word)).Select(word =>
@@ -137,17 +136,18 @@ public static class ObjectUsesQuery
         ArgumentNullException.ThrowIfNull(words);
         ArgumentNullException.ThrowIfNull(wordSet);
         var asked = wordSet.Select(Normalize).ToHashSet(StringComparer.Ordinal);
-        var morphemes = new List<(string Key, ParserReadingMorph Morph, List<string> Words)>();
-        var indexOf = new Dictionary<string, int>(StringComparer.Ordinal);
+        var morphemes = new List<(ParserReadingMorph Morph, List<string> Words)>();
+        var indexOf = new Dictionary<(ObjectIdentity Form, ObjectIdentity Msa), int>();
         foreach (var word in words.Where(word => asked.Contains(word.Word)))
             foreach (var morph in MorphsUsedBy(word))
             {
                 if (morph.AllomorphId is not { } allomorph || morph.GrammaticalInfoId is not { } grammaticalInfo) continue;
-                var key = IdKey(allomorph) + "/" + IdKey(grammaticalInfo);
+                var key = (ObjectIdentity.Create("form", allomorph)!, ObjectIdentity.Create("msa", grammaticalInfo)!);
+                if (key.Item1 is null || key.Item2 is null) continue;
                 if (!indexOf.TryGetValue(key, out var index))
                 {
                     indexOf.Add(key, morphemes.Count);
-                    morphemes.Add((key, morph, [word.Word]));
+                    morphemes.Add((morph, [word.Word]));
                 }
                 else if (morphemes[index].Words[^1] != word.Word) morphemes[index].Words.Add(word.Word);
             }
@@ -161,8 +161,8 @@ public static class ObjectUsesQuery
     /// a key the caller gave is kept.
     /// </summary>
     public static ObjectUseRef? WithTimingKey(ObjectUseRef? reference, ObjectFacts? facts) =>
-        reference is { TimingKind: null or "", } or { TimingKey: null or "" } && facts?.TimingKey is { } key
-            ? reference with { TimingKind = key.Kind, TimingKey = key.Key }
+        reference is { TimingKind: null, TimingKey: null } && facts?.TimingKey is { } key
+            ? reference with { TimingKind = key.Kind, TimingKey = key.Key, TimingIdentityQuality = key.IdentityQuality, TimingScope = key.Scope }
             : reference;
 
     // The Baseline's own copy, opened as a scratch: reading it can never change the project the linguist edits.
@@ -189,10 +189,7 @@ public static class ObjectUsesQuery
         .OrderByDescending(meaning => meaning.Words).ToArray());
 
     private static bool SameId(string? left, string? right) =>
-        left is not null && right is not null && StringComparer.Ordinal.Equals(IdKey(left), IdKey(right));
-
-    // A GUID compares as a GUID, whatever its case or braces; any other key compares exactly.
-    private static string IdKey(string id) => Guid.TryParse(id, out var guid) ? guid.ToString("D") : id;
+        ObjectIdentity.Same(ObjectIdentity.Create("model", left), ObjectIdentity.Create("model", right));
 
     private static string Normalize(string word) => word.Trim().Normalize(System.Text.NormalizationForm.FormD);
 }

@@ -211,8 +211,10 @@ public static class SelectionComposer
             var current = JsonSerializer.Deserialize<BaselineToken>(currentBaselineJson, MotifJson.CreateOptions());
             var source = JsonSerializer.Deserialize<BaselineToken>(sourceBaselineJson, MotifJson.CreateOptions());
             return current is not null && source is not null &&
-                StringComparer.Ordinal.Equals(current.ProjectIdentity, source.ProjectIdentity) &&
-                StringComparer.Ordinal.Equals(current.ProjectIdentity, cache.LangProject.Guid.ToString("D"));
+                ObjectIdentity.Same(ObjectIdentity.Create("project", current.ProjectIdentity),
+                    ObjectIdentity.Create("project", source.ProjectIdentity)) &&
+                ObjectIdentity.Same(ObjectIdentity.Create("project", current.ProjectIdentity),
+                    ObjectIdentity.Create("project", cache.LangProject.Guid.ToString("D")));
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException)
         {

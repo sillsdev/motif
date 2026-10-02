@@ -72,7 +72,22 @@ public sealed record TraceRef(string Id, string Kind, string Label)
 public sealed record TraceFieldWorksTarget(string Tool, string ToolName, string ObjectId, string Link);
 
 /// <summary>An object's identity in PanGloss's statistics: its kind there, such as <c>phon_rule</c>, and its key.</summary>
-public sealed record TraceTimingKey(string Kind, string Key);
+public sealed record TraceTimingKey(string Kind, string Key)
+{
+    /// <summary>Authored GUID, exact structural/synthetic key, or scoped grammar-local ordinal.</summary>
+    public string IdentityQuality { get; init; } = "authored";
+    /// <summary>The saved grammar scope required by a grammar-local key.</summary>
+    public string? Scope { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ObjectIdentity? Identity => ObjectIdentity.Create(Kind, Key, IdentityQuality, Scope);
+
+    /// <summary>Parses the CLI's explicit kind:key address; display labels and untyped keys are invalid.</summary>
+    public static TraceTimingKey? Parse(string? address)
+    {
+        var colon = address?.IndexOf(':') ?? -1;
+        return colon <= 0 || colon == address!.Length - 1 ? null : new(address[..colon], address[(colon + 1)..]);
+    }
+}
 
 /// <summary>Builds a reading-local <c>RefId</c> from recorded identity or an occurrence address, never display text.</summary>
 public static class TraceRefIds
@@ -85,13 +100,15 @@ public static class TraceRefIds
     /// recorded none, the kind its step type implies and its document-local step address.
     /// <see langword="null"/> for a step naming nothing or having no recorded identity or step address.
     /// </summary>
-    public static string? ForSource(string type, string? source, string? identityKind, string? identityId, string? stepId = null)
+    public static string? ForSource(string type, string? source, string? identityKind, string? identityId, string? stepId = null,
+        string? identityQuality = "authored", string? identityScope = null, string? documentScope = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         if (!string.IsNullOrEmpty(identityKind) && !string.IsNullOrEmpty(identityId))
-            return identityKind + ":" + CanonicalIdentity(identityId);
+            return Address(ObjectIdentity.Create(identityKind, identityId, identityQuality, identityScope));
         if (string.IsNullOrWhiteSpace(source)) return null;
-        return stepId is { Length: > 0 } && IdentityKindOf(type) is { } kind ? kind + ":step:" + stepId : null;
+        return stepId is { Length: > 0 } && IdentityKindOf(type) is { } kind
+            ? Address(ObjectIdentity.Create(kind, stepId, "occurrence", documentScope)) : null;
     }
 
     /// <summary>
@@ -101,15 +118,29 @@ public static class TraceRefIds
     public static string? ForMorph(TraceMorph morph)
     {
         ArgumentNullException.ThrowIfNull(morph);
+        var quality = morph.IdentityQuality ?? TraceRefIds.UnknownQuality;
         if (morph.EntryId is not null || morph.MsaId is not null || morph.FormId is not null)
-            return $"morph:{CanonicalIdentity(morph.EntryId)}/{CanonicalIdentity(morph.MsaId)}/{CanonicalIdentity(morph.FormId)}";
-        if (morph.MorphemeId is { } morpheme) return $"morph:#{morpheme}.{morph.AllomorphId}";
-        return morph.OccurrenceId is { Length: > 0 } occurrence ? "morph:occurrence:" + occurrence : null;
+        {
+            var parts = new[] { ObjectIdentity.Create("entry", morph.EntryId, quality, morph.IdentityScope),
+                ObjectIdentity.Create("msa", morph.MsaId, quality, morph.IdentityScope),
+                ObjectIdentity.Create("form", morph.FormId, quality, morph.IdentityScope) };
+            if (parts.All(part => part is null)) return null;
+            return parts.All(part => part is null || part.Domain == "authored")
+                ? $"morph:{parts[0]?.Key}/{parts[1]?.Key}/{parts[2]?.Key}"
+                : "morph:" + System.Text.Json.JsonSerializer.Serialize(parts);
+        }
+        if (morph.MorphemeId is { } morpheme)
+            return Address(ObjectIdentity.Create("morph", $"#{morpheme}.{morph.AllomorphId}", "grammar-local", morph.IdentityScope));
+        return Address(ObjectIdentity.Create("morph", morph.OccurrenceId, "occurrence", morph.DocumentScope));
     }
 
     /// <summary>Formats a GUID identity in D format while preserving a non-GUID grammar-local key verbatim.</summary>
-    public static string? CanonicalIdentity(string? identity) =>
-        Guid.TryParse(identity, out var guid) ? guid.ToString("D") : identity;
+    public static string? CanonicalIdentity(string? identity, string? quality = "authored") =>
+        ObjectIdentity.CanonicalKey(identity, quality);
+
+    private static string? Address(ObjectIdentity? identity) => identity is null ? null
+        : identity.Domain == "authored" ? identity.Kind + ":" + identity.Key
+        : identity.Kind + ":" + System.Text.Json.JsonSerializer.Serialize(identity);
 
     /// <summary>The identity kind PanGloss records for a step of <paramref name="type"/>, or <see langword="null"/>.</summary>
     public static string? IdentityKindOf(string type)
@@ -222,6 +253,11 @@ public sealed record TraceMorph(
     /// <summary>The occurrence address within this diagnostic, used when no object identity was recorded.</summary>
     public string? OccurrenceId { get; init; }
 
+    /// <summary>The saved grammar or diagnostic scope for grammar-local ordinals.</summary>
+    public string? IdentityScope { get; init; }
+    /// <summary>The unchanged saved diagnostic containing this occurrence.</summary>
+    public string? DocumentScope { get; init; }
+
     public string? FormId { get; init; }
     public string? EntryId { get; init; }
     public string? MsaId { get; init; }
@@ -316,7 +352,12 @@ public sealed record TraceStep(
     public string? ReasonExplanation { get; init; }
     public TraceEvidenceAvailability ExplanationAvailability => ReasonExplanation is null
         ? TraceEvidenceAvailability.NotRecorded : TraceEvidenceAvailability.Recorded;
+    /// <summary>Motif's child-index address, stable only inside one unchanged saved tree, never across traces.</summary>
     public string StepId { get; init; } = string.Empty;
+    /// <summary>The saved grammar or diagnostic scope for local object ordinals.</summary>
+    public string? IdentityScope { get; init; }
+    /// <summary>The unchanged saved diagnostic containing this event.</summary>
+    public string? DocumentScope { get; init; }
     public int? Subrule { get; init; }
     public string? OutcomeStatus { get; init; }
     public string? OutcomeEventType { get; init; }
@@ -331,7 +372,8 @@ public sealed record TraceStep(
     public string? SourceIdentityQuality { get; init; }
 
     /// <summary>The <see cref="TraceRef.Id"/> of the rule, template or stratum this step names, if any.</summary>
-    public string? RefId => TraceRefIds.ForSource(Type, Source, SourceIdentityKind, SourceIdentityId, StepId);
+    public string? RefId => TraceRefIds.ForSource(Type, Source, SourceIdentityKind, SourceIdentityId, StepId,
+        SourceIdentityQuality ?? TraceRefIds.UnknownQuality, IdentityScope, DocumentScope);
 }
 
 /// <summary>Recorded failure-owner evidence; structured operands remain diagnostic JSON, never authored notation.</summary>

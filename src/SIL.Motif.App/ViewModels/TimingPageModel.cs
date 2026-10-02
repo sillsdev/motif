@@ -14,7 +14,7 @@ namespace SIL.Motif.App.ViewModels;
 /// <summary>Opens the Timing page on some words, filtered to one rule when one is named.</summary>
 /// <param name="Words">The words whose time is in question.</param>
 /// <param name="Rule">The grammar object to filter to, or <see langword="null"/> for every one.</param>
-public sealed record OpenTimingRequest(IReadOnlyList<string> Words, string? Rule) : PageRequest(WorkspacePage.Timing);
+public sealed record OpenTimingRequest(IReadOnlyList<string> Words, TraceTimingKey? Rule, string? Label = null) : PageRequest(WorkspacePage.Timing);
 
 /// <summary>The Timing page's model: where the latest Assessment's parse time went.</summary>
 public sealed partial class TimingPageModel : PageModel
@@ -96,7 +96,7 @@ public sealed partial class TimingPageModel : PageModel
     public string FocusSummary => Focus is not { } focus ? string.Empty :
         focus.Rule is null
             ? $"Timing for {(focus.Words.Count == 0 ? "all words" : $"{focus.Words.Count} selected words")}"
-            : $"Timing for {(focus.Words.Count == 0 ? "all words" : $"{focus.Words.Count} selected words")} under {focus.Rule}";
+            : $"Timing for {(focus.Words.Count == 0 ? "all words" : $"{focus.Words.Count} selected words")} under {focus.Label ?? SelectedRuleName ?? "the requested rule"}";
 
     public bool HasFocusedTiming => FocusedTiming is not null;
 
@@ -244,17 +244,17 @@ public sealed partial class TimingPageModel : PageModel
     public string PercentileSummary => KindTiming is null ? string.Empty :
         KindTiming.WordCount == 0 ? "No words in this selection have recorded parse time." :
         $"Median {KindTiming.MedianMs:N1} ms · 95th percentile {KindTiming.Percentile95Ms:N1} ms";
-    /// <summary>The chosen parser object's key, or the name another page asked for until the rules are read.</summary>
-    public string? SelectedRule { get; private set; }
-    public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => row.Key == SelectedRule);
+    /// <summary>The complete address selected here or requested by another page.</summary>
+    public TraceTimingKey? SelectedRule { get; private set; }
+    public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
 
     /// <summary>The chosen rule's label, for the side card's title.</summary>
     public string? SelectedRuleName => SelectedRuleRow?.Name ??
-        (Focus?.Rule is not null ? "Requested rule" : SelectedRule);
+        (Focus?.Rule is not null ? Focus.Label ?? "Requested rule" : null);
 
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
-        [.. RuleShares.Select(share => new TimingRuleRow(share, share.Source?.Key == SelectedRule))];
+        [.. RuleShares.Select(share => new TimingRuleRow(share, ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)))];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
     /// <summary>
@@ -281,7 +281,7 @@ public sealed partial class TimingPageModel : PageModel
     {
         get
         {
-            if (RuleShares.FirstOrDefault(share => share.Source?.Key == SelectedRule) is not { } rule)
+            if (RuleShares.FirstOrDefault(share => ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)) is not { } rule)
                 return Focus?.Rule is null ? string.Empty : "No stored timing for this rule.";
             return (rule.Share is null ? rule.TimeText :
                 $"{rule.TimeText} · {rule.ShareText} of {MeasuredWordsPhrase}' {HeadlineTotal}") +
@@ -612,8 +612,8 @@ public sealed partial class TimingPageModel : PageModel
         TimingRefusal = rule.Succeeded || rule.Refusal is null ? null : WindowRefusal.From(rule.Refusal);
         var requestedRule = Focus?.Rule;
         SelectedRule = requestedRule is null
-            ? RuleTiming?.Aggregates.FirstOrDefault()?.Key
-            : RuleTiming?.Aggregates.FirstOrDefault(row => StringComparer.Ordinal.Equals(row.Key, requestedRule))?.Key
+            ? RuleTiming?.Aggregates.FirstOrDefault()?.TimingKey
+            : RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, requestedRule.Identity))?.TimingKey
                 ?? requestedRule;
         RaiseTimingState();
         if (SelectedRuleRow is not null) await LoadRuleDetailAsync(projectPath, assessmentId, generation);
@@ -624,7 +624,7 @@ public sealed partial class TimingPageModel : PageModel
         using var usageAction = Context.Commands.BeginUsageAction("timing",
             UsageArgumentShape.Text("rule"));
         if (row is null || Context.ProjectPath is not { } projectPath) return;
-        SelectedRule = row.Key;
+        SelectedRule = row.TimingKey;
         RuleDetail = null;
         RaiseTimingState();
         await LoadRuleDetailAsync(projectPath, CurrentAssessmentId, _loadGeneration);
@@ -827,6 +827,6 @@ public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
     public TimingAggregateRow Row => Share.Source!;
 
     /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
-    public InspectorSubject InspectSubject => InspectorSubject.Rule(new TraceTimingKey(Row.Kind, Row.Key), Row.Name,
+    public InspectorSubject InspectSubject => InspectorSubject.Rule(Row.TimingKey, Row.Name,
         Row.IdentityQuality is { Length: > 0 } quality ? quality : "unknown");
 }

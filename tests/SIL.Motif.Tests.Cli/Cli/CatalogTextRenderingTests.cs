@@ -12,6 +12,15 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class CatalogTextRenderingTests
 {
     [Fact]
+    public void TimingTextCarriesTheKindAlongsideTheKey()
+    {
+        var response = new TimingResponse("assessment", "all", "rule", 1, 1, 1, [],
+            [new TimingAggregateRow("rule-key", "Plural", 1, 1, 1) { Kind = "morph_rule" }], []);
+        var text = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
+        Assert.Contains("[morph_rule:rule-key]", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void OverviewTextShowsSelectionSourcesCoverageAccuracyAndTiming()
     {
         var response = new OverviewResponse(
@@ -202,8 +211,8 @@ public sealed class CatalogTextRenderingTests
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
         Assert.Contains("Total word time: 800.00 ms for 2 measured word(s)", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [guid-1]: 300.00 ms (37.5%), 40 morph_rule calls, 2 words", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [guid-2]: 200.00 ms (25.0%), calls not counted, 1 words", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [morph_rule:guid-1]: 300.00 ms (37.5%), 40 morph_rule calls, 2 words", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [lex_entry:guid-2]: 200.00 ms (25.0%), calls not counted, 1 words", output, StringComparison.Ordinal);
         Assert.Contains("Not attributed: 302.00 ms (37.8%)", output, StringComparison.Ordinal);
         Assert.Contains("recorded 2.00 ms more than their words' own time", output, StringComparison.Ordinal);
         Assert.DoesNotContain("attempts", output, StringComparison.Ordinal);

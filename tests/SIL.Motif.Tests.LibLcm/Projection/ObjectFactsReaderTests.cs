@@ -38,6 +38,26 @@ public sealed class ObjectFactsReaderTests : IDisposable
     }
 
     [Fact]
+    public void SuppliedIdsMustResolveTogetherBeforeFactsAreRead()
+    {
+        var form = _grammar.Ja.LexemeFormOA.Guid.ToString("D");
+        var msa = _grammar.JaMsa.Guid.ToString("D");
+        Assert.Null(Read(new ObjectUseRef { AllomorphId = form, GrammaticalInfoId = _grammar.WaMsa.Guid.ToString("D") }));
+        Assert.Null(Read(new ObjectUseRef { AllomorphId = form, GrammaticalInfoId = Guid.NewGuid().ToString("D") }));
+        Assert.Null(Read(new ObjectUseRef { AllomorphId = Guid.NewGuid().ToString("D"), GrammaticalInfoId = msa }));
+        Assert.Null(Read(new ObjectUseRef { AllomorphId = form, TimingKind = "morph_rule", TimingKey = _grammar.WaMsa.Guid.ToString("D") }));
+    }
+
+    [Theory]
+    [InlineData("lex_entry")]
+    [InlineData("phon_rule")]
+    [InlineData("unknown")]
+    public void TimingKindMustAgreeWithTheObjectsType(string kind)
+    {
+        Assert.Null(Read(ObjectUseRef.ForTimingKey(new TraceTimingKey(kind, _grammar.JaMsa.Guid.ToString("D")))));
+    }
+
+    [Fact]
     public void AnAffixReadsItsSenseSlotTemplateAndRequiredFeatures()
     {
         var facts = Read(new ObjectUseRef

@@ -186,6 +186,20 @@ public sealed class SelectionComposerTests : IDisposable
     }
 
     [Fact]
+    public void RetryProjectIdentityCanonicalizesTheLoadedProjectsGuid()
+    {
+        var token = CurrentBaselineToken.Replace(_cache.LangProject.Guid.ToString("D"),
+            "{" + _cache.LangProject.Guid.ToString("D").ToUpperInvariant() + "}", StringComparison.Ordinal);
+        var repository = NewRepository();
+        RecordParseTimeRunWithBaseline(repository, "same-project", "2020-01-01T00:00:00Z", token,
+            ("word", WordOutcome.NoAnalysis, 0));
+        var outcome = SelectionComposer.Compose(_cache,
+            NoSources with { RetryFailed = true, RetrySourceAssessmentId = "same-project" }, repository, token);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal(["word"], outcome.Value!.Selection.Words);
+    }
+
+    [Fact]
     public void RetrySourceProjectMustMatchTheLoadedProject()
     {
         var repository = NewRepository();

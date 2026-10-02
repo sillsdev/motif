@@ -42,6 +42,20 @@ public sealed class TimingSharesTests
     ];
 
     [Fact]
+    public async Task TwoKindsSharingAKeySelectOnlyTheClickedObject()
+    {
+        TimingAggregateRow[] rules =
+        [
+            new("same-key", "One", 2, 0.2, 1) { Kind = "morph_rule" },
+            new("same-key", "One", 1, 0.1, 1) { Kind = "phon_rule" },
+        ];
+        var timing = await LoadedTiming(NineWords, Kinds, rules);
+        await timing.ChooseRuleCommand.ExecuteAsync(rules[1]);
+        Assert.Same(rules[1], timing.SelectedRuleRow);
+        Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
+    }
+
+    [Fact]
     public async Task KindSharesAreOfTheWordsWholeParseTimeWithOtherTimeApart()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -96,10 +110,10 @@ public sealed class TimingSharesTests
         ];
         var timing = await LoadedTiming(NineWords, Kinds, rules);
 
-        Assert.Equal("guid-1", timing.SelectedRule);
+        Assert.Equal("guid-1", timing.SelectedRule?.Key);
         await timing.ChooseRuleCommand.ExecuteAsync(rules[1]);
 
-        Assert.Equal("guid-2", timing.SelectedRule);
+        Assert.Equal("guid-2", timing.SelectedRule?.Key);
         Assert.Equal("Plural", timing.SelectedRuleName);
         Assert.Equal([false, true], timing.RuleRows.Select(row => row.IsChosen));
         Assert.StartsWith("100 ms", timing.RuleSummary, StringComparison.Ordinal);
@@ -156,7 +170,7 @@ public sealed class TimingSharesTests
         ];
         var timing = await LoadedTiming(NineWords, Kinds, rules, requestedRule: "guid-2");
 
-        Assert.Equal("guid-2", timing.SelectedRule);
+        Assert.Equal("guid-2", timing.SelectedRule?.Key);
         Assert.Equal("Plural", timing.SelectedRuleName);
         Assert.True(timing.RuleRows.Single(row => row.Share.Source?.Key == "guid-2").IsChosen);
     }
@@ -242,7 +256,7 @@ public sealed class TimingSharesTests
         }
         else
         {
-            context.OpenTiming(words.Select(word => word.Word).ToArray(), requestedRule);
+            context.OpenTiming(words.Select(word => word.Word).ToArray(), new TraceTimingKey(rules.FirstOrDefault(row => row.Key == requestedRule)?.Kind ?? "morph_rule", requestedRule));
             await timing.LoadFocusedTimingCommand.ExecutionTask!;
         }
         return timing;

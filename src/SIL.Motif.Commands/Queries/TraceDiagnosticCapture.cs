@@ -179,7 +179,9 @@ internal static class TraceDiagnosticCapture
     {
         string CompareValue(string? left, string? right) => string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right)
             ? "unknown" : StringComparer.Ordinal.Equals(left, right) ? "match" : "mismatch";
-        var project = CompareValue(recorded?.ProjectIdentity, current?.ProjectIdentity);
+        var project = string.IsNullOrEmpty(recorded?.ProjectIdentity) || string.IsNullOrEmpty(current?.ProjectIdentity)
+            ? "unknown" : ObjectIdentity.Same(ObjectIdentity.Create("project", recorded.ProjectIdentity),
+                ObjectIdentity.Create("project", current.ProjectIdentity)) ? "match" : "mismatch";
         var sameHashKind = !string.IsNullOrEmpty(recorded?.GrammarHashSemantics) &&
             StringComparer.Ordinal.Equals(recorded.GrammarHashSemantics, current?.GrammarHashSemantics);
         var grammar = sameHashKind ? CompareValue(recorded?.GrammarHash, current?.GrammarHash) : "unknown";
