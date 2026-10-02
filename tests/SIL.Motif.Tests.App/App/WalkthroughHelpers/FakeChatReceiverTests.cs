@@ -26,12 +26,12 @@ public sealed class FakeChatReceiverTests
         using var files = new TemporaryFiles();
         var receiver = new FakeChatReceiver();
         receiver.Drop([
-            files.Write("handoff.md", "See `docs/handoff/assessment-format.md` for the shape of `assessment.json`."),
+            files.Write("handoff.md", "See `docs/handoff/assessment-format.md` for the shape of `parse-results.json`."),
             files.Write("grammar.json", "[]"),
             files.Write("texts.json", "[{\"key\":\"example-1\"}]"),
-            files.Write("assessment.json", "[{\"word\":\"alpha\"}]"),
+            files.Write("parse-results.json", "[{\"word\":\"alpha\"}]"),
         ]);
-        receiver.Paste("Read `handoff.md` first. Use `grammar.json`, `texts.json`, and `assessment.json`.");
+        receiver.Paste("Read `handoff.md` first. Use `grammar.json`, `texts.json`, and `parse-results.json`.");
 
         var result = receiver.Validate();
 

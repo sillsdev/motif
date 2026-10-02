@@ -14,7 +14,7 @@ motif handoff "C:\FieldWorks\Projects\Koro\Koro.fwdata" --out "C:\Temp\koro-hand
 
 ## What it prints
 
-Human output reports the output directory, the Baseline's source save time, Selection size, file count, and Assessment ids. With `--no-assess`, the Baseline-only Handoff has four files and no Assessment ids. JSON includes the output directory, Baseline and Selection, relative file paths, invocation and Assessment ids, and the Handoff text fields. The window's **AI Handoff for this word** action keeps the diagnostic already shown in Try a Word and the Baseline recorded with it; it does not run a new Assessment or trace and omits `assessment.json`. Motif builds the folder beside the destination and moves it into place only after it is complete.
+Human output reports the output directory, the Baseline's source save time, Selection size, file count, and Assessment ids. With `--no-assess`, the Baseline-only Handoff has four files and no Assessment ids. JSON includes the output directory, Baseline and Selection, relative file paths in alphabetical order, invocation and Assessment ids, and the Handoff text fields. An assessed folder lists `grammar.json`, `handoff.md`, `parse-results.json`, `read_results.py`, then `texts.json`; a Baseline-only folder omits `parse-results.json`. The window's **AI Handoff for this word** action keeps the diagnostic already shown in Try a Word and the Baseline recorded with it; it does not run a new Assessment or trace and omits `parse-results.json`. Motif builds the folder beside the destination and moves it into place only after it is complete.
 
 ## Related commands
 

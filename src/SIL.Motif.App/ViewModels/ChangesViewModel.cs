@@ -541,14 +541,14 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     {
         null => string.Empty,
         ChangeFitStatus.Fits => "Still fits the project.",
-        ChangeFitStatus.Uncertain => "Uncertain — check again",
+        ChangeFitStatus.Uncertain => "Needs another look",
         _ => "No longer fits the current project. Remove this change before review.",
     };
     public bool IsUncertain => Fit?.Status == ChangeFitStatus.Uncertain;
     public bool StillFits => Fit?.StillFits == true;
 
     /// <summary>The first line of the row's staged note: whether the change waits as staged or needs a look.</summary>
-    public string NoteTitle => IsUncertain ? "Uncertain" : "Staged";
+    public string NoteTitle => IsUncertain ? "Needs another look" : "Staged";
 
     /// <summary>
     /// The row's one line of context: what FieldWorks changed for a change that no longer fits, why an Uncertain

@@ -75,10 +75,17 @@ public sealed class ReviewScreenshots
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 Assert.Equal(3, review.ApplyBlockers.Count);
-                Assert.Equal($"Apply is blocked by {review.ApplyBlockers.Count} things", review.ApplyBlockedTitle);
+                Assert.Equal("Apply is blocked by 2 changes", review.ApplyBlockedTitle);
+                Assert.Equal("Needs another look", Assert.Single(review.ReviewGroups,
+                    group => group.Title == "Needs another look").Title);
+                var unknownToApproved = review.ReviewGroups.SelectMany(group => group.Items)
+                    .Single(change => change.Word == "kitabu" && change.TransitionText == "Unknown → Approved");
+                Assert.Equal("Unknown", unknownToApproved.Listed!.Row.OpinionLabel);
                 var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-                Assert.All(review.ApplyBlockers, blocker => Assert.Contains(blocker.Sentence, visibleTexts));
+                Assert.Contains(review.ApplyBlockedTitle, visibleTexts);
+                foreach (var blocker in review.ApplyBlockers)
+                    Assert.DoesNotContain(blocker.Sentence, visibleTexts);
                 AssertSidePanelCardsHaveVisibleBody(window);
                 var visibleButtons = window.GetVisualDescendants().OfType<Button>()
                     .Where(button => button.IsEffectivelyVisible).ToArray();
@@ -91,11 +98,20 @@ public sealed class ReviewScreenshots
                     .ToArray();
                 Assert.Single(measurementActions);
                 Assert.True(measurementActions[0].IsEffectivelyVisible);
-                Assert.Single(visibleButtons, button => AutomationProperties.GetName(button) == "Choose what to parse");
+                Assert.Single(visibleButtons,
+                    button => AutomationProperties.GetAutomationId(button) == "motif-refresh-project");
                 SaveAll(window, folder, "review-blocked");
 
                 review.ShowReconciliationNeeded();
                 window.UpdateLayout();
+                var reconciliationButtons = window.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible).ToArray();
+                Assert.Single(reconciliationButtons,
+                    button => AutomationProperties.GetAutomationId(button) == "motif-refresh-project");
+                Assert.DoesNotContain(reconciliationButtons,
+                    button => AutomationProperties.GetName(button) == "Choose what to parse");
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == review.ReconciliationNotice);
                 AssertSidePanelCardsHaveVisibleBody(window);
                 SaveAll(window, folder, "review-unconfirmed-apply");
                 review.ClearReconciliationNeeded();

@@ -43,7 +43,7 @@ public sealed class ReviewChangeGroupsTests
             "Added",
             "Removed",
             "Spelling → Incorrect",
-            "Uncertain — check again",
+            "Needs another look",
         ], page.ReviewGroups.Select(group => group.Title));
         Assert.Equal("Unknown → Approved", Assert.Single(page.ReviewGroups[^1].Items).TransitionText);
     }
@@ -215,7 +215,7 @@ public sealed class ReviewChangeGroupsTests
         };
         var (page, _) = await OpenReviewAsync(changes, ["unsure"], noLongerFitsChangeIds: ["gone"]);
 
-        Assert.Equal(["No longer fits", "Unknown → Approved", "Uncertain — check again"],
+        Assert.Equal(["No longer fits", "Unknown → Approved", "Needs another look"],
             page.ReviewGroups.Select(group => group.Title));
         var noLongerFits = page.ReviewGroups[0];
         Assert.True(noLongerFits.IsNoLongerFits);
@@ -294,7 +294,7 @@ public sealed class ReviewChangeGroupsTests
 
         Assert.True(added.RowAnalysisIsParserBuilt);
         Assert.Equal("Added as Approved from PanGloss", added.DetailText);
-        Assert.Equal("Uncertain", unsure.NoteTitle);
+        Assert.Equal("Needs another look", unsure.NoteTitle);
         Assert.False(unsure.StillFits);
     }
 

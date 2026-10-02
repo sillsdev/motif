@@ -127,7 +127,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.True(freshnessLabel.IsEffectivelyVisible);
             Assert.Equal("Changes applied", freshnessLabel.Text);
             Assert.True(freshnessDetail.IsEffectivelyVisible);
-            Assert.Contains("after these numbers", freshnessDetail.Text,
+            Assert.Contains("changes applied later", freshnessDetail.Text,
                 StringComparison.Ordinal);
             InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
                 InteractiveControlFamily.Action,

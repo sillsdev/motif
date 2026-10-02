@@ -496,6 +496,7 @@ internal enum TooltipScene
     ReaderStaged,
     MatrixStaged,
     ListsStaged,
+    WordCardWithoutOccurrence,
     ReviewStaged,
 }
 
@@ -584,6 +585,9 @@ internal static class TooltipOwners
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
+        new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadDisabledReason}",
+            TooltipScene.WordCardWithoutOccurrence,
+            control => control is Button && Name(control) == "Mark this occurrence as unread"),
         new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,
             control => control is HyperlinkButton && control.Classes.Contains("morphFormLink") &&
                 !control.Classes.Contains("listCardFormLink"))

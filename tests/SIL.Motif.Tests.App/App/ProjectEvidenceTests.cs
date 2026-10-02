@@ -128,14 +128,18 @@ public sealed class ProjectEvidenceTests
     }
 
     [Fact]
-    public async Task TheFreshnessSentenceSaysTodayByTheComposedClock()
+    public async Task TheFreshnessLineNamesBothSavedTimesWithoutRelativeDates()
     {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var sameDay = new FixedClock(Saved.AddHours(2));
         var (fake, workspace) = NewWorkspace(sameDay);
         fake.ReadCurrentEvidenceCompletesWith(StoredSnapshot());
 
         await workspace.SetProjectAsync(ProjectPath);
-        Assert.Contains(" today", workspace.FreshnessDetail, StringComparison.Ordinal);
+        var detail = workspace.FreshnessDetail.Replace('\u202F', ' ').Replace('\u00A0', ' ');
+        Assert.Contains("Baseline of 11:02 AM", detail, StringComparison.Ordinal);
+        Assert.Contains("one saved 10:58 AM", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain(" today", detail, StringComparison.Ordinal);
 
         sameDay.Advance(TimeSpan.FromDays(2));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
@@ -143,7 +147,9 @@ public sealed class ProjectEvidenceTests
             ProjectLastWriteUtc = Saved.AddHours(1),
         });
         await workspace.CheckFreshnessAsync();
-        Assert.DoesNotContain(" today", workspace.FreshnessDetail, StringComparison.Ordinal);
+        detail = workspace.FreshnessDetail.Replace('\u202F', ' ').Replace('\u00A0', ' ');
+        Assert.DoesNotContain(" today", detail, StringComparison.Ordinal);
+        Assert.Contains("Baseline of Sat 5 Sep, 11:02 AM", detail, StringComparison.Ordinal);
     }
 
     [Fact]

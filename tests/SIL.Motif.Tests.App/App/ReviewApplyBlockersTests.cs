@@ -45,7 +45,7 @@ public sealed class ReviewApplyBlockersTests
             ApplyBlockerKind.FieldWorksSavedSince,
             ApplyBlockerKind.LosesApprovedAnalysis,
         ], page.ApplyBlockers.Select(blocker => blocker.Kind));
-        Assert.Equal("Apply is blocked by 6 things", page.ApplyBlockedTitle);
+        Assert.Equal("Apply is blocked by 3 changes", page.ApplyBlockedTitle);
         Assert.False(page.CanApply);
         Assert.StartsWith("FieldWorks may already have these changes. Refresh to check. " +
             "1 change no longer fits: FieldWorks changed its word since you decided. " +
@@ -82,7 +82,7 @@ public sealed class ReviewApplyBlockersTests
 
         Assert.Equal([ApplyBlockerKind.NoLongerFits, ApplyBlockerKind.Uncertain],
             page.ApplyBlockers.Select(blocker => blocker.Kind));
-        Assert.Equal("Apply is blocked by 2 things", page.ApplyBlockedTitle);
+        Assert.Equal("Apply is blocked by 2 changes", page.ApplyBlockedTitle);
         var noLongerFits = page.ApplyBlockers[0];
         Assert.Equal("1 change no longer fits: FieldWorks changed its word since you decided.", noLongerFits.Sentence);
         Assert.Equal("Remove the ones that no longer fit", noLongerFits.ActionText);
@@ -100,7 +100,7 @@ public sealed class ReviewApplyBlockersTests
 
         var blocker = Assert.Single(page.ApplyBlockers);
         Assert.Equal(ApplyBlockerKind.NotMeasured, blocker.Kind);
-        Assert.Equal("Apply is blocked by 1 thing", page.ApplyBlockedTitle);
+        Assert.Equal("Apply is blocked by 1 change", page.ApplyBlockedTitle);
         Assert.Equal("Check these changes", blocker.ActionText);
         Assert.Same(page.MeasureCommand, blocker.Action);
         Assert.Equal("See what applying does to the numbers before applying.", page.ApplyDisabledReason);

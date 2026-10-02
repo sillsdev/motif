@@ -216,7 +216,7 @@
         </Border>
       </UniformGrid>
 
-      <Border Classes="card overviewHandoff">
+      <Border Classes="card overviewHandoff" IsVisible="{Binding HasAssessment}">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HandoffGap}">
           <PathIcon Classes="overviewHandoffIcon" Data="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
           <views:CopyableTextBlock Grid.Column="1" Classes="overviewHandoffText"

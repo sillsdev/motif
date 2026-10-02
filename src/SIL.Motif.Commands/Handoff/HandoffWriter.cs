@@ -28,14 +28,14 @@ public static class HandoffWriter
 {
     internal const string GrammarFileName = "grammar.json";
     internal const string TextsFileName = "texts.json";
-    internal const string AssessmentFileName = "assessment.json";
-    internal const string PythonHelperFileName = "parse_grammar_texts_assessment.py";
+    internal const string AssessmentFileName = "parse-results.json";
+    internal const string PythonHelperFileName = "read_results.py";
     internal const string HandoffMarkdownFileName = "handoff.md";
 
     private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
     private const string PythonHelperResource =
-        "SIL.Motif.Commands.Handoff.Assets.parse_grammar_texts_assessment.py";
+        "SIL.Motif.Commands.Handoff.Assets.read_results.py";
 
     /// <summary>The ref motif's own documents are linked at. Its release tag once one exists.</summary>
     internal const string MotifRef = "main";
@@ -61,7 +61,7 @@ public static class HandoffWriter
     /// Where the folder must appear. Assumed already checked non-existent or empty by the caller; an
     /// existing empty directory here is removed immediately before the final move.
     /// </param>
-    /// <param name="includeAssessment">Whether <c>assessment.json</c> is required (design decision 2: absent, not empty, when there is none).</param>
+    /// <param name="includeAssessment">Whether <c>parse-results.json</c> is required (design decision 2: absent, not empty, when there is none).</param>
     /// <param name="includeTrace">Whether one trace file is required inside <c>traces/</c>.</param>
     /// <param name="populate">
     /// Writes every file into the incoming directory it is handed. Returning a <see cref="Refusal"/>
@@ -157,11 +157,11 @@ public static class HandoffWriter
         return null;
     }
 
-    /// <summary>One Selection word's batch-pass statistics, the shape <c>assessment.json</c> writes per line.</summary>
+    /// <summary>One Selection word's batch-pass statistics, the shape <c>parse-results.json</c> writes per line.</summary>
     internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature);
 
     /// <summary>
-    /// Writes <c>assessment.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
+    /// Writes <c>parse-results.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
     /// A one-word Handoff adds its raw trace file and summary to that word's record.
     /// </summary>
     internal static void WriteAssessmentJson(
@@ -238,7 +238,7 @@ public static class HandoffWriter
     }
 
     /// <summary>
-    /// Writes <c>parse_grammar_texts_assessment.py</c> into the incoming directory: the embedded reader
+    /// Writes <c>read_results.py</c> into the incoming directory: the embedded reader
     /// script every Handoff carries, unconditionally, since it reads <c>grammar.json</c> and <c>texts.json</c>
     /// whether or not this run also collected an Assessment.
     /// </summary>
@@ -264,8 +264,8 @@ public static class HandoffWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
         var assessmentManifestLine = hasAssessment
-            ? "- `assessment.json` — whether PanGloss accepted each Selection word, and how long it took."
-            : "- No Assessment was run for this Handoff, so `assessment.json` is not included.";
+            ? "- `parse-results.json` — whether PanGloss accepted each Selection word, and how long it took."
+            : "- No Assessment was run for this Handoff, so `parse-results.json` is not included.";
 
         // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
         var fileCount = hasTrace ? hasAssessment ? "six" : "five" : hasAssessment ? "five" : "four";
@@ -276,7 +276,7 @@ public static class HandoffWriter
         var traceEvidenceDescription = selectedTrace
             ? "This is the exact diagnostic selected from Try a Word, kept unchanged with the Baseline it records. " +
               "No Assessment or replacement trace was run for this Handoff."
-            : "The matching `trace.summary` in `assessment.json` gives recorded parser steps and failure reasons. " +
+            : "The matching `trace.summary` in `parse-results.json` gives recorded parser steps and failure reasons. " +
               "Completion is `unknown` when the parser did not report whether its step cap stopped the search; " +
               "an invalid shape records `not-run`.";
         var traceSection = hasTrace
@@ -296,7 +296,7 @@ public static class HandoffWriter
         var assessmentSection = hasAssessment
             ? $"""
 
-                ## assessment.json
+                ## parse-results.json
 
                 One record per Selection word, each carrying its own `word` field: the outcome PanGloss
                 reported (`analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`) and how long the
@@ -305,13 +305,13 @@ public static class HandoffWriter
                 https://raw.githubusercontent.com/sillsdev/motif/{MotifRef}/docs/handoff/assessment-format.md.
 
                 ```
-                grep '"{sampleWord}"' assessment.json
+                grep '"{sampleWord}"' parse-results.json
                 ```
                 ```
-                python -c "import json; print(json.dumps(json.load(open('assessment.json', encoding='utf-8'))))"
+                python -c "import json; print(json.dumps(json.load(open('parse-results.json', encoding='utf-8'))))"
                 ```
                 ```
-                python parse_grammar_texts_assessment.py --help
+                python read_results.py --help
                 ```
                 """
             : $"""
@@ -319,7 +319,7 @@ public static class HandoffWriter
                 ## No Assessment
 
                 Nobody ran an Assessment before this Handoff was written, which is a complete Handoff and
-                not a broken one. There is no `assessment.json`, and so no evidence for why any word did
+                not a broken one. There is no `parse-results.json`, and so no evidence for why any word did
                 or did not parse; run an Assessment and hand off again to get one.
                 """;
 
@@ -336,9 +336,9 @@ public static class HandoffWriter
             record, compact within it — so a `grep` for a word returns that word's whole record on one
             line. The whole file loads with a plain `json.load`. A single grepped line carries the array's
             trailing comma, so strip it before `json.loads`, or hand the line to
-            `parse_grammar_texts_assessment.py`, whose loaders take either form.
+            `read_results.py`, whose loaders take either form.
 
-            `parse_grammar_texts_assessment.py`, in this same folder, has convenience routines for all of
+            `read_results.py`, in this same folder, has convenience routines for all of
             the above and a `--help` that teaches the file shapes; run it directly rather than reading its
             source copied in here.
 
@@ -348,7 +348,7 @@ public static class HandoffWriter
             - `texts.json` — every selected Text, each record carrying its own sanitized-title-and-GUID `key`.
             {assessmentManifestLine}
             {traceManifestLine}
-            - `parse_grammar_texts_assessment.py` — reads `grammar.json`, `texts.json`, and `assessment.json`; see its own `--help`.
+            - `read_results.py` — reads `grammar.json`, `texts.json`, and `parse-results.json`; see its own `--help`.
             - `handoff.md` — this file.
 
             ## grammar.json
@@ -363,7 +363,7 @@ public static class HandoffWriter
             python -c "import json; print(len(json.load(open('grammar.json'))))"
             ```
             ```
-            python parse_grammar_texts_assessment.py grammar rule <name>
+            python read_results.py grammar rule <name>
             ```
 
             ## texts.json
@@ -377,7 +377,7 @@ public static class HandoffWriter
             python -c "import json; print([t['key'] for t in json.load(open('texts.json'))])"
             ```
             ```
-            python parse_grammar_texts_assessment.py text {sampleTextKey}
+            python read_results.py text {sampleTextKey}
             ```
             {assessmentSection}
             {traceSection}
@@ -464,11 +464,11 @@ public static class HandoffWriter
         if (includeAssessment)
         {
             if (!File.Exists(assessmentPath))
-                throw new InvalidOperationException("The Handoff folder is missing 'assessment.json'.");
+                throw new InvalidOperationException("The Handoff folder is missing 'parse-results.json'.");
         }
         else if (File.Exists(assessmentPath))
         {
-            throw new InvalidOperationException("A --no-assess Handoff must not write 'assessment.json'.");
+            throw new InvalidOperationException("A --no-assess Handoff must not write 'parse-results.json'.");
         }
 
         var traceRoot = Path.Combine(root, "traces");

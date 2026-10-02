@@ -116,7 +116,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(File.Exists(tracePath));
         Assert.Contains("traces/" + selectedWord + ".trace.json", outcome.Value!.Files);
 
-        using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "assessment.json")));
+        using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")));
         var record = Assert.Single(assessment.RootElement.EnumerateArray());
         Assert.Equal(selectedWord, record.GetProperty("word").GetString());
         var trace = record.GetProperty("trace");
@@ -212,7 +212,7 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.False(exported.RootElement.GetProperty("search").GetProperty("completed").GetBoolean());
         Assert.Equal(selectedTrace.Value.HostCapture!.WallElapsedMs,
             exported.RootElement.GetProperty("hostCapture").GetProperty("wallElapsedMs").GetInt64());
-        Assert.False(File.Exists(Path.Combine(destination, "assessment.json")));
+        Assert.False(File.Exists(Path.Combine(destination, "parse-results.json")));
     }
 
     [Fact]
@@ -561,25 +561,25 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal(
             new[]
             {
-                "assessment.json", "grammar.json", "handoff.md",
-                "parse_grammar_texts_assessment.py", "texts.json",
+                "grammar.json", "handoff.md", "parse-results.json",
+                "read_results.py", "texts.json",
             },
             Directory.GetFiles(destination).Select(Path.GetFileName).Order(StringComparer.Ordinal));
 
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "texts.json");
-        AssertFile(destination, "assessment.json");
-        AssertFile(destination, "parse_grammar_texts_assessment.py");
+        AssertFile(destination, "parse-results.json");
+        AssertFile(destination, "read_results.py");
         AssertFile(destination, "handoff.md");
 
         using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "grammar.json")))) { }
         using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "texts.json")))) { }
-        using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "assessment.json")))) { }
+        using (JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")))) { }
 
         Assert.Contains("grammar.json", response.Files);
         Assert.Contains("texts.json", response.Files);
-        Assert.Contains("assessment.json", response.Files);
-        Assert.Contains("parse_grammar_texts_assessment.py", response.Files);
+        Assert.Contains("parse-results.json", response.Files);
+        Assert.Contains("read_results.py", response.Files);
         Assert.Contains("handoff.md", response.Files);
         Assert.False(string.IsNullOrWhiteSpace(response.PastedHeader));
         Assert.False(string.IsNullOrWhiteSpace(response.HandoffMarkdown));
@@ -603,7 +603,7 @@ public sealed class HandoffWriterTests : IDisposable
             managedRoot, NewAssessor(), invoker, onProgress: null, CancellationToken.None);
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
 
-        var assessmentLines = File.ReadAllLines(Path.Combine(destination, "assessment.json"));
+        var assessmentLines = File.ReadAllLines(Path.Combine(destination, "parse-results.json"));
         var matches = assessmentLines.Where(line => line.Contains("\"mirusi\"", StringComparison.Ordinal)).ToList();
         var match = Assert.Single(matches);
         Assert.Contains("\"outcome\"", match, StringComparison.Ordinal);
@@ -684,7 +684,7 @@ public sealed class HandoffWriterTests : IDisposable
     private static string RunPythonHelper(string destination, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo(PythonExecutable.Path!) { WorkingDirectory = destination };
-        startInfo.ArgumentList.Add(Path.Combine(destination, "parse_grammar_texts_assessment.py"));
+        startInfo.ArgumentList.Add(Path.Combine(destination, "read_results.py"));
         foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
 
         var result = ToolProcess.Run(startInfo);
@@ -756,7 +756,7 @@ public sealed class HandoffWriterTests : IDisposable
 
             incoming = Assert.Single(Directory.GetDirectories(_root, ".incoming-*"));
             AssertFile(incoming, "texts.json");
-            AssertFile(incoming, "parse_grammar_texts_assessment.py");
+            AssertFile(incoming, "read_results.py");
             Assert.Empty(Directory.EnumerateFileSystemEntries(destination));
 
             stopping.Cancel();
@@ -820,9 +820,9 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Empty(outcome.Value!.AssessmentIds);
         AssertFile(destination, "grammar.json");
         AssertFile(destination, "texts.json");
-        AssertFile(destination, "parse_grammar_texts_assessment.py");
+        AssertFile(destination, "read_results.py");
         AssertFile(destination, "handoff.md");
-        Assert.False(File.Exists(Path.Combine(destination, "assessment.json")));
+        Assert.False(File.Exists(Path.Combine(destination, "parse-results.json")));
         Assert.Contains(
             "No Assessment was run", File.ReadAllText(Path.Combine(destination, "handoff.md")),
             StringComparison.Ordinal);

@@ -177,7 +177,7 @@
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}">
               <StackPanel Classes="lineHead" Orientation="Horizontal">
-                <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" />
+                <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}" />
                 <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}" />
                 <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}" />
               </StackPanel>
@@ -517,7 +517,10 @@
                               </Button>
                               <Button Classes="wordCardAction" Content="Try a Word" Command="{Binding Actions.TryWordCommand}" />
                               <Button Classes="wordCardAction" Content="Mark as unread" Command="{Binding Actions.MarkTokenUnreadCommand}"
-                                      CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread" />
+                                      CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread"
+                                      AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
+                                      ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
+                                      views:ClearTipPlacement.IsEnabled="True" />
                               <Button Classes="wordCardAction" Content="Check again" Command="{Binding Actions.RecheckChangesCommand}"
                                       IsVisible="{Binding Marking.IsUncertain}" AutomationProperties.Name="Check this uncertain change again" />
                             </WrapPanel>

@@ -9,6 +9,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
@@ -247,6 +248,18 @@ internal sealed class TooltipScenes
                 await InText.OpenTokenCardAsync(Token("alikula"));
                 await Until(() => Visible<Border>().Any(border => border.Classes.Contains("wordCard")), "the word card");
                 break;
+            case TooltipScene.WordCardWithoutOccurrence:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                var assessedWord = Workspace.Assess.Result?.Words.FirstOrDefault()
+                    ?? throw new InvalidOperationException("The sample must contain an assessed word.");
+                var otherWordformId = CanonicalId.FromGuid(
+                    Guid.Parse("f00dbabe-cafe-4dad-9dad-bbbbbbbbbbbb")).Value;
+                InText.SelectWord(assessedWord.Word, otherWordformId);
+                if (InText.SelectedToken is not { Occurrence: null })
+                    throw new InvalidOperationException("The sample word must open without a chosen-text occurrence.");
+                await Until(() => Visible<Border>().Any(border => border.Classes.Contains("wordCard")),
+                    "the word card without a chosen-text occurrence");
+                break;
             case TooltipScene.Lists or TooltipScene.ListsStaged:
                 Show(WorkspacePage.Texts, TextsTab.Lists);
                 var list = Lists.Lists.First(candidate => candidate.HasWords);
@@ -345,6 +358,7 @@ internal sealed class TooltipScenes
             case TooltipScene.CollapsedSidebar: Window.Width = Width; break;
             case TooltipScene.TextPicker: Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read").IsDropDownOpen = false; break;
             case TooltipScene.WordCard: InText.CloseTokenCard(); break;
+            case TooltipScene.WordCardWithoutOccurrence: InText.CloseTokenCard(); break;
         }
         Window.MouseMove(new Point(4, Window.Bounds.Height - 4));
         PageScreenshots.Settle(Window);

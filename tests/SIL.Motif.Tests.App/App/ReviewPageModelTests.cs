@@ -134,7 +134,7 @@ public sealed class ReviewPageModelTests
         await context.OpenProjectAsync(ProjectPath);
 
         var item = Assert.Single(context.Changes.Items);
-        Assert.Equal("Uncertain — check again", item.FitStatus);
+        Assert.Equal("Needs another look", item.FitStatus);
         Assert.Same(item, Assert.Single(page.UncertainChanges));
         Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
         Assert.False(page.CanApply);

@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Handoff;
 /// embedded copies of <c>grammar-format.md</c>, <c>flextext-json-format.md</c> and <c>hc-mechanics.md</c>
 /// are gone (ADR 0045 decision 6): it is embedded in <see cref="SIL.Motif.Commands"/>, its links resolve as
 /// raw Markdown rather than a rendered GitHub page, and no asset's prose leaks a path local to whichever
-/// machine wrote it. The other asset, <c>parse_grammar_texts_assessment.py</c>, is pinned in
+/// machine wrote it. The other asset, <c>read_results.py</c>, is pinned in
 /// <see cref="HandoffPythonHelperTests"/>.
 /// </summary>
 public sealed class HandoffAssetsTests

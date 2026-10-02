@@ -387,9 +387,8 @@ public sealed class WorkspacePageTests
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Equal("Changes applied", workspace.FreshnessLabel);
-        Assert.StartsWith("after these numbers", workspace.FreshnessDetail);
-        Assert.Contains("Baseline", workspace.FreshnessDetail);
-        Assert.Contains("Refresh to update.", workspace.FreshnessDetail);
+        Assert.Contains("Numbers: Baseline of", workspace.FreshnessDetail);
+        Assert.Contains("changes applied later", workspace.FreshnessDetail);
     }
 
     [Fact]
@@ -651,9 +650,8 @@ public sealed class WorkspacePageTests
         Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence.MeasuredSaveUtc);
         Assert.False(workspace.Context.NeedsAssessment);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.StartsWith("at ", workspace.FreshnessDetail);
-        Assert.Contains("Baseline", workspace.FreshnessDetail);
-        Assert.Contains("Refresh to update.", workspace.FreshnessDetail);
+        Assert.Contains("Numbers: Baseline of", workspace.FreshnessDetail);
+        Assert.Contains("saved later", workspace.FreshnessDetail);
     }
 
     [Fact]

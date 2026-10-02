@@ -172,13 +172,33 @@ public sealed class ReviewPageModel : PageModel
 
     public bool IsApplyBlocked => ApplyBlockers.Count > 0;
 
-    /// <summary>How many things block Apply, named at the top of the page.</summary>
-    public string ApplyBlockedTitle => ApplyBlockers.Count switch
+    /// <summary>The number of changes that need attention before Apply can proceed.</summary>
+    public string ApplyBlockedTitle
     {
-        0 => string.Empty,
-        1 => "Apply is blocked by 1 thing",
-        var count => $"Apply is blocked by {count} things",
-    };
+        get
+        {
+            if (ApplyBlockers.Count == 0) return string.Empty;
+            var count = BlockingChangeCount;
+            return count switch
+            {
+                0 => "Apply is blocked",
+                1 => "Apply is blocked by 1 change",
+                _ => $"Apply is blocked by {count} changes",
+            };
+        }
+    }
+
+    private int BlockingChangeCount
+    {
+        get
+        {
+            var blockingIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var change in Changes.Items.Where(item => item.IsNoLongerFits || item.IsUncertain ||
+                         WordsLosingApprovedAnalysis.Contains(item.Word, StringComparer.Ordinal)))
+                blockingIds.Add(change.ChangeId);
+            return blockingIds.Count > 0 ? blockingIds.Count : Changes.Count;
+        }
+    }
 
     /// <summary>
     /// The page's count of pending changes, which after an unconfirmed Apply cannot honestly say they are unapplied.
@@ -471,11 +491,14 @@ public sealed class ReviewPageModel : PageModel
     private void ListWord(ChangeViewModel change)
     {
         var wasOpen = change.Listed?.IsOpen == true;
-        change.Listed = Context.Assess.Words.Listed(change.Word, new WordRowRoutes
+        var listed = Context.Assess.Words.Listed(change.Word, new WordRowRoutes
         {
             OpenInText = word => Context.OpenOccurrence(change.Occurrence, word, change.WordformId),
             TryWord = Context.TryWord,
         });
+        if (change.NowOpinionMark is { } opinion)
+            listed = new ListedWordViewModel(listed.Row.WithOpinionMark(opinion), listed.Card);
+        change.Listed = listed;
         change.Listed.IsOpen = wasOpen;
     }
 
@@ -519,7 +542,7 @@ public sealed class ReviewPageModel : PageModel
     }
 
     private static readonly ReviewChangeGroupDefinition Uncertain =
-        new(9, "Uncertain — check again", ReviewGroupKind.Uncertain);
+        new(9, "Needs another look", ReviewGroupKind.Uncertain);
 
     private sealed record ReviewChangeGroupDefinition(int Order, string Title,
         ReviewGroupKind Kind = ReviewGroupKind.Ordinary);

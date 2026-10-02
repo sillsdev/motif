@@ -363,7 +363,8 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("last FieldWorks save", text, StringComparison.Ordinal);
                 Assert.Contains("FieldWorks saved", text);
-                Assert.Contains("these numbers are from Baseline", text);
+                Assert.Contains("Numbers: Baseline", text);
+                Assert.Contains("saved later", text);
                 Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
@@ -1406,7 +1407,7 @@ public sealed class MainWindowSmokeTests
                 {
                     new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"),
                     new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"),
-                    new HandoffFileViewModel("assessment.json", @"C:\handoff\assessment.json"),
+                    new HandoffFileViewModel("parse-results.json", @"C:\handoff\parse-results.json"),
                 };
                 foreach (var file in files) workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(file);
                 workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
@@ -1437,9 +1438,9 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(button) == "Write the AI Handoff folder");
 
                 var tile = tiles.Single(item =>
-                    AutomationProperties.GetName(item) == "Drag assessment.json");
+                    AutomationProperties.GetName(item) == "Drag parse-results.json");
                 var tileText = tile.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(text => text.Text == "assessment.json");
+                    .Single(text => text.Text == "parse-results.json");
                 RaiseLeftPointerPress(tileText, window);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 

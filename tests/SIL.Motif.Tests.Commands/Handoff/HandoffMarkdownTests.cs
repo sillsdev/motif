@@ -28,8 +28,8 @@ public sealed class HandoffMarkdownTests
 
         Assert.Contains("`grammar.json`", markdown, StringComparison.Ordinal);
         Assert.Contains("`texts.json`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`assessment.json`", markdown, StringComparison.Ordinal);
-        Assert.Contains("`parse_grammar_texts_assessment.py`", markdown, StringComparison.Ordinal);
+        Assert.Contains("`parse-results.json`", markdown, StringComparison.Ordinal);
+        Assert.Contains("`read_results.py`", markdown, StringComparison.Ordinal);
         Assert.Contains("`handoff.md`", markdown, StringComparison.Ordinal);
     }
 
@@ -54,7 +54,7 @@ public sealed class HandoffMarkdownTests
     {
         var markdown = HandoffWriter.BuildHandoffMarkdown(hasAssessment, "example-key", "mirusi");
 
-        Assert.Contains("`parse_grammar_texts_assessment.py`", markdown, StringComparison.Ordinal);
+        Assert.Contains("`read_results.py`", markdown, StringComparison.Ordinal);
         Assert.Contains(hasAssessment ? "five files" : "four files", markdown, StringComparison.Ordinal);
     }
 
@@ -64,7 +64,7 @@ public sealed class HandoffMarkdownTests
         var markdown = HandoffWriter.BuildHandoffMarkdown(false, "example-key", "mirusi");
 
         Assert.Contains("No Assessment was run", markdown, StringComparison.Ordinal);
-        Assert.DoesNotContain("grep '\"mirusi\"' assessment.json", markdown, StringComparison.Ordinal);
+        Assert.DoesNotContain("grep '\"mirusi\"' parse-results.json", markdown, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class HandoffMarkdownTests
         var markdown = HandoffWriter.BuildHandoffMarkdown(true, "example-key", "mirusi");
 
         Assert.Contains("grep '\"example-key\"' texts.json", markdown, StringComparison.Ordinal);
-        Assert.Contains("grep '\"mirusi\"' assessment.json", markdown, StringComparison.Ordinal);
+        Assert.Contains("grep '\"mirusi\"' parse-results.json", markdown, StringComparison.Ordinal);
     }
 
     [Fact]

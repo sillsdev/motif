@@ -106,7 +106,7 @@ public sealed class FakeChatReceiver
         }
 
         ValidateJsonFileIfReceived("texts.json", failures);
-        ValidateJsonFileIfReceived("assessment.json", failures);
+        ValidateJsonFileIfReceived("parse-results.json", failures);
         ReportNestedPathFindings(findings);
         foreach (var finding in findings) _output?.WriteLine("Finding: " + finding);
         return new ChatValidationResult(failures, findings);

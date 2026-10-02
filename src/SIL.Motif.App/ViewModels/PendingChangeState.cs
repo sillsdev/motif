@@ -26,7 +26,7 @@ internal static class PendingChangeStates
     {
         PendingChangeState.NotAppliedYet => "Not applied yet",
         PendingChangeState.NoLongerFits => "No longer fits",
-        PendingChangeState.Uncertain => "Uncertain — check again",
+        PendingChangeState.Uncertain => "Needs another look",
         _ => null,
     };
 }

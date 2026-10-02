@@ -6,7 +6,7 @@ building a computational grammar of a language.
   speech, and lexicon entries.
 - `texts.json` holds real interlinear sentences from the project, word by word and morpheme by
   morpheme.
-- `assessment.json`, when present, records whether PanGloss actually accepted each word and how —
+- `parse-results.json`, when present, records whether PanGloss actually accepted each word and how —
   read it before trusting any claim about why a word did or did not parse.
 - Read `handoff.md` first: it names every file, how to search it, and where the full file-format
   documents live.

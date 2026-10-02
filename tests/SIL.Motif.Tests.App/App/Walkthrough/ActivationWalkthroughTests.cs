@@ -85,11 +85,9 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                     .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
                 Assert.Contains("FieldWorks saved", renderedText);
                 var renderedDetail = Assert.Single(renderedText, text => text.Contains(
-                    "these numbers are from Baseline", StringComparison.Ordinal));
+                    "Numbers: Baseline", StringComparison.Ordinal));
                 Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
-                Assert.StartsWith("at ", renderedDetail, StringComparison.Ordinal);
-                Assert.Contains("; these numbers are from Baseline ", renderedDetail, StringComparison.Ordinal);
-                Assert.EndsWith(". Refresh to update.", renderedDetail, StringComparison.Ordinal);
+                Assert.Contains("saved later", renderedDetail, StringComparison.Ordinal);
             }
             finally
             {

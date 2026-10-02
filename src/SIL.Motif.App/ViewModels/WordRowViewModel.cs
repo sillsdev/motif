@@ -88,6 +88,17 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>The row's facts as the projection gave them, with the read state as it is now.</summary>
     public WordRow Row => _row;
 
+    internal WordRowViewModel WithOpinionMark(OpinionMarkKind opinion) => new(_row with
+    {
+        Opinion = opinion switch
+        {
+            OpinionMarkKind.Approved => ProjectStanding.Approved,
+            OpinionMarkKind.Unknown => ProjectStanding.Candidate,
+            OpinionMarkKind.Disapproved => ProjectStanding.Rejected,
+            _ => _row.Opinion,
+        },
+    }, _routes, _notParsedYet);
+
     public string Word => _row.Word;
 
     /// <summary>The FieldWorks analysis's glosses, morph by morph; empty when FieldWorks holds none.</summary>

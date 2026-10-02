@@ -14,7 +14,7 @@ public sealed record SelectionProvenanceEntry(string Source, int Count);
 /// <summary>
 /// The Selection a Baseline Assessment or Handoff measured: the final word list plus which of the four
 /// agreed sources produced it and how many words each contributed. A Handoff's own record of which words
-/// were actually run lives in <c>assessment.json</c>, keyed by word; this projection is what produced it.
+/// were actually run lives in <c>parse-results.json</c>, keyed by word; this projection is what produced it.
 /// </summary>
 /// <param name="Words">
 /// The final, de-duplicated, ordinally-sorted word list — the same list a corresponding

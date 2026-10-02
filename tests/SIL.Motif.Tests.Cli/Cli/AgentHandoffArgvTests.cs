@@ -49,14 +49,14 @@ public sealed class AgentHandoffArgvTests : IDisposable
         Assert.Equal(5, handoff.Files.Count);
         Assert.Equal(new[]
         {
-            "assessment.json",
             "grammar.json",
             "handoff.md",
-            "parse_grammar_texts_assessment.py",
+            "parse-results.json",
+            "read_results.py",
             "texts.json",
-        }, handoff.Files.Order(StringComparer.Ordinal));
+        }, handoff.Files);
         Assert.All(handoff.Files, file => Assert.True(File.Exists(Path.Combine(destination, file.Replace('/', Path.DirectorySeparatorChar))), file));
-        using var assessmentDocument = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "assessment.json")));
+        using var assessmentDocument = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "parse-results.json")));
         Assert.Equal("motifa", Assert.Single(assessmentDocument.RootElement.EnumerateArray())
             .GetProperty("word").GetString());
 

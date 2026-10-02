@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
@@ -133,6 +135,22 @@ public sealed class PageScreenshots
                             window.Width = width;
                             window.Height = 780;
                             AssertSceneHasExpectedErrorState(window, workspace, $"overview {state}");
+                            if (state == "empty")
+                            {
+                                AssertParsePromptUsesPageAction(window);
+                                var handoff = Assert.Single(window.GetVisualDescendants().OfType<Border>(),
+                                    border => border.Classes.Contains("overviewHandoff"));
+                                Assert.False(handoff.IsEffectivelyVisible);
+                            }
+                            if (state == "stale")
+                            {
+                                var renderedText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
+                                Assert.Contains(renderedText, text => text?.Contains("Numbers: Baseline", StringComparison.Ordinal) == true);
+                                Assert.Contains(renderedText, text => text?.Contains("saved later", StringComparison.Ordinal) == true);
+                                Assert.DoesNotContain(renderedText, text => text?.Contains(
+                                    "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
+                            }
                             var file = $"overview-{state}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
                             states.Add($"{file}\tOverview {state}, {width} px, {theme} theme.");
@@ -148,6 +166,48 @@ public sealed class PageScreenshots
         }
 
         File.WriteAllLines(Path.Combine(folder, "overview-states.txt"), states);
+    }
+
+    [ScreenshotFact]
+    public void CaptureEmptyAnalyzeTextsAtBothWidthsAndThemes()
+    {
+        var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
+        Directory.CreateDirectory(folder);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenOverSampleData(parse: false);
+            try
+            {
+                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                {
+                        Application.Current!.RequestedThemeVariant = variant;
+                        foreach (var width in new[] { 1040, 1240 })
+                        {
+                            window.Width = width;
+                            window.Height = 780;
+                            Settle(window);
+                            AssertParsePromptUsesPageAction(window);
+                            Save(window, Path.Combine(folder, $"09-empty-parse-analyze-{width}-{theme}.png"));
+                        }
+                }
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    private static void AssertParsePromptUsesPageAction(MainWindow window)
+    {
+        var visibleButtons = window.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.IsEffectivelyVisible).ToArray();
+        Assert.Single(visibleButtons, button => AutomationProperties.GetName(button) == "Choose what to parse");
+        Assert.Single(visibleButtons, button => AutomationProperties.GetAutomationId(button) == "motif-refresh-project");
     }
 
     private static OverviewResponse OverviewFor(string state) => state == "stale"
@@ -530,7 +590,7 @@ public sealed class PageScreenshots
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
         fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 1140",
             Capture(), new SelectionProjection([], []),
-            ["handoff.md", "assessment.json", "texts.json", "grammar.json", "parse_grammar_texts_assessment.py"], ["assessment/one"])
+            ["handoff.md", "parse-results.json", "texts.json", "grammar.json", "read_results.py"], ["assessment/one"])
         {
             InvocationId = "assessment/one",
             HandoffMarkdown = SampleHandoffMarkdown,
@@ -592,7 +652,7 @@ public sealed class PageScreenshots
     private const string SampleHandoffMarkdown =
         "# AI Handoff: Sample\n\n" +
         "These files describe how the grammar of **Sample** parsed 9 words from 2 texts.\n\n" +
-        "- `assessment.json`: every word, whether it parsed, and how long it took.\n" +
+        "- `parse-results.json`: every word, whether it parsed, and how long it took.\n" +
         "- `texts.json`: the chosen texts with the analyses the project stores.\n" +
         "- `grammar.json`: the grammar the parser used.\n\n" +
         "Start with *hawajafika*, approved in FieldWorks as ha-wa-ja-fik-a but not parsed.\n";

@@ -452,7 +452,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                                 .Select(text => ($"the tooltip on {AutomationProperties.GetName(owner)}", text)));
                         reasons.AddRange(Shown(listsWindow, lists.HandOffCheckedWordsDisabledReason, lists.HandOffListDisabledReason)
                             .Select(text => ("the reason under the AI Handoff buttons", text)));
-                        reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, .. review.ApplyBlockers.Select(item => item.Sentence)])
+                        reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, review.ApplyDisabledReason ?? string.Empty])
                             .Select(text => ("the reasons Apply is blocked", text)));
                         if (reasons.Count < 4) failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
                         foreach (var (what, text) in reasons)

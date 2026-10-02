@@ -431,6 +431,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string Location { get; }
     public Uri? WordLink { get; }
     public OccurrenceAnchor? Occurrence { get; }
+    public string? MarkUnreadDisabledReason => Occurrence is null
+        ? "Choose a word occurrence in Analyze texts first."
+        : null;
     public Guid? WordformId { get; }
     public int OccurrenceIndex { get; }
     public bool HasWordLink => WordLink is not null;

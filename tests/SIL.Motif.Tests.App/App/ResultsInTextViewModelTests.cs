@@ -1222,7 +1222,7 @@ public sealed class ResultsInTextViewModelTests
         var token = inText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .First(candidate => candidate.Form == "anapenda");
 
-        Assert.Equal("Uncertain — check again", inText.Texts.SelectMany(text => text.Lines)
+        Assert.Equal("Needs another look", inText.Texts.SelectMany(text => text.Lines)
             .SelectMany(line => line.Tokens).First(candidate => candidate.Form == "kitabu").PendingChangeStatus);
         Assert.True(token.IsUncertainChanged);
     }
@@ -1469,6 +1469,15 @@ public sealed class ResultsInTextViewModelTests
 
             Assert.Equal(expected, token.ProjectStatusMark);
         }
+    }
+
+    [Fact]
+    public void UnavailableMarkAsUnreadActionExplainsThatItNeedsATextOccurrence()
+    {
+        var token = new ResultsTokenViewModel("Alpha", 1, Word("mtoto", null), null);
+        var reason = typeof(ResultsTokenViewModel).GetProperty("MarkUnreadDisabledReason")?.GetValue(token);
+
+        Assert.Equal("Choose a word occurrence in Analyze texts first.", reason);
     }
 
     [Fact]

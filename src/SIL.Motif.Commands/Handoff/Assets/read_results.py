@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""parse_grammar_texts_assessment.py -- read the three JSON files a Motif Handoff carries.
+"""read_results.py -- read the three JSON files a Motif Handoff carries.
 
 A Handoff is a folder of flat files a linguist drags into a chat model and asks about: why a
 word did not parse, or why parsing is slow. This script is one of those files. It never talks to
@@ -16,7 +16,7 @@ all four of them and is the right place to start:
     texts.json         Every interlinear Text that was selected, carried over from FieldWorks'
                        own FLExText structure: paragraphs, phrases, words, and each analysed
                        word's morphemes. See docs/handoff/flextext-json-format.md.
-    assessment.json    Present only when someone ran an Assessment. One record per Selection
+    parse-results.json    Present only when someone ran an Assessment. One record per Selection
                         word: whether PanGloss accepted it, how long that took, and -- for
                         whichever words were chosen for closer study -- the parser's own
                         derivation trace. See docs/handoff/assessment-format.md.
@@ -29,9 +29,9 @@ Every JSON file above is written as one JSON array, pretty-printed only down to 
 opening `[` and closing `]` each get their own line, and every element is compact JSON on its own
 line, followed by a comma on every line but the last. This means two things stay true at once:
 
-  * The whole file is one valid JSON document -- `json.load(open("assessment.json"))` just works,
+  * The whole file is one valid JSON document -- `json.load(open("parse-results.json"))` just works,
     and returns the list of records.
-  * A single line, pulled out on its own (`grep '"mirusi"' assessment.json`, or a line pasted into
+  * A single line, pulled out on its own (`grep '"mirusi"' parse-results.json`, or a line pasted into
     a chat), holds one whole, readable record -- possibly with a trailing comma, since it does not
     know whether the writer considered it the last one.
 
@@ -46,7 +46,7 @@ WHAT THIS FILE PROVIDES
 Every routine below has an obvious name and does one small thing:
 
   * Loading         load_grammar, load_texts, load_assessment
-  * assessment.json  words_by_outcome, word_records, slowest_words
+  * parse-results.json  words_by_outcome, word_records, slowest_words
   * texts.json       get_text, iter_paragraphs, iter_phrases, iter_words, iter_morphemes,
                      surface_form, word_pos, analysis_status, phrase_translation,
                      morpheme_form, morpheme_gloss
@@ -56,12 +56,12 @@ Every routine below has an obvious name and does one small thing:
                      trace_summary_of
 
 Import this file to use them from your own code (`from parse_grammar_texts_assessment import
-word_records, load_assessment`), or run it as a command: `python parse_grammar_texts_assessment.py
+word_records, load_assessment`), or run it as a command: `python read_results.py
 --help` lists every subcommand, and each subcommand's own `--help` documents its arguments.
 
-ON assessment.json's TRACES
+ON parse-results.json's TRACES
 -----------------------------
-No Motif release writes a trace into assessment.json yet -- the batch pass that produces every
+No Motif release writes a trace into parse-results.json yet -- the batch pass that produces every
 word's outcome and timing ships before the traced pass does. The routines in the TRACES section
 below are written against the shape ADR 0045 describes for when tracing lands: a traced word's
 record carries the derivation tree PanGloss's own `pangloss parse <grammar> <word> --trace
@@ -73,7 +73,7 @@ every record today. The tree-walking routines (`walk_trace`, `trace_failures`,
 `type`, `children` (always present, possibly empty), and on some node kinds `source`, `subrule`,
 `inputShape`, `outputShape`, and `failureReason` -- see PanGloss's docs/formats/trace-format.md for
 the full list of node types and failure reasons. What is genuinely uncertain is only the key
-`assessment.json` will use to attach that tree to a word's record; this file tries a short list of
+`parse-results.json` will use to attach that tree to a word's record; this file tries a short list of
 plausible names (see `_TRACE_KEYS` below) and is written to degrade to "no trace" rather than
 raise when none of them match.
 
@@ -104,7 +104,7 @@ def load_json_lenient(path: str) -> JsonValue:
 
     Tries a plain ``json.loads`` on the whole file first: every file this Handoff writes is
     already valid JSON end to end, so that succeeds for a complete `grammar.json`, `texts.json`,
-    or `assessment.json` and returns whatever top-level value it holds -- a list for the latter
+    or `parse-results.json` and returns whatever top-level value it holds -- a list for the latter
     two, since Motif always writes those as a JSON array; `grammar.json`'s own top-level shape
     belongs to PanGloss and is not assumed here.
 
@@ -139,7 +139,7 @@ def _require_list(data: JsonValue, path: str) -> list:
     if not isinstance(data, list):
         raise ValueError(
             f"{path} did not load as a JSON array of records (got {type(data).__name__}); "
-            "a Handoff's texts.json and assessment.json are always arrays, so this is not a "
+            "a Handoff's texts.json and parse-results.json are always arrays, so this is not a "
             "shape this file will guess its way through."
         )
     return data
@@ -155,13 +155,13 @@ def load_texts(path: str = "texts.json") -> list:
     return _require_list(load_json_lenient(path), path)
 
 
-def load_assessment(path: str = "assessment.json") -> list:
-    """Load assessment.json: one record per Selection word, keyed by its own ``word`` field."""
+def load_assessment(path: str = "parse-results.json") -> list:
+    """Load parse-results.json: one record per Selection word, keyed by its own ``word`` field."""
     return _require_list(load_json_lenient(path), path)
 
 
 # ---------------------------------------------------------------------------------------------
-# assessment.json
+# parse-results.json
 # ---------------------------------------------------------------------------------------------
 
 OUTCOMES = ("analysed", "no-analysis", "capped", "timed-out", "skipped")
@@ -195,18 +195,18 @@ def slowest_words(records: list, count: int) -> list:
 
 
 # ---------------------------------------------------------------------------------------------
-# assessment.json: traces (see the module docstring's TRACES section)
+# parse-results.json: traces (see the module docstring's TRACES section)
 # ---------------------------------------------------------------------------------------------
 
 _TRACE_KEYS = ("trace", "traceTree", "derivationTrace")
-"""Candidate keys for a traced word's tree on its assessment.json record; see the module docstring."""
+"""Candidate keys for a traced word's tree on its parse-results.json record; see the module docstring."""
 
 _TRACE_SUMMARY_KEYS = ("traceSummary", "traceSummaryV1")
 """Candidate keys for a traced word's precomputed one-line summary, tried before deriving one."""
 
 
 def trace_of(record: dict) -> JsonValue | None:
-    """The verbatim trace tree on a word's assessment.json record, or ``None`` when it has none.
+    """The verbatim trace tree on a word's parse-results.json record, or ``None`` when it has none.
 
     Every word in the Selection gets a statistics record; only the ones chosen for tracing carry
     a tree at all, so ``None`` here is the ordinary case, not a failure.
@@ -466,36 +466,36 @@ def find_lexicon_entry(grammar: JsonValue, name_or_guid: str) -> list[dict]:
 
 _DESCRIPTION = """\
 A Motif Handoff is five flat files, dragged straight from a folder window: grammar.json,
-texts.json, assessment.json (only when someone ran an Assessment), this script, and handoff.md,
+texts.json, parse-results.json (only when someone ran an Assessment), this script, and handoff.md,
 which introduces the other four and is the right place to start reading.
 
   grammar.json      Every rule, part of speech, phoneme, and lexicon entry PanGloss parsed with.
   texts.json        Every selected Text: paragraphs, phrases, words, and each word's morphemes,
                      carried over from FieldWorks' own FLExText structure.
-  assessment.json   One record per Selection word: whether PanGloss accepted it (its outcome),
+  parse-results.json   One record per Selection word: whether PanGloss accepted it (its outcome),
                      how long that took, and -- for words chosen for closer study -- the
                      parser's own derivation trace.
   handoff.md        Orientation for all four of the above; read it first.
 
-Every JSON file is valid JSON with one record per line, so `grep '"some-word"' assessment.json`
-returns that word's whole record on one line, and `json.load(open("assessment.json"))` loads the
+Every JSON file is valid JSON with one record per line, so `grep '"some-word"' parse-results.json`
+returns that word's whole record on one line, and `json.load(open("parse-results.json"))` loads the
 whole file at once. This script's own loaders accept either input -- a grepped line, trailing
 comma and all, or the complete file -- so you can pipe grep's output straight into it or point it
 at the file on disk.
 
 Run a subcommand's own --help for its arguments, for example:
-  python parse_grammar_texts_assessment.py word --help
+  python read_results.py word --help
 """
 
 _EPILOG = """\
 examples:
-  python parse_grammar_texts_assessment.py outcome capped
-  python parse_grammar_texts_assessment.py word mirusi
-  python parse_grammar_texts_assessment.py slowest 10
-  python parse_grammar_texts_assessment.py trace mirusi
-  python parse_grammar_texts_assessment.py text example-00000000-0000-0000-0000-000000000001
-  python parse_grammar_texts_assessment.py words example-00000000-0000-0000-0000-000000000001
-  python parse_grammar_texts_assessment.py grammar rule "Rule Name"
+  python read_results.py outcome capped
+  python read_results.py word mirusi
+  python read_results.py slowest 10
+  python read_results.py trace mirusi
+  python read_results.py text example-00000000-0000-0000-0000-000000000001
+  python read_results.py words example-00000000-0000-0000-0000-000000000001
+  python read_results.py grammar rule "Rule Name"
 """
 
 
@@ -505,27 +505,27 @@ def _print_json(value: JsonValue) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="parse_grammar_texts_assessment.py",
+        prog="read_results.py",
         description=_DESCRIPTION,
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--assessment", default="assessment.json", help="Path to assessment.json.")
+    parser.add_argument("--assessment", default="parse-results.json", help="Path to parse-results.json.")
     parser.add_argument("--texts", default="texts.json", help="Path to texts.json.")
     parser.add_argument("--grammar", default="grammar.json", help="Path to grammar.json.")
 
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     outcome = subcommands.add_parser(
-        "outcome", help="List assessment.json words with a given outcome.")
+        "outcome", help="List parse-results.json words with a given outcome.")
     outcome.add_argument("outcome", choices=OUTCOMES)
 
     word = subcommands.add_parser(
-        "word", help="Show one assessment.json word's own record by its surface form.")
+        "word", help="Show one parse-results.json word's own record by its surface form.")
     word.add_argument("word")
 
     slowest = subcommands.add_parser(
-        "slowest", help="Show the N slowest assessment.json words by elapsedMs.")
+        "slowest", help="Show the N slowest parse-results.json words by elapsedMs.")
     slowest.add_argument("n", type=int)
 
     trace = subcommands.add_parser(

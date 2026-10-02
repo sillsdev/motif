@@ -367,13 +367,17 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>Whether the top row offers Refresh instead of parsing or showing parse progress.</summary>
     public bool ShowsRefreshAction => !FreshnessIsBusy && !IsParsingAllWords && !Assess.IsActive &&
-        (!Context.NeedsAssessment || FreshnessIsStale);
+        (!Context.NeedsAssessment || FreshnessIsStale || ShowsPageRefreshAction);
 
     /// <summary>Whether the top row offers the saved Default Selection against the current Baseline.</summary>
     public bool ShowsParseAllWordsAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == true;
 
     /// <summary>Whether the top row offers to open Configure when there is no saved Selection to parse.</summary>
-    public bool ShowsChooseWhatToParseAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == false;
+    public bool ShowsChooseWhatToParseAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == false &&
+        !ShowsPageRefreshAction;
+
+    private bool ShowsPageRefreshAction => Context.Setup?.CanRunDefaultSelection == false &&
+        CurrentPage is WorkspacePage.Overview or WorkspacePage.Texts or WorkspacePage.Review;
 
     /// <summary>Whether the top row is showing progress for an Assessment.</summary>
     public bool ShowsParseAllWordsProgress => Assess.IsActive || Assess.Trace.ParseProgress.IsActive ||
@@ -439,10 +443,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private string SavedSinceText()
     {
         var evidence = Context.Evidence;
-        var baseline = Baseline.CapturedUtc is { } captured ? When(captured) : "time unavailable";
+        var baseline = Baseline.CapturedUtc is { } captured ? $"Baseline of {When(captured)}" : "Baseline";
         if (evidence.AppliedSinceRefresh)
-            return $"after these numbers (Baseline {baseline}). Refresh to update.";
-        return $"at {When(evidence.LatestSaveUtc!.Value)}; these numbers are from Baseline {baseline}. Refresh to update.";
+            return $"Numbers: {baseline}; changes applied later.";
+
+        var saved = evidence.LatestSaveUtc ?? Baseline.ProjectLastWriteUtc ?? Baseline.SourceLastWriteUtc;
+        return saved is { } at
+            ? $"Numbers: {baseline}; saved later {When(at)}."
+            : $"Numbers: {baseline}; saved later.";
     }
 
     private string BaselineAndSaveText()
@@ -458,7 +466,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         var clock = Context.Clock;
         var local = TimeZoneInfo.ConvertTime(at, clock.LocalTimeZone);
         return local.Date == clock.GetLocalNow().Date
-            ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
+            ? local.ToString("t", CultureInfo.CurrentCulture)
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 
@@ -720,6 +728,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             case nameof(WorkspaceContext.CurrentPage):
                 OnPropertyChanged(nameof(CurrentPage));
                 OnPropertyChanged(nameof(SelectedPage));
+                OnPropertyChanged(nameof(ShowsRefreshAction));
+                OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
                 RefreshPages();
                 break;
             case nameof(WorkspaceContext.ProjectPath):

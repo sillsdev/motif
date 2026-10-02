@@ -8,7 +8,7 @@ using Xunit;
 namespace SIL.Motif.Tests.Handoff;
 
 /// <summary>
-/// Pins <c>parse_grammar_texts_assessment.py</c> as an embedded resource and its <c>--help</c> output as a
+/// Pins <c>read_results.py</c> as an embedded resource and its <c>--help</c> output as a
 /// teaching surface (ADR 0045's own description): a reader who runs nothing but <c>--help</c> must still
 /// learn what the three JSON files are and that <c>handoff.md</c> is the file that introduces all of them.
 /// Round-trip coverage against a real, writer-produced Handoff lives in
@@ -17,7 +17,7 @@ namespace SIL.Motif.Tests.Handoff;
 public sealed class HandoffPythonHelperTests : IDisposable
 {
     private const string PythonHelperResource =
-        "SIL.Motif.Commands.Handoff.Assets.parse_grammar_texts_assessment.py";
+        "SIL.Motif.Commands.Handoff.Assets.read_results.py";
 
     private static readonly Assembly CommandsAssembly = typeof(CommandCatalog).Assembly;
 
@@ -47,7 +47,7 @@ public sealed class HandoffPythonHelperTests : IDisposable
 
         Assert.Contains("grammar.json", help, StringComparison.Ordinal);
         Assert.Contains("texts.json", help, StringComparison.Ordinal);
-        Assert.Contains("assessment.json", help, StringComparison.Ordinal);
+        Assert.Contains("parse-results.json", help, StringComparison.Ordinal);
         Assert.Contains("handoff.md", help, StringComparison.Ordinal);
 
         // Every subcommand this file actually implements, so --help cannot fall behind the code.
@@ -75,7 +75,7 @@ public sealed class HandoffPythonHelperTests : IDisposable
 
     private string WriteScriptToDisk()
     {
-        var scriptPath = Path.Combine(_root, "parse_grammar_texts_assessment.py");
+        var scriptPath = Path.Combine(_root, "read_results.py");
         File.WriteAllText(scriptPath, ReadEmbeddedText(PythonHelperResource));
         return scriptPath;
     }

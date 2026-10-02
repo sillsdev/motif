@@ -64,6 +64,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private readonly ChangesViewModel _changes;
     private readonly ICommandClient _commands;
     private IReadOnlyList<ResultsTokenViewModel> _allWords = [];
+    private ResultsTokenViewModel? _standaloneSelectedWord;
+    private ResultsLineViewModel? _standaloneSelectedLine;
     private long _readStateGeneration;
     private long _readStateWriteVersion;
     // Per Text, how many Mark read or Mark unread answers have been applied, so an older load can tell it is stale.
@@ -256,7 +258,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public string ChosenTextsRemovalPreview => RemovalUsesPreview(_allWords);
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
-    public string? Message => Texts.Count == 0
+    public string? Message => HasStandaloneSelectedWord ? null : Texts.Count == 0
             ? _assess.Result is null ? null : "Check a text in Texts to read the results in place."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
@@ -434,9 +436,12 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             TryWordLink = null,
             OccurrenceCount = null,
         };
-        SelectToken(new ResultsTokenViewModel("Parsed words", 0, new TextToken(word, word, null, null)
+        var selected = new ResultsTokenViewModel("Parsed words", 0, new TextToken(word, word, null, null)
             { WordformId = identity }, result,
-            location: "Not in a chosen text"));
+            location: "Not in a chosen text");
+        selected.PropertyChanged += OnTokenPropertyChanged;
+        AttachTokenActions(selected);
+        SelectToken(selected);
     }
 
     partial void OnSelectedTextChanged(ResultsTextViewModel? value)
@@ -478,6 +483,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         AddChangeCommand.NotifyCanExecuteChanged();
         StagePrimaryMarkingActionCommand.NotifyCanExecuteChanged();
         StageMarkingChoiceCommand.NotifyCanExecuteChanged();
+        RefreshLines();
     }
 
     private int Count(OccurrenceVerdict verdict) => _allWords.Count(token => token.Verdict == verdict);
@@ -508,13 +514,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
         foreach (var token in _allWords) token.PropertyChanged += OnTokenPropertyChanged;
-        foreach (var token in _allWords)
-        {
-            token.Actions = this;
-            token.StageMarkingChoiceForTokenCommand = new AsyncRelayCommand<AnalysisMarkingChoice>(
-                choice => StageMarkingChoiceForTokenAsync(token, choice),
-                choice => CanStageMarkingChoice(token, choice));
-        }
+        foreach (var token in _allWords) AttachTokenActions(token);
         _warningEvidenceRefresh = RefreshWarningEvidenceAsync(++_warningEvidenceGeneration,
             _allWords.ToArray(), _assess.Result?.Words ?? []);
         OnPropertyChanged(nameof(ChosenTextsAnalysisCount));
@@ -568,6 +568,20 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             }
             if (any) matchingLines.Add(line);
         }
+        if (HasStandaloneSelectedWord && SelectedToken is { } selected)
+        {
+            if (!ReferenceEquals(_standaloneSelectedWord, selected))
+            {
+                _standaloneSelectedWord = selected;
+                _standaloneSelectedLine = ResultsLineViewModel.ForSelectedWord(selected);
+            }
+            matchingLines.Add(_standaloneSelectedLine!);
+        }
+        else
+        {
+            _standaloneSelectedWord = null;
+            _standaloneSelectedLine = null;
+        }
         for (var index = 0; index < matchingLines.Count; index++)
         {
             var line = matchingLines[index];
@@ -584,6 +598,18 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         OnPropertyChanged(nameof(HasResults));
         OnPropertyChanged(nameof(HasLines));
         OnPropertyChanged(nameof(NeedsTexts));
+    }
+
+    private bool HasStandaloneSelectedWord => SelectedToken is { IsWord: true, Occurrence: null } selected &&
+        !Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Any(token => ReferenceEquals(token, selected));
+
+    private void AttachTokenActions(ResultsTokenViewModel token)
+    {
+        token.Actions = this;
+        token.StageMarkingChoiceForTokenCommand = new AsyncRelayCommand<AnalysisMarkingChoice>(
+            choice => StageMarkingChoiceForTokenAsync(token, choice),
+            choice => CanStageMarkingChoice(token, choice));
     }
 
     private bool MatchesFilter(ResultsTokenViewModel token) => Filter switch
@@ -1002,6 +1028,18 @@ public sealed class ResultsTextViewModel
 /// <summary>One line of a Text in the Results In text view, with the word card opened under it.</summary>
 public sealed class ResultsLineViewModel : ObservableObject
 {
+    private ResultsLineViewModel(ResultsTokenViewModel selectedWord)
+    {
+        ArgumentNullException.ThrowIfNull(selectedWord);
+        Number = 0;
+        TextId = Guid.Empty;
+        ParagraphId = Guid.Empty;
+        SegmentId = Guid.Empty;
+        Tokens = [selectedWord];
+        IsStandalone = true;
+        selectedWord.PropertyChanged += OnTokenPropertyChanged;
+    }
+
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
         IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null, Guid textId = default)
     {
@@ -1024,10 +1062,18 @@ public sealed class ResultsLineViewModel : ObservableObject
     }
 
     public int Number { get; }
+    /// <summary>Whether the row has a source Text line number to show.</summary>
+    public bool ShowsLineNumber => !IsStandalone;
+    /// <summary>Whether the row represents a word opened without a chosen-Text occurrence.</summary>
+    public bool IsStandalone { get; }
     public Guid TextId { get; }
     public Guid ParagraphId { get; }
     public Guid SegmentId { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }
+
+    /// <summary>Places an opened word's card in the reader without inventing a Text occurrence.</summary>
+    internal static ResultsLineViewModel ForSelectedWord(ResultsTokenViewModel selectedWord) =>
+        new(selectedWord ?? throw new ArgumentNullException(nameof(selectedWord)));
 
     /// <summary>The word on this line whose card is open, which the line shows beneath its words.</summary>
     public ResultsTokenViewModel? OpenCard => Tokens.FirstOrDefault(token => token.IsCardOpen);

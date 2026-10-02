@@ -24,15 +24,6 @@
           <views:CopyableTextBlock x:Name="ApplyBlockedReason" Classes="muted" TextWrapping="Wrap"
                                    Text="{Binding ApplyDisabledReason}" IsVisible="{Binding IsApplyBlocked}" />
         </StackPanel>
-        <Border Classes="notice" IsVisible="{Binding NeedsReconciliation}">
-          <DockPanel LastChildFill="True">
-            <Button DockPanel.Dock="Right" Content="Refresh" Classes="Primary" Theme="{DynamicResource SolidButton}"
-                    Command="{Binding RefreshCommand}" VerticalAlignment="Center"
-                    AutomationProperties.Name="Refresh to check what FieldWorks has" />
-            <views:CopyableTextBlock Text="{Binding ReconciliationNotice}" TextWrapping="Wrap"
-                                     VerticalAlignment="Center" />
-          </DockPanel>
-        </Border>
         <StackPanel Classes="reviewCompact" IsVisible="{Binding ShowsEmptyState}">
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                                    Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
@@ -218,10 +209,9 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ApplyBlocker">
-                <StackPanel Classes="reviewCompact">
-                  <views:CopyableTextBlock Classes="reviewBlocker" Text="{Binding Sentence}" TextWrapping="Wrap" />
+                <StackPanel Classes="reviewCompact" IsVisible="{Binding IsMeasureAction}">
                   <Button Classes="reviewAction" Content="{Binding ActionText}" Command="{Binding Action}"
-                          IsVisible="{Binding HasAction}"
+                          IsVisible="{Binding IsMeasureAction}"
                           Classes.measureAction="{Binding IsMeasureAction}"
                           AutomationProperties.Name="{Binding ActionAccessibleName}"
                           />
