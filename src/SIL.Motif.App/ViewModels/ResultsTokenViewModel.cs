@@ -241,6 +241,18 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool HasOtherWordsUsingMorpheme => OtherWordsUsingMorpheme.Count > 0;
     /// <summary>The other word forms that use the same named morpheme.</summary>
     public string OtherWordsUsingMorphemeLabel => string.Join(", ", OtherWordsUsingMorpheme);
+    /// <summary>The heading for the other words reached through a named morpheme.</summary>
+    public string OtherWordsUsingMorphemeHeading => WarningMorphemeNames() is [var name]
+        ? $"Other words that use {name}" : "Other words that use the named morphemes";
+    /// <summary>Whether the stored finding names a morpheme that appears in this word's reading.</summary>
+    public bool HasNamedMorphemeNames => WarningMorphemeNames().Count > 0;
+    /// <summary>The morpheme names stated by exact grammar warning evidence.</summary>
+    public string NamedMorphemeSentence => WarningMorphemeNames() is { Count: > 0 } names
+        ? $"{(names.Count == 1 ? "A grammar warning names" : "Grammar warnings name")} {string.Join(", ", names)}."
+        : string.Empty;
+    /// <summary>The word card's heading for warning evidence and possible matches.</summary>
+    public string WarningSectionHeading => HasNamedWarning ? "What a warning names in this word"
+        : HasWarningCandidates ? "Possible warning matches" : "Warning evidence";
     /// <summary>Whether exact or candidate warning evidence, or this word's Assessment, supports the card section.</summary>
     public bool HasWhySection => HasWarningEvidence || _assessment is not null;
     /// <summary>Whether the Timing response included any rule shares for this word.</summary>
@@ -293,6 +305,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         OnPropertyChanged(nameof(HasSpellingCandidateWarnings));
         OnPropertyChanged(nameof(HasOtherWordsUsingMorpheme));
         OnPropertyChanged(nameof(OtherWordsUsingMorphemeLabel));
+        OnPropertyChanged(nameof(OtherWordsUsingMorphemeHeading));
+        OnPropertyChanged(nameof(HasNamedMorphemeNames));
+        OnPropertyChanged(nameof(NamedMorphemeSentence));
+        OnPropertyChanged(nameof(WarningSectionHeading));
         OnPropertyChanged(nameof(HasWhySection));
         OnPropertyChanged(nameof(WarningMarkLabel));
         OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphs));
@@ -349,6 +365,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         foreach (var grammaticalInfo in reach.GrammaticalInfoIds)
             yield return new ObjectUseRef { GrammaticalInfoId = grammaticalInfo };
     }
+
+    private IReadOnlyList<string> WarningMorphemeNames() => NamedWarnings.SelectMany(finding => finding.Subject)
+        .Where(part => part.Role == GrammarWarningPartRole.Object && part.Reach is { Path: WarningWordsPath.Uses })
+        .Select(part => part.Text).Where(text => !string.IsNullOrWhiteSpace(text))
+        .Distinct(StringComparer.Ordinal).ToArray();
 
     /// <summary>Whether FieldWorks stores more analyses than the strip's one line shows.</summary>
     public bool HasMoreFieldWorksAnalyses => FieldWorksAnalyses.Count > 1;
@@ -562,7 +583,11 @@ public sealed record ResultsStripMorphViewModel(ParserReadingMorphViewModel Morp
 
 /// <summary>The PanGloss message shown for an exact finding in a word card.</summary>
 /// <param name="Message">The warning description PanGloss supplied.</param>
-public sealed record NamedWarningCardViewModel(string Message);
+public sealed record NamedWarningCardViewModel(string Message)
+{
+    /// <summary>Whether PanGloss supplied a message to show with the warning.</summary>
+    public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
+}
 
 /// <summary>Words reached through one spelling or membership candidate group.</summary>
 /// <param name="Words">The candidate word forms reached through this route.</param>
@@ -570,10 +595,10 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
 {
     /// <summary>The candidate word forms as a comma-separated label.</summary>
     public string WordsLabel => string.Join(", ", Words);
-    /// <summary>The heading for this membership candidate group.</summary>
-    public string MembershipLabel => "Membership candidates; not confirmed uses";
-    /// <summary>The heading for this spelling candidate group.</summary>
-    public string SpellingLabel => "Spelling candidates; not confirmed uses";
+    /// <summary>The heading for words reached through members of a named resource.</summary>
+    public string MembershipLabel => "Words that use members of the named resource";
+    /// <summary>The heading for words matched by their spelling alone.</summary>
+    public string SpellingLabel => "Matched by spelling only";
 }
 
 /// <summary>One stored rule's share of the selected word time.</summary>

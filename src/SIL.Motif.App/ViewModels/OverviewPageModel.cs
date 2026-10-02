@@ -71,7 +71,6 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(AccuracySegments))]
     [NotifyPropertyChangedFor(nameof(HasWarningSummary))]
     [NotifyPropertyChangedFor(nameof(WarningsCount))]
-    [NotifyPropertyChangedFor(nameof(WarningsDetails))]
     [NotifyPropertyChangedFor(nameof(HasWarningsWordSummary))]
     [NotifyPropertyChangedFor(nameof(WarningsYourWordsText))]
     [NotifyPropertyChangedFor(nameof(WarningsSpellingCandidatesText))]
@@ -326,7 +325,9 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The Selection words reached by exact identity from a stored grammar warning.</summary>
     public string WarningsYourWordsText => Overview?.Warnings?.YourWords is not { } touched ? string.Empty
-        : touched.IsComplete ? $"{touched.Words:N0} of your words use something a warning names"
+        : touched.IsComplete ? touched.Words == 0 ? "None of your words use something a warning names"
+            : touched.Words == 1 ? "1 of your words uses something a warning names"
+            : $"{touched.Words:N0} of your words use something a warning names"
         : (touched.Words == 0 ? "No known word matches" : $"At least {touched.Words:N0} of your words use something a warning names") +
           (touched.AttributionLimits.Count > 0 ? "; some named connections could not be followed"
               : "; word evidence is unavailable for some findings");
@@ -350,21 +351,23 @@ public sealed partial class OverviewPageModel : PageModel
         : row.WordAttributionComplete == true ? SpeedText.Count(known, "word", "words")
         : known == 0 ? "No known matches; incomplete" : "At least " + SpeedText.Count(known, "word", "words");
 
-    /// <summary>
-    /// Every grammar finding, the number the Warnings page's sidebar badge also shows, then the errors among them.
-    /// </summary>
-    public string WarningsCount => Overview?.Warnings switch
+    /// <summary>The reported error, warning, and information totals for the grammar check.</summary>
+    public string WarningsCount
     {
-        { Count: { } count, ErrorCount: { } errors } =>
-            $"{SpeedText.Count(count, "warning", "warnings")} · {SpeedText.Count(errors, "error", "errors")}",
-        { Count: { } count } => SpeedText.Count(count, "warning", "warnings"),
-        _ => "Not checked yet",
-    };
-
-    /// <summary>The informational findings, or why there is nothing more to say.</summary>
-    public string WarningsDetails => Overview?.Warnings is not { } warnings ? "No warning summary is available."
-        : warnings.InformationCount is { } information ? $"{information:N0} worth a look"
-        : warnings.Count is null ? "No findings count was recorded." : string.Empty;
+        get
+        {
+            if (Overview?.Warnings is not { } warnings) return "Not checked yet";
+            var levels = new List<string>();
+            if (warnings.WarningCount is { } warningCount)
+                levels.Add(SpeedText.Count(warningCount, "warning", "warnings"));
+            if (warnings.ErrorCount is { } errorCount)
+                levels.Add(SpeedText.Count(errorCount, "error", "errors"));
+            if (warnings.InformationCount is { } informationCount)
+                levels.Add(SpeedText.Count(informationCount, "information finding", "information findings"));
+            return levels.Count > 0 ? string.Join(" · ", levels)
+                : warnings.Count is { } count ? SpeedText.Count(count, "finding", "findings") : "Not checked yet";
+        }
+    }
 
     /// <summary>Opens the Texts matrix that shows the words behind Text Coverage.</summary>
     public IRelayCommand OpenTextCoverageCommand { get; }

@@ -405,7 +405,7 @@
                         </Border>
                         <Border Classes="wordCardSection hoverReveal" IsVisible="{Binding HasWhySection}">
                           <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                            <views:CopyableTextBlock Classes="wordCardHeading" Text="Why it might not parse" />
+                            <views:CopyableTextBlock Classes="wordCardHeading" Text="{Binding WarningSectionHeading}" />
                             <views:CopyableTextBlock Classes="muted" Text="No stored warning names this word."
                                                      IsVisible="{Binding HasNoNamedWarning}" />
                             <ItemsControl ItemsSource="{Binding NamedWarningDetails}" IsVisible="{Binding HasNamedWarning}">
@@ -417,17 +417,18 @@
                                               Content="Open the warning" Command="{Binding $parent[ItemsControl].DataContext.Actions.OpenWarningsCommand}"
                                               AutomationProperties.Name="Open the grammar warning" />
                                       <views:CopyableTextBlock Classes="wordCardHeading" Text="{Binding Message}"
+                                                               IsVisible="{Binding HasMessage}"
                                                                TextWrapping="Wrap" />
                                     </DockPanel>
                                   </StackPanel>
                                 </DataTemplate>
                               </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <views:CopyableTextBlock Classes="muted" Text="Named exactly"
-                                                     IsVisible="{Binding HasNamedWarning}" />
+                            <views:CopyableTextBlock Classes="muted" Text="{Binding NamedMorphemeSentence}"
+                                                     IsVisible="{Binding HasNamedMorphemeNames}" />
                             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
                                         IsVisible="{Binding HasOtherWordsUsingMorpheme}">
-                              <views:CopyableTextBlock Classes="muted" Text="Other words using this morpheme" />
+                              <views:CopyableTextBlock Classes="muted" Text="{Binding OtherWordsUsingMorphemeHeading}" />
                               <views:CopyableTextBlock Text="{Binding OtherWordsUsingMorphemeLabel}"
                                                        TextWrapping="Wrap" />
                             </StackPanel>

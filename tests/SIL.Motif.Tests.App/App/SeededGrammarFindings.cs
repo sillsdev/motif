@@ -9,6 +9,7 @@ namespace SIL.Motif.Tests.App;
 internal static class SeededGrammarFindings
 {
     private const string Link = "silfw://localhost/link?database=Sample&tool=";
+    private const string UnsegmentableFormGuid = "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d02";
 
     /// <summary>The objects each finding names that FieldWorks can open.</summary>
     public static int LinkedSubjectCount => All().Where(finding => finding.Subject.Any(part => part.FieldWorksLink is not null))
@@ -18,17 +19,12 @@ internal static class SeededGrammarFindings
     {
         var findings = new List<GrammarWarning>();
         void Add(string code, string group, GrammarWarningPart? subject, string problem, int count,
-            GrammarFindingOrigin origin = GrammarFindingOrigin.Import)
+            GrammarFindingOrigin origin = GrammarFindingOrigin.Import, string? explanation = null,
+            string? guidance = null)
         {
             var text = $"warning: {code}: " + (subject is null ? problem : $"{subject.Text}: {problem}");
             var words = code == "conversion.unsegmentable-form"
-                ? new WarningWords(WarningWordsMatch.Identity,
-                    [new ObjectUseWord(new WordRow("kat", WordRowOutcome.Different, "Lost", WordRowTone.Problem)
-                    {
-                        Opinion = "Approved",
-                        Places = 3,
-                        PanGlossReadingAvailability = WordRowReadingAvailability.NotRequested,
-                    })], [])
+                ? new WarningWords(WarningWordsMatch.Identity, [], [])
                     { Paths = [WarningWordsPath.ThroughAllomorphs] }
                 : null;
             for (var index = 0; index < count; index++)
@@ -38,10 +34,10 @@ internal static class SeededGrammarFindings
                 {
                     Group = group,
                     Code = code,
-                    Title = group,
+                    Title = code == "grammar.environment.invalid" ? "Environment could not be read" : group,
                     Description = problem,
-                    Explanation = $"PanGloss explanation for {group}.",
-                    Guidance = "PanGloss guidance supplied for this finding.",
+                    Explanation = explanation,
+                    Guidance = guidance,
                     FieldWorksPlaces = PlacesFor(code),
                     Origin = origin,
                     YourWords = words,
@@ -55,7 +51,9 @@ internal static class SeededGrammarFindings
             Named("e2 (/ _ [C])", "PhEnvironment", "EnvironmentEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d01"),
             "unknown natural class \"C\"; treated as absent", 5);
         Add("conversion.unsegmentable-form", "Allomorph form cannot be segmented",
-            Named("kat", "MoForm", "lexiconEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d02"),
+            Named("kat", "MoForm", "lexiconEdit", UnsegmentableFormGuid,
+                new WarningReach(WarningWordsPath.ThroughAllomorphs)
+                { AllomorphIds = [UnsegmentableFormGuid] }),
             "cannot segment \"kat\": no character definition matches at position 0; skipped", 3);
         Add("grammar.msa.no-rule-form-allomorphs", "Analysis has no usable affix form", null,
             "MSA has zero loadable allomorphs for this stratum bucket", 2);
@@ -69,16 +67,21 @@ internal static class SeededGrammarFindings
         {
             Add("hc-stem-no-grammatical-category", "Stem has no category",
                 Named(name, "LexEntry", "lexiconEdit", $"5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d{entry++}"),
-                $"Lexical entry '{name}' has no grammatical category.", 1, GrammarFindingOrigin.Check);
+                $"Lexical entry '{name}' has no grammatical category.", 1, GrammarFindingOrigin.Check,
+                explanation: "This stem is marked partial because its grammatical category is missing. " +
+                    "Its category restrictions cannot be enforced as authored.",
+                guidance: "In Lexicon > Lexicon Edit, open the named entry and set Grammatical Info. > Category " +
+                    "for its stem analysis.");
         }
         return findings;
     }
 
-    private static GrammarWarningPart Named(string title, string kind, string tool, string guid) =>
+    private static GrammarWarningPart Named(string title, string kind, string tool, string guid,
+        WarningReach? reach = null) =>
         new(title, GrammarWarningPartRole.Object, guid, kind, $"{Link}{tool}&guid={guid}")
         {
             Title = title, Status = GrammarSubjectStatus.Object, SubjectGuid = guid, FieldWorksGuid = guid, FieldWorksTool = tool,
-            LinkStatus = FieldWorksLinkStatus.Available,
+            LinkStatus = FieldWorksLinkStatus.Available, Reach = reach,
         };
 
     private static IReadOnlyList<GrammarFieldWorksPlace> PlacesFor(string code) => code switch

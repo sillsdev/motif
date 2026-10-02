@@ -92,7 +92,9 @@ internal static class SampleEvidence
             }, timing, new OverviewWarningsSummary(warnings.Count, null, null, null)
             {
                 ErrorCount = warnings.Count(warning => warning.Severity == GrammarDiagnosticLevel.Error),
+                WarningCount = warnings.Count(warning => warning.Severity == GrammarDiagnosticLevel.Warning),
                 InformationCount = warnings.Count(warning => warning.Severity == GrammarDiagnosticLevel.Information),
+                YourWords = WarningWordsQuery.Touched(warnings),
             })
         {
             SelectionResolved = true, ProjectFileName = "Sample.fwdata", WordCoveragePercent = 100d * parsed / words.Count,

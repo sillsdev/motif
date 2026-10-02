@@ -229,8 +229,7 @@ public sealed class OverviewPageWordsTests
         Assert.All(page.AccuracySegments, segment => Assert.Equal(MarkKind.Meaning, segment.Mark.Kind));
         Assert.Equal("1 disapproved analysis still built · PanGloss confirms 9 of 14 words marked Unknown",
             page.AccuracyBreakdown);
-        Assert.Equal("24 warnings · 0 errors", page.WarningsCount);
-        Assert.Equal("4 worth a look", page.WarningsDetails);
+        Assert.Equal("20 warnings · 0 errors · 4 information findings", page.WarningsCount);
         Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
         Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
         Assert.Equal("Grammar warning", Assert.Single(page.WarningKindRows).Name);
@@ -240,14 +239,72 @@ public sealed class OverviewPageWordsTests
                  {
                      page.TextCoverageMain, page.TextCoverageWords, page.AccuracyMain,
                      page.AccuracyCaption, page.AccuracyBreakdown, page.SpeedMain, page.SpeedMedian,
-                     page.SpeedDetails, page.WarningsCount, page.WarningsDetails,
+                     page.SpeedDetails, page.WarningsCount,
                  })
             foreach (var word in EngineWords)
                 Assert.DoesNotContain(word, text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task TheWarningsTileAndTheSidebarBadgeGiveOneCount()
+    public async Task OneWarningNamedWordUsesTheSingularWindowSentence()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var overview = Populated();
+        fake.OverviewCompletesWith(overview with
+        {
+            Warnings = overview.Warnings! with
+            {
+                YourWords = new WarningWordsTouched(1, 1, []),
+            },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("1 of your words uses something a warning names", page.WarningsYourWordsText);
+    }
+
+    [Fact]
+    public async Task TheOverviewAndWarningsControlsUseTheSameDistinctWordCount()
+    {
+        var words = new[] { "walikata", "anakata", "wamekata" }
+            .Select(word => new ObjectUseWord(new SIL.Motif.Contract.Responses.WordRow(
+                word, WordRowOutcome.Different, "Lost", WordRowTone.Problem)))
+            .ToArray();
+        const string guid = "33333333-3333-3333-3333-333333333333";
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Finding",
+            [new GrammarWarningPart("named item", GrammarWarningPartRole.Object, guid, "MoForm")
+            {
+                Reach = new WarningReach(WarningWordsPath.Uses)
+                {
+                    AllomorphIds = [guid],
+                },
+            }], [], "warning: finding")
+        {
+            Code = "test.finding",
+            YourWords = new WarningWords(WarningWordsMatch.Identity, words, [])
+            {
+                Paths = [WarningWordsPath.ThroughAllomorphs],
+            },
+        };
+        var findings = new[] { finding };
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            Warnings = Populated().Warnings! with { YourWords = WarningWordsQuery.Touched(findings) },
+        });
+        await context.OpenProjectAsync(ProjectPath);
+
+        var warningPage = new GrammarWarningsViewModel();
+        warningPage.Load(findings);
+
+        Assert.Equal("Touch your words · 3 words", warningPage.TouchYourWordsText);
+        Assert.Equal("3 of your words use something a warning names", page.WarningsYourWordsText);
+    }
+
+    [Fact]
+    public async Task TheWarningsTileShowsEachReportLevel()
     {
         var (fake, context) = NewContext();
         var page = new OverviewPageModel(context);
@@ -261,7 +318,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("24", warnings.Badge);
-        Assert.StartsWith(warnings.Badge + " warnings", page.WarningsCount, StringComparison.Ordinal);
+        Assert.Equal("20 warnings · 0 errors · 4 information findings", page.WarningsCount);
     }
 
     [Fact]

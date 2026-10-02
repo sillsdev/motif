@@ -39,7 +39,7 @@ public sealed class WarningRowPanGlossTextTests
         };
         var row = new GrammarWarningRowViewModel(warning);
 
-        Assert.Equal("PanGloss did not name a subject for this finding", row.ReachStateText);
+        Assert.Equal("PanGloss names nothing here", row.ReachStateText);
         Assert.DoesNotContain("look", row.ReachStateText, StringComparison.OrdinalIgnoreCase);
     }
 

@@ -196,9 +196,6 @@
             <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsSpellingCandidatesText}"
                        IsVisible="{Binding WarningsSpellingCandidatesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                        TextWrapping="Wrap" />
-            <TextBlock Classes="overviewMuted" Text="found in the grammar as PanGloss read it"
-                       TextWrapping="Wrap" IsVisible="{Binding HasWarningSummary}" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsDetails}" TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding WarningKindRows}" AutomationProperties.Name="Warning kinds and words">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OverviewWarningKindRow">

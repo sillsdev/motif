@@ -44,7 +44,7 @@
 
       <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
             IsVisible="{Binding Grammar.ShowFindings}">
-        <WrapPanel Classes="warningControls">
+        <StackPanel Classes="warningControls" Orientation="Horizontal">
           <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
                             IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                             Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}"
@@ -64,17 +64,30 @@
                             IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.Information}}"
                             Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.Information}"
                             Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <ToggleButton Content="Touch your words" IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
+          <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
+                        IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
                         AutomationProperties.Name="Show findings with exact uses in your words"
                         Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <ToggleButton Content="Most of your words first" IsChecked="{Binding Grammar.Warnings.MostYourWordsFirst, Mode=TwoWay}"
-                        AutomationProperties.Name="Sort by exact uses in your words"
-                        Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.CountSummary}"
-                                    VerticalAlignment="Center" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+          <Button Content="{Binding Grammar.Warnings.SortLabel}"
+                  AutomationProperties.Name="Choose warning sort order"
+                  Margin="{DynamicResource Intent.Gap.AfterRelated}">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Classes="menu">
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                          Content="Most of your words first"
+                          Command="{Binding Grammar.Warnings.SetMostYourWordsFirstCommand}"
+                          AutomationProperties.Name="Sort findings by exact word uses" />
+                  <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                          Content="Report order" Command="{Binding Grammar.Warnings.SetReportOrderCommand}"
+                          AutomationProperties.Name="Sort findings in report order" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button Content="Check the grammar again" Command="{Binding Grammar.CheckCommand}"
                   AutomationProperties.Name="Check the grammar again" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-        </WrapPanel>
+        </StackPanel>
 
         <ScrollViewer Grid.Row="1">
           <ItemsControl ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">
@@ -83,11 +96,11 @@
                 <Border Classes="warningRow hoverReveal">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                     <Button Classes="warningSummary" Command="{Binding ToggleOpenCommand}"
-                            AutomationProperties.Name="{Binding Message}">
+                            AutomationProperties.Name="{Binding RowTitleText}">
                       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
                         <views:MarkChip Classes="warningLevelMark" Mark="{Binding SeverityMark}" Compact="True"
                                         VerticalAlignment="Center" />
-                        <views:CopyableTextBlock Grid.Column="1" Classes="warningMessage" Text="{Binding Message}"
+                        <views:CopyableTextBlock Grid.Column="1" Classes="warningMessage" Text="{Binding RowTitleText}"
                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         <views:CopyableTextBlock Grid.Column="2" Classes="muted warningReach"
                                                   Text="{Binding LineSummaryText}" VerticalAlignment="Center" />
@@ -99,21 +112,16 @@
                     <StackPanel IsVisible="{Binding IsOpen}" Spacing="{DynamicResource Intent.Space.Related}">
                       <Border Classes="card warningDetail">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                          <views:CopyableTextBlock Classes="warningGroup" Text="{Binding PanGlossTitle}"
-                                                    FontWeight="SemiBold"
-                                                    IsVisible="{Binding PanGlossTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                          <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}"
+                                                    IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
                           <StackPanel IsVisible="{Binding HasMessage}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="PanGloss description" FontWeight="SemiBold" />
                             <views:CopyableTextBlock Classes="warningFullDescription" Text="{Binding Message}"
                                                       TextWrapping="Wrap" />
                           </StackPanel>
                           <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="PanGloss explanation" FontWeight="SemiBold" />
                             <views:CopyableTextBlock Text="{Binding PanGlossExplanation}" TextWrapping="Wrap" />
                           </StackPanel>
                           <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="PanGloss problem details" FontWeight="SemiBold" />
                             <Border Classes="hoverReveal warningProblem">
                               <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
                             </Border>
@@ -122,25 +130,18 @@
                             <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
                           </Border>
                           <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="PanGloss guidance" FontWeight="SemiBold" />
+                            <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="SemiBold" />
                             <views:CopyableTextBlock Text="{Binding PanGlossGuidance}" TextWrapping="Wrap" />
                           </StackPanel>
-                          <StackPanel IsVisible="{Binding HasFieldWorksPlaces}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="FieldWorks places" FontWeight="SemiBold" />
-                            <views:CopyableTextBlock Text="{Binding PanGlossFieldWorksPlaces}" TextWrapping="Wrap" />
-                          </StackPanel>
-                          <StackPanel IsVisible="{Binding HasHelp}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="PanGloss help" FontWeight="SemiBold" />
-                            <views:CopyableTextBlock Text="{Binding PanGlossHelp}" TextWrapping="Wrap" />
-                          </StackPanel>
-                          <HyperlinkButton Classes="revealControl revealLink" Content="PanGloss reference"
+                          <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
                                            NavigateUri="{Binding PanGlossReference}"
                                            IsVisible="{Binding HasPanGlossReference}" />
                         </StackPanel>
                       </Border>
 
                       <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="Your words" FontWeight="SemiBold" />
+                        <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="SemiBold"
+                                                 IsVisible="{Binding HasExactRows}" />
                         <Grid IsSharedSizeScope="True" RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
                           <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Warnings}" />
                           <ItemsControl Grid.Row="1" ItemsSource="{Binding WordRows}" IsVisible="{Binding HasExactRows}">
@@ -152,8 +153,10 @@
                           </ItemsControl>
                         </Grid>
                       </StackPanel>
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding NoExactUsesText}"
+                                               IsVisible="{Binding HasNoExactUses}" />
                       <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="muted" Text="Words matched by membership; selection is not confirmed" />
+                        <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
                         <ItemsControl ItemsSource="{Binding MembershipCandidateRows}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
@@ -163,7 +166,7 @@
                         </ItemsControl>
                       </StackPanel>
                       <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="muted" Text="Words matched by spelling; use is not confirmed" />
+                        <views:CopyableTextBlock Classes="muted" Text="Matched by spelling only" />
                         <ItemsControl ItemsSource="{Binding SpellingCandidateRows}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
@@ -183,9 +186,9 @@
 
                       <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Text="Motif workflow" FontWeight="SemiBold" />
+                          <views:CopyableTextBlock Text="After you fix it" FontWeight="SemiBold" />
                           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                                    Text="Save in FieldWorks, press Refresh, then parse these words again to see the current results." />
+                                                    Text="Save in FieldWorks, refresh Motif, then parse these words again." />
                         </StackPanel>
                       </Border>
                     </StackPanel>

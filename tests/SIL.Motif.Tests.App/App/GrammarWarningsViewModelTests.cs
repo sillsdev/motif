@@ -126,14 +126,73 @@ public sealed class GrammarWarningsViewModelTests
         Assert.Equal("2 of your words", rows["grammar.exact"].ReachSummaryText);
         Assert.Equal(WarningDisplayState.SpellingCandidates, rows["grammar.spelling"].AttributionState);
         Assert.Equal("1 spelling match", rows["grammar.spelling"].ReachSummaryText);
-        Assert.Equal("The spelling matches, but that does not confirm the phoneme was used",
+        Assert.Equal("Matched by spelling only; this does not confirm the phoneme was used",
             rows["grammar.spelling"].ReachStateText);
         Assert.Equal(WarningDisplayState.NoneInSelection, rows["grammar.none"].AttributionState);
-        Assert.Equal("No words in this Selection", rows["grammar.none"].ReachSummaryText);
+        Assert.Equal("None of your words", rows["grammar.none"].ReachSummaryText);
 
         table.TouchYourWords = true;
 
         Assert.Equal(["grammar.exact"], table.Rows.Cast<GrammarWarningRowViewModel>().Select(row => row.GroupCode));
+    }
+
+    [Fact]
+    public void RepeatedUnattributedDiagnosticsOfOneKindShareARowAndKeepTheirCount()
+    {
+        var warning = EntryWarning with
+        {
+            Code = "grammar.environment.invalid",
+            Title = "Environment could not be read",
+            Description = "environment representation failed validation",
+            Subject = [],
+            YourWords = new WarningWords(WarningWordsMatch.UnresolvedIdentity, [], [])
+            {
+                Reason = WarningAttributionReason.NoSubject,
+            },
+        };
+        var table = new GrammarWarningsViewModel();
+
+        table.Load(Enumerable.Repeat(warning, 7).ToArray());
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+        Assert.Equal(7, row.RepeatCount);
+        Assert.Equal("Environment could not be read · 7 findings", row.RowTitleText);
+        Assert.Equal("PanGloss names nothing here", row.ReachSummaryText);
+    }
+
+    [Fact]
+    public void AKindWithNoExactUsesNamesTheItemAndSaysNoSelectionWordUsesIt()
+    {
+        var warning = EntryWarning with
+        {
+            Code = "conversion.unsegmentable-form",
+            Subject = [new GrammarWarningPart("kat", GrammarWarningPartRole.Object, "form-kat", "MoForm")],
+            YourWords = new WarningWords(WarningWordsMatch.Identity, [], []),
+        };
+        var table = new GrammarWarningsViewModel();
+        table.Load([warning]);
+
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
+
+        Assert.Equal("None of your words", row.ReachSummaryText);
+        Assert.Equal("None of your words use kat", row.NoExactUsesText);
+        Assert.False(row.HasReachStateText);
+        Assert.Empty(row.WordRows);
+    }
+
+    [Fact]
+    public void TouchYourWordsChipShowsTheDistinctSelectionWordCount()
+    {
+        var first = WithWords(EntryWarning with { Code = "grammar.first" }, WarningWordsMatch.Identity,
+            "walikata", "anakata");
+        var second = WithWords(EntryWarning with { Code = "grammar.second" }, WarningWordsMatch.Identity,
+            "anakata", "wamekata");
+        var table = new GrammarWarningsViewModel();
+
+        table.Load([first, second]);
+
+        Assert.Equal(3, WarningWordsQuery.Touched(table.Findings)!.Words);
+        Assert.Equal("Touch your words · 3 words", table.TouchYourWordsText);
     }
 
     [Fact]
@@ -186,12 +245,12 @@ public sealed class GrammarWarningsViewModelTests
 
         var rows = table.Rows.Cast<GrammarWarningRowViewModel>().ToDictionary(row => row.GroupCode);
         Assert.Equal(WarningDisplayState.MissingObject, rows["grammar.missing"].AttributionState);
-        Assert.Equal("The item PanGloss named is not in this FieldWorks project", rows["grammar.missing"].ReachStateText);
-        Assert.Equal("Named item missing", rows["grammar.missing"].ReachSummaryText);
+        Assert.Equal("The item PanGloss named is missing from this project", rows["grammar.missing"].ReachStateText);
+        Assert.Equal("Item missing from project", rows["grammar.missing"].ReachSummaryText);
         Assert.Equal(WarningDisplayState.NoSubject, rows["grammar.no-subject"].AttributionState);
-        Assert.Equal("PanGloss did not name a subject for this finding", rows["grammar.no-subject"].ReachStateText);
+        Assert.Equal("PanGloss names nothing here", rows["grammar.no-subject"].ReachStateText);
         Assert.Equal(WarningDisplayState.UnresolvedIdentity, rows["grammar.unresolved"].AttributionState);
-        Assert.Equal("Identity unavailable", rows["grammar.unresolved"].ReachSummaryText);
+        Assert.Equal("Word count unavailable", rows["grammar.unresolved"].ReachSummaryText);
     }
 
     [Fact]
@@ -210,7 +269,8 @@ public sealed class GrammarWarningsViewModelTests
         var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
 
         Assert.Equal(WarningDisplayState.UnresolvedIdentity, row.AttributionState);
-        Assert.Equal("Identity unavailable", row.ReachSummaryText);
+        Assert.Equal("Word count unavailable", row.ReachSummaryText);
+        Assert.Equal("Word counts are unavailable for this named item", row.ReachStateText);
         Assert.DoesNotContain("did not name a subject", row.ReachStateText, StringComparison.Ordinal);
     }
 
@@ -233,8 +293,8 @@ public sealed class GrammarWarningsViewModelTests
         var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
 
         Assert.Equal(WarningDisplayState.ProjectWide, row.AttributionState);
-        Assert.Equal("No word attribution for this resource", row.ReachSummaryText);
-        Assert.Equal("This project-wide resource has no word attribution", row.ReachStateText);
+        Assert.Equal("Project-wide item", row.ReachSummaryText);
+        Assert.Equal("This item applies across the grammar", row.ReachStateText);
     }
 
     [Fact]
@@ -263,8 +323,8 @@ public sealed class GrammarWarningsViewModelTests
         foreach (var row in rows.Values)
         {
             Assert.Equal(WarningDisplayState.NamedUnsupportedRoute, row.AttributionState);
-            Assert.Equal("Named item; word route unavailable", row.ReachSummaryText);
-            Assert.Contains("does not follow this type to words", row.ReachStateText, StringComparison.Ordinal);
+            Assert.Equal("Word count unavailable", row.ReachSummaryText);
+            Assert.Contains("without a word list", row.ReachStateText, StringComparison.Ordinal);
             Assert.Equal("Verb template", row.SubjectParts.Single().Text);
         }
         Assert.Equal(WarningWordsMatch.UnresolvedIdentity, rows["grammar.unsupported"].YourWords!.Match);
@@ -288,8 +348,8 @@ public sealed class GrammarWarningsViewModelTests
         var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
 
         Assert.Equal(WarningDisplayState.EvidenceUnavailable, row.AttributionState);
-        Assert.Equal("Word evidence unavailable", row.ReachSummaryText);
-        Assert.Equal("Word evidence is not available", row.ReachStateText);
+        Assert.Equal("Word count unavailable", row.ReachSummaryText);
+        Assert.Equal("Word counts are unavailable for this finding", row.ReachStateText);
     }
 
     [Fact]

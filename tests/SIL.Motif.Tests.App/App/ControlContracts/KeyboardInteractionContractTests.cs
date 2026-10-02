@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -65,7 +66,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 window.Show();
                 window.UpdateLayout();
                 var toggle = Assert.Single(panel.GetVisualDescendants().OfType<ToggleButton>(),
-                    button => Equals(button.Content, "Touch your words"));
+                    button => AutomationProperties.GetName(button) == "Show findings with exact uses in your words");
                 Assert.True(toggle.Focus());
 
                 var topLevel = TopLevel.GetTopLevel(toggle)!;
@@ -74,6 +75,54 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Dispatcher.UIThread.RunJobs();
 
                 Assert.True(grammar.Warnings.TouchYourWords);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public async Task WarningSortMenuCanBeOpenedAndChangedWithTheKeyboard()
+    {
+        var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Finding", [], [], "warning: finding")
+        {
+            Title = "Finding",
+            Description = "Finding description",
+            Code = "finding",
+        };
+        var fake = new FakeCommandClient();
+        fake.OnCheckGrammar((_, _) => Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(
+            new GrammarCheckResponse([warning], HasBaseline: true))));
+        var grammar = new GrammarViewModel(fake);
+        await grammar.SetProjectAsync(@"C:\projects\sample.fwdata");
+
+        avalonia.Invoke(() =>
+        {
+            var panel = new GrammarPanel(grammar);
+            var window = new Window { Content = panel, Width = 1040, Height = 900 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var sort = Assert.Single(panel.GetVisualDescendants().OfType<Button>(),
+                    button => AutomationProperties.GetName(button) == "Choose warning sort order");
+                Assert.True(sort.Focus());
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                Dispatcher.UIThread.RunJobs();
+
+                var flyout = Assert.IsAssignableFrom<Flyout>(sort.Flyout);
+                Assert.True(flyout.IsOpen);
+                var reportOrder = Assert.Single(((Control)flyout.Content!).GetVisualDescendants().OfType<Button>(),
+                    button => AutomationProperties.GetName(button) == "Sort findings in report order");
+                Assert.True(reportOrder.Focus());
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.False(grammar.Warnings.MostYourWordsFirst);
             }
             finally
             {

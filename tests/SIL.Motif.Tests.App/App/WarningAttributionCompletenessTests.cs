@@ -71,8 +71,8 @@ public sealed class WarningAttributionCompletenessTests
         var zeroRow = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
 
         Assert.Equal(WarningDisplayState.NoFollowedRouteMatch, zeroRow.AttributionState);
-        Assert.Equal("No matches on followed routes", zeroRow.ReachSummaryText);
-        Assert.Contains("other named connections could not be followed", zeroRow.ReachStateText,
+        Assert.Equal("Word count unavailable", zeroRow.ReachSummaryText);
+        Assert.Contains("Motif could not follow every named connection", zeroRow.ReachStateText,
             StringComparison.Ordinal);
 
         table.Load([positive]);

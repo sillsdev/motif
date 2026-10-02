@@ -46,10 +46,8 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
             return LinkFor(part, link);
 
         var text = part.Status == GrammarSubjectStatus.ProjectSettings ? $"Project setting: {part.Text}"
-            : part.Role == GrammarWarningPartRole.Missing ? $"missing object {part.Text}" : part.Text;
+            : part.Role == GrammarWarningPartRole.Missing ? $"Missing: {part.Text}" : part.Text;
         if (part.Field is { Length: > 0 } field) text += $" > {field}";
-        if (part.LinkStatus == FieldWorksLinkStatus.Unavailable)
-            text += $" (FieldWorks link unavailable: {UnavailableReason(part.LinkReason)})";
         var block = new CopyableTextBlock
         {
             Text = text,
@@ -71,17 +69,6 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         return block;
     }
 
-    private static string UnavailableReason(FieldWorksLinkReason? reason) => reason switch
-    {
-        FieldWorksLinkReason.MissingProject => "no FieldWorks project name was supplied",
-        FieldWorksLinkReason.GuidNotRecorded => "PanGloss did not record a GUID",
-        FieldWorksLinkReason.InvalidGuid => "the recorded GUID is invalid",
-        FieldWorksLinkReason.UnsupportedKind => "FieldWorks cannot open this kind",
-        FieldWorksLinkReason.UnresolvedReference => "the referenced item is absent or unusable as the expected class",
-        FieldWorksLinkReason.ProjectSettings => "a project setting has no individual FieldWorks object",
-        _ => "the reason was not provided",
-    };
-
     private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
     {
         // A TextBlock, not a string, so the "_" an environment is written with is not read as an access key.
@@ -96,6 +83,7 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         button.Classes.Add("revealLink");
         var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link));
         ToolTip.SetTip(button, $"Open this item in {tool}");
+        ClearTipPlacement.SetIsEnabled(button, true);
         return button;
     }
 }

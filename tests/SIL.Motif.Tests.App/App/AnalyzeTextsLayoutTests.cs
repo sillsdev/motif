@@ -119,14 +119,14 @@ public sealed class AnalyzeTextsLayoutTests
                     strip.Tag is ResultsTokenViewModel { Form: "alikula" })));
                 var card = OpenCard(window);
                 var cardLines = card.GetVisualDescendants().OfType<CopyableTextBlock>().ToArray();
-                var exactMessage = Assert.Single(cardLines,
-                    line => line.Text == "PanGloss exact warning message");
-                Assert.Contains("wordCardHeading", exactMessage.Classes);
-                var namedExactly = Assert.Single(cardLines, line => line.Text == "Named exactly");
-                Assert.True(Array.IndexOf(cardLines, exactMessage) < Array.IndexOf(cardLines, namedExactly));
+                Assert.Contains(cardLines, line => line.Text == "What a warning names in this word");
+                Assert.Contains(cardLines, line => line.Text == "A grammar warning names -a.");
+                Assert.Contains(cardLines, line => line.Text == "Other words that use -a");
+                Assert.DoesNotContain(cardLines, line => line.Text == "PanGloss exact warning message");
+                Assert.DoesNotContain(cardLines, line => line.Text == "Named exactly");
                 Assert.DoesNotContain(cardLines, line => line.Text == "exact");
-                Assert.Contains(cardLines, line => line.Text == "Membership candidates; not confirmed uses");
-                Assert.Contains(cardLines, line => line.Text == "Spelling candidates; not confirmed uses");
+                Assert.Contains(cardLines, line => line.Text == "Words that use members of the named resource");
+                Assert.Contains(cardLines, line => line.Text == "Matched by spelling only");
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · membership") == true);
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
                 var cardText = string.Join(" ", cardLines.Select(line => line.Text)
@@ -137,7 +137,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
                     border.Classes.Contains("wordCardSection") &&
                     border.GetVisualDescendants().OfType<CopyableTextBlock>()
-                        .Any(line => line.Text == "Why it might not parse"));
+                        .Any(line => line.Text == "What a warning names in this word"));
                 var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
                 Assert.DoesNotContain("Time by rule", whyText);
                 Assert.DoesNotContain("Subject agreement", whyText);
@@ -217,7 +217,7 @@ public sealed class AnalyzeTextsLayoutTests
         var spellingReach = new WarningReach(WarningWordsPath.Spelling) { Spellings = ["a"] };
         var warnings = new[]
         {
-            SampleWarning("exact", "PanGloss exact warning message", WarningWordsMatch.Identity,
+            SampleWarning("exact", string.Empty, WarningWordsMatch.Identity,
                 [exactWord], new GrammarWarningPart("-a", GrammarWarningPartRole.Object,
                     morpheme.AllomorphId, "MoForm") { Reach = exactReach },
                 membershipCandidates: [candidateWord], spellingCandidates: [WarningWord("watoto")]),

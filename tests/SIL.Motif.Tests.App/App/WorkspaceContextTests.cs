@@ -192,7 +192,7 @@ public sealed class WorkspaceContextTests
         await warningsPage.CheckGrammarCommand.ExecuteAsync(null);
 
         Assert.True(overviewPage.HasWarningSummary);
-        Assert.Equal("0 warnings", overviewPage.WarningsCount);
+        Assert.Equal("0 findings", overviewPage.WarningsCount);
         Assert.Equal(2, fake.OverviewRequests.Count);
     }
 

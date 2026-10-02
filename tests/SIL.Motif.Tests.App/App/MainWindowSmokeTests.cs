@@ -355,11 +355,9 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Nothing parsed since the last Refresh.", text);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse all words");
-                Assert.Contains("No warning summary is available.", text);
+                Assert.Contains("Not checked yet", text);
                 Assert.DoesNotContain("0 of 0", text);
                 Assert.DoesNotContain("words hit the step limit", text);
-                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(item => item.Text == "No warning summary is available.").FontWeight);
             }
             finally
             {
@@ -691,7 +689,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void UnavailableGrammarWarningLinksExplainWhyFieldWorksCannotOpenTheSubject()
+    public void UnavailableGrammarWarningLinksKeepTheSubjectNameReadable()
     {
         _avalonia.Invoke(() =>
         {
@@ -707,8 +705,7 @@ public sealed class MainWindowSmokeTests
                 ],
             };
 
-            Assert.Equal("entry (FieldWorks link unavailable: PanGloss did not record a GUID)",
-                Assert.IsType<CopyableTextBlock>(Assert.Single(block.Children)).Text);
+            Assert.Equal("entry", Assert.IsType<CopyableTextBlock>(Assert.Single(block.Children)).Text);
         });
     }
 

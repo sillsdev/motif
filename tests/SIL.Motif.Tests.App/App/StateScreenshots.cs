@@ -575,7 +575,10 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 
         // Warnings.
         yield return new("warnings", "part-link-hover", stage => stage.HoverWarningPartLink());
-        yield return new("warnings", "row-opened", stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
+        yield return new("warnings", "row-opened", stage => stage.OpenWarningRow("hc-stem-no-grammatical-category", named: true))
+        { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
+        yield return new("warnings", "kat-row-opened",
+            stage => stage.OpenWarningRow("conversion.unsegmentable-form", named: true))
         { Height = 1100, Teardown = stage => stage.CloseWarningRow() };
         yield return new("warnings", "unnamed-row-opened",
             stage => stage.OpenWarningRow("grammar.msa.no-rule-form-allomorphs", named: false))
@@ -934,10 +937,12 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             row.IsOpen = true;
             var container = Visible<Border>(border => border.Classes.Contains("warningRow") && border.DataContext == row).Single();
             container.BringIntoView();
-            await Until(() => Visible<TextBlock>(block => block.Text == "PanGloss explanation").Any()
-                && Visible<TextBlock>(block => block.Text == "PanGloss guidance").Any()
-                && Visible<TextBlock>(block => block.Text == "FieldWorks places").Any(),
-                "the finding's PanGloss explanation, guidance, and FieldWorks places");
+            await Until(() => (row.HasReachStateText
+                ? Visible<TextBlock>(block => block.Classes.Contains("warningState")
+                    && block.Text == row.ReachStateText).Any()
+                : Visible<TextBlock>(block => block.Text == row.NoExactUsesText).Any())
+                && (!row.HasGuidance || Visible<TextBlock>(block => block.Text == "What to do in FieldWorks").Any()),
+                "the finding details and producer guidance when present");
             return $"Opened the {row.PanGlossTitle} finding{(named ? " with a named item" : ", which names no item")}.";
         }
 

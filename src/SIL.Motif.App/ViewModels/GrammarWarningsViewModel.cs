@@ -8,6 +8,22 @@ namespace SIL.Motif.App.ViewModels;
 
 internal static class WarningFindingIdentity
 {
+    /// <summary>Finds repeated subjectless rows only when the producer reported identical finding content.</summary>
+    public static string? ForGrouping(GrammarWarning warning)
+    {
+        var identity = Of(warning);
+        if (identity is not null) return identity;
+        if (warning.Subject.Count != 0 || string.IsNullOrWhiteSpace(warning.Code)) return null;
+
+        var fields = new[]
+            {
+                warning.Origin.ToString(), warning.Severity.ToString(), warning.Code, warning.Title ?? string.Empty,
+                warning.Group ?? string.Empty, warning.Description, warning.Text,
+            }
+            .Concat(warning.Problem.Select(part => $"{part.Role}:{part.Text}"));
+        return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
+    }
+
     public static string? Of(GrammarWarning warning)
     {
         if (string.IsNullOrWhiteSpace(warning.Code)) return null;
@@ -74,6 +90,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         Rows = new DataGridCollectionView(_all) { Filter = Matches };
         SetBucketCommand = new RelayCommand<GrammarFindingBucket>(bucket => Bucket = bucket);
+        SetReportOrderCommand = new RelayCommand(() => MostYourWordsFirst = false);
+        SetMostYourWordsFirstCommand = new RelayCommand(() => MostYourWordsFirst = true);
         HandOffCommand = new RelayCommand<GrammarWarningRowViewModel>(row =>
         {
             if (row is not null) _handOffWords?.Invoke(row);
@@ -102,6 +120,10 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         $"{InformationCount} {CountWord(InformationCount, "information finding", "information findings")}.";
 
     public IRelayCommand<GrammarFindingBucket> SetBucketCommand { get; }
+    /// <summary>Changes the warning list to report order.</summary>
+    public IRelayCommand SetReportOrderCommand { get; }
+    /// <summary>Changes the warning list to put findings with more exact word uses first.</summary>
+    public IRelayCommand SetMostYourWordsFirstCommand { get; }
     public IRelayCommand<GrammarWarningRowViewModel> HandOffCommand { get; }
     public IAsyncRelayCommand<GrammarWarningRowViewModel> ReparseCommand { get; }
 
@@ -143,6 +165,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     private bool _touchYourWords;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SortLabel))]
     private bool _mostYourWordsFirst = true;
 
     public bool HasAny => _all.Count > 0;
@@ -150,6 +173,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public string CountSummary => ShownCount == TotalCount
         ? (TotalCount == 1 ? "1 finding" : $"{TotalCount} findings")
         : $"{ShownCount} of {TotalCount} findings match the filters";
+
+    /// <summary>The distinct Selection words reached by exact identity from the findings, when available.</summary>
+    public string TouchYourWordsText => WarningWordsQuery.Touched(Findings) is { } touched
+        ? $"Touch your words · {touched.Words:N0} {(touched.Words == 1 ? "word" : "words")}" : "Touch your words";
+
+    /// <summary>The current ordering shown on the sort control.</summary>
+    public string SortLabel => MostYourWordsFirst ? "Sort: most of your words first" : "Sort: report order";
 
     /// <summary>The complete projected findings, including the effective words each finding touches.</summary>
     public IReadOnlyList<GrammarWarning> Findings { get; private set; } = [];
@@ -159,12 +189,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     {
         Findings = warnings ?? [];
         OnPropertyChanged(nameof(Findings));
+        OnPropertyChanged(nameof(TouchYourWordsText));
         var previous = _all.ToArray();
         var next = new List<GrammarWarningRowViewModel>();
         if (warnings is not null)
         {
             var identified = warnings.Select((warning, index) =>
-                (Warning: warning, Index: index, Identity: WarningFindingIdentity.Of(warning)));
+                (Warning: warning, Index: index, Identity: WarningFindingIdentity.ForGrouping(warning)));
             foreach (var group in identified.GroupBy(item =>
                          (item.Identity, UnidentifiedIndex: item.Identity is null ? item.Index : -1)))
             {
@@ -263,6 +294,10 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         GroupName = panGloss.Title;
         FindingIdentity = WarningFindingIdentity.Of(warning);
         YourWords = warning.YourWords;
+        NamedItemText = warning.Subject
+            .Where(part => part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)
+            .Select(part => part.Text).Where(text => !string.IsNullOrWhiteSpace(text))
+            .Distinct(StringComparer.Ordinal).FirstOrDefault() ?? string.Empty;
         AttributionState = WarningAttribution.From(warning);
         IsPartialReach = WarningAttribution.HasUnfollowedConnections(warning);
         var evidence = warning.YourWords;
@@ -282,6 +317,20 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public IReadOnlyList<WordRowViewModel> WordRows { get; }
     public IReadOnlyList<WordRowViewModel> MembershipCandidateRows { get; }
     public IReadOnlyList<WordRowViewModel> SpellingCandidateRows { get; }
+    /// <summary>The first subject name supplied by PanGloss, when the finding names an item.</summary>
+    public string NamedItemText { get; }
+    /// <summary>The heading for words whose identity matches the named item.</summary>
+    public string ExactWordsHeading => NamedItemText.Length > 0 ? $"Your words that use {NamedItemText}" : "Your words";
+    /// <summary>Whether the finding names an item with no exact word uses in the Selection.</summary>
+    public bool HasNoExactUses => AttributionState == WarningDisplayState.NoneInSelection;
+    /// <summary>Whether a separate reach explanation is needed for this finding.</summary>
+    public bool HasReachStateText => !HasNoExactUses || NamedItemText.Length == 0;
+    /// <summary>The plain language shown when no Selection word uses the named item.</summary>
+    public string NoExactUsesText => NamedItemText.Length > 0
+        ? $"None of your words use {NamedItemText}" : "None of your words";
+    /// <summary>The quiet row title, with repeated identical findings counted once.</summary>
+    public string RowTitleText => RepeatCount > 1
+        ? $"{PanGlossTitle} · {RepeatCount:N0} findings" : PanGlossTitle;
     public bool HasYourWords => AttributionState == WarningDisplayState.ExactUses && WordRows.Count > 0;
     public bool HasExactRows => WordRows.Count > 0;
     public bool HasMembershipCandidates => MembershipCandidateRows.Count > 0;
@@ -292,41 +341,45 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public string ReachStateText => AttributionState switch
     {
         WarningDisplayState.ExactUses => IsPartialReach
-            ? "Some of your words use the item PanGloss named; other named connections could not be followed"
-            : "Uses the item PanGloss named",
+            ? "Some of your words use the item PanGloss named; Motif could not follow every named connection"
+            : "Your words use the item PanGloss named",
         WarningDisplayState.SpellingCandidates => IsPartialReach
-            ? "These spellings match; other named connections could not be followed"
-            : "The spelling matches, but that does not confirm the phoneme was used",
+            ? "These spellings match; Motif could not follow every named connection"
+            : "Matched by spelling only; this does not confirm the phoneme was used",
         WarningDisplayState.MembershipCandidates => IsPartialReach
-            ? "These words use members of the named resource; other named connections could not be followed"
-            : "These words use members of the named resource; selection of the resource is not confirmed",
-        WarningDisplayState.NoneInSelection => "No words matched the items PanGloss named",
+            ? "These words use members of the named resource; Motif could not follow every named connection"
+            : "These words use members of the named resource; use of the resource is not confirmed",
+        WarningDisplayState.NoneInSelection => "None of your words use the item PanGloss named",
         WarningDisplayState.NoFollowedRouteMatch =>
-            "No words matched through the routes Motif could follow; other named connections could not be followed",
-        WarningDisplayState.NoSubject => "PanGloss did not name a subject for this finding",
+            "No exact word uses were found; Motif could not follow every named connection",
+        WarningDisplayState.NoSubject => "PanGloss names nothing here",
         WarningDisplayState.NamedUnsupportedRoute =>
-            "PanGloss named an item, but Motif does not follow this type to words",
-        WarningDisplayState.ProjectWide => "This project-wide resource has no word attribution",
-        WarningDisplayState.MissingObject => "The item PanGloss named is not in this FieldWorks project",
-        WarningDisplayState.UnresolvedIdentity => "The named subject's identity or word reach is unavailable",
+            "PanGloss named an item without a word list",
+        WarningDisplayState.ProjectWide => "This item applies across the grammar",
+        WarningDisplayState.MissingObject => "The item PanGloss named is missing from this project",
+        WarningDisplayState.UnresolvedIdentity when SubjectParts.Any(part =>
+            part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing) =>
+            "Word counts are unavailable for this named item",
+        WarningDisplayState.UnresolvedIdentity => "Motif could not match PanGloss's name to a project item",
         WarningDisplayState.EvidenceUnavailable when IsPartialReach =>
-            "Word evidence is unavailable; other named connections could not be followed",
-        _ => "Word evidence is not available",
+            "Word counts are unavailable; Motif could not follow every named connection",
+        _ => "Word counts are unavailable for this finding",
     };
     public string ReachSummaryText => AttributionState switch
     {
         WarningDisplayState.ExactUses => CountText(WordRows.Count, "of your words"),
-        WarningDisplayState.MembershipCandidates => CandidateCountText(MembershipCandidateRows.Count,
-            "membership candidate"),
+        WarningDisplayState.MembershipCandidates => MembershipCandidateRows.Count == 1
+            ? "1 word uses a member of the named resource"
+            : $"{MembershipCandidateRows.Count:N0} words use members of the named resource",
         WarningDisplayState.SpellingCandidates => CandidateCountText(SpellingCandidateRows.Count, "spelling match"),
-        WarningDisplayState.NoneInSelection => "No words in this Selection",
-        WarningDisplayState.NoFollowedRouteMatch => "No matches on followed routes",
-        WarningDisplayState.NoSubject => "No subject supplied",
-        WarningDisplayState.NamedUnsupportedRoute => "Named item; word route unavailable",
-        WarningDisplayState.ProjectWide => "No word attribution for this resource",
-        WarningDisplayState.MissingObject => "Named item missing",
-        WarningDisplayState.UnresolvedIdentity => "Identity unavailable",
-        _ => "Word evidence unavailable",
+        WarningDisplayState.NoneInSelection => "None of your words",
+        WarningDisplayState.NoFollowedRouteMatch => "Word count unavailable",
+        WarningDisplayState.NoSubject => "PanGloss names nothing here",
+        WarningDisplayState.NamedUnsupportedRoute => "Word count unavailable",
+        WarningDisplayState.ProjectWide => "Project-wide item",
+        WarningDisplayState.MissingObject => "Item missing from project",
+        WarningDisplayState.UnresolvedIdentity => "Word count unavailable",
+        _ => "Word count unavailable",
     };
     public string LineSummaryText => HasRefreshStatus ? StatusText : ReachSummaryText;
     public bool IsPartialReach { get; }

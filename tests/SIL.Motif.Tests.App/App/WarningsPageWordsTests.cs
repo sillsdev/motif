@@ -89,13 +89,16 @@ public sealed class WarningsPageWordsTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var controls = Assert.Single(panel.GetVisualDescendants().OfType<WrapPanel>(),
+                var controls = Assert.Single(panel.GetVisualDescendants().OfType<StackPanel>(),
                     item => item.Classes.Contains("warningControls"));
                 Assert.NotEmpty(controls.Children);
-                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "The environment description is distinct from the producer's explanation.");
+                Assert.Equal(Avalonia.Layout.Orientation.Horizontal, controls.Orientation);
+                Assert.Contains(panel.GetVisualDescendants().OfType<ToggleButton>(), toggle =>
+                    Equals(toggle.Content, "Touch your words · 1 word"));
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "1 of your words");
+                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "The environment description is distinct from the producer's explanation.");
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "In FieldWorks, check the named environment and the allomorphs that use it.");
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -112,23 +115,20 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
 
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "The environment description is distinct from the producer's explanation.");
+                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "In FieldWorks, check the named environment and the allomorphs that use it.");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "PanGloss explains that this environment cannot be read by the parser.");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Environments > Representation");
+                    text.IsEffectivelyVisible && text.Text == "What to do in FieldWorks");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text ==
-                    "missing referenced entry > Entry (FieldWorks link unavailable: the referenced item is absent or unusable as the expected class)");
+                    text.IsEffectivelyVisible && text.Text == "Your words that use e2 (/ _ [C])");
                 Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text ==
-                    "Project setting: default phonological settings > Phonology (FieldWorks link unavailable: a project setting has no individual FieldWorks object)");
+                    text.IsEffectivelyVisible && text.Text == "After you fix it");
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "PanGloss advice");
-                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Motif workflow");
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text?.Contains("After you fix it", StringComparison.Ordinal) == true);
+                    text.IsEffectivelyVisible && text.Text is "PanGloss description" or "PanGloss explanation" or
+                        "PanGloss guidance" or "FieldWorks places" or "Motif workflow");
 
                 var rowBorder = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
                     border => border.Classes.Contains("warningRow"));
