@@ -6,7 +6,7 @@
              x:Class="SIL.Motif.App.Views.WordRowCard"
              x:DataType="vm:CompareWordViewModel">
   <Grid Classes="wordRowCardGrid" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
-    <views:CopyableTextBlock Classes="wordRowCardLabel" Text="FIELDWORKS" />
+    <views:CopyableTextBlock Classes="wordRowCardLabel" Text="FieldWorks" />
     <StackPanel Grid.Column="1" Classes="wordRowCardSection">
       <ItemsControl ItemsSource="{Binding OpinionMarks}" IsVisible="{Binding HasSeveralOpinions}">
         <ItemsControl.ItemsPanel>
@@ -27,7 +27,7 @@
                                IsVisible="{Binding !HasFieldWorksAnalysis}" />
     </StackPanel>
 
-    <views:CopyableTextBlock Grid.Row="1" Classes="wordRowCardLabel" Text="PANGLOSS" />
+    <views:CopyableTextBlock Grid.Row="1" Classes="wordRowCardLabel" Text="PanGloss" />
     <StackPanel Grid.Row="1" Grid.Column="1" Classes="wordRowCardSection">
       <views:MarkChip Mark="{Binding WordRow.OutcomeMark}" Text="{Binding ReadingsSummary}" Compact="True"
                       HorizontalAlignment="Left" />

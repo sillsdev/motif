@@ -124,16 +124,16 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Disabled"
+        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled" IsVisible="{Binding InText.HasResults}">
-          <WrapPanel>
+          <StackPanel Orientation="Horizontal">
           <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
           <views:FilterChip Classes="compact" Label="Unread" Count="{Binding InText.UnreadCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Unread}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Unread}" />
-          <views:FilterChip Classes="compact" Label="Differs" Count="{Binding InText.DiffersCount}"
+          <views:FilterChip Classes="compact" Label="Different" Count="{Binding InText.DiffersCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />
           <views:FilterChip Classes="compact" Label="Not in FieldWorks" Count="{Binding InText.NewCount}"
@@ -153,7 +153,7 @@
                             IsVisible="{Binding InText.HasWarningEvidence}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NamedInWarning}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NamedInWarning}" />
-          </WrapPanel>
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
 
@@ -515,7 +515,7 @@
                                   </Flyout>
                                 </Button.Flyout>
                               </Button>
-                              <Button Classes="wordCardAction" Content="Try this word" Command="{Binding Actions.TryWordCommand}" />
+                              <Button Classes="wordCardAction" Content="Try a Word" Command="{Binding Actions.TryWordCommand}" />
                               <Button Classes="wordCardAction" Content="Mark as unread" Command="{Binding Actions.MarkTokenUnreadCommand}"
                                       CommandParameter="{Binding}" AutomationProperties.Name="Mark this occurrence as unread" />
                               <Button Classes="wordCardAction" Content="Check again" Command="{Binding Actions.RecheckChangesCommand}"

@@ -68,6 +68,9 @@ internal static class ComponentStateContractCases
         new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.warningRow:pointerover :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndHidesItsFieldWorksLinkUntilHoverOrFocus)),
         new("Border.warningRow:focus-within :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndHidesItsFieldWorksLinkUntilHoverOrFocus)),
+        new("Border.wordRowBody:pointerover Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsShowWhileThePointerIsOverTheRowAndWhileItIsOpen)),
+        new("Border.wordRowBody:focus-within Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsStayOutOfTheRestingRowAndAppearWhenItGetsKeyboardFocus)),
+        new("Border.wordRowBody.open Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsShowWhileThePointerIsOverTheRowAndWhileItIsOpen)),
     ];
 
     /// <summary>
@@ -477,6 +480,7 @@ internal enum TooltipScene
     CollapsedSidebar,
     Matrix,
     Reader,
+    AnalyzeWordList,
     ReaderDisapproved,
     TextPicker,
     WordCard,
@@ -554,6 +558,9 @@ internal static class TooltipOwners
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
             control => control is Border && control.Classes.Contains("wordRowBody")),
+        new("places in a word row", "Views/WordRow.axaml", "{Binding PlacesTooltip}", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordRowPlaces") &&
+                control.FindAncestorOfType<WordRow>() is not null),
         new("unread word in a row", "Views/WordRow.axaml", "{Binding UnreadText}", TooltipScene.Matrix,
             control => control is Ellipse && control.FindAncestorOfType<WordRow>() is not null)
         {
@@ -624,9 +631,13 @@ internal static class TooltipOwners
             Pending = "no tooltip scene opens a list row's card",
         },
         new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
-            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in the selected list"),
+            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in this list"),
+        new("checked words to AI Handoff in Analyze texts", "Views/TextWordsPanel.axaml", "{Binding Words.HandOffCheckedWordsHelpText}",
+            TooltipScene.AnalyzeWordList, control => control is Button &&
+                Name(control) is { } name && name.StartsWith("AI Handoff", StringComparison.Ordinal) &&
+                control.FindAncestorOfType<TextWordsPanel>() is not null),
         new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListDisabledReason}",
-            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for the whole selected list")
+            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for this list")
         {
             Gap = "while the list can go to AI Handoff its reason is empty, and an empty tooltip still opens",
         },

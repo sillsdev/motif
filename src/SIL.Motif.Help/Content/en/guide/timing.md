@@ -4,7 +4,7 @@
 
 Under **Look at**, choose **Step limit**, **Slowest**, or **All**. Open **More word sources** to use words checked in Texts, a Matrix cell, a Texts list, or words you enter by hand. Every rule share is of the total word time; **Not attributed** is time the parser did not assign to a rule or lookup. **Overrun** is object time measured beyond total word time, shown separately without an assumed cause. Open **Show calls** to see each kind's recorded call count; a kind that does not count calls says **Not counted**.
 
-A compact word row says **Built anyway** in the same red as the Matrix when PanGloss rebuilds a Disapproved analysis. A matching morphology alone does not imply agreement with that opinion.
+The compact word row names PanGloss's outcome as **Same**, **Different**, **No parse**, or **Stopped**. The meaning is separate and hidden in this list; a matching morphology alone does not imply agreement with a Disapproved opinion.
 
 Select a rule row to see its costliest words; open **Inspect** on the row to see its FieldWorks facts and link. A warning mark means the stored rule identity is structural, synthetic, or unavailable. The inspector separates words that use a morpheme in a stored analysis from words where the parser tried it. Its word and call counts come from that item’s recorded timers; if none were recorded, it says so. In **Detailed statistics**, word time keeps one shading scale across the selected words. **By word** uses those same words; other groups show the complete parse and say so.
 

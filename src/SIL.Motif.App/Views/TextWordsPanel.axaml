@@ -8,11 +8,15 @@
   <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
         RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
     <DockPanel>
-      <Button DockPanel.Dock="Right" Content="AI Handoff" Command="{Binding Words.HandOffCheckedWordsCommand}"
-              AutomationProperties.Name="AI Handoff for ticked words in Analyze texts" />
+      <Button DockPanel.Dock="Right" Content="{Binding Words.HandOffCheckedWordsLabel}"
+              Command="{Binding Words.HandOffCheckedWordsCommand}"
+              AutomationProperties.Name="{Binding Words.HandOffCheckedWordsLabel}"
+              AutomationProperties.HelpText="{Binding Words.HandOffCheckedWordsHelpText}"
+              ToolTip.Tip="{Binding Words.HandOffCheckedWordsHelpText}"
+              views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
       <TextBox DockPanel.Dock="Right" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                AutomationProperties.Name="Search words" />
-      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextWrapping="Wrap"
+      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center" />
     </DockPanel>
 
@@ -57,7 +61,8 @@
                   <views:ListedWordCard DataContext="{Binding Listed}" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap"
                                            IsVisible="{Binding HasSeveralAnalyses}" />
-                  <views:CopyableTextBlock Classes="wordRowCardLabel" Text="WHERE IT APPEARS" />
+                  <views:CopyableTextBlock Classes="wordRowCardHeading" Text="WHERE IT APPEARS"
+                                           HorizontalAlignment="Stretch" TextAlignment="Left" />
                   <ItemsControl ItemsSource="{Binding Occurrences}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">

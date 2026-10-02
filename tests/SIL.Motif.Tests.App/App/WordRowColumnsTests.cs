@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -35,7 +36,7 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
             {
                 foreach (var hidden in new[] { "wordRowTick", "wordRowMeaning", "wordRowWarnings", "wordRowPlaces", "wordRowRead" })
                     Assert.False(Part(row, hidden).IsEffectivelyVisible, $"{hidden} still shows.");
-                var shown = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowTime", "wordRowNext" };
+                var shown = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowTime", "wordRowNextColumn" };
                 var lefts = shown.Select(part => BoundsIn(Part(row, part), row).X).ToArray();
                 Assert.Equal(lefts.Order(), lefts);
                 Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"], NextSteps(row).Select(step => step.Content as string));
@@ -70,8 +71,8 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
                 var heads = header.GetVisualDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text))
                     .OrderBy(text => BoundsIn(text, window).X).ToArray();
-                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "TIME", "NEXT"], heads.Select(text => text.Text));
-                var cells = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowTime", "wordRowNext" };
+                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "TIME", "NEXT"], heads.Select(text => text.Text));
+                var cells = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowTime", "wordRowNextColumn" };
                 foreach (var (head, cell) in heads.Zip(cells))
                 {
                     var cellBounds = BoundsIn(Part(row, cell), window);
@@ -79,6 +80,112 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
                     Assert.True(headBounds.X >= cellBounds.X - 0.5 && headBounds.X < cellBounds.Right,
                         $"'{head.Text}' starts at {headBounds.X:0.#}, outside its cell {cellBounds.X:0.#}–{cellBounds.Right:0.#}.");
                 }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TheWordListUsesTheSharedRowAndKeepsFullEngineHeadingsAtNarrowWidths()
+    {
+        avalonia.Invoke(() =>
+        {
+            var columns = WordRowColumnSets.WordList;
+            var (_, row, window) = Show(new WordRow
+            {
+                Row = new WordRowViewModel(Alikula()),
+                Columns = columns,
+            }, columns, width: 900);
+            try
+            {
+                Assert.True((columns & WordRowColumns.Meaning) != 0);
+                Assert.True((columns & WordRowColumns.Time) != 0);
+                Assert.True(Part(row, "wordRowMeaning").IsEffectivelyVisible);
+                Assert.True(Part(row, "wordRowTime").IsEffectivelyVisible);
+                Assert.Contains("FieldWorks", VisibleTexts(window));
+                Assert.Contains("PanGloss", VisibleTexts(window));
+                Assert.DoesNotContain("FW", VisibleTexts(window));
+                Assert.DoesNotContain("PG", VisibleTexts(window));
+                Assert.Equal("3 places", ToolTip.GetTip(Part(row, "wordRowPlaces")));
+
+                row.FocusRow();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var dataCells = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowMeaning", "wordRowTime" }
+                    .Select(part => BoundsIn(Part(row, part), row)).ToArray();
+                var nextSteps = BoundsIn(Part(row, "wordRowNext"), row);
+                Assert.True(nextSteps.Top >= dataCells.Max(cell => cell.Bottom) - 0.5,
+                    $"Next steps begin at {nextSteps.Top:0.#}, before the data ends at {dataCells.Max(cell => cell.Bottom):0.#}.");
+
+                row.Row = new WordRowViewModel(new RowFacts("one", WordRowOutcome.Same, "Kept", WordRowTone.Fine)
+                { Places = 1 });
+                window.UpdateLayout();
+                Assert.Equal("1 place", ToolTip.GetTip(Part(row, "wordRowPlaces")));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void OutcomesStayColouredTextWhileMeaningsKeepTheirFill()
+    {
+        avalonia.Invoke(() =>
+        {
+            var columns = WordRowColumns.PanGloss | WordRowColumns.Meaning;
+            var (_, row, window) = Show(new WordRow
+            {
+                Row = new WordRowViewModel(Alikula()),
+                Columns = columns,
+            }, columns);
+            try
+            {
+                Assert.True(window.TryFindResource("Intent.Clear", ThemeVariant.Light, out var clear));
+                var expectedClear = Assert.IsAssignableFrom<ISolidColorBrush>(clear).Color;
+                var outcome = row.FindControl<MarkChip>("OutcomeAlone")!;
+                var meaning = row.GetVisualDescendants().OfType<MarkChip>()
+                    .Single(chip => chip.Mark?.Kind == MarkKind.Meaning && chip.IsEffectivelyVisible);
+
+                Assert.Equal(MarkKind.Outcome, outcome.Mark?.Kind);
+                Assert.Equal(expectedClear, Assert.IsAssignableFrom<ISolidColorBrush>(outcome.Background).Color);
+                Assert.NotEqual(expectedClear, Assert.IsAssignableFrom<ISolidColorBrush>(meaning.Background).Color);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void FieldWorksMorphemesStayOnOneLineWhenTheRowRunsOutOfWidth()
+    {
+        avalonia.Invoke(() =>
+        {
+            var morphs = Enumerable.Range(1, 10).Select(index => new ParserReadingMorph(
+                $"morpheme{index}", $"gloss{index}", "n", null, false, null)).ToArray();
+            var facts = new RowFacts("word", WordRowOutcome.Same, "Kept", WordRowTone.Fine)
+            {
+                FieldWorksMorphemes = morphs,
+            };
+            var columns = WordRowColumns.FieldWorks | WordRowColumns.FieldWorksMorphemes;
+            var (_, row, window) = Show(new WordRow
+            {
+                Row = new WordRowViewModel(facts),
+                Columns = columns,
+            }, columns, width: 520);
+            try
+            {
+                var morphsInRow = Part(row, "wordRowFieldWorks").GetVisualDescendants().OfType<Border>()
+                    .Where(border => border.Classes.Contains("wordRowMorph") && border.IsEffectivelyVisible).ToArray();
+                Assert.Equal(10, morphsInRow.Length);
+                var tops = morphsInRow.Select(morph => BoundsIn(morph, row).Top).Distinct().ToArray();
+                Assert.Single(tops);
             }
             finally
             {
@@ -230,12 +337,13 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
         WordAnalysesLink = AnalysesLink,
     };
 
-    private static (WordRowHeader Header, WordRow Row, Window Window) Show(WordRow row, WordRowColumns columns)
+    private static (WordRowHeader Header, WordRow Row, Window Window) Show(WordRow row, WordRowColumns columns,
+        double width = 1240)
     {
         var header = new WordRowHeader { Columns = columns };
         var host = new StackPanel { Children = { header, row } };
         Grid.SetIsSharedSizeScope(host, true);
-        var window = new Window { Content = host, Width = 1240, Height = 400, RequestedThemeVariant = ThemeVariant.Light };
+        var window = new Window { Content = host, Width = width, Height = 400, RequestedThemeVariant = ThemeVariant.Light };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();

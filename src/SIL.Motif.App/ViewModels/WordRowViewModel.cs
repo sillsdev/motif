@@ -48,9 +48,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         PanGlossMorphemes = row.PanGlossMorphemes.Select((morph, index) =>
             new WordRowMorphemeViewModel(new ParserReadingMorphViewModel(morph), differing.Contains(index + 1))).ToArray();
         Outcome = OutcomeOf(row.Outcome);
-        Tone = row.MeaningCode == "disapproved-rebuilt"
-            ? ToneOf(row.Tone)
-            : WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
+        Tone = WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
         WordAnalysesLink = row.WordAnalysesLink is { } link ? new Uri(link) : null;
         OpenInTextCommand = new RelayCommand(() => _routes?.OpenInText?.Invoke(Word));
         TryWordCommand = new RelayCommand(() => _routes?.TryWord?.Invoke(Word));
@@ -121,22 +119,26 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public string OutcomeWord => WindowWords.Of(Outcome);
 
-    /// <summary>The compact result names an opinion conflict instead of implying that a matching reading is good.</summary>
-    public string CompactOutcomeWord => Outcome == ParserOutcome.Same && Tone == MeaningTone.Problem ? Meaning : OutcomeWord;
+    /// <summary>The compact result says only what PanGloss built; its meaning stays in the meaning column.</summary>
+    public string CompactOutcomeWord => OutcomeWord;
 
-    /// <summary>The compact result chip uses the comparison tone when a rebuilt reading conflicts with an opinion.</summary>
-    public Mark CompactOutcomeMark => Outcome == ParserOutcome.Same && Tone == MeaningTone.Problem ? MeaningMark : OutcomeMark;
+    /// <summary>The compact result mark says only what PanGloss built.</summary>
+    public Mark CompactOutcomeMark => OutcomeMark;
 
     /// <summary>The outcome's word beside its sign; PanGloss's own morphemes take the word's place when shown.</summary>
     public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
 
-    /// <summary>What the opinion and the outcome mean together, in the Matrix's words.</summary>
-    public string Meaning => _row.MeaningCode == "disapproved-rebuilt"
-        ? _row.Meaning
-        : WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
+    /// <summary>What the opinion and outcome mean together, using the Matrix cell's words.</summary>
+    public string Meaning => WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
 
-    /// <summary>The qualification on the comparison headline.</summary>
-    public string MeaningDetail => _row.MeaningDetail;
+    /// <summary>Recorded comparison detail that qualifies the cell's meaning without changing its wording.</summary>
+    public string MeaningDetail => string.Join("; ", new[]
+    {
+        _row.MeaningDetail,
+        _row.MeaningCode == "disapproved-rebuilt"
+            ? "PanGloss matched an analysis FieldWorks marked Disapproved."
+            : string.Empty,
+    }.Where(detail => detail.Length > 0));
 
     /// <summary>Explains differences hidden by identical forms and glosses without guessing an entry or sense.</summary>
     public string IdentityDetail
@@ -184,9 +186,6 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public bool HasMeaningDetail => MeaningDetail.Length > 0;
 
-    /// <summary>Whether the word carries a specific rebuilt-opinion headline beyond its cell's default meaning.</summary>
-    public bool HasSpecificMeaning => _row.MeaningCode == "disapproved-rebuilt";
-
     public MeaningTone Tone { get; }
 
     public Mark MeaningMark => Mark.Of(Tone);
@@ -204,6 +203,11 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>How many places the word occurs, such as <c>×3</c>, or empty when not known.</summary>
     public string PlacesText => _row.Places is { } places ? $"×{places}" : string.Empty;
+
+    /// <summary>The place count in the window's words, or empty when it is not known.</summary>
+    public string PlacesTooltip => _row.Places is { } places
+        ? places == 1 ? "1 place" : $"{places:N0} places"
+        : string.Empty;
 
     /// <summary>How long the parser took, or empty for a word it did not time.</summary>
     public string ElapsedText => _row.ElapsedMs is not { } ms ? string.Empty : ms == 0 ? "<1 ms" : $"{ms:N0} ms";

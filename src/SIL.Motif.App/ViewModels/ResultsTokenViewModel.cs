@@ -168,19 +168,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>Whether PanGloss stopped before completing its search.</summary>
     public bool IsPanGlossCapped => Comparison.Outcome == WordRowOutcome.Stopped;
 
-    /// <summary>The short PanGloss result shown in the word strip and hover summary.</summary>
-    public string PanGlossSummary => Comparison.Outcome switch
-    {
-        WordRowOutcome.Stopped => "Search stopped at a limit",
-        WordRowOutcome.NotParsed when _assessment is null => "Not parsed yet",
-        WordRowOutcome.NotParsed => "Skipped: a character the grammar does not define",
-        WordRowOutcome.NoParse => "No parse",
-        _ when Comparison.MeaningCode == "disapproved-rebuilt" => Comparison.Headline,
-        _ when HasOpinionConflict => "Conflicts with a FieldWorks opinion",
-        _ when IsPanGlossSame => "Agrees with FieldWorks",
-        _ when IsPanGlossExtra => "Has additional readings",
-        _ => "Different from FieldWorks",
-    };
+    /// <summary>The comparison meaning, using the same wording as the Matrix cell.</summary>
+    public string PanGlossSummary => Comparison.Outcome == WordRowOutcome.NotParsed && _assessment is null
+        ? "Not parsed yet"
+        : CompareSemantics.MeaningOf(Comparison.Standing, ColumnOf(Comparison.Outcome)).Label;
 
     private bool HasOpinionConflict => Comparison.Standing == ProjectStanding.IncorrectSpelling ||
         HasDisapprovedReading || Comparison.MissingApprovedAnalyses.Count > 0 || Comparison.MissingApproved.Count > 0;
@@ -410,10 +401,25 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>Whether the strip offers its actions, which it does until a change is staged for the word.</summary>
     public bool ShowsActions => !HasStagedChanges;
 
-    /// <summary>The shared qualification on the comparison headline.</summary>
-    public string ComparisonDetail => Comparison.Detail;
+    /// <summary>Recorded comparison detail beneath the Matrix cell's shared meaning.</summary>
+    public string ComparisonDetail => string.Join("; ", new[]
+    {
+        Comparison.Detail,
+        Comparison.MeaningCode == "disapproved-rebuilt"
+            ? "PanGloss matched an analysis FieldWorks marked Disapproved."
+            : string.Empty,
+    }.Where(detail => detail.Length > 0));
 
     public bool HasComparisonDetail => ComparisonDetail.Length > 0;
+
+    private static CompareColumnKind ColumnOf(WordRowOutcome outcome) => outcome switch
+    {
+        WordRowOutcome.Same => CompareColumnKind.Match,
+        WordRowOutcome.Different => CompareColumnKind.NoMatch,
+        WordRowOutcome.NoParse => CompareColumnKind.NoParse,
+        WordRowOutcome.Stopped => CompareColumnKind.Timeout,
+        _ => CompareColumnKind.Skipped,
+    };
 
     /// <summary>The read-only hover summary for the stored opinion and current PanGloss result.</summary>
     public string HoverSummary => $"{Form} · {FieldWorksSummary} · PanGloss: {PanGlossSummary}";

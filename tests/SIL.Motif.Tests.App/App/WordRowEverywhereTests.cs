@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -99,6 +100,16 @@ public sealed class WordRowEverywhereTests
                 texts.Tab = TextsTab.AnalyzeTexts;
                 texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
                 workspace.CurrentPage = WorkspacePage.Texts;
+                await Until(window, () => texts.Words.Rows.Count > 0, "the Word list's words");
+                PageScreenshots.Settle(window);
+                var textWordsPanel = window.GetVisualDescendants().OfType<TextWordsPanel>().Single();
+                var handoff = Assert.Single(textWordsPanel.GetVisualDescendants().OfType<Button>(),
+                    button => ReferenceEquals(button.Command, texts.Words.HandOffCheckedWordsCommand));
+                Assert.Equal("AI Handoff", handoff.Content);
+                Assert.False(handoff.IsEffectivelyEnabled);
+                Assert.Equal("Tick words first.", ToolTip.GetTip(handoff));
+                texts.Words.Rows[0].IsChecked = true;
+                Assert.Equal("AI Handoff for this word", handoff.Content);
                 foreach (var (width, height) in new[] { (1040, 780), (1240, 780), (1040, 1000), (1240, 1000) })
                 {
                     window.Width = width;
@@ -153,6 +164,9 @@ public sealed class WordRowEverywhereTests
                 window.Height = 1600;
                 await reach(workspace, window, client!);
                 var row = await RowIn(window, list, word);
+                row.FocusRow();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
                 var steps = row.GetVisualDescendants().OfType<Control>().First(part => part.Classes.Contains("wordRowNext"))
                     .GetVisualDescendants().OfType<Button>().ToArray();
                 Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"], steps.Select(step => step.Content as string));

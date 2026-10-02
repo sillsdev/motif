@@ -33,10 +33,10 @@ public sealed class TextsListsHandoffAvailabilityTests
 
                 var lists = workspace.PageModel<TextsPageModel>().TextsLists;
                 var emptyListReason = "No words in this list to send to AI Handoff.";
-                var wholeListButton = FakeComposedWindow.FindButton(
-                    window, "AI Handoff for the whole selected list");
-                var checkedWordsButton = FakeComposedWindow.FindButton(
-                    window, "AI Handoff for ticked words in the selected list");
+                var wholeListButton = window.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, lists.HandOffListCommand));
+                var checkedWordsButton = window.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, lists.HandOffCheckedWordsCommand));
                 Assert.False(wholeListButton.IsEffectivelyEnabled);
                 Assert.False(checkedWordsButton.IsEffectivelyEnabled);
                 Assert.Equal(emptyListReason, lists.HandOffListDisabledReason);
@@ -57,7 +57,7 @@ public sealed class TextsListsHandoffAvailabilityTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 
-                const string untickedWordsReason = "Tick words in this list before starting an AI Handoff.";
+                const string untickedWordsReason = "Tick words first.";
                 Assert.True(wholeListButton.IsEffectivelyEnabled);
                 Assert.False(checkedWordsButton.IsEffectivelyEnabled);
                 Assert.Empty(lists.HandOffListDisabledReason);
@@ -84,7 +84,7 @@ public sealed class TextsListsHandoffAvailabilityTests
         {
             "Choose a word list first.",
             "No words in this list to send to AI Handoff.",
-            "Tick words in this list before starting an AI Handoff.",
+            "Tick words first.",
         };
         return window.GetVisualDescendants().OfType<TextBlock>()
             .Where(text => text.IsEffectivelyVisible && text.Text is { } value && reasons.Contains(value))

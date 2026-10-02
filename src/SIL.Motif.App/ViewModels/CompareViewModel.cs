@@ -227,9 +227,8 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         var chosen = cells.ToHashSet();
         var words = _all.Where(word => chosen.Contains(new TextsListCell(word.Row, word.Column))).ToArray();
-        return words.Select(word => word.WordRow.Row.MeaningCode).Distinct(StringComparer.Ordinal).Take(2).Count() > 1 ||
-            words.Any(word => word.WordRow.Row.MeaningCode !=
-                CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column));
+        return words.Select(word => CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column))
+            .Distinct(StringComparer.Ordinal).Take(2).Count() > 1;
     }
 
     /// <summary>Gets checked words placed in any of the given matrix cells, in Assessment order.</summary>
@@ -327,8 +326,7 @@ public sealed partial class CompareViewModel : ObservableObject
     /// Whether the word rows show their meaning column: only when the listed cells mix meanings, since the heading
     /// already names a list's one meaning.
     /// </summary>
-    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1 || Words.Any(word =>
-        word.WordRow.Row.MeaningCode != CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column));
+    public bool ShowsMeaning => ListedMeanings().Take(2).Count() > 1;
 
     /// <summary>
     /// The one meaning every listed word shares, for a chip after a heading that names no single cell; otherwise
@@ -348,7 +346,7 @@ public sealed partial class CompareViewModel : ObservableObject
         return (chosen.Length == 0 ? Cells : chosen).Where(cell => cell.WordCount > 0);
     }
 
-    private IEnumerable<string> ListedMeanings() => Words.Select(word => word.WordRow.Row.MeaningCode)
+    private IEnumerable<string> ListedMeanings() => Words.Select(word => word.WordRow.Meaning)
         .Distinct(StringComparer.Ordinal);
 
     /// <summary>The one line under the heading: what the chosen cell means, or how to choose cells.</summary>
@@ -378,9 +376,9 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The AI Handoff button's words, naming how many listed words it sends.</summary>
     public string HandOffLabel => Words.Count switch
     {
-        0 => "AI Handoff for these words",
+        0 => "AI Handoff",
         1 => "AI Handoff for this word",
-        var count => $"AI Handoff for these {count:N0} words",
+        var count => $"AI Handoff for {count:N0} words",
     };
 
     /// <summary>
@@ -926,10 +924,8 @@ public sealed partial class CompareWordViewModel : ObservableObject
         AccessibleName = $"{Word}: {CompareViewModel.HeldInFieldWorks(OpinionLabel)}, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
-        Meaning = word.Comparison.MeaningCode == "disapproved-rebuilt"
-            ? word.Comparison.Headline
-            : WindowWords.MeaningOf(word.WordRow.Row.Opinion, word.WordRow.Outcome).Word;
-        Family = CompareSemantics.MeaningOfCode(word.Comparison.MeaningCode).Family;
+        Meaning = WordRow.Meaning;
+        Family = CompareViewModel.MeaningOf(Row, Column).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
         RowMark = WordProjectStatuses.MarkOf(Row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);

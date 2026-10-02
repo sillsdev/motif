@@ -105,8 +105,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     mark.FindAncestorOfType<Button>()?.DataContext is CompareRowViewModel));
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Different");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Not parsed");
-                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<TextBlock>(), text =>
-                    text.Text is "FieldWorks" or "PanGloss");
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "FieldWorks");
+                Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "PanGloss");
                 var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
                 var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
                 Assert.Equal("kitabu · Approved · PanGloss: No parse · Lost", AutomationProperties.GetName(body));
@@ -421,14 +421,15 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     foreach (var (left, right) in heads.Zip(heads.Skip(1)))
                     {
                         var end = left.TranslatePoint(default, window)!.Value.X + left.TextLayout.WidthIncludingTrailingWhitespace;
-                        Assert.True(end + 4 <= right.TranslatePoint(default, window)!.Value.X, $"'{left.Text}' runs into '{right.Text}'.");
+                    Assert.True(end + 4 <= right.TranslatePoint(default, window)!.Value.X,
+                        $"'{left.Text}' ends at {end:0.#} but '{right.Text}' starts at {right.TranslatePoint(default, window)!.Value.X:0.#}.");
                     }
                 }
 
-                HeadsStayApart(["WORD", "FW", "PG", "RESULT"]);
+                HeadsStayApart(["WORD", "FieldWorks", "PanGloss", "RESULT"]);
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
-                HeadsStayApart(["WORD", "FW", "PG", "PLACES"]);
+                HeadsStayApart(["WORD", "FieldWorks", "PanGloss", "PLACES"]);
             });
         });
     }

@@ -110,6 +110,8 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Equal("watoto", Assert.Single(token.SpellingCandidateWarnings).WordsLabel);
                 await inText.OpenTokenCardAsync(token);
                 Settle(window);
+                Assert.Contains(OpenCard(window).GetVisualDescendants().OfType<Button>(), button =>
+                    Equals(button.Content, "Try a Word"));
 
                 var panel = Panel(window);
                 var warningFilter = Assert.Single(panel.GetVisualDescendants().OfType<FilterChip>(),
@@ -346,7 +348,7 @@ public sealed class AnalyzeTextsLayoutTests
                 };
                 var chips = panel.GetVisualDescendants().OfType<FilterChip>()
                     .Where(chip => chip.IsEffectivelyVisible).ToArray();
-                Assert.Equal(["All", "Unread", "Differs", "Not in FieldWorks", "No parse", "Stopped"],
+                Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped"],
                     chips.Select(chip => chip.Label));
                 controls.AddRange(chips);
 
@@ -658,7 +660,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Settle(window);
                 var panel = Panel(window);
                 var showing = new Dictionary<string, int>(StringComparer.Ordinal)
-                { ["All"] = 0, ["Unread"] = 0, ["Differs"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0 };
+                { ["All"] = 0, ["Unread"] = 0, ["Different"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0 };
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 foreach (var text in inText.Texts)
                 {
@@ -671,7 +673,7 @@ public sealed class AnalyzeTextsLayoutTests
                         VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
                     showing["All"] += strips.Length;
                     showing["Unread"] += strips.Count(strip => HasPart(strip, "unread"));
-                    showing["Differs"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
+                    showing["Different"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
                     showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
                     showing["No parse"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse");
                     showing["Stopped"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "Stopped at the step limit");

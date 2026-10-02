@@ -301,7 +301,7 @@ public sealed class TextWordsViewModelTests
     }
 
     [Fact]
-    public async Task TheSummaryCountsWordsOccurrencesAndApprovedWords()
+    public async Task TheSummaryCountsWordsAndPlaces()
     {
         var (fake, selection, words) = NewViewModel();
         await words.SetProjectAsync(ProjectPath);
@@ -317,7 +317,7 @@ public sealed class TextWordsViewModelTests
 
         await words.ReloadAsync();
 
-        Assert.Equal("2 words · 3 occurrences · 1 approved · 1 not in FieldWorks", words.SummaryText);
+        Assert.Equal("2 words · 3 places", words.SummaryText);
     }
 
     [Fact]
@@ -333,7 +333,7 @@ public sealed class TextWordsViewModelTests
 
         await words.ReloadAsync();
 
-        Assert.Equal("1 word · 17 occurrences · 1 approved", words.SummaryText);
+        Assert.Equal("1 word · 17 places", words.SummaryText);
     }
 
     [Fact]

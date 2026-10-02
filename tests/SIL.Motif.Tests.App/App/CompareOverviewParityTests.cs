@@ -101,7 +101,7 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.Equal(appOverview.Value.TextCoverage, overviewPage.Overview.TextCoverage);
             Assert.Equal(appOverview.Value.Accuracy, overviewPage.Overview.Accuracy);
             Assert.Contains($"{appOverview.Value.SelectionWordCount:N0}", overviewPage.SelectionWordCountText);
-            Assert.Contains($"of their {appOverview.Value.TextCoverage.TotalOccurrences:N0} occurrences",
+            Assert.Contains($"of their {appOverview.Value.TextCoverage.TotalOccurrences:N0} places",
                 overviewPage.TextCoverageWords);
             Assert.Equal(appOverview.Value.Accuracy.ApprovedWordsNoMatch + appOverview.Value.Accuracy.ApprovedWordsNoParse,
                 overviewPage.AccuracySegments.Where(segment => segment.Mark == Mark.Of(MeaningTone.Problem) || segment.Mark == Mark.NoParse)

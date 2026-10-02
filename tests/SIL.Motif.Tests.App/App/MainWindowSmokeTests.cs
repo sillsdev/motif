@@ -1273,12 +1273,12 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(list) == "Words in the selected list").IsEffectivelyVisible);
 
                 var listHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "AI Handoff for the whole selected list");
+                    AutomationProperties.GetName(button) == "AI Handoff for this list");
                 var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "AI Handoff for ticked words in the selected list");
+                    AutomationProperties.GetName(button) == "AI Handoff for ticked words in this list");
 
-                Assert.Equal("Hand off the whole list", listHandoff.Content);
-                Assert.Equal("Hand off selected words", checkedHandoff.Content);
+                Assert.Equal("AI Handoff for this list", listHandoff.Content);
+                Assert.Equal("AI Handoff", checkedHandoff.Content);
                 Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
                 Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
 

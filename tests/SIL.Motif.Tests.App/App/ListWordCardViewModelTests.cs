@@ -145,7 +145,7 @@ public sealed class ListWordCardViewModelTests
 
         card.CompareCommand.Execute(null);
 
-        Assert.Equal("Compare in Try a Word", card.CompareLabel);
+        Assert.Equal("Try a Word", card.CompareLabel);
         Assert.Equal("alikula", tried);
     }
 }

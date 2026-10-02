@@ -14,6 +14,7 @@ using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
+using WordRow = SIL.Motif.App.Views.WordRow;
 
 namespace SIL.Motif.Tests.App.ControlContracts;
 
@@ -211,8 +212,19 @@ internal sealed class TooltipScenes
                 Show(WorkspacePage.Overview);
                 await Until(() => Workspace.IsSidebarCollapsed, "the collapsed sidebar");
                 break;
-            case TooltipScene.Matrix or TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
+            case TooltipScene.Matrix:
+                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                Visible<WordRow>().First().FocusRow();
+                PageScreenshots.Settle(Window);
+                break;
+            case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
             case TooltipScene.Reader: Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts); break;
+            case TooltipScene.AnalyzeWordList:
+                Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+                await Until(() => Visible<Control>().Any(control => control.FindAncestorOfType<TextWordsPanel>() is not null),
+                    "the Analyze texts word list");
+                break;
             case TooltipScene.ReaderDisapproved:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 InText.SelectedText = InText.Texts.Single(text => text.Lines.SelectMany(line => line.Tokens)
@@ -322,6 +334,9 @@ internal sealed class TooltipScenes
         {
             case TooltipScene.ReaderDisapproved:
                 InText.SelectedText = InText.Texts.First();
+                break;
+            case TooltipScene.AnalyzeWordList:
+                Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
                 break;
             case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
             case TooltipScene.OpenRecent:

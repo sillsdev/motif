@@ -133,7 +133,7 @@ public sealed partial class OverviewPageModel : PageModel
     public string SelectionWordCountText => Overview is { SelectionResolved: false } ? "not resolved" :
         Overview?.SelectionWordCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
-    /// <summary>The number of occurrences in the response's selected Texts.</summary>
+    /// <summary>The number of places in the response's selected Texts.</summary>
     public string TextOccurrenceCountText => Overview is { SelectionResolved: false } ? "not resolved" :
         Overview?.TextOccurrenceCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
@@ -253,11 +253,11 @@ public sealed partial class OverviewPageModel : PageModel
     public string TextCoverageMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
         $"{overview.TextCoverage.ParsedWords:N0} of {overview.SelectionWordCount:N0} words parse";
 
-    /// <summary>The parsed share of the Selection's words and of their occurrences in the Texts.</summary>
+    /// <summary>The parsed share of the Selection's words and of their places in the Texts.</summary>
     public string TextCoverageWords => !HasAssessment || Overview is not { } overview ? string.Empty :
         $"{FormatPercent(overview.WordCoveragePercent)} of the words in your Selection · " +
         $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
-        $"{overview.TextCoverage.TotalOccurrences:N0} occurrences";
+        $"{overview.TextCoverage.TotalOccurrences:N0} places";
 
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :

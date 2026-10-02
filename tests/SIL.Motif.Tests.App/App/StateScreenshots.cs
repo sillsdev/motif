@@ -332,9 +332,12 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             Height = 1100,
             Teardown = stage => { stage.Workspace.Assess.Compare.ClearSelectionCommand.Execute(null); return Task.CompletedTask; },
         };
-        yield return new("matrix", "link-hover", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.Visible<HyperlinkButton>(link => link.Content as string == "Open in text").First(), "Open in text",
-            TextsTab.Matrix))
+        yield return new("matrix", "link-hover", async stage =>
+        {
+            await stage.Hover(WorkspacePage.Texts, () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix);
+            return await stage.Hover(null,
+                () => stage.Visible<HyperlinkButton>(link => link.Content as string == "Open in text").First(), "Open in text");
+        })
         { Height = 1100 };
 
         yield return new("matrix", "row-hover", stage => stage.Hover(WorkspacePage.Texts,
@@ -418,9 +421,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("lists", "disabled-hover", async stage =>
         {
             await stage.ChooseList();
-            var button = stage.Named<Button>("AI Handoff for ticked words in the selected list");
+            var button = stage.Named<Button>("AI Handoff for ticked words in this list");
             return $"{(button.IsEffectivelyEnabled ? "Enabled" : "Disabled")} button. " +
-                await stage.Hover(null, () => button, "AI Handoff for ticked words");
+                await stage.Hover(null, () => button, "Tick words first");
         });
 
         // Try a Word.

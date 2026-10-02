@@ -148,17 +148,17 @@ public sealed partial class TextsListsViewModel : ObservableObject
         ? "Choose a word list first."
         : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
 
-    public string HandOffListLabel => "Hand off the whole list";
+    public string HandOffListLabel => "AI Handoff for this list";
 
     /// <summary>Names the ticked words the second AI Handoff button sends, so it never reads like the first.</summary>
     public string HandOffCheckedWordsLabel => SelectedList is { } list
         ? Compare.CheckedWordsInCells(list.Cells).Count switch
         {
-            0 => "Hand off selected words",
-            1 => "Hand off the 1 selected word",
-            var count => $"Hand off the {count:N0} selected words",
+            0 => "AI Handoff",
+            1 => "AI Handoff for this word",
+            var count => $"AI Handoff for {count:N0} words",
         }
-        : "Hand off selected words";
+        : "AI Handoff";
 
     public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
 
@@ -171,7 +171,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         ? "Choose a word list first."
         : !list.HasWords ? "This word list has no words to tick."
         : Compare.CheckedWordsInCells(list.Cells).Count == 0
-            ? "Tick words in this list before starting an AI Handoff."
+            ? "Tick words first."
             : string.Empty;
 
     private Action<IReadOnlyList<string>>? _handOff;

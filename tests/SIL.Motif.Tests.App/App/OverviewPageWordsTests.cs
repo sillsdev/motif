@@ -218,7 +218,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("118 of 142 words parse", page.TextCoverageMain);
-        Assert.Equal("83% of the words in your Selection · 88% of their 611 occurrences", page.TextCoverageWords);
+        Assert.Equal("83% of the words in your Selection · 88% of their 611 places", page.TextCoverageWords);
         Assert.Equal(["81 same", "37 different", "17 no parse", "5 stopped", "2 not parsed"],
             page.TextCoverageSegments.Select(segment => $"{segment.CountText} {segment.Label}"));
         Assert.All(page.TextCoverageSegments, segment => Assert.NotNull(segment.Command));

@@ -145,14 +145,14 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
     }
 
     [Theory]
-    [InlineData("same", "analysed", false, AnalysisMarkingClass.Same, CompareColumnKind.Match, "Agrees with FieldWorks", 0)]
-    [InlineData("different", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.NoMatch, "Conflicts with a FieldWorks opinion", 1)]
-    [InlineData("extra", "analysed", false, AnalysisMarkingClass.Extra, CompareColumnKind.NoMatch, "Has additional readings", 1)]
-    [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 1)]
-    [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped, CompareColumnKind.Timeout, "Search stopped at a limit", 1)]
-    [InlineData("incorrect-no-parse", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "No parse", 0)]
-    [InlineData("incorrect-capped", "capped", true, AnalysisMarkingClass.Conflict, CompareColumnKind.Timeout, "Search stopped at a limit", 1)]
-    [InlineData("rebuilt-disapproved", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.Match, "Conflicts with a FieldWorks opinion", 1)]
+    [InlineData("same", "analysed", false, AnalysisMarkingClass.Same, CompareColumnKind.Match, "Kept", 0)]
+    [InlineData("different", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.NoMatch, "Built something else", 1)]
+    [InlineData("extra", "analysed", false, AnalysisMarkingClass.Extra, CompareColumnKind.NoMatch, "Built something else", 1)]
+    [InlineData("none", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "Lost", 1)]
+    [InlineData("capped", "capped", true, AnalysisMarkingClass.Capped, CompareColumnKind.Timeout, "Unknown yet", 1)]
+    [InlineData("incorrect-no-parse", "no-analysis", false, AnalysisMarkingClass.None, CompareColumnKind.NoParse, "Correct", 0)]
+    [InlineData("incorrect-capped", "capped", true, AnalysisMarkingClass.Conflict, CompareColumnKind.Timeout, "Unknown yet", 1)]
+    [InlineData("rebuilt-disapproved", "analysed", false, AnalysisMarkingClass.Conflict, CompareColumnKind.Match, "Built anyway", 1)]
     public async Task AStoredAssessmentReadThroughTheCommandClientBuildsTheMarkingClass(
         string name, string outcome, bool capped, AnalysisMarkingClass expected, CompareColumnKind expectedColumn,
         string expectedLabel, int expectedListCount)

@@ -55,7 +55,7 @@ public sealed class ListWordCardViewModel
 
     public string OutcomeWord => Row.OutcomeWord;
 
-    public string CompareLabel => "Compare in Try a Word";
+    public string CompareLabel => "Try a Word";
 
     public string CompareName => $"Compare {Row.Word} in Try a Word";
 

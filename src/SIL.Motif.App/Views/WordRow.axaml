@@ -11,6 +11,7 @@
       <StackPanel>
         <Border x:Name="Body" Classes="wordRowBody hoverReveal" Classes.open="{Binding #Self.IsOpen}" Focusable="True" IsTabStop="True"
                 ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
+          <StackPanel>
         <Grid x:Name="Line" Classes="wordRowLine">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="WordRowTick" />
@@ -37,20 +38,23 @@
 
               <StackPanel x:Name="WordCell" Classes="wordRowWord" VerticalAlignment="Center">
                 <views:CopyableTextBlock Classes="wordRowForm" Text="{Binding Word}" TextTrimming="CharacterEllipsis" />
-                <views:CopyableTextBlock Classes="wordRowGloss" Text="{Binding Gloss}" TextTrimming="CharacterEllipsis"
+                <views:CopyableTextBlock Classes="wordRowGloss" Text="{Binding Gloss}" TextWrapping="Wrap"
                            IsVisible="{Binding Gloss, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <views:CopyableTextBlock Classes="wordRowStaged" Text="{Binding #Self.StagedText}" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding #Self.StagedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
 
-              <DockPanel x:Name="FieldWorksCell" Grid.Column="1" Classes="wordRowFieldWorks" VerticalAlignment="Center">
-                <controls:OpinionMark DockPanel.Dock="Left" Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
+              <Grid x:Name="FieldWorksCell" Grid.Column="1" Classes="wordRowFieldWorks" VerticalAlignment="Center"
+                    ColumnDefinitions="Auto,*">
+                <controls:OpinionMark Grid.Column="0" Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
                                       VerticalAlignment="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                                       AutomationProperties.Name="{Binding OpinionLabel}" />
+                <ScrollViewer x:Name="FieldWorksMorphemeScroll" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
                 <ItemsControl x:Name="FieldWorksMorphemes" ItemsSource="{Binding FieldWorksMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                      <WrapPanel />
+                      <StackPanel Orientation="Horizontal" />
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
@@ -64,20 +68,23 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-              </DockPanel>
+                </ScrollViewer>
+              </Grid>
 
-              <DockPanel x:Name="PanGlossCell" Grid.Column="2" Classes="wordRowPanGloss" VerticalAlignment="Center">
-                <views:MarkChip x:Name="OutcomeBesideMorphemes" DockPanel.Dock="Left" Mark="{Binding OutcomeMark}"
+              <Grid x:Name="PanGlossCell" Grid.Column="2" Classes="wordRowPanGloss" VerticalAlignment="Center"
+                    ColumnDefinitions="Auto,*">
+                <views:MarkChip x:Name="OutcomeBesideMorphemes" Grid.Column="0" Mark="{Binding OutcomeMark}"
                                 Text="{Binding OutcomeLabel}" Compact="True" Classes="wordRowOutcome" VerticalAlignment="Top"
                                 HorizontalAlignment="Left" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-                <views:MarkChip x:Name="OutcomeAlone" DockPanel.Dock="Left" Mark="{Binding CompactOutcomeMark}"
+                <views:MarkChip x:Name="OutcomeAlone" Grid.Column="0" Mark="{Binding CompactOutcomeMark}"
                                 Text="{Binding CompactOutcomeWord}" Compact="True" Classes="wordRowOutcome" IsVisible="False"
                                 VerticalAlignment="Center" HorizontalAlignment="Left" />
-                <Panel x:Name="PanGlossMorphemes">
+                <ScrollViewer x:Name="PanGlossMorphemes" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
                 <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                      <WrapPanel />
+                      <StackPanel Orientation="Horizontal" />
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
@@ -91,17 +98,13 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                </Panel>
-              </DockPanel>
+                </ScrollViewer>
+              </Grid>
 
               <Panel x:Name="MeaningCell" Grid.Column="3" Classes="wordRowMeaning" VerticalAlignment="Center">
                 <StackPanel>
                   <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Meaning}" Compact="True"
-                                  IsVisible="{Binding !HasSpecificMeaning}" HorizontalAlignment="Left" />
-                  <Border Classes="markChip compact meaning problem" IsVisible="{Binding HasSpecificMeaning}">
-                    <views:CopyableTextBlock Classes="markWord meaning problem" Text="{Binding Meaning}"
-                                             TextWrapping="Wrap" />
-                  </Border>
+                                  HorizontalAlignment="Left" />
                   <views:CopyableTextBlock Text="{Binding MeaningDetail}" IsVisible="{Binding HasMeaningDetail}"
                                            Classes="wordRowNote" TextWrapping="Wrap" />
                 </StackPanel>
@@ -113,7 +116,7 @@
               </Panel>
 
               <views:CopyableTextBlock x:Name="PlacesCell" Grid.Column="5" Classes="wordRowPlaces wordRowNumber"
-                         Text="{Binding PlacesText}" TextAlignment="Right" />
+                         Text="{Binding PlacesText}" TextAlignment="Right" ToolTip.Tip="{Binding PlacesTooltip}" />
               <Panel x:Name="TimeCell" Grid.Column="6" Classes="wordRowTime" VerticalAlignment="Center">
                 <views:CopyableTextBlock Classes="wordRowNumber muted" Text="{Binding ElapsedText}" TextAlignment="Right"
                            IsVisible="{Binding #Self.TimeText, Converter={x:Static ObjectConverters.IsNull}}" />
@@ -126,7 +129,12 @@
               </Panel>
             </Grid>
 
-          <StackPanel x:Name="NextCell" Grid.Column="2" Classes="wordRowNext" Orientation="Horizontal" VerticalAlignment="Center">
+          <Panel x:Name="NextColumnCell" Grid.Column="2" Classes="wordRowNextColumn" />
+        </Grid>
+
+        <Grid Classes="wordRowNextHost">
+          <StackPanel x:Name="NextCell" Classes="wordRowNext" Orientation="Horizontal"
+                      HorizontalAlignment="Right" VerticalAlignment="Center">
             <HyperlinkButton x:Name="OpenInText" Classes="revealOnHover" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
             <HyperlinkButton x:Name="TryWord" Classes="revealOnHover" Content="{Binding TryWordLabel}" Command="{Binding TryWordCommand}"
@@ -137,6 +145,7 @@
                              ToolTip.Tip="{Binding WordAnalysesTip}" ToolTip.ShowOnDisabled="True" />
           </StackPanel>
         </Grid>
+          </StackPanel>
         </Border>
 
         <views:CopyableTextBlock Text="{Binding IdentityDetail}" Classes="wordRowNote" TextWrapping="Wrap"

@@ -73,7 +73,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
               <Button Content="Analyze texts" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Open in Analyze texts" />
               <Button Content="Timing" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Timing for this word" />
-              <Button Content="AI Handoff" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="AI Handoff for this word" />
+      <Button Content="AI Handoff for this word" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="AI Handoff for this word" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />

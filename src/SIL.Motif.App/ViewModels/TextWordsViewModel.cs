@@ -156,6 +156,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public int CheckedWordCount => _all.Count(row => row.IsChecked);
 
+    public string HandOffCheckedWordsLabel => CheckedWordCount switch
+    {
+        0 => "AI Handoff",
+        1 => "AI Handoff for this word",
+        var count => $"AI Handoff for {count:N0} words",
+    };
+
+    public string HandOffCheckedWordsHelpText => CheckedWordCount == 0 ? "Tick words first." : string.Empty;
+
     /// <summary>The navigation action used when someone opens a word from the list.</summary>
     public Action<string>? OpenWord { get; set; }
 
@@ -210,13 +219,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         ? _selection.PastedWordEntries.Count is var pasted and > 0
             ? $"{pasted} pasted word{(pasted == 1 ? string.Empty : "s")} to test; check a text to see its words here"
             : "No words to test yet"
-        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount} occurrence{(OccurrenceCount == 1 ? string.Empty : "s")} · " +
-          string.Join(" · ", new[]
-          {
-              (ApprovedFilterCount, "approved"), (CandidateFilterCount, "unknown"),
-              (RejectedFilterCount, "disapproved"), (NotPresentFilterCount, "not in FieldWorks"),
-              (IncorrectSpellingFilterCount, "incorrect spelling"),
-          }.Where(status => status.Item1 > 0).Select(status => $"{status.Item1} {status.Item2}"));
+        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
 
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);
@@ -306,7 +309,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
             _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes,
                 Path.GetFileNameWithoutExtension(path))));
             foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
-            OnPropertyChanged(nameof(CheckedWordCount));
+            RaiseCheckedWords();
             HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(ProjectWords));
             if (_assessed is { } assessed)
@@ -372,7 +375,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         OccurrenceCount = 0;
         ApprovedCount = 0;
         Response = null;
-        OnPropertyChanged(nameof(CheckedWordCount));
+        RaiseCheckedWords();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ProjectWords));
         RaiseCounts();
@@ -431,13 +434,20 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     private bool CanHandOffCheckedWords() => HandOff is not null && CheckedWordCount > 0;
 
+    private void RaiseCheckedWords()
+    {
+        OnPropertyChanged(nameof(CheckedWordCount));
+        OnPropertyChanged(nameof(HandOffCheckedWordsLabel));
+        OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
+    }
+
     private void HandOffCheckedWords() =>
         HandOff?.Invoke(_all.Where(row => row.IsChecked).Select(row => row.Form).ToArray());
 
     private void OnWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(TextWordRowViewModel.IsChecked)) return;
-        OnPropertyChanged(nameof(CheckedWordCount));
+        RaiseCheckedWords();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
     }
 

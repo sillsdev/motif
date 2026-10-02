@@ -4,7 +4,7 @@ using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The checked Texts' word list, project status, last Assessment, analyses and occurrences.</summary>
+/// <summary>The checked Texts' word list, project status, last Assessment, analyses and places.</summary>
 public sealed partial class TextWordsPanel : UserControl
 {
     public TextWordsPanel(TextWordsViewModel words)

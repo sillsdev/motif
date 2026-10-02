@@ -61,8 +61,8 @@ public sealed class CompareComparisonScreenshots
                 workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
                 var matrix = workspace.Assess.Compare;
                 matrix.SelectCells([new(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)]);
-                Assert.Equal("Rebuilt an analysis you Disapproved", matrix.Words.Single(word => word.Word == mixed.Word).Meaning);
-                Assert.True(matrix.ShowsMeaning);
+                Assert.Equal("Differs: have a look", matrix.Words.Single(word => word.Word == mixed.Word).Meaning);
+                Assert.False(matrix.ShowsMeaning);
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
                     Application.Current!.RequestedThemeVariant = variant;
@@ -78,7 +78,8 @@ public sealed class CompareComparisonScreenshots
                             token => token.IsWord);
                         inText.SelectToken(word);
                         Assert.Equal(matrix.Words.Single(row => row.Word == mixed.Word).Meaning, word.PanGlossSummary);
-                        Assert.Equal("Your undecided analysis wasn't built", word.ComparisonDetail);
+                        Assert.Contains("Your undecided analysis wasn't built", word.ComparisonDetail);
+                        Assert.Contains("PanGloss matched an analysis FieldWorks marked Disapproved.", word.ComparisonDetail);
                         PageScreenshots.Save(window, Path.Combine(folder, $"compare-mixed-texts-{width}-{theme}.png"));
                     }
                 }

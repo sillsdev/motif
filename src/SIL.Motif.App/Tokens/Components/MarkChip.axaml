@@ -17,6 +17,12 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
+  <Style Selector="Border.markChip.outcome">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
   <Style Selector="StackPanel.markChipRow">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>

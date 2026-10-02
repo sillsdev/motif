@@ -442,9 +442,9 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(listsWindow);
                         PageScreenshots.Settle(reviewWindow);
                         var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
-                        var ticked = Disabled(listsWindow, "AI Handoff for ticked words in the selected list", failures);
+                        var ticked = Disabled(listsWindow, "AI Handoff for ticked words in this list", failures);
                         var whole = lists.HandOffListUnavailable
-                            ? Disabled(listsWindow, "AI Handoff for the whole selected list", failures) : null;
+                            ? Disabled(listsWindow, "AI Handoff for this list", failures) : null;
                         var owners = new[] { apply, ticked, whole }.OfType<Button>().ToList();
                         var reasons = new List<(string What, TextBlock Text)>();
                         foreach (var owner in owners)

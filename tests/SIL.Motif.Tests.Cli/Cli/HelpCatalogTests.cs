@@ -47,8 +47,8 @@ public sealed class HelpCatalogTests
 
         Assert.DoesNotContain("has no saved project opinion for that analysis", page, StringComparison.Ordinal);
         Assert.Contains("Unknown and Disapproved analyses", page, StringComparison.Ordinal);
-        Assert.Contains("Rebuilt an analysis you Disapproved", page, StringComparison.Ordinal);
-        Assert.Contains("Your undecided analysis wasn't built", page, StringComparison.Ordinal);
+        Assert.Contains("PanGloss matched an analysis FieldWorks marked Disapproved", page, StringComparison.Ordinal);
+        Assert.Contains("shows recorded comparison detail beneath it", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -58,9 +58,9 @@ public sealed class HelpCatalogTests
         var page = catalog.GetHelpPage(HelpEntryKind.Guide, "texts")!;
 
         Assert.Contains("Unknown × Different", page, StringComparison.Ordinal);
-        Assert.Contains("Rebuilt an analysis you Disapproved", page, StringComparison.Ordinal);
-        Assert.Contains("Your undecided analysis wasn't built", page, StringComparison.Ordinal);
-        Assert.Contains("different meanings within the same cell", page, StringComparison.Ordinal);
+        Assert.Contains("PanGloss matched an analysis FieldWorks marked Disapproved", page, StringComparison.Ordinal);
+        Assert.Contains("shows recorded comparison detail beneath it", page, StringComparison.Ordinal);
+        Assert.Contains("Every word row uses the meaning named by its Matrix cell", page, StringComparison.Ordinal);
         Assert.Contains("does not establish that an analysis was not built", page, StringComparison.Ordinal);
     }
 

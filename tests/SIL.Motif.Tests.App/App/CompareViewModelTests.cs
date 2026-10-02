@@ -94,10 +94,11 @@ public sealed class CompareViewModelTests
         }
         else
         {
-            Assert.Equal("Rebuilt an analysis you Disapproved", text.PanGlossSummary);
-            Assert.True(matrix.ShowsMeaning);
+            Assert.Equal(incomplete ? "Unknown yet" : opinion == ReadingGrade.Approved
+                ? "Built something else" : "Differs: have a look", text.PanGlossSummary);
+            Assert.False(matrix.ShowsMeaning);
             if (opinion == ReadingGrade.Candidate)
-                Assert.Equal("Your undecided analysis wasn't built", row.WordRow.MeaningDetail);
+                Assert.Contains("Your undecided analysis wasn't built", row.WordRow.MeaningDetail);
         }
     }
 
@@ -114,7 +115,7 @@ public sealed class CompareViewModelTests
         matrix.Load([row]);
 
         Assert.Equal((WordProjectStatus.Candidate, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
-        Assert.Equal("Rebuilt an analysis you Disapproved", Assert.Single(matrix.Words).Meaning);
+        Assert.Equal("Differs: have a look", Assert.Single(matrix.Words).Meaning);
         Assert.Equal(row.WordRow.Meaning, Assert.Single(matrix.Words).Meaning);
     }
 
@@ -617,7 +618,7 @@ public sealed class CompareViewModelTests
         Assert.Null(compare.ChosenCell);
         Assert.Equal("5 words · 9 places", compare.ListSummary);
         Assert.Equal("Choose a cell to list only its words; Ctrl-click adds cells.", compare.ListExplanation);
-        Assert.Equal("AI Handoff for these 5 words", compare.HandOffLabel);
+        Assert.Equal("AI Handoff for 5 words", compare.HandOffLabel);
 
         var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
         compare.Toggle(lost, additive: false);
@@ -626,7 +627,7 @@ public sealed class CompareViewModelTests
         Assert.Equal("Approved × No parse", compare.ListHeading);
         Assert.Equal("4 words · 7 places", compare.ListSummary);
         Assert.Equal(lost.Explanation, compare.ListExplanation);
-        Assert.Equal("AI Handoff for these 4 words", compare.HandOffLabel);
+        Assert.Equal("AI Handoff for 4 words", compare.HandOffLabel);
 
         compare.SearchText = "walikata";
         Assert.Equal("1 of 4 words · 2 places", compare.ListSummary);
@@ -843,7 +844,8 @@ public sealed class CompareViewModelTests
         var row = Assert.Single(compare.FixFirstRows);
         Assert.Equal(CompareColumnKind.NoMatch, row.Word.Column);
         Assert.Empty(row.MissedApproved);
-        Assert.Equal("Rebuilt an analysis you Disapproved", row.Word.Meaning);
+        Assert.Equal("Built something else", row.Word.Meaning);
+        Assert.Equal(row.Word.Meaning, row.Word.WordRow.Meaning);
         Assert.Equal("Rebuilt an analysis you Disapproved", row.Priority.Explanation);
         Assert.Equal(row.Priority.Explanation, row.Explanation);
     }

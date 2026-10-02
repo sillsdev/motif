@@ -122,7 +122,7 @@ public sealed class ComparisonRowTests
     }
 
     [Fact]
-    public void CompactRowsShowBuiltAnywayInTheMatrixsProblemTone()
+    public void CompactRowsKeepTheParserOutcomeSeparateFromTheMeaning()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -139,8 +139,8 @@ public sealed class ComparisonRowTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 var chip = row.FindControl<MarkChip>("OutcomeAlone")!;
-                Assert.Equal("Built anyway", chip.Text);
-                Assert.Equal(Mark.Of(MeaningTone.Problem), chip.Mark);
+                Assert.Equal("Same", chip.Text);
+                Assert.Equal(Mark.Of(ParserOutcome.Same), chip.Mark);
             }
             finally { window.Close(); }
             return Task.CompletedTask;
@@ -174,9 +174,10 @@ public sealed class ComparisonRowTests
                 var meaning = row.GetVisualDescendants().OfType<Control>()
                     .First(control => control.Classes.Contains("wordRowMeaning"));
                 var headline = meaning.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == comparison.Headline && text.IsEffectivelyVisible);
+                    .Single(text => text.Text == "Differs: have a look" && text.IsEffectivelyVisible);
+                Assert.Equal(MeaningTone.Look, model.Tone);
                 var detail = meaning.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == comparison.Detail);
+                    .Single(text => text.Text == model.MeaningDetail);
                 Assert.True(headline.IsEffectivelyVisible);
                 Assert.True(detail.IsEffectivelyVisible);
                 Assert.True(headline.Bounds.Width <= meaning.Bounds.Width,

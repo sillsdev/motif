@@ -177,7 +177,7 @@
                       </StackPanel>
 
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                        <Button Content="Hand off this finding" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
+                        <Button Content="AI Handoff for this warning" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
                                 CommandParameter="{Binding}" />
                         <Button Content="Parse these words again" IsVisible="{Binding CanParseAgain}"
                                 Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"

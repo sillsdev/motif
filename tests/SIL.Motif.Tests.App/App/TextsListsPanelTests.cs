@@ -77,7 +77,42 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 row.GetVisualDescendants().OfType<CheckBox>().Single().IsChecked = true;
 
                 Assert.True(compare.Words.Single().IsChecked);
-                Assert.Equal("Hand off the 1 selected word", lists.HandOffCheckedWordsLabel);
+                Assert.Equal("AI Handoff for this word", lists.HandOffCheckedWordsLabel);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ListsHideEmptyChoicesAndNameHandoffsByTheirScope()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([Word("approved-empty", "no-analysis", ProjectStanding.Approved)]);
+            var lists = new TextsListsViewModel(compare) { HandOff = _ => { } };
+            var panel = new TextsListsPanel(lists);
+            var window = new Window { Content = panel, Width = 1200, Height = 800 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+
+                var visibleLists = panel.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible && button.DataContext is TextsListDefinitionViewModel)
+                    .Select(button => ((TextsListDefinitionViewModel)button.DataContext!).Name).ToArray();
+                Assert.Equal(lists.Lists.Where(list => list.HasWords).Select(list => list.Name), visibleLists);
+                Assert.Equal("AI Handoff for this list", lists.HandOffListLabel);
+                Assert.Equal("AI Handoff", lists.HandOffCheckedWordsLabel);
+                Assert.Equal("Tick words first.", lists.HandOffCheckedWordsHelpText);
+
+                var checkedWords = panel.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, lists.HandOffCheckedWordsCommand));
+                Assert.Equal("Tick words first.", ToolTip.GetTip(checkedWords));
+                Assert.True(ToolTip.GetShowOnDisabled(checkedWords));
             }
             finally
             {
@@ -158,7 +193,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped"));
                 window.UpdateLayout();
 
-                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "PLACES", "TIME", "NEXT"], Heads(panel));
                 Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row =>
                 {
                     Assert.False(row.ShowsMeaning);
@@ -169,7 +204,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
                 window.UpdateLayout();
 
-                Assert.Equal(["WORD", "FIELDWORKS", "PANGLOSS", "MEANING", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "MEANING", "PLACES", "TIME", "NEXT"], Heads(panel));
                 Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row => Assert.Contains(
                     row.GetVisualDescendants().OfType<MarkChip>(), chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning));
             }
@@ -181,10 +216,10 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     // The visible column heads in reading order, left to right.
-    private static string?[] Heads(Control panel) =>
+    private static string[] Heads(Control panel) =>
         panel.GetVisualDescendants().OfType<WordRowHeader>().Single().GetVisualDescendants().OfType<TextBlock>()
             .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("wordRowHeading") && text.Text is { Length: > 1 })
-            .OrderBy(text => text.TranslatePoint(default, panel)!.Value.X).Select(text => text.Text).ToArray();
+            .OrderBy(text => text.TranslatePoint(default, panel)!.Value.X).Select(text => text.Text!).ToArray();
 
     [Fact]
     public void AnOpenedRowIsTheListCard_AndNothingElse()
@@ -205,11 +240,11 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var card = Assert.Single(window.GetVisualDescendants().OfType<ListWordCard>());
                 Assert.True(card.IsEffectivelyVisible);
                 var buttons = card.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible);
-                Assert.Equal(["Compare in Try a Word"], buttons.Select(button => button.Content));
+                Assert.Equal(["Try a Word"], buttons.Select(button => button.Content));
                 var texts = card.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible)
                     .Select(text => text.Text).Distinct().ToArray();
-                Assert.Equal(["FIELDWORKS", "PANGLOSS", "FieldWorks holds no single analysis of this word to line up.", "No parse",
-                    "PanGloss built no analysis of this word.", "Compare in Try a Word"],
+                Assert.Equal(["FieldWorks", "PanGloss", "FieldWorks holds no single analysis of this word to line up.", "No parse",
+                    "PanGloss built no analysis of this word.", "Try a Word"],
                     texts.Where(text => text is { Length: > 1 }));
             }
             finally

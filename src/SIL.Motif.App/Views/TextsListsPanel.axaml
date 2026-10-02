@@ -4,12 +4,6 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
              x:DataType="views:TextsListsPanel">
-  <UserControl.Styles>
-    <Style Selector="Button.filterChip.empty">
-      <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-    </Style>
-  </UserControl.Styles>
-
   <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
         Margin="{DynamicResource Component.TextsPage.PageInset}">
     <ItemsControl ItemsSource="{Binding Lists.Lists}" AutomationProperties.Name="Word lists">
@@ -20,7 +14,7 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TextsListDefinitionViewModel">
-          <Button Classes="filterChip" Classes.active="{Binding IsSelected}" Classes.empty="{Binding !HasWords}"
+          <Button Classes="filterChip" Classes.active="{Binding IsSelected}" IsVisible="{Binding HasWords}"
                   Command="{Binding $parent[views:TextsListsPanel].Lists.SelectListCommand}" CommandParameter="{Binding}"
                   AutomationProperties.Name="{Binding Name, StringFormat='Open the {0} word list'}">
             <StackPanel Classes="filterChipRow" Orientation="Horizontal">
@@ -62,11 +56,11 @@
                 ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
         <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
                 Command="{Binding Lists.HandOffCheckedWordsCommand}"
-                AutomationProperties.Name="AI Handoff for ticked words in the selected list"
+                AutomationProperties.Name="AI Handoff for ticked words in this list"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
                 ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
         <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
-                AutomationProperties.Name="AI Handoff for the whole selected list"
+                AutomationProperties.Name="{Binding Lists.HandOffListLabel}"
                 AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
                 ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
       </StackPanel>

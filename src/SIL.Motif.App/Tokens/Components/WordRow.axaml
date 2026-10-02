@@ -10,6 +10,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordRow.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.WordRow.CellSpacing" ResourceKey="Primitive.Space.4" />
     <StaticResource x:Key="Component.WordRow.MinHeight" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.WordRow.CardPadding" ResourceKey="Primitive.Inset.36_4_8_8" />
     <StaticResource x:Key="Component.WordRow.MorphPadding" ResourceKey="Primitive.Inset.5_1_5_1" />
@@ -66,12 +67,19 @@
     <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector="Grid.wordRowCells">
-    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Component.WordRow.CellSpacing}" />
   </Style>
   <Style Selector="Border.wordRowBody">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Padding" Value="{DynamicResource Component.WordRow.Padding}" />
     <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Grid.wordRowNextHost">
+    <Setter Property="MaxHeight" Value="{DynamicResource Intent.Space.None}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.wordRowBody:pointerover Grid.wordRowNextHost, Border.wordRowBody:focus-within Grid.wordRowNextHost, Border.wordRowBody.open Grid.wordRowNextHost">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.WordRow.MinHeight}" />
   </Style>
   <Style Selector="Border.wordRowCard">
     <Setter Property="Padding" Value="{DynamicResource Component.WordRow.CardPadding}" />
@@ -193,10 +201,12 @@
   <Style Selector="StackPanel.wordRowCardSection">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
-  <Style Selector=":is(TextBlock).wordRowCardLabel">
-    <Setter Property="Width" Value="{DynamicResource Component.WordRow.CardLabelWidth}" />
+  <Style Selector=":is(TextBlock).wordRowCardLabel, :is(TextBlock).wordRowCardHeading">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).wordRowCardLabel">
+    <Setter Property="Width" Value="{DynamicResource Component.WordRow.CardLabelWidth}" />
   </Style>
 </Styles>

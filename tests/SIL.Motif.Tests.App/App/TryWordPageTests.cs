@@ -1057,7 +1057,8 @@ public sealed class TryWordPageTests
 
                 Assert.Equal("TryAWordPage", view.GetType().Name);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "AI Handoff for this word");
+                    AutomationProperties.GetName(button) == "AI Handoff for this word" &&
+                    Equals(button.Content, "AI Handoff for this word"));
                 // Opinions change only in the text, so the page offers the text rather than an approval.
                 Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
                     (AutomationProperties.GetName(button) ?? string.Empty).Contains("Approve", StringComparison.Ordinal));

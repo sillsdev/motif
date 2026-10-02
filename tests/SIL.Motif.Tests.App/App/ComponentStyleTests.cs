@@ -372,8 +372,8 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("MarkChip", "an outcome chip's words", host => Within(host, Box("markChip", "outcome", "stopped"),
             "markWord", "outcome", "outcomeMark", "stopped"), TextBlock.ForegroundProperty, "Intent.Outcome.Stopped");
-        yield return new("MarkChip", "an outcome chip, which never fills", host => Add(host, Box("markChip", "outcome", "noParse")),
-            Border.BackgroundProperty, "Intent.Surface.Neutral");
+        yield return new("MarkChip", "an outcome chip, which stays clear", host => Add(host, Box("markChip", "outcome", "noParse")),
+            Border.BackgroundProperty, "Intent.Clear");
         foreach (var (opinion, key) in new[]
         {
             ("approved", "Approved.Text"), ("disapproved", "Disapproved.Text"), ("unknown", "Unknown.Text"), ("none", "None.Text"),

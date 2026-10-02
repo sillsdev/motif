@@ -243,16 +243,8 @@ public sealed class ResultsInTextViewModelTests
 
         foreach (var token in tokens)
         {
-            var expected = token.Marking.PanGlossClass switch
-            {
-                AnalysisMarkingClass.Same => "Agrees with FieldWorks",
-                AnalysisMarkingClass.Conflict => "Conflicts with a FieldWorks opinion",
-                AnalysisMarkingClass.Different => "Different from FieldWorks",
-                AnalysisMarkingClass.Extra => "Has additional readings",
-                AnalysisMarkingClass.None => "No parse",
-                AnalysisMarkingClass.Capped => "Search stopped at a limit",
-                _ => "Not assessed",
-            };
+            var placement = CompareSemantics.PlacementOf(token.Comparison);
+            var expected = CompareSemantics.MeaningOf(placement.Standing, placement.Column).Label;
             Assert.Equal(expected, token.PanGlossSummary);
             Assert.Equal(expected, token.VerdictLabel);
         }

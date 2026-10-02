@@ -32,7 +32,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     private const string ListsList = "Words in the selected list";
 
     [Fact]
-    public void RestingNextStepsRemainVisibleToKeyboardAndAutomation()
+    public void NextStepsStayOutOfTheRestingRowAndAppearWhenItGetsKeyboardFocus()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -40,10 +40,21 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
             try
             {
                 var nextSteps = NextSteps(row);
+                var host = Part(row, "wordRowNextHost");
                 Assert.Equal([0d, 0d, 0d], nextSteps.Select(button => button.Opacity));
+                Assert.True(host.IsVisible);
+                Assert.Equal(0, host.Bounds.Height);
                 Assert.All(nextSteps, button => Assert.True(button.IsVisible));
                 Assert.All(nextSteps, button => Assert.True(button.IsTabStop));
                 Assert.All(nextSteps, button => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(button))));
+
+                row.FocusRow();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(host.IsEffectivelyVisible);
+                Assert.True(host.Bounds.Height > 0);
+                Assert.All(nextSteps, button => Assert.True(button.IsEffectivelyVisible));
+                Assert.Equal([1d, 1d, 1d], nextSteps.Select(button => button.Opacity));
                 Assert.True(nextSteps[0].Focus(NavigationMethod.Tab));
                 Dispatcher.UIThread.RunJobs();
                 Assert.Equal(1, nextSteps[0].Opacity);
@@ -72,10 +83,14 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
 
                 window.MouseMove(new Point(window.Width - 1, window.Height - 1));
                 Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.Equal(0, Part(row, "wordRowNextHost").Bounds.Height);
                 Assert.Equal([0d, 0d, 0d], NextSteps(row).Select(button => button.Opacity));
 
                 row.IsOpen = true;
                 Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(Part(row, "wordRowNextHost").Bounds.Height > 0);
                 Assert.Equal([1d, 1d, 1d], NextSteps(row).Select(button => button.Opacity));
             }
             finally
@@ -133,6 +148,9 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                     window.UpdateLayout();
 
                     var row = RowIn(window, list, "kitabu");
+                    row.FocusRow();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
                     Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"], NextSteps(row).Select(Label));
                     Assert.Equal(["Open kitabu in Analyze texts", "Try kitabu in Try a Word", "Open kitabu in Word Analyses"],
                         NextSteps(row).Select(AutomationProperties.GetName));
@@ -167,7 +185,10 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 window.UpdateLayout();
 
-                HeadlessClick.Click(window, NextSteps(RowIn(window, MatrixList, "kitabu"))[0], "Open in text");
+                var row = RowIn(window, MatrixList, "kitabu");
+                row.FocusRow();
+                Dispatcher.UIThread.RunJobs();
+                HeadlessClick.Click(window, NextSteps(row)[0], "Open in text");
 
                 Assert.Equal(TextsTab.AnalyzeTexts, workspace.PageModel<TextsPageModel>().Tab);
             }
@@ -188,7 +209,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
             try
             {
                 var order = new[] { "wordRowTick", "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowMeaning",
-                    "wordRowWarnings", "wordRowPlaces", "wordRowTime", "wordRowRead", "wordRowNext" };
+                    "wordRowWarnings", "wordRowPlaces", "wordRowTime", "wordRowRead", "wordRowNextColumn" };
                 var lefts = order.Select(part => Part(row, part).TranslatePoint(new Point(0, 0), row)!.Value.X).ToArray();
 
                 Assert.Equal(lefts.Order(), lefts);
@@ -286,6 +307,8 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 new TextBlock { Text = "the card" });
             try
             {
+                row.FocusRow();
+                Dispatcher.UIThread.RunJobs();
                 HeadlessClick.Click(window, NextSteps(row)[1], "Try a Word");
                 Assert.False(row.IsOpen);
                 Assert.Equal(["alikula"], tried);
@@ -418,14 +441,15 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal("PanGloss", ToolTip.GetTip(panGlossHead));
                 Assert.Equal("FieldWorks", AutomationProperties.GetName(fieldWorksHead));
                 Assert.Equal("PanGloss", AutomationProperties.GetName(panGlossHead));
-                Assert.Equal(["WORD", "FW", "PG", "MEANING", "PLACES", "TIME", "NEXT"],
+                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "MEANING", "PLACES", "TIME", "NEXT"],
                     heads.Select(text => text.Text!).Where(text => text.All(char.IsLetter)));
                 Assert.All(heads, text => Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5,
                     $"'{text.Text}' needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#} px but has {text.Bounds.Width:0.#}."));
                 foreach (var (left, right) in heads.Zip(heads.Skip(1)))
                 {
                     var end = BoundsIn(left, window).X + left.TextLayout.WidthIncludingTrailingWhitespace;
-                    Assert.True(end + 4 <= BoundsIn(right, window).X, $"'{left.Text}' runs into '{right.Text}'.");
+                    Assert.True(end + 4 <= BoundsIn(right, window).X,
+                        $"'{left.Text}' ends at {end:0.#} but '{right.Text}' starts at {BoundsIn(right, window).X:0.#}.");
                 }
                 var tops = heads.Select(text => BoundsIn(text, window).Y).ToArray();
                 Assert.True(tops.Max() - tops.Min() < 1, "The column heads do not share one line.");

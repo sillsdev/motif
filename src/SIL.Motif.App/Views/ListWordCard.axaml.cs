@@ -45,8 +45,8 @@ public sealed partial class ListWordCard : UserControl
         for (var index = 0; index < columns; index++) grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
-        Place(grid, Label("FIELDWORKS"), 0, 0);
-        Place(grid, Label("PANGLOSS"), 1, 0);
+        Place(grid, Label("FieldWorks"), 0, 0);
+        Place(grid, Label("PanGloss"), 1, 0);
         for (var index = 0; index < card.Segments.Count; index++)
         {
             var segment = card.Segments[index];

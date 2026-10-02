@@ -109,6 +109,9 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
+                var handoff = Assert.Single(panel.GetVisualDescendants().OfType<Button>(),
+                    button => ReferenceEquals(button.Command, grammar.Warnings.HandOffCommand));
+                Assert.Equal("AI Handoff for this warning", handoff.Content);
                 window.MouseMove(new Avalonia.Point(-100, -100));
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();

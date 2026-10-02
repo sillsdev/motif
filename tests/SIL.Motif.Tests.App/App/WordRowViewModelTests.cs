@@ -188,6 +188,19 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
+    public void ADisapprovedMatchKeepsTheParserOutcomeSeparateFromItsMeaning()
+    {
+        var row = new WordRowViewModel(new WordRow("word", WordRowOutcome.Same, "Built anyway", WordRowTone.Problem)
+        {
+            Opinion = ProjectStanding.Rejected,
+        });
+
+        Assert.Equal("Built anyway", row.Meaning);
+        Assert.Equal("Same", row.CompactOutcomeWord);
+        Assert.Equal(MarkKind.Outcome, row.CompactOutcomeMark.Kind);
+    }
+
+    [Fact]
     public void AnUnreadWordSaysSo_AndAReadOneShowsNothing()
     {
         var (words, _, _) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);

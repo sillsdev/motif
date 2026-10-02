@@ -352,7 +352,7 @@ public static class WordRowColumnSets
 
     /// <summary>
     /// What changed lists the words of one chosen move, which already names the opinion and meaning they left and
-    /// reached: the row adds the outcome now and how often the word occurs, and its note gives the earlier answer.
+    /// reached: the row adds the outcome now and how many places the word has, and its note gives the earlier answer.
     /// </summary>
     public static readonly WordRowColumns WhatChanged = WordRowColumns.PanGloss | WordRowColumns.Places;
 
@@ -369,7 +369,8 @@ public static class WordRowColumnSets
     /// question and the time Timing's, and both are in the card or a click away; warnings join once they name words.
     /// </summary>
     public static readonly WordRowColumns WordList = WordRowColumns.Tick | WordRowColumns.FieldWorks |
-        WordRowColumns.FieldWorksMorphemes | WordRowColumns.PanGloss | WordRowColumns.Places | WordRowColumns.Read;
+        WordRowColumns.FieldWorksMorphemes | WordRowColumns.PanGloss | WordRowColumns.Meaning |
+        WordRowColumns.Places | WordRowColumns.Time | WordRowColumns.Read;
 }
 
 /// <summary>
@@ -395,6 +396,10 @@ internal sealed class WordRowLayout
             "WordCell", "FieldWorksCell", "PanGlossCell", "MeaningCell", "WarningsCell", "PlacesCell", "TimeCell", "ReadCell",
         }.Select(Find<Control>))];
         _sharedWidths = [_cellParts[1].Column.Width, _cellParts[2].Column.Width];
+        _cellParts[1].Column.Bind(ColumnDefinition.MinWidthProperty,
+            _cellParts[1].Cell.GetObservable(Control.MinWidthProperty));
+        _cellParts[2].Column.Bind(ColumnDefinition.MinWidthProperty,
+            _cellParts[2].Cell.GetObservable(Control.MinWidthProperty));
     }
 
     // The widths the FieldWorks and PanGloss columns share the free width with, as the markup gives them.
@@ -405,6 +410,8 @@ internal sealed class WordRowLayout
         bool Shows(WordRowColumns column) => (columns & column) == column;
         var fieldWorks = Shows(WordRowColumns.FieldWorksMorphemes);
         var panGloss = Shows(WordRowColumns.PanGlossMorphemes);
+        _cells.Classes.Set("marksOnly", !panGloss);
+        _cells.Classes.Set("fieldWorksMorphemesOnly", fieldWorks && !panGloss);
         // Morphemes share the free width; marks alone size to the widest in the list, as the other columns do.
         SetWidth(_cellParts[1].Column, fieldWorks, _sharedWidths[0], "WordRowFieldWorks");
         SetWidth(_cellParts[2].Column, panGloss, _sharedWidths[1], "WordRowPanGloss");
@@ -412,8 +419,6 @@ internal sealed class WordRowLayout
         SetShown("PanGlossMorphemes", panGloss);
         SetShown("OutcomeBesideMorphemes", panGloss);
         SetShown("OutcomeAlone", !panGloss);
-        _cells.Classes.Set("marksOnly", !panGloss);
-        _cells.Classes.Set("fieldWorksMorphemesOnly", fieldWorks && !panGloss);
         Show(_line, _lineParts, [Shows(WordRowColumns.Tick), true, true]);
         Show(_cells, _cellParts,
         [
