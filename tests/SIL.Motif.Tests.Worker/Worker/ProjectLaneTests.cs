@@ -50,7 +50,7 @@ public sealed class ProjectLaneTests
 
         var failure = await Assert.ThrowsAsync<IOException>(() => refresh);
         Assert.Equal("capture failed", failure.Message);
-        await Task.Delay(50);
+        Assert.Equal(1, lane.PendingWorkCount);
         Assert.False(laterStarted);
         Assert.False(later.IsCompleted);
     }
@@ -99,7 +99,6 @@ public sealed class ProjectLaneTests
         await captureStarted.Task;
 
         var apply = lane.TryAcquireApplyGateAsync(TimeSpan.FromSeconds(2), CancellationToken.None);
-        await Task.Delay(50);
         Assert.False(apply.IsCompleted);
         Assert.False(refresh.IsCompleted);
         releaseCapture.SetResult();
@@ -161,7 +160,7 @@ public sealed class ProjectLaneTests
             return Task.CompletedTask;
         }), CancellationToken.None);
 
-        await Task.Delay(50);
+        Assert.Equal(1, lane.PendingWorkCount);
         Assert.False(exportStarted);
         releaseDryRun.SetResult();
         await Task.WhenAll(dryRun, export);
@@ -205,13 +204,15 @@ public sealed class ProjectLaneTests
         var held = await lane.TryAcquireApplyGateAsync(TimeSpan.FromSeconds(1), CancellationToken.None);
         Assert.NotNull(held);
         var waiting = lane.TryAcquireApplyGateAsync(Timeout.InfiniteTimeSpan, CancellationToken.None);
+        Assert.False(waiting.IsCompleted);
         var refreshStarted = false;
         var refresh = lane.EnqueueAsync(ProjectWorkItem.Refresh(_ =>
         {
             refreshStarted = true;
             return Task.FromResult(Token('b'));
         }), CancellationToken.None);
-        await Task.Delay(50);
+        await WaitUntilAsync(() => lane.PendingWorkCount == 0 || refreshStarted,
+            TimeSpan.FromSeconds(2));
         Assert.False(refreshStarted);
 
         await Task.Run(lane.Dispose).WaitAsync(TimeSpan.FromSeconds(2));
@@ -332,4 +333,15 @@ public sealed class ProjectLaneTests
 
     private static TaskCompletionSource Signal() =>
         new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            if (DateTime.UtcNow >= deadline)
+                throw new TimeoutException("The project lane did not reach the expected queue state.");
+            await Task.Delay(TimeSpan.FromMilliseconds(10));
+        }
+    }
 }

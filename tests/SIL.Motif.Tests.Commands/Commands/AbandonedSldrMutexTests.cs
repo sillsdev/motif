@@ -14,11 +14,9 @@ namespace SIL.Motif.Tests.Commands;
 /// </remarks>
 public class AbandonedSldrMutexTests
 {
-    [Fact]
+    [RequiresWindowsFact]
     public void AGlobalMutexCanBeTakenAfterItsHolderDiedHoldingIt()
     {
-        if (!OperatingSystem.IsWindows()) return;
-
         var name = $"MotifAbandonedMutexTest-{Guid.NewGuid():N}";
         var holder = new Thread(() => AbandonTheMutex(name));
         holder.Start();
@@ -34,5 +32,14 @@ public class AbandonedSldrMutexTests
     {
         var mutex = new Mutex(false, name);
         mutex.WaitOne();
+    }
+}
+
+internal sealed class RequiresWindowsFactAttribute : FactAttribute
+{
+    public RequiresWindowsFactAttribute()
+    {
+        if (!OperatingSystem.IsWindows())
+            Skip = "Abandoned global mutex behavior is only available on Windows.";
     }
 }

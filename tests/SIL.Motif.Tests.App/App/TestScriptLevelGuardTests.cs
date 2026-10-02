@@ -11,22 +11,47 @@ public sealed class TestScriptLevelGuardTests
 
         Assert.Contains("[switch] $All", script, StringComparison.Ordinal);
         Assert.Contains("MOTIF_TEST_LEVELS", script, StringComparison.Ordinal);
+        Assert.Contains("TESTINGPLATFORM_TELEMETRY_OPTOUT", script, StringComparison.Ordinal);
         Assert.Contains("Unit,Integration", script, StringComparison.Ordinal);
         Assert.Contains("default run is not a merge gate", script, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("--no-build", script, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AllRunsOptionalArtifactPreparationBeforeStartingTests()
+    public void AllPreparesOnlyArtifactsUsedByTheSelectedTests()
     {
         var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
 
-        Assert.Contains("if ($All)", script, StringComparison.Ordinal);
         Assert.Contains("tools/Prepare-TestArtifacts.ps1", script, StringComparison.Ordinal);
         Assert.Contains("Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf", script, StringComparison.Ordinal);
-        Assert.Contains("& $prepareTestArtifacts", script, StringComparison.Ordinal);
+        Assert.Contains("Get-MotifTestArtifactRequirements", script, StringComparison.Ordinal);
+        Assert.Contains("$artifactRequirements.PortableWorkerPackage", script, StringComparison.Ordinal);
+        Assert.Contains("$artifactRequirements.ExplainedWordCardFixture", script, StringComparison.Ordinal);
         Assert.True(script.IndexOf("Prepare-TestArtifacts.ps1", StringComparison.Ordinal) <
                     script.IndexOf("dotnet test (", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GateReportsPreparationWaitTestAndWholeRunDurations()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
+
+        Assert.Contains("Write-PhaseDuration 'build gate'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'offline restore'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'test slot wait'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'test artifact preparation'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'test processes'", script, StringComparison.Ordinal);
+        Assert.Contains("Write-PhaseDuration 'whole gate'", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TestSummaryClassifiesSkippedResultsAndHandlesAnEmptyTrx()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
+
+        foreach (var category in new[] { "platform", "capture", "harness", "parser-absent", "capability", "other" })
+            Assert.Contains(category, script, StringComparison.Ordinal);
+        Assert.Contains("SelectNodes(\"//*[local-name()='UnitTestResult']\")", script, StringComparison.Ordinal);
     }
 
     [Fact]

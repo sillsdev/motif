@@ -68,6 +68,9 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$gateClock = [Diagnostics.Stopwatch]::StartNew()
+$phaseClocks = @{}
+$phaseClocks['whole gate'] = $gateClock
 
 # Windows hands this error mode to every process started from here, so no crash in the run shows a dialog.
 if ($IsWindows) {
@@ -104,6 +107,13 @@ function Write-Step {
     Write-Host "==> $Text" -ForegroundColor Cyan
 }
 
+function Write-PhaseDuration {
+    param([string] $Name)
+    $phase = $phaseClocks[$Name]
+    $phase.Stop()
+    Write-Host ('  {0,-34} {1,6:N1} s' -f $Name, $phase.Elapsed.TotalSeconds)
+}
+
 # Only a host running from this checkout's output can lock it; one from another worktree is not ours.
 $outputRoot = (Join-Path $repoRoot 'bin') + [IO.Path]::DirectorySeparatorChar
 $running = @(Get-Process -Name 'testhost' -ErrorAction SilentlyContinue | Where-Object {
@@ -119,17 +129,38 @@ if ($running.Count -gt 0 -and -not $AllowRunningTestHosts) {
     exit 1
 }
 
+$phaseClocks['build gate'] = [Diagnostics.Stopwatch]::StartNew()
+$buildExitCode = 0
 if ($SkipBuild) {
     Write-Step 'build gate -- SKIPPED (-SkipBuild)'
 }
 else {
     & pwsh -NoProfile -File (Join-Path $repoRoot 'build.ps1') -Configuration $Configuration
-    if ($LASTEXITCODE -ne 0) { exit 1 }
+    $buildExitCode = $LASTEXITCODE
+}
+Write-PhaseDuration 'build gate'
+if ($buildExitCode -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
 }
 
+$phaseClocks['offline restore'] = [Diagnostics.Stopwatch]::StartNew()
 Write-Step 'offline restore regression'
 & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/OfflineRestore.Tests.ps1')
-if ($LASTEXITCODE -ne 0) { exit 1 }
+Write-PhaseDuration 'offline restore'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
+$phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'test artifact plan regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
+Write-PhaseDuration 'artifact plan regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
 
 $solutionProjectPaths = @{}
 foreach ($line in Get-Content $solution) {
@@ -201,23 +232,47 @@ if (Test-Path $resultsRoot) { Remove-Item $resultsRoot -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $resultsRoot | Out-Null
 
 # Held until this script exits, so a machine running many worktrees runs only MOTIF_TEST_SLOTS suites at once.
+$phaseClocks['test slot wait'] = [Diagnostics.Stopwatch]::StartNew()
 Import-Module (Join-Path $repoRoot 'tools/MotifTestSlot.psm1') -Force
 $testSlot = Enter-MotifTestSlot
+Write-PhaseDuration 'test slot wait'
 
-if ($All) {
-    $prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
-    if (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf) {
-        Write-Step 'prepare all-level test artifacts'
-        & $prepareTestArtifacts -Configuration $Configuration
-        if ($LASTEXITCODE -ne 0) {
-            throw "Prepare-TestArtifacts.ps1 failed with exit code $LASTEXITCODE."
-        }
+$phaseClocks['test artifact preparation'] = [Diagnostics.Stopwatch]::StartNew()
+$artifactRequirements = [pscustomobject]@{
+    PortableWorkerPackage = $false
+    ExplainedWordCardFixture = $false
+}
+if ($All -or $System) {
+    Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
+    $selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)
+    $artifactRequirements = Get-MotifTestArtifactRequirements -All:$All -System:$System `
+        -SelectedProjects $selectedProjectNames -Filter $Filter
+}
+$preparePortable = $artifactRequirements.PortableWorkerPackage
+$prepareExplainedWordCard = $artifactRequirements.ExplainedWordCardFixture
+$prepareTestArtifacts = Join-Path $repoRoot 'tools/Prepare-TestArtifacts.ps1'
+if ($preparePortable -or $prepareExplainedWordCard) {
+    if (-not (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf)) {
+        throw "Required test artifact preparation script is missing: $prepareTestArtifacts"
+    }
+
+    Write-Step 'prepare selected test artifacts'
+    $prepareParameters = @{
+        Configuration = $Configuration
+        PortableWorkerPackage = [bool] $preparePortable
+        ExplainedWordCardFixture = [bool] $prepareExplainedWordCard
+    }
+    & $prepareTestArtifacts @prepareParameters
+    if ($LASTEXITCODE -ne 0) {
+        throw "Prepare-TestArtifacts.ps1 failed with exit code $LASTEXITCODE."
     }
 }
+Write-PhaseDuration 'test artifact preparation'
 
 Write-Step ("dotnet test ($levelSelection levels, $($testProjects.Count) projects in $($testRuns.Count) processes, " +
     "up to $projectConcurrency at a time; $availableProcessors processors)")
 $clock = [Diagnostics.Stopwatch]::StartNew()
+$phaseClocks['test processes'] = $clock
 $jobs = foreach ($run in $testRuns) {
     $projectResults = Join-Path $resultsRoot $run.Label
     $projectLog = Join-Path $resultsRoot "$($run.Label).log"
@@ -253,6 +308,7 @@ $jobs = foreach ($run in $testRuns) {
         # Passed to the test host alone: a thread job's own environment is shared with every other job.
         if ($shard) { $arguments += @('--environment', ('"MOTIF_TEST_SHARD={0}"' -f $shard)) }
         $arguments += @('--environment', ('"MOTIF_TEST_LEVELS={0}"' -f $levels))
+        $arguments += @('--environment', ('"TESTINGPLATFORM_TELEMETRY_OPTOUT={0}"' -f $env:TESTINGPLATFORM_TELEMETRY_OPTOUT))
         $arguments += @('--environment', ('"MOTIF_TEST_STDIN_TOKEN={0}"' -f $inputToken))
         # Without -NoNewWindow, Start-Process gives every project its own console window for the whole run.
         $process = Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru -NoNewWindow `
@@ -287,18 +343,31 @@ $jobs = foreach ($run in $testRuns) {
     }
 }
 $outcomes = @($jobs | Receive-Job -Wait -AutoRemoveJob | Sort-Object Name)
+Write-PhaseDuration 'test processes'
 
 $failed = $false
 $totals = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
+$skipCategories = [ordered]@{ platform = 0; capture = 0; harness = 0; 'parser-absent' = 0; capability = 0; other = 0 }
 foreach ($outcome in $outcomes) {
     $counters = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
     foreach ($trx in Get-ChildItem $outcome.ResultsDirectory -Filter '*.trx' -Recurse -ErrorAction SilentlyContinue) {
         # Counted from the results: the TRX summary counters leave xUnit's skips out of notExecuted.
-        foreach ($result in ([xml](Get-Content $trx.FullName -Raw)).TestRun.Results.UnitTestResult) {
+        [xml] $trxDocument = Get-Content $trx.FullName -Raw
+        foreach ($result in $trxDocument.SelectNodes("//*[local-name()='UnitTestResult']")) {
             $counters.total++
             switch ($result.outcome) {
                 'Passed' { $counters.passed++ }
-                'NotExecuted' { $counters.notExecuted++ }
+                'NotExecuted' {
+                    $counters.notExecuted++
+                    $skipText = $result.OuterXml
+                    $skipCategory = if ($skipText -match '(?i)pangloss not found|RealParserFactAttribute') { 'parser-absent' }
+                    elseif ($skipText -match '(?i)screen.?shot|walkthrough capture|MOTIF_(?:SCREENSHOTS|WALKTHROUGH)') { 'capture' }
+                    elseif ($skipText -match '(?i)not available on (?:Windows|Linux|macOS)|only available on (?:Windows|Linux|macOS)|requires Administrator elevation') { 'platform' }
+                    elseif ($skipText -match '(?i)No Python 3 interpreter|helper.*(?:missing|not found)|tool.*not installed') { 'harness' }
+                    elseif ($skipText -match '(?i)capabilit|not supported|requires .* feature') { 'capability' }
+                    else { 'other' }
+                    $skipCategories[$skipCategory]++
+                }
                 default { $counters.failed++ }
             }
         }
@@ -326,8 +395,14 @@ foreach ($outcome in $outcomes) {
         }
     }
 }
+if ($totals.notExecuted -gt 0) {
+    $categorySummary = @($skipCategories.GetEnumerator() | Where-Object Value -gt 0 |
+        ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ', '
+    Write-Host "  skip reasons: $categorySummary"
+}
 Write-Host ('  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}  (total {5})' -f 'all projects',
     $clock.Elapsed.TotalSeconds, $totals.passed, $totals.failed, $totals.notExecuted, $totals.total)
+Write-PhaseDuration 'whole gate'
 
 if ($failed) {
     Write-Host ''
@@ -337,5 +412,6 @@ if ($failed) {
 
 Write-Host ''
 if ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
+elseif ($System) { Write-Host 'Tests OK: System subset.' -ForegroundColor Green }
 else { Write-Host 'Tests OK: Unit+Integration subset; default run is not a merge gate.' -ForegroundColor Green }
 exit 0

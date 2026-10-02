@@ -36,6 +36,7 @@ function Initialize-MotifToolEnvironment {
 
     Set-Default 'DOTNET_CLI_HOME' (Join-Path $cache 'dotnet-cli-home')
     Set-Default 'DOTNET_CLI_TELEMETRY_OPTOUT' '1'
+    Set-Default 'TESTINGPLATFORM_TELEMETRY_OPTOUT' '1'
     Set-Default 'DOTNET_NOLOGO' '1'
     Set-Default 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE' '1'
     Set-Default 'DOTNET_GENERATE_ASPNET_CERTIFICATE' 'false'

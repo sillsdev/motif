@@ -392,15 +392,16 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
                 .Create(TsStringUtils.MakeString("cancelled-trial", scratch.DefaultVernWs)).Guid);
         new FwDataProjectLoader().Save(scratch);
         var root = NewManagedRoot(path);
-        var runner = IsolatedRunner.None(root);
+        var runnerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var runner = new StartSignalNoRunnerLauncher(IsolatedRunner.Options(root), runnerStarted);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var pending = PutChange(path, LoadPending(path).Revision, wordformId, "cancelled-trial");
         using var cancellation = new CancellationTokenSource();
         var measuring = PendingChangesWorkflow.Measure(new MeasurePendingRequest(path, pending.DraftId!,
             pending.Revision, ["cancelled-trial"]), new Progress<MeasureProgress>(), cancellation.Token,
                 runnerLauncher: runner);
+        await runnerStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
         var jobId = await WaitForLatestJobAsync(path, JobCommands.TrialKind);
-        await Task.Delay(450);
         cancellation.Cancel();
         var outcome = await measuring.WaitAsync(TimeSpan.FromSeconds(10));
 
@@ -417,9 +418,16 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
         var queued = JobCommands.EnqueueBaselineRefresh(new EnqueueBaselineRefreshRequest(path, ProductVersion));
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         using var cancellation = new CancellationTokenSource();
+        var secondPoll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var polls = 0;
+        var progress = new ActionProgress<JobStatusResponse>(_ =>
+        {
+            if (Interlocked.Increment(ref polls) == 2) secondPoll.TrySetResult();
+        });
 
-        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, null, cancellation.Token, null, ProductVersion);
-        await Task.Delay(450);
+        var waiting = JobWait.WaitAsync(path, queued.Value!.JobId, progress,
+            cancellation.Token, null, ProductVersion);
+        await secondPoll.Task.WaitAsync(TimeSpan.FromSeconds(10));
         cancellation.Cancel();
         var outcome = await waiting.WaitAsync(TimeSpan.FromSeconds(10));
 
@@ -644,6 +652,14 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
     private sealed class ActionProgress<T>(Action<T> report) : IProgress<T>
     {
         public void Report(T value) => report(value);
+    }
+
+    private sealed class StartSignalNoRunnerLauncher(
+        JobRunnerLaunchOptions options, TaskCompletionSource started) : IJobRunnerLauncher
+    {
+        public JobRunnerLaunchOptions Options { get; } = options;
+
+        public void Start(string projectPath, Action<string>? reportWarning = null) => started.TrySetResult();
     }
 
     private static string LastJob(string path)

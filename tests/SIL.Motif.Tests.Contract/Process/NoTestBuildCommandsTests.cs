@@ -38,21 +38,48 @@ public sealed class NoTestBuildCommandsTests
     }
 
     [Fact]
-    public void AllLevelTestGatePreparesArtifacts()
+    public void TestGatePreparesArtifactsRequiredByTheSelectedTests()
     {
         var testScript = File.ReadAllText(Path.Combine(RepositoryRoot(), "test.ps1"));
-        var gate = Regex.Match(testScript,
-            @"^if\s*\(\s*\$All\s*\)\s*\{(?<body>[\s\S]*?)^\}",
+        var preparation = Regex.Match(testScript,
+            @"(?<body>\$phaseClocks\['test artifact preparation'\]\s*=\s*[\s\S]*?Write-PhaseDuration 'test artifact preparation')",
             RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.CultureInvariant);
 
-        Assert.True(gate.Success, "test.ps1 must gate artifact preparation on -All.");
-        Assert.Contains("Prepare-TestArtifacts.ps1", gate.Groups["body"].Value, StringComparison.Ordinal);
-        Assert.Contains("Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf", gate.Groups["body"].Value,
+        Assert.True(preparation.Success, "test.ps1 must prepare selected artifacts before launching tests.");
+        var body = preparation.Groups["body"].Value;
+        Assert.Contains("if ($All -or $System)", body, StringComparison.Ordinal);
+        Assert.Contains("$selectedProjectNames = @($testRuns | Select-Object -ExpandProperty Project -Unique)", body,
             StringComparison.Ordinal);
-        Assert.Contains("& $prepareTestArtifacts -Configuration $Configuration", gate.Groups["body"].Value,
+        Assert.Contains("Get-MotifTestArtifactRequirements -All:$All -System:$System", body,
             StringComparison.Ordinal);
+        Assert.Contains("-SelectedProjects $selectedProjectNames -Filter $Filter", body, StringComparison.Ordinal);
+        Assert.Contains("$artifactRequirements.PortableWorkerPackage", body, StringComparison.Ordinal);
+        Assert.Contains("$artifactRequirements.ExplainedWordCardFixture", body, StringComparison.Ordinal);
+        Assert.Contains("if ($preparePortable -or $prepareExplainedWordCard)", body, StringComparison.Ordinal);
+        Assert.Contains("Prepare-TestArtifacts.ps1", body, StringComparison.Ordinal);
+        Assert.Contains("if (-not (Test-Path -LiteralPath $prepareTestArtifacts -PathType Leaf))", body,
+            StringComparison.Ordinal);
+        Assert.Contains("throw \"Required test artifact preparation script is missing: $prepareTestArtifacts\"",
+            body, StringComparison.Ordinal);
+        Assert.Contains("PortableWorkerPackage = [bool] $preparePortable", body, StringComparison.Ordinal);
+        Assert.Contains("ExplainedWordCardFixture = [bool] $prepareExplainedWordCard", body,
+            StringComparison.Ordinal);
+        Assert.Contains("& $prepareTestArtifacts @prepareParameters", body, StringComparison.Ordinal);
         Assert.Contains("[switch] $All", testScript, StringComparison.Ordinal);
         Assert.DoesNotContain("if ([string]::IsNullOrWhiteSpace($levels))", testScript, StringComparison.Ordinal);
+        var planRegression = testScript.IndexOf("Test-MotifTestRunPlan.Tests.ps1", StringComparison.Ordinal);
+        var preparationCompleted = testScript.IndexOf("Write-PhaseDuration 'test artifact preparation'",
+            StringComparison.Ordinal);
+        var missingPreparerFailure = body.IndexOf("throw \"Required test artifact preparation script is missing:",
+            StringComparison.Ordinal);
+        var preparerInvocation = body.IndexOf("& $prepareTestArtifacts @prepareParameters", StringComparison.Ordinal);
+        var testLaunch = testScript.IndexOf("Write-Step (\"dotnet test (", StringComparison.Ordinal);
+        Assert.True(planRegression >= 0 && planRegression < preparationCompleted,
+            "The gate must check artifact-selection rules before preparation.");
+        Assert.True(missingPreparerFailure >= 0 && preparerInvocation > missingPreparerFailure,
+            "The gate must fail when required artifact preparation is unavailable.");
+        Assert.True(preparationCompleted >= 0 && testLaunch > preparationCompleted,
+            "The gate must complete artifact preparation before launching tests.");
     }
 
     [Fact]

@@ -1,10 +1,17 @@
 [CmdletBinding()]
 param(
-    [string] $Configuration = 'Debug'
+    [string] $Configuration = 'Debug',
+    [switch] $PortableWorkerPackage,
+    [switch] $ExplainedWordCardFixture
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$artifactSelectionWasExplicit = $PSBoundParameters.ContainsKey('PortableWorkerPackage') -or
+    $PSBoundParameters.ContainsKey('ExplainedWordCardFixture')
+$preparePortableWorkerPackage = -not $artifactSelectionWasExplicit -or $PortableWorkerPackage
+$prepareExplainedWordCardFixture = -not $artifactSelectionWasExplicit -or $ExplainedWordCardFixture
 
 $repositoryRoot = [System.IO.DirectoryInfo]::new($PSScriptRoot).Parent.FullName
 $configurationRoot = Join-Path $repositoryRoot "bin/$Configuration"
@@ -15,6 +22,10 @@ $workRoot = Join-Path $stageRoot 'work'
 $packageRoot = Join-Path $stageRoot 'portable-worker-package'
 $walkthroughRoot = Join-Path $stageRoot 'walkthrough-fixtures/explained-word-card'
 $previousIntermediateRoot = [Environment]::GetEnvironmentVariable('MOTIF_PACKAGE_INTERMEDIATE_ROOT', 'Process')
+$previousSldrOffline = [Environment]::GetEnvironmentVariable('MOTIF_TEST_SLDR_OFFLINE', 'Process')
+$previousSldrCachePath = [Environment]::GetEnvironmentVariable('MOTIF_TEST_SLDR_CACHE_PATH', 'Process')
+$previousWritingSystemRepositoryPath = [Environment]::GetEnvironmentVariable(
+    'MOTIF_WRITING_SYSTEM_REPOSITORY_PATH', 'Process')
 $targetIsWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
     [System.Runtime.InteropServices.OSPlatform]::Windows)
 $targetIsLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
@@ -34,6 +45,7 @@ $workerAssets = @(
     'SIL.Motif.Worker.deps.json',
     'SIL.Motif.Worker.runtimeconfig.json'
 )
+$offlineRestoreConfig = Join-Path $workRoot 'offline-nuget.config'
 
 function Get-WorkerAssetHashes {
     param([string[]] $Assets)
@@ -80,6 +92,7 @@ function Publish-Project {
         '--output', $Destination,
         '-p:MotifPortablePackage=true',
         "-p:MotifBinRoot=$motifBinRoot",
+        "-p:RestoreConfigFile=$offlineRestoreConfig",
         '--nologo'
     )
     & dotnet @publishArguments
@@ -225,128 +238,163 @@ function Write-JsonFile {
 Push-Location $repositoryRoot
 try {
     [System.IO.Directory]::CreateDirectory($testOutputRoot) | Out-Null
-    [System.IO.Directory]::CreateDirectory($packageRoot) | Out-Null
     [System.IO.Directory]::CreateDirectory($workRoot) | Out-Null
-    [System.IO.Directory]::CreateDirectory($walkthroughRoot) | Out-Null
+    if ($preparePortableWorkerPackage) { [System.IO.Directory]::CreateDirectory($packageRoot) | Out-Null }
+    if ($prepareExplainedWordCardFixture) { [System.IO.Directory]::CreateDirectory($walkthroughRoot) | Out-Null }
     $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = Join-Path $workRoot 'intermediate'
+    $env:MOTIF_TEST_SLDR_OFFLINE = '1'
+    $env:MOTIF_TEST_SLDR_CACHE_PATH = Join-Path $workRoot 'sldr-cache'
+    $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = Join-Path $workRoot 'writing-systems'
+    $localPackageSource = ''
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCAL_NUGET_REPO) -and
+        (Test-Path -LiteralPath $env:LOCAL_NUGET_REPO -PathType Container)) {
+        $escapedSource = [System.Security.SecurityElement]::Escape($env:LOCAL_NUGET_REPO)
+        $localPackageSource = "<add key=`"local-override`" value=`"$escapedSource`" />"
+    }
+    $nugetConfig = "<?xml version=`"1.0`" encoding=`"utf-8`"?><configuration><packageSources><clear />$localPackageSource</packageSources></configuration>"
+    [System.IO.File]::WriteAllText($offlineRestoreConfig, $nugetConfig, [System.Text.UTF8Encoding]::new($false))
 
-    $sharedWorkerAssetsBefore = Get-WorkerAssetHashes $workerAssets
-    $frontEndStages = [System.Collections.Generic.List[object]]::new()
-    foreach ($frontEnd in @(
+    if ($preparePortableWorkerPackage) {
+        $sharedWorkerAssetsBefore = Get-WorkerAssetHashes $workerAssets
+        $frontEndStages = [System.Collections.Generic.List[object]]::new()
+        foreach ($frontEnd in @(
         [ordered]@{ name = 'App'; project = 'src/SIL.Motif.App/SIL.Motif.App.csproj' },
         [ordered]@{ name = 'CLI'; project = 'src/SIL.Motif.Cli/SIL.Motif.Cli.csproj' }
-    )) {
-        Publish-Project (Join-Path $repositoryRoot $frontEnd.project) $packageRoot
-        Assert-SharedWorkerAssetsUnchanged $sharedWorkerAssetsBefore $frontEnd.name
-        Assert-FrontEndPublish $frontEnd.name
-        $frontEndStages.Add([ordered]@{
-            name = $frontEnd.name
-            workerRuntimeLibraryIncluded = $true
-            workerHostAssetsExcluded = $true
-            sharedWorkerAssetsUnchanged = $true
+        )) {
+            Publish-Project (Join-Path $repositoryRoot $frontEnd.project) $packageRoot
+            Assert-SharedWorkerAssetsUnchanged $sharedWorkerAssetsBefore $frontEnd.name
+            Assert-FrontEndPublish $frontEnd.name
+            $frontEndStages.Add([ordered]@{
+                name = $frontEnd.name
+                workerRuntimeLibraryIncluded = $true
+                workerHostAssetsExcluded = $true
+                sharedWorkerAssetsUnchanged = $true
+            })
+        }
+
+        $workerPublishRoot = Join-Path $workRoot 'worker-publish'
+        Publish-Project (Join-Path $repositoryRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishRoot
+        Assert-SharedWorkerAssetsUnchanged $sharedWorkerAssetsBefore 'Worker'
+        if (-not (Test-Path -LiteralPath (Join-Path $workerPublishRoot 'SIL.Motif.Worker.Runtime.dll') -PathType Leaf)) {
+            throw 'Worker publish did not include its runtime library dependency.'
+        }
+        foreach ($asset in $workerAssets) {
+            $source = Join-Path $workerPublishRoot $asset
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                throw "Worker publish is missing $asset."
+            }
+            $destination = Join-Path $packageRoot $asset
+            Copy-Item -LiteralPath $source -Destination $destination -Force
+            if ($asset -eq "SIL.Motif.Worker$entryPointSuffix" -and -not $targetIsWindows) {
+                $executableMode = [System.IO.UnixFileMode]::UserRead -bor
+                    [System.IO.UnixFileMode]::UserWrite -bor
+                    [System.IO.UnixFileMode]::UserExecute -bor
+                    [System.IO.UnixFileMode]::GroupRead -bor
+                    [System.IO.UnixFileMode]::GroupExecute -bor
+                    [System.IO.UnixFileMode]::OtherRead -bor
+                    [System.IO.UnixFileMode]::OtherExecute
+                [System.IO.File]::SetUnixFileMode($destination, $executableMode)
+            }
+        }
+
+        $appHost = Join-Path $packageRoot "SIL.Motif.App$entryPointSuffix"
+        $cliHost = Join-Path $packageRoot "motif$entryPointSuffix"
+        $workerHost = Join-Path $packageRoot "SIL.Motif.Worker$entryPointSuffix"
+        foreach ($hostPath in @($appHost, $cliHost, $workerHost)) {
+            if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) {
+                throw "The portable package is missing apphost $([System.IO.Path]::GetFileName($hostPath))."
+            }
+        }
+        if ([System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($cliHost)) -cne
+            [System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($workerHost))) {
+            throw 'The CLI and Worker apphosts must be siblings in the portable package.'
+        }
+        Assert-SelfContained "SIL.Motif.App.runtimeconfig.json"
+        Assert-SelfContained 'motif.runtimeconfig.json'
+        Assert-SelfContained 'SIL.Motif.Worker.runtimeconfig.json'
+
+        $icuPayload = Copy-IcuPayload $packageRoot $runtimeIdentifier
+        $sharedWorkerAssetsAfter = Get-WorkerAssetHashes $workerAssets
+        foreach ($asset in $sharedWorkerAssetsBefore.Keys) {
+            if ($sharedWorkerAssetsBefore[$asset] -cne $sharedWorkerAssetsAfter[$asset]) {
+                throw "Portable publishing changed the shared Worker asset $asset."
+            }
+        }
+        Write-JsonFile (Join-Path $stageRoot 'portable-worker-package-validation.json') ([ordered]@{
+            runtimeIdentifier = $runtimeIdentifier
+            frontEndPublishes = $frontEndStages.ToArray()
+            workerPublish = [ordered]@{
+                workerRuntimeLibraryIncluded = $true
+                workerHostAssetsIncluded = $true
+                sharedWorkerAssetsUnchanged = $true
+            }
+            sharedWorkerAssetsBefore = $sharedWorkerAssetsBefore
+            sharedWorkerAssetsAfter = $sharedWorkerAssetsAfter
+            icuPayload = $icuPayload
         })
     }
 
-    $workerPublishRoot = Join-Path $workRoot 'worker-publish'
-    Publish-Project (Join-Path $repositoryRoot 'src/SIL.Motif.Worker/SIL.Motif.Worker.csproj') $workerPublishRoot
-    Assert-SharedWorkerAssetsUnchanged $sharedWorkerAssetsBefore 'Worker'
-    if (-not (Test-Path -LiteralPath (Join-Path $workerPublishRoot 'SIL.Motif.Worker.Runtime.dll') -PathType Leaf)) {
-        throw 'Worker publish did not include its runtime library dependency.'
-    }
-    foreach ($asset in $workerAssets) {
-        $source = Join-Path $workerPublishRoot $asset
-        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
-            throw "Worker publish is missing $asset."
-        }
-        $destination = Join-Path $packageRoot $asset
-        Copy-Item -LiteralPath $source -Destination $destination -Force
-        if ($asset -eq "SIL.Motif.Worker$entryPointSuffix" -and -not $targetIsWindows) {
-            $executableMode = [System.IO.UnixFileMode]::UserRead -bor
-                [System.IO.UnixFileMode]::UserWrite -bor
-                [System.IO.UnixFileMode]::UserExecute -bor
-                [System.IO.UnixFileMode]::GroupRead -bor
-                [System.IO.UnixFileMode]::GroupExecute -bor
-                [System.IO.UnixFileMode]::OtherRead -bor
-                [System.IO.UnixFileMode]::OtherExecute
-            [System.IO.File]::SetUnixFileMode($destination, $executableMode)
-        }
-    }
+    if ($prepareExplainedWordCardFixture) {
+        $sampleSpecPath = Join-Path $workRoot 'explained-word-card.sample.json'
+        $sampleSpec = Get-Content -LiteralPath (Join-Path $repositoryRoot 'samples/synthetic-turkic/sample.json') -Raw |
+            ConvertFrom-Json -AsHashtable
+        $stems = [System.Collections.Generic.List[object]]::new()
+        foreach ($stem in $sampleSpec['stems']) { $stems.Add($stem) }
+        $stems.Add([ordered]@{ id = 'explained-ev'; form = 'ev'; partOfSpeech = 'noun'; gloss = 'house' })
+        $sampleSpec['stems'] = $stems.ToArray()
+        $sampleSpec['texts'] = @([ordered]@{
+            id = 'explained-word-card'
+            title = 'Round 3 word examples'
+            sentences = @('geldi', 'evler', 'kediye', 'adamlarında', 'günler', 'okullarında')
+        })
+        Write-JsonFile $sampleSpecPath $sampleSpec
 
-    $appHost = Join-Path $packageRoot "SIL.Motif.App$entryPointSuffix"
-    $cliHost = Join-Path $packageRoot "motif$entryPointSuffix"
-    $workerHost = Join-Path $packageRoot "SIL.Motif.Worker$entryPointSuffix"
-    foreach ($hostPath in @($appHost, $cliHost, $workerHost)) {
-        if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) {
-            throw "The portable package is missing apphost $([System.IO.Path]::GetFileName($hostPath))."
+        $sampleBuilderName = if ($targetIsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
+        $sampleBuilder = Join-Path $configurationRoot $sampleBuilderName
+        if (-not (Test-Path -LiteralPath $sampleBuilder -PathType Leaf)) {
+            throw "The SampleProjects apphost is missing: $sampleBuilder"
         }
-    }
-    if ([System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($cliHost)) -cne
-        [System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($workerHost))) {
-        throw 'The CLI and Worker apphosts must be siblings in the portable package.'
-    }
-    Assert-SelfContained "SIL.Motif.App.runtimeconfig.json"
-    Assert-SelfContained 'motif.runtimeconfig.json'
-    Assert-SelfContained 'SIL.Motif.Worker.runtimeconfig.json'
-
-    $icuPayload = Copy-IcuPayload $packageRoot $runtimeIdentifier
-    $sharedWorkerAssetsAfter = Get-WorkerAssetHashes $workerAssets
-    foreach ($asset in $sharedWorkerAssetsBefore.Keys) {
-        if ($sharedWorkerAssetsBefore[$asset] -cne $sharedWorkerAssetsAfter[$asset]) {
-            throw "Portable publishing changed the shared Worker asset $asset."
+        $sampleOutputRoot = Join-Path $walkthroughRoot 'project-output'
+        $sampleBuildOutput = & $sampleBuilder build $sampleSpecPath $sampleOutputRoot 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "The Explained Word Card project build failed: $($sampleBuildOutput -join [Environment]::NewLine)"
         }
-    }
-    Write-JsonFile (Join-Path $stageRoot 'portable-worker-package-validation.json') ([ordered]@{
-        runtimeIdentifier = $runtimeIdentifier
-        frontEndPublishes = $frontEndStages.ToArray()
-        workerPublish = [ordered]@{
-            workerRuntimeLibraryIncluded = $true
-            workerHostAssetsIncluded = $true
-            sharedWorkerAssetsUnchanged = $true
+        $sampleBuild = [string]::Join([Environment]::NewLine, [string[]] $sampleBuildOutput) | ConvertFrom-Json
+        $builtProjectPath = [System.IO.Path]::GetFullPath([string] $sampleBuild.projectPath)
+        $projectPathRelative = [System.IO.Path]::GetRelativePath($walkthroughRoot, $builtProjectPath)
+        Assert-ArtifactPath $walkthroughRoot $builtProjectPath
+        if (-not (Test-Path -LiteralPath $builtProjectPath -PathType Leaf)) {
+            throw "The Explained Word Card project file is missing: $builtProjectPath"
         }
-        sharedWorkerAssetsBefore = $sharedWorkerAssetsBefore
-        sharedWorkerAssetsAfter = $sharedWorkerAssetsAfter
-        icuPayload = $icuPayload
-    })
-
-    $sampleSpecPath = Join-Path $workRoot 'explained-word-card.sample.json'
-    $sampleSpec = Get-Content -LiteralPath (Join-Path $repositoryRoot 'samples/synthetic-turkic/sample.json') -Raw |
-        ConvertFrom-Json -AsHashtable
-    $stems = [System.Collections.Generic.List[object]]::new()
-    foreach ($stem in $sampleSpec['stems']) { $stems.Add($stem) }
-    $stems.Add([ordered]@{ id = 'explained-ev'; form = 'ev'; partOfSpeech = 'noun'; gloss = 'house' })
-    $sampleSpec['stems'] = $stems.ToArray()
-    $sampleSpec['texts'] = @([ordered]@{
-        id = 'explained-word-card'
-        title = 'Round 3 word examples'
-        sentences = @('geldi', 'evler', 'kediye', 'adamlarında', 'günler', 'okullarında')
-    })
-    Write-JsonFile $sampleSpecPath $sampleSpec
-
-    $sampleBuilderName = if ($targetIsWindows) { 'SIL.Motif.SampleProjects.exe' } else { 'SIL.Motif.SampleProjects' }
-    $sampleBuilder = Join-Path $configurationRoot $sampleBuilderName
-    if (-not (Test-Path -LiteralPath $sampleBuilder -PathType Leaf)) {
-        throw "The SampleProjects apphost is missing: $sampleBuilder"
+        Write-JsonFile (Join-Path $walkthroughRoot 'fixture.json') ([ordered]@{
+            projectPath = $projectPathRelative.Replace('\', '/')
+            textId = [string] $sampleBuild.texts[0].guid
+        })
     }
-    $sampleOutputRoot = Join-Path $walkthroughRoot 'project-output'
-    $sampleBuildOutput = & $sampleBuilder build $sampleSpecPath $sampleOutputRoot 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "The Explained Word Card project build failed: $($sampleBuildOutput -join [Environment]::NewLine)"
-    }
-    $sampleBuild = [string]::Join([Environment]::NewLine, [string[]] $sampleBuildOutput) | ConvertFrom-Json
-    $builtProjectPath = [System.IO.Path]::GetFullPath([string] $sampleBuild.projectPath)
-    $projectPathRelative = [System.IO.Path]::GetRelativePath($walkthroughRoot, $builtProjectPath)
-    Assert-ArtifactPath $walkthroughRoot $builtProjectPath
-    if (-not (Test-Path -LiteralPath $builtProjectPath -PathType Leaf)) {
-        throw "The Explained Word Card project file is missing: $builtProjectPath"
-    }
-    Write-JsonFile (Join-Path $walkthroughRoot 'fixture.json') ([ordered]@{
-        projectPath = $projectPathRelative.Replace('\', '/')
-        textId = [string] $sampleBuild.texts[0].guid
-    })
 
     Remove-ArtifactDirectory $workRoot
-    Remove-ArtifactDirectory $preparedRoot
-    Move-Item -LiteralPath $stageRoot -Destination $preparedRoot
+    if ($preparePortableWorkerPackage -and $prepareExplainedWordCardFixture) {
+        Remove-ArtifactDirectory $preparedRoot
+        Move-Item -LiteralPath $stageRoot -Destination $preparedRoot
+    }
+    else {
+        [System.IO.Directory]::CreateDirectory($preparedRoot) | Out-Null
+        if ($preparePortableWorkerPackage) {
+            $preparedPackageRoot = Join-Path $preparedRoot 'portable-worker-package'
+            $preparedValidation = Join-Path $preparedRoot 'portable-worker-package-validation.json'
+            Remove-ArtifactDirectory $preparedPackageRoot
+            if (Test-Path -LiteralPath $preparedValidation) { Remove-Item -LiteralPath $preparedValidation -Force }
+            Move-Item -LiteralPath $packageRoot -Destination $preparedPackageRoot
+            Move-Item -LiteralPath (Join-Path $stageRoot 'portable-worker-package-validation.json') `
+                -Destination $preparedValidation
+        }
+        if ($prepareExplainedWordCardFixture) {
+            $preparedWalkthroughRoot = Join-Path $preparedRoot 'walkthrough-fixtures/explained-word-card'
+            [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($preparedWalkthroughRoot)) | Out-Null
+            Remove-ArtifactDirectory $preparedWalkthroughRoot
+            Move-Item -LiteralPath $walkthroughRoot -Destination $preparedWalkthroughRoot
+        }
+    }
 }
 finally {
     if ($null -eq $previousIntermediateRoot) {
@@ -354,6 +402,24 @@ finally {
     }
     else {
         $env:MOTIF_PACKAGE_INTERMEDIATE_ROOT = $previousIntermediateRoot
+    }
+    if ($null -eq $previousSldrOffline) {
+        Remove-Item Env:MOTIF_TEST_SLDR_OFFLINE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:MOTIF_TEST_SLDR_OFFLINE = $previousSldrOffline
+    }
+    if ($null -eq $previousSldrCachePath) {
+        Remove-Item Env:MOTIF_TEST_SLDR_CACHE_PATH -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:MOTIF_TEST_SLDR_CACHE_PATH = $previousSldrCachePath
+    }
+    if ($null -eq $previousWritingSystemRepositoryPath) {
+        Remove-Item Env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:MOTIF_WRITING_SYSTEM_REPOSITORY_PATH = $previousWritingSystemRepositoryPath
     }
     if (Test-Path -LiteralPath $stageRoot) { Remove-ArtifactDirectory $stageRoot }
     Pop-Location

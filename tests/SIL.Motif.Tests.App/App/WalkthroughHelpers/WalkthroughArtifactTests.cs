@@ -416,6 +416,28 @@ public sealed class WalkthroughArtifactTests
     }
 
     [Fact]
+    public void BaselineComparisonUsesInclusiveCalloutStartsAndExclusiveEnds()
+    {
+        var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");
+        var callout = new WalkthroughCaptureCallout(
+            "fractional", "Fractional bounds", new Rect(0.5, 0.5, 1, 1));
+        try
+        {
+            File.WriteAllBytes(baselinePath, SolidPng(SKColors.White, 0));
+            WithStrictBaselineGate(() => WalkthroughArtifacts.CheckBaseline(
+                baselinePath, PngWithPixel(new SKColor(251, 255, 255), 1, 1), update: false, [callout]));
+
+            WithStrictBaselineGate(() => Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                WalkthroughArtifacts.CheckBaseline(baselinePath,
+                    PngWithPixel(new SKColor(254, 255, 255), 0, 0), update: false, [callout])));
+        }
+        finally
+        {
+            File.Delete(baselinePath);
+        }
+    }
+
+    [Fact]
     public void BaselineComparisonWritesADiffPngWhenItFails()
     {
         var baselinePath = Path.Combine(Path.GetTempPath(), $"walkthrough-baseline-{Guid.NewGuid():N}.png");

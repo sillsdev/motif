@@ -728,25 +728,42 @@ internal static class WalkthroughArtifacts
         var height = actualBitmap.Height;
         var changed = 0;
         var calloutChanged = 0;
+        using var expectedRgba = expectedBitmap!.Copy(SKColorType.Rgba8888) ??
+            throw new InvalidOperationException("The walkthrough baseline could not be read as RGBA.");
+        using var actualRgba = actualBitmap!.Copy(SKColorType.Rgba8888) ??
+            throw new InvalidOperationException("The walkthrough capture could not be read as RGBA.");
+        var calloutMask = BuildCalloutMask(width, height, callouts);
+        var expectedPixels = expectedRgba.GetPixelSpan();
+        var actualPixels = actualRgba.GetPixelSpan();
+        var expectedRowBytes = expectedRgba.RowBytes;
+        var actualRowBytes = actualRgba.RowBytes;
         using var diffBitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         diffBitmap.Erase(new SKColor(0, 0, 0, 0));
+        var diffPixels = diffBitmap.GetPixelSpan();
         for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
         {
-            var before = expectedBitmap.GetPixel(x, y);
-            var after = actualBitmap.GetPixel(x, y);
-            var isCallout = callouts?.Any(callout =>
-                x + 0.5 >= callout.Bounds.X && x + 0.5 < callout.Bounds.Right &&
-                y + 0.5 >= callout.Bounds.Y && y + 0.5 < callout.Bounds.Bottom) == true;
-            var tolerance = isCallout ? 0 : ChannelTolerance;
-            var differs = Math.Abs(before.Red - after.Red) > tolerance ||
-                Math.Abs(before.Green - after.Green) > tolerance ||
-                Math.Abs(before.Blue - after.Blue) > tolerance || before.Alpha != after.Alpha;
-            if (differs)
+            var expectedRow = expectedPixels.Slice(y * expectedRowBytes, width * 4);
+            var actualRow = actualPixels.Slice(y * actualRowBytes, width * 4);
+            var diffRow = diffPixels.Slice(y * diffBitmap.RowBytes, width * 4);
+            var maskRowOffset = y * width;
+            for (var x = 0; x < width; x++)
             {
-                changed++;
-                if (isCallout) calloutChanged++;
-                diffBitmap.SetPixel(x, y, new SKColor(255, 0, 128));
+                var pixelOffset = x * 4;
+                var isCallout = calloutMask[maskRowOffset + x] != 0;
+                var tolerance = isCallout ? 0 : ChannelTolerance;
+                var differs = Math.Abs(expectedRow[pixelOffset] - actualRow[pixelOffset]) > tolerance ||
+                    Math.Abs(expectedRow[pixelOffset + 1] - actualRow[pixelOffset + 1]) > tolerance ||
+                    Math.Abs(expectedRow[pixelOffset + 2] - actualRow[pixelOffset + 2]) > tolerance ||
+                    expectedRow[pixelOffset + 3] != actualRow[pixelOffset + 3];
+                if (differs)
+                {
+                    changed++;
+                    if (isCallout) calloutChanged++;
+                    diffRow[pixelOffset] = 255;
+                    diffRow[pixelOffset + 1] = 0;
+                    diffRow[pixelOffset + 2] = 128;
+                    diffRow[pixelOffset + 3] = 255;
+                }
             }
         }
 
@@ -763,6 +780,35 @@ internal static class WalkthroughArtifacts
             if (report is null) Console.WriteLine(message);
             else report(message);
         }
+    }
+
+    private static byte[] BuildCalloutMask(int width, int height,
+        IReadOnlyList<WalkthroughCaptureCallout>? callouts)
+    {
+        var mask = new byte[width * height];
+        if (callouts is null) return mask;
+        foreach (var callout in callouts)
+        {
+            var bounds = callout.Bounds;
+            if (double.IsNaN(bounds.X) || double.IsNaN(bounds.Y) ||
+                double.IsNaN(bounds.Right) || double.IsNaN(bounds.Bottom)) continue;
+            var left = FirstPixelCenterAtOrAfter(bounds.X, width);
+            var top = FirstPixelCenterAtOrAfter(bounds.Y, height);
+            var right = FirstPixelCenterAtOrAfter(bounds.Right, width);
+            var bottom = FirstPixelCenterAtOrAfter(bounds.Bottom, height);
+            if (right <= left || bottom <= top) continue;
+            for (var y = top; y < bottom; y++)
+                Array.Fill(mask, (byte)1, y * width + left, right - left);
+        }
+        return mask;
+    }
+
+    private static int FirstPixelCenterAtOrAfter(double edge, int limit)
+    {
+        var index = Math.Ceiling(edge - 0.5);
+        if (index <= 0) return 0;
+        if (index >= limit) return limit;
+        return (int)index;
     }
 
     private static string WriteActualPng(string baselinePath, byte[] actual)
