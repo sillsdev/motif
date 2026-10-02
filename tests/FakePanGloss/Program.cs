@@ -193,6 +193,8 @@ internal static class Program
         var behaviour = Behaviour.Read(directory, "batch");
         var words = File.Exists(wordsPath) ? File.ReadAllLines(wordsPath) : Array.Empty<string>();
         if (behaviour.StartedPath is { } startedPath) File.WriteAllText(startedPath, string.Empty);
+        if (behaviour.ProcessIdPath is { } processIdPath)
+            File.WriteAllText(processIdPath, Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         if (behaviour.HoldUntilPath is { } holdUntilPath)
         {
             using var stream = new FileStream(outPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
@@ -212,6 +214,14 @@ internal static class Program
         {
             case "noReport":
                 // Exits cleanly having written nothing: the caller must not read success from the code alone.
+                return behaviour.ExitCode;
+            case "crash":
+                throw new InvalidOperationException("The fake parser was told to crash during batch analysis.");
+            case "malformedReport":
+                File.WriteAllText(outPath, BatchTsv(behaviour, words));
+                if (analysesPath is { } malformedPath)
+                    File.WriteAllText(malformedPath,
+                        "{\"schema\":\"fieldworks-parse-analysis/v1\",\"index\":0,\"word\":\"motifa\",\"elapsedMs\":3,\"capped\":false,\"timedOut\":false,\"invalidShape\":false,\"analyses\":[{\"morphs\":[]}],\"unavailable\":[]}\n");
                 return behaviour.ExitCode;
             case "fail":
                 Console.Error.WriteLine(behaviour.StandardError ?? "the fake parser was told to fail");

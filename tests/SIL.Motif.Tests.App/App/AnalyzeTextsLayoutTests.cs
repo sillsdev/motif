@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
@@ -602,6 +603,42 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
+    public void UnbrokenCombiningAndRightToLeftFormsRetainTextWithMeasuredBounds()
+    {
+        string[] forms = [new string('m', 180), "e\u0301lan", "עברית־מילים"];
+        var textId = Guid.NewGuid();
+        var line = new TextLine(1, forms.Select(form => new TextToken(
+            form, form, null, "unanalysed")).ToArray());
+        var words = new TextWordsResponse([], [new TextLines(textId, "Unicode layout", [line])], HasBaseline: true);
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(parse: false,
+                configure: (fake, _) => fake.ListTextWordsCompletesWith(words));
+            try
+            {
+                var panel = Panel(window);
+                var viewer = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), candidate =>
+                    candidate.IsEffectivelyVisible && candidate.Content is ItemsControl);
+                foreach (var form in forms)
+                {
+                    var strip = StripOf(panel, form);
+                    Assert.Contains(form, VisibleText(strip), StringComparison.Ordinal);
+                    var bounds = BoundsIn(strip, viewer);
+                    Assert.True(bounds.Width > 0 && bounds.Height > 0,
+                        $"'{form}' has an empty layout box.");
+                    Assert.True(bounds.Left < viewer.Viewport.Width && bounds.Right > 0,
+                        $"'{form}' has no horizontal overlap with the reader viewport.");
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
     public void EachChipCountsTheStripsThatShowItsClass()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -667,9 +704,10 @@ public sealed class AnalyzeTextsLayoutTests
             Avalonia.Automation.AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
 
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAnalyzeTexts(
-        int width = 1240, bool parse = true)
+        int width = 1240, bool parse = true,
+        Action<FakeCommandClient, AssessCommandResponse>? configure = null)
     {
-        var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: parse);
+        var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: parse, configure: configure);
         window.Width = width;
         window.Height = 780;
         workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;

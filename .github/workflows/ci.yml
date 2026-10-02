@@ -113,6 +113,14 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Configuration Release
 
+      - name: Stage pinned PanGloss release
+        shell: pwsh
+        run: |
+          Import-Module ./tools/PanGlossRelease.psm1
+          $artifact = Get-PinnedPanGlossArtifact -RepositoryRoot (Get-Location).Path `
+            -CacheDirectory (Join-Path $env:RUNNER_TEMP "motif-pangloss/$env:ICU_RID")
+          "MOTIF_PANGLOSS_EXE=$($artifact.Path)" >> $env:GITHUB_ENV
+
       - name: Hermetic check (Ubuntu)
         if: runner.os == 'Linux'
         shell: pwsh
@@ -121,6 +129,10 @@ jobs:
       - name: Test (full suite)
         shell: pwsh
         run: ./test.ps1 -Configuration Release -SkipBuild -All
+
+      - name: Require released PanGloss integration results
+        shell: pwsh
+        run: ./tools/Assert-RequiredPanGloss.ps1 -ResultsDirectory (Join-Path (Get-Location).Path 'bin/Release/test-results')
 
       - name: Verify PanGloss pin mode handling
         shell: pwsh

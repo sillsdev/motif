@@ -123,6 +123,47 @@ public sealed class TextWordsQueryTests : IDisposable
     }
 
     [Fact]
+    public void ASubstantialSeededTextRetainsEveryOccurrenceAndItsLastLocation()
+    {
+        using var cache = _pristine.NewScratch();
+        var seededText = SeededProject.SeedText(cache, _pristine.Seed);
+        var workload = SubstantialTextSeed.AppendLines(cache, seededText);
+        new FwDataProjectLoader().Save(cache);
+        var fwDataPath = cache.ProjectId.Path;
+        Capture(fwDataPath);
+
+        var outcome = TextWordsQuery.Query(new TextWordsRequest(fwDataPath, [workload.TextId]));
+
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var response = outcome.Value!;
+        Assert.True(response.HasBaseline);
+        Assert.Equal(2_402, response.OccurrenceCount);
+        Assert.Equal(33, response.Words.Count);
+        Assert.All(response.Words.Where(word => word.Form.StartsWith("scale-word-", StringComparison.Ordinal)),
+            word => Assert.True(word.Occurrences.Count > 1));
+        Assert.Single(response.Words, word => word.Form == SeededProject.UnanalysedWordForm);
+
+        var text = Assert.Single(response.Texts);
+        Assert.Equal(workload.TextId, text.TextId);
+        Assert.Equal(302, text.Lines.Count);
+        Assert.Equal(seededText.FirstParagraphId, text.Lines[0].ParagraphId);
+        Assert.Equal(seededText.FirstSegmentId, text.Lines[0].SegmentId);
+        Assert.All(text.Lines.Skip(2), line =>
+            Assert.Equal(Enumerable.Range(0, SubstantialTextSeed.WordsPerLine),
+                line.Tokens.Select(token => token.OccurrenceIndex)));
+
+        var finalLine = text.Lines[^1];
+        Assert.Equal(302, finalLine.Number);
+        Assert.Equal(workload.LastParagraphId, finalLine.ParagraphId);
+        Assert.Equal(workload.LastSegmentId, finalLine.SegmentId);
+        var finalOccurrence = finalLine.Tokens[^1];
+        Assert.Equal(SeededProject.AnalysedWordForm, finalOccurrence.Form);
+        Assert.Equal(seededText.AnalysedWordformId, finalOccurrence.WordformId);
+        Assert.Equal(7, finalOccurrence.OccurrenceIndex);
+        Assert.Equal(CanonicalId.FromGuid(seededText.ApprovedAnalysisId).Value, finalOccurrence.StoredAnalysisId);
+    }
+
+    [Fact]
     public void LinesAndTokensRetainTheOccurrenceIdentityForAnAnalyzeTextsDecision()
     {
         using var cache = _pristine.NewScratch();

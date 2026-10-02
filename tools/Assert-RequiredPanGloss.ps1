@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 $criticalTests = @(
     'SIL.Motif.Tests.App.RealClient.SeededProjectRealTransferTests.AssessmentAndHandoffTransferTheRetainedResultWithoutChangingTheSavedProject',
+    'SIL.Motif.Tests.App.Walkthrough.UploadSimulationWalkthroughTests.ACompletedHandoffSurvivesFlatUploadAndStarterPromptPaste',
     'SIL.Motif.Tests.Commands.AssessCommandTests.SupportedAssessmentRecordsRealTimingAndStatisticsWithOneInvocation',
     'SIL.Motif.Tests.PanGloss.PanGlossSurfaceTests.RealDescriptionContainsEveryTypedRequestAndFakeCommand',
     'SIL.Motif.Tests.Parser.RealParserTraceTests.ATracedWordReturnsTheVerbatimTreeAndAMatchingDerivedSummary',

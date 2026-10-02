@@ -348,6 +348,7 @@ Write-PhaseDuration 'test processes'
 $failed = $false
 $totals = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
 $skipCategories = [ordered]@{ platform = 0; capture = 0; harness = 0; 'parser-absent' = 0; capability = 0; other = 0 }
+$missingParserTests = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($outcome in $outcomes) {
     $counters = @{ total = 0; passed = 0; failed = 0; notExecuted = 0 }
     foreach ($trx in Get-ChildItem $outcome.ResultsDirectory -Filter '*.trx' -Recurse -ErrorAction SilentlyContinue) {
@@ -355,6 +356,9 @@ foreach ($outcome in $outcomes) {
         [xml] $trxDocument = Get-Content $trx.FullName -Raw
         foreach ($result in $trxDocument.SelectNodes("//*[local-name()='UnitTestResult']")) {
             $counters.total++
+            if ($result.outcome -eq 'NotExecuted' -and $result.OuterXml -match '(?i)pangloss not found') {
+                [void] $missingParserTests.Add([string] $result.testName)
+            }
             switch ($result.outcome) {
                 'Passed' { $counters.passed++ }
                 'NotExecuted' {
@@ -402,6 +406,9 @@ if ($totals.notExecuted -gt 0) {
 }
 Write-Host ('  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}  (total {5})' -f 'all projects',
     $clock.Elapsed.TotalSeconds, $totals.passed, $totals.failed, $totals.notExecuted, $totals.total)
+if ($missingParserTests.Count -gt 0) {
+    Write-Host "Parser validation incomplete: $($missingParserTests.Count) PanGloss-dependent test(s) skipped because pangloss was not found." -ForegroundColor Yellow
+}
 Write-PhaseDuration 'whole gate'
 
 if ($failed) {

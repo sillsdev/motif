@@ -47,4 +47,44 @@ public class ProjectLoadTests
             }
         }
     }
+
+    [Fact]
+    public void MovingSeededProjectUnderUnicodePathRetainsProjectAndWritingSystems()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests", Guid.NewGuid().ToString("N"));
+        var initialPath = NewLangProjFixture.FwDataPath(tempRoot);
+        var movedParent = Path.Combine(tempRoot, "owner's e\u0301 texts");
+        var movedFolder = Path.Combine(movedParent, NewLangProjFixture.ProjectName);
+        Directory.CreateDirectory(tempRoot);
+        try
+        {
+            var loader = new FwDataProjectLoader();
+            using (var cache = NewLangProjFixture.CreateCache(tempRoot))
+            {
+                var seed = SeededProject.Seed(cache);
+                SeededProject.SeedText(cache, seed);
+                loader.Save(cache);
+            }
+
+            Directory.CreateDirectory(movedParent);
+            Directory.Move(Path.GetDirectoryName(initialPath)!, movedFolder);
+            var movedPath = Path.Combine(movedFolder, Path.GetFileName(initialPath));
+            using var reopened = loader.LoadCache(movedPath);
+
+            Assert.Equal(Path.GetFullPath(movedPath), Path.GetFullPath(reopened.ProjectId.Path));
+            Assert.True(reopened.ServiceLocator.GetInstance<ILexEntryRepository>().Count > 0);
+            Assert.True(reopened.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.VernacularTag) > 0);
+            Assert.True(reopened.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.SecondVernacularTag) > 0);
+            Assert.True(reopened.WritingSystemFactory.GetWsFromStr(NewLangProjFixture.AnalysisTag) > 0);
+            Assert.Equal(SeededProject.TextTitle, Assert.Single(
+                reopened.ServiceLocator.GetInstance<ITextRepository>().AllInstances()).Name
+                .get_String(reopened.DefaultAnalWs).Text);
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
 }

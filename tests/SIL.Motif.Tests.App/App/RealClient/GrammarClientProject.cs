@@ -1,6 +1,9 @@
 using SIL.Motif.App.Services;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -19,11 +22,21 @@ internal sealed class GrammarClientProject : IDisposable
 
     public string FwDataPath => _project.FwDataPath;
 
+    public Guid TextId => _project.TextId;
+
     public string ManagedRoot => _project.ManagedRoot;
 
     public string ParserPath { get; }
 
     public CommandClient Client { get; }
+
+    public Task<CommandOutcome<AssessCommandResponse>> AssessAsync(
+        CancellationToken cancellationToken) =>
+        Client.AssessAsync(new AssessRequest(FwDataPath),
+            new Progress<AssessmentProgress>(), cancellationToken);
+
+    public Task<CommandOutcome<CurrentEvidenceSnapshot>> CurrentEvidenceAsync() =>
+        Client.ReadCurrentEvidenceAsync(FwDataPath, CancellationToken.None);
 
     public static async Task<GrammarClientProject> OpenAsync(PristineProjectFixture pristine)
     {
