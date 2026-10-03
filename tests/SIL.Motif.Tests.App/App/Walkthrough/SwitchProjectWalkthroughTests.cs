@@ -63,25 +63,17 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                     walkthrough.Workspace.Assess.Result is null &&
                     walkthrough.Workspace.Assess.Refusal is null &&
                     !walkthrough.Workspace.Context.HasEvidence &&
-                    walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
-                    walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
-                WalkthroughSteps.Remaining(deadline), "browsing to the second project did not clear the first run");
+                    walkthrough.Workspace.Baseline.HasBaseline &&
+                    walkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    walkthrough.Workspace.Context.Setup?.IsOpen == true &&
+                    walkthrough.Workspace.Context.Setup.ConfigurationLoadTask?.IsCompleted != false,
+                WalkthroughSteps.Remaining(deadline), "opening the second project did not clear the run and capture its Baseline");
             walkthrough.SkipSetup();
             Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
-            Assert.Equal("Capture a Baseline to choose Texts.",
-                walkthrough.Workspace.Selection.TextsEmptyMessage);
-
-            walkthrough.Click("Refresh the project");
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Baseline.HasBaseline &&
-                    walkthrough.Workspace.Selection.Texts.Count == 1 &&
-                    walkthrough.Workspace.Context.Setup?.IsOpen == true,
-                WalkthroughSteps.Remaining(deadline), "the second project Baseline did not show setup");
-            walkthrough.SkipSetup();
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
                     walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled,
-                WalkthroughSteps.Remaining(deadline), "the second project's Texts selection did not become ready");
+                WalkthroughSteps.Remaining(deadline), "the second project's Text selection did not become ready");
             walkthrough.Check(SeededProject.TextTitle);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);

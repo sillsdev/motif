@@ -50,15 +50,16 @@ internal static class SetupWalkthroughActions
     internal static void CaptureBaselineAndWaitForSetup(
         WalkthroughWindow walkthrough, int textCount, TimeSpan timeout)
     {
-        walkthrough.Click("Refresh the project");
+        walkthrough.WaitUntilProjectIsQuiet(timeout, "project open did not finish before Baseline capture");
         var setup = walkthrough.Workspace.Context.Setup!;
         var baseline = walkthrough.Workspace.Baseline;
         walkthrough.WaitUntil(
             () => baseline.ShownRefusal is not null ||
-                setup.IsOpen && baseline.HasBaseline && walkthrough.Workspace.Selection.Texts.Count == textCount,
-            timeout, "Refresh did not open setup with the project's Texts");
+                setup.IsOpen && setup.ConfigurationLoadTask?.IsCompleted != false &&
+                baseline.HasBaseline && walkthrough.Workspace.Selection.Texts.Count == textCount,
+            timeout, "choosing the project did not capture its Baseline and open setup with its Texts");
         Assert.True(baseline.ShownRefusal is null,
-            $"Refresh was refused: {baseline.ShownRefusal?.Sentence} {baseline.ShownRefusal?.Details}");
+            $"Baseline capture was refused: {baseline.ShownRefusal?.Sentence} {baseline.ShownRefusal?.Details}");
         walkthrough.WaitUntil(
             () => !walkthrough.Workspace.RefreshCommand.IsRunning,
             timeout, "Refresh did not finish loading the captured Baseline");
@@ -93,7 +94,8 @@ internal static class SetupWalkthroughActions
     {
         walkthrough.ConfigureFromProjectMenu();
         walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Context.Setup?.IsOpen == true,
+            () => walkthrough.Workspace.Context.Setup?.IsOpen == true &&
+                walkthrough.Workspace.Context.Setup.ConfigurationLoadTask?.IsCompleted != false,
             TimeSpan.FromSeconds(30), "Configure did not open setup");
     }
 

@@ -433,6 +433,25 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void TimingNamesAnAuthoredLexicalEntryByItsFormAndGloss()
+    {
+        using var seeded = NewSeededScratch();
+        var entryKey = _pristine.Seed.FirstEntryId.ToString("D");
+        var assessed = AssessForUses(seeded, "lex_entry", entryKey);
+        Assert.True(assessed.Succeeded, assessed.Refusal?.Message);
+        var parseId = assessed.Value!.Measurements.Single(row => row.Kind == "ParseTime").AssessmentId;
+
+        var timing = TimingCommand.Timing(new TimingRequest(
+            seeded.FwDataPath, parseId, WordSet: "Default", By: "rule"));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        var entry = Assert.Single(timing.Value!.Aggregates);
+        Assert.Equal("lex_entry", entry.Kind);
+        Assert.Equal(entryKey, entry.Key);
+        Assert.Equal($"{SeededProject.FirstForm} · {SeededProject.FirstGloss}", entry.Name);
+    }
+
+    [Fact]
     public void InspectReadsAMorphemesBaselineFactsBeforeAnyParseAllWords()
     {
         using var seeded = NewSeededScratch();

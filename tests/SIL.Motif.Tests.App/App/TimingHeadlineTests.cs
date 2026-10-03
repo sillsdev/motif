@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -275,6 +277,47 @@ public sealed class TimingHeadlineTests
                 var lookAt = texts.First(text => text.Text == "Words");
                 Assert.True(headline.TranslatePoint(default, window)!.Value.Y <
                     lookAt.TranslatePoint(default, window)!.Value.Y);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void LongRuleTitlesShowAnEllipsisAndKeepTheFullTooltip()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var timing = new TimingPageModel(context);
+            const string titleText = "Default Right Head Compound with a Long Grammar Rule Name";
+            fake.OnTiming((request, _) =>
+            {
+                var response = Response(request);
+                if (request.By == "rule")
+                    response = response with
+                    {
+                        Aggregates = [new TimingAggregateRow("mrule#0:long", titleText, 700, 0.875, 9)
+                            { Kind = "morph_rule", IdentityQuality = "structural" }],
+                    };
+                return Task.FromResult(CommandOutcome<TimingResponse>.Success(response));
+            });
+            await context.OpenProjectAsync(ProjectPath);
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+            await context.EvidencePublication;
+
+            var window = new Window { Width = 900, Height = 700, Content = new TimingPage(timing) };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var title = window.GetLogicalDescendants().OfType<TextBlock>()
+                    .Single(text => text.Text == titleText && text.Classes.Contains("section-title"));
+                Assert.Equal(TextTrimming.CharacterEllipsis, title.TextTrimming);
+                Assert.Equal(titleText, ToolTip.GetTip(title));
             }
             finally
             {

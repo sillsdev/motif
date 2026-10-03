@@ -4,8 +4,6 @@
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
-    { "id": "wait-for-refresh", "kind": "waitFor", "automationId": "motif-refresh-project", "condition": "enabled", "timeoutMs": 30000 },
-    { "id": "capture-baseline", "kind": "click", "automationId": "motif-refresh-project" },
     { "id": "wait-for-setup", "kind": "waitFor", "automationId": "motif-setup-next", "condition": "visible", "timeoutMs": 30000 },
     { "id": "open-selection-step", "kind": "click", "automationId": "motif-setup-next" },
     { "id": "wait-for-added-words", "kind": "waitFor", "automationId": "motif-setup-add-words", "condition": "visible", "timeoutMs": 30000 },

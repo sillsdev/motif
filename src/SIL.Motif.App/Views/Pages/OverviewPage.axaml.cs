@@ -13,4 +13,7 @@ public sealed partial class OverviewPage : UserControl
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
     }
+
+    /// <summary>The Overview model used by its project chooser.</summary>
+    public OverviewPageModel Page => (OverviewPageModel)DataContext!;
 }

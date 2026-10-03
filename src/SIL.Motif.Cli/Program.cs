@@ -1544,8 +1544,10 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            // No value, or one followed by another flag, is a bare switch (e.g. --force): no value starts with "--".
-            if (i + 1 >= tokens.Length || tokens[i + 1].StartsWith("--", StringComparison.Ordinal))
+            // Canonical ids can start with "--", so recognize those before treating a token as another switch.
+            if (i + 1 >= tokens.Length ||
+                (tokens[i + 1].StartsWith("--", StringComparison.Ordinal) &&
+                    !CanonicalId.TryParse(tokens[i + 1], out _)))
                 flags[name] = "true";
             else
                 flags[name] = tokens[++i];

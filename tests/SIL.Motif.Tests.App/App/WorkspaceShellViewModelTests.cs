@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -43,7 +44,7 @@ public sealed class WorkspaceShellViewModelTests
     };
 
     private static (FakeCommandClient Fake, FakeProjectPicker ProjectPicker, FakeFolderPicker FolderPicker,
-        FakeDragSource DragSource, WorkspaceShellViewModel Workspace) NewWorkspace()
+        FakeDragSource DragSource, WorkspaceShellViewModel Workspace) NewWorkspace(TimeProvider? clock = null)
     {
         var fake = new FakeCommandClient();
         var projectPicker = new FakeProjectPicker();
@@ -56,7 +57,7 @@ public sealed class WorkspaceShellViewModelTests
             selection,
             new AssessViewModel(fake, selection),
             folderPicker, dragSource,
-            fake);
+            fake, clock);
         return (fake, projectPicker, folderPicker, dragSource, workspace);
     }
 
@@ -552,28 +553,75 @@ public sealed class WorkspaceShellViewModelTests
 
     // The owner's first run: a project chosen before any capture showed no Texts even after Refresh succeeded.
     [Fact]
-    public async Task RefreshingAProjectThatHadNoBaselineLoadsItsTextsWithoutChoosingItAgain()
+    public async Task ChoosingAProjectWithoutABaselineCapturesItOnFirstOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
-        projectPicker.PathToReturn = ProjectPath;
-        await workspace.Project.BrowseCommand.ExecuteAsync(null);
-        Assert.False(workspace.Context.Setup!.IsOpen);
-        Assert.False(workspace.ConfigureCommand.CanExecute(null));
-        Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
-
+        var textReads = 0;
+        fake.OnListTexts((_, _) => Task.FromResult(CommandOutcome<TextInventoryResponse>.Success(
+            Interlocked.Increment(ref textReads) == 1
+                ? new TextInventoryResponse([], HasBaseline: false)
+                : new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true))));
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
-        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.Context.Setup.IsOpen);
-        Assert.Equal(0, workspace.Context.Setup.Step);
+        Assert.Single(fake.CaptureBaselineRequests);
+        Assert.True(workspace.Baseline.HasBaseline);
+        var setup = Assert.IsType<SetupViewModel>(workspace.Context.Setup);
+        Assert.True(setup.IsOpen);
+        Assert.Equal(0, setup.Step);
         Assert.Equal("Alpha", Assert.Single(workspace.Selection.Texts).Title);
         Assert.Null(workspace.Selection.TextsEmptyMessage);
-        Assert.Equal(ProjectPath, Assert.Single(fake.ListTextsRequests.Skip(1)).ProjectPath);
+        Assert.Equal(2, textReads);
+        Assert.All(fake.ListTextsRequests, request => Assert.Equal(ProjectPath, request.ProjectPath));
         Assert.True(workspace.Context.NeedsAssessment);
+    }
+
+    [Fact]
+    public async Task BaselineDatesFromEarlierYearsIncludeTheYear()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var clock = new FixedClock(new DateTimeOffset(2026, 10, 2, 12, 0, 0, TimeSpan.Zero));
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace(clock);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
+            NewToken("2024-09-05T00:00:00Z"), DateTimeOffset.Parse("2024-09-05T00:00:00Z"), false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        projectPicker.PathToReturn = ProjectPath;
+
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+
+        Assert.Contains("2024", workspace.FreshnessDetail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SidebarShowsLoadingWhileAProjectOpens()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        var currentBaseline = new TaskCompletionSource<CommandOutcome<CurrentBaselineResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnGetCurrentBaseline((_, _) =>
+        {
+            readStarted.TrySetResult();
+            return currentBaseline.Task;
+        });
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        projectPicker.PathToReturn = ProjectPath;
+
+        var opening = workspace.SetProjectAsync(ProjectPath);
+        await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(workspace.Context.IsOpeningProject);
+        Assert.Equal("Loading project...", workspace.SelectionSummaryText);
+
+        currentBaseline.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
+            new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));
+        await opening.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.False(workspace.Context.IsOpeningProject);
+        Assert.Equal(workspace.Selection.SummaryText, workspace.SelectionSummaryText);
     }
 
     [Fact]
@@ -595,25 +643,19 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst()
+    public async Task ConfigureOpensSetupAfterTheFirstOpenCapturedItsBaseline()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         Assert.False(workspace.ConfigureCommand.CanExecute(null));
         Assert.Equal("Texts, added words and limits", workspace.ConfigureDetailText);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
         projectPicker.PathToReturn = ProjectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
-        Assert.Equal("Capture a Baseline to choose Texts.", workspace.Selection.TextsEmptyMessage);
-        Assert.False(workspace.ConfigureCommand.CanExecute(null));
-        Assert.Equal(WorkspaceShellViewModel.ConfigureNeedsBaselineText, workspace.ConfigureDetailText);
-
-        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
-            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
-        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
-        await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
-
+        Assert.True(workspace.Baseline.HasBaseline);
         Assert.True(workspace.ConfigureCommand.CanExecute(null));
         Assert.Equal("Texts, added words and limits", workspace.ConfigureDetailText);
         var page = workspace.CurrentPage;
@@ -621,6 +663,41 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(workspace.Context.Setup!.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
         Assert.Equal(page, workspace.CurrentPage);
+    }
+
+    [Fact]
+    public async Task EachProjectWithoutAStoreIsCapturedOnItsFirstOpenOnly()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        projectPicker.PathToReturn = ProjectPath;
+        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectPath));
+
+        Assert.Equal(ProjectPath, workspace.Context.ProjectPath);
+        Assert.False(workspace.Baseline.HasBaseline);
+        Assert.Empty(fake.CaptureBaselineRequests);
+
+        const string nextProject = @"C:\projects\two.fwdata";
+        fake.OnCaptureBaseline((request, _) => Task.FromResult(
+            CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
+                NewToken(), request.ProjectPath, DateTimeOffset.UtcNow, false, false))));
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(nextProject));
+
+        Assert.Equal(nextProject, workspace.Context.ProjectPath);
+        Assert.True(workspace.Baseline.HasBaseline);
+        Assert.Equal(nextProject, Assert.Single(fake.CaptureBaselineRequests).ProjectPath);
+
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(nextProject));
+
+        Assert.Equal(nextProject, workspace.Context.ProjectPath);
+        Assert.False(workspace.Baseline.HasBaseline);
+        Assert.Single(fake.CaptureBaselineRequests);
     }
 
     [Fact]

@@ -311,7 +311,8 @@
                       Spacing="{DynamicResource Intent.Space.Group}">
             <Border Classes="card" IsVisible="{Binding HasRule}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-                <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRuleName}" />
+                <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRuleName}"
+                                          TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedRuleName}" />
                 <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
                 <Button Content="AI Handoff for this rule" Command="{Binding HandOffRuleCommand}" />
               </StackPanel>

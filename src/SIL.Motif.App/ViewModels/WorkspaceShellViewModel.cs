@@ -42,11 +42,15 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private Task? _freshnessCheckTask;
     private bool _isRefreshing;
     private bool _refreshed;
+    private bool _isSettingProject;
     [ObservableProperty]
     private bool _isParsingAllWords;
     private Task? _knownProjectsRefreshTask;
     private bool _knownProjectsRefreshRequested;
     private int _refreshGeneration;
+    private int _projectOpenGeneration;
+    private readonly HashSet<string> _openedProjectPaths = new(
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
     public WorkspaceShellViewModel(
         ProjectViewModel project, BaselineViewModel baseline, SelectionViewModel selection, AssessViewModel assess, IHandoffFolderPicker folderPicker, IFileDragSource dragSource,
@@ -159,6 +163,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         Context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
 
         RefreshPages();
+        _ = RefreshKnownProjectsAsync();
     }
 
     /// <summary>The inspector beside the page, which any page opens through <see cref="WorkspaceContext.OpenInspector"/>.</summary>
@@ -246,8 +251,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Whether a project has been chosen in this window.</summary>
     public bool HasProject => Context.HasProject;
 
-    /// <summary>Whether the project menu can switch projects while shell work is active.</summary>
-    public bool ProjectSwitchEnabled => Context.ProjectAndSelectionEnabled && !_isRefreshing;
+    /// <summary>Whether a project is opening, including its first-open Baseline capture.</summary>
+    public bool IsProjectOpening => Context.IsOpeningProject || _isSettingProject;
+
+    /// <summary>The sidebar's Selection summary, with a brief message while its project is still loading.</summary>
+    public string SelectionSummaryText => Context.IsOpeningProject ? "Loading project..." : Selection.SummaryText;
+
+    /// <summary>Whether the project menu can switch projects while an Assessment is running.</summary>
+    public bool ProjectSwitchEnabled => Context.ProjectAndSelectionEnabled;
 
     /// <summary>Browses for a <c>.fwdata</c> file and opens it: the project menu's Select new.</summary>
     public IAsyncRelayCommand SelectNewProjectCommand { get; }
@@ -274,7 +285,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     /// <summary>
     /// Whether the project menu offers Configure: only once the open project has a Baseline, which a Refresh
-    /// captures. Pinned by `WithoutABaselineConfigureIsUnavailableAndSaysToRefreshFirst`.
+    /// or first open captures. Pinned by `ChoosingAProjectWithoutABaselineCapturesItOnFirstOpen`.
     /// </summary>
     public bool CanConfigure => HasProject && Context.Baseline?.HasBaseline == true;
 
@@ -395,7 +406,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>The current number of words parsed, or the current run stage while no count is available.</summary>
     public string ParseAllWordsProgressText => Assess.Progress is
         { Stage: AssessmentStage.Parsing, Total: { } total } progress
-        ? $"Parsing {progress.Completed:N0} of {total:N0} words"
+        ? progress.Completed >= total
+            ? "All words have been parsed; finishing the Assessment..."
+            : $"Parsing {progress.Completed:N0} of {total:N0} words"
         : Assess.Progress?.Message is { Length: > 0 } message ? message : "Preparing to parse words...";
 
     /// <summary>Whether parse progress has no count to display yet.</summary>
@@ -475,22 +488,40 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// Cancels any active Assessment or AI Handoff run, clears whatever the previous project displayed, and
     /// loads the newly chosen project's Baseline and Text state.
     /// </summary>
-    internal async Task SetProjectAsync(string fwDataPath, CancellationToken cancellationToken = default)
+    internal async Task SetProjectAsync(
+        string fwDataPath, CancellationToken cancellationToken = default, bool captureFreshProject = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
-        InvalidateRefreshForProjectSwitch();
-        _refreshed = false;
-        Project.ShowChosen(fwDataPath);
-        var opening = Context.OpenProjectAsync(fwDataPath, cancellationToken);
-        RaiseFreshness();
+        var projectKey = Path.GetFullPath(fwDataPath);
+        var captureFirstBaseline = captureFreshProject && !_openedProjectPaths.Contains(projectKey) &&
+            !File.Exists(Path.ChangeExtension(fwDataPath, ".motif.db"));
+        var openGeneration = Interlocked.Increment(ref _projectOpenGeneration);
+        _isSettingProject = true;
+        OnPropertyChanged(nameof(IsProjectOpening));
         try
         {
+            InvalidateRefreshForProjectSwitch();
+            _refreshed = false;
+            Project.ShowChosen(fwDataPath);
+            var opening = Context.OpenProjectAsync(fwDataPath, cancellationToken);
+            RaiseFreshness();
             await opening.ConfigureAwait(true);
+            var openedProjectIsCurrent = string.Equals(
+                Context.ProjectPath, fwDataPath, StringComparison.OrdinalIgnoreCase);
+            if (openedProjectIsCurrent) _openedProjectPaths.Add(projectKey);
+            if (captureFirstBaseline && openedProjectIsCurrent &&
+                !Baseline.HasBaseline && Baseline.ShownRefusal is null)
+                await RefreshAsync().ConfigureAwait(true);
         }
         finally
         {
             RefreshRecentProjects();
             RaiseFreshness();
+            if (openGeneration == Volatile.Read(ref _projectOpenGeneration))
+            {
+                _isSettingProject = false;
+                OnPropertyChanged(nameof(IsProjectOpening));
+            }
         }
     }
 
@@ -531,7 +562,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             ShowOpenRefusal(WindowRefusal.From(refusal));
             return;
         }
-        await OpenProjectSafelyAsync(projectPath).ConfigureAwait(true);
+        await OpenProjectSafelyAsync(projectPath, captureFreshProject: false).ConfigureAwait(true);
     }
 
     private void ShowOpenRefusal(WindowRefusal? refusal)
@@ -548,13 +579,13 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         await OpenProjectSafelyAsync(fwDataPath).ConfigureAwait(true);
     }
 
-    private async Task OpenProjectSafelyAsync(string fwDataPath)
+    private async Task OpenProjectSafelyAsync(string fwDataPath, bool captureFreshProject = true)
     {
         StopConfirmingStoreDeletion();
         ShowOpenRefusal(null);
         try
         {
-            await SetProjectAsync(fwDataPath).ConfigureAwait(true);
+            await SetProjectAsync(fwDataPath, captureFreshProject: captureFreshProject).ConfigureAwait(true);
         }
         catch (Exception exception)
         {
@@ -659,6 +690,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void RaiseFreshness()
     {
+        OnPropertyChanged(nameof(SelectionSummaryText));
         OnPropertyChanged(nameof(Freshness));
         OnPropertyChanged(nameof(HasFreshness));
         OnPropertyChanged(nameof(FreshnessLabel));

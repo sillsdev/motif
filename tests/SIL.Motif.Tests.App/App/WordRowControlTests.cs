@@ -128,13 +128,18 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     [Fact]
     public void EachListsRowsOfferOpenInTextTryAWordAndWordAnalyses_AndTryAWordOpensOnThatWord()
     {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             foreach (var list in new[] { MatrixList, FixFirstList, ListsList })
             {
                 var (workspace, window) = FakeComposedWindow.Create();
                 try
                 {
+                    var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                    fake.ListTextsCompletesWith(new TextInventoryResponse(
+                        [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
+                        HasBaseline: true));
+                    await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
                     window.Width = 1400;
                     window.Height = 1100;
                     workspace.Assess.Result = Assessment();
@@ -166,7 +171,6 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                     window.Close();
                 }
             }
-            return Task.CompletedTask;
         }, TimeSpan.FromMinutes(1));
     }
 

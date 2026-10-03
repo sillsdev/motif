@@ -379,6 +379,9 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         ? $"None of your words use {NamedItemText}" : "None of your words use the named items";
     /// <summary>The quiet row title, with repeated identical findings counted once.</summary>
     public string RowTitleText => $"{PanGlossTitle} · {RepeatCount:N0} {CountWord(RepeatCount, "finding", "findings")}";
+    /// <summary>Whether the separate title says more than the row heading.</summary>
+    public bool HasDistinctPanGlossTitle => PanGlossTitle.Length > 0 &&
+        !RowTitleText.StartsWith(PanGlossTitle, StringComparison.Ordinal);
     public bool HasYourWords => WordRows.Count > 0;
     public bool HasExactRows => WordRows.Count > 0;
     public bool HasMembershipCandidates => MembershipCandidateRows.Count > 0;

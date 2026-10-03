@@ -343,9 +343,23 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
-                await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+                var captureStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var capture = new TaskCompletionSource<CommandOutcome<BaselineCaptureResponse>>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                fake.OnCaptureBaseline((_, _) =>
+                {
+                    captureStarted.TrySetResult();
+                    return capture.Task;
+                });
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
+                    HasBaseline: true));
+                var opening = workspace.SetProjectAsync(@"C:\projects\one.fwdata");
+                await captureStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
+                Assert.True(workspace.IsProjectOpening);
                 var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
+                Assert.True(menuButton.IsEffectivelyEnabled);
                 var flyout = Assert.IsType<Flyout>(menuButton.Flyout);
                 flyout.ShowAt(menuButton);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -357,15 +371,13 @@ public sealed class WorkflowShellTests
                     text.Text == WorkspaceShellViewModel.ConfigureNeedsBaselineText && text.IsEffectivelyVisible);
 
                 flyout.Hide();
-                fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+                capture.SetResult(CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
                     new BaselineToken("project-1", "sha256:" + new string('a', 64), "1",
                         "2026-09-05T00:00:00Z", "sha256:" + new string('b', 64)),
-                    @"C:\projects\one.fwdata", DateTimeOffset.UtcNow, false, false));
-                fake.ListTextsCompletesWith(new TextInventoryResponse(
-                    [new TextChoiceSummary(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")],
-                    HasBaseline: true));
-                await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
+                    @"C:\projects\one.fwdata", DateTimeOffset.UtcNow, false, false)));
+                await opening;
 
+                Assert.False(workspace.IsProjectOpening);
                 flyout.ShowAt(menuButton);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 configure = flyoutPanel.GetLogicalDescendants().OfType<Button>()

@@ -5,7 +5,7 @@
 The top card shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. Four cards follow:
 
 - **Speed**: how many words were timed, their total and median time, and the slowest words. **Stopped** marks a word that hit the step limit.
-- **Text coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text).
+- **Text coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text). If no chosen words occur in the chosen Texts, it says there are no places to cover.
 - **Approved analyses kept**: how many words with an approved analysis the grammar rebuilt exactly.
 - **Grammar warnings**: what the grammar check found, with errors counted separately.
 

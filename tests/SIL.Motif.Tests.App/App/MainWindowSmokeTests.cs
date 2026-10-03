@@ -462,11 +462,19 @@ public sealed class MainWindowSmokeTests
     [Fact]
     public void OverviewSaysWhenTheDefaultSelectionHasNotResolvedAgainstTheBaseline()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             try
             {
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                fake.DefaultSelectionCompletesWith(new NamedSelectionProjection("Default",
+                    [Guid.Parse("11111111-1111-1111-1111-111111111111")], [], string.Empty, string.Empty,
+                    1000, SIL.Motif.Contract.Assess.StepCap.Default));
+                workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
+                workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
+                    string.Empty, string.Empty, null);
+                await workspace.Context.Setup!.ProjectOpenedAsync(@"C:\projects\one.fwdata");
                 workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
                 {
                     SelectionResolved = false,
@@ -495,7 +503,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -894,6 +902,9 @@ public sealed class MainWindowSmokeTests
                         [new TextLine(1, [new TextToken("motifa", "motifa", null, null)
                             { OccurrenceIndex = 0 }])])],
                     HasBaseline: true));
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(textId, "Alpha")], HasBaseline: true));
+                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
                 await page.Words.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Assess.Result = new AssessCommandResponse(
                     new BaselineCaptureResponse(
@@ -1019,11 +1030,16 @@ public sealed class MainWindowSmokeTests
     [Fact]
     public void MatrixOffersNoOpinionForAWordAndLinksItToItsText()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             try
             {
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                fake.ListTextsCompletesWith(new TextInventoryResponse(
+                    [new TextChoiceSummary(Guid.Parse("55555555-5555-4555-8555-555555555555"), "Alpha")],
+                    HasBaseline: true));
+                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Assess.Result = new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -1064,7 +1080,7 @@ public sealed class MainWindowSmokeTests
             {
                 window.Close();
             }
-        });
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]

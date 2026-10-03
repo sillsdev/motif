@@ -179,6 +179,20 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
+    public void AWordWithoutTextsOpensInTheWordListAndUpdatesItsAccessibleName()
+    {
+        var routes = new WordRowRoutes { OpenInText = _ => { } };
+        var row = new WordRowViewModel(Alikula(), routes);
+
+        Assert.Equal("Open alikula in Analyze texts", row.OpenInTextAutomationName);
+
+        routes.HasTexts = false;
+
+        Assert.Equal("Open word", row.OpenInTextLabel);
+        Assert.Equal("Open alikula", row.OpenInTextAutomationName);
+    }
+
+    [Fact]
     public void AWordFieldWorksDoesNotHoldHasNoWordAnalysesLink_AndSaysSo()
     {
         var row = new WordRowViewModel(Alikula() with { WordAnalysesLink = null });

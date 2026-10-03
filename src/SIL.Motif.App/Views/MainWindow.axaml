@@ -213,7 +213,7 @@
         <DockPanel LastChildFill="True">
           <StackPanel Classes="sidebarFooter" DockPanel.Dock="Bottom" IsVisible="{Binding IsSidebarExpanded}">
             <views:CopyableTextBlock Classes="muted" Text="Selection" />
-            <views:CopyableTextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{Binding Selection.SummaryText}" />
+            <views:CopyableTextBlock FontWeight="Bold" TextWrapping="Wrap" Text="{Binding SelectionSummaryText}" />
           </StackPanel>
           <ListBox x:Name="PageList"
                    Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}"

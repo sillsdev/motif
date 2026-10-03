@@ -128,6 +128,9 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public IReadOnlyList<TextWordRowViewModel> ProjectWords => _all;
 
+    /// <summary>Whether the current Baseline contains any Texts to open from a word row.</summary>
+    public bool HasAvailableTexts => _selection.HasTexts;
+
     /// <summary>
     /// Reloads the words for the Texts checked now. A Text selection change runs it, and each run cancels the
     /// read it supersedes. Its execution task never faults: a failed read becomes <see cref="Refusal"/>.
@@ -453,6 +456,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     private void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SelectionViewModel.HasTexts)) OnPropertyChanged(nameof(HasAvailableTexts));
         if (e.PropertyName == nameof(SelectionViewModel.PastedWords)) OnPropertyChanged(nameof(SummaryText));
         if (e.PropertyName == nameof(SelectionViewModel.ChosenTextIds)) ReloadCommand.Execute(null);
     }

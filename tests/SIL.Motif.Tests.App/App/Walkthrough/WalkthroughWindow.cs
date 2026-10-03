@@ -156,12 +156,25 @@ public sealed class WalkthroughWindow : IDisposable
     /// <c>ACorruptStoreIsShownInTheWindowWithoutADeleteButtonOrByteChanges</c>.
     /// </summary>
     public void WaitUntilProjectIsQuiet(TimeSpan timeout, string why) =>
-        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted &&
+        WaitUntil(() => !Workspace.IsProjectOpening && Workspace.Context.EvidencePublication.IsCompleted &&
             !Workspace.RefreshCommand.IsRunning, timeout, why);
 
     private void WaitUntilProjectOpened(TimeSpan timeout, string why) =>
-        WaitUntil(() => !Workspace.Context.IsOpeningProject && Workspace.Context.EvidencePublication.IsCompleted,
-            timeout, why);
+        WaitUntil(() => !Workspace.IsProjectOpening && Workspace.Context.EvidencePublication.IsCompleted &&
+            (Workspace.Baseline.HasBaseline || Workspace.Baseline.ShownRefusal is not null ||
+                Workspace.Context.Setup?.IsOpen == true ||
+                Workspace.PageModel<OverviewPageModel>().Overview is not null) &&
+            Workspace.Context.Setup?.ConfigurationLoadTask?.IsCompleted != false,
+            timeout, why,
+            () => $"IsProjectOpening='{Workspace.IsProjectOpening}', " +
+                $"Context.IsOpeningProject='{Workspace.Context.IsOpeningProject}', " +
+                $"EvidencePublication='{Workspace.Context.EvidencePublication.Status}', " +
+                $"Baseline.HasBaseline='{Workspace.Baseline.HasBaseline}', " +
+                $"Setup.IsOpen='{Workspace.Context.Setup?.IsOpen}', " +
+                $"Setup.ProjectPath='{Workspace.Context.Setup?.ProjectPath}', " +
+                $"Setup.CanRunDefaultSelection='{Workspace.Context.Setup?.CanRunDefaultSelection}', " +
+                $"Setup.IsEditingExistingSelection='{Workspace.Context.Setup?.IsEditingExistingSelection}', " +
+                $"Setup.ConfigurationLoadTask='{Workspace.Context.Setup?.ConfigurationLoadTask?.Status}'");
 
     /// <summary>Clicks the project menu's Configure entry through the pointer, in the menu's own popup.</summary>
     public void ConfigureFromProjectMenu() => ClickProjectMenuEntry("Configure the project");
@@ -173,7 +186,7 @@ public sealed class WalkthroughWindow : IDisposable
         var entry = FindProjectMenuEntry<Button>(accessibleName);
         var menu = TopLevel.GetTopLevel(entry)
             ?? throw new InvalidOperationException($"The project menu's '{accessibleName}' is not in a top level.");
-        HeadlessClick.Click(menu, entry, accessibleName);
+        ClickControl(entry, accessibleName, menu);
         Window.UpdateLayout();
         Pump();
         Assert.False(ProjectMenuFlyout.IsOpen, $"Clicking '{accessibleName}' left the project menu open.");
@@ -575,9 +588,14 @@ public sealed class WalkthroughWindow : IDisposable
 
     private void ClickControl(Control control, string accessibleName, TopLevel? topLevel = null)
     {
-        // Stored evidence lands after the project's own counts and can push the target down mid-click.
-        WaitUntilProjectOpened(
-            TimeSpan.FromSeconds(60), $"the project was still opening when '{accessibleName}' was to be clicked");
+        // Let open settle, then recalculate bounds on each dispatcher pass before clicking.
+        if (Workspace.HasProject)
+            WaitUntilProjectOpened(
+                TimeSpan.FromSeconds(60), $"the project was still opening when '{accessibleName}' was to be clicked");
+        else
+            WaitUntil(() => !Workspace.IsProjectOpening &&
+                    Workspace.Context.EvidencePublication.IsCompleted && !Workspace.RefreshCommand.IsRunning,
+                TimeSpan.FromSeconds(60), $"the project chooser was still loading when '{accessibleName}' was to be clicked");
         var root = topLevel ?? Window;
         Rect? previousBounds = null;
         var stablePasses = 0;

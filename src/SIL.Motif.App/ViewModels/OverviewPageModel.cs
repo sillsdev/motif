@@ -32,6 +32,13 @@ public sealed partial class OverviewPageModel : PageModel
         context.PropertyChanged += OnContextPropertyChanged;
         context.Evidence.PropertyChanged += OnEvidencePropertyChanged;
         context.Assess.Words.PropertyChanged += OnWordsChanged;
+        context.KnownProjects.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(ChooseProjectRows));
+            OnPropertyChanged(nameof(HasKnownProjects));
+            OnPropertyChanged(nameof(ShowNoKnownProjects));
+            OnPropertyChanged(nameof(NoKnownProjectsText));
+        };
     }
 
     /// <summary>The project's Baselines and Assessments, newest first, which the page loads for itself.</summary>
@@ -100,6 +107,22 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the grammar warnings tile has a read Overview; it needs no parse.</summary>
     public bool ShowWarningsTile => Overview is not null;
 
+    /// <summary>Whether the Overview is serving as the project chooser.</summary>
+    public bool ShowChooseProject => !Context.HasProject;
+
+    /// <summary>The Known projects offered on the initial Choose a project page.</summary>
+    public IReadOnlyList<RecentProjectViewModel> ChooseProjectRows => Context.KnownProjects
+        .Select(project => new RecentProjectViewModel(project.FullFwDataPath)).ToArray();
+
+    /// <summary>Whether there are Known projects to open from the initial page.</summary>
+    public bool HasKnownProjects => Context.KnownProjects.Count > 0;
+
+    /// <summary>Whether the initial page needs to explain the empty Known projects list.</summary>
+    public bool ShowNoKnownProjects => !HasKnownProjects;
+
+    /// <summary>What the chooser says when this computer has no Known projects.</summary>
+    public string NoKnownProjectsText => HasKnownProjects ? string.Empty : "No recent projects on this computer.";
+
     /// <summary>Whether the Overview read was refused.</summary>
     public bool HasOverviewRefusal => OverviewRefusal is not null;
 
@@ -116,7 +139,8 @@ public sealed partial class OverviewPageModel : PageModel
     public bool OverviewIsStale => Context.Evidence.IsStale;
 
     /// <summary>Whether this response could not resolve its default Selection against the current Baseline.</summary>
-    public bool SelectionIsUnresolved => Overview is { SelectionResolved: false };
+    public bool SelectionIsUnresolved => Overview is { SelectionResolved: false } &&
+        Context.Baseline?.HasBaseline == true && Context.Setup?.CanRunDefaultSelection == true;
 
     /// <summary>The project name from the Overview response, else the project file's name without its extension.</summary>
     public string ProjectTitle => Overview?.ProjectName ??
@@ -127,11 +151,15 @@ public sealed partial class OverviewPageModel : PageModel
         : Path.GetFileName(Context.ProjectPath ?? string.Empty);
 
     /// <summary>The number of words in the response's default Selection.</summary>
-    public string SelectionWordCountText => Overview is { SelectionResolved: false } ? "not resolved" :
+    public string SelectionWordCountText => Overview is { SelectionResolved: false }
+        ? Context.Baseline?.HasBaseline == true && Context.Setup?.CanRunDefaultSelection == true
+            ? "not resolved" : "not set up" :
         Overview?.SelectionWordCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>The number of places in the response's selected Texts.</summary>
-    public string TextOccurrenceCountText => Overview is { SelectionResolved: false } ? "not resolved" :
+    public string TextOccurrenceCountText => Overview is { SelectionResolved: false }
+        ? Context.Baseline?.HasBaseline == true && Context.Setup?.CanRunDefaultSelection == true
+            ? "not resolved" : "not set up" :
         Overview?.TextOccurrenceCount.ToString("N0", CultureInfo.CurrentCulture) ?? string.Empty;
 
     /// <summary>The project's wordform count from the response.</summary>
@@ -273,8 +301,10 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The parsed share of the Selection's words and of their places in the Texts.</summary>
     public string TextCoverageWords => !HasAssessment || Overview is not { } overview ? string.Empty :
         $"{FormatPercent(overview.WordCoveragePercent)} of the words in your Selection · " +
-        $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
-        $"{overview.TextCoverage.TotalOccurrences:N0} places";
+        (overview.TextCoverage.TotalOccurrences == 0
+            ? "No places in the chosen Texts"
+            : $"{FormatPercent(overview.TextCoverage.OccurrenceCoveragePercent)} of their " +
+              $"{overview.TextCoverage.TotalOccurrences:N0} places");
 
     /// <summary>The word outcomes that make up the Selection coverage bar.</summary>
     public IReadOnlyList<OutcomeSegment> TextCoverageSegments => !HasAssessment || Overview is not { } overview ? [] :
@@ -504,8 +534,15 @@ public sealed partial class OverviewPageModel : PageModel
         }
         if (e.PropertyName is nameof(WorkspaceContext.ProjectPath))
         {
+            OnPropertyChanged(nameof(ShowChooseProject));
             OnPropertyChanged(nameof(ProjectTitle));
             OnPropertyChanged(nameof(ProjectFileName));
+        }
+        if (e.PropertyName == nameof(WorkspaceContext.Baseline))
+        {
+            OnPropertyChanged(nameof(SelectionIsUnresolved));
+            OnPropertyChanged(nameof(SelectionWordCountText));
+            OnPropertyChanged(nameof(TextOccurrenceCountText));
         }
     }
 

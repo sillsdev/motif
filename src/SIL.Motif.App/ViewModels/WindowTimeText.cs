@@ -7,9 +7,8 @@ internal static class WindowTimeText
     public static string Format(DateTimeOffset value, TimeProvider clock)
     {
         var local = TimeZoneInfo.ConvertTime(value, clock.LocalTimeZone);
-        return local.Date == clock.GetLocalNow().Date
-            ? local.ToString("t", CultureInfo.CurrentCulture)
-            : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) +
-              local.ToString("t", CultureInfo.CurrentCulture);
+        if (local.Date == clock.GetLocalNow().Date) return local.ToString("t", CultureInfo.CurrentCulture);
+        var dateFormat = local.Year == clock.GetLocalNow().Year ? "ddd d MMM, " : "ddd d MMM yyyy, ";
+        return local.ToString(dateFormat, CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 }

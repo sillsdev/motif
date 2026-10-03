@@ -19,30 +19,33 @@ internal static class WalkthroughSteps
         Assert.True(walkthrough.FindProjectMenuEntry<Button>("Select a new project").IsEffectivelyEnabled);
         walkthrough.ChooseNewProject();
         walkthrough.WaitUntil(
-            () => walkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
-                walkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
-            Remaining(deadline), "choosing the project did not load its initial window state");
-        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
-        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
-        Assert.True(walkthrough.Find<Button>("Refresh the project").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
-        Assert.True(walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled);
-        Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
-
-        walkthrough.Click("Refresh the project");
-        walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
                 walkthrough.Workspace.Selection.Texts.Count == 1 &&
-                walkthrough.Workspace.Context.Setup?.IsOpen == true,
-            Remaining(deadline), "refreshing the Baseline did not publish its Texts and setup dialog");
+                walkthrough.Workspace.Context.Setup?.IsOpen == true &&
+                walkthrough.Workspace.Context.Setup.ConfigurationLoadTask?.IsCompleted != false,
+            Remaining(deadline), "choosing the project did not capture its Baseline and open setup");
+        Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
+        Assert.Null(walkthrough.Workspace.Selection.ShownRefusal);
         walkthrough.WaitUntil(
-            () => !walkthrough.Workspace.RefreshCommand.IsRunning,
-            TimeSpan.FromMinutes(1), "the Baseline and Overview refresh did not finish before choosing words");
+            () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
+                walkthrough.Workspace.Context.Setup?.IsOpen == true &&
+                walkthrough.Workspace.Context.Setup.ConfigurationLoadTask?.IsCompleted != false,
+            TimeSpan.FromMinutes(1), "the automatic Baseline capture and setup load did not finish");
         Assert.True(walkthrough.Workspace.Context.Setup?.IsOpen,
             "first-time setup did not open after the Baseline was captured");
         walkthrough.SkipSetup();
         Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
+        Assert.False(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
+        walkthrough.WaitUntil(
+            () => walkthrough.Find<Button>("Project menu").IsEffectivelyEnabled,
+            TimeSpan.FromSeconds(10), "the Project menu did not re-enable after setup closed",
+            () => $"ProjectSwitchEnabled='{walkthrough.Workspace.ProjectSwitchEnabled}', " +
+                $"Refresh.IsRunning='{walkthrough.Workspace.RefreshCommand.IsRunning}', " +
+                $"Assess.IsActive='{walkthrough.Workspace.Assess.IsActive}', " +
+                $"Setup.IsOpen='{walkthrough.Workspace.Context.Setup?.IsOpen}', " +
+                $"IsOpeningProject='{walkthrough.Workspace.Context.IsOpeningProject}'");
+        Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
         Assert.NotEqual("No Baseline captured yet", walkthrough.Workspace.Baseline.CapturedTimeText);
         // The Overview distinguishes when Motif captured a Baseline from the FieldWorks save it copies.
         var overview = walkthrough.Workspace.PageModel<OverviewPageModel>();

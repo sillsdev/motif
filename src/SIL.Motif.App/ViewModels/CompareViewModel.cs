@@ -272,7 +272,11 @@ public sealed partial class CompareViewModel : ObservableObject
     [ObservableProperty]
     private CompareSort _sort = CompareSort.MostFrequent;
 
-    public IReadOnlyList<CompareSort> SortChoices { get; } = Enum.GetValues<CompareSort>();
+    public IReadOnlyList<CompareSort> SortChoices => HasPlaceCounts
+        ? Enum.GetValues<CompareSort>()
+        : Enum.GetValues<CompareSort>().Where(sort => sort != CompareSort.MostFrequent).ToArray();
+
+    public bool HasPlaceCounts => _all.Any(word => word.Occurrences is > 0);
 
     public int TotalCount => _all.Count;
     public bool HasWords => _all.Count > 0;
@@ -441,6 +445,9 @@ public sealed partial class CompareViewModel : ObservableObject
         }
         RefreshCounts();
         UpdatePendingMarkers();
+        if (!HasPlaceCounts && Sort == CompareSort.MostFrequent) Sort = CompareSort.Alphabetical;
+        OnPropertyChanged(nameof(SortChoices));
+        OnPropertyChanged(nameof(HasPlaceCounts));
         OnPropertyChanged(nameof(TotalCount));
         OnPropertyChanged(nameof(HasWords));
         OnPropertyChanged(nameof(HasStandings));

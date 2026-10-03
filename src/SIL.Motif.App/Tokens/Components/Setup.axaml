@@ -8,6 +8,7 @@
     <StaticResource x:Key="Component.Setup.DialogPadding" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Setup.TextListHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Setup.AddedWordsHeight" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.Setup.AddedWordsMaxHeight" ResourceKey="Primitive.Size.140" />
     <StaticResource x:Key="Component.Setup.NumberWidth" ResourceKey="Primitive.Size.190" />
     <StaticResource x:Key="Component.Setup.MarkerSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.Setup.MarkerActiveWidth" ResourceKey="Primitive.Size.22" />

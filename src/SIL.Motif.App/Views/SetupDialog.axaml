@@ -88,6 +88,8 @@
               <TextBlock Text="Add words:" FontWeight="SemiBold" VerticalAlignment="Top" />
               <TextBox Grid.Column="1" Text="{Binding Selection.PastedWords}" AcceptsReturn="True"
                        TextWrapping="Wrap" MinHeight="{DynamicResource Component.Setup.AddedWordsHeight}"
+                       MaxHeight="{DynamicResource Component.Setup.AddedWordsMaxHeight}"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"
                        PlaceholderText="One word per line" AutomationProperties.Name="Words to add"
                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.SetupAddWords}" />
             </Grid>

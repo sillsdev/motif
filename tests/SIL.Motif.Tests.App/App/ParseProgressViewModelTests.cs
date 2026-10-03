@@ -41,11 +41,27 @@ public sealed class ParseProgressViewModelTests
         var progress = new ParseProgressViewModel(clock);
         var finish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var run = progress.TrackAsync(() => finish.Task);
-        progress.Report(Step(5));
+        progress.Report(Step(5) with
+        {
+            SlowestWord = new SIL.Motif.Contract.Jobs.ParseWordTiming("brief", 2.5259),
+        });
+        Assert.Equal("Slowest so far: brief · 2.5259 ms", progress.SlowestText);
+        Assert.Equal(0.98, progress.Fraction);
+        Assert.Equal("All words have been parsed; finishing the Assessment...", progress.ProgressText);
+        Assert.Equal("All words have been parsed; finishing the Assessment...", progress.StatusText);
+        Assert.Contains("finishing the Assessment", progress.TimeText);
+        Assert.DoesNotContain("0 s left", progress.TimeText);
         clock.Advance(TimeSpan.FromSeconds(12));
         progress.Report(Step(5));
         Assert.False(progress.IsStalled);
         progress.Report(new AssessmentProgress(AssessmentStage.ReadingStatistics, 0, null, "Reading statistics..."));
+        Assert.Equal("All words have been parsed; Motif is reading PanGloss's statistics...", progress.ProgressText);
+        Assert.Equal("All words have been parsed; Motif is reading PanGloss's statistics...", progress.StatusText);
+        Assert.Contains("reading PanGloss's statistics", progress.TimeText);
+        progress.Report(new AssessmentProgress(AssessmentStage.Complete, 5, 5, "Complete"));
+        Assert.Equal(1, progress.Fraction);
+        Assert.Equal("Assessment complete", progress.StatusText);
+        Assert.Contains("complete", progress.TimeText);
         Assert.False(progress.IsStalled);
         finish.SetResult(true);
         await run;

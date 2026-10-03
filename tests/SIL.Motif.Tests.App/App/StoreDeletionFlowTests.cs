@@ -68,6 +68,26 @@ public sealed class StoreDeletionFlowTests
     }
 
     [Fact]
+    public async Task ReopeningAfterRefusedStoreDeletionDoesNotCaptureAutomatically()
+    {
+        var (fake, workspace) = await OpenRefusedProject();
+        fake.OnDeleteRefusedStore((_, _) =>
+        {
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
+            return Task.FromResult(CommandOutcome<ProjectStoreResetResponse>.Success(
+                new ProjectStoreResetResponse(StorePath, true)));
+        });
+
+        workspace.DeleteRefusedStoreCommand.Execute(workspace.Baseline.ShownRefusal);
+        await workspace.ConfirmStoreDeletionCommand.ExecuteAsync(null);
+
+        Assert.Equal(Project, workspace.Context.ProjectPath);
+        Assert.False(workspace.Baseline.HasBaseline);
+        Assert.Empty(fake.CaptureBaselineRequests);
+    }
+
+    [Fact]
     public async Task AStoreThatCannotBeDeletedSaysSoAndDoesNotReopen()
     {
         var (fake, workspace) = await OpenRefusedProject();

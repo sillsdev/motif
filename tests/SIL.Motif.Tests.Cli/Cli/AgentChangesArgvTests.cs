@@ -162,6 +162,25 @@ public sealed class AgentChangesArgvTests : IDisposable
     }
 
     [Fact]
+    public async Task ACanonicalWordformIdBeginningWithDashesRemainsAnOptionValue()
+    {
+        var project = _pristine.CopyProjectFile();
+        await CaptureBaseline(project);
+        var pending = await ReadPending(project);
+        const string wordformId = "--AAAAAAAAAAAAAAAAAAAA";
+
+        var result = CliInProcess.Run(_workerRoot, null, true,
+            "put-pending-change", "--project", project, "--expected-revision", pending.Revision,
+            "--change-id", "agent-change-dash-id", "--kind", "incorrect-spelling", "--word", "absent",
+            "--wordform-id", wordformId, "--json");
+
+        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
+        var refusal = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
+        Assert.Equal("change.wordform-missing", refusal.Code);
+        Assert.Equal(wordformId, refusal.Detail!["wordformId"]);
+    }
+
+    [Fact]
     public async Task AnEditedSentenceReturnsUncertainEvidenceInJson()
     {
         var scenario = await PrepareUncertainOccurrence();

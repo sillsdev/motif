@@ -9,13 +9,38 @@ using SIL.Motif.Host.PanGloss;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>Where a word row's next steps lead: the page that hosts the rows fills these in.</summary>
-public sealed class WordRowRoutes
+public sealed class WordRowRoutes : ObservableObject
 {
+    private readonly List<WeakReference<WordRowViewModel>> _rows = [];
+    private bool _hasTexts = true;
+
     /// <summary>Opens a word in the Texts page, where its places in the chosen Texts are.</summary>
     public Action<string>? OpenInText { get; set; }
 
     /// <summary>Opens Try a Word on a word.</summary>
     public Action<string>? TryWord { get; set; }
+
+    public bool HasTexts
+    {
+        get => _hasTexts;
+        set
+        {
+            if (!SetProperty(ref _hasTexts, value)) return;
+            OnPropertyChanged(nameof(OpenInTextLabel));
+            OnPropertyChanged(nameof(OpenInTextAutomationNameFormat));
+            for (var index = _rows.Count - 1; index >= 0; index--)
+            {
+                if (_rows[index].TryGetTarget(out var row)) row.RoutesChanged();
+                else _rows.RemoveAt(index);
+            }
+        }
+    }
+
+    public string OpenInTextLabel => HasTexts ? "Open in text" : "Open word";
+
+    public string OpenInTextAutomationNameFormat => HasTexts ? "Open {0} in Analyze texts" : "Open {0}";
+
+    internal void Register(WordRowViewModel row) => _rows.Add(new WeakReference<WordRowViewModel>(row));
 }
 
 /// <summary>
@@ -36,6 +61,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(row);
         _row = row;
         _routes = routes;
+        _routes?.Register(this);
         _notParsedYet = notParsedYet;
         _isUnread = row.IsUnread;
         var standing = WordProjectStatuses.FromStanding(row.Opinion);
@@ -278,13 +304,22 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string Summary => string.Join(" · ",
         new[] { Word, OpinionLabel, $"PanGloss: {OutcomeWord}", Meaning }.Where(part => part.Length > 0));
 
-    public string OpenInTextLabel => "Open in text";
+    public string OpenInTextLabel => _routes?.OpenInTextLabel ?? "Open in text";
+
+    public string OpenInTextAutomationName => string.Format(CultureInfo.CurrentCulture,
+        _routes?.OpenInTextAutomationNameFormat ?? "Open {0} in Analyze texts", Word);
 
     public IRelayCommand OpenInTextCommand { get; }
 
     public string TryWordLabel => "Try a Word";
 
     public IRelayCommand TryWordCommand { get; }
+
+    internal void RoutesChanged()
+    {
+        OnPropertyChanged(nameof(OpenInTextLabel));
+        OnPropertyChanged(nameof(OpenInTextAutomationName));
+    }
 
     /// <summary>The link selecting the word in FieldWorks' Word Analyses, or <see langword="null"/> when there is none.</summary>
     public Uri? WordAnalysesLink { get; }

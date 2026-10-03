@@ -5,6 +5,9 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Baselines;
+using SIL.Motif.Projection;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using System.Text.Json;
@@ -79,26 +82,32 @@ public static class TimingCommand
             try { measuredBaseline = JsonSerializer.Deserialize<BaselineToken>(assessment.BaselineToken, MotifJson.CreateOptions()); }
             catch (JsonException) { measuredBaseline = null; }
             DateTimeOffset? measuredSave = null;
+            string? measuredBaselinePath = null;
             if (assessment.Invocation?.InvocationId is { } invocationId)
             {
                 try
                 {
                     var retained = new RetainedInvocationRepository(database).Get(invocationId);
+                    measuredBaselinePath = retained.BaselineFwDataPath;
                     if (retained.BaselineToken == measuredBaseline) measuredSave = retained.BaselineSourceLastWriteUtc;
                 }
                 catch (KeyNotFoundException) { }
             }
             if (measuredBaseline is not null && measuredBaseline == currentEvidence.Baseline?.Token)
+            {
+                measuredBaselinePath ??= currentEvidence.Baseline.FwDataPath;
                 measuredSave ??= currentEvidence.Baseline.SourceLastWriteUtc;
+            }
             var relation = measuredBaseline is null || currentEvidence.Baseline is null
                 ? TimingEvidenceRelation.Unknown
                 : measuredBaseline != currentEvidence.Baseline.Token ? TimingEvidenceRelation.Historical
                 : currentEvidence.LastFieldWorksSaveUtc > measuredSave ? TimingEvidenceRelation.SavedSince
                 : TimingEvidenceRelation.Current;
+            var namedAggregates = NameLexicalEntries(aggregates.Aggregates, measuredBaselinePath);
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
-                aggregates.Aggregates, aggregates.CostliestWords)
+                namedAggregates, aggregates.CostliestWords)
             {
                 IsStale = relation is TimingEvidenceRelation.Historical or TimingEvidenceRelation.SavedSince,
                 EvidenceRelation = relation,
@@ -113,6 +122,25 @@ public static class TimingCommand
                     { ElapsedNs = word.ElapsedNs, Origin = word.Origin }).ToArray(),
             });
         });
+    }
+
+    private static IReadOnlyList<TimingAggregateRow> NameLexicalEntries(
+        IReadOnlyList<TimingAggregateRow> rows, string? baselinePath)
+    {
+        if (baselinePath is null || !File.Exists(baselinePath) ||
+            !rows.Any(row => row.Kind == "lex_entry" && row.IdentityQuality == "authored")) return rows;
+
+        using var reader = BaselineReadCache.Open(baselinePath);
+        return rows.Select(row =>
+        {
+            if (row.Kind != "lex_entry" || row.IdentityQuality != "authored") return row;
+            var facts = ObjectFactsReader.Read(reader.Cache, ObjectUseRef.ForTimingKey(row.TimingKey), _ => null);
+            if (facts?.Entry is not { Headword.Length: > 0 } entry) return row;
+            var glosses = facts.Senses.Select(sense => sense.Gloss)
+                .Where(gloss => !string.IsNullOrWhiteSpace(gloss)).Distinct(StringComparer.Ordinal).ToArray();
+            var name = glosses.Length == 0 ? entry.Headword : $"{entry.Headword} · {string.Join(", ", glosses)}";
+            return row with { Name = name };
+        }).ToArray();
     }
 
     private static CommandOutcome<IReadOnlyList<AssessedWord>> ResolveWords(

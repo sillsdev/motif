@@ -8,6 +8,17 @@ namespace SIL.Motif.Tests.App;
 
 public sealed class CompareViewModelTests
 {
+    [Fact]
+    public void ASelectionWithoutOccurrencesDoesNotOfferPlaceFrequencySorting()
+    {
+        var compare = new CompareViewModel();
+        compare.Load([new AssessWordRowViewModel(Word("motifa", "analysed", ProjectStanding.NotPresent))]);
+
+        Assert.False(compare.HasPlaceCounts);
+        Assert.Equal(CompareSort.Alphabetical, compare.Sort);
+        Assert.DoesNotContain(CompareSort.MostFrequent, compare.SortChoices);
+    }
+
     private static AssessmentWordResult Word(
         string word, string outcome, string standing, IReadOnlyList<string>? grades = null,
         bool incomplete = false, int missedApproved = 0, int? occurrences = null)

@@ -52,15 +52,15 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
             reopenedWalkthrough.ProjectPath = secondProject.FwDataPath;
             reopenedWalkthrough.ChooseNewProject();
             reopenedWalkthrough.WaitUntil(
-                () => reopenedWalkthrough.Workspace.Baseline.CapturedTimeText == "No Baseline captured yet" &&
-                    reopenedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
+                () => reopenedWalkthrough.Workspace.Baseline.HasBaseline &&
+                    reopenedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
+                    reopenedWalkthrough.Workspace.Context.Setup?.IsOpen == true &&
+                    reopenedWalkthrough.Workspace.Context.Setup.ConfigurationLoadTask?.IsCompleted != false &&
+                    !reopenedWalkthrough.Workspace.RefreshCommand.IsRunning,
                 WalkthroughSteps.Remaining(deadline),
-                "switching to the second project did not clear the Baseline and its Texts");
+                "switching to a fresh project did not automatically capture its Baseline and open setup");
             reopenedWalkthrough.SkipSetup();
-            Assert.Empty(reopenedWalkthrough.Workspace.Selection.Texts);
-            Assert.Equal(
-                "Capture a Baseline to choose Texts.",
-                reopenedWalkthrough.Workspace.Selection.TextsEmptyMessage);
+            Assert.Single(reopenedWalkthrough.Workspace.Selection.Texts);
             Assert.False(reopenedWalkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
             Assert.False(reopenedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", reopenedWalkthrough.Workspace.Selection.SummaryText);
@@ -72,17 +72,10 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
                 reopenedWalkthrough.WaitUntil(
                     () => reopenedWalkthrough.Workspace.Baseline.HeldStatusText ==
                             "FieldWorks holds this project open right now." &&
-                        reopenedWalkthrough.Workspace.Selection.TextsEmptyMessage == "Capture a Baseline to choose Texts.",
+                        reopenedWalkthrough.Workspace.Baseline.HasBaseline &&
+                        reopenedWalkthrough.Workspace.Selection.Texts.Count == 1,
                     WalkthroughSteps.Remaining(deadline),
                     "choosing the held second project did not observe its lock file");
-                reopenedWalkthrough.SkipSetup();
-                reopenedWalkthrough.Click("Refresh the project");
-                reopenedWalkthrough.WaitUntil(
-                    () => reopenedWalkthrough.Workspace.Baseline.HasBaseline &&
-                        reopenedWalkthrough.Workspace.Selection.Texts.Count == 1 &&
-                        reopenedWalkthrough.Workspace.Context.Setup?.IsOpen == true,
-                    WalkthroughSteps.Remaining(deadline),
-                    "capturing a Baseline for the held second project did not show setup");
                 reopenedWalkthrough.SkipSetup();
                 Assert.Null(reopenedWalkthrough.Workspace.Baseline.ShownRefusal);
                 Assert.Null(reopenedWalkthrough.Workspace.Selection.ShownRefusal);

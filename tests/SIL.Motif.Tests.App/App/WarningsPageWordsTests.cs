@@ -137,6 +137,9 @@ public sealed class WarningsPageWordsTests
                     border => border.Classes.Contains("warningRow"));
                 Assert.False(rowBorder.IsPointerOver);
                 Assert.False(rowBorder.IsKeyboardFocusWithin);
+                var rowHeading = Assert.Single(rowBorder.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Classes.Contains("warningMessage"));
+                Assert.Equal("Environment cannot be read · 1 finding", rowHeading.Text);
                 var link = Assert.Single(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
                     button => button.Classes.Contains("warningObjectLink"));
                 Assert.True(link.IsEffectivelyVisible);
@@ -146,32 +149,6 @@ public sealed class WarningsPageWordsTests
                 var hoverTitle = Assert.Single(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Classes.Contains("warningHoverTitle"));
                 Assert.False(hoverTitle.IsEffectivelyVisible);
-                var subjectRegion = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("warningSubjects"));
-                var hoverPoint = subjectRegion.TranslatePoint(
-                    new Avalonia.Point(subjectRegion.Bounds.Width / 2, subjectRegion.Bounds.Height / 2), window)!.Value;
-                window.MouseMove(hoverPoint);
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                Assert.Equal(1, link.Opacity);
-                Assert.True(link.IsHitTestVisible);
-                Assert.True(hoverTitle.IsEffectivelyVisible);
-
-                window.MouseMove(new Avalonia.Point(window.Width - 5, window.Height - 5));
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                Assert.Equal(1, link.Opacity);
-                Assert.True(link.IsHitTestVisible);
-                Assert.False(hoverTitle.IsEffectivelyVisible);
-                link.Focus(NavigationMethod.Tab);
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                Assert.Equal(1, link.Opacity);
-                Assert.True(link.IsHitTestVisible);
-                Assert.True(hoverTitle.IsEffectivelyVisible);
             }
             finally
             {

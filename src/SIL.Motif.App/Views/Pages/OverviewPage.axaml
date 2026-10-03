@@ -51,6 +51,27 @@
         </StackPanel>
       </Border>
 
+      <Border Classes="card" IsVisible="{Binding ShowChooseProject}"
+              AutomationProperties.Name="Choose a project">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+          <views:CopyableTextBlock Classes="overviewTileTitle" Text="Open a recent project" />
+          <views:CopyableTextBlock Classes="overviewMuted" Text="{Binding NoKnownProjectsText}"
+                                   IsVisible="{Binding ShowNoKnownProjects}" />
+          <ItemsControl ItemsSource="{Binding ChooseProjectRows}" AutomationProperties.Name="Recent projects">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RecentProjectViewModel">
+                <Button Content="{Binding Name}"
+                        Command="{Binding $parent[views:OverviewPage].Page.Context.OpenProjectCommand}"
+                        CommandParameter="{Binding FullFwDataPath}"
+                        AutomationProperties.Name="{Binding AutomationName}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Content="Select a new project" Command="{Binding Context.BrowseForProjectCommand}"
+                  AutomationProperties.Name="Select a new project" />
+        </StackPanel>
+      </Border>
+
       <Border Classes="notice" IsVisible="{Binding SelectionIsUnresolved}">
         <views:CopyableTextBlock Text="The default Selection could not be resolved against the current Baseline; its word and place counts are unavailable."
                                  TextWrapping="Wrap" />

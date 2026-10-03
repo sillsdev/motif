@@ -442,15 +442,26 @@ public sealed class WorkspacePageTests
     public async Task AProjectWithNoBaselineSaysSo()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
+        var root = Directory.CreateTempSubdirectory("motif-existing-store-");
+        var projectPath = Path.Combine(root.FullName, "one.fwdata");
+        File.WriteAllBytes(Path.ChangeExtension(projectPath, ".motif.db"), []);
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false) { ProjectLastWriteUtc = Saved });
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: false));
-        projectPicker.PathToReturn = ProjectPath;
+        projectPicker.PathToReturn = projectPath;
 
-        await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        try
+        {
+            await workspace.Project.BrowseCommand.ExecuteAsync(null);
 
-        Assert.Equal(ProjectFreshness.NoBaseline, workspace.Freshness);
-        Assert.Equal("No Baseline yet", workspace.FreshnessLabel);
-        Assert.True(workspace.RefreshCommand.CanExecute(null));
+            Assert.Equal(ProjectFreshness.NoBaseline, workspace.Freshness);
+            Assert.Equal("No Baseline yet", workspace.FreshnessLabel);
+            Assert.True(workspace.RefreshCommand.CanExecute(null));
+            Assert.Empty(fake.CaptureBaselineRequests);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
     }
 
     [Fact]
@@ -504,6 +515,7 @@ public sealed class WorkspacePageTests
         Assert.False(workspace.ShowsRefreshAction);
         Assert.False(workspace.ShowsParseAllWordsAction);
         Assert.False(workspace.RefreshCommand.CanExecute(null));
+        Assert.True(workspace.ProjectSwitchEnabled);
 
         captured.SetResult(CommandOutcome<BaselineCaptureResponse>.Success(
             new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false)));

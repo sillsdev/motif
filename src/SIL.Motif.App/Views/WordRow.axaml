@@ -145,7 +145,7 @@
           <StackPanel x:Name="NextCell" Classes="wordRowNext" Orientation="Horizontal"
                       HorizontalAlignment="Right" VerticalAlignment="Center">
             <HyperlinkButton x:Name="OpenInText" Classes="revealOnHover" Content="{Binding OpenInTextLabel}" Command="{Binding OpenInTextCommand}"
-                             AutomationProperties.Name="{Binding Word, StringFormat='Open {0} in Analyze texts'}" />
+                             AutomationProperties.Name="{Binding OpenInTextAutomationName}" />
             <HyperlinkButton x:Name="TryWord" Classes="revealOnHover" Content="{Binding TryWordLabel}" Command="{Binding TryWordCommand}"
                              AutomationProperties.Name="{Binding Word, StringFormat='Try {0} in Try a Word'}" />
             <HyperlinkButton x:Name="WordAnalyses" Classes="revealOnHover" Content="{Binding WordAnalysesLabel}"

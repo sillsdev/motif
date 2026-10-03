@@ -78,12 +78,11 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
 
     private static void CaptureBaseline(WalkthroughWindow walkthrough, long deadline)
     {
-        walkthrough.Click("Refresh the project");
         walkthrough.WaitUntil(
             () => walkthrough.Workspace.Baseline.HasBaseline &&
                 walkthrough.Workspace.Selection.Texts.Count == 1 &&
                 walkthrough.Workspace.Context.Setup?.IsOpen == true,
-            WalkthroughSteps.Remaining(deadline), "Refresh did not capture and publish the project Baseline");
+            WalkthroughSteps.Remaining(deadline), "first open did not capture and publish the project Baseline");
         walkthrough.WaitUntil(
             () => !walkthrough.Workspace.RefreshCommand.IsRunning,
             WalkthroughSteps.Remaining(deadline), "Refresh did not finish");

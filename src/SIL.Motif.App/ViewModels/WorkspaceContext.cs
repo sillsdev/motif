@@ -143,6 +143,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DiagnosticDialogs = diagnosticDialogs ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
         Assess.PropertyChanged += OnAssessPropertyChanged;
+        Selection.PropertyChanged += OnSelectionPropertyChanged;
+        Assess.Words.Routes.HasTexts = Selection.HasTexts;
         Assess.Words.Routes.OpenInText = OpenWord;
         Assess.Words.Routes.TryWord = TryWord;
         Evidence.PropertyChanged += OnEvidencePropertyChanged;
@@ -389,6 +391,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// </summary>
     public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
     {
+        if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);
         await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         if (Changes.Count > 0)
             await Changes.RecheckAsync(cancellationToken).ConfigureAwait(true);
@@ -396,7 +399,6 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             await LoadStoredEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
-        if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);
     }
 
     /// <summary>Stops whatever work any page has running, and returns once each has stopped.</summary>
@@ -505,12 +507,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="page"/> as it stands.</summary>
     public void OpenPage(WorkspacePage page) => CurrentPage = page;
 
-    /// <summary>Lets the page <paramref name="request"/> names answer it, then opens that page.</summary>
+    /// <summary>Opens the page named by <paramref name="request"/>, then sends each page its request.</summary>
     public void Open(PageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        foreach (var page in _pages.ToArray()) page.Requested(request);
         CurrentPage = request.Page;
+        foreach (var page in _pages.ToArray()) page.Requested(request);
     }
 
     /// <summary>Opens the Texts page on <paramref name="tab"/>.</summary>
@@ -597,6 +599,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
         OnPropertyChanged(nameof(ParsePromptText));
         OnPropertyChanged(nameof(ShowParsePromptAction));
+    }
+
+    private void OnSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SelectionViewModel.HasTexts))
+            Assess.Words.Routes.HasTexts = Selection.HasTexts;
     }
 
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)

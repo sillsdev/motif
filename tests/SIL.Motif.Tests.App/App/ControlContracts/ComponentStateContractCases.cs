@@ -699,6 +699,9 @@ internal static class TooltipOwners
         new("grammar warning named this rule", "Views/Pages/TimingPage.axaml",
             "{x:Static vm:TimingRuleRow.GrammarWarningTooltip}", TooltipScene.Timing,
             control => control is Button && Name(control) == "Open the grammar warning"),
+        new("selected Timing rule name", "Views/Pages/TimingPage.axaml", "{Binding SelectedRuleName}", TooltipScene.Timing,
+            control => control is CopyableTextBlock { Text: "Subject agreement" } &&
+                control.FindAncestorOfType<TimingPage>() is not null),
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",

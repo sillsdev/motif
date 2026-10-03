@@ -361,6 +361,29 @@ public sealed class OverviewPageWordsTests
     }
 
     [Fact]
+    public async Task NoOccurrencesDoNotClaimWordsCoverZeroPlaces()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var overview = Populated();
+        fake.OverviewCompletesWith(overview with
+        {
+            TextCoverage = overview.TextCoverage with
+            {
+                TotalOccurrences = 0,
+                OccurrenceCoveragePercent = null,
+            },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal("83% of the words in your Selection · No places in the chosen Texts",
+            page.TextCoverageWords);
+        Assert.DoesNotContain("0%", page.TextCoverageWords, StringComparison.Ordinal);
+        Assert.DoesNotContain("not recorded of their 0 places", page.TextCoverageWords, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task OneWarningNamedWordUsesTheSingularWindowSentence()
     {
         var (fake, context) = NewContext();
@@ -437,6 +460,11 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("Touch your words · 3 words", warningPage.TouchYourWordsText);
         Assert.Equal("3 of your words use what a warning names", page.WarningsYourWordsText);
+        Assert.False(Assert.Single(warningPage.Rows.Cast<GrammarWarningRowViewModel>()).HasDistinctPanGlossTitle);
+
+        warningPage.Load([finding, finding]);
+
+        Assert.False(Assert.Single(warningPage.Rows.Cast<GrammarWarningRowViewModel>()).HasDistinctPanGlossTitle);
     }
 
     [Fact]

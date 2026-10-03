@@ -219,7 +219,7 @@ public sealed class ProjectSwitchTests
 
         var refresh = parts.Workspace.RefreshCommand.ExecuteAsync(null);
         await captureStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.False(parts.Workspace.ProjectSwitchEnabled);
+        Assert.True(parts.Workspace.ProjectSwitchEnabled);
         await OpenProjectAsync(parts.Workspace, ProjectB);
         releaseCapture.SetResult(CommandOutcome<BaselineCaptureResponse>.Success(new BaselineCaptureResponse(
             NewToken("2026-09-07T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false)));

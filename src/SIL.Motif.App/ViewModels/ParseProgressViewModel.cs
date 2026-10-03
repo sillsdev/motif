@@ -20,20 +20,56 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
     public bool HasStoppedWords => StoppedWords.Count > 0;
     public bool HasSlowestWord => _progress?.SlowestWord is not null;
     public string SlowestText => _progress?.SlowestWord is { } word
-        ? $"Slowest so far: {word.Word} · {word.ElapsedMs / 1000.0:0.###} s" : string.Empty;
-    public double Fraction => _progress is { Total: > 0 } progress ? (double)progress.Completed / progress.Total.Value : 0;
+        ? $"Slowest so far: {word.Word} · {SpeedText.Duration(word.ElapsedMs)}" : string.Empty;
+    public double Fraction => _progress switch
+    {
+        { Stage: AssessmentStage.Complete } => 1,
+        { Stage: AssessmentStage.Parsing, Total: > 0 } progress =>
+            Math.Min(0.98, (double)progress.Completed / progress.Total.Value),
+        { Total: > 0 } progress => (double)progress.Completed / progress.Total.Value,
+        _ => 0,
+    };
     public bool IsIndeterminate => _progress?.Total is null;
-    public string ProgressText => _progress is { Stage: AssessmentStage.Parsing, Total: { } total } progress
-        ? $"{progress.Completed:N0} of {total:N0} words done" +
-            (progress.CurrentWord is { } word ? $" · Parsing {word}" : string.Empty)
-        : _progress?.Message ?? "Preparing to parse words...";
-    public string StatusText => _progress is { Stage: AssessmentStage.Parsing, Total: { } total } progress
-        ? $"Parsing · {progress.Completed:N0} of {total:N0} words · {EstimateText(progress, total)}"
-        : _progress?.Message ?? "Preparing to parse words...";
-    public string TimeText => $"{Duration(clock.GetElapsedTime(_started))} elapsed · " +
-        (_progress is { Stage: AssessmentStage.Parsing, Completed: >= 3, Total: { } total } progress
-            ? EstimateText(progress, total)
-            : "estimating time left");
+    public string ProgressText => _progress switch
+    {
+        { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
+            "All words have been parsed; finishing the Assessment...",
+        { Stage: AssessmentStage.Parsing, Total: { } total } progress =>
+            $"{progress.Completed:N0} of {total:N0} words done" +
+            (progress.CurrentWord is { } word ? $" · Parsing {word}" : string.Empty),
+        { Stage: AssessmentStage.ReadingStatistics } => "All words have been parsed; Motif is reading PanGloss's statistics...",
+        _ => _progress?.Message ?? "Preparing to parse words...",
+    };
+    public string StatusText => _progress switch
+    {
+        { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
+            "All words have been parsed; finishing the Assessment...",
+        { Stage: AssessmentStage.Parsing, Total: { } total } progress =>
+            $"Parsing · {progress.Completed:N0} of {total:N0} words · {EstimateText(progress, total)}",
+        { Stage: AssessmentStage.ReadingStatistics } => "All words have been parsed; Motif is reading PanGloss's statistics...",
+        { Stage: AssessmentStage.Complete } => "Assessment complete",
+        _ => _progress?.Message ?? "Preparing to parse words...",
+    };
+    public string TimeText
+    {
+        get
+        {
+            var elapsed = Duration(clock.GetElapsedTime(_started));
+            var detail = _progress switch
+            {
+                { Stage: AssessmentStage.Parsing, Completed: >= 3, Total: { } total } progress
+                    when progress.Completed < total =>
+                    $"about {Duration(TimeSpan.FromSeconds(Math.Ceiling(_sampleElapsed.TotalSeconds / progress.Completed *
+                        (total - progress.Completed))))} left",
+                { Stage: AssessmentStage.Parsing, Total: { } total } progress when progress.Completed >= total =>
+                    "finishing the Assessment",
+                { Stage: AssessmentStage.ReadingStatistics } => "reading PanGloss's statistics",
+                { Stage: AssessmentStage.Complete } => "complete",
+                _ => "estimating time left",
+            };
+            return $"{elapsed} elapsed · {detail}";
+        }
+    }
     public string StoppedText => string.Join("; ", (_progress?.StoppedWords ?? []).GroupBy(word => word.Reason).Select(group =>
         $"{group.Count():N0} word{(group.Count() == 1 ? string.Empty : "s")} " +
         (group.Key == "TIMEOUT"

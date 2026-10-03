@@ -259,7 +259,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Why nothing is shown, or <see langword="null"/> when there are lines to read.</summary>
     public string? Message => HasStandaloneSelectedWord ? null : Texts.Count == 0
-            ? _assess.Result is null ? null : "Check a text in Texts to read the results in place."
+            ? _assess.Result is null ? null : _texts.HasAvailableTexts
+                ? "Choose a text in Texts to read the results in place."
+                : "This Baseline has no Texts."
         : SelectedText is null ? "Choose a text to read."
         : SelectedText.Lines.Count == 0
             ? "This text has no lines split into words yet. Open it once in FieldWorks' Interlinear Texts, then refresh the Baseline."
@@ -284,7 +286,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public IAsyncRelayCommand ParseWordsCommand => _assess.RunCommand;
 
     /// <summary>Whether the only thing missing is a checked Text, which the Texts page can supply.</summary>
-    public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0;
+    public bool NeedsTexts => _assess.Result is not null && Texts.Count == 0 && _texts.HasAvailableTexts;
 
     /// <summary>Finds the loaded sentence that contains the requested source occurrence.</summary>
     public ResultsLineViewModel? FindOccurrenceLine(OccurrenceAnchor occurrence) => Texts
@@ -492,6 +494,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private void OnSourceChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (ReferenceEquals(sender, _texts) && e.PropertyName is nameof(TextWordsViewModel.Response) or nameof(TextWordsViewModel.ProjectWords)) Rebuild();
+        else if (ReferenceEquals(sender, _texts) && e.PropertyName == nameof(TextWordsViewModel.HasAvailableTexts)) RefreshLines();
         else if (ReferenceEquals(sender, _assess) && e.PropertyName == nameof(AssessViewModel.Result)) Rebuild();
         NotifyScopeCommands();
     }

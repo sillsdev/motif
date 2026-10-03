@@ -107,6 +107,7 @@
                       </Grid>
                     </Button>
                     <views:CopyableTextBlock Classes="muted warningHoverTitle" Text="{Binding PanGlossTitle}"
+                                              IsVisible="{Binding HasDistinctPanGlossTitle}"
                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
 
                     <StackPanel IsVisible="{Binding IsOpen}" Spacing="{DynamicResource Intent.Space.Related}">
