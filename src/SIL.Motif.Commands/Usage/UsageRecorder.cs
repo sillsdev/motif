@@ -49,8 +49,9 @@ public sealed class UsageRecorder
                 using var machine = MachineDatabase.Open(workerRoot);
                 new MachineUsageLog(machine).Append(entry);
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
-                                               ArgumentException or InvalidOperationException or SqliteException or MotifStoreVersionException)
+            catch (Exception exception) when (exception is IOException or InvalidDataException or
+                                               NotSupportedException or UnauthorizedAccessException or ArgumentException or
+                                               InvalidOperationException or SqliteException or MotifStoreVersionException)
             {
             }
         }

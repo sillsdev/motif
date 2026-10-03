@@ -155,6 +155,20 @@ public sealed class WindowRefusalTests
     }
 
     [Fact]
+    public void ACorruptProjectStoreHasManualRecoveryWithoutOfferingUnverifiedDeletion()
+    {
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.StoreInconsistent,
+            FailureReason.StoreInconsistent, "The project store is corrupt."));
+
+        Assert.Contains("Close every Motif", shown.Sentence, StringComparison.Ordinal);
+        Assert.Contains("keep a copy", shown.Sentence, StringComparison.Ordinal);
+        Assert.Contains("beside the project's .fwdata", shown.Sentence, StringComparison.Ordinal);
+        Assert.Contains("Changes not applied yet are lost", shown.Sentence, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks project is not touched", shown.Sentence, StringComparison.Ordinal);
+        Assert.False(shown.OffersStoreDeletion);
+    }
+
+    [Fact]
     public void AWindowCheckIsASentenceWithNoDetails()
     {
         var shown = WindowRefusal.Plain("Choose at least one text or add a word before continuing.");

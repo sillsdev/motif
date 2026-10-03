@@ -88,7 +88,7 @@ public static class MotifAppComposition
         var selection = new SelectionViewModel(commandClient);
         var assess = new AssessViewModel(commandClient, selection, options.TimeProvider, options.TraceViewPreferences);
         var workspace = new WorkspaceShellViewModel(
-            new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers),
+            new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers, options.ManagedRoot),
             new BaselineViewModel(commandClient, options.TimeProvider),
             selection,
             assess,

@@ -1,6 +1,7 @@
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Host.Store;
 using System.Collections.Specialized;
 using Xunit;
 
@@ -122,11 +123,58 @@ public sealed class ProjectViewModelTests
         Assert.False(raised);
     }
 
+    [Theory]
+    [InlineData("corrupt")]
+    [InlineData("wrong-schema")]
+    public async Task ARefusedMachineStoreShowsRecoveryAndDoesNotBlockBrowse(string shape)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-machine-store-browse", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var machinePath = Path.Combine(root, "motif.db");
+            if (shape == "corrupt")
+                File.WriteAllText(machinePath, "not a sqlite database");
+            else
+            {
+                using var machine = MachineDatabase.Open(root);
+                using var connection = machine.OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText = "PRAGMA user_version=999;";
+                command.ExecuteNonQuery();
+            }
+
+            var picker = new FakeProjectPicker();
+            var viewModel = new ProjectViewModel(RealCommandClient.Create(root), picker, root);
+            await viewModel.LoadKnownProjectsAsync();
+
+            Assert.True(viewModel.HasMachineStoreRecovery);
+            Assert.Contains(machinePath, viewModel.MachineStoreRecoveryMessage, StringComparison.Ordinal);
+            Assert.Contains("Keep a copy", viewModel.MachineStoreRecoveryMessage, StringComparison.Ordinal);
+            Assert.Contains("Operation: read Known projects", viewModel.MachineStoreProblemReport!.ToText(),
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(root, viewModel.MachineStoreProblemReport.ToText(), StringComparison.Ordinal);
+
+            await viewModel.BrowseCommand.ExecuteAsync(null);
+
+            Assert.Equal(1, picker.PickCalls);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     private sealed class FakeProjectPicker : IProjectPicker
     {
         public string? PathToReturn { get; set; }
 
-        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(PathToReturn);
+        public int PickCalls { get; private set; }
+
+        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default)
+        {
+            PickCalls++;
+            return Task.FromResult(PathToReturn);
+        }
     }
 }

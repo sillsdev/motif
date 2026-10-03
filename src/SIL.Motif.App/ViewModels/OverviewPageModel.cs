@@ -107,12 +107,7 @@ public sealed partial class OverviewPageModel : PageModel
     /// What the page says when the Overview read is refused: the refusal's own sentence when the window has one
     /// for its code, otherwise that the numbers could not be read.
     /// </summary>
-    public string OverviewRefusalLine => OverviewRefusal is not { } refusal ? string.Empty
-        : refusal.Sentence == WindowRefusal.GenericSentence ? "Motif could not read this project's numbers."
-        : refusal.Sentence;
-
-    /// <summary>Where a person reports a refused read.</summary>
-    public Uri ReportProblemUri { get; } = new(AppLinks.Issues);
+    public string OverviewRefusalLine => OverviewRefusal?.Sentence ?? string.Empty;
 
     /// <summary>Reads the stored Overview again after a refusal.</summary>
     public IAsyncRelayCommand RetryOverviewCommand { get; }
@@ -476,7 +471,8 @@ public sealed partial class OverviewPageModel : PageModel
         if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
             return;
         Overview = overview.Succeeded ? overview.Value : null;
-        OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null : WindowRefusal.From(overview.Refusal);
+        OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null :
+            WindowRefusal.From(overview.Refusal, "Motif could not read this project's numbers.");
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)

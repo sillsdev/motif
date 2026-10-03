@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+        x:Class="SIL.Motif.App.Views.ProblemReportPreviewWindow"
+        x:DataType="vm:ProblemReportPreviewViewModel"
+        Title="Review problem report"
+        WindowStartupLocation="CenterOwner"
+        Width="{DynamicResource Component.Shell.CrashWidth}"
+        Height="{DynamicResource Component.Shell.CrashHeight}"
+        MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
+        MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
+    <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
+      <TextBlock Classes="muted" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap"
+                 AutomationProperties.Name="Problem report status" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{DynamicResource Intent.Space.Related}">
+        <Button Content="Copy report" Click="OnCopyReportClick" AutomationProperties.Name="Copy reviewed problem report" />
+        <Button Content="Open issue form" Click="OnOpenIssueClick" AutomationProperties.Name="Open issue form with reviewed report" />
+        <Button Content="Close" Click="OnCloseClick" IsDefault="True" IsCancel="True"
+                AutomationProperties.Name="Close problem report preview" />
+      </StackPanel>
+    </StackPanel>
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <TextBlock Text="Review this report before sharing it. Opening the issue form does not submit it."
+                 TextWrapping="Wrap" />
+      <CheckBox Grid.Row="1" Content="Include local details (may contain project or language data)"
+                IsChecked="{Binding IncludeLocalDetails}"
+                AutomationProperties.Name="Include local details that may contain project or language data" />
+      <TextBox Grid.Row="2" Text="{Binding ReportText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+               ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+               AutomationProperties.Name="Problem report preview" />
+    </Grid>
+  </DockPanel>
+</Window>

@@ -2,6 +2,8 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Interactivity;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -55,5 +57,17 @@ public sealed partial class RefusalBlock : UserControl
         _deleteStoreButton.Command = StoreDeletionCommand;
         _deleteStoreButton.IsVisible =
             DataContext is WindowRefusal { OffersStoreDeletion: true } && StoreDeletionCommand is not null;
+    }
+
+    private async void OnReportProblemClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not WindowRefusal { OffersProblemReport: true } refusal ||
+            TopLevel.GetTopLevel(this) is not Window owner) return;
+
+        var report = ProblemReport.FromRefusal(refusal);
+        if (owner is MainWindow main)
+            await main.ShowProblemReportAsync(report).ConfigureAwait(true);
+        else
+            await new ProblemReportPreviewWindow(report).ShowDialog(owner).ConfigureAwait(true);
     }
 }

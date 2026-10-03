@@ -52,9 +52,6 @@
                                    IsVisible="{Binding Assess.ShowsEarlierResults}"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.EarlierResultsNote}" />
           <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
-          <HyperlinkButton Classes="reviewLink" Content="Report a problem" NavigateUri="{Binding ReportProblemUri}"
-                           IsVisible="{Binding Assess.OffersProblemReport}"
-                           AutomationProperties.Name="Report a problem with parsing" />
         </StackPanel>
       </StackPanel>
     </Border>

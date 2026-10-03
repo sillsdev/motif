@@ -113,7 +113,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
       <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
@@ -150,6 +150,14 @@
         <StackPanel>
           <views:RefusalBlock DataContext="{Binding OpenRefusal}" />
         </StackPanel>
+      </Border>
+      <Border Grid.Row="3" IsVisible="{Binding Project.HasMachineStoreRecovery}" Classes="notice">
+        <DockPanel LastChildFill="True">
+          <Button DockPanel.Dock="Right" Content="Report a problem" Click="OnMachineStoreReportProblemClick"
+                  AutomationProperties.Name="Review a machine store problem report" />
+          <views:CopyableTextBlock Text="{Binding Project.MachineStoreRecoveryMessage}" TextWrapping="Wrap"
+                                   AutomationProperties.Name="Machine store recovery instructions" />
+        </DockPanel>
       </Border>
     </Grid>
 

@@ -6,6 +6,9 @@
              x:DataType="vm:WindowRefusal">
   <StackPanel Classes="refusal">
     <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap" />
+    <Button x:Name="ReportProblemButton" Content="Report a problem" Click="OnReportProblemClick"
+            IsVisible="{Binding OffersProblemReport}"
+            AutomationProperties.Name="Review a problem report" HorizontalAlignment="Left" />
     <Button x:Name="DeleteStoreButton"
             Content="Delete this file and reopen"
             CommandParameter="{Binding}"

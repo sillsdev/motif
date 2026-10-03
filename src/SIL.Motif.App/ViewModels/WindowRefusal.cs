@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using C = SIL.Motif.Contract.Commands.RefusalCodes;
 
 namespace SIL.Motif.App.ViewModels;
@@ -53,6 +54,13 @@ public sealed partial record WindowRefusal
     private const string StoreFromOtherVersion =
         "Motif's file for this project{0} was made by a different version of Motif. Close Motif, delete that " +
         "file, and open the project again. Changes not applied yet are lost; your FieldWorks project is not touched.";
+
+    private const string StoreDamaged =
+        "Motif's file for this project is damaged. Close every Motif window and keep a copy of the matching .motif.db file " +
+        "beside the project's .fwdata file for support. Remove only that Motif store if you can confirm it " +
+        "belongs to Motif, then reopen the project. " +
+        "Changes not applied yet are lost; your FieldWorks project is not touched. If you cannot confirm the " +
+        "file belongs to Motif, leave it in place and ask for help.";
 
     private static readonly IReadOnlyDictionary<string, string> Sentences = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -205,16 +213,28 @@ public sealed partial record WindowRefusal
         [C.WordTraceParserUnavailable] = ParserUnusable,
     };
 
-    private WindowRefusal(string code, string sentence, string? details, IReadOnlyDictionary<string, string> facts)
+    private WindowRefusal(string code, string sentence, string? details, IReadOnlyDictionary<string, string> facts,
+        FailureReason? reason, Exception? failureException = null)
     {
         Code = code;
         Sentence = sentence;
         Details = details;
         Facts = facts;
+        Reason = reason;
+        FailureException = failureException;
     }
 
     /// <summary>The command's stable refusal code, for a control that acts on one kind of refusal.</summary>
     public string Code { get; }
+
+    /// <summary>The bounded window operation inferred from this refusal's stable code.</summary>
+    public string Operation => OperationFor(Code);
+
+    /// <summary>The command refusal class, or <see langword="null"/> for a window-only check.</summary>
+    public FailureReason? Reason { get; }
+
+    /// <summary>The local exception used to make a path-free stack for the report preview.</summary>
+    internal Exception? FailureException { get; }
 
     /// <summary>The window's sentence for this refusal; the only part shown unfolded.</summary>
     public string Sentence { get; }
@@ -227,6 +247,10 @@ public sealed partial record WindowRefusal
     /// <summary>The command's facts, such as the store path a delete button would need.</summary>
     public IReadOnlyDictionary<string, string> Facts { get; }
 
+    /// <summary>Whether this refusal can be reported as a problem rather than a cancelled or invalid action.</summary>
+    public bool OffersProblemReport => Code != WindowCheckCode &&
+        Reason is not FailureReason.Cancelled and not FailureReason.InvalidArgument;
+
     /// <summary>
     /// Whether this refusal is a store made by another version of Motif that names its file, the one refusal a
     /// person can clear by deleting that file so Motif recreates it.
@@ -235,17 +259,24 @@ public sealed partial record WindowRefusal
         Code == C.StoreOtherVersion && Facts.ContainsKey(RefusalFactNames.StorePath);
 
     /// <summary>Presents a command's refusal in the window's words.</summary>
-    public static WindowRefusal From(Refusal refusal)
+    public static WindowRefusal From(Refusal refusal) => From(refusal, GenericSentence);
+
+    /// <summary>Presents a refusal with a page-specific sentence when the window has no sentence for its code.</summary>
+    /// <param name="refusal">The refusal being shown.</param>
+    /// <param name="sentenceWhenUnmapped">The sentence used when the refusal code has no window sentence.</param>
+    public static WindowRefusal From(Refusal refusal, string sentenceWhenUnmapped)
     {
         ArgumentNullException.ThrowIfNull(refusal);
-        return new WindowRefusal(refusal.Code, SentenceFor(refusal), DetailsOf(refusal), refusal.Facts);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sentenceWhenUnmapped);
+        return new WindowRefusal(refusal.Code, SentenceFor(refusal, sentenceWhenUnmapped), DetailsOf(refusal),
+            refusal.Facts, refusal.Reason);
     }
 
     /// <summary>A check the window made itself, already in the window's words and with nothing to fold away.</summary>
     public static WindowRefusal Plain(string sentence)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sentence);
-        return new WindowRefusal(WindowCheckCode, sentence, null, ImmutableDictionary<string, string>.Empty);
+        return new WindowRefusal(WindowCheckCode, sentence, null, ImmutableDictionary<string, string>.Empty, null);
     }
 
     /// <summary>
@@ -259,18 +290,31 @@ public sealed partial record WindowRefusal
         ArgumentNullException.ThrowIfNull(exception);
         var details = WindowSafe(exception.Message);
         return new WindowRefusal(code, sentence, details.Length == 0 ? null : details,
-            ImmutableDictionary<string, string>.Empty);
+            ImmutableDictionary<string, string>.Empty, null, exception);
     }
 
-    private static string SentenceFor(Refusal refusal)
+    private static string OperationFor(string code) =>
+        code == OpenFailedCode ? "open a project" :
+        code.StartsWith("assess.", StringComparison.Ordinal) || code.StartsWith("assessment.", StringComparison.Ordinal)
+            ? "measure words" :
+        code.StartsWith("baseline.", StringComparison.Ordinal) ? "refresh the project" :
+        code.StartsWith("apply.", StringComparison.Ordinal) ? "apply pending changes" :
+        code.StartsWith("grammarcheck.", StringComparison.Ordinal) ? "check grammar" :
+        code.StartsWith("wordtrace.", StringComparison.Ordinal) ? "try a word" :
+        code.StartsWith("stats.", StringComparison.Ordinal) ? "read statistics" :
+        code.StartsWith("project.", StringComparison.Ordinal) || code.StartsWith("store.", StringComparison.Ordinal)
+            ? "open or read a project" : "window action";
+
+    private static string SentenceFor(Refusal refusal, string sentenceWhenUnmapped)
     {
+        if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
         if (refusal.Code == C.StoreOtherVersion)
             return string.Format(System.Globalization.CultureInfo.InvariantCulture, StoreFromOtherVersion,
                 refusal.Facts.TryGetValue(RefusalFactNames.StorePath, out var path) ? ", " + path + "," : string.Empty);
         if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) &&
             Sentences.TryGetValue(refusal.Code, out var mapped) && mapped == ParserUnusable)
             return ParserMissing;
-        return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence : GenericSentence;
+        return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence : sentenceWhenUnmapped;
     }
 
     private static string? DetailsOf(Refusal refusal)

@@ -22,6 +22,8 @@ public sealed partial class MainWindow : Window
     private static readonly string PreferencesFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Motif", "window-bounds.json");
     private readonly IUriLauncher _uriLauncher;
+    private readonly ProblemReportWindowServices _problemReportServices;
+    private ProblemReportPreviewWindow? _currentProblemReportPreview;
     private string? _helpAutomationId;
     private Control? _inspectedFrom;
     private HelpPopupView? HelpPopup =>
@@ -48,6 +50,7 @@ public sealed partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
         _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
+        _problemReportServices = new ProblemReportWindowServices(new AvaloniaClipboard(this), _uriLauncher);
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -60,7 +63,38 @@ public sealed partial class MainWindow : Window
     }
 
     private async void OnParseReportProblemClick(object? sender, RoutedEventArgs e) =>
-        await _uriLauncher.LaunchAsync(new Uri(AppLinks.Issues)).ConfigureAwait(true);
+        await ShowProblemReportAsync(ProblemReport.ForStalledParse()).ConfigureAwait(true);
+
+    private async void OnMachineStoreReportProblemClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is WorkspaceShellViewModel { Project.MachineStoreProblemReport: { } report })
+            await ShowProblemReportAsync(report).ConfigureAwait(true);
+    }
+
+    /// <summary>Shows the reviewed report before a person copies it or opens an issue form.</summary>
+    /// <param name="report">The report whose current text appears in the preview.</param>
+    public Task ShowProblemReportAsync(ProblemReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        return ShowProblemReportPreviewAsync(report);
+    }
+
+    /// <summary>The report preview currently owned by this window, if one is open.</summary>
+    internal ProblemReportPreviewWindow? CurrentProblemReportPreview => _currentProblemReportPreview;
+
+    private async Task ShowProblemReportPreviewAsync(ProblemReport report)
+    {
+        var preview = new ProblemReportPreviewWindow(report, _problemReportServices);
+        _currentProblemReportPreview = preview;
+        try
+        {
+            await preview.ShowDialog(this).ConfigureAwait(true);
+        }
+        finally
+        {
+            _currentProblemReportPreview = null;
+        }
+    }
 
     // The tip opens left of the whole group, so it hides neither the action's neighbours nor the notice below.
     private static void PlaceBesideTopBarActions(StackPanel actions, Button action)

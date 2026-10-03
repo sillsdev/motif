@@ -1,12 +1,10 @@
-using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Text;
 using SIL.Motif.Host;
 
 namespace SIL.Motif.App.Services;
 
-/// <summary>An error that escaped the App's UI thread, with what a maintainer needs to reproduce it.</summary>
-/// <param name="Exception">The error, whose own account is the report's details.</param>
+/// <summary>An error that escaped the App's UI thread, with its local details kept inside the window.</summary>
+/// <param name="Exception">The error shown locally under Details.</param>
 /// <param name="OccurredAt">When it reached the error window.</param>
 /// <param name="MotifVersion">The running build's version.</param>
 /// <param name="OperatingSystem">The operating system's own description of itself.</param>
@@ -23,33 +21,15 @@ public sealed record CrashReport(
             RuntimeInformation.OSDescription, RuntimeInformation.FrameworkDescription);
     }
 
-    /// <summary>The error's own message, which the window shows under its plain summary.</summary>
+    /// <summary>The error message shown locally in the error window.</summary>
     public string Message => Exception.Message;
 
-    /// <summary>
-    /// <see cref="System.Exception.ToString"/>: the type, message and stack trace of the error and of every
-    /// exception inside it.
-    /// </summary>
+    /// <summary>The full local exception details shown only inside the error window.</summary>
     public string Details => Exception.ToString();
 
-    /// <summary>The name the save dialog offers: a text file named for when the error happened.</summary>
-    public string SuggestedFileName =>
-        "motif-error-" + OccurredAt.UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".txt";
+    /// <summary>The allowlisted report shown for review before it can be copied or shared.</summary>
+    public ProblemReport ProblemReport => global::SIL.Motif.App.Services.ProblemReport.FromCrash(this);
 
-    /// <summary>The whole report, as Save report writes it and Copy details copies it.</summary>
-    public string ToText()
-    {
-        var text = new StringBuilder();
-        Line(text, "Motif error report");
-        Line(text, "Motif version: " + MotifVersion);
-        Line(text, "Time (UTC): " + OccurredAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
-        Line(text, "Operating system: " + OperatingSystem);
-        Line(text, ".NET: " + Runtime);
-        Line(text, "");
-        Line(text, Details);
-        return text.ToString();
-    }
-
-    // CRLF throughout, so the saved file reads the same in Notepad as it does attached to an email.
-    private static void Line(StringBuilder text, string line) => text.Append(line).Append("\r\n");
+    /// <summary>Renders only the allowlisted report fields; rich local details require a separate explicit choice.</summary>
+    public string ToText() => ProblemReport.ToText();
 }

@@ -1,128 +1,90 @@
 using SIL.Motif.App.Services;
-using SIL.Motif.Host;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Pins what the error window saves and what its email carries, from a synthetic nested exception, so the
-/// saved report holds the whole trace and the mail program is handed only a short note.
-/// </summary>
 public sealed class CrashReportTests
 {
-    private static readonly DateTimeOffset OccurredAt = new(2026, 9, 26, 14, 5, 9, TimeSpan.Zero);
-
     [Fact]
-    public void TheSavedReportHoldsTheVersionTimePlatformAndTheWholeExceptionIncludingItsInnerOne()
+    public void DefaultCrashReportIncludesOnlyTheAllowlistedFieldsAndSanitizedStack()
     {
-        var failure = NestedFailure();
-        var report = Report(failure);
+        var report = ProblemReport.FromCrash(Crash());
 
         var text = report.ToText();
 
-        Assert.StartsWith("Motif error report\r\n", text, StringComparison.Ordinal);
-        Assert.Contains("Motif version: 0.1.0\r\n", text, StringComparison.Ordinal);
-        Assert.Contains("Time (UTC): 2026-09-26 14:05:09\r\n", text, StringComparison.Ordinal);
-        Assert.Contains("Operating system: Test OS 1.0\r\n", text, StringComparison.Ordinal);
-        Assert.Contains(".NET: Test .NET 10\r\n", text, StringComparison.Ordinal);
-        Assert.EndsWith(failure.ToString() + "\r\n", text, StringComparison.Ordinal);
-        Assert.Contains("the store was closed", text, StringComparison.Ordinal);
-        Assert.Contains(nameof(NestedFailure), text, StringComparison.Ordinal);
+        Assert.Contains("Motif version: 0.1.0", text, StringComparison.Ordinal);
+        Assert.Contains("PanGloss version:", text, StringComparison.Ordinal);
+        Assert.Contains("Operating system: Test OS 1.0", text, StringComparison.Ordinal);
+        Assert.Contains("Operation: window action", text, StringComparison.Ordinal);
+        Assert.Contains("Refusal code: unhandled-ui-error", text, StringComparison.Ordinal);
+        Assert.Contains("Exit status: 1", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATEWORD", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("/home/private", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret grammar", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw stderr", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(".cs:", text, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheDetailsAreTheExceptionsOwnAccountAndTheMessageIsItsOuterMessage()
+    public void ExplicitLocalDetailsChoiceAddsTheCrashAndRefusalDetails()
     {
-        var failure = NestedFailure();
-        var report = Report(failure);
+        var crash = Crash();
+        var crashText = crash.ProblemReport.ToText(includeLocalDetails: true);
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
+            "Could not parse PRIVATEWORD from /home/private/project.fwdata: raw stderr secret grammar.",
+            new Dictionary<string, string>
+            {
+                ["projectPath"] = "/home/private/project.fwdata",
+                ["parserNotFound"] = "true",
+            });
+        var refusalReport = ProblemReport.FromRefusal(WindowRefusal.From(refusal));
 
-        Assert.Equal(failure.ToString(), report.Details);
-        Assert.Equal("Refreshing the texts failed.", report.Message);
+        Assert.Contains("PRIVATEWORD", crashText, StringComparison.Ordinal);
+        Assert.Contains("/home/private/project.fwdata", crashText, StringComparison.Ordinal);
+        Assert.Contains("raw stderr: secret grammar text", crashText, StringComparison.Ordinal);
+        Assert.Contains("Operation: measure words", refusalReport.ToText(), StringComparison.Ordinal);
+        Assert.Contains("Failure fact parserNotFound: true", refusalReport.ToText(), StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATEWORD", refusalReport.ToText(), StringComparison.Ordinal);
+        Assert.DoesNotContain("/home/private/project.fwdata", refusalReport.ToText(), StringComparison.Ordinal);
+        Assert.Contains("PRIVATEWORD", refusalReport.ToText(includeLocalDetails: true), StringComparison.Ordinal);
+        Assert.Contains("/home/private/project.fwdata", refusalReport.ToText(includeLocalDetails: true), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheSuggestedFileNameIsATextFileNamedForWhenTheErrorHappened()
+    public void ARefusalReportCarriesItsCliEquivalentExitStatusAndOnlySafeFacts()
     {
-        Assert.Equal("motif-error-20260926-140509.txt", Report(NestedFailure()).SuggestedFileName);
+        var refusal = new Refusal("stats.parser-refused", FailureReason.Refused,
+            "PanGloss refused the request.",
+            new Dictionary<string, string>
+            {
+                ["exitCode"] = "17",
+                ["projectPath"] = "/home/private/project.fwdata",
+                ["stderr"] = "PRIVATEWORD secret grammar",
+            });
+
+        var text = ProblemReport.FromRefusal(WindowRefusal.From(refusal)).ToText();
+
+        Assert.Contains("Operation: read statistics", text, StringComparison.Ordinal);
+        Assert.Contains("Exit status: CLI equivalent 2", text, StringComparison.Ordinal);
+        Assert.Contains("Failure fact PanGloss exit status: 17", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("project.fwdata", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATEWORD", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret grammar", text, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void TheEmailIsAddressedToTheMaintainerWithAShortSubject()
-    {
-        var mail = CrashReportEmail.MailtoFor(Report(NestedFailure()), MotifSupport.SupportEmail);
-
-        Assert.Equal("mailto", mail.Scheme);
-        Assert.StartsWith("mailto:john_lambert@sil.org?subject=Motif%200.1.0%20error%20report&body=", mail.AbsoluteUri,
-            StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void TheEmailBodyNamesTheErrorAndAsksForTheSavedReportButCarriesNoTrace()
-    {
-        var failure = NestedFailure();
-
-        var body = BodyOf(CrashReportEmail.MailtoFor(Report(failure), MotifSupport.SupportEmail));
-
-        Assert.Contains("Motif 0.1.0 closed after an error: InvalidOperationException: Refreshing the texts failed.",
-            body, StringComparison.Ordinal);
-        Assert.Contains("Please attach the report you saved from Motif's error window.", body, StringComparison.Ordinal);
-        Assert.DoesNotContain(" at ", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("the store was closed", body, StringComparison.Ordinal);
-        Assert.DoesNotContain(nameof(NestedFailure), body, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void TheEmailPercentEncodesLineBreaksAndReservedCharacters()
-    {
-        var failure = new InvalidOperationException("a&b=c?d #e\r\nsecond line");
-
-        var mail = CrashReportEmail.MailtoFor(Report(failure), MotifSupport.SupportEmail);
-
-        var query = mail.AbsoluteUri[(mail.AbsoluteUri.IndexOf('?') + 1)..];
-        Assert.Equal(2, query.Split('&').Length);
-        Assert.Contains("%0D%0A", query, StringComparison.Ordinal);
-        Assert.DoesNotContain("#", query, StringComparison.Ordinal);
-        Assert.Contains("a&b=c?d #e second line", BodyOf(mail), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ALongMessageIsCutShortInTheEmailSoTheLinkStaysShort()
-    {
-        var failure = new InvalidOperationException(new string('x', 5000));
-
-        var mail = CrashReportEmail.MailtoFor(Report(failure), MotifSupport.SupportEmail);
-
-        Assert.True(mail.AbsoluteUri.Length < 1000, $"The mail link is {mail.AbsoluteUri.Length} characters long.");
-        Assert.Contains(new string('x', CrashReportEmail.MessageLimit) + "…", BodyOf(mail), StringComparison.Ordinal);
-    }
-
-    private static CrashReport Report(Exception failure) =>
-        new(failure, OccurredAt, "0.1.0", "Test OS 1.0", "Test .NET 10");
-
-    private static string BodyOf(Uri mail)
-    {
-        var uri = mail.AbsoluteUri;
-        var start = uri.IndexOf("&body=", StringComparison.Ordinal) + "&body=".Length;
-        return Uri.UnescapeDataString(uri[start..]);
-    }
-
-    // Thrown for real so each level carries a stack trace, as an escaped error does.
-    private static Exception NestedFailure()
+    private static CrashReport Crash()
     {
         try
         {
-            try
-            {
-                throw new IOException("the store was closed");
-            }
-            catch (IOException inner)
-            {
-                throw new InvalidOperationException("Refreshing the texts failed.", inner);
-            }
+            throw new InvalidOperationException("Refreshing PRIVATEWORD at /home/private/project.fwdata failed.",
+                new IOException("raw stderr: secret grammar text"));
         }
-        catch (InvalidOperationException outer)
+        catch (InvalidOperationException failure)
         {
-            return outer;
+            return new CrashReport(failure, DateTimeOffset.UtcNow, "0.1.0", "Test OS 1.0", "Test .NET 10");
         }
     }
 }

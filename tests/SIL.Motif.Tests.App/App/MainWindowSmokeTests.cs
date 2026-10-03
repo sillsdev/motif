@@ -87,7 +87,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void ReportAProblemDuringAStalledParseOpensTheIssuePage()
+    public void ReportAProblemDuringAStalledParseOpensAReviewPreview()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -110,7 +110,10 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(button) == "Report a problem with parsing");
                 Assert.True(report.IsEffectivelyVisible);
                 ClickButton(window, report);
-                Assert.Equal(new Uri(AppLinks.Issues), launcher.Opened);
+                var preview = Assert.IsType<ProblemReportPreviewWindow>(window.CurrentProblemReportPreview);
+                Assert.Contains("Operation: measure words", preview.Model.ReportText, StringComparison.Ordinal);
+                Assert.Null(launcher.Opened);
+                preview.Close();
             }
             finally
             {

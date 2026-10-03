@@ -78,6 +78,34 @@ public sealed class UsageRecordingTests
             if (Directory.Exists(workerRoot)) Directory.Delete(workerRoot, recursive: true);
         }
     }
+
+    [Fact]
+    public void CorruptMachineStoreDoesNotStopHelpFromResponding()
+    {
+        var workerRoot = Path.Combine(Path.GetTempPath(), "motif-usage-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workerRoot);
+        File.WriteAllText(Path.Combine(workerRoot, "motif.db"), "not a sqlite database");
+        var environment = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [RunnerOptions.RootVariable] = workerRoot,
+        };
+
+        try
+        {
+            using var output = new StringWriter();
+            using var error = new StringWriter();
+
+            var exitCode = global::SIL.Motif.Cli.Program.Run(
+                ["help"], output, error, environment, static (_, _) => { });
+
+            Assert.Equal(0, exitCode);
+            Assert.NotEmpty(output.ToString());
+        }
+        finally
+        {
+            if (Directory.Exists(workerRoot)) Directory.Delete(workerRoot, recursive: true);
+        }
+    }
     [Fact]
     public void UnknownCliRefusalStoresNoUserSuppliedCommandOrFlagText()
     {

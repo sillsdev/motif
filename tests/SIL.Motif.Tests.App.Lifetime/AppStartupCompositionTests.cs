@@ -213,10 +213,19 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
             var window = Assert.IsType<CrashWindow>(session.Crashes.Window);
             Assert.True(window.IsVisible, "The error window did not open.");
-            var copy = window.GetLogicalDescendants().OfType<Button>().Single(button =>
-                AutomationProperties.GetName(button) == "Copy details");
-            HeadlessClick.Click(window, copy, "Copy details");
+            var report = window.GetLogicalDescendants().OfType<Button>().Single(button =>
+                AutomationProperties.GetName(button) == "Review a problem report");
+            HeadlessClick.Click(window, report, "Review a problem report");
+            var preview = Assert.Single(host.Lifetime.Windows.OfType<ProblemReportPreviewWindow>());
+            var copy = preview.GetLogicalDescendants().OfType<Button>().Single(button =>
+                AutomationProperties.GetName(button) == "Copy reviewed problem report");
+            HeadlessClick.Click(preview, copy, "Copy reviewed problem report");
             Assert.Equal(window.Model.Report.ToText(), clipboard.Text);
+
+            var previewClose = preview.GetLogicalDescendants().OfType<Button>().Single(button =>
+                AutomationProperties.GetName(button) == "Close problem report preview");
+            HeadlessClick.Click(preview, previewClose, "Close problem report preview");
+            Assert.False(preview.IsVisible, "The preview Close button left the report open.");
 
             var close = window.GetLogicalDescendants().OfType<Button>().Single(button =>
                 AutomationProperties.GetName(button) == "Close");

@@ -659,7 +659,8 @@ public sealed class OverviewPageWordsTests
         Assert.False(page.ShowNumbers);
         Assert.False(page.ShowTiles);
         Assert.False(page.ShowWarningsTile);
-        Assert.Equal(new Uri("https://github.com/sillsdev/motif/issues"), page.ReportProblemUri);
+        Assert.Equal("overview.unexpected", page.OverviewRefusal!.Code);
+        Assert.True(page.OverviewRefusal.OffersProblemReport);
 
         fake.OverviewCompletesWith(Populated());
         await page.RetryOverviewCommand.ExecuteAsync(null);

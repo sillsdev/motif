@@ -21,11 +21,8 @@
               <StackPanel Classes="overviewRefusalActions" DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Content="Try again" Command="{Binding RetryOverviewCommand}"
                         AutomationProperties.Name="Read the Overview again" />
-                <HyperlinkButton Classes="reviewLink" Content="Report a problem" NavigateUri="{Binding ReportProblemUri}"
-                                 AutomationProperties.Name="Report a problem with the Overview" />
               </StackPanel>
-              <views:CopyableTextBlock Text="{Binding OverviewRefusalLine}" TextWrapping="Wrap"
-                                       VerticalAlignment="Center" />
+              <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
             </DockPanel>
           </Border>
           <UniformGrid Classes="overviewCounts" Rows="1" Columns="5" IsVisible="{Binding ShowNumbers}">
