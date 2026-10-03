@@ -24,6 +24,48 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewPageWordsTests
 {
+    [Fact]
+    public async Task WarningKindsNameTheirActualLevelAndSpellingMatchesDoNotSayNone()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        fake.OverviewCompletesWith(Populated() with
+        {
+            Warnings = Populated().Warnings! with
+            {
+                YourWords = new WarningWordsTouched(0, 0, []) { BySpellingOnly = 2 },
+                ByKind = [
+                    new GrammarWarningSummary("no-category", "Stem has no category", GrammarDiagnosticLevel.Error, 4),
+                    new GrammarWarningSummary("unsegmentable", "Allomorph could not be segmented", GrammarDiagnosticLevel.Warning, 15),
+                    new GrammarWarningSummary("unused", "Unused", GrammarDiagnosticLevel.Information, 1)],
+            },
+        });
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.Equal(["4 errors", "15 warnings", "1 information finding"], page.WarningKindRows.Select(row => row.WarningCount));
+        Assert.DoesNotContain("None of your words", page.WarningsYourWordsText);
+    }
+
+    [Theory]
+    [InlineData(1, "1 spelling match")]
+    [InlineData(2, "2 spelling matches")]
+    public void SpellingMatchesUseTheCorrectPluralAndDoNotClaimPhonemeUse(int count, string expected)
+    {
+        var finding = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Form",
+            [new GrammarWarningPart("form", GrammarWarningPartRole.Object,
+                "55555555-5555-4555-8555-555555555555", "MoForm")], [], "Parser refusal")
+        {
+            YourWords = new WarningWords(WarningWordsMatch.Spelling,
+                Enumerable.Range(0, count).Select(index => new ObjectUseWord(new SIL.Motif.Contract.Responses.WordRow("word" + index,
+                    WordRowOutcome.NotParsed, "Not parsed", WordRowTone.Neutral))).ToArray(), []),
+        };
+        var row = new GrammarWarningRowViewModel(finding);
+        Assert.Equal(expected, row.SpellingCandidatesText);
+        Assert.Equal("None of your words", row.LineSummaryText);
+        Assert.Equal(WarningDisplayState.SpellingCandidates, row.AttributionState);
+        Assert.DoesNotContain("phoneme", row.ReachStateText);
+    }
+
     private static readonly string ProjectPath = Path.Combine(Path.GetTempPath(), "sample.fwdata");
 
     private static readonly string[] EngineWords =

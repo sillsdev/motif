@@ -27,6 +27,7 @@ public static class WarningWordsQuery
         if (!current.Succeeded || current.Value!.Baseline?.Token != checkedBaseline ||
             current.Value.Assessment is not { } assessment)
             return check with { Findings = check.Findings.Select(finding => finding with { YourWords = null }).ToArray() };
+        check = StoredParseWarnings.Merge(check, current.Value);
         return WithYourWords(check, assessment.Words, current.Value.EffectiveObjectTimings,
             includeResolvedReadings: true);
     }
@@ -84,9 +85,9 @@ public static class WarningWordsQuery
             var stronger = exact.Select(word => word.Row.Word).ToHashSet(StringComparer.Ordinal);
             var members = ByIdentity(words, timings, membershipRoutes)
                 .Where(word => stronger.Add(word.Row.Word)).ToArray();
-            var spellings = routes.SelectMany(reach => reach.Spellings).Select(Fold)
-                .Where(spelling => spelling.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
-            var spelled = words.Where(word => !stronger.Contains(word.Word) && spellings.Any(Fold(word.Word).Contains))
+            var spelled = words.Where(word => !stronger.Contains(word.Word) && routes.Any(reach =>
+                    (!IsLexicalSpelling(reach) || !HasAnalysis(word)) &&
+                    reach.Spellings.Select(Fold).Any(spelling => spelling.Length > 0 && Fold(word.Word).Contains(spelling))))
                 .Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray();
             var paths = routes.Select(reach => reach.Path);
             if (exactRoutes.Length > 0)
@@ -180,6 +181,10 @@ public static class WarningWordsQuery
         var found = new Dictionary<string, ObjectUseWord>(StringComparer.Ordinal);
         foreach (var reach in reaches)
         {
+            Add(ObjectUsesQuery.Split(words.Where(word => word.Morphology?.Analyses.SelectMany(analysis => analysis.Morphs)
+                    .Any(morph => reach.AllomorphIds.Any(id => SameId(id, morph.Form)) ||
+                        reach.GrammaticalInfoIds.Any(id => SameId(id, morph.Msa))) == true)
+                .Select(word => new ObjectUseWord(WordRowProjection.Of(word))).ToArray()));
             foreach (var id in reach.AllomorphIds)
                 Add(ObjectUsesQuery.UsesOf(words, new ObjectUseRef { AllomorphId = id }));
             foreach (var id in reach.GrammaticalInfoIds)
@@ -199,6 +204,15 @@ public static class WarningWordsQuery
 
         static bool Measured(ObjectUseWord word) => word.Calls is not null || word.ElapsedNs is not null;
     }
+
+    private static bool IsLexicalSpelling(WarningReach reach) =>
+        (reach.Path is WarningWordsPath.Uses or WarningWordsPath.ThroughAllomorphs) && reach.AllomorphIds.Count > 0;
+
+    private static bool HasAnalysis(AssessmentWordResult word) => word.StoredAnalyses.Count > 0 ||
+        word.Readings is { Count: > 0 } || word.Morphology is { Analyses.Count: > 0 };
+
+    private static bool SameId(string left, string? right) =>
+        ObjectIdentity.Same(ObjectIdentity.Create("model", left), ObjectIdentity.Create("model", right));
 
     private static WarningWords Found(WarningWordsMatch match, IReadOnlyList<AssessmentWordResult> words,
         IEnumerable<ObjectUseWord> found, IEnumerable<WarningWordsPath> paths, bool includeResolvedReadings)

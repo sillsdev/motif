@@ -18,6 +18,22 @@ namespace SIL.Motif.Tests.Commands;
 [Collection(LcmCacheParallelCollections.Group2)]
 public sealed class WarningReachReaderTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void AllomorphAndEntryKeepBaselineSpellingsForRefusedTypedWords()
+    {
+        using var project = new NoTextsWarningProject(pristine);
+        using var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath);
+        var formId = project.Allomorphs.Single(item => item.Form == "fenêtre").AllomorphId;
+        var form = cache.ServiceLocator.ObjectRepository.GetObject(formId);
+        var entry = form.Owner;
+        foreach (var subject in new[] { form, entry })
+        {
+            var reach = WarningReachReader.Reach(Subject(subject), () => cache)!;
+            Assert.Contains("fenêtre".Normalize(System.Text.NormalizationForm.FormD), reach.Spellings);
+        }
+        Assert.Empty(cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances());
+    }
+
     [Theory]
     [InlineData("template", "membership", "msa")]
     [InlineData("slot", "membership", "msa")]

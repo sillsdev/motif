@@ -44,12 +44,15 @@ public static class OverviewCommand
             var associationEvidence = context.Succeeded ? context.Value! : evidence;
             var assessmentRows = associationEvidence.Assessment;
             if (storedCheck is not null)
+            {
+                storedCheck = StoredParseWarnings.Merge(storedCheck, associationEvidence);
                 storedCheck = associationEvidence.WordContextAvailable && assessmentRows is not null
                     ? WarningWordsQuery.WithYourWords(storedCheck, assessmentRows.Words, evidence.EffectiveObjectTimings)
                     : storedCheck with
                     {
                         Findings = storedCheck.Findings.Select(finding => finding with { YourWords = null }).ToArray(),
                     };
+            }
             var lookFirst = assessmentRows is not null
                 ? OverviewLookFirstBuilder.Build(assessmentRows.Words, evidence.EffectiveWords, storedCheck,
                     associationEvidence.WordContextAvailable)

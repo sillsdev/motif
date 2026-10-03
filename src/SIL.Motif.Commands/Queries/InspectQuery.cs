@@ -172,7 +172,7 @@ public static class InspectQuery
         var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
         var check = new GrammarCheckRepository(database).GetLatest(token);
         if (check is not null)
-            check = snapshot.Navigation!.Verify(check);
+            check = snapshot.Navigation!.Verify(StoredParseWarnings.Merge(check, snapshot));
         return check is null
             ? InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
                 "The grammar hasn't been checked since the last Refresh.")

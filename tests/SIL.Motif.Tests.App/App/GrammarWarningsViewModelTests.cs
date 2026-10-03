@@ -126,7 +126,8 @@ public sealed class GrammarWarningsViewModelTests
         Assert.Equal("2 of your words", rows["grammar.exact"].ReachSummaryText);
         Assert.Equal(WarningDisplayState.SpellingCandidates, rows["grammar.spelling"].AttributionState);
         Assert.Equal("None of your words", rows["grammar.spelling"].ReachSummaryText);
-        Assert.Equal("Matched by spelling only; this does not confirm the phoneme was used",
+        Assert.Equal("1 spelling match", rows["grammar.spelling"].SpellingCandidatesText);
+        Assert.Equal("Matched by spelling only; this does not confirm use of the named item",
             rows["grammar.spelling"].ReachStateText);
         Assert.Equal(WarningDisplayState.NoneInSelection, rows["grammar.none"].AttributionState);
         Assert.Equal("None of your words", rows["grammar.none"].ReachSummaryText);

@@ -11,8 +11,73 @@ namespace SIL.Motif.Tests.Commands;
 /// it reaches, by identity through the stored per-word rule times, by spelling only for letters and labelled so, and
 /// an explicit reason when no word attribution is possible. The join shows use, never cause.
 /// </summary>
+[Trait("MotifTestLevel", "Unit")]
 public sealed class WarningWordsQueryTests
 {
+    [Fact]
+    public void TypedWordsUseParserAnalysisIdentitiesWithoutFieldWorksAnalyses()
+    {
+        var word = new AssessmentWordResult("trois", "analysed", false, "Search completed", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "trois", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph("form-trois", "msa-trois", null, null)])], []),
+        };
+        var finding = Finding("no-category", Subject("LexEntry", "trois",
+            new WarningReach(WarningWordsPath.ThroughAllomorphs) { AllomorphIds = ["form-trois"] }));
+
+        var found = WarningWordsQuery.YourWordsOf(finding, [word], [])!;
+
+        Assert.Equal(WarningAttributionState.ExactUses, found.State);
+        Assert.Equal("trois", Assert.Single(found.Words).Row.Word);
+    }
+
+    [Fact]
+    public void RefusedTypedWordsCanMatchAllomorphSpellingWithoutClaimingIdentity()
+    {
+        var words = new[] { "Fenêtre", "fenêtres", "other" }.Select(word =>
+            new AssessmentWordResult(word, "skipped", false, "Invalid shape", 0, null)
+            {
+                Morphology = new ParseWordEvidence("v1", 0, word, 0, false, false, true, [], []),
+            }).ToArray();
+        var finding = Finding("unsegmentable", Subject("MoForm", "fenêtre",
+            new WarningReach(WarningWordsPath.Uses) { AllomorphIds = ["form-fenetre"], Spellings = ["fenêtre"] }));
+        var found = WarningWordsQuery.YourWordsOf(finding, words, [])!;
+
+        Assert.Equal(WarningAttributionState.SpellingCandidates, found.State);
+        Assert.Empty(found.Words);
+        Assert.Equal(["Fenêtre", "fenêtres"], found.SpellingCandidates.Select(word => word.Row.Word));
+    }
+
+    [Fact]
+    public void LexicalSpellingDoesNotOverrideADifferentRecordedAnalysis()
+    {
+        var word = new AssessmentWordResult("chat", "analysed", false, "Search completed", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "chat", 1, false, false, false,
+                [new ParseAnalysis([new ParseMorph("another-form", "another-msa", null, null)])], []),
+        };
+        var finding = Finding("unsegmentable", Subject("MoForm", "chat",
+            new WarningReach(WarningWordsPath.Uses) { AllomorphIds = ["form-chat"], Spellings = ["chat"] }));
+        var result = WarningWordsQuery.YourWordsOf(finding, [word], [])!;
+        Assert.Empty(result.Words);
+        Assert.Empty(result.SpellingCandidates);
+    }
+
+    [Fact]
+    public void RepeatedParserAnalysesCountEachSelectionWordOnceByCanonicalGuid()
+    {
+        var id = Guid.NewGuid().ToString("D");
+        var analysis = new ParseAnalysis([new ParseMorph(id.ToUpperInvariant(), null, null, null)]);
+        var word = new AssessmentWordResult("trois", "analysed", false, "Search completed", 1, null)
+        {
+            Morphology = new ParseWordEvidence("v1", 0, "trois", 1, false, false, false, [analysis, analysis], []),
+        };
+        var finding = Finding("no-category", Subject("LexEntry", "trois",
+            new WarningReach(WarningWordsPath.ThroughAllomorphs) { AllomorphIds = [id] }));
+        var result = WarningWordsQuery.YourWordsOf(finding, [word], [])!;
+        Assert.Equal("trois", Assert.Single(result.Words).Row.Word);
+    }
+
     private static ParserReadingMorph Morph(string form, string gloss, string id) =>
         new(form, gloss, "v", null, false, null) { AllomorphId = "form-" + id, GrammaticalInfoId = "msa-" + id };
 

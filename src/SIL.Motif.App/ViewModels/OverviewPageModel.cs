@@ -340,6 +340,9 @@ public sealed partial class OverviewPageModel : PageModel
         : !HasAssessment ? "Parse to see which of your words they touch"
         : warnings.YourWords is null ? string.Empty
         : !warnings.YourWords.IsComplete ? string.Empty
+        : warnings.YourWords.Words == 0 &&
+          (warnings.YourWords.BySpellingOnly > 0 || warnings.YourWords.ByMembershipOnly > 0)
+            ? "No confirmed word uses; possible matches were found"
         : warnings.YourWords.Words == 0 ? "None of your words use what a warning names"
         : $"{warnings.YourWords.Words:N0} of your words use what a warning names";
 
@@ -351,7 +354,12 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>The largest warning kinds, with exact identity matches and spelling candidates shown apart.</summary>
     public IReadOnlyList<OverviewWarningKindRow> WarningKindRows => Overview?.Warnings?.ByKind.Take(3)
         .Select(row => new OverviewWarningKindRow(row.GroupName ?? row.Code,
-            SpeedText.Count(row.Count, "warning", "warnings"),
+            row.Level switch
+            {
+                GrammarDiagnosticLevel.Error => SpeedText.Count(row.Count, "error", "errors"),
+                GrammarDiagnosticLevel.Warning => SpeedText.Count(row.Count, "warning", "warnings"),
+                _ => SpeedText.Count(row.Count, "information finding", "information findings"),
+            },
             WarningKindWordText(row),
             row.BySpellingOnly is > 0 and var candidates
                 ? $"{SpeedText.Count(candidates, "spelling-only match", "spelling-only matches")}; not confirmed uses"

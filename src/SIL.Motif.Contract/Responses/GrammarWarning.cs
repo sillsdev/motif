@@ -282,7 +282,10 @@ public sealed record WarningReach(WarningWordsPath Path)
     /// <summary>The kinds and keys PanGloss's statistics time the subject's rules under.</summary>
     public IReadOnlyList<TraceTimingKey> TimingKeys { get; init; } = [];
 
-    /// <summary>The letters that match a word spelled with them, as FieldWorks writes the phoneme's codes.</summary>
+    /// <summary>
+    /// The phoneme codes or vernacular allomorph forms that can match a word's spelling. Lexical forms are a
+    /// fallback only for words with no analysis, and never establish use of the named object by identity.
+    /// </summary>
     public IReadOnlyList<string> Spellings { get; init; } = [];
 
     /// <summary>Allomorph members of a resource, separate from exact lexical use routes.</summary>
@@ -359,7 +362,7 @@ public enum WarningWordsMatch
     [JsonStringEnumMemberName("identity")]
     Identity,
 
-    /// <summary>By spelling, because the finding names only letters or phonemes; shown labelled as such.</summary>
+    /// <summary>By spelling of named letters or forms, without analysis identity; shown labelled as such.</summary>
     [JsonStringEnumMemberName("spelling")]
     Spelling,
 

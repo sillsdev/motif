@@ -10,9 +10,8 @@ using SIL.Motif.Projection.Usage;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// Checks a project's grammar as a whole, independently of any Text or word, when requested or after a
-/// successful Baseline refresh. Holds no dependency on
-/// <see cref="AssessViewModel"/> — a grammar finding never comes from running an Assessment.
+/// Checks a project's grammar as a whole when requested or after a successful Baseline refresh. Reads stored
+/// findings alongside allomorph refusals retained by Parse all words, without starting another parse.
 /// </summary>
 public sealed partial class GrammarViewModel : ObservableObject
 {

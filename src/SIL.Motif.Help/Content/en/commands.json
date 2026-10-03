@@ -76,7 +76,7 @@
   },
   "warnings": {
     "title": "Read grammar warnings",
-    "description": "Reads stored grammar-check findings and can filter them by code or warning level. Each finding lists the words in your Selection that use what it names, from the stored Assessment.",
+    "description": "Reads stored grammar findings and allomorph refusals from parsing, with filters by code or warning level. Confirmed uses of Selection words stay separate from spelling and membership matches.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
   "grammar check": {

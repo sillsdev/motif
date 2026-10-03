@@ -7,7 +7,7 @@
              x:DataType="views:GrammarPanel">
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="muted"
-                              Text="PanGloss findings from a check of the whole grammar."
+                              Text="PanGloss findings from the grammar check and Parse all words."
                               TextWrapping="Wrap" />
 
     <Panel Grid.Row="1">
@@ -183,7 +183,7 @@
                         </ItemsControl>
                       </StackPanel>
                       <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Classes="muted" Text="Matched by spelling only" />
+                        <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingCandidatesText}" />
                         <ItemsControl ItemsSource="{Binding SpellingCandidateRows}">
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">

@@ -45,7 +45,11 @@ public static partial class WarningReachReader
         return kind switch
         {
             "MoForm" or "MoStemAllomorph" or "MoAffixAllomorph" or "MoAffixProcess" =>
-                new WarningReach(WarningWordsPath.Uses) { AllomorphIds = [id] },
+                new WarningReach(WarningWordsPath.Uses)
+                {
+                    AllomorphIds = [id],
+                    Spellings = FormSpellings((IMoForm)found),
+                },
             "MoMorphSynAnalysis" or "MoStemMsa" or "MoInflAffMsa" or "MoDerivAffMsa" or "MoUnclassifiedAffixMsa" =>
                 new WarningReach(WarningWordsPath.Uses) { GrammaticalInfoIds = [id] },
             "PhRegularRule" or "PhMetathesisRule" =>
@@ -55,6 +59,7 @@ public static partial class WarningReachReader
             "LexEntry" => Follow<ILexEntry>(cache(), guid, entry => new WarningReach(WarningWordsPath.ThroughAllomorphs)
             {
                 AllomorphIds = entry.AllAllomorphs.Select(Id).ToArray(),
+                Spellings = entry.AllAllomorphs.SelectMany(FormSpellings).Distinct(StringComparer.Ordinal).ToArray(),
             }),
             "LexSense" => Follow<ILexSense>(cache(), guid, sense =>
                 new WarningReach(WarningWordsPath.ThroughGrammaticalInfo)
@@ -167,4 +172,9 @@ public static partial class WarningReachReader
         new(path) { Reason = reason };
 
     private static string Id(ICmObject item) => item.Guid.ToString("D");
+
+    private static IReadOnlyList<string> FormSpellings(IMoForm form) => form.Form.AvailableWritingSystemIds
+        .Where(ws => form.Cache.ServiceLocator.WritingSystems.CurrentVernacularWritingSystems.Any(system => system.Handle == ws))
+        .Select(ws => form.Form.get_String(ws)?.Text)
+        .Where(text => !string.IsNullOrEmpty(text) && text != "***").Select(text => text!).ToArray();
 }

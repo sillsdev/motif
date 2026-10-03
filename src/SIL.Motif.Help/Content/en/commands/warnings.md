@@ -1,6 +1,6 @@
 # Read grammar warnings
 
-`warnings` reads grammar-check findings already stored for a project. It can filter by diagnostic code or show only findings at warning level.
+`warnings` reads grammar-check findings and allomorph refusals already recorded by parsing for a project. It can filter by diagnostic code or show only findings at warning level.
 
 ## When to use it
 
@@ -16,15 +16,17 @@ motif warnings --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --left-out --
 
 The response includes separate error, warning, and information counts, plus findings with PanGloss-owned titles, explanations, guidance, optional background, verified FieldWorks places, subjects, and links where available. Each finding retains the report locale. Missing references and project settings have explicit statuses and unavailable-link reasons. `--left-out` keeps warning-level findings only. With no Baseline, the command says to capture one; when a Baseline has no stored check, it says the grammar has not been checked yet.
 
+When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
+
 ## Your words
 
 When a stored Assessment from [Measure a Selection](cmd:assess) matches the current Baseline and Selection, each finding lists the words in the Selection reached by its subjects, with their meanings, such as Lost or Kept. The headline counts exact uses only, once per word, and says how many of those don't parse. Membership and spelling candidates have separate counts and never enter that headline. Each kind of finding gets the same separate counts.
 
 Motif finds the words from the object the finding names, by its FieldWorks identity:
 
-- an allomorph or grammatical info: the stored analyses that use it;
-- an entry or an environment: the stored analyses that use its allomorphs;
-- a sense: the stored analyses that use its grammatical info;
+- an allomorph or grammatical info: the FieldWorks or parser analyses that use it;
+- an entry or an environment: the FieldWorks or parser analyses that use its allomorphs;
+- a sense: the FieldWorks or parser analyses that use its grammatical info;
 - a natural class: the allomorphs its environments condition, and the words the phonological rules that name it ran in;
 - a rule: the words its stored per-word timings say it ran in.
 - a feature definition, value or specification: the allomorphs, grammatical infos and rules whose feature specifications name it;
@@ -34,6 +36,8 @@ Motif finds the words from the object the finding names, by its FieldWorks ident
 Templates and slots reach words using their affixes as **membership candidates**. Inflection types, ad hoc prohibitions, phoneme sets and feature systems also reach members as candidates: using a member does not prove a parse selected the named resource.
 
 Letters and phonemes reach **spelling candidates; not confirmed uses of the phoneme**. Spelling uses case-insensitive, canonically decomposed substring matching, which cannot establish phoneme identity. A feature owned by a phoneme keeps that same limit, including when reached through its feature system. A phoneme set follows its members' grammar references and omits spelling candidates.
+
+For a word with no analysis, an allomorph or entry also reaches spelling candidates through the vernacular forms recorded for the Baseline. This includes typed words the parser refused. The window calls these **spelling matches**, lists the words, and never presents the spelling alone as an exact use.
 
 For each finding, exact uses take precedence over membership candidates, then spelling candidates. The lists never share a word. The overall counts apply that precedence across all findings, too. The words show use, not cause: a word that uses what a warning names may fail for some other reason.
 

@@ -383,6 +383,10 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool HasExactRows => WordRows.Count > 0;
     public bool HasMembershipCandidates => MembershipCandidateRows.Count > 0;
     public bool HasSpellingCandidates => SpellingCandidateRows.Count > 0;
+    /// <summary>The number of distinct spelling matches, kept separate from confirmed identity uses.</summary>
+    public string SpellingCandidatesText =>
+        $"{(HasPartialCount ? "At least " : string.Empty)}{SpellingCandidateRows.Count:N0} " +
+        CountWord(SpellingCandidateRows.Count, "spelling match", "spelling matches");
     public bool HasAnyWordRows => HasExactRows || HasMembershipCandidates || HasSpellingCandidates;
     public int? YourWordsCount => AttributionState == WarningDisplayState.ExactUses ? WordRows.Count : null;
     public WarningDisplayState AttributionState { get; }
@@ -393,7 +397,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
             : "Your words use an item PanGloss named",
         WarningDisplayState.SpellingCandidates => IsPartialReach
             ? "These spellings match; Motif could not follow every named connection"
-            : "Matched by spelling only; this does not confirm the phoneme was used",
+            : "Matched by spelling only; this does not confirm use of the named item",
         WarningDisplayState.MembershipCandidates => IsPartialReach
             ? "These words use members of the named resource; Motif could not follow every named connection"
             : "These words use members of the named resource; use of the resource is not confirmed",
