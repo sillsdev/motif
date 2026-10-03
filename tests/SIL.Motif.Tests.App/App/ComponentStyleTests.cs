@@ -75,6 +75,44 @@ public sealed partial class ComponentStyleTests
     }
 
     [Fact]
+    public void ActionChipsAndOutcomeLegendsFitTheirText()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var chip = Press("actionChip", "primary");
+            chip.Content = "✓ Approve";
+            var bar = new OutcomeBar
+            {
+                ShowShares = false,
+                Segments = [new SIL.Motif.App.ViewModels.OutcomeSegment(SIL.Motif.App.ViewModels.Mark.NoParse, 1, "none")],
+            };
+            var window = new Window
+            {
+                Content = new StackPanel { Children = { chip, bar } },
+                Width = 300,
+                Height = 100,
+            };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var actionText = chip.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "✓ Approve");
+                var outcomeGlyph = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "∅");
+
+                LayoutAssertions.AssertCurrent(window);
+                Assert.True(chip.Bounds.Height >= actionText.Bounds.Height);
+                Assert.True(outcomeGlyph.Bounds.Height <= Assert.Single(
+                    outcomeGlyph.GetVisualAncestors().OfType<MarkGlyph>()).Bounds.Height);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ActionChipUsesItsHoverSurface()
     {
         _avalonia.Invoke(() =>
@@ -531,14 +569,14 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.TextMuted");
 
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
-        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.WidthProperty, "Component.Handoff.StepMarkSize");
+        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.MinWidthProperty, "Component.Handoff.StepMarkSize");
         yield return new("Handoff", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
         yield return new("Handoff", "a written file", host => Add(host, Box("handoffFile")), Border.BorderThicknessProperty,
             "Component.Handoff.FileEdge");
         yield return new("Handoff", "the page header", host => Add(host, Box("handoffHeader")), Border.PaddingProperty,
             "Component.Handoff.HeaderPadding");
 
-        yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");
+        yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.MinHeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
         yield return new("TopBar", "the project menu", host => Add(host, Press("projectMenu")),
             Button.MaxWidthProperty, "Component.TopBar.ProjectMenuMaxWidth");
@@ -549,7 +587,7 @@ public sealed partial class ComponentStyleTests
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
         yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Intent.Gap.CompactItem");
-        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.HeightProperty, "Component.Menu.ButtonHeight");
+        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.MinHeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
@@ -764,6 +802,14 @@ public sealed partial class ComponentStyleTests
         })
             yield return new("Mark", $"a {outcome} outcome", host => Add(host, Text("outcomeMark", outcome)),
                 TextBlock.ForegroundProperty, $"Intent.Outcome.{key}");
+        yield return new("OutcomeBar", "an outcome sign's line floor", host =>
+        {
+            var label = new StackPanel { Classes = { "outcomeLegendLabel" } };
+            var glyph = new MarkGlyph { Mark = SIL.Motif.App.ViewModels.Mark.NoParse, Classes = { "inline" } };
+            label.Children.Add(glyph);
+            host.Children.Add(label);
+            return glyph;
+        }, Control.MinHeightProperty, "Component.OutcomeBar.LegendLineHeight");
         yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
             Control.WidthProperty, "Component.Mark.InlineGlyphSize");
         yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
@@ -797,7 +843,7 @@ public sealed partial class ComponentStyleTests
             yield return new("Mark", $"a {step} trace step", host => Add(host, Text("stepMark", step)),
                 TextBlock.ForegroundProperty, key);
         yield return new("Mark", "a severity glyph", host => Add(host, Box("severityGlyph", "error")),
-            Border.WidthProperty, "Component.Mark.GlyphSize");
+            Border.MinWidthProperty, "Component.Mark.GlyphSize");
         yield return new("Mark", "a severity glyph", host => Add(host, Box("severityGlyph", "error")),
             Border.CornerRadiusProperty, "Component.Mark.GlyphRadius");
         yield return new("Mark", "an error glyph's ring", host => Add(host, Box("severityGlyph", "error")),
@@ -813,8 +859,6 @@ public sealed partial class ComponentStyleTests
                 TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
         yield return new("Mark", "a glyph's sign", host => Inside(host, Box("severityGlyph", "error")),
             TextBlock.FontSizeProperty, "Component.Mark.GlyphType");
-        yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
-            Button.HeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),
             Button.MinHeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
@@ -901,7 +945,7 @@ public sealed partial class ComponentStyleTests
         yield return new("HoverReveal", "a hidden secondary action", RevealControl,
             Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
-            Button.HeightProperty, "Component.HoverReveal.Height");
+            Button.MinHeightProperty, "Component.HoverReveal.Height");
         yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
@@ -923,7 +967,7 @@ public sealed partial class ComponentStyleTests
                 Assert.IsType<StackPanel>(DensityWordStrip(host, normal: true).Child).Children.OfType<TextBlock>().Single(),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
-            Control.HeightProperty, "Component.Density.CompactMarkSize");
+            Control.MinHeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("ToolTip", "a staged strip's tooltip words", TipInStagedStrip,

@@ -98,7 +98,7 @@
                           HorizontalAlignment="Left" AutomationProperties.Name="Chosen in Texts"
                           AutomationProperties.HelpText="{Binding UseCheckedWordsDisabledReason}" />
                   <TextBox Text="{Binding PickedWords}" AcceptsReturn="True" TextWrapping="Wrap"
-                           Height="{DynamicResource Component.Timing.PickerHeight}"
+                           MinHeight="{DynamicResource Component.Timing.PickerHeight}"
                            PlaceholderText="Type or paste words, one per line"
                            AutomationProperties.Name="Words picked by hand" />
                   <Button Content="Pick words" Command="{Binding UsePickedWordsCommand}" Click="CloseWordSourceFlyouts"

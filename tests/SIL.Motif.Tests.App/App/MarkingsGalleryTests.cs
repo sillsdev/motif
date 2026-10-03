@@ -207,8 +207,10 @@ public sealed class MarkingsGalleryTests
             var window = Show(gallery, ThemeVariant.Light);
             try
             {
-                Assert.Equal(13d, gallery.CompactText.FontSize);
-                Assert.Equal(15d, gallery.NormalText.FontSize);
+                var compactType = DensityValue("Component.Density.CompactType");
+                var normalType = DensityValue("Component.Density.NormalType");
+                Assert.Equal(compactType, gallery.CompactText.FontSize);
+                Assert.Equal(normalType, gallery.NormalText.FontSize);
                 Assert.True(gallery.NormalText.FontSize > gallery.CompactText.FontSize);
 
                 var compactMark = new Border { Classes = { "opinionMark", "approved" } };
@@ -224,14 +226,14 @@ public sealed class MarkingsGalleryTests
                 gallery.CompactRoot.Children.Add(compactWord);
                 gallery.NormalRoot.Children.Add(normalWord);
                 window.UpdateLayout();
-                Assert.Equal(13d, compactMark.Width);
-                Assert.Equal(15d, normalMark.Width);
-                Assert.Equal(17d, compactChip.Height);
-                Assert.Equal(19d, normalChip.Height);
-                Assert.Equal(19d, compactWord.MinHeight);
-                Assert.Equal(27d, normalWord.MinHeight);
-                Assert.Equal(13d, ((TextBlock)compactWord.Child!).FontSize);
-                Assert.Equal(15d, ((TextBlock)normalWord.Child!).FontSize);
+                Assert.Equal(DensityValue("Component.Density.CompactMarkSize"), compactMark.MinWidth);
+                Assert.Equal(DensityValue("Component.Density.NormalMarkSize"), normalMark.MinWidth);
+                Assert.Equal(DensityValue("Component.ActionChip.Height"), compactChip.MinHeight);
+                Assert.Equal(DensityValue("Component.Density.NormalActionHeight"), normalChip.MinHeight);
+                Assert.Equal(DensityValue("Component.Density.CompactWordHeight"), compactWord.MinHeight);
+                Assert.Equal(DensityValue("Component.Density.NormalWordHeight"), normalWord.MinHeight);
+                Assert.Equal(compactType, ((TextBlock)compactWord.Child!).FontSize);
+                Assert.Equal(normalType, ((TextBlock)normalWord.Child!).FontSize);
             }
             finally
             {
@@ -298,6 +300,9 @@ public sealed class MarkingsGalleryTests
         if (normal) word.Classes.Add("normal");
         return word;
     }
+
+    private static double DensityValue(string key) =>
+        Assert.IsType<double>(Application.Current!.FindResource(key));
 
     private static Color ColorResource(string key, ThemeVariant variant)
     {

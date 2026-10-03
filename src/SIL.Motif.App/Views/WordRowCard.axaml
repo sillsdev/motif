@@ -30,7 +30,8 @@
                                     <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
                                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                                                 VerticalAlignment="Top">
-                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding OpinionLabel}" />
+                                      <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding OpinionLabel}"
+                                                            views:ClearTipPlacement.IsEnabled="True" />
                                       <views:CopyableTextBlock Text="{Binding OpinionLabel}" FontWeight="SemiBold" />
                                     </StackPanel>
                                   </StackPanel>

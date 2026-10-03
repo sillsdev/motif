@@ -153,6 +153,10 @@ jobs:
             [[ -e "$tests/$library" ]] || { echo "Missing staged ICU library: $tests/$library" >&2; exit 1; }
           done < <(jq -r --arg rid "$ICU_RID" '.rids[$rid].libraries[]' "$payload")
 
+      - name: Prepare the selected test artifacts
+        shell: pwsh
+        run: ./tools/Prepare-TestArtifacts.ps1 -Configuration Release -ExplainedWordCardFixture
+
       - name: Run the selected tests
         shell: pwsh
         run: |

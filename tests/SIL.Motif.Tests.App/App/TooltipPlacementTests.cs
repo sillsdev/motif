@@ -58,6 +58,7 @@ public sealed class TooltipPlacementTests
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
                         await scenes.Reach(scene);
+                        PageScreenshots.Settle(scenes.Window);
                         foreach (var owner in owners.Where(owner => owner.Scene == scene))
                         foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
                         {
@@ -81,6 +82,9 @@ public sealed class TooltipPlacementTests
                                 failures.Add($"{where}: the {scene} scene showed no such owner");
                                 continue;
                             }
+                            if (owner.Key == "opinion on a word card")
+                                Assert.True(ClearTipPlacement.GetIsEnabled(control),
+                                    $"{where}: the opinion tooltip must use measured clear placement.");
                             if (await Hover(scenes, control) is not { } tip)
                             {
                                 var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
@@ -136,6 +140,7 @@ public sealed class TooltipPlacementTests
                 {
                     scenes.Width = width;
                     await scenes.Reach(TooltipScene.Matrix);
+                    PageScreenshots.Settle(scenes.Window);
 
                     var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
                     var owner = row.GetVisualDescendants().OfType<Control>().Single(wordForm.Is);
@@ -185,7 +190,10 @@ public sealed class TooltipPlacementTests
         PageScreenshots.Settle(window);
         await Task.Yield();
         PageScreenshots.Settle(window);
-        return ToolTip.GetIsOpen(owner) ? scenes.Visible<ToolTip>().SingleOrDefault() : null;
+        if (!ToolTip.GetIsOpen(owner)) return null;
+        var tip = scenes.Visible<ToolTip>().SingleOrDefault();
+        if (tip is not null) PageScreenshots.Settle(window);
+        return tip;
     }
 
     private static Point CenterAfterLayout(Control owner, Window window)

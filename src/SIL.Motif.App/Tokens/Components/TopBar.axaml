@@ -17,7 +17,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
     <Setter Property="Padding" Value="{DynamicResource Component.TopBar.Padding}" />
-    <Setter Property="Height" Value="{DynamicResource Component.TopBar.Height}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.TopBar.Height}" />
   </Style>
   <Style Selector="StackPanel.topBarGroup">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
