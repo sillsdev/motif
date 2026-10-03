@@ -4,7 +4,7 @@ theme: pitch
 paginate: true
 header: ''
 title: Motif in Brief
-description: What Motif is today, and how it carries SIL's parsing work toward FieldWorks
+description: What the Motif demonstration shows today, and how it carries SIL's parsing work toward FieldWorks
 ---
 
 <!-- _class: cover -->
@@ -12,7 +12,7 @@ description: What Motif is today, and how it carries SIL's parsing work toward F
 
 # Motif in Brief
 
-A proving ground for FieldWorks grammars, built on forty years of SIL parsing work.
+A working demonstration of tools for FieldWorks grammars, built on forty years of SIL parsing work.
 
 <div class="scripts"><span lang="am">ቋንቋ</span><span lang="ar" dir="rtl">لغة</span><span lang="hi">भाषा</span><span lang="my">ဘာသာစကား</span><span lang="en">language</span></div>
 
@@ -50,7 +50,7 @@ The linguistics is sound. What gets harder as a grammar grows is everything arou
 
 - **Waiting** Some combinations of rules become expensive to search. On one Amharic grammar, 7,000 words take about half an hour, and one word in six hits a five-second limit. When re-parsing is slow, it happens less, and the grammar improves more slowly.
 - **Seeing** Try a Word shows how one word was parsed. Nothing shows, across a whole text, where the time goes, which rules never fire, or which let in forms the language does not have.
-- **Reaching** A finished grammar serves FieldWorks and FLExTrans. Paratext, word processors and keyboards cannot yet use it for back-translations or spelling.
+- **Reaching** A finished grammar already does real work in FieldWorks and FLExTrans, and people publish with it. Paratext, word processors and keyboards cannot yet use it for back-translations or spelling.
 
 ![narrow](figures/seconds.dc.html)
 
@@ -61,9 +61,9 @@ The linguistics is sound. What gets harder as a grammar grows is everything arou
 <!-- _class: cols dense -->
 <!-- header: Motif today -->
 
-# Motif today
+# Motif today: a working demonstration
 
-**Motif** is a desktop application and command-line tool that works on the FieldWorks project a team already uses. It runs on Windows, macOS and Linux.
+**Motif** is a demonstration, not a finished product: a desktop application and command-line tool that shows, on the FieldWorks project a team already uses, what these tools could be. It runs on Windows, macOS and Linux.
 
 ### Seven pages in the window
 
@@ -87,7 +87,7 @@ An author marks analysis changes in Texts. Motif tries them on a copy of the pro
 
 One click writes five small files: grammar, texts, the latest results with traces, a helper script and a short guide. The author drags them into any AI chat, which explains in plain language why a word failed and what to change. The full project never leaves the machine.
 
-> **Not yet** Proposals across the whole grammar, reviewed in the window, and a finished way back from the assistant's advice to a reviewed change.
+> **Not yet** Support for a team's daily work, Proposals across the whole grammar, reviewed in the window, and a finished way back from the assistant's advice to a reviewed change.
 
 ---
 
@@ -96,7 +96,7 @@ One click writes five small files: grammar, texts, the latest results with trace
 
 # The grammar-improvement loop
 
-PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Steps 1 to 3 work today, and so do review and apply for analysis changes.
+PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Steps 1 to 3 can be seen working in the demonstration today, and so can review and apply for analysis changes.
 
 ![](diagrams/loop.svg)
 
@@ -117,15 +117,15 @@ PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. St
 
 # PanGloss underneath
 
-**PanGloss** is a port of HermitCrab to Rust. It follows the same algorithms, with some speedups of its own, and it is what Motif runs.
+**PanGloss** is a port of HermitCrab to Rust. It follows the same algorithms and shares their improvements, and it is what Motif runs.
 
 ### Faithful to HermitCrab
 
 Dozens of grammars that trace the contours of the parser hold PanGloss to HermitCrab's answers. Where the two differ, the difference is written up and tracked. It reads FieldWorks projects directly, so every existing FLEx grammar keeps working.
 
-### Faster by skipping work, never by guessing
+### Faster, never by guessing
 
-An optimisation may cost memory, never a correct answer. On the hardest words tested it keeps pace with the original, and speedups found on either side can move to the other.
+Better algorithms are built in HermitCrab and SIL.Machine and shared both ways. PanGloss's own long-term gains come from Rust: careful memory use, every processor core at work, and an engine that runs almost anywhere.
 
 <div class="break"></div>
 
@@ -146,9 +146,9 @@ An optimisation may cost memory, never a correct answer. On the hardest words te
 <!-- _class: cols dense -->
 <!-- header: Where it goes -->
 
-# A proving ground for FieldWorks
+# From demonstration to FieldWorks
 
-Motif is not meant to be one more program to install. It is where new ideas meet real grammars quickly, without putting a stable, widely used FieldWorks at risk. What works goes home to FieldWorks.
+Motif is not meant to be one more program to install. It is a demonstration where new ideas meet real grammars quickly, without putting a stable, widely used FieldWorks at risk. What works goes home to FieldWorks.
 
 ### Phase 1: into FieldWorks
 
@@ -182,7 +182,7 @@ Once grammars are fast and easy to build, they can work in **Paratext**, for bac
 2. **Choose pilot teams**: five to ten translation projects with a FieldWorks lexicon, interlinear texts and a grammar under way.
 3. **Publish a baseline** of today's parse speed and coverage on their data.
 4. **Finish the loop**, from the assistant's advice to a reviewed change, on real projects.
-5. **Bring it home**: move what Motif has proved into FieldWorks.
+5. **Bring it home**: move what Motif has demonstrated into FieldWorks.
 
 <div class="break"></div>
 

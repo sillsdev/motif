@@ -58,7 +58,7 @@ What those grammars need next is tooling that keeps pace as they grow: faster re
 **Who this is for:** SIL leadership deciding whether to fund Phase 1; language technology and Bible translation leaders who would deploy it; the FieldWorks and HermitCrab teams it builds on; and prospective partners for Phase 2.
 
 **Two ways to read this**
-In a hurry? Read the next page, then Chapter 3 (*Phase 1*) and Chapter 5 (*Risks, costs and next steps*). A shorter companion, *Motif in Brief*, covers what exists today in eight pages.
+In a hurry? Read the next page, then Chapter 3 (*Phase 1*) and Chapter 5 (*Risks, costs and next steps*). A shorter companion, *Motif in Brief*, covers the working demonstration that exists today, in eight pages.
 
 > **The one idea** A grammar is software for a language. Once it is fast, easy to build and runs everywhere, every tool that handles text in that language gets better at once.
 
@@ -71,11 +71,11 @@ In a hurry? Read the next page, then Chapter 3 (*Phase 1*) and Chapter 5 (*Risks
 
 | | Today | Phase 1 — Bible translation | Phase 2 — Every language community |
 |---|---|---|---|
-| **Speed** | Slows as a grammar grows: minutes to hours for a text | **50× faster (target)**: PanGloss plus algorithm improvements, shared with HermitCrab's own | **1,000× faster (target)**: grammars compiled to finite-state machines |
+| **Speed** | Slows as a grammar grows: minutes to hours for a text | **50× faster (target)**: algorithm improvements shared with HermitCrab in SIL.Machine, plus what Rust adds: careful memory use and every processor core | **Near-instant, as fast as typing (goal, to be proven)**: grammars compiled into a much faster form |
 | **Easy to build** | A trace per word; needs specialist support and years | Statistics, timing, progress and grammar-health diagnostics, with AI assistance, in FieldWorks | AI proposes grammar changes; statistical harvesting of the lexicon |
-| **Deployment** | FieldWorks and FLExTrans | **FieldWorks** and **Paratext**: back-translations and spelling checks where translators work | Firefox, LibreOffice, Wikipedia, Keyman prediction, literacy apps |
+| **Deployment** | FieldWorks and FLExTrans, where people already publish | **FieldWorks** and **Paratext**: back-translations and spelling checks where translators work | Firefox, LibreOffice, Wikipedia, Keyman prediction, literacy apps |
 | **Languages using it** | A committed few, many more in progress | **Hundreds**: a clear win for every Bible translation project | A **shared library** of grammars anyone can use |
-| **Completeness** | Mostly Scripture | Still Scripture | Coverage checks and report cards for news, health, literacy and school |
+| **Completeness** | Scripture first, where today's incentive lies | Scripture first | Coverage checks and report cards for news, health, literacy and school |
 
 > > **The invitation** Fund Phase 1 as a Bible translation tool, built together with the FieldWorks and HermitCrab teams. It is justified on that use alone. Treat Phase 2 as the long-term hope, and start the partner conversations now, because it needs them.
 
@@ -145,7 +145,7 @@ Every grammar in FieldWorks today stands on work that began in the 1980s: David 
 
 ### Work continuing today
 
-HermitCrab's maintainers are making it faster. Algorithm work in SIL.Machine is delivering 5–10× speedups, and FieldWorks can now limit runaway parses and parse only the words that still need an analysis.
+HermitCrab's maintainers are making it faster. Algorithm work in SIL.Machine is delivering 5–10× speedups, which PanGloss shares, and FieldWorks can now limit runaway parses and parse only the words that still need an analysis.
 
 > **Picking up the baton** This paper does not propose starting over. It proposes carrying this work the rest of the way: keeping every grammar already built, and giving the people building them tools that keep pace as their grammars grow.
 
@@ -159,9 +159,9 @@ Five things decide how far a grammar can reach. Today's tools have carried gramm
 
 - **1 · Speed** As a grammar grows, some combinations of rules become expensive to search. On one Amharic grammar a list of 7,000 words takes about half an hour, and one word in six hits a five-second limit. When re-parsing is slow it happens less often, and the grammar improves more slowly.
 - **2 · Easy to build** Try a Word shows how the parser handled one word, but nothing shows, across a whole text, where the time goes or which rules never fire. Building a grammar still takes specialist support and patient years.
-- **3 · Deployment** Grammars serve FieldWorks and FLExTrans well. The places people type, read and publish, from Paratext to word processors, browsers and keyboards, cannot yet use them.
+- **3 · Deployment** Grammars already do real work in FieldWorks and FLExTrans, and people publish with them. The aim is to broaden that: the other places people type, read and publish, from Paratext to word processors, browsers and keyboards, cannot yet use them.
 - **4 · Languages using it** A committed community of grammar builders, a handful of mature grammars and many more in progress. Ethnologue counts 7,159 living languages.
-- **5 · Completeness** Grammars are mostly built and tested against Scripture, the text translation teams work with most, rather than the everyday language of news, health or school.
+- **5 · Completeness** Nothing limits a grammar to one kind of text, but today's main incentive is Bible translation, so most grammars are built and tested on Scripture rather than the everyday language of news, health or school. That is a present reality, not SIL's hope.
 
 > **Why this matters** These five reinforce each other. Faster parsing makes grammars easier to build; easier grammars mean more languages; more languages give other tools a reason to use them; wider use gives a reason to make grammars complete. **Move one and the others start to move.**
 
@@ -175,9 +175,9 @@ Five things decide how far a grammar can reach. Today's tools have carried gramm
 
 HermitCrab's model of language is sound, and decades of grammars show it. What grammar builders need next lies in the engineering and tooling around it, which is exactly the part that has become cheaper to build.
 
-### Slow in places because of how it searches
+### Slow in places because of how much it explores
 
-HermitCrab tries every way a word *could* have been built, running rules backwards, and checks each against the lexicon. As a grammar grows, much of that work is repeated or cannot succeed. Better algorithms can skip it without changing a single answer, and HermitCrab's maintainers are already showing it, with 5–10× speedups in SIL.Machine.
+To be sure of every answer, a parser considers many ways a word *could* have been built, and as a grammar grows much of that is wasted. HermitCrab's maintainers are already skipping it without changing an answer, with 5–10× speedups in SIL.Machine.
 
 ### Hard to build because so much is hidden
 
@@ -194,7 +194,7 @@ HermitCrab is a C# library that runs inside FieldWorks, reading FieldWorks' own 
 
 ### Few languages, and Scripture first, because of the other three
 
-A grammar is a long commitment, and today it pays back in one application. FieldWorks serves more than 1,300 language communities; far fewer have taken a grammar to the point where the parser does daily work.
+A grammar is a long commitment, and today it pays back mainly in Bible translation. FieldWorks serves more than 1,300 language communities; far fewer have taken a grammar to the point where the parser does daily work.
 
 > **What changed** Three things. HermitCrab's maintainers have shown how much speed better algorithms can find. **PanGloss**, a faithful port of HermitCrab that runs anywhere, is under way. And AI tools have made this kind of software cheaper to build, and can help a linguist read a trace and propose a fix. **What remains is careful work, and it can now be done faster than before.**
 
@@ -216,13 +216,13 @@ A grammar is a long commitment, and today it pays back in one application. Field
 
 # If all five moved forward
 
-- **1 · Instant** Parsing is faster than typing. A whole Bible re-parses in the time it takes to save, and a keyboard can analyse each word as it is typed.
+- **1 · Near-instant** The goal, still to be proven: parsing as fast as typing, so a whole Bible re-parses in about the time it takes to save, and a keyboard can analyse each word as it is typed.
 - **2 · Weeks, not years** Someone who knows their language well can make steady progress on a grammar in weeks, with statistics, progress bars and an AI assistant that explains what went wrong.
 - **3 · Everywhere** In Paratext, Firefox and LibreOffice, on language-analysis websites, in spelling prediction and correction, and in instant back-translations for people and for AI.
 - **4 · Every language** Every language community that wants a working grammar can have one.
 - **5 · Full content** Grammars that handle news, health information, literacy materials and primary school textbooks, not only Scripture.
 
-![narrow](figures/seconds.dc.html)
+![narrow](figures/flourishing.dc.html)
 
 > > **The picture** A grammar becomes a gift a community gives to every tool that serves its language: built once, maintained by that community, and used wherever the language is written.
 
@@ -266,11 +266,11 @@ HermitCrab, and the grammars built with it over years, give a proven model and r
 
 ### The engine exists
 
-**PanGloss** is a port of HermitCrab to Rust. It follows the same algorithms, with some speedups of its own, and dozens of grammars that trace the contours of the parser hold it to the original's answers. It reads FieldWorks projects directly and builds as a native program, a C library or WebAssembly for the browser.
+**PanGloss** is a port of HermitCrab to Rust. It follows the same algorithms and shares their improvements, and dozens of grammars that trace the contours of the parser hold it to the original's answers. Rust adds careful memory use, every processor core at work, and an engine that runs almost anywhere, from a desktop to a browser.
 
-### A proving ground exists
+### A working demonstration exists
 
-**Motif** is a desktop application and command-line tool that shows a grammar author what their grammar is doing: which words parse, which fail, where the time goes, and what to fix. It is where these ideas are tried on real grammars before they move into FieldWorks.
+**Motif** is a desktop application and command-line tool that shows a grammar author what their grammar is doing: which words parse, which fail, where the time goes, and what to fix. It is a demonstration, not a finished product: where these ideas are tried on real grammars before they move into FieldWorks.
 
 ![](figures/stack.dc.html)
 
@@ -296,7 +296,7 @@ An AI assistant given a parser trace, the grammar and example texts can explain 
 
 # Two phases
 
-- **Phase 1 · Usable for Bible translation within SIL** Built with Bible translation in mind, so its value is easy to judge, and delivered through SIL's own software: FieldWorks, where grammars are built, and Paratext, where translators work. PanGloss makes grammars faster; the tools proved in Motif make them easier to build. **Justified by what it gives translation.**
+- **Phase 1 · Usable for Bible translation within SIL** Built with Bible translation in mind, so its value is easy to judge, and delivered through SIL's own software: FieldWorks, where grammars are built, and Paratext, where translators work. PanGloss makes grammars faster; the tools demonstrated in Motif make them easier to build. **Justified by what it gives translation.**
 - **Phase 2 · Usable for the flourishing of all language communities** Grammars leave the translation office: into browsers, word processors, keyboards, encyclopedias, literacy apps and a shared library of grammars. Coverage expands from Scripture to everyday language. Its work over large bodies of parallel text may live in a companion app rather than in FieldWorks. **Needs external partners, if only for broader acceptance.**
 
 ![narrow](diagrams/axes.svg)
@@ -325,13 +325,13 @@ Usable for Bible translation within SIL.
 
 | | Today | Phase 1 | How |
 |---|---|---|---|
-| **Speed** | Slows as a grammar grows | **50× faster (target)** | PanGloss, a port of HermitCrab, plus algorithm improvements that skip work without changing answers, shared with HermitCrab's own |
-| **Easy to build** | A trace per word; specialist support and years | **Stats, timing, progress and health diagnostics, with AI help** | PanGloss measures; Motif proves the views on real grammars, and they move into FieldWorks |
+| **Speed** | Slows as a grammar grows | **50× faster (target)** | Algorithm improvements made in HermitCrab and SIL.Machine and shared with PanGloss, plus what Rust adds: careful memory use and every processor core at work |
+| **Easy to build** | A trace per word; specialist support and years | **Stats, timing, progress and health diagnostics, with AI help** | PanGloss measures; Motif demonstrates the views on real grammars, and they move into FieldWorks |
 | **Deployment** | FieldWorks and FLExTrans | **FieldWorks and Paratext**: faster parsing where grammars are built; back-translations and spelling detection where translators work | PanGloss runs as a single native program or library, with no FieldWorks dependency |
 | **Languages** | A committed few, many in progress | **Hundreds (goal)** | A clear win for any translation team that already has a FieldWorks lexicon |
-| **Completeness** | Mostly Scripture | Scripture | By design: Phase 1 stays focused on the use that justifies it |
+| **Completeness** | Scripture first, where today's incentive lies | Scripture | By design: Phase 1 stays focused on the use that justifies it; nothing stops a team going wider |
 
-> **What Phase 1 does not try to do** Reach beyond Bible translation, publish grammars publicly, or compile finite-state machines. Those are Phase 2. Keeping Phase 1 narrow is what makes it quick to judge.
+> **What Phase 1 does not try to do** Reach beyond Bible translation, publish grammars publicly, or compile grammars for near-instant parsing. Those are Phase 2. Keeping Phase 1 narrow is what makes it quick to judge.
 
 ![narrow](figures/phase1-path.dc.html)
 
@@ -346,18 +346,16 @@ Usable for Bible translation within SIL.
 
 ### Faithful where it matters
 
-PanGloss ports HermitCrab's algorithms and is held to its answers. It opens a FieldWorks project directly, with no export step, and reads the same FLEx grammar as both FieldWorks parsers, HermitCrab and **XAMPLE**; a small differential test checks it against XAMPLE too.
+PanGloss ports HermitCrab's algorithms and is held to its answers. It opens a FieldWorks project directly, with no export step, and reads the same FLEx grammar as both FieldWorks parsers, HermitCrab and **XAMPLE**; a smaller set of tests checks it against XAMPLE too.
 
 ![](figures/conformance.dc.html)
 
-### Faster by skipping work, not by guessing
+### Faster, never by guessing
 
-The rule is strict: **an optimisation may cost memory or compile time, never a correct answer.** Each one is measured on real grammars and kept only with identical results.
+The rule is strict: **a speedup may cost memory or start-up time, never a correct answer.** Each one is measured on real grammars and kept only with identical results.
 
-- **Pruning** abandons paths that could never rebuild the word; on one test grammar it cut the search dramatically.
-- **Smarter bookkeeping** stops comparing every candidate with every other; on the hardest words tested, the port keeps pace with the original.
-- **Parallel batches** spread a word list across every core.
-- **Shared with HermitCrab.** A speedup found on either side can move to the other.
+- **Shared with HermitCrab.** Better algorithms are being built in HermitCrab and SIL.Machine. PanGloss follows them, and a speedup found on either side can move to the other.
+- **What Rust adds.** PanGloss's own long-term gains come from the language it is written in: careful memory use, a word list spread across every processor core, and one engine that can be deployed almost anywhere.
 
 <div class="break"></div>
 
@@ -374,9 +372,9 @@ Rust builds a single native program for Windows, macOS and Linux, with no runtim
 
 All four exist in source today. Packaged, signed releases are Phase 1 work.
 
-### No finite-state compiler in Phase 1
+### Near-instant parsing waits for Phase 2
 
-A finite-state compiler makes parsing near-instant, and research on one is well advanced. Phase 1 does not depend on it. It is the centrepiece of Phase 2.
+Compiling a grammar into a much faster form could make parsing near-instant. The research is promising but unproven, so Phase 1 does not depend on it. It is the centrepiece of Phase 2.
 
 > **Why a port, not a new parser** Every existing FLEx grammar keeps working, every hour already spent on one is kept, and every answer can be checked against the original. Nobody has to trust a new engine on faith.
 
@@ -397,14 +395,9 @@ Every word is timed. The slowest words are listed, and a runaway word is stopped
 
 Run over a representative word list, the statistics answer the questions an author actually asks:
 
-```text
-pangloss stats grammar.fwdata --group group
-    where did the time go, by kind of rule?
-pangloss stats grammar.fwdata --group never-fires
-    which rules never produced anything?
-pangloss stats grammar.fwdata --sort no-root
-    which rules build forms no root can finish?
-```
+- Where did the time go, and in which parts of the grammar?
+- Which rules never produced anything?
+- Which rules build forms that no root can finish?
 
 <div class="break"></div>
 
@@ -415,7 +408,7 @@ pangloss stats grammar.fwdata --sort no-root
 ![](figures/health.dc.html)
 
 - **A partial morpheme.** A stem with no category, or an affix with no slot, can attach almost anywhere. The parser then explores far more paths, and **one such entry can slow down every word**, not just the words that use it.
-- **Two phonemes that look identical** once Unicode is normalised, so one is silently skipped or the two are confused.
+- **Two phonemes that look identical** on screen but are stored differently, so one is silently skipped or the two are confused.
 
 > **The principle** Reporting never changes a parse. PanGloss keeps or drops exactly what HermitCrab would; the report only decides how loudly to say so.
 
@@ -426,11 +419,11 @@ pangloss stats grammar.fwdata --sort no-root
 <!-- _class: cols dense -->
 <!-- header: Chapter 3 · Motif -->
 
-# Motif: a proving ground for FieldWorks
+# Motif: a working demonstration
 
-**Motif** is where these ideas are tried on real grammars before they move into FieldWorks. It is a desktop application and a command-line tool with the same abilities, working on the FieldWorks project the translation team already uses.
+**Motif** is a demonstration, not a finished product. It shows on real grammars what these tools could be, so that the ones that prove themselves can move into FieldWorks. It is a desktop application and a command-line tool with the same abilities, working on the FieldWorks project the translation team already uses.
 
-### What the window shows today
+### What the demonstration shows today
 
 - **Overview**: how much of the chosen texts the grammar parses, how accurately, and how fast
 - **Texts**: every word in context, parsed or not
@@ -461,7 +454,7 @@ An author marks analysis changes in Texts: approve this one, reject that one. Mo
 <!-- _class: cols dense -->
 <!-- header: Chapter 3 · FieldWorks -->
 
-# From proving ground to FieldWorks
+# From demonstration to FieldWorks
 
 Motif is not meant to become one more program for a translation team to install. What proves itself there is meant to move into FieldWorks, where grammars are already built.
 
@@ -483,7 +476,7 @@ Phase 2 works with parallel texts and statistical word harvesting: tens to hundr
 
 HermitCrab's maintainers and FieldWorks' developers know these grammars, and the people who build them, better than anyone. Speedups, diagnostics and interface work should flow both ways.
 
-> > **A testing ground, not a new product** Motif lets new ideas meet real grammars quickly, without putting a stable, widely used FieldWorks at risk. What works goes home to FieldWorks.
+> > **A demonstration, not a new product** Motif lets new ideas meet real grammars quickly, without putting a stable, widely used FieldWorks at risk. What works goes home to FieldWorks.
 
 ---
 
@@ -492,7 +485,7 @@ HermitCrab's maintainers and FieldWorks' developers know these grammars, and the
 
 # The grammar-improvement loop
 
-This is how a grammar gets better each week instead of each year. PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Steps 1 to 3 work in Motif today, and so do review and apply for analysis changes. Phase 1 finishes the return path from the assistant's advice to a reviewed Proposal across the whole grammar.
+This is how a grammar gets better each week instead of each year. PanGloss measures, Motif shows, an AI assistant drafts, and a person decides. Steps 1 to 3 can be seen working in the Motif demonstration today, and so can review and apply for analysis changes. Phase 1 finishes the return path from the assistant's advice to a reviewed Proposal across the whole grammar.
 
 ![](diagrams/loop.svg)
 
@@ -550,7 +543,7 @@ Usable for the flourishing of all language communities.
 
 | | Phase 1 | Phase 2 | How |
 |---|---|---|---|
-| **Speed** | 50× faster (target) | **1,000× faster (target)** | PanGloss 2.0 compiles a grammar into a finite-state machine that proposes answers in microseconds; the exact engine confirms them |
+| **Speed** | 50× faster (target) | **Near-instant, as fast as typing (goal, to be proven)** | PanGloss 2.0 compiles a grammar into a faster form that suggests answers almost at once; the full engine checks each one |
 | **Easy to build** | Diagnostics and AI help | **AI generates changes; the lexicon is harvested statistically** | Motif 2.0, perhaps as a companion app, learns from parallel texts across many domains and integrates statistical tools |
 | **Deployment** | FieldWorks and Paratext | **Wikipedia, Firefox, LibreOffice, Keyman prediction, literacy apps** | Language Packs that any host can load, published through a shared library |
 | **Languages** | Hundreds | **Every community that wants one** | A shared library where communities publish grammars for spell checkers, predictors and more |
@@ -563,17 +556,19 @@ Usable for the flourishing of all language communities.
 <!-- _class: cols dense -->
 <!-- header: Chapter 4 · PanGloss 2.0 -->
 
-# PanGloss 2.0: instant
+# PanGloss 2.0: as fast as typing?
 
-### Compiling grammars to finite-state machines
+### The goal, still to be proven
 
-A **finite-state transducer (FST)** reads a word one letter at a time and emits its analysis. It is how the fastest morphological analysers in the world work: microseconds per word, small enough for a phone.
+Phase 2 aims for parsing that feels instant: fast enough to check each word as it is typed, on a phone as well as a desktop. The fastest analysers in the world get there by compiling a grammar ahead of time into a compact, quick form. Whether PanGloss can do the same for FLEx grammars, across everything they describe, is what Phase 2 has to show.
 
-The risk with an FST is that it can be subtly wrong, because some grammar rules are hard to express in one. PanGloss 2.0 avoids that risk with **propose-and-confirm**: the FST *proposes* candidate analyses almost instantly, and the exact HermitCrab engine *confirms* each one.
+### Fast suggestions, checked answers
 
-The FST is held to never miss an analysis the full engine would find, so **it can only ever cost speed, never correctness.** Where a rule cannot be compiled safely, PanGloss says so and uses the exact engine for it.
+A compiled grammar can be subtly wrong, because some rules are hard to capture in one. PanGloss 2.0 is designed to avoid that risk with **propose-and-confirm**: the fast form *proposes* likely analyses almost at once, and the full HermitCrab engine *confirms* each one.
 
-> **Early experiments** point to an order-of-magnitude gain over the full engine, with matching answers on the words compared. The path is not yet certified: today's safety checks refuse some grammar constructs, and those take the exact engine.
+The fast form is built never to miss an analysis the full engine would find, so **it can cost speed, never correctness.** Where part of a grammar cannot be compiled safely, PanGloss says so and uses the full engine for it.
+
+> **Early, not proven** Early experiments are encouraging, with matching answers on the words compared. The approach has not yet been tested across real translation grammars, and some parts of a grammar still need the full engine.
 
 <div class="break"></div>
 
@@ -588,21 +583,21 @@ The FST is held to never miss an analysis the full engine would find, so **it ca
 
 ### From detection to correction
 
-Detection says a word is wrong. Correction says what was meant. It layers five signals, each cheap enough to run as someone types:
+Detection says a word is wrong. Correction says what was meant. It is designed to layer five signals, each meant to be cheap enough to run as someone types:
 
-1. **Edit candidates**: a precompiled index maps likely typos straight to real words in one pass
+1. **Likely typos**: common slips matched quickly to real words
 2. **Keyboard distance**: nearby keys on the actual layout make a slip more likely
 3. **Sound-alikes**: spelling-by-ear errors, matched through the language's own sound rules
 4. **Diacritics**: missing or misplaced accents and tone marks, restored only to words the grammar can build
-5. **Context**: word pairs and triples from real text rank the candidates
+5. **Context**: which words usually appear together in real text
 
 ### Restoring diacritics
 
-French checkers such as LanguageTool and Antidote already flag missing accents, and a Keyman keyboard can suggest *naïve* for *naiv*. In many minority languages the marks carry meaning: in Yorùbá and Igbo, tone marks tell apart words otherwise spelled alike, yet people often type without them. A grammar adds what a word list cannot: it proposes only the marked forms it can build, and a tone rule it encodes rules out the rest. Where two marked words are both valid, context decides. Unicode normalisation cannot do this: it matches encodings but never restores a missing mark.
+French checkers such as LanguageTool and Antidote already flag missing accents, and a Keyman keyboard can suggest *naïve* for *naiv*. In many minority languages the marks carry meaning: in Yorùbá and Igbo, tone marks tell apart words otherwise spelled alike, yet people often type without them. A grammar adds what a word list cannot: it proposes only the marked forms it can build, and a tone rule it encodes rules out the rest. Where two marked words are both valid, context decides. Tidying how text is stored cannot do this: it never restores a missing mark.
 
 ### Built from lots of text
 
-PanGloss 2.0 builds caches of known words, their analyses and N-gram statistics from large text collections, so correction and prediction reflect how the language is really written.
+PanGloss 2.0 learns from large text collections which words occur, how they are analysed and which appear together, so correction and prediction reflect how the language is really written.
 
 <div class="break"></div>
 
@@ -682,7 +677,7 @@ A grammar built on Scripture knows Scripture's words. A health leaflet or a math
 
 ### Coverage checks
 
-- **Text coverage** (in Motif today): what share of the words in the chosen texts the grammar parses
+- **Text coverage** (in the Motif demonstration today): what share of the words in the chosen texts the grammar parses
 - **Grammar coverage**: the same measure over a named collection of texts, so a health leaflet and a gospel can be scored apart
 - **Feature coverage** (designed): which combinations of affixes and slots the texts actually use, and which the grammar allows that no text shows. Each leftover is either a rule that is too broad or a word nobody has collected yet, and a person decides which
 
@@ -715,10 +710,10 @@ Report cards travel with the Language Pack, so a host can decide whether a gramm
 # What could go wrong
 
 - **Grammar-building is still skilled work** AI and diagnostics lower the bar; they do not remove it. **Mitigation:** Phase 1 starts with teams that already have FieldWorks data, a grammar under way and linguistic support, and measures how long a grammar really takes.
-- **Speed targets are targets** 50× and 1,000× are goals, not measurements across real grammars, and a few HermitCrab constructs cannot be compiled safely. **Mitigation:** publish a benchmark on real translation grammars at each milestone; rules that resist compilation take the exact engine, costing speed, never answers.
+- **Speed targets are targets** 50× and near-instant parsing are goals, not measurements across real grammars, and some parts of a grammar may never compile safely. **Mitigation:** publish a benchmark on real translation grammars at each milestone; whatever resists compiling takes the full engine, costing speed, never answers.
 - **Working apart** Building beside HermitCrab instead of with it would split effort and lose decades of knowledge. **Mitigation:** plan with the SIL.Machine and FieldWorks maintainers from the start; conformance keeps PanGloss answering to HermitCrab, and improvements flow both ways.
 - **Adoption outside SIL** Browser makers and encyclopedias will not ship tools they cannot evaluate. **Mitigation:** report cards, data-only Language Packs, open formats, and early partner conversations.
-- **Prior art** Giellatekno and Divvun have built finite-state language tools for minority languages since 2001, now across more than 100 languages. **Mitigation:** PanGloss is complementary: it starts from grammars FLEx users already have, and confirms every FST answer against the exact engine. We learn from their best techniques.
+- **Prior art** Giellatekno and Divvun have built fast spelling and language tools for minority languages since 2001, now across more than 100 languages. **Mitigation:** PanGloss is complementary: it starts from grammars FLEx users already have, and checks every fast answer against the full engine. We learn from their best techniques.
 - **Community ownership** Publishing a grammar is publishing a community's knowledge. **Mitigation:** consent and licensing built into the shared library from the start.
 
 ---
@@ -729,7 +724,7 @@ Report cards travel with the Language Pack, so a host can decide whether a gramm
 
 ### Phase 1: SIL, justified by translation
 
-Phase 1 builds on work already under way. PanGloss and Motif exist and run today; what remains is finishing them, moving what Motif has proved into FieldWorks, integrating with Paratext, and supporting the first translation teams as they build grammars.
+Phase 1 builds on work already under way. PanGloss runs today, and Motif runs as a working demonstration; what remains is finishing PanGloss, moving what Motif has demonstrated into FieldWorks, integrating with Paratext, and supporting the first translation teams as they build grammars.
 
 With modern tools the engineering is a small team working alongside the FieldWorks and HermitCrab maintainers, not a department. The larger cost is linguistic: supporting teams as they take their grammars further.
 
@@ -764,7 +759,7 @@ Phase 2 reaches beyond SIL's own software, so it needs others:
 2. **Choose pilot projects.** Five to ten Bible translation teams with a FieldWorks lexicon, interlinear texts, a grammar under way and a willing consultant.
 3. **Publish a baseline.** Measure today's parse speed and coverage on their data, so every later claim has a before.
 4. **Finish the loop.** Complete Assessment, Handoff and Proposals end to end on real projects.
-5. **Bring it home.** Move what Motif has proved into FieldWorks, and ship back-translations and spelling detection in Paratext to the pilot teams.
+5. **Bring it home.** Move what Motif has demonstrated into FieldWorks, and ship back-translations and spelling detection in Paratext to the pilot teams.
 6. **Report.** Time to a working grammar, speedup achieved, and what translators and consultants say.
 
 <div class="break"></div>
@@ -796,8 +791,6 @@ Phase 2 reaches beyond SIL's own software, so it needs others:
 
 **FLExTrans** A machine-translation system built on FieldWorks data.
 
-**Finite-state transducer (FST)** A compact machine that reads a word letter by letter and emits its analysis, in microseconds.
-
 **Grammar** A description of how the words of a language are built.
 
 **Handoff** Motif's package of grammar, words, texts and traces for an AI assistant.
@@ -812,7 +805,7 @@ Phase 2 reaches beyond SIL's own software, so it needs others:
 
 **Morpheme** The smallest piece of a word that carries meaning.
 
-**Motif** The proving ground for building, measuring and changing grammars; what works moves into FieldWorks.
+**Motif** A working demonstration of tools for building, measuring and changing grammars; what proves itself moves into FieldWorks.
 
 **PanGloss** A port of HermitCrab to Rust: the same algorithms, portable and measurable.
 
