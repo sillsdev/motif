@@ -350,12 +350,12 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal([TextId], saved.TextIds);
         Assert.Equal(["added word"], saved.AddedWords);
         using var savedJson = JsonDocument.Parse(JsonSerializer.Serialize(saved));
-        Assert.Equal(40_000, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
+        Assert.Equal(8_000, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
         Assert.Equal(SIL.Motif.Contract.Assess.StepCap.DefaultSteps,
             savedJson.RootElement.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
-        Assert.Equal(40_000, assess.PerWordLimitMs);
+        Assert.Equal(8_000, assess.PerWordLimitMs);
         Assert.Equal(StepCap.Default, assess.PerWordStepLimit);
         Assert.Collection(fake.UsageEntries,
             entry => Assert.Equal("project browse", entry.Command),

@@ -137,10 +137,10 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(rate.Value!.IsTypicalMachine);
         Assert.Equal(StepLimitEstimator.TypicalMachineMillisecondsPerStep,
             rate.Value.MillisecondsPerStep);
-        var estimate = StepLimitEstimator.Calculate(new StepCap(1_000_000), rate.Value);
+        var estimate = StepLimitEstimator.Calculate(StepCap.Default, rate.Value);
         Assert.NotNull(estimate);
-        Assert.Equal(4_000, estimate.EstimatedMilliseconds);
-        Assert.Equal(40_000, estimate.PerWordTimeLimitMs);
+        Assert.Equal(800, estimate.EstimatedMilliseconds);
+        Assert.Equal(8_000, estimate.PerWordTimeLimitMs);
     }
 
     [Fact]

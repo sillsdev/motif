@@ -8,7 +8,7 @@ namespace SIL.Motif.Contract.Assess;
 [JsonConverter(typeof(StepCapJsonConverter))]
 public sealed record StepCap
 {
-    public const long DefaultSteps = 1_000_000;
+    public const long DefaultSteps = 200_000;
 
     public StepCap(long? steps)
     {

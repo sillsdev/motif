@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -47,7 +48,7 @@ public sealed class TimingHeadlineTests
         Assert.Equal("1", timing.HeadlineStopped);
         Assert.Equal("stopped at the step limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
-        Assert.Equal(1_000_000m, timing.RerunSteps);
+        Assert.Equal((decimal)StepCap.DefaultSteps, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
         Assert.Equal("Stopped at the step limit · Raise it under More.",
             timing.StoppedWordsAdviceText);

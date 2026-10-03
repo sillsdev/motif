@@ -4,6 +4,8 @@ Motif shows you how well a FieldWorks parser handles your language. It shows whi
 
 **To use Motif:** download the Windows beta from the [latest release](https://github.com/sillsdev/motif/releases/latest) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is in beta, so try it on a copy of your project first.
 
+New choices default to a limit of 200,000 parser steps per word. A project's saved limit remains in effect.
+
 **To build Motif:** read on. The `motif` command and the window share one set of commands; the [architecture overview](docs/current-architecture.md) shows how the projects fit together.
 
 ## Build from source

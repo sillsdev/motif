@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -127,7 +128,7 @@ public sealed class SetupRefusalViewTests
                     .Select(block => block.Text ?? string.Empty).ToArray();
                 var numbers = dialog.GetLogicalDescendants().OfType<NumericUpDown>().ToArray();
                 Assert.Contains(setup.StepLimitEstimateText, texts);
-                Assert.Contains(texts, text => text.Contains("1,000,000 steps is the default", StringComparison.Ordinal));
+                Assert.Contains(texts, text => text.Contains($"{StepCap.DefaultSteps:N0} steps is the default", StringComparison.Ordinal));
                 Assert.DoesNotContain(numbers, number =>
                     Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
                 Assert.Single(numbers);

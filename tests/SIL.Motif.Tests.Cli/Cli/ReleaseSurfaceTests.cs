@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using SIL.Motif.Cli;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker;
@@ -131,7 +132,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Null(usageLine);
         }
         Assert.Contains("Configuration (the declared", result.Error, StringComparison.Ordinal);
-        Assert.Contains("The default per-word step cap is 1,000,000 steps.", result.Error, StringComparison.Ordinal);
+        Assert.Contains($"The default per-word step cap is {StepCap.DefaultSteps:N0} steps.", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

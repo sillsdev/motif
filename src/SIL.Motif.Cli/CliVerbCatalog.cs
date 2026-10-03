@@ -198,7 +198,7 @@ public static class CliVerbCatalog
                 "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] " +
                 "[--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
-                "The default per-word step cap is 1,000,000 steps.",
+                "The default per-word step cap is 200,000 steps.",
             }),
 
         new CliVerbDescriptor(
