@@ -19,13 +19,14 @@ import guideFeatures from '../../data/guide-features.json';
 <div class="home-page">
 	<HomeHero>
 		<p class="home-eyebrow"><HomeLocalizedText message="home.betaHeroEyebrow" /></p>
-		<h1>Motif can help you teach a dumb computer your language.</h1>
-		<p>You know the linguistics. An AI consultant can help connect it to parser rules and FieldWorks settings. Motif gives you measured results, recorded traces when available, and timing. Review changes can measure pending analysis changes; after a grammar edit in FieldWorks, save the project and parse the chosen words again.</p>
+		<h1>Teach the FieldWorks parser your language, and see exactly where it disagrees with you.</h1>
+		<p>Motif parses the words you choose and shows which ones parse, which of your approved analyses the grammar still builds, and which words are slow. It reads your saved FieldWorks project and writes nothing to it until you press <strong>Apply</strong>. Bring an AI consultant if you like: Motif hands it the evidence.</p>
+		<p>An AI Handoff can contain real project data. Check the files before you share them.</p>
 		<nav aria-label="Home actions">
 			<a class="home-button home-button--download" href="https://github.com/sillsdev/motif/releases/latest"><HomeLocalizedText message="home.betaDownload" /></a>
-			<a class="home-button home-button--outline" href="#work-with-ai">See how the AI helps</a>
+			<a class="home-button home-button--outline" href="/guide/what-is-motif/">How to start</a>
 		</nav>
-		<p><a href="/guide/install/">How to install Motif</a></p>
+		<p><a href="/guide/install/">How to install Motif</a> · <a href="#work-with-ai">See how the AI helps</a></p>
 		<p class="home-release-status"><HomeLocalizedText message="home.betaStatus" /></p>
 		<div slot="exchange" class="home-exchange">
 			<article class="home-exchange__person">
@@ -34,7 +35,7 @@ import guideFeatures from '../../data/guide-features.json';
 			</article>
 			<article class="home-exchange__consultant">
 				<h2>AI consultant, reading Motif’s Handoff</h2>
-				<p>The trace records searches that stop at the plural. The environment is one place to investigate. In FieldWorks, open the plural suffix and check its environment — then choose <strong>Parse all words</strong> in Motif to measure the saved grammar again.</p>
+				<p>The trace records searches that stop at the plural. The environment is one place to investigate. In FieldWorks, open the plural suffix and check its environment — then choose <strong>Refresh</strong> and <strong>Parse all words</strong> in Motif to measure the saved grammar again.</p>
 			</article>
 			<p class="home-exchange__note"><HomeLocalizedText message="home.syntheticExchangeNote" /></p>
 		</div>
@@ -44,7 +45,7 @@ import guideFeatures from '../../data/guide-features.json';
 		{ text: 'You know when a word is right. Motif helps the computer learn it too.', strong: true },
 		{ text: 'The parser isn’t smart. It’s literal. Motif shows you what it took literally.' },
 		{ text: 'You’ve described the morphology. Now get the computer to agree.' },
-		{ text: 'A grammar that parses right can still parse slowly. Find the one change that fixes it.' },
+		{ text: 'A grammar that parses right can still parse slowly. Timing shows which words and rules take the time.' },
 		{ text: 'The AI doesn’t replace your judgement. It translates it into rules.' },
 	]} />
 
@@ -59,7 +60,7 @@ import guideFeatures from '../../data/guide-features.json';
 	<HomeSection id="work-with-ai" className="home-ai-section">
 		<header>
 			<h2>Writing a parser is computer science. You shouldn’t have to do it alone.</h2>
-			<p>Getting a parser to accept a language means turning linguistics into rules a machine follows literally. Motif gives an AI consultant measured results, recorded traces when available, and documentation written for it to read. A trace shows the parser’s recorded search; a missing reason stays missing.</p>
+			<p>Getting a parser to accept a language means turning linguistics into rules a machine follows literally. Motif gives an AI consultant measured results, recorded traces when available, and documentation written for it to read. A trace shows what the parser tried on a word. When the parser didn't record why it stopped, Motif doesn't guess.</p>
 		</header>
 		<div class="home-card-grid home-card-grid--three">
 			<article class="home-card">
@@ -75,13 +76,13 @@ import guideFeatures from '../../data/guide-features.json';
 			<article class="home-card">
 				<p class="home-card__eyebrow">Motif brings</p>
 				<h3>The evidence</h3>
-				<p>Coverage over the chosen Selection, recorded traces when available, timing, and an AI Handoff folder you can choose to share. Review changes measures pending analysis changes before Apply; grammar edits are measured after you save and parse again.</p>
+				<p>Which of your words parse, what the parser tried on each one, how long it took, and a folder of evidence you can choose to share with an AI. Check the folder first: it can contain real project data. Before you apply an analysis change, Motif measures what it would do. After a grammar edit, save it in FieldWorks, then Refresh and parse again.</p>
 			</article>
 		</div>
 		<aside class="home-ai-band">
 			<div>
 				<h3>Works with the AI you already use</h3>
-				<p>Drag the AI Handoff into a chat, or let an agent drive Motif directly: every command answers in JSON, and one call describes them all.</p>
+				<p>Or make an <strong>AI Handoff</strong> folder and drag it into a chat. Check what it contains first: it holds real project data. Or let an agent drive Motif directly: every command answers in JSON, and one call describes them all.</p>
 			</div>
 			<pre><code>{'motif help --all --json\nmotif handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]'}</code></pre>
 			<p><a href="/llms.txt">/llms.txt — the full site index for agents</a></p>
@@ -147,7 +148,7 @@ import guideFeatures from '../../data/guide-features.json';
 			<span class="home-diagram__flow-label home-diagram__flow-label--read" aria-hidden="true">reads</span>
 			<span class="home-diagram__flow-label home-diagram__flow-label--shows" aria-hidden="true">shows</span>
 			<article><h3>FieldWorks</h3><p>Owns your data</p><ul><li>Lexicon and grammar</li><li>Texts</li><li>Your analyses</li></ul></article>
-			<article><h3>Motif</h3><p>Measures and explains</p><ul><li>Parses every word in the chosen Selection</li><li>Text Coverage and timing</li><li>Recorded traces when available</li><li>Measures pending analysis changes</li></ul><small>Reads the project; never edits it silently</small></article>
+			<article><h3>Motif</h3><p>Measures and explains</p><ul><li>Parses the words you chose</li><li>Text Coverage and timing</li><li>Recorded traces when available</li><li>Measures pending analysis changes</li></ul><small>Reads the saved project. Writes only when you press Apply.</small></article>
 			<article><h3>You + an AI consultant</h3><p>Decide the fix</p><ul><li>The AI reads the Handoff</li><li>You fix it in FieldWorks</li><li>— or apply a reviewed change</li></ul></article>
 		</div>
 		<p slot="diagram-loop" class="home-diagram__loop">Save, then Refresh</p>
@@ -156,7 +157,7 @@ import guideFeatures from '../../data/guide-features.json';
 	<HomeSection id="samples">
 		<header>
 			<h2>Practise on a sample language</h2>
-			<p>Each sample comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — and watch the numbers rise.</p>
+			<p>Each sample comes broken and fixed. Open the broken one, find what Motif flags, fix it in FieldWorks — with an AI if you like — save, then Refresh and parse in Motif to see the numbers rise.</p>
 		</header>
 		<HomeSampleCards speedLessonLabel="Includes a speed lesson" brokenLabel="Broken ↓" fixedLabel="Fixed ↓" lessonsLabel="Lessons →" teachesLabel="Teaches" />
 		<p><a href="samples/">Browse all sample languages</a></p>

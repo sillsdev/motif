@@ -32,4 +32,4 @@ When a parse takes longer than expected, use [Timing](cmd:timing) after [Parse a
 
 ## Change one thing at a time
 
-After each change: save in FieldWorks, choose **Refresh**, and check the words you expected to change, plus a few that shouldn't. One change per measurement tells you what each change did.
+After each change: save in FieldWorks, choose **Refresh**, then choose **Parse all words** before checking the words you expected to change, plus a few that shouldn't. One change per measurement tells you what each change did.

@@ -1,11 +1,9 @@
 # Opening a project
 
-Open the project menu and choose **Select new…** to browse for a FieldWorks `.fwdata` file. To return to another project Motif knows, choose **Open recent** and select it. The window opens on **Overview** and reads the project’s stored Baseline, Selection, and results; opening it does not automatically take a new measurement.
+Open the project menu and choose **Select new…** to browse for a FieldWorks `.fwdata` file. To return to another project Motif knows, choose **Open recent** and select it. The window opens on **Overview** and shows the results from the last run. Opening a project doesn't parse anything.
 
-If this project has no Baseline yet, press **Refresh**. Motif reads the saved `.fwdata` file to capture the Baseline. Save your latest edits in FieldWorks first if you want them included: unsaved edits in FieldWorks are not part of the file Motif reads. You do not have to close FieldWorks just to open a project, though a capture may be refused while another program holds the project.
+If this project has no Baseline yet, press **Refresh**. Refresh reads the project as FieldWorks last saved it. Save your latest edits in FieldWorks first if you want them included: unsaved edits in FieldWorks are not part of the file Motif reads. You do not have to close FieldWorks just to open a project. If another program is using the project, Refresh may say “the project 'Koro' is in use by another program” (using your project’s name); close the other program and try again.
 
-For a project without a saved Default Selection, setup opens once a Baseline is available, unless setup was skipped. On a new project, the first **Refresh** captures the Baseline and opens setup. Before that first Baseline, **Configure…** is disabled and its detail reads **Refresh first to choose Texts**. In setup, choose texts or add words, set the parsing limits, and start the first run. You can choose **Skip for now** and use **Configure…** later to reopen setup.
-
-FieldWorks must be closed before you apply changes from Motif. This is separate from opening the project or reading its last saved state.
+On a new project, press **Refresh**. Motif reads the saved project and then asks which words to measure. See [Choosing what to measure](guide:first-run-setup).
 
 ![A project open on the Overview](shot:open-project-overview/overview)

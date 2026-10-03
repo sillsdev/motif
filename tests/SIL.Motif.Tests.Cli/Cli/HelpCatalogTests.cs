@@ -161,8 +161,10 @@ public sealed class HelpCatalogTests
 
         Assert.Equal("Overview", overview.Title);
         Assert.Equal(
-            "Overview is the first page when you open a project. It gathers stored results and project counts " +
-            "so you can see where things stand without starting a new run.",
+            "Overview is the first page you see. It shows the results of your last run: how many of your " +
+            "words parse, how many of your words with approved analyses the grammar still builds, which words " +
+            "are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here " +
+            "changes your FieldWorks project.",
             overview.Description);
         Assert.StartsWith("# Overview", overview.HelpPage, StringComparison.Ordinal);
         Assert.Equal("agents/start-here", agent.Slug);
@@ -171,7 +173,7 @@ public sealed class HelpCatalogTests
             agent.Url);
         Assert.Equal("learn/index", learnIndex.Slug);
         Assert.Equal("https://motif-docs.pages.dev/learn/", learnIndex.Url);
-        Assert.Contains("# Teach a dumb computer your language", learnIndex.HelpPage, StringComparison.Ordinal);
+        Assert.Contains("# Help the parser work with your language", learnIndex.HelpPage, StringComparison.Ordinal);
         Assert.Equal(
             catalog.Entries.Count,
             catalog.Entries.Select(entry => (entry.Kind, entry.Code)).Distinct().Count());

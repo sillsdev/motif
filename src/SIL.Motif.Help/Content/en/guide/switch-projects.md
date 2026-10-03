@@ -8,6 +8,6 @@ Use the project menu at the top of the Motif window to move between FieldWorks p
 
 Each project has its own Motif workflow information. Switching away does not move its pending changes into another project; when you open it again, its changes are shown with that project. If Parse all words or AI Handoff is running, switching projects cancels that work before Motif loads the new project.
 
-Choose **Configure…** from the project menu to reopen the project’s saved Selection and parsing limits. Use **Refresh** when you want a new Baseline and measurement; opening the project alone only reads stored results.
+Choose **Configure…** from the project menu to reopen the project’s saved Selection and parsing limits. Use **Refresh** to read the saved project and capture a new Baseline, then choose **Parse all words** to measure the saved Selection; opening the project alone only reads stored results.
 
 ![The Overview after selecting a project](shot:open-project-overview/overview)

@@ -53,7 +53,7 @@
 	"home.lessonBrokenDownload": "Download {{language}} (broken).fwbackup",
 	"home.availableInRelease": "Available in release builds",
 	"home.lessonOutcomeTitle": "What you should see",
-	"home.lessonOutcome": "After you save and refresh, Motif measures the project again. Expected Text Coverage and word counts appear when the sample’s pinned results are available.",
+	"home.lessonOutcome": "After you save, choose Refresh, then Parse all words. When the sample’s pinned results are available, Motif shows Text Coverage and word counts.",
 	"home.lessonPaginationLabel": "Lesson navigation",
 	"home.lessonAboutSample": "About {{language}}",
 	"home.lessonNext": "Lesson: {{title}}"

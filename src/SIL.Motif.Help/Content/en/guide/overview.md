@@ -1,15 +1,20 @@
 # Overview
 
-**Overview** is the first page when you open a project. It gathers stored results and project counts so you can see where things stand without starting a new run.
+**Overview** is the first page you see. It shows the results of your last run: how many of your words parse, how many of your words with approved analyses the grammar still builds, which words are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here changes your FieldWorks project.
 
-Use **Look first** to open the saved words or timings behind a measured group. A word can hold Unknown and Disapproved analyses at the same time; its Matrix row summarizes what FieldWorks holds, while each analysis keeps its own opinion. When PanGloss matched an analysis FieldWorks marked Disapproved, the word can appear in **Unknown × Different**; its row uses the cell's **Differs: have a look** meaning and shows recorded comparison detail beneath it. Compare the analyses before deciding what opinion to record. A stopped search does not establish which analyses were not built.
+The top card shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. Four cards follow:
 
-The top card shows the project and its counts: words in the Selection, places, wordforms, rules, and lexemes. Four cards follow. **Speed** shows how many words PanGloss timed, their total word time (each word's parse time added up), the median time for a word, and a compact line of the slowest words and their recorded times. A word stopped at the step limit is marked **Stopped**. **Text coverage** shows how many of the words in your Selection parse, and how many of their places. **Approved analyses kept** shows how many of the words you approved in FieldWorks the grammar still builds. **Grammar warnings** shows the warning, error, and information finding counts from a grammar check, including how many findings are errors. These are separate measures, not one overall score.
+- **Speed**: how many words were timed, their total and median time, and the slowest words. **Stopped** marks a word that hit the step limit.
+- **Text coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text).
+- **Approved analyses kept**: the number of words with approved analyses that the grammar still builds.
+- **Grammar warnings**: what the grammar check found, with errors counted separately.
 
-The slowest words include searches that stopped. Project wordforms, rules and lexemes come from the Baseline and remain available before parsing; parse measurements stay absent until a run is recorded. The warnings count is the same count shown beside Warnings.
+These are separate measures, not one overall score. The project's counts appear after you press **Refresh**, which also checks the grammar. **Speed**, **Text coverage**, and **Approved analyses kept** show parse results after you choose **Parse all words**.
 
-The top bar says whether these numbers are current. If FieldWorks has saved since they were measured, the freshness line gives the save time and Baseline time once. Press **Refresh** when you are ready to capture the saved project and measure the [Default Selection](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
+The top bar says whether these numbers are current. If you have saved in FieldWorks since the last Refresh, the top bar says when, and offers **Refresh**. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
 
 Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →**, or **Warnings →**, to see more on that page. Hover over or focus a card to show its link. Each **Look first** row opens the words or timings it names; hover or focus the row to show its word-count link. Expand **Project history** to see recorded activity. For a closer explanation of each measure and how to read its breakdowns, see [Reading the Overview](guide:reading-the-overview).
+
+Use **Look first** to open the saved words or timings behind a measured group. A word can have Unknown and Disapproved analyses at the same time; its Matrix row summarizes what FieldWorks holds, while each analysis keeps its own approval status. When PanGloss matched an analysis FieldWorks marked Disapproved, the word can appear in **Unknown × Different**; the row says **Differs: have a look** and shows recorded comparison detail beneath it. Compare the analyses before deciding what approval status to record. If the parser stopped early, Motif can't say which analyses it would have missed.
 
 ![Overview showing the project's stored results](shot:open-project-overview/overview)

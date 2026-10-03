@@ -1,10 +1,22 @@
 # What Motif does
 
-Motif helps you measure how a FieldWorks grammar works, inspect individual words, and collect changes to word analyses before applying them. It reads the saved FieldWorks project; FieldWorks remains the place where the project’s linguistic data lives.
+Motif tells you how well the FieldWorks parser handles your words: which ones parse, which of your approved analyses the grammar still builds, how long each word takes, and what the grammar check found. You can also look at one word closely and collect corrections to its analyses.
 
-Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) saves what a run measured. The [Overview](term:overview) shows stored results such as Text Coverage, accuracy against approved analyses, timing, and grammar warnings. It does not start a new run just because you open the window. Start with [Opening a project](guide:open-a-project) to capture the saved project and choose words to measure.
+Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
 
-When you want current numbers, press **Refresh**. Motif captures a [Baseline](term:baseline) from the saved project and measures the project’s [Default Selection](term:default-selection). In **Texts**, you can inspect words and choose analysis changes. **Review changes** lets you check those changes and see whether they still fit before you choose **Apply to FieldWorks project**. The guides for [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review changes](guide:review-changes) explain those steps.
+To start, [install Motif](guide:install), then [open your project](guide:open-a-project).
+
+Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) keeps the results of each run. The [Overview](term:overview) shows stored results such as Text Coverage, **Approved analyses kept**, timing, and grammar warnings. Opening the window shows the last results; it doesn't parse again.
+
+1. [Open your project](guide:open-a-project) and press **Refresh**.
+2. [Choose the words to measure](guide:first-run-setup) and start the first run.
+3. Read the [Overview](guide:overview).
+4. After your first run, open **Texts**, choose a word that did not parse, and use [Try a Word](guide:try-a-word) to inspect it.
+5. In **Texts**, look at words and choose analysis changes.
+6. On **Review changes**, check them, then choose **Apply to FieldWorks project**. See [Applying changes](guide:apply-to-fieldworks) first.
+7. After you edit the grammar in FieldWorks, save, press **Refresh**, then **Parse all words**.
+
+For details about individual steps, see the [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review changes](guide:review-changes) guides.
 
 You can also make an **AI Handoff** folder with project context and a question for a chat model. Review the data-sensitivity notice before sharing it: the folder can contain real grammar, lexicon, and text data.
 

@@ -1,8 +1,14 @@
 # Motif
 
-Motif provides a command-line tool and a desktop application for working with FieldWorks language projects. Both front ends use the same typed command handlers, and the current project boundaries are summarized in the [architecture overview](docs/current-architecture.md).
+Motif shows you how well a FieldWorks parser handles your language. It shows which of your words parse, which of your approved analyses the grammar still builds, which words are slow, and what the grammar check found. It reads your saved FieldWorks project and writes nothing to it until you review your changes and press **Apply to FieldWorks project**.
 
-## Get started
+**To use Motif:** download the Windows beta from the [latest release](https://github.com/sillsdev/motif/releases/latest) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is in beta, so try it on a copy of your project first.
+
+**To build Motif:** read on. The `motif` command and the window share one set of commands; the [architecture overview](docs/current-architecture.md) shows how the projects fit together.
+
+## Build from source
+
+Motif parses words with PanGloss. The Windows release includes it. A build from source needs a `pangloss` executable, found as follows.
 
 Install the .NET 10 SDK, then build and check the repository from its root:
 
@@ -17,7 +23,7 @@ On Linux, stage the pinned SIL ICU packages with `bash tools/stage-sil-icu.sh` a
 
 ## Run from the build
 
-After `./build.ps1`, run the CLI and App from `bin/<Configuration>`:
+After `./build.ps1`, run the `motif` command or the window from `bin/<Configuration>`:
 
 ```powershell
 ./bin/Debug/motif.exe help                 # Windows
@@ -26,9 +32,9 @@ After `./build.ps1`, run the CLI and App from `bin/<Configuration>`:
 ./bin/Debug/SIL.Motif.App                  # Linux or macOS
 ```
 
-Use `Release` in place of `Debug` for a release build. Windows apphosts use `.exe`; Linux and macOS apphosts have no extension. See the [build output layout](AGENTS.md#where-the-build-lands).
+Use `Release` in place of `Debug` for a release build. Windows executable files use `.exe`; Linux and macOS executable files have no extension. See the [build output layout](AGENTS.md#where-the-build-lands).
 
-PanGloss is optional for opening the App and required for parsing. Motif pins release artifacts by version and SHA-256 in [`pangloss-release.json`](pangloss-release.json) (currently v0.6.0) and bundles the matching executable in release packages. For a local parser, set `MOTIF_PANGLOSS_EXE` to its path; that override is authoritative, and a missing configured file stops discovery. Otherwise a repository build searches the sibling `../PanGloss/dist/*/` and `../PanGloss/rust/target/release/` locations, then the Motif executable directory. The error message gives the local `cargo build --release -p pg-cli` command when no parser is found.
+Motif pins PanGloss release artifacts by version and SHA-256 in [`pangloss-release.json`](pangloss-release.json) and bundles the matching executable in release packages. For a local parser, set `MOTIF_PANGLOSS_EXE` to its path; that override is authoritative, and a missing configured file stops discovery. Otherwise a repository build searches the sibling `../PanGloss/dist/*/` and `../PanGloss/rust/target/release/` locations, then the Motif executable directory. The error message gives the local `cargo build --release -p pg-cli` command when no parser is found.
 
 To stage a self-contained release payload, install the pinned Velopack CLI and run the package script. It verifies the pinned PanGloss file before packaging:
 
@@ -43,7 +49,7 @@ For builds against a local LibPalaso checkout, see [the opt-in NuGet override in
 
 ## Documentation site
 
-The CLI, App and site share authored user Help owned by [`src/SIL.Motif.Help/Content/`](src/SIL.Motif.Help/Content/). `SIL.Motif.Help` embeds these files with logical resource names beginning `help/`, preserving the runtime names `help/<locale>/...`.
+The `motif` command, the window and the site share authored user Help owned by [`src/SIL.Motif.Help/Content/`](src/SIL.Motif.Help/Content/). `SIL.Motif.Help` embeds these files with logical resource names beginning `help/`, preserving the runtime names `help/<locale>/...`.
 
 Build the CLI first, export the shared Help catalog, then run the site's sync tests and production build with Node 22.12 or later:
 
