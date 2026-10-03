@@ -427,60 +427,53 @@
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelFieldWorksAnalysesItems",
     "source": "FieldWorksAnalyses",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelReadingsItems",
     "source": "Readings",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelNamedWarningDetailsItems",
     "source": "NamedWarningDetails",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelMembershipCandidateWarningsItems",
     "source": "MembershipCandidateWarnings",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelSpellingCandidateWarningsItems",
     "source": "SpellingCandidateWarnings",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelTimingSharesItems",
     "source": "TimingShares",
     "mode": "finite",
     "control": "ItemsControl"
   },
   {
-    "view": "ResultsInTextPanel",
+    "view": "WordRowCard",
     "name": "ResultsInTextPanelFixChoicesItems38",
     "source": "Marking.FixChoices",
     "mode": "finite",
     "control": "ItemsControl"
-  },
-  {
-    "view": "ResultsInTextPanel",
-    "name": "ResultsInTextPanelReadingChoicesItems",
-    "source": "Readings",
-    "mode": "popup",
-    "control": "ComboBox"
   },
   {
     "view": "ReviewPanel",

@@ -219,7 +219,7 @@ public sealed class MainWindowSmokeTests
                 var help = Assert.IsType<HelpPopupViewModel>(
                     Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content).DataContext);
                 Assert.Equal("PanGloss", help.Title);
-                Assert.Equal("On Analyze texts, PanGloss runs the project's grammar on selected texts and compares its readings with what FieldWorks stores.",
+                Assert.Equal("On Analyze texts, PanGloss runs the project's grammar on selected texts and compares its analyses with what FieldWorks stores.",
                     help.Description);
             }
             finally

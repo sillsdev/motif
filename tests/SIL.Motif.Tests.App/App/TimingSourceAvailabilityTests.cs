@@ -42,7 +42,7 @@ public sealed class TimingSourceAvailabilityTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 
-                var controls = Assert.Single(window.GetVisualDescendants().OfType<WrapPanel>(),
+                var controls = Assert.Single(window.GetVisualDescendants().OfType<Panel>(),
                     panel => AutomationProperties.GetName(panel) == "Timing controls");
                 foreach (var name in new[]
                          {

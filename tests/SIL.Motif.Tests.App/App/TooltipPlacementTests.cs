@@ -24,8 +24,8 @@ public sealed class TooltipPlacementTests
 {
     private static readonly string[] Owners =
     [
-        "refresh", "project name", "word form", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
-        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading", "word row",
+        "refresh", "project name", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme",
         "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
@@ -131,7 +131,7 @@ public sealed class TooltipPlacementTests
             var scenes = await TooltipScenes.Open();
             try
             {
-                var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word form");
+                var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word cell");
                 foreach (var width in new[] { 1040, 1240 })
                 {
                     scenes.Width = width;

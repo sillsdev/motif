@@ -26,6 +26,17 @@ public sealed class InspectorTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
+    public void AGlosslessSenseNamesTheAnalysisGlossShownOnItsCard()
+    {
+        var facts = new ObjectFacts { Senses = [new ObjectFactsSense("sense-a", "1")] };
+
+        var sense = Assert.Single(InspectorFactViewModel.Rows(facts, "3PL"));
+
+        Assert.Equal("Sense", sense.Label);
+        Assert.Equal("1 has no gloss; the analysis glosses it 3PL", sense.Value);
+    }
+
+    [Fact]
     public void AMorphemeChipInAnalyzeTextsOpensTheInspectorOnThatMorphemeAndThePageStaysPut()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

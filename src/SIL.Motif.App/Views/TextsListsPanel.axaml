@@ -80,7 +80,7 @@
                            ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
                            IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
               <views:WordRow.Card>
-                    <views:WordRowCard DataContext="{Binding}" />
+                    <views:WordRowCard DataContext="{Binding}" CardToken="{Binding CardToken}" />
               </views:WordRow.Card>
             </views:WordRow>
           </DataTemplate>

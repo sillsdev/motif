@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -21,11 +22,11 @@ public sealed class WordRowOpenLayoutSystemTests
     [Theory]
     [InlineData(1040)]
     [InlineData(1240)]
-    public void TheOpenedRowKeepsItsOccurrenceHeadingAlignedAndFieldWorksMorphemesScrollable(int width)
+    public void OpenRowsKeepMorphemesOnOneScrollableLineAndUseTheAnalyzeWordCard(int width)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
             try
             {
                 window.Width = width;
@@ -36,69 +37,34 @@ public sealed class WordRowOpenLayoutSystemTests
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
 
-                WordRow Row(string word) => window.GetVisualDescendants().OfType<WordRow>()
-                    .Single(row => row.IsEffectivelyVisible && row.List == "word-list" && row.Row?.Word == word);
-
-                var openedRow = Row("Sungura");
-                openedRow.IsOpen = true;
+                var row = window.GetVisualDescendants().OfType<WordRow>()
+                    .Single(item => item.IsEffectivelyVisible && item.List == "word-list" &&
+                        item.Row?.Word == "hawajafika");
+                row.IsOpen = true;
                 PageScreenshots.Settle(window);
                 LayoutAssertions.BeforeCapture(window);
 
-                var panel = window.GetVisualDescendants().OfType<TextWordsPanel>().Single();
-                var heading = panel.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
-                var location = panel.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(block => block.IsEffectivelyVisible && block.Text == "Hadithi ya sungura, line 1");
-                var headingBounds = BoundsIn(heading, panel);
-                var locationBounds = BoundsIn(location, panel);
-                var failures = new List<string>();
-                if (heading.TextLayout.WidthIncludingTrailingWhitespace > headingBounds.Width + 0.5)
-                    failures.Add($"The occurrence heading needs {heading.TextLayout.WidthIncludingTrailingWhitespace:0.#} " +
-                        $"px but has {headingBounds.Width:0.#} px.");
-                if (Math.Abs(locationBounds.X - headingBounds.X) > 0.5)
-                    failures.Add($"The occurrence heading starts at {headingBounds.X:0.#}, not over the location at " +
-                        $"{locationBounds.X:0.#}.");
-
-                var morphemeRow = Row("hawajafika");
-                var fieldWorksCell = Part(morphemeRow, "wordRowFieldWorks");
-                var panGlossCell = Part(morphemeRow, "wordRowPanGloss");
-                var fieldWorksBounds = BoundsIn(fieldWorksCell, panel);
-                var panGlossBounds = BoundsIn(panGlossCell, panel);
-                var scroll = morphemeRow.FindControl<ScrollViewer>("FieldWorksMorphemeScroll")!;
-                var scrollBounds = BoundsIn(scroll, panel);
+                var fieldWorksCell = Part(row, "wordRowFieldWorks");
                 var morphemes = fieldWorksCell.GetVisualDescendants().OfType<Border>()
                     .Where(border => border.IsEffectivelyVisible && border.Classes.Contains("wordRowMorph")).ToArray();
                 Assert.Equal(5, morphemes.Length);
-                if (fieldWorksBounds.Right > panGlossBounds.X + 0.5)
-                    failures.Add($"FieldWorks ends at {fieldWorksBounds.Right:0.#}, under PanGloss at " +
-                        $"{panGlossBounds.X:0.#}.");
-                if (!fieldWorksBounds.Contains(scrollBounds))
-                    failures.Add($"The FieldWorks scroll area {scrollBounds} escapes its column {fieldWorksBounds}.");
-                if (!scroll.ClipToBounds)
-                    failures.Add("FieldWorks morphemes are not clipped to their scroll area.");
-                foreach (var morpheme in morphemes)
-                {
-                    for (var attempt = 0; attempt < morphemes.Length; attempt++)
-                    {
-                        var bounds = BoundsIn(morpheme, scroll);
-                        if (bounds.Left >= -0.5 && bounds.Right <= scroll.Viewport.Width + 0.5) break;
-                        var current = scroll.Offset.X;
-                        var target = bounds.Left < 0
-                            ? current + bounds.Left
-                            : current + bounds.Right - scroll.Viewport.Width;
-                        var maxOffset = Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width);
-                        var next = Math.Clamp(target, 0, maxOffset);
-                        if (Math.Abs(next - current) < 0.5) break;
-                        scroll.Offset = new Vector(next, scroll.Offset.Y);
-                        PageScreenshots.Settle(window);
-                    }
+                Assert.Single(morphemes.Select(morpheme => Math.Round(BoundsIn(morpheme, row).Y, 1)).Distinct());
+                var fieldWorksScroll = row.FindControl<ScrollViewer>("FieldWorksMorphemeScroll")!;
+                Assert.Equal(ScrollBarVisibility.Auto, fieldWorksScroll.HorizontalScrollBarVisibility);
+                Assert.Equal(ScrollBarVisibility.Disabled, fieldWorksScroll.VerticalScrollBarVisibility);
+                Assert.True(fieldWorksScroll.Extent.Width > fieldWorksScroll.Viewport.Width);
 
-                    var visibleBounds = BoundsIn(morpheme, scroll);
-                    if (visibleBounds.Left < -0.5 || visibleBounds.Right > scroll.Viewport.Width + 0.5)
-                        failures.Add($"FieldWorks morpheme at {visibleBounds} cannot be brought into its " +
-                            $"{scroll.Viewport.Width:0.#} px scroll area.");
-                }
-                Assert.True(failures.Count == 0, $"At {width} px: {string.Join(" ", failures)}");
+                var gloss = row.FindControl<CopyableTextBlock>("WordGloss")!;
+                Assert.True(gloss.IsEffectivelyVisible);
+
+                var card = row.GetVisualDescendants().OfType<WordRowCard>().Single();
+                Assert.NotNull(card.CardToken);
+                Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    block => block.IsEffectivelyVisible && block.Text == "In FieldWorks · now");
+                Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    block => block.IsEffectivelyVisible && block.Text == "Time by rule");
+                Assert.DoesNotContain(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
             }
             finally
             {

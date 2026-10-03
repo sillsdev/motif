@@ -64,7 +64,7 @@ internal static class ComponentStateContractCases
     internal static IReadOnlyList<PinnedElsewhere> Pinned { get; } =
     [
         new("HyperlinkButton:pointerover", nameof(InteractionCueTests.ALinkUnderlinesUnderThePointer)),
-        new(":is(Button).outcomeLegendLink:pointerover :is(TextBlock)",
+        new("HyperlinkButton.outcomeLegendLink:pointerover TextBlock.outcomeLegendText",
             nameof(InteractionCueTests.AnOutcomeLegendLinkIsVisibleAtRestAndUnderlinesUnderThePointer)),
         new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
@@ -563,10 +563,8 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<WordRowHeader>() is not null),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
-        new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
-            control => control is Border && control.Classes.Contains("wordRowBody")),
-        new("word form", "Views/WordRow.axaml", "{Binding Word}", TooltipScene.Matrix,
-            control => control is CopyableTextBlock && control.Classes.Contains("wordRowForm") &&
+        new("word cell", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
+            control => control is CopyableTextBlock { Name: "WordForm" } &&
                 control.FindAncestorOfType<WordRow>() is not null),
         new("places in a word row", "Views/WordRow.axaml", "{Binding PlacesTooltip}", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordRowPlaces") &&
@@ -598,9 +596,9 @@ internal static class TooltipOwners
             control => control is MarkChip && control.GetVisualAncestors().OfType<Border>().Any(border => border.Name == "WordStrip")),
         new("staged change", "Views/ResultsInTextPanel.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
             control => control is Border && control.Classes.Contains("stagedStrip")),
-        new("opinion on a word card", "Views/ResultsInTextPanel.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
+        new("opinion on a word card", "Views/WordRowCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
-        new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadDisabledReason}",
+        new("mark unread without a text occurrence", "Views/WordRowCard.axaml", "{Binding MarkUnreadDisabledReason}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread"),
         new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,

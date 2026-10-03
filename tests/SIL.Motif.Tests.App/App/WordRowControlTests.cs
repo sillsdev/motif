@@ -251,7 +251,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                     .Where(border => border.Classes.Contains("wordRowMorph"))
                     .Select(chip => chip.GetVisualDescendants().OfType<TextBlock>().First().Text));
                 Assert.Equal("alikula · Approved · PanGloss: Different · Built something else",
-                    ToolTip.GetTip(Body(row)));
+                    ToolTip.GetTip(row.FindControl<CopyableTextBlock>("WordForm")!));
             }
             finally
             {

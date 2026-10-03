@@ -53,8 +53,9 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                Assert.Equal(word, ToolTip.GetTip(row.GetVisualDescendants().OfType<TextBlock>()
+                var formTip = Assert.IsType<string>(ToolTip.GetTip(row.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Classes.Contains("wordRowForm"))));
+                Assert.StartsWith(word, formTip, StringComparison.Ordinal);
                 LayoutAssertions.AssertCurrent(window);
             }
             finally
@@ -241,6 +242,110 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 PageScreenshots.Settle(window);
                 LayoutAssertions.AssertCurrent(window);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void RejectsMorphemeDescendersClippedByTheirLineBoxes()
+    {
+        avalonia.Invoke(() =>
+        {
+            Walkthrough.WalkthroughFonts.Register();
+            var row = new Border
+            {
+                Classes = { "stripRow", "analysisRow" },
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Height = 29,
+                ClipToBounds = true,
+                Child = new StackPanel
+                {
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Classes = { "stripMorphForm" },
+                            Text = "gel -ye",
+                            FontSize = 11,
+                            LineHeight = 14,
+                            TextWrapping = TextWrapping.NoWrap,
+                        },
+                        new TextBlock
+                        {
+                            Classes = { "stripMorphGloss" },
+                            Text = "past tense",
+                            FontSize = 10.5,
+                            LineHeight = 14,
+                            TextWrapping = TextWrapping.NoWrap,
+                        },
+                    },
+                },
+            };
+            var window = new Window { Content = row, Width = 260, Height = 80 };
+            try
+            {
+                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                window.Show();
+                PageScreenshots.Settle(window);
+                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+                    () => LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(window));
+                Assert.Contains("Morpheme text 'gel -ye' needs", error.Message, StringComparison.Ordinal);
+                Assert.Contains("at line height 14 px", error.Message, StringComparison.Ordinal);
+                Assert.Contains("arranged text bounds are 14 px", error.Message, StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AllowsAndikaMorphemesWhenTheirLinesFitTheAnalysisRow()
+    {
+        avalonia.Invoke(() =>
+        {
+            Walkthrough.WalkthroughFonts.Register();
+            var row = new Border
+            {
+                Classes = { "stripRow", "analysisRow" },
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Height = 37,
+                ClipToBounds = true,
+                Child = new StackPanel
+                {
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Classes = { "stripMorphForm" },
+                            Text = "gel -ye",
+                            FontSize = 11,
+                            LineHeight = 18,
+                            TextWrapping = TextWrapping.NoWrap,
+                        },
+                        new TextBlock
+                        {
+                            Classes = { "stripMorphGloss" },
+                            Text = "past tense",
+                            FontSize = 10.5,
+                            LineHeight = 18,
+                            TextWrapping = TextWrapping.NoWrap,
+                        },
+                    },
+                },
+            };
+            var window = new Window { Content = row, Width = 260, Height = 80 };
+            try
+            {
+                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                window.Show();
+                PageScreenshots.Settle(window);
+                LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(window);
             }
             finally
             {

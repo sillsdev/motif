@@ -97,6 +97,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private int _generation;
     private bool _acceptLoads = true;
     private CancellationTokenSource? _reloadCancellation;
+    private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
 
     public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection)
     {
@@ -139,6 +140,16 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     /// <summary>Opens a word's detail in the Analyze text reader.</summary>
     public IRelayCommand<string> OpenWordCommand { get; }
+
+    public Func<AssessmentWordResult, ResultsTokenViewModel?>? WordCardTokenFactory
+    {
+        get => _wordCardTokenFactory;
+        set
+        {
+            _wordCardTokenFactory = value;
+            foreach (var row in _all) row.WordCardTokenFactory = value;
+        }
+    }
 
     public IRelayCommand HandOffCheckedWordsCommand { get; }
 
@@ -312,7 +323,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
             foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
             _all.Clear();
             _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes,
-                Path.GetFileNameWithoutExtension(path))));
+                Path.GetFileNameWithoutExtension(path), WordCardTokenFactory)));
             foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
             RaiseCheckedWords();
             HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
@@ -467,6 +478,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
 /// <summary>One wordform spelling as the Words table shows it: its occurrences and its own project analyses.</summary>
 public sealed partial class TextWordRowViewModel : ObservableObject
 {
+    private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
+
     [ObservableProperty]
     private bool _isChecked;
 
@@ -493,6 +506,16 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         var wasOpen = (_listed ?? _notParsed)?.IsOpen == true;
         _listed = null;
         if (wasOpen) Listed.IsOpen = true;
+    }
+
+    internal Func<AssessmentWordResult, ResultsTokenViewModel?>? WordCardTokenFactory
+    {
+        get => _wordCardTokenFactory;
+        set
+        {
+            _wordCardTokenFactory = value;
+            if (LastResult is { } result) OnLastResultChanged(result);
+        }
     }
 
     private ListedWordViewModel? _listed;
@@ -536,18 +559,20 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     /// FieldWorks holds and Not parsed.
     /// </summary>
     public ListedWordViewModel Listed => LastResult is { } result
-        ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes)
+        ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes, _wordCardTokenFactory)
         : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
             WordProjectStatuses.StandingOf(_word),
             (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
             _word.Occurrences.Count, _routes));
 
-    public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null)
+    public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null,
+        Func<AssessmentWordResult, ResultsTokenViewModel?>? wordCardTokenFactory = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         _word = word;
         _routes = routes;
         _projectName = projectName;
+        _wordCardTokenFactory = wordCardTokenFactory;
         Form = word.Form;
         WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
         OccurrenceCount = word.Occurrences.Count;

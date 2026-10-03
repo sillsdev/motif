@@ -253,6 +253,17 @@ public sealed class ResultsInTextViewModelTests
             Assert.Equal(expected, token.VerdictLabel);
         }
     }
+
+    [Fact]
+    public void NoParseCardNamesTheOutcomeAndItsMeaning()
+    {
+        var token = new ResultsTokenViewModel("Text", 1, new TextToken("hawajafika", "hawajafika", null, null),
+            new AssessmentWordResult("hawajafika", "no-analysis", false, "Complete", 1, null)
+            { ProjectStanding = ProjectStanding.Approved });
+
+        Assert.Equal("∅ No parse · the grammar builds nothing for this word · Lost", token.PanGlossCardSummary);
+        Assert.Equal("Why it might not parse", token.WarningSectionHeading);
+    }
     [Fact]
     public async Task OccurrenceFiltersFollowTheSharedMarkingClass()
     {

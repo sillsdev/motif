@@ -293,7 +293,11 @@ internal static class WalkthroughReplayTestRunner
                     WalkthroughReplay.Run(walkthrough, script, help, clock, captures, clipSegments,
                         deadline, root, preparation);
                     WalkthroughReplay.AssertFixtureOutcome(walkthrough, script, parserPath, deadline);
-                    if (script.Id == "explained-word-card") AssertExplainedWordCard(walkthrough);
+                    if (script.Id == "explained-word-card")
+                    {
+                        AssertExplainedWordCard(walkthrough);
+                        LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(walkthrough.Window);
+                    }
                     return Task.CompletedTask;
                 }
                 finally
@@ -669,11 +673,13 @@ internal static class WalkthroughReplay
         };
     }
 
+    internal static bool ParseProgressVisibleOrCompleted(bool progressVisible, RunState assessmentState) =>
+        progressVisible || assessmentState == RunState.Completed;
+
     private static bool ParseProgressVisibleOrCompleted(WalkthroughWindow window, Control progress) =>
-        progress.IsEffectivelyVisible && progress.Bounds.Width > 0 && progress.Bounds.Height > 0 ||
-        window.Workspace.Assess.State == RunState.Completed &&
-        window.Workspace.Context.EvidencePublication.IsCompleted &&
-        !window.Workspace.Context.NeedsAssessment;
+        ParseProgressVisibleOrCompleted(
+            progress.IsEffectivelyVisible && progress.Bounds.Width > 0 && progress.Bounds.Height > 0,
+            window.Workspace.Assess.State);
 
     private static bool AssessmentIsPublished(WalkthroughWindow window, Control coverage)
     {

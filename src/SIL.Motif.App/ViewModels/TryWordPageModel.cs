@@ -479,6 +479,7 @@ public sealed class TryWordStoredAnalysis
     public string Text { get; }
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public IReadOnlyList<TryWordTracePiece> Pieces { get; }
+    public bool HasUnrecordedStep => Pieces.Any(piece => piece.Status == "No step recorded");
 }
 
 /// <summary>A stored piece and only the trace events that name its exact authored identity.</summary>
@@ -500,7 +501,7 @@ public sealed class TryWordTracePiece
             ],
             "refused" => [new(Mark.Of(TraceStepMark.Refused), Status, string.Empty)],
             "built" => [new(Mark.Of(TraceStepMark.Built), Status, string.Empty)],
-            "No step recorded" => [new(Mark.Of(TraceStepMark.Tried), Status, string.Empty)],
+            "No step recorded" => [],
             _ => [new(null, Status, string.Empty)],
         };
     }

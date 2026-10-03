@@ -158,6 +158,7 @@ public sealed class ViewTokenTests
     public void WordCardOpensUnderItsLineAndStacksItsSectionsInOrder()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        var cardMarkup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "WordRowCard.axaml"));
         Assert.DoesNotContain("<Popup", markup, StringComparison.Ordinal);
         var start = markup.IndexOf("Content=\"{Binding OpenCard}\"", StringComparison.Ordinal);
         Assert.True(start >= 0, "The word card must open under its line.");
@@ -166,10 +167,11 @@ public sealed class ViewTokenTests
         var card = markup[start..end];
 
         Assert.Contains("KeyDown=\"OnTokenCardKeyDown\"", card, StringComparison.Ordinal);
-        Assert.True(card.IndexOf("In FieldWorks", StringComparison.Ordinal) <
-                    card.IndexOf("In PanGloss", StringComparison.Ordinal));
-        Assert.True(card.IndexOf("In PanGloss", StringComparison.Ordinal) <
-                    card.IndexOf("What to do", StringComparison.Ordinal));
+        Assert.Contains("views:WordRowCard CardToken=\"{Binding}\"", card, StringComparison.Ordinal);
+        Assert.True(cardMarkup.IndexOf("In FieldWorks · now", StringComparison.Ordinal) <
+                    cardMarkup.IndexOf("In PanGloss · now", StringComparison.Ordinal));
+        Assert.True(cardMarkup.IndexOf("In PanGloss · now", StringComparison.Ordinal) <
+                    cardMarkup.IndexOf("Text=\"What to do\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -185,12 +187,15 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
-    public void StripAndCardOfferFixAndApproveOneReadingAtATime()
+    public void StripAndCardOfferExplicitFixChoicesWithoutAnEmptyAnalysisSelector()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "ResultsInTextPanel.axaml"));
+        var cardMarkup = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "WordRowCard.axaml"));
         var view = XDocument.Parse(markup);
         Assert.DoesNotContain("Header=\"Fix ▾\"", markup, StringComparison.Ordinal);
-        Assert.Single(Regex.Matches(markup, "Content=\"Fix ▾\"", RegexOptions.CultureInvariant).Cast<Match>());
+        Assert.DoesNotContain("Content=\"Fix ▾\"", markup, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", cardMarkup,
+            StringComparison.Ordinal);
         var stripFix = Assert.Single(view.Descendants(), element => element.Name.LocalName == "Button" &&
             (string?)element.Attribute("AutomationProperties.Name") == "Fix actions from the word strip");
         var stripFixContent = Assert.Single(stripFix.Elements(), element => element.Name.LocalName == "StackPanel");
@@ -204,11 +209,8 @@ public sealed class ViewTokenTests
             });
         Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
             StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,
-            StringComparison.Ordinal);
-        var readingChoice = Assert.Single(view.Descendants(), element => element.Name.LocalName == "ComboBox" &&
-            (string?)element.Attribute("ItemsSource") == "{Binding Readings}");
-        Assert.Equal("{Binding SelectedReading}", (string?)readingChoice.Attribute("SelectedItem"));
+        Assert.Contains("ItemsSource=\"{Binding Marking.FixChoices}\"", cardMarkup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ComboBox", cardMarkup, StringComparison.Ordinal);
         Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
     }
 

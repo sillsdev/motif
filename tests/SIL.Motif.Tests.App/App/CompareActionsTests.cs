@@ -251,9 +251,9 @@ public sealed class CompareActionsTests
         Assert.All(fake.PendingPutRequests.Skip(1), request => Assert.Equal(word.Word, request.Change.Word));
         Assert.Equal(2, compare.Changes.Items.Count);
         Assert.Equal(firstWord.Word, compare.Changes.Items[0].Word);
-        Assert.Equal("Reading 1", compare.Changes.Items[0].Reading[..compare.Changes.Items[0].Reading.IndexOf(':')]);
+        Assert.Equal("Analysis 1", compare.Changes.Items[0].Reading[..compare.Changes.Items[0].Reading.IndexOf(':')]);
         Assert.Equal(word.Word, compare.Changes.Items[1].Word);
-        Assert.Equal("Reading 2", compare.Changes.Items[1].Reading[..compare.Changes.Items[1].Reading.IndexOf(':')]);
+        Assert.Equal("Analysis 2", compare.Changes.Items[1].Reading[..compare.Changes.Items[1].Reading.IndexOf(':')]);
         Assert.Equal("change.cannot-compose", compare.Changes.LastRefusal?.Code);
         Assert.False(firstWord.IsChecked);
         Assert.True(word.IsChecked);

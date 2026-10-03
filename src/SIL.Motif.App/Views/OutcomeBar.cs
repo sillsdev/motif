@@ -164,9 +164,9 @@ public sealed class OutcomeBar : StackPanel
         Classes = { "outcomeLegendLabel" },
         Children =
         {
-            new MarkGlyph { Mark = segment.Mark, Classes = { "inline" } },
-            new TextBlock { Text = segment.Mark.Word, Classes = { "outcomeLegendText" } },
-            new TextBlock { Text = segment.CountText, Classes = { "outcomeLegendText", "outcomeLegendCount" } },
+            new MarkGlyph { Mark = segment.Mark, Classes = { "inline" }, VerticalAlignment = VerticalAlignment.Center },
+            new TextBlock { Text = segment.Mark.Word, Classes = { "outcomeLegendText" }, VerticalAlignment = VerticalAlignment.Center },
+            new TextBlock { Text = segment.CountText, Classes = { "outcomeLegendText", "outcomeLegendCount" }, VerticalAlignment = VerticalAlignment.Center },
         },
     };
 

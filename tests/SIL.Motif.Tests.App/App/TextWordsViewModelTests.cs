@@ -265,6 +265,25 @@ public sealed class TextWordsViewModelTests
         Assert.Equal("Not present", row.StatusLabel);
     }
 
+    [Fact]
+    public async Task HandOffHelpTextExplainsWhichWordsWillBeSent()
+    {
+        var (fake, _, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(
+            [new TextWord("kitabu", null, [new WordOccurrence(TextId, "Alpha", 1, "s", "unanalysed", null)], [], []),
+             new TextWord("nitakupa", null, [new WordOccurrence(TextId, "Alpha", 2, "s", "unanalysed", null)], [], [])],
+            [], HasBaseline: true));
+
+        await words.ReloadAsync();
+
+        Assert.Equal("Tick words first.", words.HandOffCheckedWordsHelpText);
+        words.Rows[0].IsChecked = true;
+        Assert.Empty(words.HandOffCheckedWordsHelpText);
+        words.Rows[1].IsChecked = true;
+        Assert.Empty(words.HandOffCheckedWordsHelpText);
+    }
+
     [Theory]
     [InlineData(2, 0, false, WordProjectStatus.Candidate, "Unknown")]
     [InlineData(0, 1, false, WordProjectStatus.Rejected, "Disapproved")]

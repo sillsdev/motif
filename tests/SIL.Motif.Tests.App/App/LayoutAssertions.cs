@@ -3,9 +3,11 @@ using System.Text;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
@@ -69,6 +71,85 @@ internal static class LayoutAssertions
             AssertGridChildrenStayInTheirColumns(layoutRoot);
             foreach (var text in Controls(layoutRoot).OfType<TextBlock>().Where(IsRenderedText))
                 AssertTextFits(text);
+        }
+    }
+
+    internal static void AssertMorphemeGlyphsFitAnalysisRows(Visual root)
+    {
+        foreach (var row in Controls(root).OfType<Border>().Where(border =>
+                     border.Classes.Contains("stripRow") && border.Classes.Contains("analysisRow") &&
+                     border.IsEffectivelyVisible))
+        {
+            var thickness = row.BorderThickness;
+            var padding = row.Padding;
+            var content = new Rect(
+                thickness.Left + padding.Left,
+                thickness.Top + padding.Top,
+                row.Bounds.Width - thickness.Left - thickness.Right - padding.Left - padding.Right,
+                row.Bounds.Height - thickness.Top - thickness.Bottom - padding.Top - padding.Bottom);
+            Visual layoutRoot = TopLevel.GetTopLevel(row) is { } topLevel ? topLevel : row;
+            var rowBounds = BoundsIn(row, layoutRoot);
+            var contentClipTop = rowBounds.Top + content.Top;
+            var contentClipBottom = rowBounds.Top + content.Bottom;
+            foreach (var text in Controls(row).OfType<TextBlock>().Where(text =>
+                         (text.Classes.Contains("stripMorphForm") || text.Classes.Contains("stripMorphGloss")) &&
+                         IsRenderedText(text)))
+            {
+                var typeface = new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch);
+                Assert.True(FontManager.Current.TryGetGlyphTypeface(typeface, out var glyphTypeface),
+                    $"Could not resolve the rendered font for morpheme text '{text.Text}'.");
+                var metrics = glyphTypeface.Metrics;
+                var scale = text.FontSize / metrics.DesignEmHeight;
+                var ascent = Math.Abs(metrics.Ascent) * scale;
+                var descent = Math.Abs(metrics.Descent) * scale;
+                var lines = text.TextLayout.TextLines;
+                var textBounds = BoundsIn(text, layoutRoot);
+                var layoutTop = text.Padding.Top;
+                foreach (var line in lines)
+                {
+                    var inkTop = layoutTop + line.Baseline - ascent;
+                    var inkBottom = layoutTop + line.Baseline + descent;
+                    Assert.True(inkTop >= text.Padding.Top - 0.05 &&
+                                inkBottom <= text.Bounds.Height - text.Padding.Bottom + 0.05,
+                        $"Morpheme text '{text.Text}' needs {ascent + descent:0.##} px of glyph height " +
+                        $"(ascent {ascent:0.##}, descent {descent:0.##}) at line height {line.Height:0.##} px, " +
+                        $"but its arranged text bounds are {text.Bounds.Height:0.##} px.");
+
+                    var renderedTop = textBounds.Top + inkTop;
+                    var renderedBottom = textBounds.Top + inkBottom;
+                    Assert.True(renderedTop >= contentClipTop - 0.05 && renderedBottom <= contentClipBottom + 0.05,
+                        $"Morpheme text '{text.Text}' renders at {renderedTop:0.##}–{renderedBottom:0.##} px " +
+                        $"outside its analysis row's {contentClipTop:0.##}–{contentClipBottom:0.##} px content clip.");
+
+                    var scrolls = text.GetVisualAncestors().OfType<ScrollViewer>().ToArray();
+                    foreach (var scroll in scrolls)
+                    {
+                        if (scroll.Content is not Visual scrollContent) continue;
+                        var textInContent = BoundsIn(text, scrollContent);
+                        var glyphTop = textInContent.Top + inkTop;
+                        var glyphBottom = textInContent.Top + inkBottom;
+                        Assert.True(glyphTop >= -0.05 && glyphBottom <= scroll.Extent.Height + 0.05,
+                            $"Morpheme text '{text.Text}' renders at {glyphTop:0.##}–{glyphBottom:0.##} px " +
+                            $"outside its scroll content's {scroll.Extent.Height:0.##} px extent.");
+                    }
+
+                    var scrollContainers = scrolls.SelectMany(scroll =>
+                            scroll.GetVisualAncestors().OfType<Control>())
+                        .ToHashSet();
+                    foreach (var ancestor in text.GetVisualAncestors().OfType<Control>()
+                                 .Where(item => item.ClipToBounds &&
+                                     item is not ScrollViewer and not ScrollContentPresenter &&
+                                     !scrollContainers.Contains(item)))
+                    {
+                        var clip = BoundsIn(ancestor, layoutRoot);
+                        Assert.True(renderedTop >= clip.Top - 0.05 && renderedBottom <= clip.Bottom + 0.05,
+                            $"Morpheme text '{text.Text}' renders at {renderedTop:0.##}–{renderedBottom:0.##} px " +
+                            $"outside the {Describe((Control)ancestor)} clip at {clip.Top:0.##}–{clip.Bottom:0.##} px.");
+                    }
+
+                    layoutTop += line.Height;
+                }
+            }
         }
     }
 

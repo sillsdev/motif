@@ -227,8 +227,10 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 Assert.NotNull(link.Command);
                 Assert.Equal("Open Different words in the Matrix", AutomationProperties.GetName(link));
 
-                window.MouseMove(link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value);
+                var linkCentre = link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(linkCentre);
                 Dispatcher.UIThread.RunJobs();
+                Assert.True(link.IsPointerOver, $"the pointer at {linkCentre} did not reach the outcome link {link.Bounds}");
 
                 Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
             }

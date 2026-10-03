@@ -252,7 +252,7 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Accept PanGloss's reading", "Add as Unknown", "Add PanGloss's readings as Unknown",
+        Assert.Equal(["Accept PanGloss's analysis", "Add as Unknown", "Add PanGloss's analyses as Unknown",
             "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
         Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);

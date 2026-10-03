@@ -143,6 +143,8 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </views:ProgressiveItemsControl>
+                  <views:CopyableTextBlock Classes="muted" Text="No step recorded"
+                                           IsVisible="{Binding HasUnrecordedStep}" />
                 </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

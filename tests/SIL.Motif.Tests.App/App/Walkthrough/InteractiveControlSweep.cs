@@ -196,6 +196,7 @@ internal static class InteractiveControlSweep
         DataGrid or DataGridColumnHeader or DataGridRow or DataGridCell => InteractiveControlFamily.Grid,
         TreeView or TreeViewItem => InteractiveControlFamily.Tree,
         MorphemeRow => InteractiveControlFamily.Morpheme,
+        WordRow => InteractiveControlFamily.Morpheme,
         ScrollViewer { Name: "FieldWorksMorphemeScroll" } => InteractiveControlFamily.ScrollViewport,
         TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
@@ -206,6 +207,7 @@ internal static class InteractiveControlSweep
         WrapPanel panel when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(panel)) =>
             InteractiveControlFamily.Container,
         Border { Focusable: true } => InteractiveControlFamily.FocusableSurface,
+        Border { Classes: var classes } when classes.Contains("wordRowMorph") => InteractiveControlFamily.Morpheme,
         Border { DataContext: ResultsTokenViewModel } part
             when !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(part)) => InteractiveControlFamily.Occurrence,
         Border { } border when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(border)) =>

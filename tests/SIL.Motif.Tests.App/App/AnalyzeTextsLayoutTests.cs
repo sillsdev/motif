@@ -141,8 +141,8 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.DoesNotContain(cardLines, line => line.Text == "PanGloss exact warning message");
                 Assert.DoesNotContain(cardLines, line => line.Text == "Named exactly");
                 Assert.DoesNotContain(cardLines, line => line.Text == "exact");
-                Assert.Contains(cardLines, line => line.Text == "Words that use members of the named resource");
-                Assert.Contains(cardLines, line => line.Text == "Matched by spelling only");
+                Assert.DoesNotContain(cardLines, line => line.Text == "Words that use members of the named resource");
+                Assert.DoesNotContain(cardLines, line => line.Text == "Matched by spelling only");
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · membership") == true);
                 Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
                 var cardText = string.Join(" ", cardLines.Select(line => line.Text)
@@ -344,7 +344,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void TheTextPickerChipsMarkReadAndSelectShareOneRowAboveTheText()
+    public void TextPickerChipsWrapWithoutClippingAndStayAboveTheText()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -373,10 +373,10 @@ public sealed class AnalyzeTextsLayoutTests
                 var bounds = controls.Select(control => BoundsIn(control, panel)).ToArray();
                 var rowTop = bounds.Min(rect => rect.Top);
                 var rowBottom = bounds.Max(rect => rect.Bottom);
-                Assert.True(bounds.Max(rect => rect.Top) < bounds.Min(rect => rect.Bottom),
-                    "The controls wrap: " + string.Join(", ", controls.Zip(bounds, (control, rect) =>
-                        $"{control.GetType().Name} at {rect}")));
-                Assert.True(rowBottom - rowTop <= 40, $"The control row is {rowBottom - rowTop} px deep.");
+                Assert.All(bounds, rect => Assert.InRange(rect.Left, 0, panel.Bounds.Width));
+                Assert.All(bounds, rect => Assert.True(rect.Right <= panel.Bounds.Width,
+                    $"A control extends beyond the text panel: {rect}."));
+                Assert.True(rowBottom - rowTop <= 56, $"The control area is {rowBottom - rowTop} px deep.");
                 var firstWord = Strips(panel).Min(strip => BoundsIn(strip, panel).Top);
                 Assert.True(firstWord - rowBottom <= 48, $"The text starts {firstWord - rowBottom} px below the controls.");
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Expander>(), expander =>

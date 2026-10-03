@@ -332,7 +332,7 @@ public sealed record AnalysisMarkingState(
         {
             foreach (var (reading, index) in parserOnlyReadings)
             {
-                choices.Add(Choice(AnalysisMarkingActionKind.Add, "Accept PanGloss's reading",
+                choices.Add(Choice(AnalysisMarkingActionKind.Add, "Accept PanGloss's analysis",
                     "Not in FieldWorks → Approved", null, reading.Analysis, index,
                     "Not in FieldWorks", "Approved", ChangeKinds.Approve));
                 choices.Add(Choice(AnalysisMarkingActionKind.Add, "Add as Unknown",
@@ -381,14 +381,14 @@ public sealed record AnalysisMarkingState(
             {
                 var label = markingClass == AnalysisMarkingClass.Different &&
                     stored.Any(analysis => analysis.Opinion == ReadingGrade.Disapproved)
-                    ? "Accept PanGloss's reading" : "Add as Approved";
+                    ? "Accept PanGloss's analysis" : "Add as Approved";
                 choices.Add(Choice(AnalysisMarkingActionKind.Add, label,
                     "Not in FieldWorks → Approved", null, reading.Analysis, index,
                     "Not in FieldWorks", "Approved", ChangeKinds.Approve));
             }
             if (markingClass == AnalysisMarkingClass.Extra && stored.Any(analysis =>
                     analysis.Opinion == ReadingGrade.Approved))
-                choices.Add(Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove the extra reading",
+                choices.Add(Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove the extra analysis",
                     "Not in FieldWorks → Disapproved", null, reading.Analysis, index,
                     "Not in FieldWorks", "Disapproved", ChangeKinds.Reject));
         }
@@ -425,9 +425,9 @@ public sealed record AnalysisMarkingState(
     }
 
     private static void AddAcceptNewSetChoice(List<AnalysisMarkingChoice> choices) =>
-        choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Add PanGloss's readings as Unknown",
-            "Parser-only readings → Unknown", null, null, null,
-            "FieldWorks set", "Parser set with missing readings Unknown", null));
+        choices.Add(Choice(AnalysisMarkingActionKind.AcceptNewSet, "Add PanGloss's analyses as Unknown",
+            "Parser-only analyses → Unknown", null, null, null,
+            "FieldWorks set", "Parser analyses missing from FieldWorks → Unknown", null));
 
     private static AnalysisMarkingChoice Choice(AnalysisMarkingActionKind kind, string label, string subtitle,
         string? storedAnalysisId, ParseAnalysis? reading, int? readingIndex, string now, string afterApply,

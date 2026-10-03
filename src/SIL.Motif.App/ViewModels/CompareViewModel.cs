@@ -36,6 +36,8 @@ public sealed partial class CompareViewModel : ObservableObject
     private ChangesViewModel? _changes;
     private string? _focusedWordSearch;
 
+    public Func<AssessmentWordResult, ResultsTokenViewModel>? WordCardTokenFactory { get; set; }
+
     public CompareViewModel()
     {
         Rows = Enum.GetValues<WordProjectStatus>().OrderBy(RowOrder)
@@ -433,7 +435,8 @@ public sealed partial class CompareViewModel : ObservableObject
         foreach (var word in _all) word.PropertyChanged -= OnWordPropertyChanged;
         _all.Clear();
         if (rows is not null)
-            _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row))));
+            _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row),
+                WordCardTokenFactory?.Invoke(row.Source))));
         foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
         var placesAvailable = _all.Any(word => word.Occurrences is not null);
         foreach (var cell in Cells)
@@ -916,10 +919,12 @@ public sealed partial class ComparePresetViewModel(string label, IReadOnlyList<C
 /// <summary>One word in the Compare list, with the cell it sits in.</summary>
 public sealed partial class CompareWordViewModel : ObservableObject
 {
-    public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumnKind Column) place)
+    public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumnKind Column) place,
+        ResultsTokenViewModel? cardToken = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
+        CardToken = cardToken;
         Source = word.Source;
         WordRow = word.WordRow;
         Standing = word.Standing;
@@ -952,11 +957,15 @@ public sealed partial class CompareWordViewModel : ObservableObject
         ReadingCount = word.Morphology?.Analyses.Count ?? 0;
         ReadingChoices = word.Morphology?.Analyses.Select((reading, index) =>
             new CompareReadingChoice(index, reading,
-                $"Reading {index + 1}: {(index < word.Readings.Count ? word.Readings[index].Text : "Unresolved")}"))
+                $"Analysis {index + 1}: {(index < word.Readings.Count ? word.Readings[index].Text : "Unresolved")}"))
             .ToArray() ?? [];
     }
 
     public string Word { get; }
+
+    public ResultsTokenViewModel? CardToken { get; }
+
+    public bool HasCardToken => CardToken is not null;
 
     /// <summary>The Assessment's result for the word, read by identity for what listed words share.</summary>
     public AssessmentWordResult Source { get; }

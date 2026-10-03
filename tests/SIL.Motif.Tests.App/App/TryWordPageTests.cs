@@ -91,7 +91,8 @@ public sealed class TryWordPageTests
         Assert.Equal("matin + lu", row.Text);
         Assert.Equal("Approved 1 · Disapproved 1 · Unknown 2", row.OpinionLabel);
         Assert.Equal(["stem", "suffix"], row.Morphs.Select(morph => morph.GlossOrPlaceholder));
-        Assert.All(row.Pieces, piece => Assert.Equal("No step recorded", piece.Status));
+        Assert.All(row.Pieces, piece => Assert.Empty(piece.StatusParts));
+        Assert.True(row.HasUnrecordedStep);
     }
 
     [Fact]
@@ -102,7 +103,7 @@ public sealed class TryWordPageTests
         { SourceIdentityKind = "morphRule", SourceIdentityId = msa, SourceIdentityQuality = "authored" };
         var reading = TraceReadingBuilder.Build("word", step, [], []);
         var sameLabel = new ParserReadingMorph("ja-", "NEG.PERF", "v", null, false, null);
-        Assert.Equal("No step recorded", new TryWordTracePiece(sameLabel, reading).Status);
+        Assert.Empty(new TryWordTracePiece(sameLabel, reading).StatusParts);
         var refused = new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa }, reading);
         Assert.Equal("refused", refused.Status);
         Assert.Equal(Mark.Of(TraceStepMark.Refused), Assert.Single(refused.StatusParts).Mark);
@@ -110,8 +111,8 @@ public sealed class TryWordPageTests
             new ParserReading([sameLabel]),
             new ParserReading([sameLabel with { GrammaticalInfoId = msa }])], reading);
         Assert.Equal("Trace marks differ", Assert.Single(grouped.Pieces).Status);
-        Assert.Equal("No step recorded", new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa },
-            TraceReadingBuilder.Build("word", step with { SourceIdentityQuality = "grammar-local" }, [], [])).Status);
+        Assert.Empty(new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa },
+            TraceReadingBuilder.Build("word", step with { SourceIdentityQuality = "grammar-local" }, [], [])).StatusParts);
     }
 
     [Fact]
@@ -976,6 +977,36 @@ public sealed class TryWordPageTests
                 window.Show();
                 Settle(window);
                 Assert.Contains(expected, ContextTexts(window));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void MissingRecordedStepsAreSaidOncePerStoredAnalysis()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var stored = new ParserReading([
+                new("ha-", "NEG", "prefix", null, false, null),
+                new("wa-", "3PL", "prefix", null, false, null),
+            ]);
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true) { IsInFieldWorks = true, Analyses = [stored] }));
+            fake.TraceWordCompletesWith(DogsTrace());
+            var page = new TryWordPageModel(context);
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                Settle(window);
+
+                Assert.Equal(2, Assert.Single(page.FieldWorksAnalyses).Pieces.Count);
+                Assert.Equal(1, ContextTexts(window).Count(text => text == "No step recorded"));
             }
             finally { window.Close(); }
         });

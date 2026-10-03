@@ -294,8 +294,10 @@ internal sealed class TooltipScenes
             case TooltipScene.AnalyzeWordList:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
-                await Until(() => Visible<Control>().Any(control => control.FindAncestorOfType<TextWordsPanel>() is not null),
-                    "the Analyze texts word list");
+                await Until(() => Visible<Button>().Any(button =>
+                    button.FindAncestorOfType<TextWordsPanel>() is not null &&
+                    AutomationProperties.GetName(button)?.StartsWith("AI Handoff", StringComparison.Ordinal) == true &&
+                    ToolTip.GetTip(button) is not null), "the Analyze texts word list handoff tooltip");
                 break;
             case TooltipScene.ReaderDisapproved:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);

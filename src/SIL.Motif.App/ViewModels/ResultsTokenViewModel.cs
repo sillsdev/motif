@@ -40,7 +40,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         WordformId = token.WordformId;
         OccurrenceIndex = token.OccurrenceIndex;
         WordLink = token.WordLink is { } link ? new Uri(link) : null;
-        Stored = token.Analysis?.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
+        Stored = (token.Analysis?.Morphs ?? token.StoredAnalyses.FirstOrDefault()?.Morphs)
+            ?.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
         ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
         ProjectStatusLabel = projectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
         ProjectStatusMark = projectWord is null ? Mark.NotInFieldWorks : projectWord.StatusMark;
@@ -89,9 +90,12 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         var others = Readings.Count - 1;
         ParserLine = Verdict switch
         {
-            OccurrenceVerdict.Matches => others > 0
-                ? $"parser agrees, with {others} other reading{Plural(others)}"
-                : "parser agrees",
+            OccurrenceVerdict.Matches => others switch
+            {
+                0 => "parser agrees",
+                1 => "parser agrees, with 1 other analysis",
+                _ => $"parser agrees, with {others} other analyses",
+            },
             OccurrenceVerdict.Differs when first is null => "parser: no parse",
             OccurrenceVerdict.Differs => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.New => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
@@ -175,6 +179,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         : Comparison.MeaningCode == "refused" ? ParserRefusals.Title
         : CompareSemantics.MeaningOf(Comparison.Standing, ColumnOf(Comparison.Outcome)).Label;
 
+    public string PanGlossCardSummary => IsPanGlossNone
+        ? $"∅ No parse · the grammar builds nothing for this word · {PanGlossSummary}"
+        : PanGlossSummary;
+
     private bool HasOpinionConflict => Comparison.Standing == ProjectStanding.IncorrectSpelling ||
         HasDisapprovedReading || Comparison.MissingApprovedAnalyses.Count > 0 || Comparison.MissingApproved.Count > 0;
 
@@ -226,6 +234,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         SpellingCandidateWarnings.Count > 0;
     /// <summary>Whether either candidate list has an entry.</summary>
     public bool HasWarningCandidates => MembershipCandidateWarnings.Count > 0 || SpellingCandidateWarnings.Count > 0;
+    public bool ShowsWarningCandidates => HasWarningCandidates && !HasNamedWarning;
     /// <summary>Whether a warning names this word through a membership candidate.</summary>
     public bool HasMembershipCandidateWarnings => MembershipCandidateWarnings.Count > 0;
     /// <summary>Whether a warning names this word through a spelling candidate.</summary>
@@ -244,8 +253,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         ? $"{(names.Count == 1 ? "A grammar warning names" : "Grammar warnings name")} {string.Join(", ", names)}."
         : string.Empty;
     /// <summary>The word card's heading for warning evidence and possible matches.</summary>
-    public string WarningSectionHeading => HasNamedWarning ? "What a warning names in this word"
-        : HasWarningCandidates ? "Possible warning matches" : "Warning evidence";
+    public string WarningSectionHeading => IsPanGlossNone
+        ? "Why it might not parse" : "What a warning names in this word";
     /// <summary>Whether exact or candidate warning evidence, or this word's Assessment, supports the card section.</summary>
     public bool HasWhySection => HasWarningEvidence || _assessment is not null;
     /// <summary>Whether the Timing response included any rule shares for this word.</summary>
@@ -296,6 +305,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         OnPropertyChanged(nameof(HasNoNamedWarning));
         OnPropertyChanged(nameof(HasWarningEvidence));
         OnPropertyChanged(nameof(HasWarningCandidates));
+        OnPropertyChanged(nameof(ShowsWarningCandidates));
         OnPropertyChanged(nameof(HasMembershipCandidateWarnings));
         OnPropertyChanged(nameof(HasSpellingCandidateWarnings));
         OnPropertyChanged(nameof(HasOtherWordsUsingMorpheme));
@@ -314,14 +324,15 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         HasTimingEvidence = responseAvailable;
         var timingShares = timing?.Aggregates
             .Where(row => row.ShareOfWordTime is > 0)
-            .Select(row => new TimingShareViewModel(row.Name, row.ShareOfWordTime!.Value))
+            .Select(row => new TimingShareViewModel(row.Name, row.ShareOfWordTime!.Value, row.SelfMs))
             .ToList() ?? [];
         if (timing is not null && timing.Attribution.WordTimeMs > 0)
         {
             var allRulesShare = timing.Attribution.AttributedMs / timing.Attribution.WordTimeMs;
             var otherRulesShare = allRulesShare - timingShares.Sum(row => row.Share);
             if (double.IsFinite(otherRulesShare) && otherRulesShare >= 0.0005)
-                timingShares.Add(new TimingShareViewModel("Other rules", otherRulesShare));
+                timingShares.Add(new TimingShareViewModel("Other rules", otherRulesShare,
+                    Math.Max(0, timing.Attribution.AttributedMs - timingShares.Sum(row => row.Milliseconds))));
         }
         TimingShares = timingShares;
         NotAttributedShare = timing?.Attribution.NotAttributedShare;
@@ -454,6 +465,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The Analyze texts actions available to this word card.</summary>
     public ResultsInTextViewModel? Actions { get; internal set; }
 
+    public IAsyncRelayCommand<string>? AddChangeForTokenCommand { get; internal set; }
+
+    public IRelayCommand? TryWordForTokenCommand { get; internal set; }
+
     public IAsyncRelayCommand<AnalysisMarkingChoice>? StageMarkingChoiceForTokenCommand { get; internal set; }
 
     /// <summary>The morphs of the analysis stored at this occurrence, each linked to its entry.</summary>
@@ -471,7 +486,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool HasProjectApprovedAnalyses => ProjectApprovedAnalyses.Count > 0;
 
     public bool HasStored => Stored.Count > 0;
-    public bool HasNothingStored => IsWord && Stored.Count == 0;
+    public bool HasNothingStored => IsWord && !HasFieldWorksAnalyses;
+
+    internal bool HasAssessmentResult(AssessmentWordResult result) => ReferenceEquals(_assessment, result);
 
     /// <summary>Every reading the parser produced for this word, graded, with the one stored here marked.</summary>
     public IReadOnlyList<ResultsReadingViewModel> Readings { get; }
@@ -584,7 +601,6 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             : string.Join("-", parts);
     }
 
-    private static string Plural(int count) => count == 1 ? string.Empty : "s";
 }
 
 /// <summary>One strip morpheme and whether its exact identity is named by a warning.</summary>
@@ -613,7 +629,7 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
     /// <summary>The candidate word forms as a comma-separated label.</summary>
     public string WordsLabel => string.Join(", ", Words);
     /// <summary>The heading for words reached through members of a named resource.</summary>
-    public string MembershipLabel => "Words that use members of the named resource";
+    public string MembershipLabel => "Other words that use this resource";
     /// <summary>The heading for words matched by their spelling alone.</summary>
     public string SpellingLabel => "Matched by spelling only";
 }
@@ -621,10 +637,11 @@ public sealed record WarningCandidateViewModel(IReadOnlyList<string> Words)
 /// <summary>One stored rule's share of the selected word time.</summary>
 /// <param name="Name">The rule name returned by Timing.</param>
 /// <param name="Share">The rule's stored share of word time.</param>
-public sealed record TimingShareViewModel(string Name, double Share)
+/// <param name="Milliseconds">The rule's stored time in this word.</param>
+public sealed record TimingShareViewModel(string Name, double Share, double Milliseconds)
 {
     /// <summary>The stored share formatted as a percentage.</summary>
-    public string ShareLabel => Share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
+    public string ShareLabel => $"{Share.ToString("P0", System.Globalization.CultureInfo.CurrentCulture)} · {TimingShare.FormatDuration(Milliseconds)}";
 }
 
 internal sealed record ResultsWarningEvidence(

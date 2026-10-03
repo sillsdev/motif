@@ -67,6 +67,13 @@ public sealed partial class WordRow : UserControl
     public static readonly StyledProperty<object?> ActionsProperty =
         AvaloniaProperty.Register<WordRow, object?>(nameof(Actions));
 
+    static WordRow()
+    {
+        RowProperty.Changed.AddClassHandler<WordRow>((row, _) => row.ApplyLayout());
+        ColumnsProperty.Changed.AddClassHandler<WordRow>((row, _) => row.ApplyLayout());
+        ShowsMeaningProperty.Changed.AddClassHandler<WordRow>((row, _) => row.ApplyLayout());
+    }
+
     public WordRow()
     {
         AvaloniaXamlLoader.Load(this);
@@ -79,7 +86,7 @@ public sealed partial class WordRow : UserControl
         _body.KeyDown += OnBodyKeyDown;
         AddHandler(KeyDownEvent, OnRowKeyDown, handledEventsToo: false);
         _layout = new WordRowLayout(this);
-        _layout.Apply(Columns, ShowsMeaning);
+        ApplyLayout();
     }
 
     private readonly WordRowLayout? _layout;
@@ -88,6 +95,8 @@ public sealed partial class WordRow : UserControl
     private readonly Border _root;
     private Point? _pressedAt;
     private readonly Border _body;
+
+    private void ApplyLayout() => _layout?.Apply(Columns, ShowsMeaning);
 
     /// <summary>The word's facts and next steps, the same for the word on every page.</summary>
     public WordRowViewModel? Row
@@ -410,6 +419,7 @@ internal sealed class WordRowLayout
         bool Shows(WordRowColumns column) => (columns & column) == column;
         var fieldWorks = Shows(WordRowColumns.FieldWorksMorphemes);
         var panGloss = Shows(WordRowColumns.PanGlossMorphemes);
+        _line.Classes.Set("wordList", columns == WordRowColumnSets.WordList);
         _cells.Classes.Set("marksOnly", !panGloss);
         _cells.Classes.Set("fieldWorksMorphemesOnly", fieldWorks && !panGloss);
         // Morphemes share the free width; marks alone size to the widest in the list, as the other columns do.
@@ -419,6 +429,9 @@ internal sealed class WordRowLayout
         SetShown("PanGlossMorphemes", panGloss);
         SetShown("OutcomeBesideMorphemes", panGloss);
         SetShown("OutcomeAlone", !panGloss);
+        var row = (_owner as WordRow)?.Row;
+        if (_owner.FindControl<Control>("WordGloss") is { } wordGloss)
+            wordGloss.IsVisible = !string.IsNullOrWhiteSpace(row?.Gloss);
         Show(_line, _lineParts, [Shows(WordRowColumns.Tick), true, true]);
         Show(_cells, _cellParts,
         [

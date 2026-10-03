@@ -12,8 +12,7 @@
     <Border Classes="wordRowEdge">
       <StackPanel>
         <Border x:Name="Body" Classes="wordRowBody hoverReveal" Classes.open="{Binding #Self.IsOpen}" Focusable="True" IsTabStop="True"
-                ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}"
-                views:ClearTipPlacement.IsEnabled="True">
+                AutomationProperties.Name="{Binding Summary}">
           <StackPanel>
         <Grid x:Name="Line" Classes="wordRowLine">
           <Grid.ColumnDefinitions>
@@ -40,9 +39,10 @@
               </Grid.ColumnDefinitions>
 
               <StackPanel x:Name="WordCell" Classes="wordRowWord" VerticalAlignment="Center">
-                <views:CopyableTextBlock Classes="wordRowForm" Text="{Binding Word}" TextTrimming="CharacterEllipsis"
-                                         ToolTip.Tip="{Binding Word}" views:ClearTipPlacement.IsEnabled="True" />
-                <views:CopyableTextBlock Classes="wordRowGloss" Text="{Binding Gloss}" TextWrapping="Wrap"
+                <views:CopyableTextBlock x:Name="WordForm" Classes="wordRowForm" Text="{Binding Word}"
+                           TextTrimming="CharacterEllipsis" Background="{DynamicResource Intent.Clear}"
+                           ToolTip.Tip="{Binding Summary}" views:ClearTipPlacement.IsEnabled="True" />
+                <views:CopyableTextBlock x:Name="WordGloss" Classes="wordRowGloss" Text="{Binding Gloss}" TextWrapping="Wrap"
                            IsVisible="{Binding Gloss, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <views:CopyableTextBlock Classes="wordRowStaged" Text="{Binding #Self.StagedText}" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding #Self.StagedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

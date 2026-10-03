@@ -29,7 +29,6 @@ internal static class TestFontScale
         "Component.Mark.GlyphType",
         "Component.OpinionMark.Type",
         "Component.PanGlossLine.ExtraType",
-        "Component.PanGlossLine.Type",
         "Component.StagedStrip.Type",
         "Component.WordCard.HeadingType",
         "Component.WordStrip.MorphType",

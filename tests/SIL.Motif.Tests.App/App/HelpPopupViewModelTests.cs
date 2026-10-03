@@ -160,12 +160,12 @@ public sealed class HelpPopupViewModelTests
             viewModel.ShowPanGlossPage();
 
             Assert.Equal("PanGloss", viewModel.Title);
-            Assert.Equal("On Analyze texts, PanGloss runs the project's grammar on selected texts and compares its readings with what FieldWorks stores.",
+            Assert.Equal("On Analyze texts, PanGloss runs the project's grammar on selected texts and compares its analyses with what FieldWorks stores.",
                 viewModel.Description);
             Assert.Contains("A means Approved", viewModel.Markdown);
             Assert.Contains("U means Unknown", viewModel.Markdown);
             Assert.Contains("D means Disapproved", viewModel.Markdown);
-            Assert.Contains("Blue means PanGloss found a new or different reading", viewModel.Markdown);
+            Assert.Contains("Blue means PanGloss found a new or different analysis", viewModel.Markdown);
             Assert.Contains("The compact word strip for geldi", viewModel.Markdown);
             Assert.DoesNotContain("shot:explained-word-card/approved-agrees", viewModel.Markdown);
         });

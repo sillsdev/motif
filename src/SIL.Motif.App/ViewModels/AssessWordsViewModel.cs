@@ -301,15 +301,15 @@ public sealed class AssessWordRowViewModel
     public bool StoppedAtALimit => CompareSemantics.StoppedAtLimit(Outcome, IsIncomplete, Morphology);
     public int ReadingCount { get; }
 
-    public string ReadingCountText => ReadingCount == 1 ? "1 reading" : $"{ReadingCount} readings";
+    public string ReadingCountText => ReadingCount == 1 ? "1 analysis" : $"{ReadingCount} analyses";
 
-    /// <summary>Why a word has no readings: a limit or a skip is not the parser finding no way to build it.</summary>
+    /// <summary>Why a word has no analyses: a limit or a skip is not the parser finding no way to build it.</summary>
     public string NoReadingsText => Result switch
     {
-        "Time limit" => "No readings: the parser stopped at its time limit before it could finish.",
-        "Step limit" => "No readings: the parser stopped at its step limit before it could finish.",
+        "Time limit" => "No analyses: the parser stopped at its time limit before it could finish.",
+        "Step limit" => "No analyses: the parser stopped at its step limit before it could finish.",
         ParserRefusals.Title => Comparison.Detail,
-        _ => "No readings: the parser found no way to build this word.",
+        _ => "No analyses: the parser found no way to build this word.",
     };
     public string Correctness { get; }
     public int? ElapsedMs { get; }

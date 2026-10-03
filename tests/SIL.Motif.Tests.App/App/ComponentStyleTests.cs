@@ -877,7 +877,23 @@ public sealed partial class ComponentStyleTests
         yield return new("WordStrip", "an open word strip", host => Add(host, Box("wordStrip", "open")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("WordStrip", "an analysis row", host => Add(host, Box("stripRow", "analysisRow")),
-            Control.HeightProperty, "Component.WordStrip.AnalysisRowHeight");
+            Control.MinHeightProperty, "Component.WordStrip.AnalysisRowHeight");
+        yield return new("WordStrip", "a morpheme form's font metric line", host => Add(host, Text("stripMorphForm")),
+            TextBlock.LineHeightProperty, "Component.WordStrip.LineHeight");
+        yield return new("WordStrip", "a morpheme gloss's font metric line", host => Add(host, Text("stripMorphGloss")),
+            TextBlock.LineHeightProperty, "Component.WordStrip.LineHeight");
+        yield return new("WordStrip", "word and analysis rows have no extra gap",
+            host => Add(host, new StackPanel { Classes = { "stripStack" } }),
+            StackPanel.SpacingProperty, "Intent.Space.None");
+        yield return new("WordStrip", "the gutter aligns its analysis rows",
+            host => Add(host, new StackPanel { Classes = { "gutter" } }),
+            StackPanel.SpacingProperty, "Intent.Space.None");
+        yield return new("WordStrip", "the analysis rows keep a one-pixel divider gap",
+            host => Add(host, Box("stripFieldWorks")),
+            Control.MarginProperty, "Component.WordStrip.AnalysisRowGap");
+        yield return new("WordStrip", "the FieldWorks gutter label has the divider gap",
+            host => Add(host, new TextBlock { Classes = { "gutterLabel", "fieldWorksRow" } }),
+            Control.MarginProperty, "Component.WordStrip.AnalysisRowGap");
         yield return new("WordStrip", "an analysis row rule", host => Add(host, Box("stripRow")),
             Border.BorderBrushProperty, "Intent.Marking.Divider");
         yield return new("UnreadMark", "the unread dot alone", host => Add(host, Box("unreadMark", "dotOnly")),

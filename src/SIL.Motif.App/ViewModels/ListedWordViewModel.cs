@@ -18,11 +18,13 @@ public sealed partial class ListedWordViewModel : ObservableObject
     /// <summary>The word with its parse in the window: its row, and its card from the same parse.</summary>
     /// <param name="word">The word as the latest Parse all words left it.</param>
     /// <param name="routes">Where the row's next steps lead, when this page sends them elsewhere than the word's own.</param>
-    public static ListedWordViewModel Of(AssessWordRowViewModel word, WordRowRoutes? routes = null)
+    public static ListedWordViewModel Of(AssessWordRowViewModel word, WordRowRoutes? routes = null,
+        Func<SIL.Motif.Contract.Responses.AssessmentWordResult, ResultsTokenViewModel?>? cardTokenFactory = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         var row = routes is null ? word.WordRow : new WordRowViewModel(word.WordRow.Row, routes);
-        return new ListedWordViewModel(row, new CompareWordViewModel(word, CompareViewModel.Place(word)));
+        return new ListedWordViewModel(row, new CompareWordViewModel(word, CompareViewModel.Place(word),
+            cardTokenFactory?.Invoke(word.Source)));
     }
 
     public string Word => Row.Word;
@@ -32,6 +34,8 @@ public sealed partial class ListedWordViewModel : ObservableObject
 
     /// <summary>What the opened row shows, or <see langword="null"/> when the latest parse did not reach the word.</summary>
     public CompareWordViewModel? Card { get; }
+
+    public ResultsTokenViewModel? CardToken => Card?.CardToken;
 
     public bool HasCard => Card is not null;
 

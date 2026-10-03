@@ -310,7 +310,7 @@ public sealed partial class InspectorViewModel : ObservableObject
         Warnings = [.. (response?.Warnings.Value ?? []).Select(InspectorWarningViewModel.Of)];
         WarningsNote = Note(response?.Warnings);
         ShowsAllWarnings = false;
-        Facts = facts is null ? [] : InspectorFactViewModel.Rows(facts);
+        Facts = facts is null ? [] : InspectorFactViewModel.Rows(facts, subject.Gloss);
         FactsNote = Note(response?.Facts);
         OnPropertyChanged(string.Empty);
     }
@@ -551,7 +551,7 @@ public sealed record InspectorFactViewModel(string Label, string Value)
     public bool CannotInspect => InspectSubject is null;
 
     /// <summary>The rows for <paramref name="facts"/>, entry first and allomorphs last, as Lexicon Edit orders them.</summary>
-    public static IReadOnlyList<InspectorFactViewModel> Rows(ObjectFacts facts)
+    public static IReadOnlyList<InspectorFactViewModel> Rows(ObjectFacts facts, string? analysisGloss = null)
     {
         ArgumentNullException.ThrowIfNull(facts);
         var rows = new List<InspectorFactViewModel>();
@@ -559,8 +559,13 @@ public sealed record InspectorFactViewModel(string Label, string Value)
             rows.Add(With(new InspectorFactViewModel("Entry",
                 entry.MorphType is { Length: > 0 } type ? $"{entry.Headword} · {type}" : entry.Headword), entry.FieldWorks, entry.Headword));
         foreach (var sense in facts.Senses)
-            rows.Add(With(new InspectorFactViewModel($"Sense {sense.Number}",
-                sense.Gloss ?? sense.Definition ?? "No gloss"), sense.FieldWorks, $"sense {sense.Number}"));
+        {
+            var hasSenseText = !string.IsNullOrWhiteSpace(sense.Gloss) || !string.IsNullOrWhiteSpace(sense.Definition);
+            var row = !hasSenseText && sense.Number == "1" && !string.IsNullOrWhiteSpace(analysisGloss)
+                ? new InspectorFactViewModel("Sense", $"1 has no gloss; the analysis glosses it {analysisGloss}")
+                : new InspectorFactViewModel($"Sense {sense.Number}", sense.Gloss ?? sense.Definition ?? "No gloss");
+            rows.Add(With(row, sense.FieldWorks, $"sense {sense.Number}"));
+        }
         if (facts.GrammaticalInfo is { } info)
         {
             var kind = InspectorViewModel.GrammaticalInfoKind(info.Kind);

@@ -44,6 +44,8 @@ public sealed partial class TextsPageModel : PageModel
             OpenTexts = () => context.OpenTexts(TextsTab.AnalyzeTexts),
             OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
         };
+        Words.WordCardTokenFactory = ResultsInText.GetCardToken;
+        Assess.Compare.WordCardTokenFactory = ResultsInText.GetCardToken;
         context.RegisterOccurrenceContextProvider(anchor => ResultsInText.FindOccurrenceLine(anchor)?.Tokens);
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>

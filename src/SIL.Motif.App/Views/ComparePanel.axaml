@@ -153,7 +153,7 @@
                                OpenedCommand="{Binding $parent[views:ComparePanel].Compare.FocusFixFirstCommand}"
                                OpenedCommandParameter="{Binding}">
                   <views:WordRow.Card>
-                    <views:WordRowCard DataContext="{Binding Word}" />
+                    <views:WordRowCard DataContext="{Binding Word}" CardToken="{Binding CardToken}" />
                   </views:WordRow.Card>
                 </views:WordRow>
               </DataTemplate>
@@ -293,7 +293,7 @@
                                  ShowsMeaning="{Binding $parent[views:ComparePanel].Compare.ShowsMeaning}"
                                  IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
                     <views:WordRow.Card>
-                      <views:WordRowCard />
+                      <views:WordRowCard CardToken="{Binding CardToken}" />
                     </views:WordRow.Card>
                   </views:WordRow>
                 </DataTemplate>

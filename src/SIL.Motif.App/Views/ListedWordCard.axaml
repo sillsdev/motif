@@ -3,10 +3,12 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ListedWordCard"
-             x:DataType="vm:ListedWordViewModel">
+             x:DataType="vm:ListedWordViewModel"
+             x:Name="Self">
   <Panel>
     <Panel IsVisible="{Binding HasCard}">
-      <views:WordRowCard DataContext="{Binding Card}" />
+      <views:WordRowCard DataContext="{Binding Card}" CardToken="{Binding CardToken}"
+                         IsOpen="{Binding #Self.DataContext.IsOpen}" />
     </Panel>
     <views:CopyableTextBlock Classes="muted" Text="{Binding NotParsedText}" TextWrapping="Wrap"
                              IsVisible="{Binding !HasCard}" />

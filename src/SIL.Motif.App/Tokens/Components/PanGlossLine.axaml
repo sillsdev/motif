@@ -2,7 +2,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.PanGlossLine.DifferentPadding" ResourceKey="Primitive.Inset.3_0_0_0" />
-    <StaticResource x:Key="Component.PanGlossLine.Type" ResourceKey="Primitive.Type.10" />
     <StaticResource x:Key="Component.PanGlossLine.ExtraPadding" ResourceKey="Primitive.Inset.3_0_3_0" />
     <StaticResource x:Key="Component.PanGlossLine.ExtraType" ResourceKey="Primitive.Type.9" />
     <StaticResource x:Key="Component.PanGlossLine.ExtraRadius" ResourceKey="Primitive.Radius.2" />
@@ -16,7 +15,7 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
   </Style>
   <Style Selector="Border.panGlossLine :is(TextBlock)">
-    <Setter Property="FontSize" Value="{DynamicResource Component.PanGlossLine.Type}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Dense}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
   </Style>
   <Style Selector="Border.panGlossLine.same :is(TextBlock)">

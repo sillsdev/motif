@@ -256,9 +256,10 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 Assert.NotNull(readingOccurrence);
                 await inText.OpenTokenCardAsync(readingOccurrence);
                 AnalyzeTextsLayoutTests.Settle(window);
-                var readingPicker = AnalyzeTextsLayoutTests.Named<ComboBox>(
-                    AnalyzeTextsLayoutTests.OpenCard(window), "Choose a PanGloss reading for this word");
-                Assert.True(readingPicker.Focus(), "The reading picker can receive keyboard focus.");
+                var fixActions = Assert.Single(AnalyzeTextsLayoutTests.OpenCard(window)
+                    .GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == "Fix actions for this word");
+                Assert.True(fixActions.Focus(), "The card's Fix actions button can receive keyboard focus.");
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);

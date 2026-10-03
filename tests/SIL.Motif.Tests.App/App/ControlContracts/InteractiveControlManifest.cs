@@ -314,6 +314,8 @@ internal static class InteractiveControlManifest
             "src/SIL.Motif.App/Views/StatisticsPanel.axaml", "DataGridTemplateColumn"),
         new("morpheme keyboard popup", InteractiveControlFamily.Morpheme,
             "src/SIL.Motif.App/Views/MorphemeRow.cs", "block.KeyDown"),
+        new("shared word row morphology", InteractiveControlFamily.Morpheme,
+            "src/SIL.Motif.App/Views/WordRow.axaml", "x:Name=\"FieldWorksMorphemes\""),
         new("nested project menu entries", InteractiveControlFamily.Action,
             "src/SIL.Motif.App/Views/MainWindow.axaml", "Open recent"),
         new("outcome summary and legend", InteractiveControlFamily.Summary,
