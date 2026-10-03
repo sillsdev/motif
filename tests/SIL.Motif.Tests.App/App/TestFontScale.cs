@@ -7,7 +7,7 @@ namespace SIL.Motif.Tests.App;
 internal static class TestFontScale
 {
     private const double CrossPlatformIncrease = 1.08;
-    private const double MacLineHeightScale = 4.0 / 3.0;
+    private const double MacLineHeightScale = 1.05;
 
     private static readonly string[] TypographyResources =
     [

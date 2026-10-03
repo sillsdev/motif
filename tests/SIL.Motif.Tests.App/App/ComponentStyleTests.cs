@@ -560,6 +560,12 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Consequence.Look");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
             Border.WidthProperty, "Component.MatrixCell.CompactWidth");
+        yield return new("MatrixCell", "a short matrix cell", host =>
+        {
+            var cell = Box("matrixCell");
+            host.Children.Add(new UserControl { Classes = { "shortMatrix" }, Content = cell });
+            return cell;
+        }, Border.MinHeightProperty, "Component.MatrixCell.ShortHeight");
         yield return new("MorphemeRow", "a form that is its own link",
             host => Add(host, With(new HyperlinkButton { Content = "kul" }, ["morphForm", "morphFormLink"])),
             HyperlinkButton.FontSizeProperty, "Intent.Type.Body");
