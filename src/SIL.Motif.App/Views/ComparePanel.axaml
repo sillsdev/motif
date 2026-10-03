@@ -19,13 +19,26 @@
     <Style Selector=":is(Control).matrixRowLabel">
       <Setter Property="Width" Value="{DynamicResource Component.TextsPage.MatrixRowLabelWidth}" />
     </Style>
+    <Style Selector="Grid.matrixLayout">
+      <Setter Property="Margin" Value="{DynamicResource Component.TextsPage.PageInset}" />
+      <Setter Property="RowSpacing" Value="{DynamicResource Component.MatrixCell.MatrixSpacing}" />
+    </Style>
+    <Style Selector="StackPanel.matrixRows">
+      <Setter Property="Spacing" Value="{DynamicResource Component.MatrixCell.MatrixSpacing}" />
+    </Style>
     <Style Selector=":is(UserControl).wideMatrix :is(Control).matrixRowLabel">
       <Setter Property="Width" Value="{DynamicResource Component.TextsPage.WideMatrixRowLabelWidth}" />
     </Style>
+    <Style Selector=":is(UserControl).shortMatrix StackPanel.matrixRows">
+      <Setter Property="Spacing" Value="{DynamicResource Component.MatrixCell.ShortSpacing}" />
+    </Style>
+    <Style Selector=":is(UserControl).shortMatrix Grid.matrixLayout">
+      <Setter Property="Margin" Value="{DynamicResource Component.TextsPage.ShortPageInset}" />
+      <Setter Property="RowSpacing" Value="{DynamicResource Component.TextsPage.ShortRowSpacing}" />
+    </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
-        Margin="{DynamicResource Component.TextsPage.PageInset}" IsVisible="{Binding Compare.HasWords}">
+  <Grid Classes="matrixLayout" RowDefinitions="Auto,Auto,Auto,*" IsVisible="{Binding Compare.HasWords}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
         <views:CopyableTextBlock TextWrapping="Wrap"
@@ -79,7 +92,7 @@
       <ItemsControl ItemsSource="{Binding Compare.Rows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}" />
+            <StackPanel Classes="matrixRows" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>

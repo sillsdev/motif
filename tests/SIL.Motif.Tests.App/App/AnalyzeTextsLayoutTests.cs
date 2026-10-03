@@ -68,12 +68,18 @@ public sealed class AnalyzeTextsLayoutTests
             var (workspace, window) = await OpenAnalyzeTexts();
             try
             {
+                TestFontScale.ApplyEightPercentIncrease(window);
+                Settle(window);
                 var panel = Panel(window);
                 var card = OpenCard(window);
                 var open = Assert.IsType<ResultsTokenViewModel>(card.DataContext);
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
 
                 var cardBounds = BoundsIn(card, panel);
+                Assert.True(cardBounds.Left >= -0.5 && cardBounds.Right <= panel.Bounds.Width + 0.5,
+                    $"The opened word card spans {cardBounds.Left:0.#}–{cardBounds.Right:0.#} px of its " +
+                    $"{panel.Bounds.Width:0.#} px panel at 108% text size.");
+                LayoutAssertions.AssertCurrent(card);
                 var strips = Strips(panel).ToArray();
                 var ownStrip = Assert.Single(strips, strip => ReferenceEquals(strip.Tag, open));
                 Assert.True(cardBounds.Top >= BoundsIn(ownStrip, panel).Bottom,

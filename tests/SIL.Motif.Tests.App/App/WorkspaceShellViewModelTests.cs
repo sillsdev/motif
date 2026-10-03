@@ -625,6 +625,39 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
+    public async Task FreshnessRequestedAgainDuringAReadPublishesTheLaterResultBeforeItCompletes()
+    {
+        var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath);
+        var staleRead = new TaskCompletionSource<CommandOutcome<CurrentBaselineResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var readStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = 0;
+        var latest = new CurrentBaselineResponse(NewToken("2026-10-03T00:00:00Z"), DateTimeOffset.UtcNow, false);
+        fake.OnGetCurrentBaseline((_, _) =>
+        {
+            if (Interlocked.Increment(ref reads) == 1)
+            {
+                readStarted.TrySetResult();
+                return staleRead.Task;
+            }
+
+            return Task.FromResult(CommandOutcome<CurrentBaselineResponse>.Success(latest));
+        });
+
+        var firstActivation = workspace.CheckFreshnessAsync();
+        await readStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var secondActivation = workspace.CheckFreshnessAsync();
+        staleRead.SetResult(CommandOutcome<CurrentBaselineResponse>.Success(
+            new CurrentBaselineResponse(NewToken("2026-10-02T00:00:00Z"), DateTimeOffset.UtcNow, false)));
+        await firstActivation.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Same(firstActivation, secondActivation);
+        Assert.Equal(2, reads);
+        Assert.Equal(latest.Token, workspace.Baseline.Token);
+    }
+
+    [Fact]
     public async Task StoredSkipSuppressesFirstOpenButConfigureCanReopenSetup()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();

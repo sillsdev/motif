@@ -9,7 +9,10 @@ using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Documents;
+using Avalonia.Headless;
 using Avalonia.Styling;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Requests;
@@ -282,6 +285,7 @@ internal static class WalkthroughReplayTestRunner
                     Assert.Equal(1d, walkthrough.Window.RenderScaling);
                     if (script.Id == "explained-word-card")
                     {
+                        WalkthroughReplay.SuppressTooltipsForCapture(walkthrough.Window);
                         using var frame = SKBitmap.Decode(WalkthroughArtifacts.CaptureFrame(walkthrough.Window, 2.5));
                         Assert.NotNull(frame);
                         Assert.Equal((3200, 2000), (frame!.Width, frame.Height));
@@ -442,6 +446,7 @@ internal static class WalkthroughReplay
                     if (preparation?.ReadyMarkers.TryGetValue(clickId, out var readyMarker) == true)
                         window.WaitUntil(() => File.Exists(readyMarker), WalkthroughSteps.Remaining(deadline),
                             $"the prepared parser phase for '{step.Id}' did not start");
+                    SuppressTooltipsForCapture(window.Window);
                     clipSegments.Add(new WalkthroughClipSegment(elapsedMs, ClickDurationMs,
                         WalkthroughArtifacts.CaptureFrame(window.Window), clickBounds,
                         WalkthroughClipSegmentKind.Click, clickId));
@@ -466,6 +471,7 @@ internal static class WalkthroughReplay
                     break;
                 case WalkthroughStepKind.Hold:
                     Avalonia.Rect? holdBounds = lastTarget is null ? null : window.BoundsByAutomationId(lastTarget);
+                    SuppressTooltipsForCapture(window.Window);
                     clipSegments.Add(new WalkthroughClipSegment(elapsedMs, step.DurationMs!.Value,
                         WalkthroughArtifacts.CaptureFrame(window.Window), holdBounds,
                         WalkthroughClipSegmentKind.Hold, null));
@@ -525,6 +531,11 @@ internal static class WalkthroughReplay
                             callout.AutomationId, help.CalloutCaption(step.Id, callout.AutomationId),
                             bounds);
                     }).ToArray();
+                    var stagedTooltip = OpenStagedFitTooltipForCaptureRegression(window, script, step);
+                    SuppressTooltipsForCapture(window.Window);
+                    if (stagedTooltip is not null)
+                        Assert.False(ToolTip.GetIsOpen(stagedTooltip),
+                            "The staged fit tooltip remained open as the unknown-staged frame was captured.");
                     var capture = WalkthroughArtifacts.Capture(step.Id, elapsedMs, step.DurationMs!.Value,
                         window.Window, callouts, step.CropPadding, step.Scale);
                     if (script.Id == "explained-word-card" && step.Id == "approved-agrees")
@@ -608,6 +619,36 @@ internal static class WalkthroughReplay
         !window.Workspace.Assess.IsActive && !window.Workspace.RefreshCommand.IsRunning &&
         !window.Workspace.PageModel<TextsPageModel>().ResultsInText
             .StagePrimaryMarkingActionForTokenCommand.IsRunning;
+
+    private static Border? OpenStagedFitTooltipForCaptureRegression(
+        WalkthroughWindow window, WalkthroughScript script, WalkthroughStep step)
+    {
+        if (script.Id != "explained-word-card" || step.Id != "unknown-staged") return null;
+        var stagedStrip = Assert.Single(window.Window.GetLogicalDescendants().OfType<Border>(),
+            border => border.Classes.Contains("stagedStrip"));
+        Assert.Equal("Still fits the project.", ToolTip.GetTip(stagedStrip));
+        var center = stagedStrip.TranslatePoint(
+            new Point(stagedStrip.Bounds.Width / 2, stagedStrip.Bounds.Height / 2), window.Window);
+        Assert.NotNull(center);
+        window.Window.MouseMove(center!.Value);
+        Dispatcher.UIThread.RunJobs();
+        ToolTip.SetIsOpen(stagedStrip, true);
+        Assert.True(ToolTip.GetIsOpen(stagedStrip));
+        return stagedStrip;
+    }
+
+    internal static void SuppressTooltipsForCapture(Window window)
+    {
+        // Keep hover states for reveal controls while closing tooltips before the frame is rendered.
+        var controls = window.GetVisualDescendants().OfType<Control>().Prepend(window).ToArray();
+        foreach (var control in controls)
+        {
+            ToolTip.SetServiceEnabled(control, false);
+            if (ToolTip.GetIsOpen(control)) ToolTip.SetIsOpen(control, false);
+        }
+        Dispatcher.UIThread.RunJobs();
+        Assert.DoesNotContain(controls, ToolTip.GetIsOpen);
+    }
 
     private static bool Satisfies(WalkthroughWindow window, WalkthroughStep step)
     {

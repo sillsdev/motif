@@ -294,7 +294,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(label.TextLayout.TextLines.Count > 1, "The row label wraps across its narrow column.");
                 Assert.True(label.TextLayout.Width <= label.Bounds.Width + 0.5,
                     $"The row label needs {label.TextLayout.Width:0.#} px but has {label.Bounds.Width:0.#}.");
-            }));
+            }, applyLargerTestFont: true));
     }
 
     [Fact]
@@ -493,10 +493,11 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             rowLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             Assert.True(rowLabel.DesiredSize.Width <= availableWidth,
                 $"The '{rowLabel.Text}' row label needs {rowLabel.DesiredSize.Width:0.#} px but has {availableWidth:0.#} px.");
-        }));
+        }, applyLargerTestFont: true));
     }
 
-    private static void WithPanel(CompareViewModel compare, double width, Action<Window> check)
+    private static void WithPanel(
+        CompareViewModel compare, double width, Action<Window> check, bool applyLargerTestFont = false)
     {
         var window = new Window
         {
@@ -507,6 +508,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
         };
         try
         {
+            if (applyLargerTestFont) TestFontScale.ApplyEightPercentIncrease(window);
             window.Show();
             window.UpdateLayout();
             check(window);

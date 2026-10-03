@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TextsPage.PageInset" ResourceKey="Primitive.Inset.16_16_16_16" />
+    <StaticResource x:Key="Component.TextsPage.ShortPageInset" ResourceKey="Primitive.Inset.16_8_16_8" />
+    <StaticResource x:Key="Component.TextsPage.ShortRowSpacing" ResourceKey="Primitive.Space.1" />
     <StaticResource x:Key="Component.TextsPage.ReaderInset" ResourceKey="Primitive.Inset.0_12_8_12" />
     <StaticResource x:Key="Component.TextsPage.HeaderButtonPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />

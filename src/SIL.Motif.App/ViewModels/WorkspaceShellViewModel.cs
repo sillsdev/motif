@@ -40,6 +40,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private string? _storeDeletionProject;
     private Task _reloadAfterRefresh = Task.CompletedTask;
     private Task? _freshnessCheckTask;
+    private bool _freshnessCheckRequested;
     private bool _isRefreshing;
     private bool _refreshed;
     private bool _isSettingProject;
@@ -436,9 +437,22 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// </summary>
     public Task CheckFreshnessAsync(CancellationToken cancellationToken = default)
     {
-        if (_freshnessCheckTask is { IsCompleted: false }) return _freshnessCheckTask;
+        if (_freshnessCheckTask is { IsCompleted: false } running)
+        {
+            _freshnessCheckRequested = true;
+            return running;
+        }
         if (!HasProject || _isRefreshing) return Task.CompletedTask;
-        return _freshnessCheckTask = ReadFreshnessAsync(cancellationToken);
+        return _freshnessCheckTask = ReadFreshnessUntilCurrentAsync(cancellationToken);
+    }
+
+    private async Task ReadFreshnessUntilCurrentAsync(CancellationToken cancellationToken)
+    {
+        do
+        {
+            _freshnessCheckRequested = false;
+            await ReadFreshnessAsync(cancellationToken).ConfigureAwait(true);
+        } while (_freshnessCheckRequested && HasProject && !_isRefreshing);
     }
 
     private async Task ReadFreshnessAsync(CancellationToken cancellationToken)

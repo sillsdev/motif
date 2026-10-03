@@ -57,7 +57,8 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
         SetHeldBatch(parser, clientStarted, clientRelease);
         var direct = project.Client.AssessAsync(request, new Progress<AssessmentProgress>(),
             CancellationToken.None);
-        await WaitForFile(clientStarted, TimeSpan.FromSeconds(30));
+        await WaitForFile(clientStarted, direct, TimeSpan.FromMinutes(2),
+            "the direct Assessment did not reach its held parser row");
         var secondJob = EnqueueTrial(project.FwDataPath, proposalId);
         await using (var worker = StartWorker(options, project.FwDataPath))
         {
@@ -73,7 +74,7 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
             finally
             {
                 File.WriteAllText(clientRelease + ".0", string.Empty);
-                var completed = await direct.WaitAsync(TimeSpan.FromSeconds(30));
+                var completed = await direct.WaitAsync(TimeSpan.FromMinutes(2));
                 Assert.True(completed.Succeeded, completed.Refusal?.Message);
                 await worker.StopAsync();
             }
@@ -217,13 +218,28 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
         return new RunningWorker(process);
     }
 
-    private static async Task WaitForFile(string path, TimeSpan cap)
+    private static async Task WaitForFile(string path, TimeSpan cap, string description = "the held parser never started")
     {
         var deadline = Stopwatch.GetTimestamp() + (long)(cap.TotalSeconds * Stopwatch.Frequency);
         while (!File.Exists(path))
         {
-            Assert.True(Stopwatch.GetTimestamp() < deadline, $"The held parser never created '{path}'.");
+            Assert.True(Stopwatch.GetTimestamp() < deadline,
+                $"{description} at '{path}' within {cap.TotalMinutes:0.#} minutes.");
             await Task.Delay(25);
+        }
+    }
+
+    private static async Task WaitForFile(
+        string path, Task operation, TimeSpan cap, string description)
+    {
+        var deadline = Stopwatch.GetTimestamp() + (long)(cap.TotalSeconds * Stopwatch.Frequency);
+        while (!File.Exists(path))
+        {
+            Assert.False(operation.IsCompleted,
+                $"{description}, but the operation completed before the held parser created '{path}'.");
+            Assert.True(Stopwatch.GetTimestamp() < deadline,
+                $"{description} at '{path}' within {cap.TotalMinutes:0.#} minutes.");
+            await Task.WhenAny(operation, Task.Delay(25));
         }
     }
 

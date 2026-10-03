@@ -10,6 +10,7 @@ namespace SIL.Motif.App.Views;
 public sealed partial class ComparePanel : UserControl
 {
     private const double ExpandedMatrixLabelWidth = 1000;
+    private const double ShortMatrixHeight = 720;
 
     public ComparePanel(CompareViewModel compare)
     {
@@ -17,11 +18,17 @@ public sealed partial class ComparePanel : UserControl
         Compare = compare;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
-        SizeChanged += (_, e) => SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
+        SizeChanged += (_, e) =>
+        {
+            SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
+            SetShortMatrix(e.NewSize.Height);
+        };
         SetExpandedMatrixLabel(Bounds.Width >= ExpandedMatrixLabelWidth);
+        SetShortMatrix(Bounds.Height);
     }
 
     public CompareViewModel Compare { get; }
+    internal double ShortMatrixCheckedHeight { get; private set; }
 
     private void SetExpandedMatrixLabel(bool expanded)
     {
@@ -29,6 +36,16 @@ public sealed partial class ComparePanel : UserControl
         if (expanded == isExpanded) return;
         if (expanded) Classes.Add("wideMatrix");
         else Classes.Remove("wideMatrix");
+    }
+
+    private void SetShortMatrix(double panelHeight)
+    {
+        ShortMatrixCheckedHeight = panelHeight;
+        var shortMatrix = panelHeight > 0 && panelHeight < ShortMatrixHeight;
+        var isShort = Classes.Contains("shortMatrix");
+        if (shortMatrix == isShort) return;
+        if (shortMatrix) Classes.Add("shortMatrix");
+        else Classes.Remove("shortMatrix");
     }
 
     /// <summary>The words a sort choice is shown with.</summary>

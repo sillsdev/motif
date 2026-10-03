@@ -1,7 +1,7 @@
 <!--
   A Matrix cell wears its result: Fine in text, Have a look and Problem filled and edged, No result in text.
-  It names its word and place counts together. The chosen cells' list sits in a panel under the
-  Matrix, headed by the cell's marks, with a strip of the morphemes its words share.
+  It names both counts in the full Matrix; short cells show only the word count.
+  The chosen cells' list sits below the Matrix, headed by its cell's marks with a strip of shared morphemes.
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
@@ -12,6 +12,9 @@
     <StaticResource x:Key="Component.MatrixCell.MatrixSpacing" ResourceKey="Primitive.Space.2" />
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
+    <StaticResource x:Key="Component.MatrixCell.ShortHeight" ResourceKey="Primitive.Size.38" />
+    <StaticResource x:Key="Component.MatrixCell.ShortSpacing" ResourceKey="Primitive.Space.1" />
+    <StaticResource x:Key="Component.MatrixCell.HiddenPlacesSize" ResourceKey="Primitive.Space.0" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
     <StaticResource x:Key="Component.MatrixCell.CompactWidth" ResourceKey="Primitive.Size.40" />
     <StaticResource x:Key="Component.MatrixCell.CompactHeight" ResourceKey="Primitive.Size.22" />
@@ -34,9 +37,19 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector=":is(UserControl).shortMatrix Border.matrixCell">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.MatrixCell.ShortHeight}" />
+  </Style>
+  <Style Selector=":is(UserControl).shortMatrix Border.matrixCell :is(TextBlock).matrixCellCount">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+  </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellPlaces">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(UserControl).shortMatrix Border.matrixCell :is(TextBlock).matrixCellPlaces">
+    <Setter Property="Width" Value="{DynamicResource Component.MatrixCell.HiddenPlacesSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.MatrixCell.HiddenPlacesSize}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellLabel">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
