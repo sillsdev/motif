@@ -11,11 +11,11 @@ public enum WordRowOutcome
     Same,
     /// <summary>PanGloss built something else.</summary>
     Different,
-    /// <summary>The search finished and built nothing.</summary>
+    /// <summary>No analysis was built; the accompanying meaning distinguishes a refusal from a completed search.</summary>
     NoParse,
     /// <summary>The search reached its step or time limit, so the result is unknown.</summary>
     Stopped,
-    /// <summary>The word has not been parsed, or was skipped.</summary>
+    /// <summary>The word has no recorded parser result.</summary>
     NotParsed,
 }
 

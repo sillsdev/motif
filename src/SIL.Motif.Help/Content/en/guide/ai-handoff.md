@@ -12,3 +12,5 @@ From Try a Word, **AI Handoff for this word** keeps the displayed trace and the 
 The page shows when the files were last written and marks them out of date when a newer parse finishes. Dates include the day when they are not from today. The `read_results.py` reader works over `parse-results.json` and `texts.json`. Write the Handoff again when you want the chat model to receive newer results. Only share the files if you are comfortable sending their linguistic data to that service.
 
 ![AI Handoff files ready to share](shot:handoff-cancel-retry/completed-files)
+
+A Handoff from a parse records refused words with a refusal code and reason in `parse-results.json`. Word forms use composed Unicode for reading and searching. `texts.json` is an empty array when no Texts were chosen; added words can still have measured parse results.

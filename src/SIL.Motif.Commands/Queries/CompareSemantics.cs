@@ -72,7 +72,8 @@ public static class CompareSemantics
         ArgumentNullException.ThrowIfNull(word);
         var standing = NormalizeStanding(word.Standing);
         var incomplete = StoppedAtLimit(word.Outcome, word.IsIncomplete, word.Morphology);
-        var completed = !incomplete && word.Outcome != "skipped";
+        var refusal = ParserRefusals.Of(word.Morphology, word.Outcome);
+        var completed = !incomplete && refusal is null && word.Outcome != "unassessed";
         var stored = word.StoredAnalyses ?? [];
         var contextAvailable = (word.StoredAnalysesAvailable || word.StoredAnalyses is { Count: > 0 }) &&
             stored.All(analysis => analysis.Identity is not null && analysis.StoredAnalysisId is not null) &&
@@ -107,7 +108,7 @@ public static class CompareSemantics
         var rebuiltDisapproved = rebuilt.Length > 0 || gradesForPlacement.Contains(ReadingGrade.Disapproved);
         var column = PlaceCore(word, standing, gradesForPlacement,
             Math.Max(word.MissedApprovedCount, Math.Max(missingApproved.Count, missingApprovedAnalyses.Count)), rebuiltDisapproved);
-        var code = MeaningCodeOf(standing, column);
+        var code = refusal is not null ? "refused" : MeaningCodeOf(standing, column);
         if (completed && rebuiltDisapproved)
             code = standing switch
             {
@@ -116,12 +117,12 @@ public static class CompareSemantics
                 _ => code,
             };
         var (headline, family) = MeaningOfCode(code);
-        var detail = undecidedNotBuilt.Count switch
+        var detail = refusal?.Reason ?? (undecidedNotBuilt.Count switch
         {
             1 => "Your undecided analysis wasn't built",
             > 1 => "Your undecided analyses weren't built",
             _ => string.Empty,
-        };
+        });
         if (code == "disapproved-rebuilt" && Math.Max(missingApproved.Count, missingApprovedAnalyses.Count) > 0)
             detail = detail.Length == 0 ? "Your Approved analysis wasn't built" :
                 detail + "; your Approved analysis wasn't built";
@@ -169,8 +170,9 @@ public static class CompareSemantics
     private static CompareColumnKind PlaceCore(CompareWordFacts word, string standing,
         IReadOnlyList<string> grades, int missedApproved, bool rebuiltDisapproved)
     {
+        if (ParserRefusals.Of(word.Morphology, word.Outcome) is not null) return CompareColumnKind.NoParse;
         if (StoppedAtLimit(word.Outcome, word.IsIncomplete, word.Morphology)) return CompareColumnKind.Timeout;
-        if (word.Outcome == "skipped") return CompareColumnKind.Skipped;
+        if (word.Outcome == "unassessed") return CompareColumnKind.Skipped;
         if (word.Outcome != "analysed" || (word.Morphology?.Analyses.Count ?? 0) == 0)
             return CompareColumnKind.NoParse;
         bool Built(string grade) => grades.Contains(grade);
@@ -198,6 +200,7 @@ public static class CompareSemantics
     {
         ArgumentNullException.ThrowIfNull(word);
         var comparison = Compare(word);
+        if (comparison.MeaningCode == "refused") return null;
         var placement = PlacementOf(comparison);
         var rule = FixFirstRules.FirstOrDefault(candidate =>
             candidate.Standing == placement.Standing && candidate.Column == placement.Column);
@@ -245,6 +248,7 @@ public static class CompareSemantics
     {
         "unknown" => ("Unknown yet", CompareFamilyKind.Unknown),
         "not-parsed" => ("Not parsed", CompareFamilyKind.Unknown),
+        "refused" => (ParserRefusals.Title, CompareFamilyKind.Unknown),
         "no-comparison" => ("Nothing to compare", CompareFamilyKind.None),
         "new" => ("New: PanGloss proposes", CompareFamilyKind.New),
         "nobody" => ("Nobody can analyze", CompareFamilyKind.Nobody),

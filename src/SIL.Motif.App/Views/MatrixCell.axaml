@@ -20,6 +20,8 @@
         <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" />
         <TextBlock Classes="matrixCellLabel" Text="{Binding Label}" IsVisible="{Binding ShowsLabel}"
                    TextWrapping="Wrap" />
+        <views:MarkChip Mark="{Binding RefusalMark}" Text="{Binding RefusalBadgeText}" Compact="True"
+                        IsVisible="{Binding HasRefusals}" HorizontalAlignment="Left" />
       </StackPanel>
     </DockPanel>
   </Border>

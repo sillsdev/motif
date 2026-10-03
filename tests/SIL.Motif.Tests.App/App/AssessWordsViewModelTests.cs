@@ -1,5 +1,6 @@
 using System.Linq;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -35,10 +36,10 @@ public sealed class AssessWordsViewModelTests
 
         // A word that found a reading before a limit stopped it is counted once, as stopped.
         Assert.Equal(
-            [(Mark.Same, 1), (Mark.NoParse, 1), (Mark.Stopped, 2), (Mark.NotParsed, 1)],
+            [(Mark.Same, 1), (Mark.NoParse, 1), (Mark.Stopped, 2), (Mark.ParserRefusal, 1)],
             table.Outcomes.Select(segment => (segment.Mark, segment.Count)));
         Assert.Equal(table.AllCount, table.Outcomes.Sum(segment => segment.Count));
-        Assert.Equal("5 words: 1 parsed, 1 no parse, 2 stopped at a limit, 1 skipped", table.OutcomeSummary);
+        Assert.Equal("5 words: 1 parsed, 1 no parse, 2 stopped at a limit, 1 refused", table.OutcomeSummary);
     }
 
     [Fact]
@@ -71,10 +72,10 @@ public sealed class AssessWordsViewModelTests
         table.Load([Word("x y", "skipped", missed: [Reading("thing")])]);
 
         var row = Assert.Single(table.Rows);
-        Assert.Equal("Not tried", row.VsProject);
-        Assert.Equal(ParserOutcome.NotParsed, row.ParserOutcome);
+        Assert.Equal(ParserRefusals.Title, row.VsProject);
+        Assert.Equal(ParserOutcome.NoParse, row.ParserOutcome);
         Assert.Equal(0, table.MissedCount);
-        Assert.Equal("Not tried", Assert.Single(row.MissedApproved).GradeLabel);
+        Assert.Equal(ParserRefusals.Title, Assert.Single(row.MissedApproved).GradeLabel);
     }
 
     [Fact]

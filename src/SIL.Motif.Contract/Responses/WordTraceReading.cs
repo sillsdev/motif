@@ -24,6 +24,7 @@ public sealed record WordTraceReading(
 
     /// <summary>Optional compact summaries; positions address the ordered source records in Analyses.</summary>
     public IReadOnlyList<TraceLogicalAnalysis> LogicalAnalyses { get; init; } = [];
+    public IReadOnlyList<string> NoParseReasons { get; init; } = [];
 }
 
 /// <summary>

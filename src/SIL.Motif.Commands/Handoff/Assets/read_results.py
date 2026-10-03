@@ -164,7 +164,7 @@ def load_assessment(path: str = "parse-results.json") -> list:
 # parse-results.json
 # ---------------------------------------------------------------------------------------------
 
-OUTCOMES = ("analysed", "no-analysis", "capped", "timed-out", "skipped")
+OUTCOMES = ("analysed", "no-analysis", "capped", "timed-out", "refused")
 """Every value assessment-format.md defines for a word record's ``outcome`` field."""
 
 

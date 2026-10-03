@@ -54,7 +54,7 @@ public abstract record TimingWordSet
         CompareColumnKind.NoMatch => "no-match",
         CompareColumnKind.NoParse => "no-parse",
         CompareColumnKind.Timeout => "unknown",
-        CompareColumnKind.Skipped => "skipped",
+        CompareColumnKind.Skipped => "unassessed",
         _ => throw new ArgumentOutOfRangeException(nameof(column)),
     };
 
@@ -80,7 +80,7 @@ public abstract record TimingWordSet
             "no-match" => CompareColumnKind.NoMatch,
             "no-parse" => CompareColumnKind.NoParse,
             "unknown" => CompareColumnKind.Timeout,
-            "skipped" => CompareColumnKind.Skipped,
+            "unassessed" => CompareColumnKind.Skipped,
             _ => (CompareColumnKind)(-1),
         };
         return Enum.IsDefined(column);

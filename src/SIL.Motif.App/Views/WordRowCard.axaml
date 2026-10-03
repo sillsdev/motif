@@ -31,15 +31,17 @@
     <StackPanel Grid.Row="1" Grid.Column="1" Classes="wordRowCardSection">
       <views:MarkChip Mark="{Binding WordRow.OutcomeMark}" Text="{Binding ReadingsSummary}" Compact="True"
                       HorizontalAlignment="Left" />
+      <views:CopyableTextBlock Text="{Binding WordRow.RefusalReason}" TextWrapping="Wrap"
+                               IsVisible="{Binding WordRow.HasRefusalReason}" Classes="wordRowNote" />
       <ItemsControl ItemsSource="{Binding Readings}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
-            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" CompactLinks="True" />
+            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="True" RevealLinks="True" CompactLinks="True" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
       <views:CopyableTextBlock Classes="muted" Text="{Binding NoReadingsText}" TextWrapping="Wrap"
-                               IsVisible="{Binding !Readings.Count}" />
+                               IsVisible="{Binding ShowsNoReadingsText}" />
     </StackPanel>
 
     <views:CopyableTextBlock Grid.Row="2" Classes="wordRowCardLabel" Text="NOT BUILT" IsVisible="{Binding ShowsMissedApproved}" />
@@ -48,7 +50,7 @@
       <ItemsControl ItemsSource="{Binding NotBuiltAnalyses}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
-            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" CompactLinks="True" />
+            <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="True" RevealLinks="True" CompactLinks="True" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

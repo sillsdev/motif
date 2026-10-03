@@ -4,8 +4,8 @@ building a computational grammar of a language.
 - It describes the **{{LANGUAGE_NAME}}** language, from the FieldWorks project **{{PROJECT_NAME}}**.
 - `grammar.json` is the grammar a parser called PanGloss used: word-structure rules, parts of
   speech, and lexicon entries.
-- `texts.json` holds real interlinear sentences from the project, word by word and morpheme by
-  morpheme.
+- `texts.json` holds the chosen Texts from the project, word by word and morpheme by
+  morpheme. It is an empty array when no Texts were chosen; added words can still have parse results.
 - `parse-results.json`, when present, records whether PanGloss actually accepted each word and how —
   read it before trusting any claim about why a word did or did not parse.
 - Read `handoff.md` first: it names every file, how to search it, and where the full file-format

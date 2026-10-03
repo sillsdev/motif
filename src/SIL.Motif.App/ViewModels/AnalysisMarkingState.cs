@@ -27,6 +27,9 @@ public enum AnalysisMarkingClass
 
     /// <summary>No Assessment result is available for the word.</summary>
     NotAssessed,
+
+    /// <summary>PanGloss refused the word, so it supplies no comparison with stored analyses.</summary>
+    Refused,
 }
 
 /// <summary>The action presented for one comparison or one explicit Fix choice.</summary>
@@ -260,7 +263,8 @@ public sealed record AnalysisMarkingState(
     private static AnalysisMarkingClass Classify(bool incorrectSpelling, AssessmentWordResult? result,
         IReadOnlyList<FieldWorksAnalysisMarking> stored, IReadOnlyList<PanGlossReadingMarking> readings)
     {
-        if (result is null || result.Outcome == "skipped") return AnalysisMarkingClass.NotAssessed;
+        if (result is null || result.Outcome == "unassessed") return AnalysisMarkingClass.NotAssessed;
+        if (ParserRefusals.Of(result.Morphology, result.Outcome) is not null) return AnalysisMarkingClass.Refused;
         if (incorrectSpelling && readings.Count > 0) return AnalysisMarkingClass.Conflict;
         if (readings.Any(reading => reading.MatchingAnalysisIds.Any(id => stored.Any(analysis =>
                 analysis.StoredAnalysisId == id && analysis.Opinion == ReadingGrade.Disapproved))))
@@ -307,7 +311,7 @@ public sealed record AnalysisMarkingState(
         AnalysisMarkingClass markingClass, IReadOnlyList<FieldWorksAnalysisMarking> stored,
         IReadOnlyList<PanGlossReadingMarking> readings)
     {
-        if (markingClass is AnalysisMarkingClass.NotAssessed or AnalysisMarkingClass.Capped)
+        if (markingClass is AnalysisMarkingClass.NotAssessed or AnalysisMarkingClass.Refused or AnalysisMarkingClass.Capped)
             return RemovalChoices(stored);
 
         var choices = new List<AnalysisMarkingChoice>();

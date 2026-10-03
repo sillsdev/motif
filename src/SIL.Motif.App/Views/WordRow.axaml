@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -81,6 +82,7 @@
                                 VerticalAlignment="Center" HorizontalAlignment="Left" />
                 <ScrollViewer x:Name="PanGlossMorphemes" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
+                <StackPanel>
                 <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -98,6 +100,9 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <views:CopyableTextBlock Text="{Binding ReadingCountText}" Classes="wordRowNote"
+                                         IsVisible="{Binding ReadingCountText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
                 </ScrollViewer>
               </Grid>
 
@@ -131,6 +136,9 @@
 
           <Panel x:Name="NextColumnCell" Grid.Column="2" Classes="wordRowNextColumn" />
         </Grid>
+
+        <views:CopyableTextBlock Text="{Binding RefusalReason}" Classes="wordRowNote" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasRefusalReason}" />
 
         <Grid Classes="wordRowNextHost">
           <StackPanel x:Name="NextCell" Classes="wordRowNext" Orientation="Horizontal"

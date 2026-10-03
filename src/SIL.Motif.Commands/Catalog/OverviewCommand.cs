@@ -155,13 +155,11 @@ internal static class OverviewMetrics
                     parsedOccurrences += occurrences?.OccurrencesByWord.GetValueOrDefault(form) ?? 0;
                     break;
                 case CompareColumnKind.NoParse:
-                    noParse++;
+                    if (comparison.MeaningCode == "refused") skipped++;
+                    else noParse++;
                     break;
                 case CompareColumnKind.Timeout:
                     unknown++;
-                    break;
-                case CompareColumnKind.Skipped:
-                    skipped++;
                     break;
             }
             var meaning = CompareSemantics.MeaningOfCode(comparison.MeaningCode);
@@ -177,13 +175,11 @@ internal static class OverviewMetrics
                         approvedNoMatch++;
                         break;
                     case CompareColumnKind.NoParse:
-                        approvedNoParse++;
+                        if (comparison.MeaningCode == "refused") approvedSkipped++;
+                        else approvedNoParse++;
                         break;
                     case CompareColumnKind.Timeout:
                         approvedUnknown++;
-                        break;
-                    case CompareColumnKind.Skipped:
-                        approvedSkipped++;
                         break;
                 }
             }

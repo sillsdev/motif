@@ -36,7 +36,7 @@ internal static class AssessmentWordRows
         "timed-out" => TimeLimited,
         _ when morphology is { Capped: true } => StepLimited,
         _ when morphology is { TimedOut: true } => TimeLimited,
-        "skipped" => "Not attempted",
+        _ when ParserRefusals.Of(morphology, outcome) is { } refusal => refusal.Reason,
         _ => "Search completed",
     };
 
@@ -57,17 +57,24 @@ internal static class AssessmentWordRows
     internal static FixFirstPriority? FixFirst(AssessmentWordResult row) =>
         CompareSemantics.FixFirst(CompareWordFacts.Of(row), row.MissedApproved);
 
-    /// <summary>How many searches completed, stopped at a limit, or were not attempted, in one sentence.</summary>
-    internal static string CompletionSummary(IReadOnlyCollection<AssessmentWordResult> words) =>
-        CompletionSummary(
-            words.Count(word => !word.IsIncomplete && word.Outcome != "skipped"),
-            words.Count(word => word.IsIncomplete), words.Count(word => word.Outcome == "skipped"));
+    /// <summary>How many searches completed, stopped at a limit, or were refused, with recorded refusal reasons.</summary>
+    internal static string CompletionSummary(IReadOnlyCollection<AssessmentWordResult> words)
+    {
+        var refusals = words.Select(word => ParserRefusals.Of(word.Morphology, word.Outcome))
+            .Where(refusal => refusal is not null).ToArray();
+        var summary = CompletionSummary(
+            words.Count(word => !word.IsIncomplete && ParserRefusals.Of(word.Morphology, word.Outcome) is null),
+            words.Count(word => word.IsIncomplete), refusals.Length);
+        return refusals.Length == 0 ? summary : summary + " " + string.Join(" ",
+            refusals.GroupBy(refusal => refusal!.Reason).Select(group =>
+                $"{group.Count():N0} {(group.Count() == 1 ? "word" : "words")}: {group.Key}"));
+    }
 
     /// <summary>The same sentence from counts already made, as the project history lists each Assessment.</summary>
     internal static string CompletionSummary(int completedCount, int incompleteCount, int skippedCount)
     {
         var searchNoun = completedCount == 1 ? "search" : "searches";
-        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} skipped.";
+        return $"{completedCount} {searchNoun} completed; {incompleteCount} incomplete; {skippedCount} refused.";
     }
 
     /// <summary>One recorded word's row, with the missed approved readings named as the run named them.</summary>

@@ -120,7 +120,7 @@ public sealed class AnalysisMarkingStateTests
             AnalysisMarkingClass.Conflict],
         [Assessment("skipped", ProjectStanding.Approved, false,
             ReadingGrade.Approved, ReadingGrade.Candidate, ReadingGrade.Disapproved),
-            AnalysisMarkingClass.NotAssessed],
+            AnalysisMarkingClass.Refused],
     ];
 
     [Theory]

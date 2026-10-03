@@ -462,6 +462,76 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void ARefusedWordShowsItsNoParseBadgeAndRecordedReasonOnTheRowAndCard()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([new AssessWordRowViewModel(new AssessmentWordResult("chats", "skipped", false,
+                "Refused", 0, "-")
+            {
+                ProjectStanding = ProjectStanding.NotPresent,
+                Morphology = new ParseWordEvidence("v1", 0, "chats", 0, false, false, true, [], []),
+            })]);
+            var window = new Window { Content = new ComparePanel(compare), Width = 1240, Height = 1000 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var word = Assert.Single(compare.Words);
+                Assert.Equal(CompareColumnKind.NoParse, word.Column);
+                Assert.Contains(window.GetVisualDescendants().OfType<MarkChip>(),
+                    chip => chip.IsEffectivelyVisible && chip.Mark == Mark.ParserRefusal);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == word.WordRow.RefusalReason);
+                word.IsExpanded = true;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
+                Assert.Single(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == word.WordRow.RefusalReason);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void TwoReadingsOfOneFormShowTheirCountAndBothGrammaticalCategories()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load([new AssessWordRowViewModel(new AssessmentWordResult("froid", "analysed", false,
+                "Search completed", 0, "|froid;|froid")
+            {
+                ProjectStanding = ProjectStanding.NotPresent,
+                Readings = [new ParserReading([new ParserReadingMorph("froid", "cold", "noun", null, false, null)]),
+                    new ParserReading([new ParserReadingMorph("froid", "cold", "adjective", null, false, null)])],
+                Morphology = new ParseWordEvidence("v1", 0, "froid", 0, false, false, false,
+                    [new ParseAnalysis([]), new ParseAnalysis([])], []),
+            })]);
+            var window = new Window { Content = new ComparePanel(compare), Width = 1400, Height = 1000 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text?.Contains("2 analyses") == true);
+                compare.Words.Single().IsExpanded = true;
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
+                var visible = card.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
+                Assert.Equal(2, visible.Count(text => text == "froid"));
+                Assert.Contains("noun", visible);
+                Assert.Contains("adjective", visible);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void InTheOpenCardLinksWaitForHoverOrKeyboardFocus()
     {
         avalonia.Invoke(() =>

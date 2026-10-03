@@ -16,14 +16,15 @@ public enum ParserOutcome
     /// <summary>PanGloss built something else.</summary>
     Different,
 
-    /// <summary>The search finished and built nothing.</summary>
+    /// <summary>No analysis was built; the meaning distinguishes refusals from completed searches.</summary>
     NoParse,
 
     /// <summary>The search reached its step or time limit, so the result is unknown.</summary>
     Stopped,
 
-    /// <summary>The word has not been parsed, or was skipped.</summary>
+    /// <summary>The word has no recorded parser result.</summary>
     NotParsed,
+
 }
 
 /// <summary>
@@ -110,6 +111,7 @@ public sealed record Mark(MarkKind Kind, string Value, string Glyph, string Word
     public static Mark NoParse { get; } = Of(ParserOutcome.NoParse);
     public static Mark Stopped { get; } = Of(ParserOutcome.Stopped);
     public static Mark NotParsed { get; } = Of(ParserOutcome.NotParsed);
+    public static Mark ParserRefusal { get; } = NoParse with { Word = ParserRefusals.Title };
     public static Mark Error { get; } = Of(GrammarDiagnosticLevel.Error);
     public static Mark Warning { get; } = Of(GrammarDiagnosticLevel.Warning);
     public static Mark Information { get; } = Of(GrammarDiagnosticLevel.Information);
@@ -327,6 +329,7 @@ public static class WindowWords
             ParserOutcome.Different,
         AnalysisMarkingClass.None => ParserOutcome.NoParse,
         AnalysisMarkingClass.Capped => ParserOutcome.Stopped,
+        AnalysisMarkingClass.Refused => ParserOutcome.NoParse,
         _ => ParserOutcome.NotParsed,
     };
 

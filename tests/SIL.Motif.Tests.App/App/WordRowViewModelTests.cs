@@ -88,7 +88,7 @@ public sealed class WordRowViewModelTests
         var row = new WordRowViewModel(WordRowProjection.Of(
             new AssessmentWordResult("w", column switch
             {
-                CompareColumnKind.Skipped => "skipped",
+                CompareColumnKind.Skipped => "unassessed",
                 CompareColumnKind.NoParse => "no-analysis",
                 _ => "analysed",
             }, column == CompareColumnKind.Timeout, "Search completed", 1, null)

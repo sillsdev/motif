@@ -276,8 +276,8 @@ public sealed partial class OverviewPageModel : PageModel
                 "No parse"),
             Segment(Mark.Stopped, overview.TextCoverage.UnknownWords, "stopped", CompareColumnKind.Timeout,
                 "Stopped"),
-            Segment(Mark.NotParsed, overview.TextCoverage.SkippedWords, "not parsed", CompareColumnKind.Skipped,
-                "Not parsed"));
+            Segment(Mark.ParserRefusal, overview.TextCoverage.SkippedWords, "can't read", CompareColumnKind.NoParse,
+                ParserRefusals.Title));
 
     /// <summary>How many approved words the grammar still builds.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
@@ -322,7 +322,7 @@ public sealed partial class OverviewPageModel : PageModel
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsUnknown,
                 "stopped", CompareColumnKind.Timeout, "No result"),
             ApprovedSegment(Mark.Of(MeaningTone.Neutral), overview.Accuracy.ApprovedWordsSkipped,
-                "not parsed", CompareColumnKind.Skipped, "Not parsed"));
+                "can't read", CompareColumnKind.NoParse, ParserRefusals.Title));
 
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;

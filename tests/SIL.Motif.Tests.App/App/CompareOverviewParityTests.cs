@@ -168,9 +168,9 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
 
             Assert.Equal(overview.Value.AssessmentId, stored.AssessmentId);
             Assert.Equal(overview.Value.TextCoverage.ParsedWords, Column(CompareColumnKind.Match) + Column(CompareColumnKind.NoMatch));
-            Assert.Equal(overview.Value.TextCoverage.NoParseWords, Column(CompareColumnKind.NoParse));
+            Assert.Equal(overview.Value.TextCoverage.NoParseWords + overview.Value.TextCoverage.SkippedWords,
+                Column(CompareColumnKind.NoParse));
             Assert.Equal(overview.Value.TextCoverage.UnknownWords, Column(CompareColumnKind.Timeout));
-            Assert.Equal(overview.Value.TextCoverage.SkippedWords, Column(CompareColumnKind.Skipped));
             Assert.Equal(overview.Value.Accuracy.ApprovedWordsKept,
                 Cell(WordProjectStatus.Approved, CompareColumnKind.Match));
             Assert.Equal(overview.Value.Accuracy.ApprovedWordCount, Row(WordProjectStatus.Approved));

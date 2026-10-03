@@ -109,7 +109,7 @@ public static class TimingCommand
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
                     IsStepLimited(word) ? TimingCompletion.StepLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? "Time limit" :
-                    word.Outcome == WordOutcome.Skipped.ToStoredOutcome() ? TimingCompletion.Skipped : TimingCompletion.Finished)
+                    ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
                     { ElapsedNs = word.ElapsedNs, Origin = word.Origin }).ToArray(),
             });
         });

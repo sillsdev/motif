@@ -13,9 +13,13 @@ public sealed record ParseWordEvidence(
     string Schema, int Index, string Word, int ElapsedMs, bool Capped, bool TimedOut, bool InvalidShape,
     IReadOnlyList<ParseAnalysis> Analyses, IReadOnlyList<string> Unavailable)
 {
+    public ParserRefusal? Refusal { get; init; }
     /// <summary>The parser step-budget iterations attributed to this word by batch statistics.</summary>
     public int? Attempts { get; init; }
 }
+
+/// <summary>A parser refusal code and its recorded explanation, independent of parse completion.</summary>
+public sealed record ParserRefusal(string Code, string Reason);
 
 /// <summary>One approved bundle's source references and literal form alternatives.</summary>
 public sealed record ApprovedMorph(string? Form, string? Msa, string? InflType, IReadOnlyList<string> Forms);

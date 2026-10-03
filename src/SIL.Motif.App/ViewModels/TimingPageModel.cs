@@ -51,7 +51,7 @@ public sealed partial class TimingPageModel : PageModel
             RuleDetail?.CostliestWords.Select(word => word.Word).ToArray() ?? []),
             () => RuleDetail?.CostliestWords.Count > 0);
         RerunWordsCommand = new AsyncRelayCommand(RerunWordsAsync,
-            () => SelectedWords.Count > 0 && !IsRerunning && !context.Assess.IsActive);
+            () => RerunnableWords.Count > 0 && !IsRerunning && !context.Assess.IsActive);
         CancelRerunCommand = new RelayCommand(CancelRerun, () => IsRerunning);
         context.Evidence.PropertyChanged += (_, e) =>
         {
@@ -126,6 +126,9 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The exact words returned by the timing command.</summary>
     public IReadOnlyList<string> SelectedWords => KindTiming?.Words.Select(word => word.Word).ToArray() ?? [];
+
+    private IReadOnlyList<string> RerunnableWords => KindTiming?.Words
+        .Where(word => word.Completion != TimingCompletion.Refused).Select(word => word.Word).ToArray() ?? [];
 
     public bool HasTiming => KindTiming is not null;
 
@@ -761,7 +764,7 @@ public sealed partial class TimingPageModel : PageModel
 
     private async Task RerunWordsAsync()
     {
-        var words = SelectedWords;
+        var words = RerunnableWords;
         var shapes = new List<string>
         {
             UsageArgumentShape.Text("fwDataPath"),

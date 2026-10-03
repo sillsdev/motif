@@ -99,6 +99,12 @@
                                    IsVisible="{Binding TraceBaselineWarning, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </Border>
+      <Border Classes="card" IsVisible="{Binding HasLastParseRefusal}" AutomationProperties.Name="Why it did not parse in the last parse">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <views:CopyableTextBlock Text="Why it did not parse in the last parse" FontWeight="SemiBold" />
+          <views:CopyableTextBlock Text="{Binding LastParseRefusalReason}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
       <Border Classes="card" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="FieldWorks beside the parser">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="FieldWorks beside the parser" FontWeight="SemiBold" />

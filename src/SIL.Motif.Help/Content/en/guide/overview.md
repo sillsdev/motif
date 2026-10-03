@@ -20,3 +20,5 @@ Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →
 Use **Look first** to open the saved words or timings behind a measured group. A word can have Unknown and Disapproved analyses at the same time; its Matrix row summarizes what FieldWorks holds, while each analysis keeps its own approval status. When PanGloss matched an analysis FieldWorks marked Disapproved, the word can appear in **Unknown × Different**; the row says **Differs: have a look** and shows recorded comparison detail beneath it. Compare the analyses before deciding what approval status to record. If the parser stopped early, Motif can't say which analyses it would have missed.
 
 ![Overview showing the project's stored results](shot:open-project-overview/overview)
+
+Words marked **can’t read** were sent to PanGloss, which declined them. They are separate from completed searches that found no analysis and from words with no recorded parse. Choose that segment to read those words and their recorded reasons.

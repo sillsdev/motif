@@ -158,7 +158,7 @@ public static class HandoffWriter
     }
 
     /// <summary>One Selection word's batch-pass statistics, the shape <c>parse-results.json</c> writes per line.</summary>
-    internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature);
+    internal readonly record struct AssessedWordStatistics(string Word, string Outcome, int? ElapsedMs, string? RawSignature, ParseWordEvidence? Morphology = null);
 
     /// <summary>
     /// Writes <c>parse-results.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
@@ -197,7 +197,12 @@ public static class HandoffWriter
 
     private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word, WordTraceResponse? trace)
     {
-        var value = new JsonObject { ["word"] = word.Word, ["outcome"] = word.Outcome };
+        var refusal = SIL.Motif.Commands.Queries.ParserRefusals.Of(word.Morphology, word.Outcome);
+        var value = new JsonObject { ["word"] = word.Word.Normalize(System.Text.NormalizationForm.FormC),
+            ["outcome"] = refusal is null ? word.Outcome : "refused" };
+        if (refusal is not null)
+            value["refusal"] = new JsonObject { ["code"] = refusal.Code, ["reason"] = refusal.Reason };
+        if (word.Morphology is { } morphology) value["analysisCount"] = morphology.Analyses.Count;
         if (word.ElapsedMs is { } elapsed) value["elapsedMs"] = elapsed;
         if (!string.IsNullOrEmpty(word.RawSignature)) value["signature"] = word.RawSignature;
         if (trace is not null)

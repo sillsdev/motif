@@ -83,7 +83,16 @@ public sealed class TryWordPageModel : PageModel
         ? WindowWords.MeaningOf(Standing(context), ParserOutcome.NoParse)
         : (string.Empty, MeaningTone.Neutral);
 
-    public string ResultMeaning => ResultComparison.Word;
+    public ParserRefusal? LastParseRefusal => Trace.IsStandalone || Trace.Result is not { } result ? null
+        : Context.Evidence.Words.FirstOrDefault(word => string.Equals(
+            word.Word.Normalize(System.Text.NormalizationForm.FormD),
+            result.Word.Normalize(System.Text.NormalizationForm.FormD), StringComparison.Ordinal)) is { } word
+            ? ParserRefusals.Of(word.Morphology, word.Outcome) : null;
+
+    public string LastParseRefusalReason => LastParseRefusal?.Reason ?? string.Empty;
+    public bool HasLastParseRefusal => LastParseRefusal is not null;
+
+    public string ResultMeaning => HasLastParseRefusal ? string.Empty : ResultComparison.Word;
     public Mark ResultMeaningMark => Mark.Of(ResultComparison.Tone);
 
     private bool? SameAsFieldWorks
@@ -105,10 +114,11 @@ public sealed class TryWordPageModel : PageModel
         }
     }
 
-    public string ResultOutcomeText => SameAsFieldWorks is { } same ? same ? "Same" : "Different"
+    public string ResultOutcomeText => HasLastParseRefusal
+        ? ParserRefusals.Title + " in last parse" : SameAsFieldWorks is { } same ? same ? "Same" : "Different"
         : Trace.Result is { Complete: true, Parsed: true }
             ? $"Parsed · {Trace.Analyses.Count} {(Trace.Analyses.Count == 1 ? "analysis" : "analyses")}" : Trace.AnswerText;
-    public Mark ResultOutcomeMark => SameAsFieldWorks is { } same ? same ? Mark.Same : Mark.Different : Trace.AnswerMark;
+    public Mark ResultOutcomeMark => HasLastParseRefusal ? Mark.ParserRefusal : SameAsFieldWorks is { } same ? same ? Mark.Same : Mark.Different : Trace.AnswerMark;
 
     private static string Standing(WordContextResponse context) => !context.IsInFieldWorks!.Value
         ? ProjectStanding.NotPresent
@@ -343,6 +353,9 @@ public sealed class TryWordPageModel : PageModel
         OnPropertyChanged(nameof(ResultOpinions));
         OnPropertyChanged(nameof(ResultMeaning));
         OnPropertyChanged(nameof(ResultMeaningMark));
+        OnPropertyChanged(nameof(LastParseRefusal));
+        OnPropertyChanged(nameof(LastParseRefusalReason));
+        OnPropertyChanged(nameof(HasLastParseRefusal));
         OnPropertyChanged(nameof(ResultOutcomeText));
         OnPropertyChanged(nameof(ResultOutcomeMark));
     }

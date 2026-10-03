@@ -14,7 +14,7 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
         string name, string sentence, IReadOnlyList<TextsListCell> cells, CompareViewModel compare)
     {
         Name = name;
-        Sentence = sentence;
+        _sentence = sentence;
         Cells = cells;
         Compare = compare;
         foreach (var cell in Compare.Cells) cell.PropertyChanged += OnCellPropertyChanged;
@@ -25,7 +25,11 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
     public string Name { get; }
 
     /// <summary>What the list holds, in one sentence; the rest of the explanation is in Help.</summary>
-    public string Sentence { get; }
+    private readonly string _sentence;
+    public string Sentence => Compare.RefusalCountInCells(Cells) is var refused && refused > 0
+        ? refused == WordCount ? ParserRefusals.ListExplanation
+            : _sentence.TrimEnd('.') + "; refused words carry their recorded reason."
+        : _sentence;
 
     public IReadOnlyList<TextsListCell> Cells { get; }
 
@@ -72,6 +76,7 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
             OnPropertyChanged(nameof(WordCount));
             OnPropertyChanged(nameof(HasWords));
             OnPropertyChanged(nameof(HasSeveralMeanings));
+            OnPropertyChanged(nameof(Sentence));
             OnPropertyChanged(nameof(CountText));
         }
         if (e.PropertyName is nameof(CompareCellViewModel.OccurrenceCount) or nameof(CompareCellViewModel.Count))

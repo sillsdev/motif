@@ -48,7 +48,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         PanGlossMorphemes = row.PanGlossMorphemes.Select((morph, index) =>
             new WordRowMorphemeViewModel(new ParserReadingMorphViewModel(morph), differing.Contains(index + 1))).ToArray();
         Outcome = OutcomeOf(row.Outcome);
-        Tone = WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
+        Tone = row.MeaningCode == "refused" ? MeaningTone.Neutral : WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
         WordAnalysesLink = row.WordAnalysesLink is { } link ? new Uri(link) : null;
         OpenInTextCommand = new RelayCommand(() => _routes?.OpenInText?.Invoke(Word));
         TryWordCommand = new RelayCommand(() => _routes?.TryWord?.Invoke(Word));
@@ -127,14 +127,20 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <summary>PanGloss's morphemes when it built something different, each marked when FieldWorks lacks it.</summary>
     public IReadOnlyList<WordRowMorphemeViewModel> PanGlossMorphemes { get; }
 
+    public string ReadingCountText => _row.PanGlossReadingCount > 1
+        ? $"{_row.PanGlossReadingCount:N0} analyses" + (HasPanGlossMorphemes ? " · showing one" : string.Empty) : string.Empty;
+
+    public string RefusalReason => _row.MeaningCode == "refused" ? _row.MeaningDetail : string.Empty;
+    public bool HasRefusalReason => RefusalReason.Length > 0;
+
     public bool HasPanGlossMorphemes => PanGlossMorphemes.Count > 0;
 
     /// <summary>What PanGloss built.</summary>
     public ParserOutcome Outcome { get; }
 
-    public Mark OutcomeMark => Mark.Of(Outcome);
+    public Mark OutcomeMark => HasRefusalReason ? Mark.ParserRefusal : Mark.Of(Outcome);
 
-    public string OutcomeWord => WindowWords.Of(Outcome);
+    public string OutcomeWord => HasRefusalReason ? ParserRefusals.Title : WindowWords.Of(Outcome);
 
     /// <summary>The compact result says only what PanGloss built; its meaning stays in the meaning column.</summary>
     public string CompactOutcomeWord => OutcomeWord;
@@ -146,7 +152,7 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
 
     /// <summary>What the opinion and outcome mean together, using the Matrix cell's words.</summary>
-    public string Meaning => WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
+    public string Meaning => HasRefusalReason ? ParserRefusals.Title : WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
 
     /// <summary>Recorded comparison detail that qualifies the cell's meaning without changing its wording.</summary>
     public string MeaningDetail => string.Join("; ", new[]
@@ -201,7 +207,7 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public bool HasIdentityDetail => IdentityDetail.Length > 0;
 
-    public bool HasMeaningDetail => MeaningDetail.Length > 0;
+    public bool HasMeaningDetail => !HasRefusalReason && MeaningDetail.Length > 0;
 
     public MeaningTone Tone { get; }
 

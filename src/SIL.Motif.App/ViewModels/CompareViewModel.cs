@@ -53,7 +53,7 @@ public sealed partial class CompareViewModel : ObservableObject
             Preset("New: PanGloss proposes", cell => cell.Family == CompareFamilyKind.New),
             Preset("Nobody can analyze", cell => cell.Family == CompareFamilyKind.Nobody),
             Preset("Stopped", cell => cell.Column == CompareColumnKind.Timeout),
-            Preset("Not parsed", cell => cell.Column == CompareColumnKind.Skipped),
+            Preset(WindowWords.Of(ParserOutcome.NotParsed), cell => cell.Column == CompareColumnKind.Skipped),
         ];
         ClearSelectionCommand = new RelayCommand(() => Select([], additive: false));
         SelectPresetCommand = new RelayCommand<ComparePresetViewModel>(preset =>
@@ -172,8 +172,9 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         get
         {
-            var unknown = _all.Where(word => word.Family == CompareFamilyKind.Unknown).ToList();
-            var chosen = Cells.Where(cell => cell.IsSelected && cell.Family == CompareFamilyKind.Unknown)
+            var unknown = _all.Where(word => word.Column is CompareColumnKind.Timeout or CompareColumnKind.Skipped).ToList();
+            var chosen = Cells.Where(cell => cell.IsSelected &&
+                (cell.Column is CompareColumnKind.Timeout or CompareColumnKind.Skipped || cell.RefusedCount > 0))
                 .Select(cell => (cell.Row, cell.Column)).ToHashSet();
             if (chosen.Count > 0) unknown = unknown.Where(word => chosen.Contains((word.Row, word.Column))).ToList();
             return unknown.Select(word => word.Word).ToArray();
@@ -227,8 +228,15 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         var chosen = cells.ToHashSet();
         var words = _all.Where(word => chosen.Contains(new TextsListCell(word.Row, word.Column))).ToArray();
-        return words.Select(word => CompareSemantics.MeaningCodeOf(StandingWire(word.Row), word.Column))
+        return words.Select(word => word.WordRow.Row.MeaningCode)
             .Distinct(StringComparer.Ordinal).Take(2).Count() > 1;
+    }
+
+    public int RefusalCountInCells(IReadOnlyList<TextsListCell> cells)
+    {
+        var chosen = cells.ToHashSet();
+        return _all.Count(word => word.WordRow.HasRefusalReason &&
+            chosen.Contains(new TextsListCell(word.Row, word.Column)));
     }
 
     /// <summary>Gets checked words placed in any of the given matrix cells, in Assessment order.</summary>
@@ -427,7 +435,8 @@ public sealed partial class CompareViewModel : ObservableObject
         {
             var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
             cell.SetCounts(words.Length,
-                words.Any(word => word.Occurrences is not null) ? words.Sum(word => word.Occurrences ?? 0) : null);
+                words.Any(word => word.Occurrences is not null) ? words.Sum(word => word.Occurrences ?? 0) : null,
+                words.Count(word => word.WordRow.HasRefusalReason));
             cell.IsSelected = false;
         }
         RefreshCounts();
@@ -744,16 +753,24 @@ public sealed partial class CompareCellViewModel : ObservableObject
     {
         Row = row;
         Column = column;
-        (Label, Family) = CompareViewModel.MeaningOf(row, column);
+        (_defaultLabel, _defaultFamily) = CompareViewModel.MeaningOf(row, column);
         RowLabel = CompareViewModel.RowLabelOf(row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(column);
-        Explanation = CompareViewModel.ExplanationOf(row, column);
+        _defaultExplanation = CompareViewModel.ExplanationOf(row, column);
     }
 
     public WordProjectStatus Row { get; }
     public CompareColumnKind Column { get; }
-    public string Label { get; }
-    public CompareFamilyKind Family { get; }
+    private readonly string _defaultLabel;
+    private readonly CompareFamilyKind _defaultFamily;
+    private readonly string? _defaultExplanation;
+    public int RefusedCount { get; private set; }
+    public bool HasRefusals => RefusedCount > 0;
+    private bool AllRefused => HasRefusals && RefusedCount == WordCount;
+    public string Label => AllRefused ? ParserRefusals.Title : _defaultLabel;
+    public CompareFamilyKind Family => AllRefused ? CompareFamilyKind.Unknown : _defaultFamily;
+    public Mark RefusalMark => Mark.ParserRefusal;
+    public string RefusalBadgeText => AllRefused ? ParserRefusals.Title : $"{RefusedCount:N0} · {ParserRefusals.Title}";
 
     /// <summary>The tone the cell's meaning takes.</summary>
     public MeaningTone Tone => WindowWords.ToneOf(Family);
@@ -771,7 +788,8 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string ColumnLabel { get; }
 
     /// <summary>What the cell's words have in common, in one line: the cell's tooltip and the list's explanation.</summary>
-    public string? Explanation { get; }
+    public string? Explanation => AllRefused ? ParserRefusals.ListExplanation : HasRefusals
+        ? _defaultExplanation + " " + ParserRefusals.ListExplanation : _defaultExplanation;
 
     /// <summary>How many words fell here; <see cref="Count"/> follows it.</summary>
     [ObservableProperty]
@@ -833,12 +851,17 @@ public sealed partial class CompareCellViewModel : ObservableObject
     private int _count;
 
     /// <summary>Sets the words that fell here and their places, <see langword="null"/> when nobody counted them.</summary>
-    public void SetCounts(int wordCount, int? occurrenceCount)
+    public void SetCounts(int wordCount, int? occurrenceCount, int refusedCount = 0)
     {
+        RefusedCount = refusedCount;
         WordCount = wordCount;
         OccurrenceCount = occurrenceCount ?? 0;
         HasPlaces = occurrenceCount is not null;
         Count = wordCount;
+        foreach (var property in new[] { nameof(Label), nameof(Family), nameof(Tone), nameof(MeaningMark),
+            nameof(HasRefusals), nameof(RefusalBadgeText), nameof(Explanation), nameof(ShowsLabel),
+            nameof(IsGood), nameof(IsFine), nameof(IsViolation), nameof(IsReview), nameof(IsNew), nameof(IsNobody) })
+            OnPropertyChanged(property);
     }
 
     /// <summary>No word fell here, so the cell is drawn faintly: still there to read, but not asking for attention.</summary>
@@ -856,7 +879,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
 
     /// <summary>Whether the cell names what happened; a word FieldWorks lacks has nothing PanGloss could match.</summary>
-    public bool ShowsLabel => Family != CompareFamilyKind.None;
+    public bool ShowsLabel => !AllRefused && Family != CompareFamilyKind.None;
 
     public string AccessibleName => (HasPlaces ? $"{WordsText(WordCount)}, {PlacesText}: " : $"{WordsText(WordCount)}: ") +
         $"{CompareViewModel.HeldInFieldWorks(CompareViewModel.OpinionLabelOf(Row))}, " +
@@ -926,17 +949,17 @@ public sealed partial class CompareWordViewModel : ObservableObject
             OpinionMarks = [new(CompareViewModel.OpinionMarkFor(Row), CompareViewModel.OpinionLabelOf(Row))];
         OpinionMark = OpinionMarks[0].Kind;
         OpinionLabel = string.Join(", ", OpinionMarks.Select(mark => mark.Label));
-        PanGlossLabel = CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
+        PanGlossLabel = WordRow.HasRefusalReason ? ParserRefusals.Title : CompareViewModel.PanGlossClassLabel(Marking.PanGlossClass);
         AccessibleName = $"{Word}: {CompareViewModel.HeldInFieldWorks(OpinionLabel)}, {CompareViewModel.ColumnSentenceOf(Column)}.";
         Occurrences = word.OccurrenceCount;
         ElapsedMs = word.ElapsedMs;
         Meaning = WordRow.Meaning;
-        Family = CompareViewModel.MeaningOf(Row, Column).Family;
+        Family = WordRow.HasRefusalReason ? CompareFamilyKind.Unknown : CompareViewModel.MeaningOf(Row, Column).Family;
         RowLabel = CompareViewModel.RowLabelOf(Row);
         RowMark = WordProjectStatuses.MarkOf(Row);
         ColumnLabel = CompareViewModel.ColumnLabelOf(Column);
         Outcome = WindowWords.OutcomeOf(Column);
-        ColumnMark = Mark.Of(Outcome);
+        ColumnMark = WordRow.OutcomeMark;
         Readings = word.Readings;
         FirstReading = word.Readings.FirstOrDefault()?.Text ?? string.Empty;
         MissedApproved = word.Comparison.MissingApproved.Select((reading, index) =>
@@ -1022,6 +1045,7 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     /// <summary>Why the word has no analyses from PanGloss, in the window's words.</summary>
     public string NoReadingsText { get; }
+    public bool ShowsNoReadingsText => Readings.Count == 0 && !WordRow.HasRefusalReason;
 
     /// <summary>
     /// The approved analyses PanGloss did not build, for the card: every one except the analysis the row already

@@ -59,7 +59,7 @@ public sealed class TextsListsViewModelTests
             Word("timeout-one", "timed-out", ProjectStanding.Approved),
             Word("timeout-two", "capped", ProjectStanding.Candidate),
             Word("candidate-empty", "no-analysis", ProjectStanding.Candidate),
-            Word("skipped", "skipped", ProjectStanding.NotPresent),
+            Word("unparsed", "unassessed", ProjectStanding.NotPresent),
         };
         if (withSecondApprovedNoParse)
             rows.Add(Word("approved-empty-too", "no-analysis", ProjectStanding.Approved));
@@ -189,7 +189,7 @@ public sealed class TextsListsViewModelTests
 
         lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Not parsed"));
         Assert.True(lists.CanParseAgain);
-        Assert.Equal("Parse this 1 word again, with 30 seconds.", lists.ParseAgainHelpText);
+        Assert.Equal(["unparsed"], compare.RerunWords);
     }
 
     [Fact]
@@ -237,7 +237,7 @@ public sealed class TextsListsViewModelTests
     [InlineData("New: PanGloss proposes", "new-parse")]
     [InlineData("Nobody can analyze", "nobody")]
     [InlineData("Built anyway", "rejected-rebuilt")]
-    [InlineData("Not parsed", "skipped")]
+    [InlineData("Not parsed", "unparsed")]
     public void SelectingOneQuestionMakesItsWordsTheMatrixWordList(string name, string word)
     {
         var (compare, lists) = Loaded();

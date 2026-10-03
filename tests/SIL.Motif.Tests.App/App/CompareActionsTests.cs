@@ -59,15 +59,18 @@ public sealed class CompareActionsTests
     }
 
     [Fact]
-    public void ARerunTakesEveryUnknownWordOrOnlyThoseInTheChosenUnknownCells()
+    public void ARerunTakesStoppedWordsOrOnlyThoseInTheChosenCellsAndExcludesRefusals()
     {
         var (_, compare) = Loaded();
 
-        Assert.Equal(["alimpiga", "walipiga", "x y"], compare.RerunWords.Order());
+        Assert.Equal(["alimpiga", "walipiga"], compare.RerunWords.Order());
 
         compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.Timeout), false);
 
         Assert.Equal(["walipiga"], compare.RerunWords);
+
+        compare.SelectCells([new TextsListCell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)]);
+        Assert.Empty(compare.RerunWords);
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public sealed class CompareActionsTests
         await compare.RerunCommand.ExecuteAsync(null);
 
         Assert.Equal(45_000, asked!.Value.LimitMs);
-        Assert.Equal(3, asked.Value.Words.Count);
+        Assert.Equal(2, asked.Value.Words.Count);
     }
 
     [Fact]

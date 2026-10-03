@@ -60,8 +60,8 @@ public static class TimingCompletion
     /// <summary>The search ran out of steps before it finished.</summary>
     public const string StepLimit = "Step limit";
 
-    /// <summary>The word was left out of the run.</summary>
-    public const string Skipped = "Skipped";
+    /// <summary>The recorded outcome is a parser refusal.</summary>
+    public const string Refused = "Refused";
 
     /// <summary>The search finished.</summary>
     public const string Finished = "Finished";
@@ -70,7 +70,7 @@ public static class TimingCompletion
 /// <summary>One selected word's stored time and the reason its search stopped.</summary>
 /// <param name="Word">The word form.</param>
 /// <param name="ElapsedMs">The stored whole-millisecond parse time, when present.</param>
-/// <param name="Completion">Why the search stopped: a step limit, a time limit, a skip, or a finished search.</param>
+/// <param name="Completion">Why the search stopped: a step limit, a time limit, a refusal, or a finished search.</param>
 public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completion)
 {
     /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>

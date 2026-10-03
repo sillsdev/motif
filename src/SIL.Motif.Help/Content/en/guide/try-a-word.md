@@ -36,3 +36,5 @@ A Blocked event records an intermediate result. In the supported parser it means
 ![A word parsed in Try a Word](shot:try-word-typing/trace)
 
 The main analysis cards combine source records only when available projections establish equal ordered allomorph and grammatical information identities, including inflection type. Equal spellings alone do not establish that they are the same analysis. The recorded source list keeps every producer record.
+
+**Why it did not parse** also shows recorded zero-match lexical lookups when there is no terminal attempt. For example, a lookup of `s` may have no matching root, with no affix-building step recorded. This does not establish that `s` is a plural suffix. An invalid-shape refusal reports that PanGloss could not read the word with the project’s phonemes; Motif names specific characters only when the parser’s evidence names them. If the last parse refused the word but the trace searched it, the page labels the refusal **in last parse** and keeps the traced search’s result separate.

@@ -291,7 +291,7 @@ public sealed class WordRowProjectionTests
 
         var row = WordRowProjection.Of(word);
 
-        Assert.Equal((WordRowOutcome.NotParsed, "Not parsed", WordRowTone.Neutral), (row.Outcome, row.Meaning, row.Tone));
+        Assert.Equal((WordRowOutcome.NoParse, ParserRefusals.Title, WordRowTone.Neutral), (row.Outcome, row.Meaning, row.Tone));
         Assert.Null(row.ElapsedMs);
     }
 

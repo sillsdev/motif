@@ -175,7 +175,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         {
             if (Result is not { } result) return string.Empty;
 
-            var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse" };
+            var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? ParserRefusals.Title : "No parse" };
             if (result.Parsed)
                 parts.Add($"{_analyses.Count:N0} {(_analyses.Count == 1 ? "analysis" : "analyses")}");
             if (result.ParserElapsedMs is { } parserMs) parts.Add(FormatMs(parserMs));
@@ -193,7 +193,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     private static string Summarize(WordTraceResponse result)
     {
-        var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse" };
+        var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? ParserRefusals.Title : "No parse" };
         if (result.Guessed) parts.Add("guessed");
         if (result.ParserSteps is { } steps) parts.Add($"{steps:N0} parser steps");
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
@@ -300,13 +300,13 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     /// <summary>Whether the word parsed, as the one word a reader wants before anything else.</summary>
     public string AnswerText => Result is not { } result ? string.Empty
-        : !result.Complete ? "Search incomplete" : result.Parsed ? "Parsed" : result.InvalidShape ? "Nothing to parse" : "No parse";
+        : result.InvalidShape ? ParserRefusals.Title : !result.Complete ? "Search incomplete" : result.Parsed ? "Parsed" : "No parse";
 
     /// <summary>
     /// The mark that answer wears: a trace that built the word has no action glyph, a limit is Stopped,
     /// and one that finished without building it is No parse.
     /// </summary>
-    public Mark AnswerMark => Result is { Complete: false } ? Mark.Stopped
+    public Mark AnswerMark => Result is { InvalidShape: true } ? Mark.ParserRefusal : Result is { Complete: false } ? Mark.Stopped
         : Result is { Parsed: true } ? new Mark(MarkKind.Outcome, "parsed", string.Empty, "Parsed")
         : Mark.NoParse;
 
@@ -316,7 +316,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
     public bool HasStopGroups => _stopGroups.Count > 0;
 
     /// <summary>Whether the diagnostic recorded no terminal event.</summary>
-    public bool NoAttemptRecorded => Result is { InvalidShape: false } && _reading?.Attempts.Count == 0;
+    public bool NoAttemptRecorded => Result is { InvalidShape: false } && _reading?.Attempts.Count == 0 && !HasNoParseReasons;
+    public IReadOnlyList<string> NoParseReasons => _reading?.NoParseReasons ?? [];
+    public bool HasNoParseReasons => Result is { Parsed: false } && NoParseReasons.Count > 0;
     public string NoAttemptNotice => Result is { Complete: false }
         ? "No terminal attempt was recorded before the search stopped. Recorded progress is retained."
         : "No terminal attempt was recorded.";
@@ -441,6 +443,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(StopGroups));
         OnPropertyChanged(nameof(HasStopGroups));
         OnPropertyChanged(nameof(NoAttemptRecorded));
+        OnPropertyChanged(nameof(NoParseReasons));
+        OnPropertyChanged(nameof(HasNoParseReasons));
         OnPropertyChanged(nameof(NoAttemptNotice));
         OnPropertyChanged(nameof(StopGroupsHeading));
         OnPropertyChanged(nameof(StopGroupsSummary));
@@ -575,7 +579,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             var status = result.SearchCompletion switch
             {
                 TraceSearchCompletion.InvalidShape =>
-                    "Nothing to parse: the word has a character the grammar's character table does not define",
+                    ParserRefusals.Title + ": " + ParserRefusals.InvalidShape.Reason,
                 TraceSearchCompletion.Incomplete =>
                     $"Search incomplete: {(string.IsNullOrWhiteSpace(result.StopReason) ? "Reason not recorded" : result.StopReason)}",
                 TraceSearchCompletion.Complete => "Search complete",

@@ -13,3 +13,5 @@ Choose **Slowest** to inspect timing for the words with the longest recorded tim
 In **Detailed statistics**, **Stopped** counts words recorded as stopping at a time or step limit. Its detail names the recorded limit and where to raise it; when the result does not record a reason, the detail does not guess one. **Analyses** counts words with more than one analysis; sort by that column to find them. A rule's time share says how much time its timer recorded, not what caused a word to parse or stop.
 
 ![Saved parse timings on the Timing page](shot:review-apply-refresh-parse/timing)
+
+A refused word wears **PanGloss can’t read it** and keeps the parser’s reason on its row and card. It is not a completed search that found no analysis; timing shows only measurements the parser recorded.

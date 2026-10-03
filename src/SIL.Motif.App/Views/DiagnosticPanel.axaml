@@ -63,6 +63,19 @@
 
       <ContentControl x:Name="AnalysesHost" />
 
+      <Border Classes="card" IsVisible="{Binding HasNoParseReasons}" AutomationProperties.Name="Why it did not parse">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
+          <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontWeight="SemiBold" />
+          <ItemsControl ItemsSource="{Binding NoParseReasons}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}"
                   IsVisible="{Binding $parent[views:DiagnosticPanel].ShowAttemptSummaries}">
       <!-- A parsed word's stopped attempts wait folded under their count. -->

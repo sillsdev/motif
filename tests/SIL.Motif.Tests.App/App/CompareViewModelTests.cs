@@ -136,7 +136,7 @@ public sealed class CompareViewModelTests
     {
         Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.Timeout),
             PlaceOne(Word("alimpiga", "analysed", ProjectStanding.Approved, ["approved"], incomplete: true)));
-        Assert.Equal((WordProjectStatus.NotPresent, CompareColumnKind.Skipped),
+        Assert.Equal((WordProjectStatus.NotPresent, CompareColumnKind.NoParse),
             PlaceOne(Word("x y", "skipped", ProjectStanding.NotPresent)));
     }
 
@@ -276,6 +276,7 @@ public sealed class CompareViewModelTests
     [InlineData(AnalysisMarkingClass.None, "No parse")]
     [InlineData(AnalysisMarkingClass.Capped, "Stopped")]
     [InlineData(AnalysisMarkingClass.NotAssessed, "Not parsed")]
+    [InlineData(AnalysisMarkingClass.Refused, "No parse")]
     public void CompactWordUsesEachPanGlossClassLabel(AnalysisMarkingClass markingClass, string expected) =>
         Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
 
@@ -476,7 +477,7 @@ public sealed class CompareViewModelTests
         int Column(CompareColumnKind column) => compare.Columns.Single(item => item.Column == column).Count;
         int Outcome(Mark mark) => table.Outcomes.Where(segment => segment.Mark == mark).Sum(segment => segment.Count);
         Assert.Equal(Outcome(Mark.Same), Column(CompareColumnKind.Match) + Column(CompareColumnKind.NoMatch));
-        Assert.Equal(Outcome(Mark.NoParse), Column(CompareColumnKind.NoParse));
+        Assert.Equal(Outcome(Mark.NoParse) + Outcome(Mark.ParserRefusal), Column(CompareColumnKind.NoParse));
         Assert.Equal(Outcome(Mark.Stopped), Column(CompareColumnKind.Timeout));
         Assert.Equal(Outcome(Mark.NotParsed), Column(CompareColumnKind.Skipped));
     }

@@ -375,8 +375,8 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
-                Assert.Equal(Mark.NotParsed,
-                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "not parsed").Mark);
+                Assert.Equal(Mark.ParserRefusal,
+                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "can't read").Mark);
                 Assert.Equal(Mark.Of(MeaningTone.Problem),
                     Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "lost").Mark);
                 Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()

@@ -251,7 +251,8 @@
         ],
         "recordCount": 1
       }
-    ]
+    ],
+    "noParseReasons": []
   },
   "parserSteps": 42,
   "parserElapsedMs": 1.5,

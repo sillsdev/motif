@@ -35,7 +35,11 @@ public static class TraceReadingBuilder
         attempts = attempts.Select(attempt => attempt with { Steps = attempt.Steps.Select(ScopeStep).ToArray(),
             RichMorphs = attempt.RichMorphs.Select(ScopeMorph).ToArray() }).ToArray();
         analyses = analyses.Select(analysis => analysis with { Morphs = analysis.Morphs.Select(ScopeMorph).ToArray() }).ToArray();
-        return Summarize(document.Word, root, attempts, analyses);
+        var reading = Summarize(document.Word, root, attempts, analyses);
+        return document.Details.InvalidShape ? reading with
+        {
+            NoParseReasons = [ParserRefusals.InvalidShape.Reason],
+        } : reading;
     }
 
     /// <summary>Returns the response's authoritative display reading, including its captured enrichment.</summary>
@@ -65,7 +69,25 @@ public static class TraceReadingBuilder
         {
             Refs = Refs(root, attempts, analyses),
             LogicalAnalyses = logical,
+            NoParseReasons = analyses.Count == 0 && attempts.Count == 0 ? RecordedReasons(root) : [],
         };
+    }
+
+    private static IReadOnlyList<string> RecordedReasons(TraceStep root)
+    {
+        var steps = Flatten(root).ToArray();
+        var reasons = steps.Where(step => step.EventEvidence?.LookupResult is { Completed: true, MatchCount: 0 })
+            .Select(step => $"No lexical root matched '{step.Input ?? step.Output ?? "?"}'" +
+                (step.Source is { Length: > 0 } source ? $" in {source}." : "."))
+            .Concat(steps.Where(step => step.FailureReason is { Length: > 0 }).Select(step =>
+                step.FailureEvidence?.RecordedExplanation ??
+                TraceFailureSentences.Explain(step.FailureReason, step.Source))).Distinct().ToList();
+        if (reasons.Count > 0 && !steps.Any(step => step.Type.Contains("MorphologicalRuleSynthesis", StringComparison.Ordinal)))
+            reasons.Add("No affix-building step was recorded.");
+        return reasons;
+
+        static IEnumerable<TraceStep> Flatten(TraceStep step) =>
+            new[] { step }.Concat(step.Children.SelectMany(Flatten));
     }
 
     // First mention wins the label, so a ref reads as the reading first shows it.

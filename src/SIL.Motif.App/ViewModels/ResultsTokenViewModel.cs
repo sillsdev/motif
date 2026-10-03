@@ -56,7 +56,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
             contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
                 ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
-        var comparisonWord = result ?? new AssessmentWordResult(Form, "skipped", false, "Not parsed", null, null)
+        var comparisonWord = result ?? new AssessmentWordResult(Form, "unassessed", false, "Not parsed", null, null)
         {
             ProjectStanding = standing,
             StoredAnalyses = contextAnalyses,
@@ -75,7 +75,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
                 resolved is not null && index < resolved.Count ? resolved[index] : null))
             .ToArray();
 
-        Verdict = Comparison.Outcome switch
+        Verdict = Comparison.MeaningCode == "refused" ? OccurrenceVerdict.NotAssessed : Comparison.Outcome switch
         {
             WordRowOutcome.Same when Comparison.Tone != WordRowTone.Problem => OccurrenceVerdict.Matches,
             WordRowOutcome.Stopped => OccurrenceVerdict.Limit,
@@ -96,7 +96,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             OccurrenceVerdict.New => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.NoParse => "no parse",
             OccurrenceVerdict.Limit => "parser stopped at a limit",
-            _ when result?.Outcome == "skipped" => "skipped: a character the grammar does not define",
+            _ when ParserRefusals.Of(result?.Morphology, result?.Outcome) is { } refused => refused.Reason,
             _ => "not in the last parse",
         };
         FieldWorksAnalyses = Marking.FieldWorksAnalyses
@@ -171,6 +171,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>The comparison meaning, using the same wording as the Matrix cell.</summary>
     public string PanGlossSummary => Comparison.Outcome == WordRowOutcome.NotParsed && _assessment is null
         ? "Not parsed yet"
+        : Comparison.MeaningCode == "refused" ? ParserRefusals.Title
         : CompareSemantics.MeaningOf(Comparison.Standing, ColumnOf(Comparison.Outcome)).Label;
 
     private bool HasOpinionConflict => Comparison.Standing == ProjectStanding.IncorrectSpelling ||
