@@ -109,7 +109,7 @@ public sealed class TextsListsViewModelTests
             Assert.DoesNotContain("Matrix", list.Sentence, StringComparison.Ordinal);
         });
         var lost = lists.Lists.Single(list => list.Name == "Lost");
-        Assert.Equal("You approved these, and the grammar can no longer build them.", lost.Sentence);
+        Assert.Equal("You approved these in FieldWorks; PanGloss builds nothing for them.", lost.Sentence);
         Assert.Equal("2 words · 2 places", lost.CountText);
         Assert.Equal("1 word · 1 place", lists.Lists.Single(list => list.Name == "Built anyway").CountText);
     }
@@ -147,7 +147,7 @@ public sealed class TextsListsViewModelTests
 
         lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
         Assert.True(lists.ShowsMeaning);
-        Assert.Equal(["Differs: have a look", "Grammar can't build it"],
+        Assert.Equal(["Grammar can't build it", "Have a look"],
             compare.Words.Select(word => word.Meaning).Distinct().Order(StringComparer.Ordinal));
     }
 

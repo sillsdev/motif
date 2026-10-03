@@ -104,25 +104,12 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
 /// </summary>
 public sealed partial class TextsListsViewModel : ObservableObject
 {
-    private static readonly IReadOnlyDictionary<string, string> Sentences = new Dictionary<string, string>
-    {
-        ["Lost"] = "You approved these, and the grammar can no longer build them.",
-        ["Built something else"] = "You approved these, and the grammar builds another analysis.",
-        ["Have a look"] = "Unknown analyses the grammar builds differently or cannot build, and misspellings it builds.",
-        ["Built anyway"] = "You disapproved these analyses, and the grammar still builds them.",
-        ["New: PanGloss proposes"] = "FieldWorks holds no analysis of these, and the grammar proposes one.",
-        ["Nobody can analyze"] = "Neither FieldWorks nor the grammar can analyze these.",
-        ["Stopped"] = "PanGloss stopped at a limit on these before it finished.",
-        ["Not parsed"] = "PanGloss has not parsed these yet.",
-    };
-
     public TextsListsViewModel(CompareViewModel compare)
     {
         ArgumentNullException.ThrowIfNull(compare);
         Compare = compare;
         Lists = compare.Presets.Select(preset => new TextsListDefinitionViewModel(preset.Label,
-                Sentences.TryGetValue(preset.Label, out var sentence) ? sentence
-                    : throw new InvalidOperationException($"The Matrix shortcut {preset.Label} has no list sentence."),
+                SentenceFor(preset),
                 preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToArray(), compare))
             .ToArray();
         SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
@@ -135,6 +122,17 @@ public sealed partial class TextsListsViewModel : ObservableObject
         compare.CheckedWordsChanged += OnCheckedWordsChanged;
         RefreshSelection();
         SelectList(FirstWithWords());
+    }
+
+    private static string SentenceFor(ComparePresetViewModel preset)
+    {
+        if (preset.Label == "Have a look")
+            return "Unknown analyses PanGloss builds differently or cannot build, and misspellings it builds.";
+
+        var sentences = preset.Cells.Select(cell => CompareViewModel.ExplanationOf(cell.Row, cell.Column))
+            .Where(sentence => sentence is not null).Distinct(StringComparer.Ordinal).ToArray();
+        return sentences.Length == 1 ? sentences[0]! :
+            throw new InvalidOperationException($"The Matrix shortcut {preset.Label} has no single list sentence.");
     }
 
     public CompareViewModel Compare { get; }

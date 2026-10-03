@@ -105,7 +105,7 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("142 words · 38 s total word time", page.SpeedMain);
+        Assert.Equal("142 words · 38.0 s total word time", page.SpeedMain);
         Assert.Equal("median 6.4 ms a word · 95th percentile 48.2 ms", page.SpeedMedian);
         Assert.Equal("3 stopped at the step limit", page.SpeedDetails);
         Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
@@ -133,7 +133,7 @@ public sealed class OverviewPageWordsTests
                     .Single(text => text.Text?.StartsWith("Slowest:", StringComparison.Ordinal) == true);
 
                 Assert.Contains("mwalimu", summary.Text, StringComparison.Ordinal);
-                Assert.Contains("◐ Stopped", summary.Text, StringComparison.Ordinal);
+                Assert.Contains("Stopped", summary.Text, StringComparison.Ordinal);
                 Assert.Contains("700 ms", summary.Text, StringComparison.Ordinal);
                 Assert.Empty(speed.GetLogicalDescendants().OfType<SIL.Motif.App.Views.WordRow>());
             }
@@ -196,7 +196,7 @@ public sealed class OverviewPageWordsTests
 
     [Theory]
     [InlineData(1, 0.045, "1 word · 45 ms total word time")]
-    [InlineData(9, 0.8, "9 words · 0.8 s total word time")]
+    [InlineData(9, 0.8, "9 words · 800 ms total word time")]
     [InlineData(1318, 612.4, "1,318 words · 612.4 s total word time")]
     public async Task TheSpeedHeadlineReadsInTheUnitThatSuitsTheTotal(int words, double seconds, string expected)
     {
@@ -297,8 +297,8 @@ public sealed class OverviewPageWordsTests
         Assert.Equal(["81 same", "37 different", "17 no parse", "5 stopped", "2 can't read"],
             page.TextCoverageSegments.Select(segment => $"{segment.CountText} {segment.Label}"));
         Assert.All(page.TextCoverageSegments, segment => Assert.NotNull(segment.Command));
-        Assert.Equal("71 of 84 rebuilt", page.AccuracyMain);
-        Assert.Equal("The grammar still builds 71 of the 84 words you approved in FieldWorks.", page.AccuracyCaption);
+        Assert.Equal("71 of 84 rebuilt exactly", page.AccuracyMain);
+        Assert.Equal("3 built differently · 8 Lost · 2 Stopped", page.AccuracyCaption);
         Assert.Equal(["71 kept", "3 built something else", "8 lost", "2 stopped"],
             page.AccuracySegments.Select(segment => $"{segment.CountText} {segment.Label}"));
         Assert.All(page.AccuracySegments, segment => Assert.Equal(MarkKind.Meaning, segment.Mark.Kind));
@@ -318,6 +318,46 @@ public sealed class OverviewPageWordsTests
                  })
             foreach (var word in EngineWords)
                 Assert.DoesNotContain(word, text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TheApprovedTileAndLookFirstCountSameTextWordsWithDifferentEntries()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            var overview = Populated();
+            fake.OverviewCompletesWith(overview with
+            {
+                Accuracy = overview.Accuracy with
+                {
+                    ApprovedWordsKept = 0,
+                    ApprovedWordCount = 6,
+                    ApprovedWordsNoMatch = 5,
+                    ApprovedWordsNoParse = 1,
+                    ApprovedWordsUnknown = 0,
+                    ApprovedWordsSkipped = 0,
+                },
+                LookFirst = overview.LookFirst with
+                {
+                    ApprovedLostWords = ["lost"],
+                    ApprovedSameTextDifferentEntryWords = ["same-1", "same-2", "same-3", "same-4", "same-5"],
+                },
+            });
+
+            await context.OpenProjectAsync(ProjectPath);
+
+            Assert.Equal("0 of 6 rebuilt exactly", page.AccuracyMain);
+            Assert.Equal("5 with the same forms and glosses but a different entry · 1 Lost", page.AccuracyCaption);
+            Assert.Equal("5 approved words are built from a different entry with the same form and gloss.",
+                page.LookFirstRows[0].Summary);
+            var shown = VisibleText(page);
+            Assert.Contains(page.AccuracyMain, shown);
+            Assert.Contains(page.AccuracyCaption, shown);
+            Assert.Contains(page.LookFirstRows[0].Summary, shown);
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -506,6 +546,28 @@ public sealed class OverviewPageWordsTests
                     var entries = bar.GetLogicalDescendants().OfType<StackPanel>()
                         .Where(entry => entry.Classes.Contains("outcomeLegendEntry")).ToArray();
                     Assert.Equal(bar.Segments!.Count, parts.Length);
+                    if (bar.Segments.All(segment => segment.Mark.Kind == MarkKind.Outcome))
+                    {
+                        var links = bar.GetLogicalDescendants().OfType<HyperlinkButton>().ToArray();
+                        Assert.Equal(bar.Segments.Count, links.Length);
+                        for (var index = 0; index < links.Length; index++)
+                        {
+                            var segment = bar.Segments[index];
+                            Assert.Equal(segment.ActionName, Avalonia.Automation.AutomationProperties.GetName(links[index]));
+                            Assert.Contains("revealLink", links[index].Classes);
+                            Assert.DoesNotContain("revealOnHover", links[index].Classes);
+                            Assert.DoesNotContain(links[index].GetVisualDescendants().OfType<TextBlock>(),
+                                text => text.Text == "→");
+                            Assert.Contains(links[index].GetVisualDescendants().OfType<MarkGlyph>(),
+                                glyph => glyph.Mark == segment.Mark);
+                            Assert.Equal([segment.Mark.Word, segment.CountText],
+                                links[index].GetVisualDescendants().OfType<TextBlock>()
+                                    .Where(text => !text.Classes.Contains("markGlyph"))
+                                    .Select(text => text.Text ?? string.Empty));
+                            Assert.NotNull(links[index].Command);
+                        }
+                        continue;
+                    }
                     // Parts that share a colour share one swatch, so the key shows each colour once.
                     var colours = bar.Segments.Select((segment, index) => (segment, index)).GroupBy(item => item.segment.Mark).ToArray();
                     Assert.Equal(colours.Length, entries.Length);
@@ -529,6 +591,38 @@ public sealed class OverviewPageWordsTests
                         Assert.Equal(detail.FontWeight, entries[index].Children.OfType<TextBlock>().Last().FontWeight);
                     }
                 }
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void OutcomeLegendLinkOpensItsOutcomeColumnInTheMatrix()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, context) = NewContext();
+            var page = new OverviewPageModel(context);
+            var texts = new TextsPageModel(context);
+            fake.OverviewCompletesWith(Populated());
+            await context.OpenProjectAsync(ProjectPath);
+            var window = Show(page);
+            try
+            {
+                var bar = window.GetLogicalDescendants().OfType<OutcomeBar>()
+                    .Single(item => item.Segments!.All(segment => segment.Mark.Kind == MarkKind.Outcome));
+                var different = bar.GetLogicalDescendants().OfType<HyperlinkButton>()
+                    .Single(link => (Avalonia.Automation.AutomationProperties.GetName(link) ?? string.Empty)
+                        .Contains("Different", StringComparison.Ordinal));
+
+                different.Command!.Execute(null);
+
+                Assert.Equal(TextsTab.Matrix, texts.Tab);
+                Assert.All(texts.Assess.Compare.Cells.Where(cell => cell.IsSelected),
+                    cell => Assert.Equal(CompareColumnKind.NoMatch, cell.Column));
             }
             finally
             {
@@ -569,7 +663,7 @@ public sealed class OverviewPageWordsTests
         Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
         Assert.Equal("2", rows[1].Number);
         Assert.Contains("3 words stopped at the step limit", rows[1].Summary);
-        Assert.Equal("33.6 s of 38 s total word time", rows[1].Detail);
+        Assert.Equal("33.6 s of 38.0 s total word time", rows[1].Detail);
         Assert.Equal("3", rows[2].Number);
         Assert.Contains("3 Unknown words differ", rows[2].Summary);
         Assert.Equal(string.Empty, rows[2].Detail);
@@ -704,7 +798,7 @@ public sealed class OverviewPageWordsTests
 
             var shown = VisibleText(page);
 
-            Assert.Contains("142 words · 38 s total word time", shown);
+            Assert.Contains("142 words · 38.0 s total word time", shown);
             Assert.DoesNotContain(shown, text => text.Contains("cccccccc", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("dddddddd", StringComparison.Ordinal));
             Assert.DoesNotContain(shown, text => text.Contains("grammar ", StringComparison.Ordinal) &&

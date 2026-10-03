@@ -8,15 +8,6 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public static class SpeedText
 {
-    /// <summary>A total parse time: milliseconds under a tenth of a second, then seconds, to one decimal under ten.</summary>
-    /// <param name="milliseconds">The summed per-word parse time.</param>
-    public static string Duration(double milliseconds) => milliseconds switch
-    {
-        < 100 => milliseconds.ToString("N0", CultureInfo.CurrentCulture) + " ms",
-        < 10_000 => (milliseconds / 1000).ToString("N1", CultureInfo.CurrentCulture) + " s",
-        _ => (milliseconds / 1000).ToString("N0", CultureInfo.CurrentCulture) + " s",
-    };
-
     /// <summary>One word's parse time: to one decimal under ten milliseconds unless it is whole.</summary>
     /// <param name="milliseconds">A per-word parse time or percentile.</param>
     public static string PerWord(double milliseconds) =>

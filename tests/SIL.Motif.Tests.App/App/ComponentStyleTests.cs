@@ -8,6 +8,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Input;
 using Avalonia.Threading;
+using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
 
@@ -432,12 +433,14 @@ public sealed partial class ComponentStyleTests
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
         yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
             Border.BackgroundProperty, "Intent.Surface");
+        yield return new("MatrixCell", "a grid cell's inset", host => Add(host, Box("matrixCell")),
+            Border.PaddingProperty, "Component.MatrixCell.CellPadding");
         yield return new("MatrixCell", "a cell's label", host => Within(host, Box("matrixCell"), "matrixCellLabel"),
             TextBlock.FontSizeProperty, "Intent.Type.Label");
         yield return new("MatrixCell", "a cell's count", host => Within(host, Box("matrixCell"), "matrixCellCount"),
             TextBlock.FontSizeProperty, "Intent.Type.Title");
         yield return new("MatrixCell", "an empty cell's count", host => Within(host, Box("matrixCell", "empty"), "matrixCellCount"),
-            TextBlock.FontSizeProperty, "Intent.Type.Label");
+            TextBlock.FontSizeProperty, "Intent.Type.Title");
         yield return new("MatrixCell", "the dash cell's count",
             host => Within(host, Box("matrixCell", "empty", "none"), "matrixCellCount"),
             TextBlock.FontSizeProperty, "Intent.Type.Title");
@@ -445,6 +448,12 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Surface.Subtle");
         yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
             Border.PaddingProperty, "Component.MatrixCell.Padding");
+        yield return new("MatrixCell", "the chosen outcome glyph", MatrixChosenMark,
+            TextBlock.FontSizeProperty, "Intent.Type.Body");
+        yield return new("MatrixCell", "the chosen outcome icon's width", MatrixChosenIcon,
+            PathIcon.WidthProperty, "Component.Mark.BodyGlyphSize");
+        yield return new("MatrixCell", "the chosen outcome icon's height", MatrixChosenIcon,
+            PathIcon.HeightProperty, "Component.Mark.BodyGlyphSize");
         yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
             Border.PaddingProperty, "Component.MatrixCell.Padding");
         yield return new("MatrixCell", "how many share a morpheme", host => Within(host, Box("matrixShared"), "matrixSharedCount"),
@@ -721,6 +730,12 @@ public sealed partial class ComponentStyleTests
         })
             yield return new("Mark", $"a {outcome} outcome", host => Add(host, Text("outcomeMark", outcome)),
                 TextBlock.ForegroundProperty, $"Intent.Outcome.{key}");
+        yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
+            Control.WidthProperty, "Component.Mark.InlineGlyphSize");
+        yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
+            Control.HeightProperty, "Component.Mark.InlineGlyphSize");
+        yield return new("Mark", "a stopped outcome icon's colour", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
+            PathIcon.ForegroundProperty, "Intent.Outcome.Stopped");
         yield return new("Mark", "an outcome, which never fills", host => Add(host, Text("outcomeMark", "noParse")),
             TextBlock.BackgroundProperty, "Intent.Clear");
         foreach (var (meaning, key) in new[] { ("fine", "Fine"), ("look", "Look"), ("problem", "Problem"), ("neutral", "Neutral") })
@@ -757,6 +772,8 @@ public sealed partial class ComponentStyleTests
             Border.BorderBrushProperty, "Intent.Severity.Info");
         yield return new("Mark", "a warning glyph, which has no ring", host => Add(host, Box("severityGlyph", "warning")),
             Border.BorderBrushProperty, "Intent.Clear");
+        yield return new("Mark", "a warning icon", WarningIcon, Control.WidthProperty, "Component.Mark.WarningIconSize");
+        yield return new("Mark", "a warning icon's colour", WarningIcon, PathIcon.ForegroundProperty, "Intent.Severity.Warning");
         foreach (var (severity, key) in new[] { ("warning", "Warning"), ("error", "Error"), ("info", "Info") })
             yield return new("Mark", $"a {severity} glyph's sign", host => Inside(host, Box("severityGlyph", severity)),
                 TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
@@ -962,6 +979,43 @@ public sealed partial class ComponentStyleTests
     {
         host.Children.Add(control);
         return control;
+    }
+
+    private static PathIcon MarkIcon(Panel host, SIL.Motif.App.ViewModels.Mark mark)
+    {
+        var glyph = new MarkGlyph { Mark = mark, Classes = { "inline" } };
+        host.Children.Add(glyph);
+        return Assert.IsType<PathIcon>(Assert.Single(glyph.Children));
+    }
+
+    private static TextBlock MatrixChosenMark(Panel host)
+    {
+        var group = new StackPanel { Classes = { "matrixChosenMarks" } };
+        var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Same };
+        group.Children.Add(mark);
+        host.Children.Add(group);
+        return Assert.IsType<TextBlock>(Assert.Single(mark.Children));
+    }
+
+    private static PathIcon MatrixChosenIcon(Panel host)
+    {
+        var group = new StackPanel { Classes = { "matrixChosenMarks" } };
+        var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Stopped };
+        group.Children.Add(mark);
+        host.Children.Add(group);
+        return Assert.IsType<PathIcon>(Assert.Single(mark.Children));
+    }
+
+    private static Control WarningIcon(Panel host)
+    {
+        var glyph = new MarkGlyph { Mark = SIL.Motif.App.ViewModels.Mark.Warning };
+        var border = new Border
+        {
+            Classes = { "severityGlyph", "warning" },
+            Child = glyph,
+        };
+        Add(host, border);
+        return Assert.IsType<PathIcon>(Assert.Single(glyph.Children));
     }
 
     private static TextBlock Inside(Panel host, Border border)

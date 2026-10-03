@@ -48,6 +48,7 @@ public sealed class DifferenceViewModelTests
 
     [Theory]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoParse, WordProjectStatus.Approved, CompareColumnKind.Match, MoveKind.Fixed)]
+    [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoMatch, WordProjectStatus.Approved, CompareColumnKind.NoParse, MoveKind.Changed)]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Match, WordProjectStatus.Approved, CompareColumnKind.NoMatch, MoveKind.Regressed)]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoParse, WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, MoveKind.NewCoverage)]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, WordProjectStatus.NotPresent, CompareColumnKind.NoParse, MoveKind.Regressed)]
@@ -90,9 +91,24 @@ public sealed class DifferenceViewModelTests
         Assert.Equal(4, difference.MovedCount);
         Assert.Equal(1, difference.RegressedCount);
         Assert.Equal(2, difference.OnlyInOneCount);
-        Assert.Equal("4 of 5 words changed cell; 1 regressed.", difference.Summary);
+        Assert.Equal("4 of 5 words moved to another cell; 1 got worse.", difference.Summary);
         Assert.Same(difference.Moves[0], difference.SelectedMove);
         Assert.Equal(["kitabu"], difference.Words.Select(word => word.Word));
+    }
+
+    [Fact]
+    public void AProblemMoveNamesTheCellsWithoutCallingItFixed()
+    {
+        var difference = new DifferenceViewModel();
+        difference.Load(
+            Rows(Word("alikula", "analysed", ProjectStanding.Approved, "no-opinion")),
+            Rows(Word("alikula", "no-analysis", ProjectStanding.Approved, missed: 1)),
+            "Run of 6:47 PM", "This run");
+
+        var move = Assert.Single(difference.Moves, item => item.Kind != MoveKind.Unchanged);
+        Assert.Equal(MoveKind.Changed, move.Kind);
+        Assert.Equal("Still a problem: Built something else → Lost", move.TransitionText);
+        Assert.Equal("1 of 1 words moved to another cell; none got worse.", difference.Summary);
     }
 
     [Fact]

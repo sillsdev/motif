@@ -431,11 +431,11 @@ public sealed partial class CompareViewModel : ObservableObject
         if (rows is not null)
             _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row))));
         foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
+        var placesAvailable = _all.Any(word => word.Occurrences is not null);
         foreach (var cell in Cells)
         {
             var words = _all.Where(word => word.Row == cell.Row && word.Column == cell.Column).ToArray();
-            cell.SetCounts(words.Length,
-                words.Any(word => word.Occurrences is not null) ? words.Sum(word => word.Occurrences ?? 0) : null,
+            cell.SetCounts(words.Length, placesAvailable ? words.Sum(word => word.Occurrences ?? 0) : null,
                 words.Count(word => word.WordRow.HasRefusalReason));
             cell.IsSelected = false;
         }
@@ -531,9 +531,9 @@ public sealed partial class CompareViewModel : ObservableObject
         var shared = anyCellChosen && listed.Length >= 2
             ? ObjectUsesQuery.SharedBy(listed.Select(word => word.Source).ToArray(), listed.Select(word => word.Word).ToArray())
             : [];
-        foreach (var morpheme in shared.Take(SharedShown))
+        foreach (var (morpheme, index) in shared.Take(SharedShown).Select((morpheme, index) => (morpheme, index)))
             Shared.Add(new CompareSharedMorphemeViewModel(
-                new ParserReadingMorphViewModel(morpheme.Morpheme), morpheme.Count));
+                new ParserReadingMorphViewModel(morpheme.Morpheme), morpheme.Count, index > 0));
         SharedMoreText = shared.Count > SharedShown ? $"and {shared.Count - SharedShown:N0} more" : null;
         OnPropertyChanged(nameof(HasShared));
     }
@@ -622,31 +622,8 @@ public sealed partial class CompareViewModel : ObservableObject
     /// What a cell's words have in common, in one line of window words; <see langword="null"/> for the one cell no
     /// word can reach, a word FieldWorks lacks that PanGloss built the same as.
     /// </summary>
-    public static string? ExplanationOf(WordProjectStatus row, CompareColumnKind column) => (row, column) switch
-    {
-        (_, CompareColumnKind.Timeout) => "PanGloss stopped at a limit before it finished these.",
-        (_, CompareColumnKind.Skipped) => "PanGloss hasn't parsed these yet.",
-        (WordProjectStatus.Approved, CompareColumnKind.Match) => "You approved these in FieldWorks; the grammar builds the same.",
-        (WordProjectStatus.Approved, CompareColumnKind.NoMatch) =>
-            "You approved these in FieldWorks; the grammar builds something else.",
-        (WordProjectStatus.Approved, _) => "You approved these in FieldWorks; the grammar builds nothing for them.",
-        (WordProjectStatus.Candidate, CompareColumnKind.Match) => "These are Unknown in FieldWorks; the grammar builds the same.",
-        (WordProjectStatus.Candidate, CompareColumnKind.NoMatch) =>
-            "These are Unknown in FieldWorks; the grammar builds something else.",
-        (WordProjectStatus.Candidate, _) => "These are Unknown in FieldWorks; the grammar builds nothing for them.",
-        (WordProjectStatus.Rejected, CompareColumnKind.Match) =>
-            "You disapproved these in FieldWorks; the grammar still builds them.",
-        (WordProjectStatus.Rejected, CompareColumnKind.NoMatch) =>
-            "You disapproved these in FieldWorks; the grammar builds something else.",
-        (WordProjectStatus.Rejected, _) => "You disapproved these in FieldWorks; the grammar doesn't build them.",
-        (WordProjectStatus.IncorrectSpelling, CompareColumnKind.NoParse) =>
-            "You marked these as incorrect spellings; the grammar doesn't build them.",
-        (WordProjectStatus.IncorrectSpelling, _) =>
-            "You marked these as incorrect spellings; the grammar still builds them.",
-        (_, CompareColumnKind.Match) => null,
-        (_, CompareColumnKind.NoMatch) => "FieldWorks has no analysis for these; the grammar proposes one.",
-        _ => "Neither FieldWorks nor the grammar can analyze these.",
-    };
+    public static string? ExplanationOf(WordProjectStatus row, CompareColumnKind column) =>
+        CompareSemantics.MeaningSentenceOf(StandingWire(row), column);
 
     /// <summary>The label a row header shows, in FieldWorks' opinion words.</summary>
     public static string RowLabelOf(WordProjectStatus row) => OpinionLabelOf(row);
@@ -815,7 +792,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     public string PlacesText => PlacesTextOf(OccurrenceCount);
 
     /// <summary>Whether to show the places; a cell no word fell in shows only its zero.</summary>
-    public bool ShowsPlaces => Count > 0 && HasPlaces;
+    public bool ShowsPlaces => HasPlaces;
 
     /// <summary>A count of words with its noun.</summary>
     public static string WordsText(int count) => count == 1 ? "1 word" : $"{count:N0} words";
@@ -870,10 +847,7 @@ public sealed partial class CompareCellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 
-    public string CountText => IsEmptyImpossible ? "—"
-        : !HasPlaces || WordCount == 0 ? WordsText(WordCount)
-        : WordCount == OccurrenceCount ? PlacesText
-        : $"{WordsText(WordCount)} · {PlacesText}";
+    public string CountText => WordsText(WordCount);
 
     /// <summary>A combination the data cannot produce, and did not: drawn as a dash rather than as a zero.</summary>
     public bool IsEmptyImpossible => Family == CompareFamilyKind.None && Count == 0;
@@ -903,7 +877,7 @@ public sealed record PanGlossLegendItem(AnalysisMarkingClass Kind, string Label)
 /// <summary>A morpheme some listed words share by identity, and how many of them use it.</summary>
 /// <param name="Morpheme">The first word's reading, including the identity used to open the inspector.</param>
 /// <param name="Count">How many of the listed words use it.</param>
-public sealed record CompareSharedMorphemeViewModel(ParserReadingMorphViewModel Morpheme, int Count)
+public sealed record CompareSharedMorphemeViewModel(ParserReadingMorphViewModel Morpheme, int Count, bool HasSeparator)
 {
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs => [Morpheme];
 
@@ -912,6 +886,8 @@ public sealed record CompareSharedMorphemeViewModel(ParserReadingMorphViewModel 
     public string Gloss => Morpheme.Gloss;
 
     public string CountText => $"in {Count:N0}";
+
+    public string Separator => HasSeparator ? "·" : string.Empty;
 
     public string AccessibleName => (Gloss.Length == 0 ? Form : $"{Form} {Gloss}") +
         (Count == 1 ? ": 1 of these words uses it" : $": {Count:N0} of these words use it");

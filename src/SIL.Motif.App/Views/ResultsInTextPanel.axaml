@@ -210,9 +210,12 @@
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
                                                        AutomationProperties.AutomationId="{Binding WordAutomationId}" />
-                              <TextBlock Classes="warningMark" Text="{Binding WarningMarkLabel}"
-                                         IsVisible="{Binding HasNamedWarning}"
-                                         AutomationProperties.Name="{Binding WarningMarkLabel, StringFormat='Named in {0}'}" />
+                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                                          IsVisible="{Binding HasNamedWarning}"
+                                          AutomationProperties.Name="{Binding WarningMarkCount, StringFormat='Named in {0}'}">
+                                <views:MarkGlyph Classes="inline" Mark="{Binding WarningMark}" />
+                                <TextBlock Classes="warningMark" Text="{Binding WarningMarkCount}" />
+                              </StackPanel>
                               <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
                                                     AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
                               <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
@@ -261,7 +264,12 @@
                                 <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
                                   <TextBlock Text="{Binding MorePanGlossLabel}" />
                                 </Border>
-                                <TextBlock Classes="f stripNote" Text="{Binding PanGlossNote}" IsVisible="{Binding ShowsPanGlossNote}" />
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
+                                            IsVisible="{Binding ShowsPanGlossNote}">
+                                  <views:MarkGlyph Classes="inline" Mark="{Binding PanGlossNoteMark}" />
+                                  <TextBlock Classes="f stripNote" Classes.outcomeMark="{Binding IsPanGlossCapped}"
+                                             Classes.stopped="{Binding IsPanGlossCapped}" Text="{Binding PanGlossNote}" />
+                                </StackPanel>
                               </StackPanel>
                             </Border>
                           </StackPanel>

@@ -120,7 +120,22 @@
                       <DataTemplate x:DataType="vm:TryWordTracePiece">
                         <StackPanel Margin="{DynamicResource Intent.Gap.AfterRelated}" Spacing="{DynamicResource Intent.Space.Minimal}">
                           <views:MorphemeRow Morphs="{Binding Morphs}" RevealLinks="True" CompactLinks="True" />
-                          <TextBlock Text="{Binding Status}" Classes="muted" />
+                          <ItemsControl ItemsSource="{Binding StatusParts}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TryWordTraceStatus">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <TextBlock Text="{Binding Separator}" Classes="muted" />
+                                  <views:MarkGlyph Classes="inline bodyText" Mark="{Binding Mark}" />
+                                  <TextBlock Text="{Binding Text}" Classes="muted" />
+                                </StackPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
                         </StackPanel>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>

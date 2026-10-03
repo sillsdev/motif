@@ -253,7 +253,7 @@ public static class CompareSemantics
         "new" => ("New: PanGloss proposes", CompareFamilyKind.New),
         "nobody" => ("Nobody can analyze", CompareFamilyKind.Nobody),
         "confirmed" => ("PanGloss confirms", CompareFamilyKind.Good),
-        "undecided-different" => ("Differs: have a look", CompareFamilyKind.Review),
+        "undecided-different" => ("Have a look", CompareFamilyKind.Review),
         "undecided-not-built" => ("Grammar can't build it", CompareFamilyKind.Review),
         "kept" => ("Kept", CompareFamilyKind.Good),
         "approved-different" => ("Built something else", CompareFamilyKind.Violation),
@@ -266,6 +266,62 @@ public static class CompareSemantics
         "correct" => ("Correct", CompareFamilyKind.Fine),
         _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown comparison meaning."),
     };
+
+    /// <summary>The sentence shared by every page that explains one matrix meaning.</summary>
+    public static string? MeaningSentenceOf(string? standing, CompareColumnKind column) =>
+        MeaningSentenceOfCode(MeaningCodeOf(standing, column));
+
+    /// <summary>The sentence shared by every page that explains one stable comparison meaning.</summary>
+    public static string? MeaningSentenceOfCode(string code) => code switch
+    {
+        "unknown" => "PanGloss stopped at a limit before it finished these.",
+        "not-parsed" => "PanGloss has not parsed these yet.",
+        "no-comparison" => null,
+        "new" => "FieldWorks has no analysis for these; PanGloss proposes one.",
+        "nobody" => "Neither FieldWorks nor PanGloss can analyze these.",
+        "confirmed" => "These are Unknown in FieldWorks; PanGloss builds the same analysis.",
+        "undecided-different" => "These are Unknown in FieldWorks, and PanGloss builds a different analysis.",
+        "undecided-not-built" => "These are Unknown in FieldWorks; PanGloss builds nothing for them.",
+        "kept" => "You approved these in FieldWorks; PanGloss builds the same analysis.",
+        "approved-different" => "You approved these in FieldWorks; PanGloss builds a different analysis.",
+        "lost" => "You approved these in FieldWorks; PanGloss builds nothing for them.",
+        "disapproved-built-anyway" => "You disapproved these in FieldWorks; PanGloss still builds them.",
+        "disapproved-rebuilt" => "PanGloss matched an analysis FieldWorks marked Disapproved.",
+        "disapproved-not-built" => "You disapproved these in FieldWorks; PanGloss does not build them.",
+        "misspelling-built" => "You marked these as incorrect spellings; PanGloss still builds them.",
+        "over-generates" => "You marked these as incorrect spellings; PanGloss builds something different.",
+        "correct" => "You marked these as incorrect spellings; PanGloss does not build them.",
+        _ => throw new ArgumentOutOfRangeException(nameof(code), code, "Unknown comparison meaning."),
+    };
+
+    /// <summary>Whether recorded parser morphology has the same form and gloss but names a different entry.</summary>
+    public static bool HasSameTextDifferentEntry(AssessmentWordResult word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        if (PlacementOf(Compare(word)) is not
+            { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoMatch }) return false;
+
+        var expected = word.ExpectedAnalysis ??
+            SIL.Motif.Commands.Assess.AssessmentWordRows.ExpectedAnalysis(word.StoredAnalyses);
+        if (expected is null || expected.Morphs.Count == 0) return false;
+        return (word.Readings ?? []).Any(reading => SameTextDifferentEntry(expected.Morphs, reading.Morphs));
+    }
+
+    private static bool SameTextDifferentEntry(IReadOnlyList<ParserReadingMorph> expected,
+        IReadOnlyList<ParserReadingMorph> actual)
+    {
+        if (expected.Count != actual.Count || expected.Count == 0) return false;
+        var differentEntry = false;
+        for (var index = 0; index < expected.Count; index++)
+        {
+            var stored = expected[index];
+            var parsed = actual[index];
+            if (stored.Form != parsed.Form || stored.Gloss != parsed.Gloss) return false;
+            if (!string.IsNullOrWhiteSpace(stored.Entry) && !string.IsNullOrWhiteSpace(parsed.Entry) &&
+                stored.Entry != parsed.Entry) differentEntry = true;
+        }
+        return differentEntry;
+    }
 
     private static string NormalizeStanding(string? standing) => standing switch
     {

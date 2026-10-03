@@ -86,10 +86,12 @@ public sealed class ComparisonRowTests
     public void IdenticalFormAndGlossStillExplainTheIdentityDifference()
     {
         var sameText = new ParserReadingMorph("tabu", "book", "n", null, false, null)
-        { AllomorphId = "stored", GrammaticalInfoId = "noun" };
-        var model = new WordRowViewModel(Project([sameText], [sameText with { AllomorphId = "parser" }]));
+        { AllomorphId = "stored", GrammaticalInfoId = "noun", Entry = "stored" };
+        var model = new WordRowViewModel(Project([sameText],
+            [sameText with { AllomorphId = "parser", Entry = "parser" }]));
         Assert.Contains("Same form and gloss", model.IdentityDetail);
         Assert.Contains("different morpheme identity", model.IdentityDetail);
+        Assert.Equal("Different entry: parser instead of stored", model.PanGlossMorphemes[0].EntryDifferenceTip);
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             var row = new RowView { Row = model };
@@ -103,6 +105,9 @@ public sealed class ComparisonRowTests
                     .Single(block => block.Text == model.IdentityDetail);
                 Assert.True(detail.Bounds.Width > row.Bounds.Width / 2,
                     "The identity explanation needs the row's width rather than a narrow morpheme column.");
+                var differingMorpheme = row.GetVisualDescendants().OfType<Border>()
+                    .Single(border => border.Classes.Contains("wordRowMorph") && border.Classes.Contains("different"));
+                Assert.Equal("Different entry: parser instead of stored", ToolTip.GetTip(differingMorpheme));
             }
             finally { window.Close(); }
             return Task.CompletedTask;
@@ -174,7 +179,7 @@ public sealed class ComparisonRowTests
                 var meaning = row.GetVisualDescendants().OfType<Control>()
                     .First(control => control.Classes.Contains("wordRowMeaning"));
                 var headline = meaning.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == "Differs: have a look" && text.IsEffectivelyVisible);
+                    .Single(text => text.Text == "Have a look" && text.IsEffectivelyVisible);
                 Assert.Equal(MeaningTone.Look, model.Tone);
                 var detail = meaning.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Text == model.MeaningDetail);

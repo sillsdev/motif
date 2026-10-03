@@ -288,13 +288,15 @@
                                                      TextTrimming="CharacterEllipsis" />
                             </Grid>
                           </Button>
-                          <Button Grid.Column="5" Classes="timingGrammarWarning" Content="⚠"
+                          <Button Grid.Column="5" Classes="timingGrammarWarning"
                                   IsVisible="{Binding HasGrammarWarning}"
                                   ToolTip.Tip="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
                                   AutomationProperties.Name="Open the grammar warning"
                                   AutomationProperties.HelpText="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
                                   Command="{Binding $parent[views:TimingPage].Page.OpenGrammarWarningCommand}"
-                                  CommandParameter="{Binding}" />
+                                  CommandParameter="{Binding}">
+                            <views:MarkGlyph Mark="{x:Static vm:Mark.Warning}" />
+                          </Button>
                         </Grid>
                       </Border>
                     </DataTemplate>

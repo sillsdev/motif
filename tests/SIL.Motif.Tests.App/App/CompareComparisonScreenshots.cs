@@ -61,7 +61,7 @@ public sealed class CompareComparisonScreenshots
                 workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
                 var matrix = workspace.Assess.Compare;
                 matrix.SelectCells([new(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)]);
-                Assert.Equal("Differs: have a look", matrix.Words.Single(word => word.Word == mixed.Word).Meaning);
+                Assert.Equal("Have a look", matrix.Words.Single(word => word.Word == mixed.Word).Meaning);
                 Assert.False(matrix.ShowsMeaning);
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {

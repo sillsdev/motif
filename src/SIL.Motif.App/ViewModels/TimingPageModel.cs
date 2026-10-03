@@ -156,7 +156,7 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasHeadline => MeasuredWords.Count > 0;
 
     /// <summary>The chosen words' summed parse time, as PanGloss measured it.</summary>
-    public string HeadlineTotal => HasHeadline ? TimingShare.FormatMilliseconds(WordTimeMs)
+    public string HeadlineTotal => HasHeadline ? TimingShare.FormatDuration(WordTimeMs)
         : string.Empty;
 
     /// <summary>Which words the total covers: all of them, or the group chosen above, and how many were timed.</summary>
@@ -168,7 +168,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>The chosen words' median parse time.</summary>
     public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
-        ? TimingShare.FormatMilliseconds(median) : string.Empty;
+        ? TimingShare.FormatDuration(median) : string.Empty;
 
     /// <summary>How many of the chosen words stopped at the step limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
@@ -267,14 +267,14 @@ public sealed partial class TimingPageModel : PageModel
             var attribution = timing.Attribution;
             if (attribution.NotAttributedMs is not { } time) return "Not attributed: Not recorded.";
             return attribution.NotAttributedShare is { } share
-                ? $"Not attributed: {TimingShare.FormatMilliseconds(time)} ({TimingShare.FormatPercent(share)})."
-                : $"Not attributed: {TimingShare.FormatMilliseconds(time)}.";
+                ? $"Not attributed: {TimingShare.FormatDuration(time)} ({TimingShare.FormatPercent(share)})."
+                : $"Not attributed: {TimingShare.FormatDuration(time)}.";
         }
     }
 
     /// <summary>The measured object time beyond total word time, when the response records an overrun.</summary>
     public string OverrunText => !HasHeadline || KindTiming is not { } timing || !timing.Attribution.Overrun
-        ? string.Empty : $"Overrun: {TimingShare.FormatMilliseconds(timing.Attribution.OverrunMs)}.";
+        ? string.Empty : $"Overrun: {TimingShare.FormatDuration(timing.Attribution.OverrunMs)}.";
 
     public bool HasOverrun => HasHeadline && KindTiming?.Attribution.Overrun == true;
 
@@ -300,7 +300,7 @@ public sealed partial class TimingPageModel : PageModel
         FormatPercentile(KindTiming.Percentile95Ms);
 
     private static string FormatPercentile(double? milliseconds) => milliseconds is { } value
-        ? TimingShare.FormatMilliseconds(value) : "not recorded";
+        ? TimingShare.FormatDuration(value) : "not recorded";
     /// <summary>The complete address selected here or requested by another page.</summary>
     public TraceTimingKey? SelectedRule { get; private set; }
     public TimingAggregateRow? SelectedRuleRow => RuleTiming?.Aggregates.FirstOrDefault(row => ObjectIdentity.Same(row.TimingKey.Identity, SelectedRule?.Identity));
@@ -325,8 +325,8 @@ public sealed partial class TimingPageModel : PageModel
     /// </summary>
     public IReadOnlyList<ListedWordViewModel> CostliestRuleWordRows => [.. CostliestRuleWords.Select(word =>
         Listed(word.Word, word.WordTimeMs is { } whole
-            ? $"{TimingShare.FormatMilliseconds(word.SelfMs)} of its {TimingShare.FormatMilliseconds(whole)}"
-            : TimingShare.FormatMilliseconds(word.SelfMs)))];
+            ? $"{TimingShare.FormatDuration(word.SelfMs)} of its {TimingShare.FormatDuration(whole)}"
+            : TimingShare.FormatDuration(word.SelfMs)))];
 
     /// <summary>The heading over the chosen rule's costliest words, naming the rule.</summary>
     public string RuleWordsTitle => $"Words where {SelectedRuleName} took longest";
@@ -927,7 +927,7 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
     /// <summary>The window's name for this part's stored kind.</summary>
     public string KindLabel => Kind.Length == 0 ? string.Empty : KindName(Kind);
 
-    public string TimeText => ElapsedMs is { } time ? FormatMilliseconds(time) : "Not recorded";
+    public string TimeText => ElapsedMs is { } time ? FormatDuration(time) : "Not recorded";
 
     public string ShareText => Share is { } share ? FormatPercent(share) :
         IsNotAttributed ? "Not recorded" : "—";
@@ -939,10 +939,11 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
             : $"{calls:N0} {(calls == 1 ? "call" : "calls")}"
         : "Not counted";
 
-    /// <summary>Formats the timing in milliseconds while retaining its recorded fractional precision.</summary>
+    /// <summary>Formats recorded times as milliseconds below ten seconds and seconds to one decimal above.</summary>
     /// <param name="milliseconds">The measured time.</param>
-    public static string FormatMilliseconds(double milliseconds) =>
-        milliseconds.ToString("#,0.######", CultureInfo.CurrentCulture) + " ms";
+    public static string FormatDuration(double milliseconds) => milliseconds < 10_000
+        ? milliseconds.ToString("#,0.######", CultureInfo.CurrentCulture) + " ms"
+        : (milliseconds / 1000).ToString("N1", CultureInfo.CurrentCulture) + " s";
 
     /// <summary>Shows whole percentages, with positive shares below one percent shown as less than one percent.</summary>
     /// <param name="share">The fraction of total word time.</param>

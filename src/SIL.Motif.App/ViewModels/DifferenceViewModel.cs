@@ -98,12 +98,14 @@ public sealed partial class DifferenceViewModel : ObservableObject
     public int OnlyInOneCount { get; private set; }
 
     public string Summary => !HasDifference ? string.Empty
-        : MovedCount == 0 ? $"None of the {ComparedCount:N0} words changed cell."
-        : $"{MovedCount:N0} of {ComparedCount:N0} words changed cell"
-          + (RegressedCount > 0 ? $"; {RegressedCount:N0} regressed." : "; none regressed.");
+        : MovedCount == 0 ? $"None of the {ComparedCount:N0} words moved to another cell."
+        : $"{MovedCount:N0} of {ComparedCount:N0} words moved to another cell"
+          + (RegressedCount > 0 ? $"; {RegressedCount:N0} got worse." : "; none got worse.");
 
     public string OnlyInOneText => OnlyInOneCount == 0 ? string.Empty
         : $"{OnlyInOneCount:N0} word{(OnlyInOneCount == 1 ? " was" : "s were")} in only one run and {(OnlyInOneCount == 1 ? "is" : "are")} not compared.";
+
+    public string RunComparisonText => $"From {BeforeLabel} → {AfterLabel}";
 
     partial void OnSelectedMoveChanged(MoveViewModel? value)
     {
@@ -178,7 +180,8 @@ public sealed partial class DifferenceViewModel : ObservableObject
         if (before == CompareFamilyKind.New && after == CompareFamilyKind.Nobody) return MoveKind.Regressed;
         if (after == CompareFamilyKind.Unknown && before != CompareFamilyKind.Unknown) return MoveKind.NowUnknown;
         if (before == CompareFamilyKind.Unknown) return after == CompareFamilyKind.Unknown ? MoveKind.Changed : MoveKind.Settled;
-        if (before == CompareFamilyKind.Violation) return MoveKind.Fixed;
+        if (before == CompareFamilyKind.Violation)
+            return after == CompareFamilyKind.Violation ? MoveKind.Changed : MoveKind.Fixed;
         if (before == CompareFamilyKind.Nobody && after == CompareFamilyKind.New) return MoveKind.NewCoverage;
         if (from.Row != to.Row && to.Row is WordProjectStatus.Approved or WordProjectStatus.Rejected or WordProjectStatus.IncorrectSpelling)
             return MoveKind.Decided;
@@ -253,7 +256,13 @@ public sealed class MoveViewModel
     public string ToLabel { get; }
     public string ToRow => CompareViewModel.RowLabelOf(To.Row);
 
-    public string AccessibleName => $"{Count} words from {FromRow}, {FromLabel} to {ToRow}, {ToLabel}: {KindLabel}";
+    public string TransitionText =>
+        CompareViewModel.MeaningOf(From.Row, From.Column).Family == CompareFamilyKind.Violation &&
+        CompareViewModel.MeaningOf(To.Row, To.Column).Family == CompareFamilyKind.Violation
+            ? $"Still a problem: {FromLabel} → {ToLabel}"
+            : $"{FromLabel} ({FromRow}) → {ToLabel} ({ToRow})";
+
+    public string AccessibleName => $"{Count} words, {KindLabel}: {TransitionText}";
 }
 
 /// <summary>One word of a move, with what the parser said for it in each run.</summary>

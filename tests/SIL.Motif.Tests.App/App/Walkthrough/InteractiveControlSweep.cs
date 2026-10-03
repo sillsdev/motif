@@ -178,7 +178,7 @@ internal static class InteractiveControlSweep
         FilterChip => InteractiveControlFamily.Filter,
         MatrixCell => InteractiveControlFamily.MatrixCell,
         CopyableTextBlock => InteractiveControlFamily.SelectableText,
-        OpinionMark or UnreadMark or MarkChip => InteractiveControlFamily.Mark,
+        OpinionMark or UnreadMark or MarkChip or MarkGlyph => InteractiveControlFamily.Mark,
         HyperlinkButton => InteractiveControlFamily.Link,
         SplitButton => InteractiveControlFamily.Action,
         RadioButton => InteractiveControlFamily.Radio,

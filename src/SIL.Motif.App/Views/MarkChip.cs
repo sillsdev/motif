@@ -80,7 +80,7 @@ public sealed class MarkChip : Border
         Classes.Set("compact", Compact);
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "markChipRow" } };
-        if (Mark is { } mark && GlyphOf(mark, _insideButton) is { } glyph) row.Children.Add(glyph);
+        if (Mark is { } mark && GlyphOf(mark) is { } glyph) row.Children.Add(glyph);
         if (Text is { Length: > 0 } text)
         {
             var words = Words(text, _insideButton);
@@ -96,22 +96,22 @@ public sealed class MarkChip : Border
     /// The control that draws <paramref name="mark"/>'s glyph: an opinion's letter box, a severity's own shape, or a
     /// sign in its kind's colour; <see langword="null"/> for a meaning, which has no glyph.
     /// </summary>
-    internal static Control? GlyphOf(Mark mark, bool insideButton)
+    internal static Control? GlyphOf(Mark mark)
     {
         switch (mark.Kind)
         {
             case MarkKind.Opinion:
                 return new OpinionMark(mark.Opinion ?? OpinionMarkKind.None) { VerticalAlignment = VerticalAlignment.Center };
             case MarkKind.Severity:
-                var sign = new TextBlock { Text = mark.Glyph, IsHitTestVisible = false };
-                return new Border { Classes = { "severityGlyph", mark.Value }, Child = sign };
+                return new Border
+                {
+                    Classes = { "severityGlyph", mark.Value },
+                    Child = new MarkGlyph { Mark = mark, Classes = { "inline" } },
+                };
             case MarkKind.Meaning:
                 return null;
             default:
-                var glyph = Words(mark.Glyph, insideButton);
-                glyph.Classes.AddRange(["markGlyph", mark.KindClass + "Mark", mark.Value]);
-                glyph.IsHitTestVisible = false;
-                return glyph;
+                return new MarkGlyph { Mark = mark, Classes = { "inline" } };
         }
     }
 

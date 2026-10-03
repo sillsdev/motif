@@ -40,6 +40,21 @@ public sealed class InteractiveMarkupContractTests
     }
 
     [Fact]
+    public void MarkGlyphIsClassifiedAsNonInteractiveMarkup()
+    {
+        const string markup = """
+            <Window xmlns="https://github.com/avaloniaui"
+                    xmlns:views="clr-namespace:SIL.Motif.App.Views">
+              <views:MarkGlyph AutomationProperties.Name="Warnings" />
+            </Window>
+            """;
+
+        Assert.Empty(InteractiveMarkupContracts.DiscoverMarkup("sample.axaml", markup));
+        Assert.Contains("clr-namespace:SIL.Motif.App.Views/MarkGlyph",
+            InteractiveMarkupContracts.TypesForFamily(InteractiveControlFamily.Mark));
+    }
+
+    [Fact]
     public void EveryActionableViewDeclarationHasAResolvedFamilyAndBehaviorCase()
     {
         var repository = RepositoryRoot();
@@ -57,12 +72,16 @@ public sealed class InteractiveMarkupContractTests
 
         foreach (var family in controls.Select(control => control.Family!.Value).Distinct())
         {
-            Assert.True(InteractiveMarkupContracts.BehaviorCases.TryGetValue(family, out var behavior),
+            Assert.True(InteractiveMarkupContracts.BehaviorCases.TryGetValue(family, out var behaviors),
                 $"Actionable family {family} has no behavior case.");
-            var method = behavior.TestClass.GetMethod(behavior.MethodName);
-            Assert.NotNull(method);
-            Assert.Contains(method!.GetCustomAttributes(inherit: true),
-                attribute => attribute is FactAttribute or TheoryAttribute);
+            Assert.NotEmpty(behaviors);
+            foreach (var behavior in behaviors)
+            {
+                var method = behavior.TestClass.GetMethod(behavior.MethodName);
+                Assert.NotNull(method);
+                Assert.Contains(method!.GetCustomAttributes(inherit: true),
+                    attribute => attribute is FactAttribute or TheoryAttribute);
+            }
         }
     }
 

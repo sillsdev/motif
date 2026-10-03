@@ -99,7 +99,7 @@ public sealed class ListWordCardViewModelTests
     [Fact]
     public void WithAnOpinionButNoSingleAnalysis_TheCardNeverSaysFieldWorksHoldsNone()
     {
-        var row = new WordRow("alikula", WordRowOutcome.Different, "Differs: have a look", WordRowTone.Look)
+        var row = new WordRow("alikula", WordRowOutcome.Different, "Have a look", WordRowTone.Look)
         {
             Opinion = ProjectStanding.Candidate,
             PanGlossMorphemes = [Ku, L],

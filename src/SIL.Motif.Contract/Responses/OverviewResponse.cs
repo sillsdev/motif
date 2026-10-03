@@ -124,6 +124,12 @@ public sealed record OverviewLookFirst(
     double? StepLimitedWordTimeMs,
     int UnknownDifferentWordCount)
 {
+    /// <summary>Approved words whose recorded analyses share forms and glosses but name different entries.</summary>
+    public IReadOnlyList<string> ApprovedSameTextDifferentEntryWords { get; init; } = [];
+
+    /// <summary>Whether the Baseline entries needed to identify that group were read.</summary>
+    public bool ApprovedSameTextDifferentEntryAvailable { get; init; } = true;
+
     /// <summary>Whether shared lost-morpheme associations were read; false means unknown, rather than none.</summary>
     public bool SharedLostMorphemesAvailable { get; init; }
 

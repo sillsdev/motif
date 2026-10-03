@@ -1,12 +1,12 @@
 # Overview
 
-**Overview** is the first page you see. It shows the results of your last run: how many of your words parse, how many of your words with approved analyses the grammar still builds, which words are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here changes your FieldWorks project.
+**Overview** is the first page you see. It shows the results of your last run: how many of your words parse, how many words with approved analyses were rebuilt exactly, which words are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here changes your FieldWorks project.
 
 The top card shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. Four cards follow:
 
 - **Speed**: how many words were timed, their total and median time, and the slowest words. **Stopped** marks a word that hit the step limit.
 - **Text coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text).
-- **Approved analyses kept**: the number of words with approved analyses that the grammar still builds.
+- **Approved analyses kept**: how many words with an approved analysis the grammar rebuilt exactly.
 - **Grammar warnings**: what the grammar check found, with errors counted separately.
 
 The **Grammar warnings** card gives the warning count and any nonzero error count. Its word line counts how many different chosen words exactly use an item named by a warning. Before parsing, it says **Parse to see which of your words they touch**. The card lists the three largest warning kinds. Where the evidence is complete, each kind shows the word count; matches based only on spelling are labelled separately. Open **Warnings →** to see each kind's subjects.
@@ -16,8 +16,6 @@ These are separate measures, not one overall score. The project's counts appear 
 The top bar says whether these numbers are current. If you have saved in FieldWorks since the last Refresh, the top bar says when, and offers **Refresh**. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
 
 Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →**, or **Warnings →**, to see more on that page. Hover over or focus a card to show its link. Each **Look first** row opens the words or timings it names; hover or focus the row to show its word-count link. Expand **Project history** to see recorded activity. For a closer explanation of each measure and how to read its breakdowns, see [Reading the Overview](guide:reading-the-overview).
-
-Use **Look first** to open the saved words or timings behind a measured group. A word can have Unknown and Disapproved analyses at the same time; its Matrix row summarizes what FieldWorks holds, while each analysis keeps its own approval status. When PanGloss matched an analysis FieldWorks marked Disapproved, the word can appear in **Unknown × Different**; the row says **Differs: have a look** and shows recorded comparison detail beneath it. Compare the analyses before deciding what approval status to record. If the parser stopped early, Motif can't say which analyses it would have missed.
 
 ![Overview showing the project's stored results](shot:open-project-overview/overview)
 

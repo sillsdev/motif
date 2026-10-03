@@ -1,4 +1,5 @@
 using System.Globalization;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
@@ -39,7 +40,12 @@ public static class OverviewCommand
                 System.Text.Json.JsonSerializer.Serialize(evidence.Baseline.Token, MotifJson.CreateOptions()));
             var needsAssociations = assessedWords.Count(word => word.ProjectStanding == ProjectStanding.Approved &&
                 word.Outcome == "no-analysis" && !word.IsIncomplete) >= 2 || storedCheck is { Findings.Count: > 0 };
-            var context = needsAssociations ? CurrentEvidenceQuery.ReadWordContext(evidence, project.FullFwDataPath, includeResolvedReadings: false)
+            var needsEntryComparisons = assessedWords.Any(word => CompareSemantics.PlacementOf(
+                CompareSemantics.Compare(AssessmentWordRows.FromRecorded(word))) is
+                { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoMatch });
+            var context = needsAssociations || needsEntryComparisons
+                ? CurrentEvidenceQuery.ReadWordContext(evidence, project.FullFwDataPath,
+                    includeResolvedReadings: needsEntryComparisons)
                 : CommandOutcome<CurrentEvidenceSnapshot>.Success(evidence);
             var associationEvidence = context.Succeeded ? context.Value! : evidence;
             var assessmentRows = associationEvidence.Assessment;
@@ -246,12 +252,18 @@ internal static class OverviewLookFirstBuilder
             .ToArray();
         var candidateDifferent = words.Count(word => Place(word) is
             { Standing: ProjectStanding.Candidate, Column: CompareColumnKind.NoMatch });
+        var sameTextDifferentEntry = words.Where(CompareSemantics.HasSameTextDifferentEntry)
+            .Select(word => word.Word).ToArray();
+        var identityComparisonAvailable = !words.Any(word => Place(word) is
+            { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoMatch }) || associationsAvailable;
         return new OverviewLookFirst(lost.Select(word => word.Word).ToArray(), shared,
             stopped.Select(word => word.Word).ToArray(), stoppedTimes.Length == stopped.Length && stopped.Length > 0
                 ? stoppedTimes.Sum() : null,
             candidateDifferent)
         {
             SharedLostMorphemesAvailable = associationsAvailable,
+            ApprovedSameTextDifferentEntryWords = sameTextDifferentEntry,
+            ApprovedSameTextDifferentEntryAvailable = identityComparisonAvailable,
         };
     }
 

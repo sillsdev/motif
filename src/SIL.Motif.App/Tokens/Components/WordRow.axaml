@@ -7,6 +7,7 @@
   Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
+        xmlns:doc="using:Avalonia.Controls.Documents"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordRow.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
@@ -191,6 +192,14 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Grid.markGlyphHost.wordRowHeading :is(TextBlock).markGlyph">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Grid.markGlyphHost.wordRowHeading">
+    <Setter Property="doc:TextElement.Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
 
   <Style Selector="Grid.wordRowCardGrid">

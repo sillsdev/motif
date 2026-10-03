@@ -8,6 +8,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.MatrixCell.Padding" ResourceKey="Primitive.Inset.8_4_8_4" />
+    <StaticResource x:Key="Component.MatrixCell.CellPadding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.MatrixCell.MatrixSpacing" ResourceKey="Primitive.Space.2" />
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
@@ -18,7 +20,7 @@
   </Styles.Resources>
   <Style Selector="Border.matrixCell">
     <Setter Property="CornerRadius" Value="{DynamicResource Component.MatrixCell.Radius}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.Padding}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.CellPadding}" />
     <Setter Property="MinHeight" Value="{DynamicResource Component.MatrixCell.Height}" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
@@ -31,6 +33,10 @@
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellCount">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.matrixCell :is(TextBlock).matrixCellPlaces">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="Border.matrixCell :is(TextBlock).matrixCellLabel">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
@@ -76,17 +82,13 @@
   <Style Selector="Border.matrixCell.none :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <!-- A zero drops its family's tint rather than fading, so its words stay readable; after the families to win. -->
+  <!-- Empty cells drop their family's tint, while their word and place zeros remain readable. -->
   <Style Selector="Border.matrixCell.empty">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
   </Style>
   <Style Selector="Border.matrixCell.empty :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-  </Style>
-  <!-- An empty cell's 0 drops to its meaning's size, so the cells with words are the numbers the eye finds. -->
-  <Style Selector="Border.matrixCell.empty:not(.none) :is(TextBlock).matrixCellCount">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
   <!-- Hover and choosing ring the inside of the cell, never taking its meaning's edge away; a row clips outside. -->
   <Style Selector="Border.matrixCell:pointerover">
@@ -116,6 +118,10 @@
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="StackPanel.matrixChosenMarks :is(TextBlock).matrixChosenWord">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=":is(Grid).markGlyphHost.matrixChosenWord > :is(TextBlock).markGlyph">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>

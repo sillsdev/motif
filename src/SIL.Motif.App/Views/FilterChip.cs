@@ -74,7 +74,7 @@ public sealed class FilterChip : Button
     {
         Classes.Set("active", IsActive);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
-        if (Mark is { } mark && MarkChip.GlyphOf(mark, insideButton: true) is { } glyph) row.Children.Add(glyph);
+        if (Mark is { } mark && MarkChip.GlyphOf(mark) is { } glyph) row.Children.Add(glyph);
         row.Children.Add(new TextBlock { Text = Label });
         var count = new TextBlock { Text = Count.ToString("N0"), FontWeight = FontWeight.SemiBold };
         count.Classes.Add("chipCount");

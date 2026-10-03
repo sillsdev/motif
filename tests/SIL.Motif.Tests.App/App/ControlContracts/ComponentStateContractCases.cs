@@ -63,6 +63,8 @@ internal static class ComponentStateContractCases
     internal static IReadOnlyList<PinnedElsewhere> Pinned { get; } =
     [
         new("HyperlinkButton:pointerover", nameof(InteractionCueTests.ALinkUnderlinesUnderThePointer)),
+        new(":is(Button).outcomeLegendLink:pointerover :is(TextBlock)",
+            nameof(InteractionCueTests.AnOutcomeLegendLinkIsVisibleAtRestAndUnderlinesUnderThePointer)),
         new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
@@ -563,6 +565,12 @@ internal static class TooltipOwners
         new("places in a word row", "Views/WordRow.axaml", "{Binding PlacesTooltip}", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordRowPlaces") &&
                 control.FindAncestorOfType<WordRow>() is not null),
+        new("different morpheme entry names", "Views/WordRow.axaml", "{Binding EntryDifferenceTip}", TooltipScene.Matrix,
+            control => control is Border && control.Classes.Contains("wordRowMorph") && control.Classes.Contains("different") &&
+                control.FindAncestorOfType<WordRow>() is not null)
+        {
+            Pending = "the seeded rows do not record both entry names; ComparisonRowTests supplies that evidence",
+        },
         new("unread word in a row", "Views/WordRow.axaml", "{Binding UnreadText}", TooltipScene.Matrix,
             control => control is Ellipse && control.FindAncestorOfType<WordRow>() is not null)
         {

@@ -91,7 +91,7 @@ public sealed class TryWordPageTests
         Assert.Equal("matin + lu", row.Text);
         Assert.Equal("Approved 1 · Disapproved 1 · Unknown 2", row.OpinionLabel);
         Assert.Equal(["stem", "suffix"], row.Morphs.Select(morph => morph.GlossOrPlaceholder));
-        Assert.All(row.Pieces, piece => Assert.Equal("· No step recorded", piece.Status));
+        Assert.All(row.Pieces, piece => Assert.Equal("No step recorded", piece.Status));
     }
 
     [Fact]
@@ -102,13 +102,15 @@ public sealed class TryWordPageTests
         { SourceIdentityKind = "morphRule", SourceIdentityId = msa, SourceIdentityQuality = "authored" };
         var reading = TraceReadingBuilder.Build("word", step, [], []);
         var sameLabel = new ParserReadingMorph("ja-", "NEG.PERF", "v", null, false, null);
-        Assert.Equal("· No step recorded", new TryWordTracePiece(sameLabel, reading).Status);
-        Assert.Equal("✗ refused", new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa }, reading).Status);
+        Assert.Equal("No step recorded", new TryWordTracePiece(sameLabel, reading).Status);
+        var refused = new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa }, reading);
+        Assert.Equal("refused", refused.Status);
+        Assert.Equal(Mark.Of(TraceStepMark.Refused), Assert.Single(refused.StatusParts).Mark);
         var grouped = new TryWordStoredAnalysis([
             new ParserReading([sameLabel]),
             new ParserReading([sameLabel with { GrammaticalInfoId = msa }])], reading);
         Assert.Equal("Trace marks differ", Assert.Single(grouped.Pieces).Status);
-        Assert.Equal("· No step recorded", new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa },
+        Assert.Equal("No step recorded", new TryWordTracePiece(sameLabel with { GrammaticalInfoId = msa },
             TraceReadingBuilder.Build("word", step with { SourceIdentityQuality = "grammar-local" }, [], [])).Status);
     }
 

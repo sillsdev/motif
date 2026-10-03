@@ -109,7 +109,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.NoParse, "Lost")]
     [InlineData(WordProjectStatus.Rejected, CompareColumnKind.Match, "Built anyway")]
     [InlineData(WordProjectStatus.Candidate, CompareColumnKind.Match, "Parses; nothing in FieldWorks yet")]
-    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.NoMatch, "Differs: have a look")]
+    [InlineData(WordProjectStatus.Candidate, CompareColumnKind.NoMatch, "Have a look")]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.Match, "Nothing to compare")]
     [InlineData(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch, "New: PanGloss proposes")]
     [InlineData(WordProjectStatus.Approved, CompareColumnKind.Timeout, "No result")]
@@ -129,14 +129,18 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Assert.Equal(expected, CompareViewModel.PanGlossClassLabel(markingClass));
 
     [Fact]
-    public void TheImpossibleCellShowsADashAndNoLabel()
+    public void TheImpossibleCellShowsItsZeroAndNoLabel()
     {
         var cell = new CompareCellViewModel(WordProjectStatus.NotPresent, CompareColumnKind.Match);
 
-        Assert.Equal("—", cell.CountText);
+        Assert.Equal("0 words", cell.CountText);
         Assert.False(cell.ShowsLabel);
+        cell.SetCounts(0, 0);
+        Assert.Equal("0 words", cell.CountText);
+        Assert.Equal("0 places", cell.PlacesText);
+        Assert.True(cell.ShowsPlaces);
         cell.SetCounts(6, 6);
-        Assert.Equal("6 places", cell.CountText);
+        Assert.Equal("6 words", cell.CountText);
         Assert.False(cell.ShowsLabel);
         Assert.True(new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match).ShowsLabel);
     }
@@ -151,9 +155,9 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
                 .OfType<MatrixCell>().Where(cell => cell.DataContext is CompareCellViewModel
                     { Row: WordProjectStatus.NotPresent, Column: CompareColumnKind.Match })
                 .SelectMany(cell => cell.GetLogicalDescendants().OfType<TextBlock>())
-                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray());
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray());
 
-            Assert.Equal("—", Assert.Single(labels));
+            Assert.Equal(new[] { "0 words", "0 places" }, labels);
         });
     }
 

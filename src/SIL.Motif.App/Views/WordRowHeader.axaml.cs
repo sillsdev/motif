@@ -19,7 +19,7 @@ public sealed partial class WordRowHeader : UserControl
         AvaloniaProperty.Register<WordRowHeader, bool>(nameof(ShowsMeaning), true);
 
     public static readonly StyledProperty<string> MeaningHeaderProperty =
-        AvaloniaProperty.Register<WordRowHeader, string>(nameof(MeaningHeader), "MEANING");
+        AvaloniaProperty.Register<WordRowHeader, string>(nameof(MeaningHeader), "Meaning");
 
     private readonly WordRowLayout? _layout;
     public WordRowHeader()
@@ -57,6 +57,6 @@ public sealed partial class WordRowHeader : UserControl
         set => SetValue(MeaningHeaderProperty, value);
     }
 
-    /// <summary>The warning mark's own glyph, heading the column that counts warnings.</summary>
-    public string WarningGlyph => GrammarLevelMarks.Of(GrammarDiagnosticLevel.Warning);
+    /// <summary>The warning mark that heads the column which counts warnings.</summary>
+    public Mark WarningMark => Mark.Warning;
 }

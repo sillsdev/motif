@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Globalization;
 using SIL.Motif.App.Controls;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
@@ -89,13 +90,13 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         ParserLine = Verdict switch
         {
             OccurrenceVerdict.Matches => others > 0
-                ? $"{Mark.Same.Glyph} parser agrees, with {others} other reading{Plural(others)}"
-                : $"{Mark.Same.Glyph} parser agrees",
-            OccurrenceVerdict.Differs when first is null => $"{Mark.NoParse.Glyph} parser: no parse",
-            OccurrenceVerdict.Differs => $"{Mark.Different.Glyph} parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
+                ? $"parser agrees, with {others} other reading{Plural(others)}"
+                : "parser agrees",
+            OccurrenceVerdict.Differs when first is null => "parser: no parse",
+            OccurrenceVerdict.Differs => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.New => $"parser: {first}" + (others > 0 ? $" (+{others})" : string.Empty),
             OccurrenceVerdict.NoParse => "no parse",
-            OccurrenceVerdict.Limit => "parser stopped at a limit",
+            OccurrenceVerdict.Limit => Mark.Stopped.Word,
             _ when ParserRefusals.Of(result?.Morphology, result?.Outcome) is { } refused => refused.Reason,
             _ => "not in the last parse",
         };
@@ -249,8 +250,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public bool HasWhySection => HasWarningEvidence || _assessment is not null;
     /// <summary>Whether the Timing response included any rule shares for this word.</summary>
     public bool HasTimingShares => TimingShares.Count > 0;
-    /// <summary>The strip mark and count for exact warning findings naming this word.</summary>
-    public string WarningMarkLabel => $"⚠ {NamedWarnings.Count}";
+    /// <summary>The warning mark for exact findings naming this word.</summary>
+    public Mark WarningMark => Mark.Warning;
+
+    public string WarningMarkCount => NamedWarnings.Count.ToString(CultureInfo.CurrentCulture);
 
     internal static ResultsWarningEvidence WarningEvidenceFor(string form, GrammarCheckResponse? check,
         IReadOnlyList<AssessmentWordResult> assessmentWords)
@@ -302,7 +305,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         OnPropertyChanged(nameof(NamedMorphemeSentence));
         OnPropertyChanged(nameof(WarningSectionHeading));
         OnPropertyChanged(nameof(HasWhySection));
-        OnPropertyChanged(nameof(WarningMarkLabel));
+        OnPropertyChanged(nameof(WarningMarkCount));
         OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphs));
     }
 
@@ -389,11 +392,15 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string MorePanGlossLabel => $"+{Readings.Count - 1}";
 
     /// <summary>The strip's PanGloss line when it shows no reading, in Round 4's short words.</summary>
+    public Mark? PanGlossNoteMark => IsPanGlossCapped ? Mark.Stopped
+        : IsPanGlossSame ? Mark.Same
+        : IsPanGlossNone ? Mark.NoParse
+        : null;
+
     public string PanGlossNote => IsPanGlossCapped
-        ? _assessment is { Outcome: "capped" } or { Morphology.Capped: true }
-            ? "Stopped at the step limit" : "Search stopped at a limit"
-        : IsPanGlossSame ? $"{Mark.Same.Glyph} same"
-        : IsPanGlossNone ? $"{Mark.NoParse.Glyph} {Mark.NoParse.Word}"
+        ? Mark.Stopped.Word
+        : IsPanGlossSame ? "same"
+        : IsPanGlossNone ? Mark.NoParse.Word
         : PanGlossSummary;
 
     /// <summary>Whether a staged change replaces the strip's actions with its Staged note.</summary>
@@ -528,7 +535,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
                      nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
-                     nameof(PanGlossNote), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
+                     nameof(PanGlossNote), nameof(PanGlossNoteMark), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
                      nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel),
                      nameof(HoverSummary),
                  })
@@ -541,7 +548,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     /// <summary>What PanGloss built for this occurrence against what FieldWorks stores here.</summary>
     public ParserOutcome Outcome => WindowWords.OutcomeOf(CompareSemantics.PlacementOf(Comparison).Column);
 
-    /// <summary>Whether the parser also produced a reading FieldWorks has disapproved for this word.</summary>
+    /// <summary>Whether the parser also produced an analysis FieldWorks has disapproved for this word.</summary>
     public bool HasDisapprovedReading => Comparison.RebuiltDisapproved.Count > 0 ||
         Comparison.Readings.Any(reading => reading.RecordedGrade == ReadingGrade.Disapproved);
 
@@ -555,7 +562,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         WindowWords.MeaningOf(ProjectStanding.Rejected, ParserOutcome.Same);
 
     /// <summary>What the disapproved marker says when a reader stops on it.</summary>
-    public string DisapprovedTip => $"The parser also produced a reading FieldWorks has disapproved for {Text}.";
+    public string DisapprovedTip => $"The parser also produced an analysis FieldWorks has disapproved for {Text}.";
 
     /// <summary>Whether the active filter passes over this word, so it recedes rather than disappears.</summary>
     [ObservableProperty]

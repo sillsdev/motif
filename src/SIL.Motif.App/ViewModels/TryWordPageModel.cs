@@ -491,6 +491,18 @@ public sealed class TryWordTracePiece
         Morphs = [new ParserReadingMorphViewModel(morphs[0])];
         var statuses = morphs.Select(morph => StatusFor(morph, trace)).Distinct(StringComparer.Ordinal).ToArray();
         Status = statuses.Length == 1 ? statuses[0] : "Trace marks differ";
+        StatusParts = Status switch
+        {
+            "built · refused" =>
+            [
+                new(Mark.Of(TraceStepMark.Built), "built", string.Empty),
+                new(Mark.Of(TraceStepMark.Refused), "refused", "· "),
+            ],
+            "refused" => [new(Mark.Of(TraceStepMark.Refused), Status, string.Empty)],
+            "built" => [new(Mark.Of(TraceStepMark.Built), Status, string.Empty)],
+            "No step recorded" => [new(Mark.Of(TraceStepMark.Tried), Status, string.Empty)],
+            _ => [new(null, Status, string.Empty)],
+        };
     }
 
     private static string StatusFor(ParserReadingMorph morph, WordTraceReading? trace)
@@ -501,12 +513,14 @@ public sealed class TryWordTracePiece
             Guid.TryParse(morph.GrammaticalInfoId, out var msa) && source == msa).ToArray();
         var refusal = steps.FirstOrDefault(step => step.FailureReason is { Length: > 0 });
         var built = steps.Any(step => step.OutcomeStatus is "success" or "successful" or "succeeded");
-        return built && refusal is not null ? "✓ built · ✗ refused" : refusal is not null ? "✗ refused"
-            : built ? "✓ built" : steps.Length > 0 ? "Tried" : "· No step recorded";
+        return built && refusal is not null ? "built · refused" : refusal is not null ? "refused"
+            : built ? "built" : steps.Length > 0 ? "Tried" : "No step recorded";
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
     public string Status { get; }
+    /// <summary>The status words and signs that form the visible line.</summary>
+    public IReadOnlyList<TryWordTraceStatus> StatusParts { get; }
 
     private static IEnumerable<TraceStep> Flatten(TraceStep step)
     {
@@ -515,6 +529,12 @@ public sealed class TryWordTracePiece
             foreach (var descendant in Flatten(child)) yield return descendant;
     }
 }
+
+/// <summary>One trace status word, optionally preceded by its mark and a separator.</summary>
+/// <param name="Mark">The sign for the status word, or <see langword="null"/> for plain text.</param>
+/// <param name="Text">The status word.</param>
+/// <param name="Separator">The visible separator before this status word.</param>
+public sealed record TryWordTraceStatus(Mark? Mark, string Text, string Separator);
 
 /// <summary>An opinion with its explicit FieldWorks source for the result line.</summary>
 public sealed record TryWordOpinion(OpinionMarkKind Opinion, string Label)

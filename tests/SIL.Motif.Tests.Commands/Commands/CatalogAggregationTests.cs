@@ -495,6 +495,31 @@ public sealed class CatalogAggregationTests
             ProjectStanding = ProjectStanding.Candidate,
             Morphology = Parsed(1),
         };
+        var approvedMorph = Morph("tabu", "stored") with { Gloss = "book", Entry = "stored entry" };
+        var parserMorph = approvedMorph with
+        {
+            AllomorphId = "form-parser",
+            GrammaticalInfoId = "msa-parser",
+            Entry = "parser entry",
+        };
+        var approvedAnalysis = new ParserReading([approvedMorph])
+        {
+            StoredAnalysisId = "stored-analysis",
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+            Identity = new ApprovedMorphology([new ApprovedMorph(
+                approvedMorph.AllomorphId, approvedMorph.GrammaticalInfoId, null, [])]),
+        };
+        var differentEntry = new AssessmentWordResult("same-text", "analysed", false, "Completed", 10, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            ExpectedAnalysis = approvedAnalysis,
+            StoredAnalyses = [approvedAnalysis],
+            StoredAnalysesAvailable = true,
+            Readings = [new ParserReading([parserMorph])],
+            ReadingGrades = [ReadingGrade.NoOpinion],
+            Morphology = new ParseWordEvidence("v1", 0, "same-text", 10, false, false, false,
+                [new ParseAnalysis([new ParseMorph(parserMorph.AllomorphId!, parserMorph.GrammaticalInfoId, null, null)])], []),
+        };
         var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "shared-morpheme",
             [new GrammarWarningPart("kat", GrammarWarningPartRole.Object)
             {
@@ -506,7 +531,7 @@ public sealed class CatalogAggregationTests
             Lost("walikata", kat), Lost("anakata", kat), Lost("wamekata", kat),
             Lost("hawajafika", ja), Lost("hatujaona", ja), Lost("hamjafika", ja),
         };
-        var result = OverviewLookFirstBuilder.Build([.. lost, limited, different],
+        var result = OverviewLookFirstBuilder.Build([.. lost, limited, different, differentEntry],
             [new AssessedWord("limited", "capped", [], 400)], new GrammarCheckResponse([warning], true));
 
         Assert.Equal(["walikata", "anakata", "wamekata", "hawajafika", "hatujaona", "hamjafika"],
@@ -516,6 +541,8 @@ public sealed class CatalogAggregationTests
         Assert.Equal(["limited"], result.StepLimitedWords);
         Assert.Equal(400d, result.StepLimitedWordTimeMs);
         Assert.Equal(1, result.UnknownDifferentWordCount);
+        Assert.Equal(["same-text"], result.ApprovedSameTextDifferentEntryWords);
+        Assert.True(result.ApprovedSameTextDifferentEntryAvailable);
     }
 
     private static ParseWordEvidence Parsed(int readings) => new("v1", 0, "word", 1, false, false, false,

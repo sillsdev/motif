@@ -40,6 +40,25 @@
   <Style Selector="StackPanel.outcomeLegendEntry > :is(TextBlock).outcomeLegendText">
     <Setter Property="Margin" Value="{DynamicResource Component.OutcomeBar.LegendTextMargin}" />
   </Style>
+  <Style Selector=":is(Button).outcomeLegendLink">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Link}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector=":is(Button).outcomeLegendLink:pointerover :is(TextBlock)">
+    <Setter Property="TextDecorations" Value="Underline" />
+  </Style>
+  <Style Selector=":is(StackPanel).outcomeLegendLabel">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeLegendCount">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector=":is(TextBlock).outcomeLegendLabelText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
+  </Style>
   <Style Selector="Border.outcomeSegment">
     <Setter Property="Background" Value="{DynamicResource Intent.TextFaint}" />
   </Style>

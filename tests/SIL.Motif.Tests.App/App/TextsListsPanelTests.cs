@@ -193,7 +193,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Stopped"));
                 window.UpdateLayout();
 
-                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.Equal(["Word", "FieldWorks", "PanGloss", "Places", "Time", "Next"], Heads(panel));
                 Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row =>
                 {
                     Assert.False(row.ShowsMeaning);
@@ -204,7 +204,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Have a look"));
                 window.UpdateLayout();
 
-                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "MEANING", "PLACES", "TIME", "NEXT"], Heads(panel));
+                Assert.Equal(["Word", "FieldWorks", "PanGloss", "Meaning", "Places", "Time", "Next"], Heads(panel));
                 Assert.All(panel.GetVisualDescendants().OfType<WordRow>(), row => Assert.Contains(
                     row.GetVisualDescendants().OfType<MarkChip>(), chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning));
             }

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -7,6 +8,9 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -186,6 +190,46 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(label.TextDecorations is null || label.TextDecorations.Count == 0, "a resting link is not underlined");
                 window.MouseMove(link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value);
                 Dispatcher.UIThread.RunJobs();
+                Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void AnOutcomeLegendLinkIsVisibleAtRestAndUnderlinesUnderThePointer()
+    {
+        avalonia.Invoke(() =>
+        {
+            var bar = new OutcomeBar
+            {
+                ShowShares = false,
+                Segments = [new OutcomeSegment(Mark.Different, 6, "different")
+                {
+                    Command = new RelayCommand(() => { }),
+                    ActionName = "Open Different words in the Matrix",
+                }],
+            };
+            var window = new Window { Content = bar, Width = 300, Height = 100 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var link = Assert.Single(bar.GetVisualDescendants().OfType<HyperlinkButton>());
+                var label = link.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.Text == "Different");
+                Assert.True(label.TextDecorations is null || label.TextDecorations.Count == 0,
+                    "the outcome legend is not underlined at rest");
+                Assert.NotNull(link.Command);
+                Assert.Equal("Open Different words in the Matrix", AutomationProperties.GetName(link));
+
+                window.MouseMove(link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value);
+                Dispatcher.UIThread.RunJobs();
+
                 Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
             }
             finally

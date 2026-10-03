@@ -71,7 +71,7 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
                 var heads = header.GetVisualDescendants().OfType<TextBlock>()
                     .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text))
                     .OrderBy(text => BoundsIn(text, window).X).ToArray();
-                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "TIME", "NEXT"], heads.Select(text => text.Text));
+                Assert.Equal(["Word", "FieldWorks", "PanGloss", "Time", "Next"], heads.Select(text => text.Text));
                 var cells = new[] { "wordRowWord", "wordRowFieldWorks", "wordRowPanGloss", "wordRowTime", "wordRowNextColumn" };
                 foreach (var (head, cell) in heads.Zip(cells))
                 {
@@ -206,7 +206,7 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
             try
             {
                 Assert.False(Part(row, "wordRowMeaning").IsEffectivelyVisible);
-                Assert.DoesNotContain("MEANING", VisibleTexts(header));
+                Assert.DoesNotContain("Meaning", VisibleTexts(header));
                 // The hidden meaning gives up its column gap as well as its width.
                 var panGloss = BoundsIn(Part(row, "wordRowPanGloss"), row);
                 Assert.InRange(BoundsIn(Part(row, "wordRowWarnings"), row).X - panGloss.Right, 0, 8.5);
@@ -214,13 +214,13 @@ public sealed class WordRowColumnsTests(AvaloniaHeadlessFixture avalonia)
                 row.ShowsMeaning = header.ShowsMeaning = true;
                 window.UpdateLayout();
                 Assert.True(Part(row, "wordRowMeaning").IsEffectivelyVisible);
-                Assert.Contains("MEANING", VisibleTexts(header));
+                Assert.Contains("Meaning", VisibleTexts(header));
 
                 // A page whose columns leave the meaning out keeps it hidden whatever the list's words share.
                 row.Columns = header.Columns = WordRowColumns.All & ~WordRowColumns.Meaning;
                 window.UpdateLayout();
                 Assert.False(Part(row, "wordRowMeaning").IsEffectivelyVisible);
-                Assert.DoesNotContain("MEANING", VisibleTexts(header));
+                Assert.DoesNotContain("Meaning", VisibleTexts(header));
             }
             finally
             {

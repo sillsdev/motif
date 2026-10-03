@@ -92,6 +92,28 @@ public sealed class OutcomeBar : StackPanel
         }
 
         // Parts that share a colour share one swatch, so the key names each colour once.
+        if (!ShowShares && segments.All(segment => segment.Mark.Kind == MarkKind.Outcome))
+        {
+            for (var index = 0; index < segments.Count; index++)
+            {
+                var segment = segments[index];
+                var entry = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "outcomeLegendEntry" } };
+                var swatch = new Border { Classes = { "outcomeSegment", "swatch" } };
+                MarkClasses.SetMark(swatch, segment.Mark);
+                entry.Children.Add(swatch);
+                if (!_insideButton && segment.Command is not null)
+                    entry.Children.Add(OutcomeLink(segment));
+                else
+                    entry.Children.Add(OutcomeLabel(segment));
+                if (index < segments.Count - 1)
+                    entry.Children.Add(new TextBlock { Text = "·", Classes = { "outcomeLegendText", "muted" } });
+                legend.Children.Add(entry);
+            }
+            Children.Add(bar);
+            if (ShowLegend) Children.Add(legend);
+            return;
+        }
+
         foreach (var colour in segments.GroupBy(segment => segment.Mark))
         {
             var swatch = new Border { Classes = { "outcomeSegment", "swatch" } };
@@ -134,5 +156,30 @@ public sealed class OutcomeBar : StackPanel
         };
         if (segment.ActionName is { } name) Avalonia.Automation.AutomationProperties.SetName(action, name);
         entry.Children.Add(action);
+    }
+
+    private static Control OutcomeLabel(OutcomeSegment segment) => new StackPanel
+    {
+        Orientation = Orientation.Horizontal,
+        Classes = { "outcomeLegendLabel" },
+        Children =
+        {
+            new MarkGlyph { Mark = segment.Mark, Classes = { "inline" } },
+            new TextBlock { Text = segment.Mark.Word, Classes = { "outcomeLegendText" } },
+            new TextBlock { Text = segment.CountText, Classes = { "outcomeLegendText", "outcomeLegendCount" } },
+        },
+    };
+
+    private static HyperlinkButton OutcomeLink(OutcomeSegment segment)
+    {
+        var action = new HyperlinkButton
+        {
+            Content = OutcomeLabel(segment),
+            Command = segment.Command,
+            Classes = { "revealControl", "revealLink", "outcomeLegendLink" },
+        };
+        Avalonia.Automation.AutomationProperties.SetName(action,
+            segment.ActionName ?? $"Open {segment.Mark.Word} {segment.CountText}");
+        return action;
     }
 }

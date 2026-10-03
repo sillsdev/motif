@@ -41,15 +41,15 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
-    public void OverviewHelpDoesNotTreatAggregateStandingAsEveryAnalysisOpinion()
+    public void ReadingOverviewHelpDoesNotTreatAggregateStandingAsEveryAnalysisOpinion()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
-        var page = catalog.GetHelpPage(HelpEntryKind.Guide, "overview")!;
+        var page = catalog.GetHelpPage(HelpEntryKind.Guide, "reading-the-overview")!;
 
         Assert.DoesNotContain("has no saved project opinion for that analysis", page, StringComparison.Ordinal);
         Assert.Contains("Unknown and Disapproved analyses", page, StringComparison.Ordinal);
-        Assert.Contains("PanGloss matched an analysis FieldWorks marked Disapproved", page, StringComparison.Ordinal);
-        Assert.Contains("shows recorded comparison detail beneath it", page, StringComparison.Ordinal);
+        Assert.Contains("PanGloss matched an analysis marked Disapproved", page, StringComparison.Ordinal);
+        Assert.Contains("shows the recorded comparison detail", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class HelpCatalogTests
         Assert.Equal("Overview", overview.Title);
         Assert.Equal(
             "Overview is the first page you see. It shows the results of your last run: how many of your " +
-            "words parse, how many of your words with approved analyses the grammar still builds, which words " +
+            "words parse, how many words with approved analyses were rebuilt exactly, which words " +
             "are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here " +
             "changes your FieldWorks project.",
             overview.Description);

@@ -209,6 +209,20 @@ public static class MarkGlyphs
         _ => "·",
     };
 
+    /// <summary>The vector shape used when Andika lacks this glyph, or <see langword="null"/> for font text.</summary>
+    /// <param name="mark">The mark whose glyph may need a vector shape.</param>
+    /// <returns>Path data for a vector shape, or <see langword="null"/> when the glyph is font text.</returns>
+    /// <remarks>Coverage is pinned by <c>EveryMarkGlyphHasAPathIconOrAnAndikaGlyph</c>.</remarks>
+    public static string? IconDataFor(Mark mark) => (mark.Kind, mark.Value) switch
+    {
+        (MarkKind.Outcome, "stopped") => "M7 0 A7 7 0 0 0 7 14 Z",
+        (MarkKind.Severity, "warning") =>
+            "M7 0 L14 13 H0 Z M7 2.8 L2.5 11 H11.5 Z M6.25 4.5 H7.75 V8.5 H6.25 Z M6.25 9.7 H7.75 V11 H6.25 Z",
+        (MarkKind.TraceStep, "refused") =>
+            "M2 0 L7 5 L12 0 L14 2 L9 7 L14 12 L12 14 L7 9 L2 14 L0 12 L5 7 L0 2 Z",
+        _ => null,
+    };
+
     /// <summary>Every kind's glyphs, so a test can prove no two kinds share one.</summary>
     public static IReadOnlyList<MarkGlyphTable> All { get; } =
     [

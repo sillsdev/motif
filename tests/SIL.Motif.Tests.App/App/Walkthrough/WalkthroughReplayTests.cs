@@ -380,7 +380,9 @@ internal static class WalkthroughReplayTestRunner
         Assert.Equal(AnalysisMarkingClass.None, byForm["günler"].Marking.PanGlossClass);
         Assert.Empty(byForm["günler"].Marking.FieldWorksAnalyses);
         Assert.Equal(OccurrenceVerdict.NoParse, byForm["günler"].Verdict);
-        Assert.Contains("∅ No parse", walkthrough.VisibleTextUnderAutomationId(byForm["günler"].PanGlossAutomationId));
+        Assert.Contains("No parse", walkthrough.VisibleTextUnderAutomationId(byForm["günler"].PanGlossAutomationId));
+        Assert.Contains(walkthrough.FindByAutomationId(byForm["günler"].PanGlossAutomationId)
+            .GetLogicalDescendants().OfType<MarkGlyph>(), glyph => glyph.Mark == Mark.NoParse);
         Assert.Contains("Nothing in FieldWorks",
             walkthrough.VisibleTextUnderAutomationId(byForm["günler"].FieldWorksAutomationId));
 

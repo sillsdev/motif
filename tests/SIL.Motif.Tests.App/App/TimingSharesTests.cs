@@ -45,6 +45,19 @@ public sealed class TimingSharesTests
         new("Vowel harmony", "Vowel harmony", 120, 120d / 800, 7) { Kind = "phon_rule", IdentityQuality = "authored" },
     ];
 
+    [Theory]
+    [InlineData(795, "795 ms")]
+    [InlineData(9999.9, "9,999.9 ms")]
+    [InlineData(10000, "10.0 s")]
+    [InlineData(10832, "10.8 s")]
+    public void RecordedDurationsUseMillisecondsUnderTenSecondsAndOneDecimalSecondsAbove(
+        double milliseconds, string expected)
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+
+        Assert.Equal(expected, TimingShare.FormatDuration(milliseconds));
+    }
+
     [Fact]
     public async Task TwoKindsSharingAKeySelectOnlyTheClickedObject()
     {

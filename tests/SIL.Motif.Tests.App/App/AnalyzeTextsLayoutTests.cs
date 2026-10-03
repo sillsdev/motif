@@ -118,8 +118,14 @@ public sealed class AnalyzeTextsLayoutTests
                 var warningFilter = Assert.Single(panel.GetVisualDescendants().OfType<FilterChip>(),
                     chip => chip.Label == "Named in a warning");
                 Assert.Equal(1, warningFilter.Count);
-                Assert.Contains("⚠", VisibleText(Assert.Single(Strips(panel), strip =>
-                    strip.Tag is ResultsTokenViewModel { Form: "alikula" })));
+                var warningStrip = Assert.Single(Strips(panel), strip =>
+                    strip.Tag is ResultsTokenViewModel { Form: "alikula" });
+                var warningIcon = Assert.Single(warningStrip.GetVisualDescendants().OfType<MarkGlyph>(),
+                    glyph => glyph.Mark == Mark.Warning);
+                Assert.IsType<PathIcon>(Assert.Single(warningIcon.Children));
+                var warningStatus = warningIcon.FindAncestorOfType<StackPanel>()!;
+                Assert.Equal("Named in 1", Avalonia.Automation.AutomationProperties.GetName(warningStatus));
+                Assert.Contains(warningStatus.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "1");
                 var card = OpenCard(window);
                 var cardLines = card.GetVisualDescendants().OfType<CopyableTextBlock>().ToArray();
                 Assert.Contains(cardLines, line => line.Text == "What a warning names in this word");
@@ -527,7 +533,9 @@ public sealed class AnalyzeTextsLayoutTests
                 var panel = Panel(window);
                 Assert.Contains("wa- 2 toto child", VisibleText(Part(StripOf(panel, "watoto"), "pangloss")));
                 Assert.Equal("∅ No parse", VisibleText(Part(StripOf(panel, "hawajafika"), "pangloss")));
-                Assert.Equal("Stopped at the step limit", VisibleText(Part(StripOf(panel, "mwalimu"), "pangloss")));
+                var stopped = Part(StripOf(panel, "mwalimu"), "pangloss");
+                Assert.Equal("Stopped", VisibleText(stopped));
+                Assert.Contains(stopped.GetVisualDescendants().OfType<MarkGlyph>(), glyph => glyph.Mark == Mark.Stopped);
                 Assert.StartsWith("Nothing in FieldWorks", VisibleText(Part(StripOf(panel, "chakula"), "fieldworks")), StringComparison.Ordinal);
                 Assert.Equal("ch- 7 akula food", VisibleText(Part(StripOf(panel, "chakula"), "pangloss")));
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -712,7 +720,12 @@ public sealed class AnalyzeTextsLayoutTests
                     showing["Different"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
                     showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
                     showing["No parse"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "∅ No parse");
-                    showing["Stopped"] += strips.Count(strip => VisibleText(Part(strip, "pangloss")) == "Stopped at the step limit");
+                    showing["Stopped"] += strips.Count(strip =>
+                    {
+                        var pangloss = Part(strip, "pangloss");
+                        return VisibleText(pangloss) == "Stopped" &&
+                            pangloss.GetVisualDescendants().OfType<MarkGlyph>().Any(glyph => glyph.Mark == Mark.Stopped);
+                    });
                 }
 
                 var chips = panel.GetVisualDescendants().OfType<FilterChip>()

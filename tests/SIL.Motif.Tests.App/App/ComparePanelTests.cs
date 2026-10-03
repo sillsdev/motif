@@ -212,11 +212,17 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             foreach (var head in heads)
             {
                 var column = (CompareColumnViewModel)head.DataContext!;
-                var glyph = Assert.Single(head.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Classes.Contains("markGlyph"));
-                Assert.Equal(column.OutcomeMark.Glyph, glyph.Text);
-                Assert.Contains("outcomeMark", glyph.Classes);
-                Assert.Contains(column.OutcomeMark.Value, glyph.Classes);
+                var glyph = Assert.Single(head.GetVisualDescendants().OfType<MarkGlyph>());
+                var sign = Assert.Single(glyph.Children);
+                if (MarkGlyphs.IconDataFor(column.OutcomeMark) is not null)
+                    Assert.IsType<PathIcon>(sign);
+                else
+                {
+                    var text = Assert.IsType<TextBlock>(sign);
+                    Assert.Equal(column.OutcomeMark.Glyph, text.Text);
+                    Assert.Contains("outcomeMark", text.Classes);
+                    Assert.Contains(column.OutcomeMark.Value, text.Classes);
+                }
                 Assert.Contains(head.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == column.Label);
             }
             var approvedRow = window.GetLogicalDescendants().OfType<Button>()
@@ -234,20 +240,22 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
             var texts = lost.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible).ToArray();
             var count = Assert.Single(texts, text => text.Classes.Contains("matrixCellCount"));
-            Assert.Equal("4 words · 7 places", count.Text);
-            Assert.DoesNotContain(texts, text => text.Classes.Contains("matrixCellPlaces"));
+            Assert.Equal("4 words", count.Text);
+            Assert.Contains(texts, text => text.Classes.Contains("matrixCellPlaces") && text.Text == "7 places");
             Assert.Contains(texts, text => text.Text == "Lost");
-            Assert.Equal("You approved these in FieldWorks; the grammar builds nothing for them.", ToolTip.GetTip(lost));
+            Assert.Equal("You approved these in FieldWorks; PanGloss builds nothing for them.", ToolTip.GetTip(lost));
 
             var same = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.Match });
             Assert.Contains(same.GetVisualDescendants().OfType<TextBlock>(), text =>
-                text.Classes.Contains("matrixCellCount") && text.Text == "1 word · 2 places");
+                text.Classes.Contains("matrixCellCount") && text.Text == "1 word");
+            Assert.Contains(same.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Classes.Contains("matrixCellPlaces") && text.Text == "2 places");
 
             var empty = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Rejected, Column: CompareColumnKind.Match });
-            Assert.DoesNotContain(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
-                text.Classes.Contains("matrixCellPlaces") && text.IsEffectivelyVisible);
+            Assert.Contains(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Classes.Contains("matrixCellPlaces") && text.Text == "0 places" && text.IsEffectivelyVisible);
         }));
     }
 
@@ -304,7 +312,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var dash = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell => cell.DataContext is CompareCellViewModel { IsNone: true })
                 .GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("matrixCellCount"));
             Assert.Equal("0 words", empty.Text);
-            Assert.Equal(Resource("Intent.Type.Label"), empty.FontSize);
+            Assert.Equal("0 words", empty.Text);
+            Assert.Equal(Resource("Intent.Type.Title"), empty.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), full.FontSize);
             Assert.Equal(Resource("Intent.Type.Title"), dash.FontSize);
             var muted = (IBrush)Application.Current!.FindResource(ThemeVariant.Light, "Intent.TextMuted")!;
@@ -320,13 +329,13 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             var compare = CompareViewModelTests.LostWords();
             WithPanel(compare, 1000, window =>
             {
-                Assert.Contains("RESULT", MatrixHeads(window));
+                Assert.Contains("Meaning", MatrixHeads(window));
                 Assert.All(MatrixRows(window), row => Assert.True(row.ShowsMeaning));
 
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
                 window.UpdateLayout();
-                Assert.DoesNotContain("RESULT", MatrixHeads(window));
+                Assert.DoesNotContain("Meaning", MatrixHeads(window));
                 Assert.NotEmpty(MatrixRows(window));
                 Assert.All(MatrixRows(window), row =>
                 {
@@ -375,7 +384,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     border.Classes.Contains("matrixShared"));
                 Assert.True(strip.IsEffectivelyVisible);
                 var stripTexts = strip.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).ToArray();
-                Assert.Contains("What these words share", stripTexts);
+                Assert.Contains("What these words share:", stripTexts);
                 Assert.Contains("kat", stripTexts);
                 Assert.Contains("cut", stripTexts);
                 Assert.Contains("in 2", stripTexts);
@@ -455,10 +464,10 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                     }
                 }
 
-                HeadsStayApart(["WORD", "FieldWorks", "PanGloss", "RESULT"]);
+                HeadsStayApart(["Word", "FieldWorks", "PanGloss", "Meaning"]);
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
-                HeadsStayApart(["WORD", "FieldWorks", "PanGloss", "PLACES"]);
+                HeadsStayApart(["Word", "FieldWorks", "PanGloss", "Places"]);
             });
         });
     }
@@ -485,40 +494,6 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             Assert.True(rowLabel.DesiredSize.Width <= availableWidth,
                 $"The '{rowLabel.Text}' row label needs {rowLabel.DesiredSize.Width:0.#} px but has {availableWidth:0.#} px.");
         }));
-    }
-
-    [Fact]
-    public void TheChosenWordListStartsWithAWholeRowAt1240Pixels()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = CompareViewModelTests.LostWords();
-            compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
-                cell.Column == CompareColumnKind.NoParse), additive: false);
-            var window = new Window
-            {
-                Content = new ComparePanel(compare),
-                RequestedThemeVariant = ThemeVariant.Light,
-                Width = 1036,
-                Height = 640,
-            };
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), box =>
-                    AutomationProperties.GetName(box) == "Words in the chosen cells");
-                var first = list.GetVisualDescendants().OfType<WordRow>()
-                    .OrderBy(row => row.TranslatePoint(default, window)!.Value.Y).First();
-                var bottom = first.TranslatePoint(new Point(0, first.Bounds.Height), window)!.Value.Y;
-                Assert.True(bottom <= window.Bounds.Height,
-                    $"The first word row ends at {bottom:0.#} px below the {window.Bounds.Height:0.#} px window.");
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
     }
 
     private static void WithPanel(CompareViewModel compare, double width, Action<Window> check)

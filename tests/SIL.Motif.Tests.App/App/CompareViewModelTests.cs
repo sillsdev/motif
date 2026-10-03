@@ -95,7 +95,7 @@ public sealed class CompareViewModelTests
         else
         {
             Assert.Equal(incomplete ? "Unknown yet" : opinion == ReadingGrade.Approved
-                ? "Built something else" : "Differs: have a look", text.PanGlossSummary);
+                ? "Built something else" : "Have a look", text.PanGlossSummary);
             Assert.False(matrix.ShowsMeaning);
             if (opinion == ReadingGrade.Candidate)
                 Assert.Contains("Your undecided analysis wasn't built", row.WordRow.MeaningDetail);
@@ -115,7 +115,7 @@ public sealed class CompareViewModelTests
         matrix.Load([row]);
 
         Assert.Equal((WordProjectStatus.Candidate, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
-        Assert.Equal("Differs: have a look", Assert.Single(matrix.Words).Meaning);
+        Assert.Equal("Have a look", Assert.Single(matrix.Words).Meaning);
         Assert.Equal(row.WordRow.Meaning, Assert.Single(matrix.Words).Meaning);
     }
 
@@ -566,13 +566,15 @@ public sealed class CompareViewModelTests
         var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
         var kept = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match);
 
-        Assert.Equal("2 words · 9 places", lost.CountText);
+        Assert.Equal("2 words", lost.CountText);
         Assert.Equal("9 places", lost.PlacesText);
         Assert.Equal("1 place", kept.PlacesText);
         Assert.True(lost.ShowsPlaces);
-        Assert.False(Cell(compare, WordProjectStatus.Rejected, CompareColumnKind.Match).ShowsPlaces);
+        Assert.True(Cell(compare, WordProjectStatus.Rejected, CompareColumnKind.Match).ShowsPlaces);
         Assert.Equal("2 words, 9 places: Approved in FieldWorks, PanGloss found no parse", lost.AccessibleName);
         Assert.Equal(3, compare.Rows.Single(row => row.Row == WordProjectStatus.Approved).Count);
+        compare.Toggle(lost, additive: false);
+        Assert.Equal("2 words · 9 places", compare.ListSummary);
         Assert.Equal(2, compare.Presets.Single(preset => preset.Label == "Lost").Count);
         Assert.Null(typeof(CompareViewModel).GetProperty("CountMode"));
     }
@@ -604,10 +606,12 @@ public sealed class CompareViewModelTests
             Assert.EndsWith(".", cell.Explanation, StringComparison.Ordinal);
         }
         Assert.Null(Cell(compare, WordProjectStatus.NotPresent, CompareColumnKind.Match).Explanation);
-        Assert.Equal("You approved these in FieldWorks; the grammar builds nothing for them.",
+        Assert.Equal("You approved these in FieldWorks; PanGloss builds nothing for them.",
             Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse).Explanation);
-        Assert.Equal("You disapproved these in FieldWorks; the grammar still builds them.",
+        Assert.Equal("You disapproved these in FieldWorks; PanGloss still builds them.",
             Cell(compare, WordProjectStatus.Rejected, CompareColumnKind.Match).Explanation);
+        Assert.Equal("These are Unknown in FieldWorks, and PanGloss builds a different analysis.",
+            Cell(compare, WordProjectStatus.Candidate, CompareColumnKind.NoMatch).Explanation);
     }
 
     [Fact]

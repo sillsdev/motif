@@ -441,7 +441,7 @@ public sealed class WordRowControlTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal("PanGloss", ToolTip.GetTip(panGlossHead));
                 Assert.Equal("FieldWorks", AutomationProperties.GetName(fieldWorksHead));
                 Assert.Equal("PanGloss", AutomationProperties.GetName(panGlossHead));
-                Assert.Equal(["WORD", "FieldWorks", "PanGloss", "MEANING", "PLACES", "TIME", "NEXT"],
+                Assert.Equal(["Word", "FieldWorks", "PanGloss", "Meaning", "Places", "Time", "Next"],
                     heads.Select(text => text.Text!).Where(text => text.All(char.IsLetter)));
                 Assert.All(heads, text => Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5,
                     $"'{text.Text}' needs {text.TextLayout.WidthIncludingTrailingWhitespace:0.#} px but has {text.Bounds.Width:0.#}."));

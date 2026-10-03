@@ -27,7 +27,7 @@ public sealed class MarkVocabularyTests
         { ProjectStanding.Approved, ParserOutcome.Stopped, "No result", MeaningTone.Neutral },
         { ProjectStanding.Approved, ParserOutcome.NotParsed, "Not parsed", MeaningTone.Neutral },
         { ProjectStanding.Candidate, ParserOutcome.Same, "Parses; nothing in FieldWorks yet", MeaningTone.Fine },
-        { ProjectStanding.Candidate, ParserOutcome.Different, "Differs: have a look", MeaningTone.Look },
+        { ProjectStanding.Candidate, ParserOutcome.Different, "Have a look", MeaningTone.Look },
         { ProjectStanding.Candidate, ParserOutcome.NoParse, "Grammar can't build it", MeaningTone.Look },
         { ProjectStanding.Candidate, ParserOutcome.Stopped, "No result", MeaningTone.Neutral },
         { ProjectStanding.Candidate, ParserOutcome.NotParsed, "Not parsed", MeaningTone.Neutral },

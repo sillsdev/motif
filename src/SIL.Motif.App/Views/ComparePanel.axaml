@@ -24,7 +24,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}"
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
         Margin="{DynamicResource Component.TextsPage.PageInset}" IsVisible="{Binding Compare.HasWords}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
@@ -50,7 +50,7 @@
       </DockPanel>
     </StackPanel>
 
-    <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Compact}" AutomationProperties.Name="Compare matrix">
+    <StackPanel Grid.Row="1" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}" AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →" VerticalAlignment="Center"
                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
@@ -66,8 +66,7 @@
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding AccessibleName}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                  <TextBlock Classes="markGlyph outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
-                             Text="{Binding OutcomeMark.Glyph}" />
+                  <views:MarkGlyph Classes="inline" Mark="{Binding OutcomeMark}" />
                   <TextBlock Classes="outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}" Text="{Binding Label}" />
                   <TextBlock Classes="muted" Text="{Binding CountText}" />
                 </StackPanel>
@@ -79,7 +78,7 @@
       <ItemsControl ItemsSource="{Binding Compare.Rows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" />
+            <StackPanel Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
@@ -162,8 +161,7 @@
                                     VerticalAlignment="Center" />
               <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="SemiBold" />
               <TextBlock Classes="matrixChosenWord muted" Text="×" />
-              <TextBlock Classes="matrixChosenWord markGlyph outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
-                         Text="{Binding OutcomeMark.Glyph}" />
+              <views:MarkGlyph Classes="inline bodyText matrixChosenWord" Mark="{Binding OutcomeMark}" />
               <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
                          Text="{Binding ColumnLabel}" />
               <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Label}" Compact="True" />
@@ -187,7 +185,7 @@
         <Border Grid.Row="1" Classes="matrixShared" IsVisible="{Binding Compare.HasShared}"
                 AutomationProperties.Name="What these words share">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Left" Classes="matrixSharedHeading" Text="What these words share"
+            <TextBlock DockPanel.Dock="Left" Classes="matrixSharedHeading" Text="What these words share:"
                        Margin="{DynamicResource Intent.Gap.AfterGroup}" />
             <TextBlock DockPanel.Dock="Right" Classes="matrixSharedCount" Text="{Binding Compare.SharedMoreText}"
                        IsVisible="{Binding Compare.SharedMoreText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -201,6 +199,8 @@
                 <DataTemplate x:DataType="vm:CompareSharedMorphemeViewModel">
                   <StackPanel Classes="matrixSharedItem" Orientation="Horizontal"
                               AutomationProperties.Name="{Binding AccessibleName}">
+                    <TextBlock Classes="matrixSharedCount" Text="{Binding Separator}"
+                               IsVisible="{Binding HasSeparator}" />
                     <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
                     <TextBlock Classes="matrixSharedCount" Text="{Binding CountText}" />
                   </StackPanel>
@@ -266,7 +266,7 @@
         </StackPanel>
 
         <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="RESULT" />
+          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="Meaning" />
           <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                    KeyboardNavigation.TabNavigation="Continue"
                    AutomationProperties.Name="Words in the chosen cells">

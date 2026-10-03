@@ -104,7 +104,7 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             Assert.Equal(assessmentId, overview.Overview!.AssessmentId);
             Assert.Equal("0 of 1 words parse", overview.TextCoverageMain);
             Assert.Contains("of the words in your Selection", overview.TextCoverageWords, StringComparison.Ordinal);
-            Assert.Equal("0 of 0 rebuilt", overview.AccuracyMain);
+            Assert.Equal("0 of 0 rebuilt exactly", overview.AccuracyMain);
             var overviewText = Assert.Single(reopened.Window.GetLogicalDescendants().OfType<OverviewPage>())
                 .GetLogicalDescendants().OfType<TextBlock>().Where(control => control.IsVisible)
                 .Select(control => control.Text);

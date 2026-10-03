@@ -91,7 +91,8 @@
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:WordRowMorphemeViewModel">
-                      <Border Classes="wordRowMorph" Classes.different="{Binding IsDifferent}">
+                      <Border Classes="wordRowMorph" Classes.different="{Binding IsDifferent}"
+                              ToolTip.Tip="{Binding EntryDifferenceTip}" views:ClearTipPlacement.IsEnabled="True">
                         <StackPanel>
                           <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Morph.Form}" />
                           <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding Morph.GlossOrPlaceholder}" />

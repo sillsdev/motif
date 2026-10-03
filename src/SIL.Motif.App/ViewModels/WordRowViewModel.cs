@@ -45,8 +45,10 @@ public sealed partial class WordRowViewModel : ObservableObject
         OpinionLabel = opinionUnknown ? string.Empty : WindowWords.LabelOf(standing);
         FieldWorksMorphemes = row.FieldWorksMorphemes.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
         var differing = row.DifferingPositions.ToHashSet();
+        var entryTips = EntryDifferenceTips(row);
         PanGlossMorphemes = row.PanGlossMorphemes.Select((morph, index) =>
-            new WordRowMorphemeViewModel(new ParserReadingMorphViewModel(morph), differing.Contains(index + 1))).ToArray();
+            new WordRowMorphemeViewModel(new ParserReadingMorphViewModel(morph), differing.Contains(index + 1),
+                entryTips.GetValueOrDefault(index))).ToArray();
         Outcome = OutcomeOf(row.Outcome);
         Tone = row.MeaningCode == "refused" ? MeaningTone.Neutral : WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
         WordAnalysesLink = row.WordAnalysesLink is { } link ? new Uri(link) : null;
@@ -207,6 +209,22 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     public bool HasIdentityDetail => IdentityDetail.Length > 0;
 
+    private static IReadOnlyDictionary<int, string> EntryDifferenceTips(WordRow row)
+    {
+        var tips = new Dictionary<int, string>();
+        foreach (var segment in WordRowProjection.Align(row.FieldWorksMorphemes, row.PanGlossMorphemes)
+                     .Where(segment => !segment.Shared && segment.FieldWorks.Count == 1 && segment.PanGloss.Count == 1))
+        {
+            var stored = row.FieldWorksMorphemes[segment.FieldWorks[0]];
+            var parsed = row.PanGlossMorphemes[segment.PanGloss[0]];
+            if (stored.Form == parsed.Form && stored.Gloss == parsed.Gloss &&
+                !string.IsNullOrWhiteSpace(stored.Entry) && !string.IsNullOrWhiteSpace(parsed.Entry) &&
+                !string.Equals(stored.Entry, parsed.Entry, StringComparison.Ordinal))
+                tips[segment.PanGloss[0]] = $"Different entry: {parsed.Entry} instead of {stored.Entry}";
+        }
+        return tips;
+    }
+
     public bool HasMeaningDetail => !HasRefusalReason && MeaningDetail.Length > 0;
 
     public MeaningTone Tone { get; }
@@ -304,5 +322,9 @@ public sealed partial class WordRowViewModel : ObservableObject
     };
 }
 
-/// <summary>One of PanGloss's morphemes in a word row, and whether FieldWorks' analysis lacks it there.</summary>
-public sealed record WordRowMorphemeViewModel(ParserReadingMorphViewModel Morph, bool IsDifferent);
+/// <summary>One of PanGloss's morphemes in a word row, and its comparison with FieldWorks.</summary>
+/// <param name="Morph">The parser's morpheme.</param>
+/// <param name="IsDifferent">Whether FieldWorks' analysis lacks this morpheme identity.</param>
+/// <param name="EntryDifferenceTip">The recorded entry names when forms and glosses match but entries differ.</param>
+public sealed record WordRowMorphemeViewModel(ParserReadingMorphViewModel Morph, bool IsDifferent,
+    string? EntryDifferenceTip);

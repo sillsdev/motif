@@ -151,13 +151,13 @@ public sealed partial class OverviewPageModel : PageModel
     /// </summary>
     public string SpeedMain => Overview is
         { Timing.MeasuredWordCount: > 0 and var measured, AssessmentElapsedSeconds: { } seconds }
-        ? $"{SpeedText.Count(measured, "word", "words")} · {PreciseDuration(seconds * 1000)} total word time"
+        ? $"{SpeedText.Count(measured, "word", "words")} · {TimingShare.FormatDuration(seconds * 1000)} total word time"
         : "No parse times recorded";
 
     /// <summary>The stored median and 95th percentile per-word parse time.</summary>
     public string SpeedMedian => Overview?.Timing is { MedianMs: { } median } timing
-        ? $"median {TimingShare.FormatMilliseconds(median)} a word" +
-          (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {TimingShare.FormatMilliseconds(p95)}" : string.Empty)
+        ? $"median {TimingShare.FormatDuration(median)} a word" +
+          (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {TimingShare.FormatDuration(p95)}" : string.Empty)
         : string.Empty;
 
     /// <summary>How many words stopped at the step limit, or empty when none did.</summary>
@@ -171,7 +171,7 @@ public sealed partial class OverviewPageModel : PageModel
             ? [.. timing.SlowestWords.Select(slow =>
             {
                 var listed = Context.Assess.Words.Listed(slow.Word);
-                listed.TimeText = TimingShare.FormatMilliseconds(slow.ElapsedMs);
+                listed.TimeText = TimingShare.FormatDuration(slow.ElapsedMs);
                 return listed;
             })]
             : [];
@@ -181,8 +181,8 @@ public sealed partial class OverviewPageModel : PageModel
     public string SlowestWordSummary => Overview is { Timing.MeasuredWordCount: > 0 } overview &&
         overview.Timing.SlowestWords.Count > 0
         ? "Slowest: " + string.Join(" · ", overview.Timing.SlowestWords.Select(word =>
-            $"{word.Word}{(overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal) ? " ◐ Stopped" : string.Empty)} · " +
-            TimingShare.FormatMilliseconds(word.ElapsedMs)))
+            $"{word.Word}{(overview.LookFirst.StepLimitedWords.Contains(word.Word, StringComparer.Ordinal) ? " Stopped" : string.Empty)} · " +
+            TimingShare.FormatDuration(word.ElapsedMs)))
         : string.Empty;
 
     public bool HasSlowestWordSummary => SlowestWordSummary.Length > 0;
@@ -207,7 +207,7 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>Names the measured overrun if parser-object timers exceed total word time.</summary>
     public string TimingAttributionNote => Overview?.Timing.Attribution is { Overrun: true } attribution
-        ? $"Object timers exceed total word time by {SpeedText.Duration(attribution.OverrunMs)}."
+        ? $"Object timers exceed total word time by {TimingShare.FormatDuration(attribution.OverrunMs)}."
         : string.Empty;
 
     /// <summary>The stored-result groups ranked for a useful next step.</summary>
@@ -218,6 +218,16 @@ public sealed partial class OverviewPageModel : PageModel
             if (Overview is not { AssessmentId: not null } overview) return [];
             var data = overview.LookFirst;
             var rows = new List<OverviewLookFirstRow>();
+            if (data.ApprovedSameTextDifferentEntryWords.Count > 0)
+            {
+                var count = data.ApprovedSameTextDifferentEntryWords.Count;
+                rows.Add(new OverviewLookFirstRow("1",
+                    $"{SpeedText.Count(count, "approved word", "approved words")} " +
+                    (count == 1 ? "is built from a different entry with the same form and gloss." :
+                        "are built from a different entry with the same form and gloss."),
+                    string.Empty, $"See the {SpeedText.Count(count, "word", "words")}",
+                    new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoMatch))));
+            }
             if (data.ApprovedLostWords.Count > 0)
             {
                 var detail = !data.SharedLostMorphemesAvailable ? "Shared morpheme information is unavailable." :
@@ -230,13 +240,14 @@ public sealed partial class OverviewPageModel : PageModel
                         "are Lost; the grammar builds nothing for them.");
                 var approvedLostLink = approvedLostWordCount == 1 ? "See the word" :
                     $"See the {SpeedText.Count(approvedLostWordCount, "word", "words")}";
-                rows.Add(new OverviewLookFirstRow("1", approvedLostSummary, detail, approvedLostLink,
+                rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
+                    approvedLostSummary, detail, approvedLostLink,
                     new RelayCommand(() => OpenCell(WordProjectStatus.Approved, CompareColumnKind.NoParse))));
             }
             if (data.StepLimitedWords.Count > 0)
             {
                 var detail = data.StepLimitedWordTimeMs is { } stopped && overview.AssessmentElapsedSeconds is { } total
-                    ? $"{PreciseDuration(stopped)} of {PreciseDuration(total * 1000)} total word time"
+                    ? $"{TimingShare.FormatDuration(stopped)} of {TimingShare.FormatDuration(total * 1000)} total word time"
                     : string.Empty;
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
                     $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at the step limit.",
@@ -281,12 +292,30 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>How many approved words the grammar still builds.</summary>
     public string AccuracyMain => !HasAssessment || Overview is not { } overview ? "Not parsed yet" :
-        $"{overview.Accuracy.ApprovedWordsKept:N0} of {overview.Accuracy.ApprovedWordCount:N0} rebuilt";
+        $"{overview.Accuracy.ApprovedWordsKept:N0} of {overview.Accuracy.ApprovedWordCount:N0} rebuilt exactly";
 
-    /// <summary>The Approved analyses tile's headline, said as a sentence.</summary>
-    public string AccuracyCaption => !HasAssessment || Overview is not { } overview ? string.Empty :
-        $"The grammar still builds {overview.Accuracy.ApprovedWordsKept:N0} of the " +
-        $"{overview.Accuracy.ApprovedWordCount:N0} words you approved in FieldWorks.";
+    /// <summary>The recorded outcomes among Approved words that were not rebuilt exactly.</summary>
+    public string AccuracyCaption
+    {
+        get
+        {
+            if (!HasAssessment || Overview is not { } overview) return string.Empty;
+            var accuracy = overview.Accuracy;
+            var identityOnly = overview.LookFirst.ApprovedSameTextDifferentEntryWords.Count;
+            var otherDifferent = Math.Max(0, accuracy.ApprovedWordsNoMatch - identityOnly);
+            var parts = new List<string>();
+            if (!overview.LookFirst.ApprovedSameTextDifferentEntryAvailable && accuracy.ApprovedWordsNoMatch > 0)
+                parts.Add($"{accuracy.ApprovedWordsNoMatch:N0} built something else; entry comparison unavailable");
+            else if (identityOnly > 0)
+                parts.Add($"{identityOnly:N0} with the same forms and glosses but a different entry");
+            if (overview.LookFirst.ApprovedSameTextDifferentEntryAvailable && otherDifferent > 0)
+                parts.Add($"{otherDifferent:N0} built differently");
+            if (accuracy.ApprovedWordsNoParse > 0) parts.Add($"{accuracy.ApprovedWordsNoParse:N0} Lost");
+            if (accuracy.ApprovedWordsUnknown > 0) parts.Add($"{accuracy.ApprovedWordsUnknown:N0} Stopped");
+            if (accuracy.ApprovedWordsSkipped > 0) parts.Add($"{accuracy.ApprovedWordsSkipped:N0} Not parsed");
+            return string.Join(" · ", parts);
+        }
+    }
 
     /// <summary>
     /// What the bar above cannot show: the disapproved analyses still built, and the Unknown words PanGloss
@@ -423,15 +452,6 @@ public sealed partial class OverviewPageModel : PageModel
 
     private static string FormatPercent(double? value) => value is { } percent
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : "not recorded";
-
-    private static string PreciseDuration(double milliseconds)
-    {
-        if (milliseconds < 1000) return SpeedText.Duration(milliseconds);
-        var seconds = milliseconds / 1000;
-        var wholeSeconds = Math.Round(seconds);
-        var precision = Math.Abs(seconds - wholeSeconds) < 0.0000001 ? "N0" : "N1";
-        return $"{seconds.ToString(precision, CultureInfo.CurrentCulture)} s";
-    }
 
     protected override void OnProjectCleared()
     {
