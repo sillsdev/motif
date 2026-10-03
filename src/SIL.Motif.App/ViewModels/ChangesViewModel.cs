@@ -566,6 +566,10 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 
     public bool HasRowMorphs => RowMorphs.Count > 0;
 
+    public IReadOnlyList<ParserReadingMorph> FieldWorksMorphs =>
+        (Analyses.FirstOrDefault(analysis => analysis.Touched && analysis.Stored) ??
+         Analyses.FirstOrDefault(analysis => analysis.Stored))?.SourceMorphs ?? [];
+
     /// <summary>Whether the row's analysis comes from the parser, so FieldWorks holds nothing like it yet.</summary>
     public bool RowAnalysisIsParserBuilt => RowAnalysis?.ParserBuilt == true;
 
@@ -773,12 +777,16 @@ public sealed class ReviewAnalysisViewModel
 {
     public ReviewAnalysisViewModel(ReviewAnalysis analysis, string changeKind)
     {
+        SourceMorphs = analysis.Reading.Morphs;
         Morphs = analysis.Reading.Morphs.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray();
         Touched = analysis.Touched;
-        ParserBuilt = !analysis.Stored;
+        Stored = analysis.Stored;
+        ParserBuilt = !Stored;
     }
 
     public IReadOnlyList<ParserReadingMorphViewModel> Morphs { get; }
+    public IReadOnlyList<ParserReadingMorph> SourceMorphs { get; }
     public bool Touched { get; }
+    public bool Stored { get; }
     public bool ParserBuilt { get; }
 }

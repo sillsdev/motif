@@ -47,10 +47,8 @@ public sealed class TimingHeadlineTests
         Assert.True(timing.IsAllSelected);
         Assert.Equal(1_000_000m, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
+        Assert.Equal("Stopped at the step limit · Raise it under More.",
             timing.StoppedWordsAdviceText);
-        Assert.Equal("Stopped at the step limit",
-            timing.SlowestWordRows.Single(row => row.Word == "mwalimu").Note);
     }
 
     [Fact]
@@ -70,9 +68,7 @@ public sealed class TimingHeadlineTests
         await context.EvidencePublication;
 
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Ran out of time. Increase Seconds per word in the Timing controls on this page.", timing.StoppedWordsAdviceText);
-        Assert.Equal("Stopped at the time limit",
-            timing.SlowestWordRows.Single(row => row.Word == "mwalimu").Note);
+        Assert.Equal("Ran out of time · Increase Seconds per word.", timing.StoppedWordsAdviceText);
     }
 
     [Fact]

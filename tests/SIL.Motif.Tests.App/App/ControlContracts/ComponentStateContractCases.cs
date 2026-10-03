@@ -498,6 +498,7 @@ internal enum TooltipScene
     ListsStaged,
     WordCardWithoutOccurrence,
     ReviewStaged,
+    ParseProgress,
 }
 
 /// <summary>
@@ -647,6 +648,8 @@ internal static class TooltipOwners
         },
         new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
             control => control is Button && Name(control) == "Apply to FieldWorks project"),
+        new("cancel parsing", "Views/MainWindow.axaml", "Cancel keeps the previous results.", TooltipScene.ParseProgress,
+            control => control is Button && Name(control) == "Cancel parsing all words"),
         new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event."),
         new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,

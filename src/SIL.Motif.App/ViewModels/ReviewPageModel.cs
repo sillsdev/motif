@@ -16,7 +16,7 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed class ReviewPageModel : PageModel
 {
-    private const string NumbersPrompt = "Check these changes to see how many of the words you changed keep their approved analyses.";
+    private const string NumbersPrompt = "Check how many changed words keep their approved analyses.";
     private CancellationTokenSource? _measurementCancellation;
     private CancellationTokenSource? _applyCancellation;
 
@@ -496,6 +496,8 @@ public sealed class ReviewPageModel : PageModel
             OpenInText = word => Context.OpenOccurrence(change.Occurrence, word, change.WordformId),
             TryWord = Context.TryWord,
         });
+        if (change.FieldWorksMorphs.Count > 0)
+            listed = new ListedWordViewModel(listed.Row.WithFieldWorksMorphemes(change.FieldWorksMorphs), listed.Card);
         if (change.NowOpinionMark is { } opinion)
             listed = new ListedWordViewModel(listed.Row.WithOpinionMark(opinion), listed.Card);
         change.Listed = listed;

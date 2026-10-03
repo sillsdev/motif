@@ -154,8 +154,9 @@ public sealed class MainWindowSmokeTests
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "each stopped word says whether it reached the step or time limit";
+                const string expectedSentence = "to inspect timing for the words with the longest recorded times";
                 const string expectedAltText = "Saved parse timings on the Timing page";
+                const string expectedSection = "does not repeat those words in a separate list beside a rule's costliest words";
                 const string expectedOpening = "opens on All";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 bool TimingIsRendered()
@@ -163,6 +164,7 @@ public sealed class MainWindowSmokeTests
                     if (markdownRenderer.RenderedTextProjection is not { } projection) return false;
                     var text = string.Join("\n", projection.Buffers.Select(buffer => buffer.Text.ToString()));
                     return text.Contains(expectedSentence, StringComparison.Ordinal) &&
+                        text.Contains(expectedSection, StringComparison.Ordinal) &&
                         text.Contains(expectedAltText, StringComparison.Ordinal);
                 }
                 markdownRenderer.PropertyChanged += (_, changed) =>
@@ -176,6 +178,7 @@ public sealed class MainWindowSmokeTests
                     markdownRenderer.RenderedTextProjection);
                 var renderedText = string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString()));
                 Assert.Contains(expectedSentence, renderedText);
+                Assert.Contains(expectedSection, renderedText);
                 Assert.Contains(expectedAltText, renderedText);
                 Assert.Equal(2, renderedText.Split(expectedOpening).Length);
                 Assert.DoesNotContain(renderedTextProjection.Buffers,
@@ -183,7 +186,8 @@ public sealed class MainWindowSmokeTests
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);
-                Assert.Contains("each stopped word says whether it reached the step or time limit", help.Markdown);
+                Assert.Contains(expectedSentence, help.Markdown);
+                Assert.Contains(expectedSection, help.Markdown);
                 Assert.Contains(expectedAltText, help.Markdown);
             }
             finally
@@ -363,8 +367,8 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
                 Assert.DoesNotContain("last FieldWorks save", text, StringComparison.Ordinal);
                 Assert.Contains("FieldWorks saved", text);
-                Assert.Contains("Numbers: Baseline", text);
-                Assert.Contains("saved later", text);
+                Assert.Contains("Baseline of", text);
+                Assert.Contains("saved", text);
                 Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();

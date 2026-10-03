@@ -50,7 +50,7 @@ public sealed record HandoffFileViewModel(string RelativePath, string FullPath)
         ("parse-results.json", "Every word the parser was asked about: whether it parsed, how long it took, and its result's signature."),
         ("texts.json", "The chosen texts, word by word, with the analyses the project stores."),
         ("grammar.json", "The grammar the parser used, as it read it."),
-        ("read_results.py", "A reader the chat model can run over the three files."),
+        ("read_results.py", "A reader the chat model can run over parse-results.json and texts.json."),
     ];
 
     /// <summary>One line on what this file holds, or empty for a file this list does not know.</summary>

@@ -58,7 +58,8 @@ public sealed class HandoffViewModelTests
     [Fact]
     public async Task AWrittenHandoffIsStampedWithTheComposedClock()
     {
-        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero), TimeZoneInfo.Utc);
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake) { AllWordforms = true };
         var handoff = new HandoffViewModel(fake, selection, new FakeFolderPicker(OutputDirectory), new FakeDragSource(),
@@ -68,7 +69,10 @@ public sealed class HandoffViewModelTests
         await handoff.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(clock.GetLocalNow(), handoff.WrittenAt);
-        Assert.Equal($"Last written {clock.GetLocalNow().ToLocalTime():t}", handoff.WrittenAtText);
+        Assert.Equal("Last written 10:30 AM", handoff.WrittenAtText.Replace('\u202f', ' '));
+        clock.Advance(TimeSpan.FromDays(1));
+        handoff.LatestAssessmentAt = clock.GetLocalNow();
+        Assert.Equal("Last written Wed 4 Mar, 10:30 AM", handoff.WrittenAtText.Replace('\u202f', ' '));
     }
 
     [Fact]

@@ -25,9 +25,9 @@
 
         <Border Classes="notice" IsVisible="{Binding Handoff.IsOutOfDate}"
                 AutomationProperties.Name="The AI Handoff is out of date">
-          <!-- A dock, not a horizontal stack: a stack gives the sentence unlimited width, so it never wraps. -->
           <DockPanel>
-            <views:CopyableTextBlock DockPanel.Dock="Left" Text="&#x26a0;" FontWeight="Bold" Margin="{DynamicResource Component.Handoff.GlyphMargin}" />
+            <Ellipse DockPanel.Dock="Left" Classes="freshDot" Classes.stale="{Binding Handoff.IsOutOfDate}"
+                     Margin="{DynamicResource Component.Handoff.GlyphMargin}" />
             <views:CopyableTextBlock Text="{Binding Handoff.OutOfDateText}" TextWrapping="Wrap" />
           </DockPanel>
         </Border>

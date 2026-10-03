@@ -103,10 +103,6 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="FieldWorks beside the parser" FontWeight="SemiBold" />
           <views:CopyableTextBlock Text="{Binding FieldWorksContextStatus}" Classes="muted" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Text="{Binding FieldWorksContextSource}" Classes="muted" TextWrapping="Wrap"
-                                   IsVisible="{Binding FieldWorksContextSource, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-          <views:CopyableTextBlock Text="FieldWorks saved since" Classes="status"
-                                   IsVisible="{Binding FieldWorksContextIsStale}" TextWrapping="Wrap" />
           <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordStoredAnalysis">

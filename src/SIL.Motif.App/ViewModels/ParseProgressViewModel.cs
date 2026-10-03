@@ -27,10 +27,12 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
         ? $"{progress.Completed:N0} of {total:N0} words done" +
             (progress.CurrentWord is { } word ? $" · Parsing {word}" : string.Empty)
         : _progress?.Message ?? "Preparing to parse words...";
+    public string StatusText => _progress is { Stage: AssessmentStage.Parsing, Total: { } total } progress
+        ? $"Parsing · {progress.Completed:N0} of {total:N0} words · {EstimateText(progress, total)}"
+        : _progress?.Message ?? "Preparing to parse words...";
     public string TimeText => $"{Duration(clock.GetElapsedTime(_started))} elapsed · " +
         (_progress is { Stage: AssessmentStage.Parsing, Completed: >= 3, Total: { } total } progress
-            ? $"about {Duration(TimeSpan.FromSeconds(Math.Ceiling(_sampleElapsed.TotalSeconds / progress.Completed *
-                Math.Max(0, total - progress.Completed))))} left"
+            ? EstimateText(progress, total)
             : "estimating time left");
     public string StoppedText => string.Join("; ", (_progress?.StoppedWords ?? []).GroupBy(word => word.Reason).Select(group =>
         $"{group.Count():N0} word{(group.Count() == 1 ? string.Empty : "s")} " +
@@ -102,14 +104,21 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
     private void Notify()
     {
         foreach (var property in new[] { nameof(IsActive), nameof(IsStalled), nameof(ProgressText), nameof(TimeText),
-            nameof(StoppedText), nameof(StoppedWords), nameof(HasStoppedWords), nameof(StalledText),
+            nameof(StatusText), nameof(StoppedText), nameof(StoppedWords), nameof(HasStoppedWords), nameof(StalledText),
             nameof(Fraction), nameof(IsIndeterminate), nameof(HasSlowestWord), nameof(SlowestText) }) OnPropertyChanged(property);
+    }
+
+    private string EstimateText(AssessmentProgress progress, int total)
+    {
+        if (progress.Completed < 3) return "estimating time";
+        var seconds = _sampleElapsed.TotalSeconds / progress.Completed * Math.Max(0, total - progress.Completed);
+        return seconds < 1 ? "<1 s left" : $"about {Duration(TimeSpan.FromSeconds(Math.Ceiling(seconds)))} left";
     }
 
     private static string Duration(TimeSpan duration) => duration.TotalHours >= 1
         ? $"{(int)duration.TotalHours} h {duration.Minutes} min"
         : duration.TotalMinutes >= 1 ? $"{(int)duration.TotalMinutes} min {duration.Seconds} s"
-        : $"{Math.Max(0, (int)duration.TotalSeconds)} s";
+        : duration.TotalSeconds < 1 ? "<1 s" : $"{(int)duration.TotalSeconds} s";
 }
 
 public sealed record StoppedParseWordViewModel(StoppedParseWord Word)

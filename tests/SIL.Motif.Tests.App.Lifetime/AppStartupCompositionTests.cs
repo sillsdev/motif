@@ -350,7 +350,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     text.Text == "Parsing… see the top row." && text.IsEffectivelyVisible);
                 await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParseProgressDetails &&
-                    text.Text == $"0 of 1 words done · Parsing {word}" && text.IsEffectivelyVisible),
+                    text.Text == "Parsing · 0 of 1 words · estimating time" && text.IsEffectivelyVisible),
                     () => $"top-row parse progress did not appear; active={workspace.ShowsParseAllWordsProgress}, " +
                         $"presenter='{workspace.ActiveParseProgress.ProgressText}', rendered='" +
                         string.Join(" | ", session.Window.GetVisualDescendants().OfType<CopyableTextBlock>()

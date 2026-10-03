@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -14,6 +15,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -65,6 +67,7 @@ public sealed class ReviewScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var fake = new FakeCommandClient();
             fake.PendingChangesIs(Blocked());
             var (workspace, window) = await OpenAsync(fake);
@@ -81,8 +84,23 @@ public sealed class ReviewScreenshots
                 var unknownToApproved = review.ReviewGroups.SelectMany(group => group.Items)
                     .Single(change => change.Word == "kitabu" && change.TransitionText == "Unknown → Approved");
                 Assert.Equal("Unknown", unknownToApproved.Listed!.Row.OpinionLabel);
+                Assert.Equal(new[] { "ki-", "tabu" }, unknownToApproved.Listed.Row.FieldWorksMorphemes
+                    .Select(morph => morph.Form));
+                PageScreenshots.Settle(window);
+                var kitabuRow = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(),
+                    row => row.Row?.Word == "kitabu");
+                var fieldWorksItems = Assert.Single(kitabuRow.GetVisualDescendants().OfType<ItemsControl>(),
+                    items => items.Name == "FieldWorksMorphemes");
+                Assert.True(fieldWorksItems.IsEffectivelyVisible);
+                Assert.Equal(2, fieldWorksItems.Items.Count);
                 var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
+                Assert.Contains("ki-", visibleTexts);
+                Assert.Contains("tabu", visibleTexts);
+                Assert.Contains("7", visibleTexts);
+                Assert.Contains("book", visibleTexts);
+                Assert.Contains("Still fits", visibleTexts);
+                Assert.DoesNotContain("✓", visibleTexts);
                 Assert.Contains(review.ApplyBlockedTitle, visibleTexts);
                 foreach (var blocker in review.ApplyBlockers)
                     Assert.DoesNotContain(blocker.Sentence, visibleTexts);
@@ -173,15 +191,16 @@ public sealed class ReviewScreenshots
 
     private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenAsync(FakeCommandClient fake)
     {
-        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), DateTimeOffset.UtcNow.AddHours(-2), false));
+        var clock = PageScreenshots.NewCaptureClock();
+        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, PageScreenshots.CaptureStartAt)]);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), PageScreenshots.BaselineSaveAt, false));
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(Story, "Hadithi ya sungura")], HasBaseline: true));
         var selection = new SelectionViewModel(fake);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection), new Folder(), new Drag(), fake,
-            techDemoNotice: PageScreenshots.FirstRunNotice());
+            clock, techDemoNotice: PageScreenshots.FirstRunNotice());
         var window = new MainWindow();
         window.Compose(workspace);
         window.Show();

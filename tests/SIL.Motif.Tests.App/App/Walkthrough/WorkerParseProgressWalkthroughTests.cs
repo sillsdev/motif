@@ -81,14 +81,9 @@ public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture p
                     TimeSpan.FromSeconds(5), "the worker store advanced but the window's indicator stayed at zero");
                 Assert.Equal(1.0 / 3, indicator.Value, 5);
                 Assert.Contains("1 of 3", Details(window));
-                Assert.Contains("Parsing b-slow", Details(window));
-                Assert.Contains("elapsed", Details(window));
-                Assert.Contains("Slowest so far: a-fast", Details(window));
                 File.WriteAllText(release + ".1", string.Empty);
                 window.WaitUntil(() => Details(window).Contains("2 of 3", StringComparison.Ordinal),
                     TimeSpan.FromSeconds(20), "the next worker completion never reached the indicator");
-                Assert.Contains("Parsing c-held", Details(window));
-                Assert.Contains("Slowest so far: b-slow · 54 s", Details(window));
                 Assert.Equal(new ParseWordTiming("b-slow", 54000), ReadProgress()!.SlowestWord);
                 Assert.False(running.IsCompleted);
                 InteractiveControlSweep.AssertScene(window, "worker parse progress",

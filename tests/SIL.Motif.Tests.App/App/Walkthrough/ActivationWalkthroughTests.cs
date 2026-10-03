@@ -83,11 +83,11 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                 Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
                 var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
-                Assert.Contains("FieldWorks saved", renderedText);
+                Assert.Contains("FieldWorks saved since", renderedText);
                 var renderedDetail = Assert.Single(renderedText, text => text.Contains(
-                    "Numbers: Baseline", StringComparison.Ordinal));
+                    "Baseline of", StringComparison.Ordinal));
                 Assert.Equal(walkthrough.Workspace.FreshnessDetail, renderedDetail);
-                Assert.Contains("saved later", renderedDetail, StringComparison.Ordinal);
+                Assert.Contains("saved", renderedDetail, StringComparison.Ordinal);
             }
             finally
             {

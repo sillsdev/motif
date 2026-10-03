@@ -372,7 +372,7 @@ public sealed class WorkspacePageTests
         Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
         Assert.Equal("Current", workspace.FreshnessLabel);
         Assert.StartsWith("Baseline of ", workspace.FreshnessDetail);
-        Assert.Contains(" · one saved ", workspace.FreshnessDetail);
+        Assert.DoesNotContain("saved", workspace.FreshnessDetail);
         Assert.DoesNotContain("FieldWorks does not currently hold this project.", workspace.FreshnessDetail);
         Assert.True(workspace.RefreshCommand.CanExecute(null));
     }
@@ -387,8 +387,8 @@ public sealed class WorkspacePageTests
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
         Assert.Equal("Changes applied", workspace.FreshnessLabel);
-        Assert.Contains("Numbers: Baseline of", workspace.FreshnessDetail);
-        Assert.Contains("changes applied later", workspace.FreshnessDetail);
+        Assert.Contains("Baseline of", workspace.FreshnessDetail);
+        Assert.Contains("changes applied after it", workspace.FreshnessDetail);
     }
 
     [Fact]
@@ -423,7 +423,7 @@ public sealed class WorkspacePageTests
         await workspace.CheckFreshnessAsync();
 
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Equal("FieldWorks saved", workspace.FreshnessLabel);
+        Assert.Equal("FieldWorks saved since", workspace.FreshnessLabel);
         Assert.Empty(fake.CaptureBaselineRequests);
         Assert.Empty(fake.AssessRequests);
     }
@@ -650,8 +650,8 @@ public sealed class WorkspacePageTests
         Assert.Equal(Saved.AddHours(-3), workspace.Context.Evidence.MeasuredSaveUtc);
         Assert.False(workspace.Context.NeedsAssessment);
         Assert.Equal(ProjectFreshness.SavedSince, workspace.Freshness);
-        Assert.Contains("Numbers: Baseline of", workspace.FreshnessDetail);
-        Assert.Contains("saved later", workspace.FreshnessDetail);
+        Assert.Contains("Baseline of", workspace.FreshnessDetail);
+        Assert.Contains("saved", workspace.FreshnessDetail);
     }
 
     [Fact]
@@ -667,19 +667,6 @@ public sealed class WorkspacePageTests
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
         Assert.Equal(ProjectFreshness.Current, workspace.Freshness);
-    }
-
-    [Fact]
-    public async Task TryingAWordFromTimingOpensTheTryAWordPageAndTracesIt()
-    {
-        var (fake, projectPicker, workspace) = NewWorkspace();
-        await ChooseProjectAsync(fake, projectPicker, workspace);
-        workspace.ShowPageCommand.Execute(WorkspacePage.Timing);
-
-        workspace.PageModel<TimingPageModel>().Statistics.TryWord!("kitabu");
-
-        Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
-        Assert.Equal("kitabu", workspace.Assess.Trace.WordToTry);
     }
 
     [Fact]

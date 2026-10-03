@@ -293,9 +293,10 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "step limit" => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
-            "time limit" => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
-            _ => "Searches stopped at the step limit and ran out of time. Adjust Seconds per word and Step limit in the Timing controls on this page.",
+            "step limit" => "Stopped at the step limit · Raise it under More.",
+            "time limit" => "Ran out of time · Increase Seconds per word.",
+            _ => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+                "or increase Seconds per word.",
         }, statistics.IncompleteDetail);
     }
 
@@ -320,14 +321,12 @@ public sealed class StatisticsViewModelTests
         Assert.True(statistics.Rows.Single(row => row.Word == "slow").IsIncomplete);
         Assert.False(statistics.Rows.Single(row => row.Word == "quick").IsIncomplete);
         Assert.Equal(1, statistics.IncompleteCount);
-        Assert.Equal("1 word stopped at a limit", statistics.IncompleteHeadline);
         Assert.False(statistics.AnyPasses);
-        Assert.Equal("Slowest word that finished: quick", statistics.SlowestHeadline);
-        Assert.Equal("900 ms and 5 search steps.", statistics.SlowestDetail);
+        Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
     }
 
     [Fact]
-    public async Task SlowestStatisticsCardLabelsItsStoppedWordWhenNoWordFinished()
+    public async Task StoppedStatisticsDoNotAddAnotherSlowestWordSummary()
     {
         var (fake, statistics) = NewViewModel();
         var words = new AssessWordsViewModel();
@@ -342,12 +341,12 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Slowest stopped word: stopped", statistics.SlowestHeadline);
-        Assert.Equal("700 ms and 5 search steps before a limit stopped it.", statistics.SlowestDetail);
+        Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
+        Assert.Contains("Stopped at the step limit", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ANoParseWithNoLimitIsEligibleForTheSlowestFinishedCard()
+    public async Task ANoParseWithNoLimitIsNotCountedAsStopped()
     {
         var (fake, statistics) = NewViewModel();
         var words = new AssessWordsViewModel();
@@ -362,8 +361,7 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Slowest word that finished: no-parse", statistics.SlowestHeadline);
-        Assert.Equal("48 ms and 148 search steps.", statistics.SlowestDetail);
+        Assert.Equal(0, statistics.IncompleteCount);
         Assert.Equal("Completed", statistics.Rows.Single().CompletionShort);
         Assert.Equal("Search completed", statistics.Rows.Single().CompletionStatus);
     }
@@ -376,7 +374,7 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Sort by Readings to see these words.", statistics.PassesDetail);
+        Assert.Equal("Sort by Analyses to see these words.", statistics.AnalysesDetail);
     }
 
     [Theory]
@@ -416,7 +414,6 @@ public sealed class StatisticsViewModelTests
 
         Assert.Equal("Search steps", statistics.CountHeader);
         Assert.Equal("Word time (ms)", statistics.TimeHeader);
-        Assert.Equal("48 ms and 148 search steps.", statistics.SlowestDetail);
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
     }
 

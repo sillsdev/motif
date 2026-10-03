@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// One word a page lists beside its own content, such as Timing's slowest words or a change waiting in Review
+/// One word a page lists beside its own content, such as Timing's costliest words or a change waiting in Review
 /// changes: the word's row, the same as on every page, and the card it opens in place.
 /// </summary>
 public sealed partial class ListedWordViewModel : ObservableObject

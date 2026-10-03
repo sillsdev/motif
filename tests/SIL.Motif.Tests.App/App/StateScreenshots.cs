@@ -268,7 +268,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             {
                 stage.Client.KnownProjectsListIs([.. new[] { "Sample", "Kiswahili", "Mbugwe" }.Select(name =>
                     new KnownProjectSummary($@"C:\Users\linguist\FieldWorks\Projects\{name}\{name}.fwdata",
-                        DateTimeOffset.UtcNow.AddDays(-2)))]);
+                        PageScreenshots.CaptureStartAt.AddDays(-2)))]);
                 return Task.CompletedTask;
             },
         };
@@ -601,7 +601,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("timing", "word-rows", async stage =>
         {
             await stage.ShowTimingWords();
-            return "Timing with a rule chosen: its costliest words and the slowest words as word rows.";
+            Assert.Empty(stage.WordRows("timing-words"));
+            return "Timing with a rule chosen and its costliest words.";
         })
         { Height = 1700 };
         yield return new("timing", "costliest-word-row-hover", async stage =>
@@ -612,20 +613,6 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 .First(border => border.Classes.Contains("wordRowBody")), "a costliest word row");
         })
         { Height = 1700 };
-        yield return new("timing", "slowest-word-row-hover", async stage =>
-        {
-            await stage.ShowTimingWords();
-            var row = stage.WordRows("timing-words").First();
-            return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("wordRowBody")), "a slowest word row");
-        })
-        { Height = 1700 };
-        yield return new("timing", "word-row-opened", async stage =>
-        {
-            await stage.ShowTimingWords();
-            return await stage.OpenWordRow("timing-words");
-        })
-        { Height = 1700, Teardown = stage => stage.CloseWordRows() };
         yield return new("overview", "slowest-summary", async stage =>
         {
             stage.Open(WorkspacePage.Overview);
@@ -1083,7 +1070,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             var timing = Workspace.PageModel<TimingPageModel>();
             await Until(() => timing.RuleRows.Count > 0, "Timing's rules");
             if (timing.CostliestRuleWordRows.Count == 0) await timing.ChooseRuleCommand.ExecuteAsync(timing.RuleRows[0].Row);
-            await Until(() => WordRows("timing-rule-words").Any() && WordRows("timing-words").Any(), "Timing's word rows");
+            await Until(() => WordRows("timing-rule-words").Any(), "the chosen rule's costliest words");
         }
 
         public void ShowWordList()

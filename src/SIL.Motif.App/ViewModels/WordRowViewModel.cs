@@ -99,6 +99,12 @@ public sealed partial class WordRowViewModel : ObservableObject
         },
     }, _routes, _notParsedYet);
 
+    internal WordRowViewModel WithFieldWorksMorphemes(IReadOnlyList<ParserReadingMorph> morphs) => new(_row with
+    {
+        Gloss = string.Join(" ", morphs.Select(morph => morph.Gloss.Length == 0 ? "?" : morph.Gloss)),
+        FieldWorksMorphemes = morphs,
+    }, _routes, _notParsedYet);
+
     public string Word => _row.Word;
 
     /// <summary>The FieldWorks analysis's glosses, morph by morph; empty when FieldWorks holds none.</summary>

@@ -8,7 +8,7 @@
   <DockPanel Margin="{DynamicResource Component.Statistics.PageMargin}">
 
     <!-- What the numbers say, before the numbers: three cards for a word grouping. -->
-    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Group}"
           Margin="{DynamicResource Intent.Gap.AfterGroup}"
           IsVisible="{Binding Statistics.HasWordRows}">
       <Border Grid.Column="0" Classes="card">
@@ -17,20 +17,10 @@
           <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.IncompleteDetail}" />
         </StackPanel>
       </Border>
-      <Border Grid.Column="1" Classes="card" IsVisible="{Binding Statistics.HasSlowestWord}">
+      <Border Grid.Column="1" Classes="card">
         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.SlowestHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.SlowestDetail}" />
-          <HyperlinkButton Padding="{DynamicResource Intent.Inset.None}" Click="OnTrySlowestClick"
-                           AutomationProperties.Name="Try it in Try a Word">
-            <TextBlock Text="Try it in Try a Word" TextWrapping="Wrap" />
-          </HyperlinkButton>
-        </StackPanel>
-      </Border>
-      <Border Grid.Column="2" Classes="card">
-        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-          <views:CopyableTextBlock Text="{Binding Statistics.PassesHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.PassesDetail}" />
+          <views:CopyableTextBlock Text="{Binding Statistics.AnalysesHeadline}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Statistics.AnalysesDetail}" />
         </StackPanel>
       </Border>
     </Grid>
@@ -53,7 +43,7 @@
                Margin="{DynamicResource Intent.Gap.AfterGroup}" />
       <views:FilterChip Label="All rows" Count="{Binding Statistics.RowCount}" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                         IsActive="{Binding !Statistics.OnlyIncomplete}" Click="OnAllRowsClick" />
-      <views:FilterChip Label="Did not finish" Count="{Binding Statistics.IncompleteCount}" Mark="{x:Static vm:Mark.Stopped}" Margin="{DynamicResource Intent.Gap.AfterGroup}"
+      <views:FilterChip Label="Stopped" Count="{Binding Statistics.IncompleteCount}" Mark="{x:Static vm:Mark.Stopped}" Margin="{DynamicResource Intent.Gap.AfterGroup}"
                         IsActive="{Binding Statistics.OnlyIncomplete}" Click="OnOnlyIncompleteClick" />
     </DockPanel>
 
@@ -115,7 +105,7 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Readings" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
+        <DataGridTemplateColumn Header="Analyses" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />

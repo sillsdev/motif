@@ -104,7 +104,7 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(!stale, review.CanApply);
         Assert.Equal(stale, review.ApplyBlockReason.Contains("Refresh", StringComparison.Ordinal));
         Assert.Equal(state == "applied-since" ? "Changes applied"
-            : stale ? "FieldWorks saved" : "Current", workspace.FreshnessLabel);
+            : stale ? "FieldWorks saved since" : "Current", workspace.FreshnessLabel);
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public sealed class ProjectEvidenceTests
     }
 
     [Fact]
-    public async Task TheFreshnessLineNamesBothSavedTimesWithoutRelativeDates()
+    public async Task TheFreshnessLineShowsOnlyTheBaselineWhenCurrentAndDatesBothTimesWhenStale()
     {
         using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         var sameDay = new FixedClock(Saved.AddHours(2));
@@ -138,8 +138,7 @@ public sealed class ProjectEvidenceTests
         await workspace.SetProjectAsync(ProjectPath);
         var detail = workspace.FreshnessDetail.Replace('\u202F', ' ').Replace('\u00A0', ' ');
         Assert.Contains("Baseline of 11:02 AM", detail, StringComparison.Ordinal);
-        Assert.Contains("one saved 10:58 AM", detail, StringComparison.Ordinal);
-        Assert.DoesNotContain(" today", detail, StringComparison.Ordinal);
+        Assert.DoesNotContain("saved", detail, StringComparison.Ordinal);
 
         sameDay.Advance(TimeSpan.FromDays(2));
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
@@ -148,8 +147,8 @@ public sealed class ProjectEvidenceTests
         });
         await workspace.CheckFreshnessAsync();
         detail = workspace.FreshnessDetail.Replace('\u202F', ' ').Replace('\u00A0', ' ');
-        Assert.DoesNotContain(" today", detail, StringComparison.Ordinal);
         Assert.Contains("Baseline of Sat 5 Sep, 11:02 AM", detail, StringComparison.Ordinal);
+        Assert.Contains("saved Sat 5 Sep, 11:58 AM", detail, StringComparison.Ordinal);
     }
 
     [Fact]

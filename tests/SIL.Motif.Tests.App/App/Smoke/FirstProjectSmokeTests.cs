@@ -278,11 +278,8 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Grid,
-                InteractiveControlFamily.Morpheme,
                 InteractiveControlFamily.Summary,
-                InteractiveControlFamily.FocusableSurface,
                 InteractiveControlFamily.ContentSurface,
                 InteractiveControlFamily.Collection,
                 InteractiveControlFamily.Container);

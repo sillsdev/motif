@@ -136,7 +136,7 @@ public sealed class HelpPopupViewModelTests
     }
 
     [Fact]
-    public void GuideImagesRenderTheirAltText()
+    public void TimingGuideExplainsWhereToReadIndividualWordTimes()
     {
         _avalonia.Invoke(() =>
         {
@@ -144,6 +144,8 @@ public sealed class HelpPopupViewModelTests
             viewModel.ShowForPage(WorkspacePage.Timing);
 
             Assert.Contains("Saved parse timings on the Timing page", viewModel.Markdown);
+            Assert.Contains("choose **By word**", viewModel.Markdown);
+            Assert.Contains("does not repeat those words in a separate list", viewModel.Markdown);
             Assert.DoesNotContain("shot:timing-slow-words/slowest-words", viewModel.Markdown);
         });
     }

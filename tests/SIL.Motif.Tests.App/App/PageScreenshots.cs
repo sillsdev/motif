@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -44,6 +45,14 @@ public sealed class PageScreenshots
     private const string ProjectPath = @"C:\Users\linguist\FieldWorks\Projects\Sample\Sample.fwdata";
     private static readonly Guid Story = Guid.Parse("11111111-0000-0000-0000-000000000001");
     private static readonly Guid Letter = Guid.Parse("11111111-0000-0000-0000-000000000002");
+    private static readonly TimeZoneInfo CaptureTimeZone = TimeZoneInfo.CreateCustomTimeZone(
+        "Motif screenshot time", TimeSpan.FromHours(-4), "Motif screenshot time", "Motif screenshot time");
+    internal static readonly DateTimeOffset CaptureStartAt =
+        new(2026, 10, 2, 18, 47, 0, TimeSpan.FromHours(-4));
+    internal static readonly DateTimeOffset BaselineSaveAt =
+        new(2026, 9, 22, 5, 48, 0, TimeSpan.FromHours(-4));
+
+    internal static FixedClock NewCaptureClock() => new(CaptureStartAt, CaptureTimeZone);
 
     [ScreenshotFact]
     public void CaptureEveryPage()
@@ -53,6 +62,7 @@ public sealed class PageScreenshots
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
             var (workspace, window) = await OpenOverSampleData();
             try
             {
@@ -111,6 +121,7 @@ public sealed class PageScreenshots
         {
             AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {
+                using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
                 var (workspace, window) = await OpenOverSampleData(parse: state != "empty", configure: (fake, _) =>
                 {
                     var overview = state == "empty" ? EmptyOverview() : OverviewFor(state);
@@ -118,8 +129,8 @@ public sealed class PageScreenshots
                     fake.OverviewCompletesWith(overview);
                     if (state == "stale")
                     {
-                        var saved = DateTimeOffset.UtcNow;
-                        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), saved.AddHours(-2), false)
+                        var saved = CaptureStartAt;
+                        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), BaselineSaveAt, false)
                         {
                             ProjectLastWriteUtc = saved,
                         });
@@ -146,9 +157,10 @@ public sealed class PageScreenshots
                             if (state == "stale")
                             {
                                 var renderedText = window.GetVisualDescendants().OfType<CopyableTextBlock>()
-                                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-                                Assert.Contains(renderedText, text => text?.Contains("Numbers: Baseline", StringComparison.Ordinal) == true);
-                                Assert.Contains(renderedText, text => text?.Contains("saved later", StringComparison.Ordinal) == true);
+                                    .Where(text => text.IsEffectivelyVisible)
+                                    .Select(text => text.Text?.Replace('\u202f', ' ')).ToArray();
+                                Assert.Contains(renderedText, text => text?.Contains("Baseline of", StringComparison.Ordinal) == true);
+                                Assert.Contains(renderedText, text => text?.Contains("saved Fri 2 Oct, 6:47 PM", StringComparison.Ordinal) == true);
                                 Assert.DoesNotContain(renderedText, text => text?.Contains(
                                     "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
                             }
@@ -215,7 +227,7 @@ public sealed class PageScreenshots
         ? SampleEvidence.Overview(Assessment()) with
         {
             IsStale = true,
-            LastFieldWorksSaveUtc = DateTimeOffset.UtcNow,
+            LastFieldWorksSaveUtc = CaptureStartAt,
         }
         : SampleEvidence.Overview(Assessment());
 
@@ -458,14 +470,14 @@ public sealed class PageScreenshots
     }
 
     [Fact]
-    public async Task SampleStatisticsHeadlineCountsOneWordWithSeveralReadings()
+    public async Task SampleStatisticsHeadlineCountsOneWordWithSeveralAnalyses()
     {
         var fake = new FakeCommandClient();
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
         var statistics = new StatisticsViewModel(fake) { ProjectPath = ProjectPath, AssessmentId = "assessment/one" };
         await statistics.LoadCommand.ExecuteAsync(null);
-        Assert.Equal(1, statistics.SeveralReadingsCount);
-        Assert.Equal("1 word has more than one reading", statistics.PassesHeadline);
+        Assert.Equal(1, statistics.SeveralAnalysesCount);
+        Assert.Equal("1 word has more than one analysis", statistics.AnalysesHeadline);
     }
 
     [Fact]
@@ -575,12 +587,16 @@ public sealed class PageScreenshots
         bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false)
     {
         var fake = new FakeCommandClient();
-        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), DateTimeOffset.UtcNow.AddHours(-2), false));
+        var clock = NewCaptureClock();
+        fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, CaptureStartAt)]);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token(), BaselineSaveAt, false)
+        {
+            ProjectLastWriteUtc = BaselineSaveAt,
+        });
         fake.ProjectHistoryIs(new ProjectHistoryResponse(
         [
-            new ProjectHistoryEntry(DateTimeOffset.Now.AddMinutes(-20), ProjectHistoryKind.Assessment, "9 words · 7 parsed · 5 built something else"),
-            new ProjectHistoryEntry(DateTimeOffset.Now.AddHours(-2), ProjectHistoryKind.Baseline, "Baseline captured · 862 lexemes · 2 texts"),
+            new ProjectHistoryEntry(CaptureStartAt.AddMinutes(-20), ProjectHistoryKind.Assessment, "9 words · 7 parsed · 5 built something else"),
+            new ProjectHistoryEntry(DateTimeOffset.Parse(Token().CapturedUtc), ProjectHistoryKind.Baseline, "Baseline captured · 862 lexemes · 2 texts"),
         ]));
         fake.StoredGrammarCheckIs(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
         fake.CheckGrammarCompletesWith(new GrammarCheckResponse(GrammarFindings(), HasBaseline: true));
@@ -589,7 +605,7 @@ public sealed class PageScreenshots
         fake.ListTextWordsCompletesWith(TextWords());
         fake.AssessCompletesWith(Assessment());
         fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", ProjectPath, "cache", null, StatisticsRows()));
-        fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 1140",
+        fake.HandoffCompletesWith(new HandoffCommandResponse(@"C:\Users\linguist\Documents\Motif Handoffs\Sample 2 Oct 6:47 PM",
             Capture(), new SelectionProjection([], []),
             HandoffFileExpectations.Assessed.Select(file => file.RelativePath).ToArray(), ["assessment/one"])
         {
@@ -603,7 +619,7 @@ public sealed class PageScreenshots
             ParserElapsedMs = null,
             HostCapture = new TraceHostCapture(Token().ProjectIdentity, null, null, Token().BundleDigest, null, null, [])
             {
-                Baseline = new TraceBaselineSource(Token(), DateTimeOffset.Parse("2026-09-22T09:48:00Z"),
+                Baseline = new TraceBaselineSource(Token(), BaselineSaveAt,
                     DateTimeOffset.Parse(Token().CapturedUtc), "Sample grammar capture"),
             },
         });
@@ -613,7 +629,7 @@ public sealed class PageScreenshots
             return Task.FromResult(CommandOutcome<WordContextResponse>.Success(new(request.Word, true)
             {
                 IsInFieldWorks = word is not null,
-                Baseline = Token(), SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T09:48:00Z"),
+                Baseline = Token(), SourceLastWriteUtc = BaselineSaveAt,
                 Analyses = word?.StoredAnalyses ?? [],
                 ExpectedAnalysis = word?.StoredAnalyses.FirstOrDefault(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved),
             }));
@@ -628,7 +644,7 @@ public sealed class PageScreenshots
             new ProjectViewModel(fake, new Picker()), new BaselineViewModel(fake),
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
-            fake, techDemoNotice: FirstRunNotice());
+            fake, clock, techDemoNotice: FirstRunNotice());
         var window = new MainWindow();
         window.Compose(workspace);
         window.Show();
@@ -646,7 +662,8 @@ public sealed class PageScreenshots
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines[0].Tokens[1]);
         await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
-        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = workspace.PageModel<AiHandoffPageModel>().Handoff.WrittenAt!.Value.AddMinutes(35);
+        clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
+        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
         return (workspace, window);
     }
 
@@ -986,7 +1003,7 @@ public sealed class PageScreenshots
         new("project-1", "sha256:" + new string('a', 64), "1", "2026-09-22T10:00:00Z", "sha256:" + new string('b', 64));
 
     private static BaselineCaptureResponse Capture() =>
-        new(Token(), ProjectPath, DateTimeOffset.UtcNow, FieldWorksHeldProject: false, ReusedExistingBytes: true);
+        new(Token(), ProjectPath, BaselineSaveAt, FieldWorksHeldProject: false, ReusedExistingBytes: true);
 
     private sealed class Picker : IProjectPicker
     {

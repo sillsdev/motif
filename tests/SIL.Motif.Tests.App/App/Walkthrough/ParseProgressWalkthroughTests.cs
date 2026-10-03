@@ -40,7 +40,6 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                     TimeSpan.FromSeconds(15), "the started word was never displayed");
                 Assert.Contains("0 of 5", Details(window));
                 Assert.Contains("estimating", Details(window));
-                Assert.Contains("elapsed", Details(window));
                 await assess.RerunAsync(["duplicate"], 1000);
                 Assert.Single(FakeParser.Invocations(parser), line => line == "batch");
                 for (var index = 0; index < 3; index++)
@@ -72,7 +71,6 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
                     InteractiveControlFamily.Progress, InteractiveControlFamily.Action, InteractiveControlFamily.Disclosure);
                 Capture(window, "parse-progress");
                 Assert.True(assess.CancelCommand.CanExecute(null));
-                Assert.Contains("previous results", Details(window));
             }
             finally
             {
@@ -159,7 +157,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
     }
 
     [Fact]
-    public void TryAWordShowsItsCurrentWordAndElapsedTimeAndDoesNotReplaceARunningTrace()
+    public void TryAWordShowsMeasuredProgressAndDoesNotReplaceARunningTrace()
     {
         using var project = new WalkthroughProject(pristine);
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
@@ -181,10 +179,10 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
             var running = trace.TryCommand.ExecuteAsync(null);
             try
             {
-                window.WaitUntil(() => File.Exists(heartbeat) && Details(window).Contains("Parsing held", StringComparison.Ordinal),
+                window.WaitUntil(() => File.Exists(heartbeat) &&
+                    Details(window).Contains("Parsing · 0 of 1 words · estimating time", StringComparison.Ordinal),
                     TimeSpan.FromSeconds(15), "Try a Word did not display its running word");
                 Assert.Contains("0 of 1", Details(window));
-                Assert.Contains("elapsed", Details(window));
                 Assert.Contains("estimating", Details(window));
                 await trace.TryCommand.ExecuteAsync(null);
                 Assert.False(trace.TryCommand.CanExecute(null));

@@ -345,23 +345,6 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Classes="section-title" Text="How long the words took" />
             <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
-            <views:CopyableTextBlock Text="Slowest words" FontWeight="SemiBold" />
-            <StackPanel Grid.IsSharedSizeScope="True">
-              <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
-              <ItemsControl ItemsSource="{Binding SlowestWordRows}" AutomationProperties.Name="Slowest words"
-                            KeyboardNavigation.TabNavigation="Continue">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ListedWordViewModel">
-                    <views:WordRow Row="{Binding Row}" List="timing-words" IsOpen="{Binding IsOpen}"
-                                   Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
-                      <views:WordRow.Card>
-                        <views:ListedWordCard />
-                      </views:WordRow.Card>
-                    </views:WordRow>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
           </StackPanel>
         </Border>
 

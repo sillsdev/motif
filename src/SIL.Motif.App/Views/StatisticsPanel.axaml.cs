@@ -53,11 +53,6 @@ public sealed partial class StatisticsPanel : UserControl
         }
     }
 
-    private void OnTrySlowestClick(object? sender, RoutedEventArgs e)
-    {
-        if (Statistics.SlowestWord?.Word is { } word) Statistics.TryWord?.Invoke(word);
-    }
-
     private void OnAllRowsClick(object? sender, RoutedEventArgs e) => Statistics.OnlyIncomplete = false;
 
     private void OnOnlyIncompleteClick(object? sender, RoutedEventArgs e) => Statistics.OnlyIncomplete = true;

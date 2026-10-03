@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
@@ -325,7 +324,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         ProjectFreshness.NoBaseline => "No Baseline yet",
         ProjectFreshness.Current => "Current",
-        ProjectFreshness.SavedSince => Context.Evidence.AppliedSinceRefresh ? "Changes applied" : "FieldWorks saved",
+        ProjectFreshness.SavedSince => Context.Evidence.AppliedSinceRefresh ? "Changes applied" : "FieldWorks saved since",
         ProjectFreshness.Refreshing => "Refreshing",
         ProjectFreshness.Refreshed => "Refreshed",
         _ => string.Empty,
@@ -341,7 +340,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             var detail = Freshness switch
             {
                 ProjectFreshness.NoBaseline => "Refresh to capture one from FieldWorks' last save.",
-                ProjectFreshness.Current => BaselineAndSaveText(),
+                ProjectFreshness.Current => BaselineText(),
                 ProjectFreshness.SavedSince => SavedSinceText(),
                 ProjectFreshness.Refreshing => "Capturing a new Baseline...",
                 ProjectFreshness.Refreshed when Context.NeedsAssessment =>
@@ -445,30 +444,18 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         var evidence = Context.Evidence;
         var baseline = Baseline.CapturedUtc is { } captured ? $"Baseline of {When(captured)}" : "Baseline";
         if (evidence.AppliedSinceRefresh)
-            return $"Numbers: {baseline}; changes applied later.";
+            return $"{baseline} · changes applied after it.";
 
         var saved = evidence.LatestSaveUtc ?? Baseline.ProjectLastWriteUtc ?? Baseline.SourceLastWriteUtc;
         return saved is { } at
-            ? $"Numbers: {baseline}; saved later {When(at)}."
-            : $"Numbers: {baseline}; saved later.";
+            ? $"{baseline} · saved {When(at)}"
+            : baseline;
     }
 
-    private string BaselineAndSaveText()
-    {
-        var stem = Path.GetFileNameWithoutExtension(Context.ProjectPath);
-        var baseline = Baseline.CapturedUtc is { } captured ? $"Baseline of {When(captured)}" : "Baseline";
-        var written = Baseline.ProjectLastWriteUtc ?? Baseline.SourceLastWriteUtc;
-        return written is { } at ? $"{baseline} · {stem} saved {When(at)}" : baseline;
-    }
+    private string BaselineText() => Baseline.CapturedUtc is { } captured
+        ? $"Baseline of {When(captured)}" : "Baseline";
 
-    private string When(DateTimeOffset at)
-    {
-        var clock = Context.Clock;
-        var local = TimeZoneInfo.ConvertTime(at, clock.LocalTimeZone);
-        return local.Date == clock.GetLocalNow().Date
-            ? local.ToString("t", CultureInfo.CurrentCulture)
-            : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
-    }
+    private string When(DateTimeOffset at) => WindowTimeText.Format(at, Context.Clock);
 
     /// <summary>The project picker behind the project menu.</summary>
     public ProjectViewModel Project { get; }

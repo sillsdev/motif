@@ -48,10 +48,6 @@ public sealed class TryWordPageModel : PageModel
             if (!string.IsNullOrWhiteSpace(word)) Context.TryWord(word);
         });
         Context.Assess.Words.PropertyChanged += OnWordsPropertyChanged;
-        Context.Evidence.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ProjectEvidence.IsStale)) OnPropertyChanged(nameof(FieldWorksContextIsStale));
-        };
         RefreshExpected(Trace.WordToTry);
     }
 
@@ -74,26 +70,7 @@ public sealed class TryWordPageModel : PageModel
         _ => "Stored analyses for " + ResultWordContext.Word,
     };
 
-    /// <summary>The save recorded by the shared context query; never the trace's grammar provenance.</summary>
-    public string FieldWorksContextSource => ResultWordContext is not { HasBaseline: true } context ? string.Empty
-        : (context.SourceLastWriteUtc is { } saved ? $"FieldWorks saved {LocalDate(saved)}" : "FieldWorks save time not recorded") +
-          (context.Baseline is { } baseline
-              ? $" · Baseline captured {LocalDate(DateTimeOffset.Parse(baseline.CapturedUtc, CultureInfo.InvariantCulture))}"
-              : " · Baseline identity not recorded");
-
-    /// <summary>The shared workspace freshness used by the top bar and this page.</summary>
-    public bool FieldWorksContextIsStale => Context.Evidence.IsStale;
-
-    private string LocalDate(DateTimeOffset value)
-    {
-        var clock = Context.Clock;
-        var local = TimeZoneInfo.ConvertTime(value, clock.LocalTimeZone);
-        return local.Date == clock.GetLocalNow().Date
-            ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
-            : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
-    }
-
-    /// <summary>Stored analyses grouped by their interlinear display, retaining every recorded Opinion count.</summary>
+    /// <summary>Each stored analysis and its own recorded opinion, preserving the shared record order.</summary>
     public IReadOnlyList<TryWordStoredAnalysis> FieldWorksAnalyses { get; private set; } = [];
 
     /// <summary>The distinct opinions actually stored for the returned word.</summary>
@@ -142,8 +119,8 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>The returned trace's grammar capture, never borrowed from the current workspace.</summary>
     public string TracedGrammarText => Trace.Result?.HostCapture?.Baseline is { } baseline
-        ? "Traced with the grammar of the Baseline from " + LocalDate(DateTimeOffset.Parse(
-            baseline.Token.CapturedUtc, CultureInfo.InvariantCulture))
+        ? "Traced with the grammar of the Baseline from " + WindowTimeText.Format(DateTimeOffset.Parse(
+            baseline.Token.CapturedUtc, CultureInfo.InvariantCulture), Context.Clock)
         : Trace.Result?.GrammarSource is { Length: > 0 } ? "Traced with a saved grammar; its Baseline was not recorded."
         : "The grammar of this trace was not recorded.";
 
@@ -346,8 +323,6 @@ public sealed class TryWordPageModel : PageModel
             : [];
         OnPropertyChanged(nameof(ResultWordContext));
         OnPropertyChanged(nameof(FieldWorksContextStatus));
-        OnPropertyChanged(nameof(FieldWorksContextSource));
-        OnPropertyChanged(nameof(FieldWorksContextIsStale));
         OnPropertyChanged(nameof(FieldWorksAnalyses));
         OnPropertyChanged(nameof(ResultOpinions));
         OnPropertyChanged(nameof(ResultMeaning));

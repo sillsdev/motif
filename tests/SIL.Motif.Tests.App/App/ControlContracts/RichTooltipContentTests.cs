@@ -10,6 +10,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
@@ -94,7 +95,7 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
                         if (!seen.Add(owner.Key)) continue;
                         CheckReadable(scenes, control, owner, failures, words, gaps);
                     }
-                    scenes.Leave(scene);
+                    await scenes.Leave(scene);
                 }
             }
             finally
@@ -158,6 +159,8 @@ public sealed class RichTooltipContentTests(ITestOutputHelper output)
 internal sealed class TooltipScenes
 {
     private readonly FakeCommandClient _client;
+    private TaskCompletionSource<bool>? _parseProgressRelease;
+    private Task<bool>? _parseProgressTask;
 
     private TooltipScenes(WorkspaceShellViewModel workspace, MainWindow window, FakeCommandClient client)
     {
@@ -363,11 +366,24 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.Handoff: Show(WorkspacePage.AiHandoff); break;
             case TooltipScene.ReviewStaged: Show(WorkspacePage.Review); break;
+            case TooltipScene.ParseProgress:
+                _parseProgressRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _parseProgressTask = Workspace.Assess.Trace.ParseProgress.TrackAsync(async () =>
+                {
+                    await _parseProgressRelease.Task;
+                    return true;
+                });
+                Workspace.Assess.Trace.ParseProgress.Report(
+                    new AssessmentProgress(AssessmentStage.Parsing, 1, 3, "Parsing"));
+                await Until(() => Visible<Button>().Any(button =>
+                    AutomationProperties.GetName(button) == "Cancel parsing all words"),
+                    "parse progress and its Cancel button");
+                break;
         }
     }
 
     /// <summary>Undoes what reaching <paramref name="scene"/> opened, so the next scene starts from the page alone.</summary>
-    public void Leave(TooltipScene scene)
+    public async Task Leave(TooltipScene scene)
     {
         switch (scene)
         {
@@ -385,6 +401,10 @@ internal sealed class TooltipScenes
             case TooltipScene.TextPicker: Visible<ComboBox>().First(box => AutomationProperties.GetName(box) == "Text to read").IsDropDownOpen = false; break;
             case TooltipScene.WordCard: InText.CloseTokenCard(); break;
             case TooltipScene.WordCardWithoutOccurrence: InText.CloseTokenCard(); break;
+            case TooltipScene.ParseProgress:
+                _parseProgressRelease!.SetResult(true);
+                await _parseProgressTask!;
+                break;
         }
         Window.MouseMove(new Point(4, Window.Bounds.Height - 4));
         PageScreenshots.Settle(Window);

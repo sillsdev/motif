@@ -32,7 +32,6 @@ public sealed partial class TimingPageModel : PageModel
     public TimingPageModel(WorkspaceContext context) : base(context)
     {
         Statistics = new StatisticsViewModel(context.Commands);
-        Statistics.TryWord = context.TryWord;
         LoadFocusedTimingCommand = new AsyncRelayCommand(LoadFocusedTimingAsync,
             () => Focus is not null && Context.ProjectPath is not null);
         SelectWordSetCommand = new AsyncRelayCommand<string>(SelectWordSetAsync);
@@ -64,7 +63,6 @@ public sealed partial class TimingPageModel : PageModel
         context.Assess.Words.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(AssessWordsViewModel.AllRows)) return;
-            OnPropertyChanged(nameof(SlowestWordRows));
             OnPropertyChanged(nameof(CostliestRuleWordRows));
         };
     }
@@ -129,10 +127,6 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The exact words returned by the timing command.</summary>
     public IReadOnlyList<string> SelectedWords => KindTiming?.Words.Select(word => word.Word).ToArray() ?? [];
 
-    /// <summary>The slowest words as word rows, each with the parse time Timing measured for it.</summary>
-    public IReadOnlyList<ListedWordViewModel> SlowestWordRows => KindTiming?.SlowestWords
-        .Select(slow => Listed(slow.Word, TimingShare.FormatMilliseconds(slow.ElapsedMs))).ToArray() ?? [];
-
     public bool HasTiming => KindTiming is not null;
 
     /// <summary>Whether the stored parse times for the chosen words are being read.</summary>
@@ -190,9 +184,10 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
     public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
     {
-        (true, true) => "Timing recorded both step-limit and time-limit stops. Adjust both limits in the Timing controls on this page.",
-        (true, false) => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
-        (false, true) => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
+        (true, true) => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+            "or increase Seconds per word.",
+        (true, false) => "Stopped at the step limit · Raise it under More.",
+        (false, true) => "Ran out of time · Increase Seconds per word.",
         _ => string.Empty,
     };
 
@@ -847,7 +842,7 @@ public sealed partial class TimingPageModel : PageModel
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(AllWordsButtonText), nameof(StoppedWordsButtonText),
             nameof(SelectedWords),
-            nameof(SlowestWordRows), nameof(HasTiming), nameof(HasSelectedWords),
+            nameof(HasTiming), nameof(HasSelectedWords),
             nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
             nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(HasStoppedWords), nameof(StoppedWordsAdviceText), nameof(ScopeLabel),
             nameof(EmptySelectionText), nameof(CanShowAllWords),

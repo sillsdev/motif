@@ -13,21 +13,12 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Every other place a word is listed shows the same word row as the Matrix and Lists, with its three next steps:
-/// Timing's slowest words and a rule's costliest words, Review changes, What changed and Analyze texts' Word list.
+/// Timing's costliest words, Review changes, What changed and Analyze texts' Word list.
 /// Try a Word on any of them opens Try a Word on that word.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WordRowEverywhereTests
 {
-    [Fact]
-    public void TimingsSlowestWordsOpenTryAWordOnTheirWord() =>
-        TryAWordOpensFrom("timing-words", "mwalimu", async (workspace, window) =>
-        {
-            workspace.CurrentPage = WorkspacePage.Timing;
-            var timing = workspace.PageModel<TimingPageModel>();
-            await Until(window, () => timing.SlowestWordRows.Count > 0, "Timing's slowest words");
-        });
-
     [Fact]
     public void ARulesCostliestWordsOpenTryAWordOnTheirWord() =>
         TryAWordOpensFrom("timing-rule-words", "hawajafika", async (workspace, window) =>
@@ -38,18 +29,6 @@ public sealed class WordRowEverywhereTests
             if (timing.CostliestRuleWordRows.Count == 0)
                 await timing.ChooseRuleCommand.ExecuteAsync(timing.RuleRows[0].Row);
             await Until(window, () => timing.CostliestRuleWordRows.Count > 0, "the chosen rule's costliest words");
-        });
-
-    [Fact]
-    public void TheOverviewSlowestWordsOpenTheirTimingRowsInTryAWord() =>
-        TryAWordOpensFrom("timing-words", "hawajafika", async (workspace, window) =>
-        {
-            workspace.CurrentPage = WorkspacePage.Overview;
-            var overview = workspace.PageModel<OverviewPageModel>();
-            await Until(window, () => overview.HasSlowestWordSummary, "the Overview's slowest-word summary");
-            overview.OpenTimingCommand.Execute(null);
-            await Until(window, () => workspace.CurrentPage == WorkspacePage.Timing &&
-                workspace.PageModel<TimingPageModel>().SlowestWordRows.Count > 0, "Timing's slowest words");
         });
 
     [Fact]

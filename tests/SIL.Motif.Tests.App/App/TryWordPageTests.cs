@@ -962,7 +962,7 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
-    public void ReturnedContextShowsEveryOpinionAndItsCapturedSaveAfterTheInputChanges()
+    public void ReturnedContextShowsEveryOpinionWithoutRepeatingWorkspaceFreshness()
     {
         RunOnAvalonia(async () =>
         {
@@ -991,10 +991,8 @@ public sealed class TryWordPageTests
                 Settle(window);
                 var texts = ContextTexts(window);
                 foreach (var opinion in new[] { "Approved", "Disapproved", "Unknown" }) Assert.Contains(opinion, texts);
-                var savedLocal = WorkspaceDateLabel(saved, context.Clock);
-                Assert.Contains(texts, text => text is not null && text.Contains(savedLocal));
                 Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
-                Assert.Equal(context.Evidence.IsStale, texts.Contains("FieldWorks saved since"));
+                Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
                 Assert.DoesNotContain("No stored analyses in the captured FieldWorks Baseline", texts);
             }
             finally { window.Close(); }
@@ -1004,7 +1002,7 @@ public sealed class TryWordPageTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void ContextFreshnessUsesTheRecordedLiveSaveComparison(bool stale)
+    public void ContextSaveDoesNotCreateASecondFreshnessLine(bool stale)
     {
         RunOnAvalonia(async () =>
         {
@@ -1021,7 +1019,16 @@ public sealed class TryWordPageTests
             fake.TraceWordCompletesWith(DogsTrace());
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
-            Assert.Equal(context.Evidence.IsStale, page.FieldWorksContextIsStale);
+            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                var texts = ContextTexts(window);
+                Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
+                Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
+            }
+            finally { window.Close(); }
         });
     }
 
@@ -1049,9 +1056,8 @@ public sealed class TryWordPageTests
                 window.Show();
                 Settle(window);
                 var texts = ContextTexts(window);
-                Assert.DoesNotContain("FieldWorks saved since", texts);
-                var savedLocal = WorkspaceDateLabel(saved, context.Clock);
-                Assert.Contains(texts, text => text is not null && text.Contains(savedLocal));
+                Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
+                Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
             }
             finally { window.Close(); }
         });
@@ -1092,7 +1098,7 @@ public sealed class TryWordPageTests
     {
         var local = TimeZoneInfo.ConvertTime(value, clock.LocalTimeZone);
         return local.Date == clock.GetLocalNow().Date
-            ? local.ToString("t", CultureInfo.CurrentCulture) + " today"
+            ? local.ToString("t", CultureInfo.CurrentCulture)
             : local.ToString("ddd d MMM, ", CultureInfo.CurrentCulture) + local.ToString("t", CultureInfo.CurrentCulture);
     }
 

@@ -21,10 +21,12 @@ public sealed class ParseProgressViewModelTests
         clock.Advance(TimeSpan.FromSeconds(4));
         progress.Report(Step(3));
         Assert.Contains("about 4 s left", progress.TimeText);
+        Assert.Equal("Parsing · 3 of 5 words · about 4 s left", progress.StatusText);
         clock.Advance(TimeSpan.FromSeconds(12));
         progress.Report(Step(3));
         Assert.True(progress.IsStalled);
         Assert.Contains("about 4 s left", progress.TimeText);
+        Assert.DoesNotContain("0 s", progress.StatusText, StringComparison.Ordinal);
         progress.Report(Step(4));
         Assert.False(progress.IsStalled);
         finish.SetResult(true);

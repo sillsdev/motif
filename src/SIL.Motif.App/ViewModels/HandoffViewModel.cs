@@ -76,7 +76,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     /// <summary>The time of writing as the stage shows it, or a prompt before the first write.</summary>
     public string WrittenAtText => WrittenAt is { } written
-        ? $"Last written {written.ToLocalTime():t}"
+        ? $"Last written {WindowTimeText.Format(written, _timeProvider)}"
         : "Not written yet";
 
     // What the next write covers: the Assessment's time, words and texts; set by the workspace.
@@ -87,6 +87,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsOutOfDate))]
     [NotifyPropertyChangedFor(nameof(OutOfDateText))]
+    [NotifyPropertyChangedFor(nameof(WrittenAtText))]
     private DateTimeOffset? _latestAssessmentAt;
 
     /// <summary>Whether an Assessment finished after these files were written, so they no longer match Results.</summary>
@@ -94,8 +95,8 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     /// <summary>The sentence the AI Handoff page shows when the files are stale.</summary>
     public string OutOfDateText => LatestAssessmentAt is { } assessed && WrittenAt is { } written
-        ? $"The words were parsed again at {assessed.ToLocalTime():t}, after these files were written at " +
-          $"{written.ToLocalTime():t}. Write the AI Handoff again to include the new results."
+        ? $"The words were parsed again at {WindowTimeText.Format(assessed, _timeProvider)}, after these files " +
+          $"were written at {WindowTimeText.Format(written, _timeProvider)}. Write the AI Handoff again to include the new results."
         : string.Empty;
 
     /// <summary>Where the completed run wrote the folder, or <c>null</c> before a run has completed.</summary>

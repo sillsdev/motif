@@ -123,22 +123,6 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// </summary>
     public Func<string, AssessWordRowViewModel?>? AssessedWord { get; set; }
 
-    /// <summary>Tries a word in Try a Word, for the card that names the slowest word.</summary>
-    public Action<string>? TryWord { get; set; }
-
-    /// <summary>The slowest finished word, or the slowest measured word when none finished.</summary>
-    public StatsRowViewModel? SlowestWord
-    {
-        get
-        {
-            var timedWords = ScopeRows.Where(row => row.Word is not null && row.ElapsedMs is not null);
-            return timedWords.Where(row => row.SearchFinished == true).MaxBy(row => row.ElapsedMs)
-                ?? timedWords.MaxBy(row => row.ElapsedMs);
-        }
-    }
-
-    public bool HasSlowestWord => SlowestWord is not null;
-
     /// <summary>Whether any fetched row needed more than one pass; when none did, the column says nothing.</summary>
     public bool AnyPasses => ScopeRows.Any(row => row.Passes is > 0);
 
@@ -147,12 +131,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     public bool AnyIncomplete => IncompleteCount > 0;
 
-    public string IncompleteHeadline => IncompleteCount switch
-    {
-        0 => "Every word finished its search",
-        1 => "1 word stopped at a limit",
-        _ => $"{IncompleteCount:N0} words stopped at a limit",
-    };
+    public string IncompleteHeadline => $"Stopped {IncompleteCount:N0}";
 
     public string IncompleteDetail
     {
@@ -160,44 +139,32 @@ public sealed partial class StatisticsViewModel : ObservableObject
         {
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
-                return "No word reached the time or step limit, so every No parse is the grammar's answer.";
+                return "No word is recorded as stopped at a time or step limit.";
             var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("step", StringComparison.OrdinalIgnoreCase) == true);
             var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
             return (stepLimit, timeLimit) switch
             {
-                (true, true) => "Searches stopped at the step limit and ran out of time. " +
-                    "Adjust Seconds per word and Step limit in the Timing controls on this page.",
-                (true, false) => "Stopped at the step limit. Raise the step limit in the Timing controls on this page.",
-                (false, true) => "Ran out of time. Increase Seconds per word in the Timing controls on this page.",
+                (true, true) => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+                    "or increase Seconds per word.",
+                (true, false) => "Stopped at the step limit · Raise it under More.",
+                (false, true) => "Ran out of time · Increase Seconds per word.",
                 _ => "Each search stopped at a limit. See the stop reason on its row.",
             };
         }
     }
 
-    public string SlowestHeadline => SlowestWord is { } row
-        ? row.SearchFinished == true ? $"Slowest word that finished: {row.Word}"
-        : row.IsIncomplete ? $"Slowest stopped word: {row.Word}"
-        : $"Slowest measured word: {row.Word}"
-        : string.Empty;
+    public int SeveralAnalysesCount => ScopeRows.Count(row => row.Word is not null && row.Passes is > 1);
 
-    public string SlowestDetail => SlowestWord is { } row
-        ? $"{row.ElapsedText} ms{(row.Attempts is null ? string.Empty : $" and {row.AttemptsText} search steps")}" +
-            $"{(row.IsIncomplete ? " before a limit stopped it" : string.Empty)}."
-        : string.Empty;
-
-    // PanGloss's "passes" column counts the analyses a word produced, so it is shown as readings.
-    public int SeveralReadingsCount => ScopeRows.Count(row => row.Word is not null && row.Passes is > 1);
-
-    public string PassesHeadline => SeveralReadingsCount switch
+    public string AnalysesHeadline => SeveralAnalysesCount switch
     {
-        0 => "No word has more than one reading",
-        1 => "1 word has more than one reading",
-        _ => $"{SeveralReadingsCount:N0} words have more than one reading",
+        0 => "No word has more than one analysis",
+        1 => "1 word has more than one analysis",
+        _ => $"{SeveralAnalysesCount:N0} words have more than one analysis",
     };
 
-    public string PassesDetail => SeveralReadingsCount == 0
-        ? "No search produced more than one reading."
-        : "Sort by Readings to see these words.";
+    public string AnalysesDetail => SeveralAnalysesCount == 0
+        ? "No search produced more than one analysis."
+        : "Sort by Analyses to see these words.";
 
     /// <summary>The project containing the retained Assessment, or <c>null</c> before one is chosen.</summary>
     [ObservableProperty]
@@ -354,15 +321,11 @@ public sealed partial class StatisticsViewModel : ObservableObject
         OnPropertyChanged(nameof(IncompleteHeadline));
         OnPropertyChanged(nameof(IncompleteDetail));
         OnPropertyChanged(nameof(AnyIncomplete));
-        OnPropertyChanged(nameof(SeveralReadingsCount));
-        OnPropertyChanged(nameof(SlowestWord));
-        OnPropertyChanged(nameof(HasSlowestWord));
-        OnPropertyChanged(nameof(SlowestHeadline));
-        OnPropertyChanged(nameof(SlowestDetail));
+        OnPropertyChanged(nameof(SeveralAnalysesCount));
         OnPropertyChanged(nameof(AnyPasses));
         OnPropertyChanged(nameof(HasWordRows));
-        OnPropertyChanged(nameof(PassesHeadline));
-        OnPropertyChanged(nameof(PassesDetail));
+        OnPropertyChanged(nameof(AnalysesHeadline));
+        OnPropertyChanged(nameof(AnalysesDetail));
     }
 
     // Reapplies the filter and sort from the fetched rows in memory; never calls the command client.
