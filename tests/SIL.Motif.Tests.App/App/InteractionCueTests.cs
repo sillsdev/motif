@@ -207,6 +207,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
             var bar = new OutcomeBar
             {
                 ShowShares = false,
+                Margin = new Thickness(0, 20, 0, 0),
                 Segments = [new OutcomeSegment(Mark.Different, 6, "different")
                 {
                     Command = new RelayCommand(() => { }),
@@ -227,9 +228,11 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 Assert.NotNull(link.Command);
                 Assert.Equal("Open Different words in the Matrix", AutomationProperties.GetName(link));
 
-                window.MouseMove(link.TranslatePoint(new Point(link.Bounds.Width / 2, link.Bounds.Height / 2), window)!.Value);
+                var labelCenter = label.TranslatePoint(new Point(label.Bounds.Width / 2, label.Bounds.Height / 2), window)!.Value;
+                window.MouseMove(labelCenter);
                 Dispatcher.UIThread.RunJobs();
 
+                Assert.True(link.IsPointerOver, "the pointer is over the outcome legend link");
                 Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
             }
             finally

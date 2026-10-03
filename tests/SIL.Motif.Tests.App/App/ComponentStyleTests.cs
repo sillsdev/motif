@@ -75,6 +75,47 @@ public sealed partial class ComponentStyleTests
     }
 
     [Fact]
+    public void ActionChipsAndOutcomeLegendsFitTallerLineBoxes()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var chip = Press("actionChip", "primary");
+            chip.Content = "✓ Approve";
+            var bar = new OutcomeBar
+            {
+                ShowShares = false,
+                Segments = [new SIL.Motif.App.ViewModels.OutcomeSegment(SIL.Motif.App.ViewModels.Mark.NoParse, 1, "none")],
+            };
+            var window = new Window
+            {
+                Content = new StackPanel { Children = { chip, bar } },
+                Width = 300,
+                Height = 100,
+            };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var actionText = chip.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "✓ Approve");
+                var outcomeGlyph = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "∅");
+                TestFontScale.ApplyMacLineHeight(chip, text => ReferenceEquals(text, actionText));
+                TestFontScale.ApplyMacLineHeight(bar, text => ReferenceEquals(text, outcomeGlyph));
+                window.UpdateLayout();
+
+                LayoutAssertions.AssertCurrent(window);
+                Assert.True(chip.Bounds.Height >= actionText.Bounds.Height);
+                Assert.True(outcomeGlyph.Bounds.Height <= Assert.Single(
+                    outcomeGlyph.GetVisualAncestors().OfType<MarkGlyph>()).Bounds.Height);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void ActionChipUsesItsHoverSurface()
     {
         _avalonia.Invoke(() =>
@@ -445,6 +486,9 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Consequence.Look.Edge");
         yield return new("OutcomeBar", "a built-something-else segment", host => Add(host, Box("outcomeSegment", "meaning", "problem")),
             Border.BackgroundProperty, "Intent.Consequence.Problem.Edge");
+        yield return new("OutcomeBar", "an outcome link label's hit surface",
+            host => Add(host, new StackPanel { Classes = { "outcomeLegendLinkLabel" } }),
+            Panel.BackgroundProperty, "Intent.Clear");
 
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.BackgroundProperty, "Intent.Clear");
         yield return new("WordVerdict", "a word", host => Add(host, Box("wordVerdict")), Border.PaddingProperty, "Component.WordVerdict.Padding");
@@ -531,7 +575,7 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.TextMuted");
 
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
-        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.WidthProperty, "Component.Handoff.StepMarkSize");
+        yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.MinWidthProperty, "Component.Handoff.StepMarkSize");
         yield return new("Handoff", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");
         yield return new("Handoff", "a written file", host => Add(host, Box("handoffFile")), Border.BorderThicknessProperty,
             "Component.Handoff.FileEdge");
@@ -764,6 +808,14 @@ public sealed partial class ComponentStyleTests
         })
             yield return new("Mark", $"a {outcome} outcome", host => Add(host, Text("outcomeMark", outcome)),
                 TextBlock.ForegroundProperty, $"Intent.Outcome.{key}");
+        yield return new("OutcomeBar", "an outcome sign's line floor", host =>
+        {
+            var label = new StackPanel { Classes = { "outcomeLegendLabel" } };
+            var glyph = new MarkGlyph { Mark = SIL.Motif.App.ViewModels.Mark.NoParse, Classes = { "inline" } };
+            label.Children.Add(glyph);
+            host.Children.Add(label);
+            return glyph;
+        }, Control.MinHeightProperty, "Component.OutcomeBar.LegendLineHeight");
         yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
             Control.WidthProperty, "Component.Mark.InlineGlyphSize");
         yield return new("Mark", "a stopped outcome icon", host => MarkIcon(host, SIL.Motif.App.ViewModels.Mark.Stopped),
@@ -797,7 +849,7 @@ public sealed partial class ComponentStyleTests
             yield return new("Mark", $"a {step} trace step", host => Add(host, Text("stepMark", step)),
                 TextBlock.ForegroundProperty, key);
         yield return new("Mark", "a severity glyph", host => Add(host, Box("severityGlyph", "error")),
-            Border.WidthProperty, "Component.Mark.GlyphSize");
+            Border.MinWidthProperty, "Component.Mark.GlyphSize");
         yield return new("Mark", "a severity glyph", host => Add(host, Box("severityGlyph", "error")),
             Border.CornerRadiusProperty, "Component.Mark.GlyphRadius");
         yield return new("Mark", "an error glyph's ring", host => Add(host, Box("severityGlyph", "error")),

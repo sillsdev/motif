@@ -172,9 +172,11 @@ public sealed class OutcomeBar : StackPanel
 
     private static HyperlinkButton OutcomeLink(OutcomeSegment segment)
     {
+        var label = OutcomeLabel(segment);
+        label.Classes.Add("outcomeLegendLinkLabel");
         var action = new HyperlinkButton
         {
-            Content = OutcomeLabel(segment),
+            Content = label,
             Command = segment.Command,
             Classes = { "revealControl", "revealLink", "outcomeLegendLink" },
         };

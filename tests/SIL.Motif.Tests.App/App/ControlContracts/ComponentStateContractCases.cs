@@ -64,7 +64,7 @@ internal static class ComponentStateContractCases
     internal static IReadOnlyList<PinnedElsewhere> Pinned { get; } =
     [
         new("HyperlinkButton:pointerover", nameof(InteractionCueTests.ALinkUnderlinesUnderThePointer)),
-        new("HyperlinkButton.outcomeLegendLink:pointerover",
+        new("StackPanel.outcomeLegendLinkLabel:pointerover TextBlock.outcomeLegendText",
             nameof(InteractionCueTests.AnOutcomeLegendLinkIsVisibleAtRestAndUnderlinesUnderThePointer)),
         new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),

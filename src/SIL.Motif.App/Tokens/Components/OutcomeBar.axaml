@@ -13,7 +13,7 @@
     <StaticResource x:Key="Component.OutcomeBar.SwatchMargin" ResourceKey="Primitive.Inset.0_0_6_0" />
     <StaticResource x:Key="Component.OutcomeBar.LegendEntryMargin" ResourceKey="Primitive.Inset.0_0_18_0" />
     <StaticResource x:Key="Component.OutcomeBar.LegendTextMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
-    <StaticResource x:Key="Component.OutcomeBar.LegendLineHeight" ResourceKey="Primitive.Size.20" />
+    <StaticResource x:Key="Component.OutcomeBar.LegendLineHeight" ResourceKey="Primitive.Size.24" />
   </Styles.Resources>
   <Style Selector=":is(StackPanel).outcomeBar">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
@@ -48,8 +48,11 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
   </Style>
-  <Style Selector="HyperlinkButton.outcomeLegendLink:pointerover">
-    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+  <Style Selector="StackPanel.outcomeLegendLinkLabel">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="StackPanel.outcomeLegendLinkLabel:pointerover TextBlock.outcomeLegendText">
+    <Setter Property="TextDecorations" Value="Underline" />
   </Style>
   <Style Selector=":is(StackPanel).outcomeLegendLabel">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />

@@ -47,7 +47,6 @@ public sealed class TooltipPlacementTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
-            TestFontScale.ApplyMacLineHeight(scenes.Window);
             var prior = Application.Current!.RequestedThemeVariant;
             var owners = TooltipOwners.All.Where(owner => Owners.Contains(owner.Key)).ToList();
             Assert.Equal(Owners.Length, owners.Count);
@@ -59,6 +58,8 @@ public sealed class TooltipPlacementTests
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
                         await scenes.Reach(scene);
+                        TestFontScale.ApplyMacLineHeight(scenes.Window);
+                        PageScreenshots.Settle(scenes.Window);
                         foreach (var owner in owners.Where(owner => owner.Scene == scene))
                         foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
                         {
@@ -130,7 +131,6 @@ public sealed class TooltipPlacementTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
-            TestFontScale.ApplyMacLineHeight(scenes.Window);
             try
             {
                 var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word form");
@@ -138,6 +138,8 @@ public sealed class TooltipPlacementTests
                 {
                     scenes.Width = width;
                     await scenes.Reach(TooltipScene.Matrix);
+                    TestFontScale.ApplyMacLineHeight(scenes.Window);
+                    PageScreenshots.Settle(scenes.Window);
 
                     var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
                     var owner = row.GetVisualDescendants().OfType<Control>().Single(wordForm.Is);
@@ -187,7 +189,14 @@ public sealed class TooltipPlacementTests
         PageScreenshots.Settle(window);
         await Task.Yield();
         PageScreenshots.Settle(window);
-        return ToolTip.GetIsOpen(owner) ? scenes.Visible<ToolTip>().SingleOrDefault() : null;
+        if (!ToolTip.GetIsOpen(owner)) return null;
+        var tip = scenes.Visible<ToolTip>().SingleOrDefault();
+        if (tip is not null)
+        {
+            TestFontScale.ApplyMacLineHeight(tip);
+            PageScreenshots.Settle(window);
+        }
+        return tip;
     }
 
     private static Point CenterAfterLayout(Control owner, Window window)

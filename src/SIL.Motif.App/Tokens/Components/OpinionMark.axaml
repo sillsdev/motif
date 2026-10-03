@@ -11,8 +11,8 @@
     <StaticResource x:Key="Component.OpinionMark.Dash" ResourceKey="Primitive.Dash.3_2" />
   </Styles.Resources>
   <Style Selector="Border.opinionMark, controls|OpinionMark.opinionMark">
-    <Setter Property="MinWidth" Value="{DynamicResource Component.OpinionMark.Size}" />
-    <Setter Property="MinHeight" Value="{DynamicResource Component.OpinionMark.Size}" />
+    <Setter Property="Width" Value="{DynamicResource Component.OpinionMark.Size}" />
+    <Setter Property="Height" Value="{DynamicResource Component.OpinionMark.Size}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Component.OpinionMark.Stroke}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.OpinionMark.Radius}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />

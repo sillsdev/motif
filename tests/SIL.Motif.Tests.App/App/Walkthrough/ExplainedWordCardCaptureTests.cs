@@ -47,7 +47,6 @@ public sealed class ExplainedWordCardCaptureTests
                     startGate: gate, timeProvider: clock, parserPath: project.ParserPath);
                 walkthrough.Window.Width = WalkthroughArtifacts.Width;
                 walkthrough.Window.Height = 800;
-                TestFontScale.ApplyMacLineHeight(walkthrough.Window);
                 walkthrough.Show();
                 WalkthroughReplay.Run(walkthrough, script with { Steps = steps[..stage] }, help, clock,
                     [], [], deadline, root, preparation);

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 
 namespace SIL.Motif.Tests.App;
 
@@ -42,15 +43,21 @@ internal static class TestFontScale
         ApplyTypographyScale(window, CrossPlatformIncrease);
     }
 
-    public static void ApplyMacLineHeight(Window window)
+    public static void ApplyMacLineHeight(Visual root, Func<TextBlock, bool>? shouldScale = null)
     {
-        ApplyTypographyScale(window, MacLineHeightScale);
+        foreach (var text in root.GetSelfAndVisualDescendants().OfType<TextBlock>())
+        {
+            if (shouldScale is not null && !shouldScale(text)) continue;
+            if (!double.IsNaN(text.LineHeight) || string.IsNullOrEmpty(text.Text)) continue;
+            var naturalLineHeight = text.TextLayout.TextLines.Select(line => line.Height).DefaultIfEmpty().Max();
+            if (naturalLineHeight > 0) text.LineHeight = naturalLineHeight * MacLineHeightScale;
+        }
     }
 
-    private static void ApplyTypographyScale(Window window, double scale)
+    private static void ApplyTypographyScale(Window window, double scale, IReadOnlyCollection<string>? selected = null)
     {
         var application = Application.Current ?? throw new InvalidOperationException("Avalonia is not initialized.");
-        foreach (var key in TypographyResources)
+        foreach (var key in selected ?? TypographyResources)
         {
             if (application.FindResource(key) is not double baseSize)
                 throw new InvalidOperationException($"Typography resource '{key}' is not a font size.");

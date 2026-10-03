@@ -31,10 +31,11 @@ public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
                 Width = 1036,
                 Height = 660,
             };
-            TestFontScale.ApplyMacLineHeight(window);
             try
             {
                 window.Show();
+                window.UpdateLayout();
+                TestFontScale.ApplyMacLineHeight(window);
                 window.UpdateLayout();
                 var matrix = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(), panel =>
                     AutomationProperties.GetName(panel) == "Compare matrix");
