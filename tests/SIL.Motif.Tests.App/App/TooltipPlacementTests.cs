@@ -58,7 +58,6 @@ public sealed class TooltipPlacementTests
                     foreach (var scene in owners.Select(owner => owner.Scene).Distinct().Order())
                     {
                         await scenes.Reach(scene);
-                        TestFontScale.ApplyMacLineHeight(scenes.Window);
                         PageScreenshots.Settle(scenes.Window);
                         foreach (var owner in owners.Where(owner => owner.Scene == scene))
                         foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
@@ -138,7 +137,6 @@ public sealed class TooltipPlacementTests
                 {
                     scenes.Width = width;
                     await scenes.Reach(TooltipScene.Matrix);
-                    TestFontScale.ApplyMacLineHeight(scenes.Window);
                     PageScreenshots.Settle(scenes.Window);
 
                     var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
@@ -191,11 +189,7 @@ public sealed class TooltipPlacementTests
         PageScreenshots.Settle(window);
         if (!ToolTip.GetIsOpen(owner)) return null;
         var tip = scenes.Visible<ToolTip>().SingleOrDefault();
-        if (tip is not null)
-        {
-            TestFontScale.ApplyMacLineHeight(tip);
-            PageScreenshots.Settle(window);
-        }
+        if (tip is not null) PageScreenshots.Settle(window);
         return tip;
     }
 

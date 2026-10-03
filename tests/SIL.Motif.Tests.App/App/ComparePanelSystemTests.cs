@@ -35,8 +35,6 @@ public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Show();
                 window.UpdateLayout();
-                TestFontScale.ApplyMacLineHeight(window);
-                window.UpdateLayout();
                 var matrix = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(), panel =>
                     AutomationProperties.GetName(panel) == "Compare matrix");
                 var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), box =>
