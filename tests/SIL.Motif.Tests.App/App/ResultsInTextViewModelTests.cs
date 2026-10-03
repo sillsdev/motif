@@ -963,6 +963,61 @@ public sealed class ResultsInTextViewModelTests
         Assert.Equal("No project entry is loaded for this word.", inText.SelectedToken.ProjectSummary);
     }
 
+    [Fact]
+    public async Task StandaloneWordCardShowsOnlyPendingChangesForItsWordform()
+    {
+        var selectedId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000098");
+        var homographId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var pending = new PendingChangesSnapshot("draft/standalone", "revision/standalone",
+        [
+            new PendingChange("selected", CanonicalId.FromGuid(selectedId).Value, "kitabu",
+                ChangeKinds.IncorrectSpelling, null, null, []),
+            new PendingChange("homograph", CanonicalId.FromGuid(homographId).Value, "kitabu",
+                ChangeKinds.IncorrectSpelling, null, null, []),
+        ], []);
+        var line = new TextLine(1, [Word("kitabu", null) with { WordformId = homographId }])
+            { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true };
+        var (inText, _, _) = await Loaded(pending: pending,
+            sourceTexts: [new TextLines(TextId, "Alpha", [line])]);
+
+        inText.SelectWord("kitabu", CanonicalId.FromGuid(selectedId).Value);
+
+        var card = inText.SelectedToken!;
+        Assert.True(card.HasStagedChanges);
+        Assert.False(card.ShowsActions);
+        Assert.Equal("selected", Assert.Single(card.StagedChanges).Change.ChangeId);
+        var textToken = Assert.Single(inText.Texts[0].Lines[0].Tokens);
+        Assert.True(textToken.HasStagedChanges);
+        Assert.Equal("homograph", Assert.Single(textToken.StagedChanges).Change.ChangeId);
+    }
+
+    [Fact]
+    public async Task StandaloneWordCardShowsAndUndoesAChangeForOnlyItsWordform()
+    {
+        var selectedId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000098");
+        var homographId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var line = new TextLine(1, [Word("kitabu", null) with { WordformId = homographId }])
+            { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true };
+        var (inText, _, client) = await Loaded(sourceTexts: [new TextLines(TextId, "Alpha", [line])]);
+
+        inText.SelectWord("kitabu", CanonicalId.FromGuid(selectedId).Value);
+        await inText.AddChangeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+
+        var card = inText.SelectedToken!;
+        var staged = Assert.Single(card.StagedChanges).Change;
+        Assert.True(card.IsPending);
+        Assert.Equal(CanonicalId.FromGuid(selectedId).Value, Assert.Single(client.PendingPutRequests).Change.WordformId);
+        Assert.False(Assert.Single(inText.Texts[0].Lines[0].Tokens).IsPending);
+
+        await inText.Changes.RemoveCommand.ExecuteAsync(staged);
+
+        Assert.False(card.HasStagedChanges);
+        Assert.True(card.ShowsActions);
+        Assert.False(card.IsPending);
+        Assert.Equal(staged.ChangeId, Assert.Single(client.PendingRemoveRequests).ChangeId);
+        Assert.False(Assert.Single(inText.Texts[0].Lines[0].Tokens).IsPending);
+    }
+
     [Theory]
     [InlineData(ChangeKinds.IncorrectSpelling)]
     [InlineData(ChangeKinds.AddCandidate)]

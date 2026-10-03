@@ -301,7 +301,7 @@ public sealed class StatisticsViewModelTests
     }
 
     [Fact]
-    public async Task AWordsCompletionComesFromTheAssessmentSoBothViewsCountTheSameWords()
+    public async Task StatisticsCompletionUsesItsOwnRowsWhenAssessmentCompletionDisagrees()
     {
         var (fake, statistics) = NewViewModel();
         var words = new AssessWordsViewModel();
@@ -310,7 +310,8 @@ public sealed class StatisticsViewModelTests
             new AssessmentWordResult("slow", "timed-out", true, "INCOMPLETE — parsing did not finish (time limit)", 1000, null),
             new AssessmentWordResult("quick", "analysed", false, "Search completed", 3, null),
         ]);
-        statistics.AssessedWord = words.Find;
+        Func<string, AssessWordRowViewModel?> assessmentLookup = words.Find;
+        typeof(StatisticsViewModel).GetProperty("AssessedWord")?.SetValue(statistics, assessmentLookup);
         // The statistics pass parsed again and finished "slow", then ran out of time on "quick".
         fake.StatsCompletesWith(RowsResponse(
             """{"form":"slow","attempts":9,"passes":0,"elapsed_ns":1000000000,"capped":false,"timed_out":false}""",
@@ -318,8 +319,8 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.True(statistics.Rows.Single(row => row.Word == "slow").IsIncomplete);
-        Assert.False(statistics.Rows.Single(row => row.Word == "quick").IsIncomplete);
+        Assert.False(statistics.Rows.Single(row => row.Word == "slow").IsIncomplete);
+        Assert.True(statistics.Rows.Single(row => row.Word == "quick").IsIncomplete);
         Assert.Equal(1, statistics.IncompleteCount);
         Assert.False(statistics.AnyPasses);
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
@@ -329,13 +330,6 @@ public sealed class StatisticsViewModelTests
     public async Task StoppedStatisticsDoNotAddAnotherSlowestWordSummary()
     {
         var (fake, statistics) = NewViewModel();
-        var words = new AssessWordsViewModel();
-        words.Load(
-        [
-            new AssessmentWordResult("stopped", "timed-out", true,
-                "INCOMPLETE — parsing did not finish (step limit)", 700, null),
-        ]);
-        statistics.AssessedWord = words.Find;
         fake.StatsCompletesWith(RowsResponse(
             """{"form":"stopped","attempts":5,"elapsed_ns":700000000,"capped":true,"timed_out":false}"""));
 
@@ -349,13 +343,6 @@ public sealed class StatisticsViewModelTests
     public async Task ANoParseWithNoLimitIsNotCountedAsStopped()
     {
         var (fake, statistics) = NewViewModel();
-        var words = new AssessWordsViewModel();
-        words.Load(
-        [
-            new AssessmentWordResult("no-parse", "no-analysis", false,
-                "INCOMPLETE — step limit", 48, null),
-        ]);
-        statistics.AssessedWord = words.Find;
         fake.StatsCompletesWith(RowsResponse(
             """{"form":"no-parse","attempts":148,"elapsed_ns":48000000,"capped":false,"timed_out":false}"""));
 

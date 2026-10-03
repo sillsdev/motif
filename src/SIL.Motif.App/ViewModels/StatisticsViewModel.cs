@@ -117,11 +117,6 @@ public sealed partial class StatisticsViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasTimingOverrides;
 
-    /// <summary>
-    /// Looks up a word in the Assessment these statistics came from, so a word's completion here is the same
-    /// answer Results gives.
-    /// </summary>
-    public Func<string, AssessWordRowViewModel?>? AssessedWord { get; set; }
 
     /// <summary>Whether any fetched row needed more than one pass; when none did, the column says nothing.</summary>
     public bool AnyPasses => ScopeRows.Any(row => row.Passes is > 0);
@@ -297,10 +292,6 @@ public sealed partial class StatisticsViewModel : ObservableObject
                     _allRows.Add(new StatsRowViewModel(row));
             }
             RefreshShading();
-            if (AssessedWord is { } assessed)
-                foreach (var row in _allRows)
-                    if (row.Word is { } word && assessed(word) is { } result)
-                        row.UseAssessment(result.StoppedAtALimit, result.Outcome != "skipped", result.CompletionStatus);
             RaiseSummary();
             IsStale = false;
             HasLoaded = true;

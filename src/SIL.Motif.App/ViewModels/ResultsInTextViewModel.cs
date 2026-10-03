@@ -442,6 +442,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         selected.PropertyChanged += OnTokenPropertyChanged;
         AttachTokenActions(selected);
         SelectToken(selected);
+        RefreshPendingMarkers();
     }
 
     partial void OnSelectedTextChanged(ResultsTextViewModel? value)
@@ -961,7 +962,13 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void RefreshPendingMarkers()
     {
-        foreach (var token in Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord))
+        var tokens = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
+            .Where(token => token.IsWord).ToArray();
+        if (SelectedToken is { IsWord: true } selected &&
+            !tokens.Any(token => ReferenceEquals(token, selected)))
+            tokens = [.. tokens, selected];
+
+        foreach (var token in tokens)
         {
             var relevant = _changes.Items.Where(change => change.Addresses(token)).ToArray();
             token.PendingState = PendingChangeStates.FromChanges(relevant);
