@@ -1,7 +1,10 @@
 using System.Security.Cryptography;
+using SIL.LCModel;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -59,10 +62,30 @@ public sealed class TextInventoryQueryTests : IDisposable
         var choice = Assert.Single(outcome.Value!.Texts);
         Assert.Equal(seededText.TextId, choice.Id);
         Assert.Equal(SeededProject.TextTitle, choice.Title);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath))
+            Assert.Equal(TextOccurrenceReader.Read(cache, [seededText.TextId]).OccurrencesByWord.Count,
+                choice.WordCount);
         using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(choice));
         Assert.True(json.RootElement.TryGetProperty("InterlinearizationPercent", out var share));
         Assert.Equal(50d, share.GetDouble());
         Assert.Equal(before, ManifestOf(baselineDirectory));
+    }
+
+    [Fact]
+    public void ATextWithNoNameGetsTheSameUntitledLabelInBothTextLists()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var seededText = WriteTextOnto(fwDataPath, clearName: true);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot());
+        Assert.True(captured.Succeeded);
+
+        var inventory = TextInventoryQuery.Query(new TextInventoryRequest(fwDataPath));
+        var textWords = TextWordsQuery.Query(new TextWordsRequest(fwDataPath, [seededText.TextId]));
+
+        Assert.True(inventory.Succeeded, inventory.Refusal?.Message);
+        Assert.True(textWords.Succeeded, textWords.Refusal?.Message);
+        Assert.Equal("(Untitled Text)", Assert.Single(inventory.Value!.Texts).Title);
+        Assert.Equal("(Untitled Text)", Assert.Single(textWords.Value!.Texts).Title);
     }
 
     [Fact]
@@ -81,10 +104,20 @@ public sealed class TextInventoryQueryTests : IDisposable
         Assert.Empty(outcome.Value!.Texts);
     }
 
-    private SeededText WriteTextOnto(string fwDataPath)
+    private SeededText WriteTextOnto(string fwDataPath, bool clearName = false)
     {
         using var cache = new FwDataProjectLoader().LoadScratchCache(fwDataPath);
         var seededText = SeededProject.SeedText(cache, _pristine.Seed);
+        if (clearName)
+        {
+            var text = cache.ServiceLocator.GetInstance<ITextRepository>()
+                .GetObject(seededText.TextId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var writingSystem in text.Name.AvailableWritingSystemIds.ToArray())
+                    text.Name.set_String(writingSystem, string.Empty);
+            });
+        }
         new FwDataProjectLoader().Save(cache);
         return seededText;
     }

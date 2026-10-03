@@ -204,6 +204,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private bool _hasBaseline = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
     private bool _isLoading;
 
     [ObservableProperty]
@@ -216,13 +217,14 @@ public sealed partial class TextWordsViewModel : ObservableObject
     [ObservableProperty]
     private int _approvedCount;
 
-    public int WordCount => _all.Count;
+    public int WordCount => _all.Select(row => row.Form).Distinct(StringComparer.Ordinal).Count();
 
-    public string SummaryText => WordCount == 0
+    public string SummaryText => IsLoading ? "Reading words in selected texts…"
+        : WordCount == 0
         ? _selection.PastedWordEntries.Count is var pasted and > 0
             ? $"{pasted} pasted word{(pasted == 1 ? string.Empty : "s")} to test; check a text to see its words here"
             : "No words to test yet"
-        : $"{WordCount} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
+        : $"{WordCount:N0} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount:N0} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
 
     public int AllCount => _all.Count;
     public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);

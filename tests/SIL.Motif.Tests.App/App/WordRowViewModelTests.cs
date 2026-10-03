@@ -215,6 +215,16 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
+    public void AnUnparsedWordUsesItsOnlyFieldWorksGlossAsItsMeaning()
+    {
+        var row = WordRowViewModel.NotParsed("kitabu", ProjectStanding.Approved,
+            [new ParserReadingMorph("kitabu", "book", "n", null, false, null)]);
+
+        Assert.Equal("book", row.Meaning);
+        Assert.Equal("Not parsed", row.OutcomeWord);
+    }
+
+    [Fact]
     public void AnUnreadWordSaysSo_AndAReadOneShowsNothing()
     {
         var (words, _, _) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);

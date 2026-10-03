@@ -665,6 +665,47 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
+    public void SwitchingTextsReturnsTheReaderToTheFirstLine()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(parse: false);
+            try
+            {
+                var firstId = Guid.NewGuid();
+                var secondId = Guid.NewGuid();
+                TextLines Text(Guid id, string title) => new(id, title,
+                    Enumerable.Range(1, 80).Select(number => new TextLine(number,
+                        [new TextToken($"word{number}", $"word{number}", null, "unanalysed")])).ToArray());
+                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
+                fake.ListTextWordsCompletesWith(new TextWordsResponse([],
+                    [Text(firstId, "First"), Text(secondId, "Second")], HasBaseline: true, OccurrenceCount: 160));
+                var page = workspace.PageModel<TextsPageModel>();
+                await page.Words.ReloadAsync();
+                window.Height = 320;
+                Settle(window);
+
+                var panel = Panel(window);
+                var viewer = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(), candidate =>
+                    candidate.IsEffectivelyVisible && candidate.Content is ItemsControl);
+                Assert.True(viewer.Extent.Height > viewer.Viewport.Height);
+                viewer.Offset = new Vector(0, viewer.Extent.Height);
+                Settle(window);
+                Assert.True(viewer.Offset.Y > 0);
+
+                page.ResultsInText.SelectedText = page.ResultsInText.Texts[1];
+                Settle(window);
+
+                Assert.Equal(0, viewer.Offset.Y);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
     public void UnbrokenCombiningAndRightToLeftFormsRetainTextWithMeasuredBounds()
     {
         string[] forms = [new string('m', 180), "e\u0301lan", "עברית־מילים"];

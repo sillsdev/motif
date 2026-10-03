@@ -50,6 +50,6 @@ public sealed partial class TextChoiceViewModel : ObservableObject
     private int? _distinctWordCount;
 
     public string CountsText => OccurrenceCount is { } occurrences && DistinctWordCount is { } distinct
-        ? $"{occurrences} words · {distinct} distinct"
+        ? $"{occurrences:N0} words · {distinct:N0} distinct"
         : string.Empty;
 }

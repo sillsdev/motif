@@ -88,21 +88,18 @@ public static class TextInventoryQuery
             var value = text.Name.get_String(ws)?.Text;
             if (!string.IsNullOrEmpty(value)) return value;
         }
-        return string.Empty;
+        return "(Untitled Text)";
     }
 
     private static TextChoiceSummary ReadChoice(LcmCache cache, IText text)
     {
-        var projection = InterlinearTextReader.Read(cache, text);
-        var words = projection.Paragraphs.SelectMany(paragraph => paragraph.Phrases)
-            .SelectMany(phrase => phrase.Words).Where(word => word.WordformGuid is not null).ToArray();
-        var interlinearized = words.Where(word => word.AnalysisStatus != InterlinearAnalysisStatus.Unanalysed).ToArray();
-        var wordCount = words.Select(word => word.WordformGuid!.Value).Distinct().Count();
-        var interlinearizedWordCount = interlinearized.Select(word => word.WordformGuid!.Value).Distinct().Count();
+        var occurrences = TextOccurrenceReader.Read(cache, [text.Guid]);
+        var wordCount = occurrences.OccurrencesByWord.Count;
+        var interlinearizedWordCount = occurrences.InterlinearizedOccurrencesByWord.Count;
         return new TextChoiceSummary(text.Guid, ReadTitle(text),
             wordCount,
             interlinearizedWordCount,
-            words.Length, interlinearized.Length)
+            occurrences.TotalOccurrences, occurrences.InterlinearizedOccurrences)
         {
             InterlinearizationPercent = wordCount == 0
                 ? 0

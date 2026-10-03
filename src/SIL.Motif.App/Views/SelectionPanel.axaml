@@ -36,6 +36,7 @@
               <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}"
                          Margin="{DynamicResource Component.TextsPage.CountIndent}"
+                         TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding CountsText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
             </StackPanel>
           </DataTemplate>

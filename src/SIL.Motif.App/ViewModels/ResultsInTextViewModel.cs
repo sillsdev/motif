@@ -201,7 +201,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public bool HasSelectedToken => SelectedToken is not null;
 
     public int CheckedWordCount => _allWords.Count(token => token.IsSelectedForActions);
-    public string CheckedWordCountLabel => $"Selected {CheckedWordCount} of {AllCount} words";
+    public string CheckedWordCountLabel => $"Selected {CheckedWordCount:N0} of {AllCount:N0} words";
 
     public bool HasCheckedWords => CheckedWordCount > 0;
 
@@ -249,11 +249,11 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     public int ChosenTextsAnalysisCount => StoredAnalysisIds(_allWords).Count;
     public int SelectedTextWordCount => SelectedTextWords().Count();
     public string ScopeCountSummary =>
-        $"{SelectedTextWordCount} words in this Text · {AllCount} words in all chosen Texts";
+        $"{SelectedTextWordCount:N0} words in this Text · {AllCount:N0} words in all chosen Texts";
     public bool HasSelectedTextAnalyses => SelectedTextAnalysisCount > 0;
     public bool HasChosenTextAnalyses => ChosenTextsAnalysisCount > 0;
-    public string SelectedTextRemoveHeader => $"Preview removal from this Text ({SelectedTextAnalysisCount})";
-    public string ChosenTextsRemoveHeader => $"Preview removal in all chosen Texts ({ChosenTextsAnalysisCount})";
+    public string SelectedTextRemoveHeader => $"Preview removal from this Text ({SelectedTextAnalysisCount:N0})";
+    public string ChosenTextsRemoveHeader => $"Preview removal in all chosen Texts ({ChosenTextsAnalysisCount:N0})";
     public string SelectedTextRemovalPreview => RemovalUsesPreview(SelectedTextWords());
     public string ChosenTextsRemovalPreview => RemovalUsesPreview(_allWords);
 
@@ -509,11 +509,15 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var projectWords = _texts.ProjectWords.Where(row => row.WordformId is not null)
             .ToDictionary(row => (row.WordformId!.Value, row.Form));
+        var projectWordsByIdentity = _texts.ProjectWords.Where(row => row.WordformId is not null)
+            .GroupBy(row => row.WordformId!.Value)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<TextWordRowViewModel>)group.ToArray());
 
         Texts.Clear();
         if (_texts.Response is { } response)
         {
-            foreach (var text in response.Texts) Texts.Add(new ResultsTextViewModel(text, results, projectWords));
+            foreach (var text in response.Texts)
+                Texts.Add(new ResultsTextViewModel(text, results, projectWords, projectWordsByIdentity));
         }
         foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
@@ -1018,14 +1022,15 @@ public sealed record TextOccurrenceLocation(int TextOrder, int LineOrder, int Wo
 public sealed class ResultsTextViewModel
 {
     public ResultsTextViewModel(TextLines text, IReadOnlyDictionary<string, AssessmentWordResult> results,
-        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null)
+        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
         TextId = text.TextId;
         Title = text.Title;
         Lines = text.Lines.Select(line => new ResultsLineViewModel(
-            text.Title, line, results, projectWords, text.TextId)).ToArray();
+            text.Title, line, results, projectWords, text.TextId, projectWordsByIdentity)).ToArray();
     }
 
     public string Title { get; }
@@ -1051,7 +1056,9 @@ public sealed class ResultsLineViewModel : ObservableObject
     }
 
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
-        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null, Guid textId = default)
+        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null,
+        Guid textId = default,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
@@ -1060,15 +1067,26 @@ public sealed class ResultsLineViewModel : ObservableObject
         SegmentId = line.SegmentId;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
             token.Form is { } form && results.TryGetValue(form, out var result) ? result : null,
-            token.WordformId is { } wordformId && token.Form is { } projectForm && projectWords is not null &&
-                projectWords.TryGetValue((wordformId, projectForm), out var projectWord)
-                ? projectWord : null,
+            ProjectWord(token, projectWords, projectWordsByIdentity),
             occurrence: token.Form is not null && textId != Guid.Empty && line.ParagraphId != Guid.Empty &&
                 line.SegmentId != Guid.Empty && token.OccurrenceIndex >= 0
                     ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
                     : null,
             textId: textId)).ToArray();
         foreach (var token in Tokens) token.PropertyChanged += OnTokenPropertyChanged;
+    }
+
+    private static TextWordRowViewModel? ProjectWord(TextToken token,
+        IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity)
+    {
+        if (token.WordformId is not { } wordformId) return null;
+        if (token.Form is { } form && projectWords is not null &&
+            projectWords.TryGetValue((wordformId, form), out var matching))
+            return matching;
+        if (projectWordsByIdentity is null || !projectWordsByIdentity.TryGetValue(wordformId, out var rows))
+            return null;
+        return rows.FirstOrDefault(row => row.Form == token.Form) ?? rows.FirstOrDefault();
     }
 
     public int Number { get; }

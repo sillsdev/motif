@@ -312,7 +312,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         return string.Join(", ", parts);
     }
 
-    private static string Pluralize(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count} {noun}s";
+    private static string Pluralize(int count, string noun) => count == 1 ? $"1 {noun}" : $"{count:N0} {noun}s";
 
     private static IReadOnlyList<string> SplitPastedWords(string pastedWords) =>
         pastedWords.Replace("\r\n", "\n").Split('\n')

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Threading;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -132,6 +133,51 @@ public sealed class SetupRefusalViewTests
                 Assert.DoesNotContain(numbers, number =>
                     Avalonia.Automation.AutomationProperties.GetName(number) == "Time limit per word, in seconds");
                 Assert.Single(numbers);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void TheSetupTextCountUsesEllipsisWhenItsColumnRunsOutOfRoom()
+    {
+        WorkspaceShellViewModel? workspace = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var projectPicker = new FakeProjectPicker();
+            var selection = new SelectionViewModel(fake);
+            workspace = new WorkspaceShellViewModel(
+                new ProjectViewModel(fake, projectPicker), new BaselineViewModel(fake), selection,
+                new AssessViewModel(fake, selection), new FakeFolderPicker(), new FakeDragSource(), fake);
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, Saved, false)
+            {
+                ProjectLastWriteUtc = Saved,
+            });
+            fake.ListTextsCompletesWith(new TextInventoryResponse(
+                [new TextChoiceSummary(Guid.NewGuid(), "Alpha", 96)], HasBaseline: true));
+            projectPicker.PathToReturn = ProjectPath;
+            await workspace.Project.BrowseCommand.ExecuteAsync(null);
+        }, TimeSpan.FromSeconds(10));
+
+        _avalonia.Invoke(() =>
+        {
+            var setup = workspace!.Context.Setup!;
+            setup.Step = 1;
+            var dialog = new SetupDialog { DataContext = setup };
+            var window = new Window { Content = dialog, Width = 480, Height = 650 };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+
+                var count = Assert.Single(dialog.GetLogicalDescendants().OfType<TextBlock>(),
+                    block => block.Text == "96 distinct");
+                Assert.Equal(TextTrimming.CharacterEllipsis, count.TextTrimming);
             }
             finally
             {

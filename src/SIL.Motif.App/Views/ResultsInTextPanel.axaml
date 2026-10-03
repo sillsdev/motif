@@ -171,7 +171,7 @@
         <Button Content="Choose texts" HorizontalAlignment="Left" IsVisible="{Binding InText.NeedsTexts}"
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
-      <ScrollViewer Grid.Row="2" IsVisible="{Binding InText.HasLines}">
+      <ScrollViewer Grid.Row="2" x:Name="TextScrollViewer" IsVisible="{Binding InText.HasLines}">
         <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
@@ -367,7 +367,9 @@
                             <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
                                              VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}">
-                              <TextBlock Text="{Binding WordLinkText}" TextWrapping="Wrap" />
+                              <TextBlock Text="{Binding WordLinkText}" TextWrapping="NoWrap"
+                                         TextTrimming="CharacterEllipsis"
+                                         AutomationProperties.Name="{Binding WordLinkText}" />
                             </HyperlinkButton>
                           </DockPanel>
                         </Border>

@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Globalization;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -334,6 +335,55 @@ public sealed class TextWordsViewModelTests
         await words.ReloadAsync();
 
         Assert.Equal("1 word · 17 places", words.SummaryText);
+    }
+
+    [Fact]
+    public async Task SelectingTextsShowsItsWordCountAfterTheReadAndCountsSpellingsOnce()
+    {
+        var (fake, selection, words) = NewViewModel();
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([], [], HasBaseline: true));
+        await words.SetProjectAsync(ProjectPath);
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        await selection.SetProjectAsync(ProjectPath);
+        var pending = new TaskCompletionSource<CommandOutcome<TextWordsResponse>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnListTextWords((_, _) => pending.Task);
+
+        selection.Texts[0].IsChecked = true;
+
+        Assert.Equal("Reading words in selected texts…", words.SummaryText);
+        var firstId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var secondId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000099");
+        var sameForm = new TextWord("kitabu", firstId.ToString("D"),
+            [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "unanalysed", null)], [], []);
+        var otherIdentity = sameForm with
+        {
+            WordformGuid = secondId.ToString("D"),
+            Occurrences = [new WordOccurrence(TextId, "Alpha", 2, "kitabu", "unanalysed", null)],
+        };
+        pending.SetResult(CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(
+            [sameForm, otherIdentity], [], HasBaseline: true, OccurrenceCount: 2)));
+        await words.ReloadCommand.ExecutionTask!;
+
+        Assert.Equal(2, words.Rows.Count);
+        Assert.Equal(1, words.WordCount);
+        Assert.Equal("1 word · 2 places", words.SummaryText);
+    }
+
+    [Fact]
+    public async Task TheSummaryUsesThousandsSeparatorsForWordsAndPlaces()
+    {
+        var (fake, _, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        var rows = Enumerable.Range(0, 1000).Select(index => new TextWord($"word{index}", null,
+            [new WordOccurrence(TextId, "Alpha", index + 1, $"word{index}", "unanalysed", null)], [], [])).ToArray();
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(rows, [], HasBaseline: true, OccurrenceCount: 1200));
+
+        await words.ReloadAsync();
+
+        Assert.Equal($"{1000.ToString("N0", CultureInfo.CurrentCulture)} words · " +
+            $"{1200.ToString("N0", CultureInfo.CurrentCulture)} places", words.SummaryText);
     }
 
     [Fact]

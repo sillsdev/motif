@@ -177,7 +177,7 @@ public static class TextWordsProjectionBuilder
             var value = text.Name.get_String(writingSystem)?.Text;
             if (!string.IsNullOrEmpty(value)) return value;
         }
-        return string.Empty;
+        return "(Untitled Text)";
     }
 
     private const int IncorrectSpellingStatus = 2;

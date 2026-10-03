@@ -72,7 +72,8 @@
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                           <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Classes="setupMuted" Text="{Binding DistinctCountText}"
+                                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="3" Classes="setupCoverage" Text="{Binding InterlinearizedText}" VerticalAlignment="Center" />
                         </Grid>
                       </Border>

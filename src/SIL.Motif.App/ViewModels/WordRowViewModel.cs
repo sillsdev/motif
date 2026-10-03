@@ -180,7 +180,8 @@ public sealed partial class WordRowViewModel : ObservableObject
     public string OutcomeLabel => HasPanGlossMorphemes ? string.Empty : OutcomeWord;
 
     /// <summary>What the opinion and outcome mean together, using the Matrix cell's words.</summary>
-    public string Meaning => HasRefusalReason ? ParserRefusals.Title : WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
+    public string Meaning => HasRefusalReason ? ParserRefusals.Title
+        : _notParsedYet && Gloss.Length > 0 ? Gloss : WindowWords.MeaningOf(_row.Opinion, Outcome).Word;
 
     /// <summary>Recorded comparison detail that qualifies the cell's meaning without changing its wording.</summary>
     public string MeaningDetail => string.Join("; ", new[]

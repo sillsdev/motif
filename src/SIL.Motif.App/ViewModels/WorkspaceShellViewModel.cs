@@ -626,13 +626,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         var generation = _refreshGeneration;
         await Selection.LoadTextsAsync(path).ConfigureAwait(true);
         if (!IsCurrentRefresh(generation, path)) return;
-        await Context.PublishBaselineCapturedAsync().ConfigureAwait(true);
+        await Context.PublishBaselineCapturedAsync(openFirstRunSetup: !_isRefreshing).ConfigureAwait(true);
     }
 
     private async Task RefreshAsync()
     {
         var generation = ++_refreshGeneration;
         var projectPath = Context.ProjectPath;
+        var publishSetupAfterRefresh = false;
         _isRefreshing = true;
         _refreshed = false;
         RaiseFreshness();
@@ -646,6 +647,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             if (!ProjectReconciliationMarker.Exists(projectPath) || ProjectReconciliationMarker.Clear(projectPath))
                 PageModel<ReviewPageModel>().ClearReconciliationNeeded();
             _refreshed = true;
+            publishSetupAfterRefresh = true;
         }
         finally
         {
@@ -653,6 +655,11 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             {
                 _isRefreshing = false;
                 RaiseFreshness();
+                if (publishSetupAfterRefresh && IsCurrentRefresh(generation, projectPath))
+                {
+                    if (Context.Setup is { } setup)
+                        await setup.BaselineCapturedAsync().ConfigureAwait(true);
+                }
             }
         }
     }

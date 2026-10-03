@@ -44,6 +44,6 @@ public static class ProjectSummaryReader
             var value = text.Name.get_String(writingSystem)?.Text;
             if (!string.IsNullOrEmpty(value)) return value;
         }
-        return string.Empty;
+        return "(Untitled Text)";
     }
 }

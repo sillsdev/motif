@@ -676,6 +676,29 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
+    public async Task FirstRunSetupOpensAfterTheRefreshLineStopsSayingItIsCapturing()
+    {
+        var (fake, _, _, _, workspace) = NewWorkspace();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken(), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        fake.ListTextsCompletesWith(new TextInventoryResponse(
+            [new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        var refreshWasRunningWhenSetupOpened = true;
+        workspace.Context.Setup!.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SetupViewModel.IsOpen) && workspace.Context.Setup.IsOpen)
+                refreshWasRunningWhenSetupOpened = workspace.Freshness == ProjectFreshness.Refreshing;
+        };
+
+        await workspace.SetProjectAsync(ProjectPath);
+
+        Assert.True(workspace.Context.Setup.IsOpen);
+        Assert.False(refreshWasRunningWhenSetupOpened);
+        Assert.NotEqual(ProjectFreshness.Refreshing, workspace.Freshness);
+    }
+
+    [Fact]
     public async Task ConfigureOpensSetupAfterTheFirstOpenCapturedItsBaseline()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();

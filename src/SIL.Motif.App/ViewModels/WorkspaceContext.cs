@@ -389,9 +389,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>
     /// Reloads the current Draft, rechecks it when nonempty, then refreshes Baseline evidence and pages.
     /// </summary>
-    public async Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default)
+    public Task PublishBaselineCapturedAsync(CancellationToken cancellationToken = default) =>
+        PublishBaselineCapturedAsync(openFirstRunSetup: true, cancellationToken);
+
+    internal async Task PublishBaselineCapturedAsync(bool openFirstRunSetup,
+        CancellationToken cancellationToken = default)
     {
-        if (Setup is not null) await Setup.BaselineCapturedAsync().ConfigureAwait(true);
+        if (openFirstRunSetup && Setup is not null)
+            await Setup.BaselineCapturedAsync().ConfigureAwait(true);
         await Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         if (Changes.Count > 0)
             await Changes.RecheckAsync(cancellationToken).ConfigureAwait(true);

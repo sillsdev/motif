@@ -14,6 +14,7 @@ public sealed partial class ResultsInTextPanel : UserControl
 {
     private readonly List<Control> _visibilityAncestors = [];
     private readonly ItemsControl _lineItems;
+    private readonly ScrollViewer _textScrollViewer;
 
     public ResultsInTextPanel(ResultsInTextViewModel inText)
     {
@@ -22,10 +23,19 @@ public sealed partial class ResultsInTextPanel : UserControl
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
         _lineItems = this.FindControl<ItemsControl>("TextLineItems")!;
+        _textScrollViewer = this.FindControl<ScrollViewer>("TextScrollViewer")!;
         InText.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ResultsInTextViewModel.SelectedToken) && InText.SelectedToken is { } token)
                 Dispatcher.UIThread.Post(() => FocusCard(token), DispatcherPriority.Loaded);
+            else if (e.PropertyName == nameof(ResultsInTextViewModel.SelectedText))
+            {
+                var selectedText = InText.SelectedText;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (ReferenceEquals(selectedText, InText.SelectedText)) _textScrollViewer.Offset = Vector.Zero;
+                }, DispatcherPriority.Loaded);
+            }
         };
     }
 

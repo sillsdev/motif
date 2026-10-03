@@ -901,6 +901,29 @@ public sealed class ResultsInTextViewModelTests
     }
 
     [Fact]
+    public async Task ProjectFactsFallBackToWordformIdentityWhenTheTextSpellingDiffers()
+    {
+        var ownId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000011");
+        var stored = Stored(Book, "book");
+        var token = Word("kitabu", stored) with { WordformId = ownId };
+        var projectWord = new TextWord("alternate spelling", ownId.ToString("D"),
+            [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "approved", stored)], [stored], [])
+        {
+            Analyses = [stored],
+        };
+        var (inText, _, _) = await Loaded(sourceLines:
+            [new TextLine(1, [token]) { ParagraphId = ParagraphId, SegmentId = SegmentId, ParseIsCurrent = true }],
+            projectWords: [projectWord]);
+
+        var shown = Assert.Single(inText.VisibleLines[0].Tokens);
+
+        Assert.Equal("Approved", shown.ProjectStatusLabel);
+        Assert.Equal("book", shown.ProjectSummary);
+        Assert.Single(shown.ProjectApprovedAnalyses);
+        Assert.True(shown.HasFieldWorksAnalyses);
+    }
+
+    [Fact]
     public async Task EvidenceRefreshKeepsTheSelectedTextIdentityWhenTitlesAreEqual()
     {
         Func<Task>? reload = null;
