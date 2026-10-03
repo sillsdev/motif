@@ -125,10 +125,39 @@ public sealed class HandoffWriterTests : IDisposable
         var trace = record.GetProperty("trace");
         Assert.Equal("traces/" + selectedWord + ".trace.json", trace.GetProperty("file").GetString());
         var summary = trace.GetProperty("summary");
-        Assert.Equal("unknown", summary.GetProperty("completion").GetString());
         Assert.Equal(42, summary.GetProperty("parserSteps").GetInt32());
         using var rawTrace = JsonDocument.Parse(File.ReadAllText(tracePath));
         Assert.Equal(selectedWord, rawTrace.RootElement.GetProperty("word").GetString());
+        Assert.True(rawTrace.RootElement.GetProperty("search").GetProperty("completed").GetBoolean());
+        Assert.Equal("complete", summary.GetProperty("completion").GetString());
+    }
+
+    [Theory]
+    [InlineData(false, false, "complete")]
+    [InlineData(true, false, "incomplete")]
+    [InlineData(false, true, "not-run")]
+    public void AssessedTraceSummaryMatchesItsAttachedDiagnosticCompletion(
+        bool capped, bool invalidShape, string expectedCompletion)
+    {
+        var diagnostic = TraceEnvelope.Of("", tree: null, capped: capped, invalidShape: invalidShape);
+        var loaded = WordTraceQuery.LoadDiagnostic(diagnostic);
+        Assert.True(loaded.Succeeded, loaded.Refusal?.Message);
+        var root = Path.Combine(_root, "handoff-summary-" + expectedCompletion);
+        Directory.CreateDirectory(root);
+
+        HandoffWriter.WriteAssessmentJson(root,
+            [new HandoffWriter.AssessedWordStatistics("sagd", "no-analysis", null, null)], loaded.Value);
+
+        using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parse-results.json")));
+        using var rawTrace = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "traces", "sagd.trace.json")));
+        var search = rawTrace.RootElement.GetProperty("search");
+        var expectedFromDiagnostic = search.GetProperty("invalidShape").GetBoolean() ? "not-run"
+            : search.GetProperty("completed").GetBoolean() ? "complete" : "incomplete";
+        var summary = Assert.Single(assessment.RootElement.EnumerateArray())
+            .GetProperty("trace").GetProperty("summary");
+
+        Assert.Equal(expectedCompletion, expectedFromDiagnostic);
+        Assert.Equal(expectedFromDiagnostic, summary.GetProperty("completion").GetString());
     }
 
     [Fact]

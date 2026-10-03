@@ -219,7 +219,13 @@ public static class HandoffWriter
         {
             ["outcome"] = trace.InvalidShape ? "invalid-shape" : trace.Parsed ? "parsed" : "no-analysis-recorded",
             ["parserSteps"] = trace.ParserSteps is { } steps ? JsonValue.Create(steps) : null,
-            ["completion"] = trace.InvalidShape ? "not-run" : trace.Complete ? "unknown" : "incomplete",
+            ["completion"] = trace.SearchCompletion switch
+            {
+                TraceSearchCompletion.Complete => "complete",
+                TraceSearchCompletion.Incomplete => "incomplete",
+                TraceSearchCompletion.InvalidShape => "not-run",
+                _ => "unknown",
+            },
             ["failureReasons"] = JsonSerializer.SerializeToNode(reasons.ToArray()),
             ["deepestRule"] = trace.DeepestRule,
         };
@@ -277,8 +283,8 @@ public static class HandoffWriter
             ? "This is the exact diagnostic selected from Try a Word, kept unchanged with the Baseline it records. " +
               "No Assessment or replacement trace was run for this Handoff."
             : "The matching `trace.summary` in `parse-results.json` gives recorded parser steps and failure reasons. " +
-              "Completion is `unknown` when the parser did not report whether its step cap stopped the search; " +
-              "an invalid shape records `not-run`.";
+              "Completion is `complete` when the diagnostic records a finished search, `incomplete` when it records " +
+              "a stopped trace, and `not-run` for invalid shape; `unknown` means no completion fact was recorded.";
         var traceSection = hasTrace
             ? $"""
 
@@ -301,7 +307,8 @@ public static class HandoffWriter
                 One record per Selection word, each carrying its own `word` field: the outcome PanGloss
                 reported (`analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`) and how long the
                 batch pass took. A one-word Handoff also links its raw trace file and summary from that
-                word's record. The summary keeps completion unknown when PanGloss did not record it. See
+                word's record. Its completion follows the raw diagnostic: `complete`, `incomplete`, `not-run` for
+                invalid shape, or `unknown` when no completion fact was recorded. See
                 https://raw.githubusercontent.com/sillsdev/motif/{MotifRef}/docs/handoff/assessment-format.md.
 
                 ```

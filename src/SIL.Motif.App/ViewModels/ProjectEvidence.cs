@@ -26,9 +26,10 @@ public enum NumbersFreshness
 /// it for itself.
 /// </summary>
 /// <remarks>
-/// Two things feed it, both through <see cref="WorkspaceContext"/>: the stored read model, which the context loads
-/// when a project opens, after each Refresh and when a person comes back to the window, and a completed in-session
-/// run. A stored read replaces the Assessment on screen only when it holds a different one: a stored Assessment
+/// Three things feed it through <see cref="WorkspaceContext"/>: the stored read model, which the context loads when
+/// a project opens, after each Refresh and when a person comes back to the window; a completed in-session run; and
+/// a matching word-context query's comparison with the live save. A stored read replaces the Assessment on screen
+/// only when it holds a different one: a stored Assessment
 /// whose words changed, or one recorded after the run this window shows, as when an agent ran it from the command
 /// line. An identical effective evidence set preserves this window's fresh result; explicit replacements
 /// change the set even when the root run is unchanged. A successful Refresh restores stored evidence only when it
@@ -47,6 +48,7 @@ public sealed class ProjectEvidence : ObservableObject
     private CurrentEvidenceSnapshot? _stored;
     private WorkspaceBaseline? _baseline;
     private bool _appliedSinceRefresh;
+    private bool _wordContextIsStale;
 
     internal ProjectEvidence()
     {
@@ -70,7 +72,19 @@ public sealed class ProjectEvidence : ObservableObject
     public WorkspaceBaseline? Baseline
     {
         get => _baseline;
-        internal set => Set(ref _baseline, value);
+        internal set
+        {
+            var priorToken = _baseline?.Token;
+            Set(ref _baseline, value);
+            if (priorToken != value?.Token) WordContextIsStale = false;
+        }
+    }
+
+    /// <summary>Whether a matching Try a Word query found a save newer than the current Baseline.</summary>
+    internal bool WordContextIsStale
+    {
+        get => _wordContextIsStale;
+        private set => Set(ref _wordContextIsStale, value);
     }
 
     /// <summary>Whether changes were applied to the FieldWorks project since the numbers were measured.</summary>
@@ -117,6 +131,7 @@ public sealed class ProjectEvidence : ObservableObject
     /// </summary>
     public NumbersFreshness Freshness =>
         AppliedSinceRefresh ? NumbersFreshness.AppliedSince
+        : WordContextIsStale ? NumbersFreshness.SavedSince
         : EvidenceFreshnessRule.Of(Baseline?.HasBaseline == true ? Baseline.SourceLastWriteUtc : null,
                 MeasuredSaveUtc, LatestSaveUtc) switch
             {
@@ -145,6 +160,15 @@ public sealed class ProjectEvidence : ObservableObject
         Assessment = null;
         Stored = null;
         AppliedSinceRefresh = false;
+        WordContextIsStale = false;
+    }
+
+    /// <summary>Uses a word query's live comparison when it names the current Baseline.</summary>
+    internal void ObserveWordContext(WordContextResponse context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (context.HasBaseline && context.Baseline is { } token && token == Baseline?.Token)
+            WordContextIsStale = context.IsStale;
     }
 
     private static bool IsNewer(WorkspaceEvidence shown, AssessCommandResponse stored, DateTimeOffset? storedAt)
@@ -173,6 +197,7 @@ public sealed class ProjectEvidence : ObservableObject
         Stored = null;
         Baseline = null;
         AppliedSinceRefresh = false;
+        WordContextIsStale = false;
     }
 
     private void Set<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)

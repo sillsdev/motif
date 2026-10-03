@@ -297,6 +297,7 @@ public sealed class TryWordPageModel : PageModel
             if (generation != _wordContextGeneration || token.IsCancellationRequested || projectPath != Context.ProjectPath)
                 return;
             WordContext = result.Succeeded ? result.Value : null;
+            if (WordContext is not null) Context.Evidence.ObserveWordContext(WordContext);
             Trace.SetExpected(word, WordContext?.ExpectedAnalysis?.Morphs.Select(morph =>
                 new ParserReadingMorphViewModel(morph)).ToArray());
             OnPropertyChanged(nameof(WordContext));
@@ -330,6 +331,7 @@ public sealed class TryWordPageModel : PageModel
     private void ShowResultContext(WordContextResponse? context)
     {
         ResultWordContext = context;
+        if (context is not null) Context.Evidence.ObserveWordContext(context);
         FieldWorksAnalyses = context is { HasBaseline: true, IsInFieldWorks: true }
             ? context.Analyses.GroupBy(reading => System.Text.Json.JsonSerializer.Serialize(reading.Morphs.Select(morph =>
                 new { morph.Form, morph.Gloss, morph.Category, morph.InflectionType })), StringComparer.Ordinal)

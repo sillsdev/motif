@@ -29,7 +29,7 @@ The trace member has a Handoff-relative `file` path and a compact `summary`:
 |---|---|
 | `outcome` | `parsed`, `no-analysis-recorded`, or `invalid-shape`, as read from the diagnostic. |
 | `parserSteps` | The parser's recorded step count, or JSON `null` when it was not recorded. |
-| `completion` | `not-run` when the word's shape prevented a search; `incomplete` when the diagnostic records a stopped trace; `unknown` when it does not establish whether the trace step cap stopped the search. Motif does not infer completion from a clean process exit. |
+| `completion` | `complete` when the diagnostic records a finished search; `incomplete` when it records a stopped trace; `not-run` when the word's shape prevented a search; `unknown` when no supported completion fact was recorded. Motif does not infer completion from a clean process exit. |
 | `failureReasons` | Distinct reason codes present in the recorded tree, in ordinal order. They do not establish which neighboring event caused an attempt to fail. |
 | `deepestRule` | The deepest named rule in the typed reading, or JSON `null` when none is recorded. |
 

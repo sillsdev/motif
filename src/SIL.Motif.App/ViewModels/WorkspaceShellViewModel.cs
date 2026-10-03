@@ -447,6 +447,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             return $"{baseline} · changes applied after it.";
 
         var saved = evidence.LatestSaveUtc ?? Baseline.ProjectLastWriteUtc ?? Baseline.SourceLastWriteUtc;
+        if (evidence.WordContextIsStale &&
+            (saved is not { } observed || evidence.MeasuredSaveUtc is not { } measured || observed <= measured))
+            return $"{baseline} · FieldWorks saved since";
         return saved is { } at
             ? $"{baseline} · saved {When(at)}"
             : baseline;

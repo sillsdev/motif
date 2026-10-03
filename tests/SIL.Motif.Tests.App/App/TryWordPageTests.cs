@@ -1033,6 +1033,49 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
+    public void TryWordSaveComparisonUpdatesTheSharedFreshnessLine()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (workspace, fake) = NewWorkspace();
+            var context = workspace.Context;
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var baseline = Assessment().Baseline.Token;
+            var saved = DateTimeOffset.Parse(baseline.CapturedUtc).AddHours(-1);
+            context.Baseline = new WorkspaceBaseline(true, "captured", "saved", "captured", "closed", null)
+            {
+                Token = baseline,
+                SourceLastWriteUtc = saved,
+                ProjectLastWriteUtc = saved,
+            };
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true)
+                {
+                    IsInFieldWorks = true, Baseline = baseline, SourceLastWriteUtc = saved, IsStale = true,
+                }));
+            var page = workspace.PageModel<TryWordPageModel>();
+            fake.TraceWordCompletesWith(DogsTrace());
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+
+            Assert.True(context.Evidence.IsStale);
+            Assert.Equal("FieldWorks saved since", workspace.FreshnessLabel);
+            Assert.Contains("FieldWorks saved since", workspace.FreshnessDetail);
+
+            var window = new Window { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                Settle(window);
+                Assert.DoesNotContain(ContextTexts(window), text =>
+                    text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
+            }
+            finally { window.Close(); }
+            await workspace.DisposeAsync();
+        });
+    }
+
+    [Fact]
     public void ContextSaveBeforeItsBaselineDoesNotShowASavedSinceMessage()
     {
         RunOnAvalonia(async () =>
@@ -1659,6 +1702,17 @@ public sealed class TryWordPageTests
             new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake)), fake);
     }
 
+    private static (WorkspaceShellViewModel Workspace, FakeCommandClient Fake) NewWorkspace()
+    {
+        var fake = new FakeCommandClient();
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+        var selection = new SelectionViewModel(fake);
+        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new NoProjectPicker()),
+            new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection), new NoFolderPicker(),
+            new NoDragSource(), fake);
+        return (workspace, fake);
+    }
+
     private static WorkspaceContext NewContext(out FakeCommandClient fake)
     {
         (var context, fake) = NewContext();
@@ -1683,6 +1737,12 @@ public sealed class TryWordPageTests
     private sealed class NoFolderPicker : IHandoffFolderPicker
     {
         public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+    }
+
+    private sealed class NoProjectPicker : IProjectPicker
+    {
+        public Task<string?> PickProjectFileAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
     }
 
