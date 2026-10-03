@@ -1,3 +1,5 @@
+using SIL.Motif.Contract.Responses;
+
 namespace SIL.Motif.Host.Texts;
 
 /// <summary>Counts and exact word identities captured from one saved FieldWorks project.</summary>
@@ -10,6 +12,12 @@ public sealed record ProjectSummarySnapshot(
     IReadOnlyList<string> Wordforms,
     IReadOnlyList<ProjectTextSummary> Texts)
 {
+    [System.Text.Json.Serialization.JsonRequired]
+    public IReadOnlyDictionary<string, string?> WordWritingSystems { get; init; } = new Dictionary<string, string?>();
+
+    [System.Text.Json.Serialization.JsonRequired]
+    public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
+
     /// <summary>An empty summary for synthetic Baselines that have no readable project model.</summary>
     public static ProjectSummarySnapshot Empty { get; } = new(0, 0, 0, 0, 0, [], []);
 }

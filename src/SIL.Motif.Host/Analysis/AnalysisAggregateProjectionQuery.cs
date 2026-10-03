@@ -94,7 +94,7 @@ public static class AnalysisAggregateProjectionQuery
                     .Select(analysis => new AutomaticAnalysisView(
                         analysis.ContentDigest,
                         analysis.MorphBreakdown))
-                    .ToList()))
+                    .ToList()) { FormWritingSystem = wordForm.FormWritingSystem })
             .ToList();
 
         var reach = response.UnanalysedReach is null
@@ -107,6 +107,6 @@ public static class AnalysisAggregateProjectionQuery
         return new AnalysisAggregateProjection(
             response.DescribeAssessmentState(currentSelectionSha256, currentGrammarSourceSha256),
             wordForms,
-            reach);
+            reach) { WritingSystems = response.WritingSystems };
     }
 }

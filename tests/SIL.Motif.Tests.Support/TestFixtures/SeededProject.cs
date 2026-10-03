@@ -3,6 +3,8 @@ using SIL.LCModel.Core.Cellar;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
+using SIL.LCModel.Core.KernelInterfaces;
+using SIL.WritingSystems;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -34,6 +36,11 @@ public sealed record SeededProject(
     int NoteFieldFlid,
     int PriorityFieldFlid)
 {
+    public const string RightToLeftTag = "ar";
+    public const string MissingFont = "Motif Deliberately Uninstalled Font";
+    public const string FontFeatures = "smcp=1,cv01=2";
+    public const double RightToLeftSizePoints = 18;
+
     /// <summary>The vernacular form written into the first entry's lexeme form.</summary>
     public const string FirstForm = "motifa";
 
@@ -104,6 +111,7 @@ public sealed record SeededProject(
 
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
+            SeedWritingSystemDisplay(cache);
             pos = services.GetInstance<IPartOfSpeechFactory>().Create();
             cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(pos);
             pos.Name.set_String(analWs, "SeededNoun");
@@ -122,6 +130,31 @@ public sealed record SeededProject(
             PartOfSpeechId: pos.Guid,
             NoteFieldFlid: noteFlid,
             PriorityFieldFlid: priorityFlid);
+    }
+
+    private static void SeedWritingSystemDisplay(LcmCache cache)
+    {
+        cache.ServiceLocator.WritingSystemManager.GetOrSet(RightToLeftTag, out var rtl);
+        rtl.RightToLeftScript = true;
+        rtl.Abbreviation = "Ar";
+        rtl.DefaultFont = new FontDefinition(MissingFont)
+        { Features = FontFeatures, Engines = FontEngines.OpenType };
+        var systems = cache.ServiceLocator.WritingSystems;
+        systems.VernacularWritingSystems.Add(rtl);
+        systems.CurrentVernacularWritingSystems.Add(rtl);
+        var normal = cache.LangProject.StylesOC.FirstOrDefault(style => style.Name == "Normal");
+        if (normal is null)
+        {
+            normal = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(normal);
+            normal.Name = "Normal";
+        }
+        var rules = normal.Rules?.GetBldr() ?? TsStringUtils.MakePropsBldr();
+        rules.SetIntPropValues((int)FwTextPropType.ktptFontSize, (int)FwTextPropVar.ktpvMilliPoint, 10000);
+        var font = new FontInfo();
+        font.m_fontSize.ExplicitValue = (int)(RightToLeftSizePoints * 1000);
+        BaseStyleInfo.SaveFontOverridesToBuilder(new Dictionary<int, FontInfo> { [rtl.Handle] = font }, rules);
+        normal.Rules = rules.GetTextProps();
     }
 
     /// <summary>

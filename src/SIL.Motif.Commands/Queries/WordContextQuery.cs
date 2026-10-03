@@ -41,6 +41,7 @@ public static class WordContextQuery
                 ? new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) : (DateTimeOffset?)null;
             return CommandOutcome<WordContextResponse>.Success(new(word, true)
             {
+                WordWritingSystem = context.WordWritingSystems.GetValueOrDefault(word),
                 Baseline = baseline.Token,
                 SourceLastWriteUtc = baseline.SourceLastWriteUtc,
                 PublishedUtc = baseline.PublishedUtc,

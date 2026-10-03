@@ -83,6 +83,11 @@
             "category": "",
             "guessed": false,
             "fieldWorksLink": "silfw://localhost/link?database%3dMotifTestProj%26tool%3dlexiconEdit%26guid%3d{FirstEntryId}%26tag%3d",
+            "formWritingSystem": null,
+            "glossWritingSystem": null,
+            "categoryWritingSystem": null,
+            "inflectionTypeWritingSystem": null,
+            "entryWritingSystem": null,
             "allomorphId": "{FirstLexemeFormId}"
           }
         ],
@@ -287,7 +292,42 @@
         "isVernacular": true,
         "isDefault": true,
         "direction": "ltr",
-        "font": "Charis SIL"
+        "font": "Charis SIL",
+        "fontFeatures": "",
+        "styleFonts": {
+          "Normal": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Paragraph": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Headword": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Vernacular": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-POS": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Title_Main": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          }
+        },
+        "styleSizes": {
+          "Normal": 10,
+          "Paragraph": 10,
+          "Dictionary-Headword": 10,
+          "Dictionary-Vernacular": 10,
+          "Dictionary-POS": 10,
+          "Title_Main": 10
+        }
       },
       {
         "id": "es",
@@ -295,15 +335,128 @@
         "isVernacular": true,
         "isDefault": false,
         "direction": "ltr",
-        "font": "Charis SIL"
+        "font": "Charis SIL",
+        "fontFeatures": "",
+        "styleFonts": {
+          "Normal": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Paragraph": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Headword": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Vernacular": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-POS": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Title_Main": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          }
+        },
+        "styleSizes": {
+          "Normal": 10,
+          "Paragraph": 10,
+          "Dictionary-Headword": 10,
+          "Dictionary-Vernacular": 10,
+          "Dictionary-POS": 10,
+          "Title_Main": 10
+        }
+      },
+      {
+        "id": "ar",
+        "name": "Arabic",
+        "isVernacular": true,
+        "isDefault": false,
+        "direction": "rtl",
+        "font": "Motif Deliberately Uninstalled Font",
+        "fontFeatures": "smcp=1,cv01=2",
+        "styleFonts": {
+          "Normal": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          },
+          "Paragraph": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          },
+          "Dictionary-Headword": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          },
+          "Dictionary-Vernacular": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          },
+          "Dictionary-POS": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          },
+          "Title_Main": {
+            "fontFamily": "Motif Deliberately Uninstalled Font",
+            "fontFeatures": "smcp=1,cv01=2"
+          }
+        },
+        "styleSizes": {
+          "Normal": 18,
+          "Paragraph": 18,
+          "Dictionary-Headword": 18,
+          "Dictionary-Vernacular": 18,
+          "Dictionary-POS": 18,
+          "Title_Main": 18
+        }
       },
       {
         "id": "en",
         "name": "English",
         "isVernacular": false,
-        "isDefault": false,
+        "isDefault": true,
         "direction": "ltr",
-        "font": "Charis SIL"
+        "font": "Charis SIL",
+        "fontFeatures": "",
+        "styleFonts": {
+          "Normal": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Paragraph": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Headword": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-Vernacular": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Dictionary-POS": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          },
+          "Title_Main": {
+            "fontFamily": "Charis SIL",
+            "fontFeatures": ""
+          }
+        },
+        "styleSizes": {
+          "Normal": 10,
+          "Paragraph": 10,
+          "Dictionary-Headword": 10,
+          "Dictionary-Vernacular": 10,
+          "Dictionary-POS": 10,
+          "Title_Main": 10
+        }
       }
     ],
     "traceLabels": [

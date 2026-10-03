@@ -24,6 +24,8 @@ public sealed record OverviewResponse(
     OverviewTiming Timing,
     OverviewWarningsSummary? Warnings)
 {
+    public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
+
     /// <summary>The stored results worth opening first; empty when no Parse all words matches.</summary>
     public OverviewLookFirst LookFirst { get; init; } = OverviewLookFirst.Empty;
 

@@ -8,6 +8,8 @@ using System.Text.Json;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.PanGloss;
 
+using SIL.Motif.LiveHost.Baselines;
+
 namespace SIL.Motif.Worker.Baselines;
 
 internal sealed record BaselinePublicationTarget
@@ -358,7 +360,7 @@ internal sealed class BaselineBundleReceiver
                 writingSystems.Add(entry);
             }
         }
-        if (fwData is null || writingSystems.Count == 0)
+        if (fwData is null || !writingSystems.Any(entry => entry.FullName.StartsWith("WritingSystemStore/", StringComparison.Ordinal)))
             throw new InvalidDataException("The Baseline bundle requires one .fwdata and writing-system content.");
 
         var fwDataPath = await ExtractEntryAsync(fwData, destination, cancellationToken).ConfigureAwait(false);
@@ -513,6 +515,11 @@ internal sealed class BaselineBundleReceiver
             return true;
         if (parts.Length == 2 && StringComparer.Ordinal.Equals(parts[0], "WritingSystemStore") &&
             parts[1].EndsWith(".ldml", StringComparison.OrdinalIgnoreCase))
+        {
+            kind = EntryKind.WritingSystem;
+            return true;
+        }
+        if (parts.Length == 2 && parts[0] == "SharedSettings" && WritingSystemSettingsFiles.IsAllowedName(parts[1]))
         {
             kind = EntryKind.WritingSystem;
             return true;

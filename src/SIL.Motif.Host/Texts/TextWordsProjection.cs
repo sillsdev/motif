@@ -18,7 +18,12 @@ public sealed record TextWordsProjectedText(
     Guid TextId,
     string Title,
     IReadOnlyList<TextWordsProjectedLine> Lines,
-    IReadOnlyList<TextWordsProjectedAnalysis> Analyses);
+    IReadOnlyList<TextWordsProjectedAnalysis> Analyses)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? TitleWritingSystem { get; init; }
+}
 
 /// <summary>One line in a Text, retaining its source sentence and ordered token evidence.</summary>
 public sealed record TextWordsProjectedLine(
@@ -27,7 +32,15 @@ public sealed record TextWordsProjectedLine(
     IReadOnlyList<TextWordsProjectedToken> Tokens,
     Guid ParagraphId,
     Guid SegmentId,
-    bool ParseIsCurrent);
+    bool ParseIsCurrent)
+{
+    /// <summary>The source paragraph's named style; Normal when none was authored.</summary>
+    public string SentenceStyle { get; init; } = "Normal";
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? SentenceWritingSystem { get; init; }
+}
 
 /// <summary>
 /// One source token and all ordered wordform alternatives that contribute to Text words. A word token names its
@@ -35,7 +48,7 @@ public sealed record TextWordsProjectedLine(
 /// </summary>
 public sealed record TextWordsProjectedToken(
     string Text,
-    IReadOnlyList<string> Forms,
+    IReadOnlyList<WritingSystemText> Forms,
     Guid? WordformId,
     string? Status,
     string? AnalysisKey,
@@ -43,7 +56,20 @@ public sealed record TextWordsProjectedToken(
     string? Category,
     FieldWorksLinkTarget? WordLinkTarget,
     int OccurrenceIndex,
-    Guid? AnalysisId);
+    Guid? AnalysisId)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? TextWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? WordGlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? CategoryWritingSystem { get; init; }
+}
 
 /// <summary>Project-level analysis standing for one wordform in the Baseline.</summary>
 public sealed record TextWordsProjectedWordform(
@@ -76,5 +102,25 @@ public sealed record TextWordsProjectedMorph(
     bool Guessed,
     FieldWorksLinkTarget? LinkTarget)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? GlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? CategoryWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? InflectionTypeWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? EntryWritingSystem { get; init; }
+
     public string? Entry { get; init; }
 }

@@ -42,7 +42,7 @@ public sealed class BaselineBundleTests : IDisposable
     }
 
     [Fact]
-    public async Task WriteAsync_StreamsOnlyFwDataAndProjectWritingSystems()
+    public async Task WriteAsync_StreamsOnlyFwDataWritingSystemsAndDisplaySettings()
     {
         var projectFolder = Path.GetDirectoryName(_cache.ProjectId.Path)!;
         Directory.CreateDirectory(Path.Combine(projectFolder, "LinkedFiles", "AudioVisual"));
@@ -50,6 +50,7 @@ public sealed class BaselineBundleTests : IDisposable
         File.WriteAllText(Path.Combine(projectFolder, "project.motif.db"), "not canonical project data");
         File.WriteAllText(Path.Combine(projectFolder, "project.fwbackup"), "backup");
         File.WriteAllText(Path.Combine(projectFolder, "unrelated.txt"), "unrelated");
+        File.WriteAllText(Path.Combine(projectFolder, "SharedSettings", "unrelated.plsx"), "unrelated");
         Directory.CreateDirectory(Path.Combine(projectFolder, "OtherRepositories"));
         File.WriteAllText(Path.Combine(projectFolder, "OtherRepositories", "repository.bin"), "repository");
 
@@ -64,6 +65,7 @@ public sealed class BaselineBundleTests : IDisposable
         using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
         var names = archive.Entries.Select(entry => entry.FullName).OrderBy(name => name, StringComparer.Ordinal).ToArray();
         var expectedNames = new[] { NewLangProjFixture.ProjectName + ".fwdata" }
+            .Concat(new[] { "SharedSettings/LexiconSettings.plsx", "SharedSettings/" + Environment.UserName + ".ulsx" })
             .Concat(Directory.EnumerateFiles(Path.Combine(projectFolder, "WritingSystemStore"), "*.ldml")
                 .Select(path => "WritingSystemStore/" + Path.GetFileName(path)))
             .OrderBy(name => name, StringComparer.Ordinal)

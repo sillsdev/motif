@@ -85,7 +85,14 @@ public sealed class TextInventoryQueryTests : IDisposable
         Assert.True(inventory.Succeeded, inventory.Refusal?.Message);
         Assert.True(textWords.Succeeded, textWords.Refusal?.Message);
         Assert.Equal("(Untitled Text)", Assert.Single(inventory.Value!.Texts).Title);
-        Assert.Equal("(Untitled Text)", Assert.Single(textWords.Value!.Texts).Title);
+        var projectedText = Assert.Single(textWords.Value!.Texts);
+        Assert.Equal("(Untitled Text)", projectedText.Title);
+        Assert.Null(projectedText.TitleWritingSystem);
+        Assert.All(textWords.Value.Words.SelectMany(word => word.Occurrences), occurrence =>
+        {
+            Assert.Equal(projectedText.Title, occurrence.TextTitle);
+            Assert.Null(occurrence.TextTitleWritingSystem);
+        });
     }
 
     [Fact]

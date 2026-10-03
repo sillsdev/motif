@@ -55,7 +55,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var expected = File.Exists(golden) ? File.ReadAllText(golden) : string.Empty;
         if (actual != expected.ReplaceLineEndings("\n"))
         {
-            var written = Path.Combine(Path.GetTempPath(), GoldenFile);
+            var written = Path.Combine(Path.GetTempPath(), $"{Environment.ProcessId}-{GoldenFile}");
             File.WriteAllText(written, actual);
             Assert.Fail($"motif trace --json no longer matches {GoldenFile}; the new output is at {written}.");
         }

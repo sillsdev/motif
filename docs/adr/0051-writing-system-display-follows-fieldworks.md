@@ -1,0 +1,15 @@
+# ADR 0051: Writing-system display follows FieldWorks
+
+Motif displays language text with the project's FieldWorks settings, so moving between the two applications does not change the requested font or text size. The settings reader stays independent of the window toolkit so FieldWorks can adopt it when the products merge.
+
+Resolve settings through the same LibLCM and libpalaso APIs FieldWorks uses, with their precedence and fallbacks. WritingSystemDisplayReader accepts a caller-owned LcmCache, uses CoreWritingSystemDefinition for writing-system defaults and LcmStyleSheet / FontInfo for effective style properties, and returns Contract records. It has no Avalonia or App dependency. Front ends consume the Baseline's records instead of interpreting LDML or rebuilding style inheritance.
+
+Sizes are the stylesheet's effective millipoint values, including inherited common properties and writing-system overrides, divided by 1000 to report points. Each surface selects the style its matching FieldWorks view uses. No relative font sizes, clamping or Motif rescaling are permitted. The renderer converts points to device-independent units and applies the user's zoom once. Motif-only surfaces choose the nearest FieldWorks surface by the kind of language data they show; evidence and rationale are recorded in the [surface table](../writing-system-display-contract.md#fieldworks-surfaces-and-styles).
+
+Normal supplies interlinear and Lexicon Edit language fields. Dictionary publication styles are not substitutes for those fields. Source sentence excerpts retain the paragraph's actual named style (Normal if none is authored), and the inventory includes every project style. Text title properties use Normal, as the FieldWorks title editor does; Title_Main is a separate stylesheet entry for styled title paragraphs.
+
+Style font family and features use the inherited common properties followed by the per-writing-system FontInfo override. The magic default-font name resolves through CoreWritingSystemDefinition.DefaultFontName; an explicit style font stays explicit. Nonempty effective style features take precedence; the default-font path falls back to DefaultFontFeatures. Requested fonts stay requested in this layer; installed-font substitution belongs to the renderer.
+
+Motif renders through OpenType. It does not expose or interpret a Graphite engine flag, apply numeric Graphite feature IDs, or add notices about Graphite. The stored feature string is retained verbatim for read-only display, including numeric values; rendering applies only valid OpenType tags. This is an explicit rendering exception to following FieldWorks. Existing LDML engine metadata travels with the saved project without a second engine model.
+
+Display records and the linguistic data they describe are captured together with the Baseline. Schema generation 40 refuses the previous stored shape; pre-1.0 storage has no migration or compatibility reader. Settings remain read-only and direct users to FieldWorks' writing-system setup and Styles commands.

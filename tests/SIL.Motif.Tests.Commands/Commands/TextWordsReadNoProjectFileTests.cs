@@ -49,6 +49,36 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
     }
 
     [Fact]
+    public void SameSpellingInDifferentWritingSystemsKeepsBothDisplayTags()
+    {
+        using var cache = _pristine.NewScratch();
+        var text = SeededProject.SeedText(cache, _pristine.Seed);
+        var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(text.AnalysedWordformId);
+        var secondWs = cache.ServiceLocator.WritingSystemManager.Get(NewLangProjFixture.SecondVernacularTag).Handle;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            wordform.Form.set_String(secondWs, SeededProject.AnalysedWordForm));
+        new FwDataProjectLoader().Save(cache);
+        var captured = BaselineCaptureCommand.Capture(new(cache.ProjectId.Path), NewManagedRoot());
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var words = TextWordsQuery.Query(new(cache.ProjectId.Path, [text.TextId]));
+        Assert.True(words.Succeeded, words.Refusal?.Message);
+        Assert.Equal(new[] { NewLangProjFixture.VernacularTag, NewLangProjFixture.SecondVernacularTag }.Order(),
+            words.Value!.Words.Where(word => word.Form == SeededProject.AnalysedWordForm)
+                .Select(word => word.FormWritingSystem).Order());
+        var summary = Assert.Single(ProjectSummaryReader.Read(cache).Texts);
+        var inventory = TextInventoryQuery.Query(new(cache.ProjectId.Path));
+        Assert.True(inventory.Succeeded, inventory.Refusal?.Message);
+        var choice = Assert.Single(inventory.Value!.Texts);
+        Assert.Equal(2, summary.WordCount);
+        Assert.Equal(2, summary.OccurrenceCount);
+        Assert.Equal(summary.WordCount, choice.WordCount);
+        Assert.Equal(summary.OccurrenceCount, choice.OccurrenceCount);
+        var context = WordContextQuery.Query(new(cache.ProjectId.Path, SeededProject.AnalysedWordForm));
+        Assert.True(context.Succeeded, context.Refusal?.Message);
+        Assert.Null(context.Value!.WordWritingSystem);
+    }
+
+    [Fact]
     public void CapturedTextWordsAreReadWithoutTheManagedBaselineProjectFile()
     {
         using var cache = _pristine.NewScratch();
@@ -76,7 +106,22 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         Assert.Equal(secondText.AnalysedWordformId, Guid.Parse(merged.WordformGuid!));
         Assert.Equal([secondText.TextId, firstText.TextId], merged.Occurrences.Select(occurrence => occurrence.TextId));
         Assert.Equal([secondText.TextId, firstText.TextId], before.Value.Texts.Select(text => text.TextId));
+        Assert.Equal(NewLangProjFixture.VernacularTag, merged.FormWritingSystem);
+        Assert.All(merged.Occurrences, occurrence => Assert.Equal(NewLangProjFixture.VernacularTag, occurrence.SentenceWritingSystem));
+        var settings = WritingSystemsQuery.Query(new SIL.Motif.Contract.Requests.WritingSystemsRequest(fwDataPath));
+        Assert.True(settings.Succeeded, settings.Refusal?.Message);
+        Assert.Equal(SeededProject.MissingFont, Assert.Single(settings.Value!.WritingSystems,
+            ws => ws.Id == SeededProject.RightToLeftTag).FontFamily);
         AssertSameResponseWithoutFile(captured.Value!.FwDataPath, request, before.Value);
+        var moved = captured.Value.FwDataPath + ".ws-hidden";
+        File.Move(captured.Value.FwDataPath, moved);
+        try
+        {
+            var withoutProject = WritingSystemsQuery.Query(new SIL.Motif.Contract.Requests.WritingSystemsRequest(fwDataPath));
+            Assert.True(withoutProject.Succeeded, withoutProject.Refusal?.Message);
+            Assert.Equal(ProjectionJson.Serialize(settings.Value), ProjectionJson.Serialize(withoutProject.Value));
+        }
+        finally { File.Move(moved, captured.Value.FwDataPath); }
     }
 
     [Fact]
@@ -148,6 +193,13 @@ public sealed class TextWordsReadNoProjectFileTests : IDisposable
         var line = Assert.Single(Assert.Single(response.Texts).Lines, candidate => candidate.Tokens.Count > 0);
         var glossed = line.Tokens[0];
         Assert.Equal(rawForms[0], glossed.Text);
+        Assert.Equal(NewLangProjFixture.AnalysisTag, glossed.WordGlossWritingSystem);
+        Assert.Equal(NewLangProjFixture.AnalysisTag, glossed.CategoryWritingSystem);
+        Assert.Null(glossed.GlossWritingSystem);
+        Assert.Equal(NewLangProjFixture.VernacularTag, glossed.Analysis!.Morphs[0].FormWritingSystem);
+        Assert.Empty(glossed.Analysis.Morphs[1].Form);
+        Assert.Null(glossed.Analysis.Morphs[1].FormWritingSystem);
+        Assert.All(glossed.Analysis.Morphs, morph => Assert.Equal(NewLangProjFixture.AnalysisTag, morph.GlossWritingSystem));
         Assert.Equal(canonical[0], glossed.Form);
         Assert.Equal(InterlinearAnalysisStatus.Approved, glossed.Status);
         Assert.Equal(WordGlossText, glossed.WordGloss);

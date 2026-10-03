@@ -174,7 +174,7 @@ public static class ReadStateCommands
                     analysis.Morphs,
                 }).ToArray(),
         });
-        var assessments = token.Forms.Select(Canonicalize)
+        var assessments = token.Forms.Select(form => Canonicalize(form.Text))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(form => form, StringComparer.Ordinal)
             .Select(form => new ReadAssessmentEvidence(form,
@@ -187,7 +187,7 @@ public static class ReadStateCommands
         BaselineToken currentToken, TextWordsProjectedText text, IReadOnlyList<string>? assessmentIds)
     {
         var forms = text.Lines.SelectMany(line => line.Tokens).Where(token => token.WordformId is not null)
-            .SelectMany(token => token.Forms).Select(Canonicalize).Where(form => form.Length > 0)
+            .SelectMany(token => token.Forms).Select(form => Canonicalize(form.Text)).Where(form => form.Length > 0)
             .ToHashSet(StringComparer.Ordinal);
         var tokenJson = JsonSerializer.Serialize(currentToken, JsonOptions);
         var repository = new AssessmentRepository(database);

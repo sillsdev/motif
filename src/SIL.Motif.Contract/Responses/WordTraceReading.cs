@@ -441,7 +441,12 @@ public sealed record TraceWritingSystem(
     bool IsVernacular,
     bool IsDefault,
     string? Direction,
-    string? Font);
+    string? Font)
+{
+    public string? FontFeatures { get; init; }
+    public IReadOnlyDictionary<string, WritingSystemStyleFont>? StyleFonts { get; init; }
+    public IReadOnlyDictionary<string, double>? StyleSizes { get; init; }
+}
 
 public sealed record TraceProvenanceComparison(
     string ProjectIdentityStatus,

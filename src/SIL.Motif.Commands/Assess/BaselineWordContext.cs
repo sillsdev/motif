@@ -11,6 +11,8 @@ internal sealed record BaselineWordContext(
     IReadOnlyDictionary<string, string> WordLinks,
     IReadOnlySet<string> PresentWords)
 {
+    internal IReadOnlyDictionary<string, string?> WordWritingSystems { get; init; } = new Dictionary<string, string?>();
+
     /// <summary>Projects all opinions and links before the caller disposes its Baseline cache.</summary>
     internal static BaselineWordContext Read(LcmCache cache, SavedProjectNavigation navigation, IReadOnlyList<string> words)
     {
@@ -34,7 +36,8 @@ internal sealed record BaselineWordContext(
             if (forms.TryGetValue(word, out var identities) && identities.Count == 1 &&
                 navigation.LinkFor(new("Analyses", identities.Single())) is { } link) links[word] = link;
         var present = forms.Keys.ToHashSet(StringComparer.Ordinal);
-        return new(analyses, links, present);
+        return new(analyses, links, present)
+        { WordWritingSystems = SIL.Motif.Host.Texts.ProjectSummaryReader.ReadWordWritingSystems(cache) };
     }
 
     /// <summary>Names the stored opinions in the same order for fresh and reopened rows.</summary>

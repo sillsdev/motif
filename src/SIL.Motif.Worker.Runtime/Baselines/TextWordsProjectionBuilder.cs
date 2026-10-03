@@ -11,6 +11,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Projection;
 
 namespace SIL.Motif.Worker.Baselines;
 
@@ -47,6 +48,7 @@ public static class TextWordsProjectionBuilder
         var lineNumber = 0;
         foreach (var paragraph in text.ContentsOA?.ParagraphsOS.OfType<IStTxtPara>() ?? Enumerable.Empty<IStTxtPara>())
         {
+            var style = paragraph.StyleRules?.GetStrPropValue((int)FwTextPropType.ktptNamedStyle);
             var occurrencesBySegment = SegmentServices.GetAnalysisOccurrences(paragraph).ToLookup(o => o.Segment);
             foreach (var segment in paragraph.SegmentsOS)
             {
@@ -55,11 +57,18 @@ public static class TextWordsProjectionBuilder
                 var tokens = occurrencesBySegment[segment]
                     .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses)).ToArray();
                 lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens, paragraph.Guid,
-                    segment.Guid, paragraph.ParseIsCurrent));
+                    segment.Guid, paragraph.ParseIsCurrent)
+                {
+                    SentenceWritingSystem = WritingSystemTextReader.SingleId(cache, segment.BaselineText),
+                    SentenceStyle = string.IsNullOrEmpty(style) ? "Normal" : style,
+                });
             }
         }
 
-        return new TextWordsProjectedText(text.Guid, ReadTitle(text), lines, analyses.Values.ToArray());
+        var title = WritingSystemTextReader.First(cache, text.Name);
+        if (title.Text.Length == 0) title = new WritingSystemText("(Untitled Text)", null);
+        return new TextWordsProjectedText(text.Guid, title.Text, lines, analyses.Values.ToArray())
+        { TitleWritingSystem = title.WritingSystem };
     }
 
     private static TextWordsProjectedToken ReadToken(
@@ -70,7 +79,7 @@ public static class TextWordsProjectionBuilder
         if (analysis is IPunctuationForm punctuation)
             return new TextWordsProjectedToken(
                 punctuation.Form?.Text ?? string.Empty, [], null, null, null, null, null, null,
-                occurrence.Index, null);
+                occurrence.Index, null) { TextWritingSystem = WritingSystemTextReader.SingleId(cache, punctuation.Form) };
 
         var (wordform, wfiAnalysis) = analysis switch
         {
@@ -83,7 +92,7 @@ public static class TextWordsProjectionBuilder
         if (!wordforms.ContainsKey(wordform.Guid))
             wordforms.Add(wordform.Guid, ReadWordform(cache, wordform));
 
-        var forms = TxtForms(wordform.Form).ToArray();
+        var forms = TxtForms(cache, wordform.Form).ToArray();
         var status = wfiAnalysis is { } chosen
             ? wordform.HumanApprovedAnalyses.Contains(chosen)
                 ? InterlinearAnalysisStatus.Approved
@@ -96,13 +105,21 @@ public static class TextWordsProjectionBuilder
             analyses.TryAdd(projected.Key, projected);
             analysisKey = projected.Key;
         }
-        var tokenText = forms.Length > 0 ? forms[0] : string.Empty;
-        var chosenWordGloss = analysis is IWfiGloss chosenGloss ? BestText(chosenGloss.Form) : null;
-        var category = wfiAnalysis?.CategoryRA is { } pos ? BestText(pos.Abbreviation) ?? BestText(pos.Name) : null;
+        var tokenText = forms.Length > 0 ? forms[0].Text : string.Empty;
+        var chosenWordGloss = analysis is IWfiGloss chosenGloss ? WritingSystemTextReader.First(cache, chosenGloss.Form) : null;
+        var category = wfiAnalysis?.CategoryRA is { } pos
+            ? WritingSystemTextReader.First(cache, pos.Abbreviation) : null;
+        if (category?.Text.Length == 0 && wfiAnalysis?.CategoryRA is { } namedPos)
+            category = WritingSystemTextReader.First(cache, namedPos.Name);
         // Its own wordform, never a lookup by spelling: another wordform can share the spelling and win the lookup.
         var wordLinkTarget = tokenText.Length == 0 ? null : FieldWorksLinks.TargetFor(cache, wordform);
         return new TextWordsProjectedToken(tokenText, forms, wordform.Guid, status, analysisKey,
-            chosenWordGloss, category, wordLinkTarget, occurrence.Index, wfiAnalysis?.Guid);
+            chosenWordGloss?.Text, category?.Text, wordLinkTarget, occurrence.Index, wfiAnalysis?.Guid)
+        {
+            TextWritingSystem = forms.FirstOrDefault()?.WritingSystem,
+            WordGlossWritingSystem = chosenWordGloss?.WritingSystem,
+            CategoryWritingSystem = category?.WritingSystem,
+        };
     }
 
     /// <summary>Captures all analyses and opinions of a wordform, including one absent from every Text.</summary>
@@ -131,7 +148,9 @@ public static class TextWordsProjectionBuilder
         var displayMorphs = ParserReadingReader.ReadMorphs(cache, string.Empty, morphs);
         var projectedMorphs = displayMorphs.Select((morph, index) => new TextWordsProjectedMorph(
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
-            ParserReadingReader.EntryTargetFor(cache, morphs[index])) { Entry = morph.Entry }).ToArray();
+            ParserReadingReader.EntryTargetFor(cache, morphs[index])) { Entry = morph.Entry, FormWritingSystem = morph.FormWritingSystem,
+                GlossWritingSystem = morph.GlossWritingSystem, CategoryWritingSystem = morph.CategoryWritingSystem,
+                InflectionTypeWritingSystem = morph.InflectionTypeWritingSystem, EntryWritingSystem = morph.EntryWritingSystem }).ToArray();
         var identity = new ApprovedMorphology(analysis.MorphBundlesOS.Select(bundle => new ApprovedMorph(
             bundle.MorphRA?.Guid.ToString("D"), bundle.MsaRA?.Guid.ToString("D"), bundle.InflTypeRA?.Guid.ToString("D"),
             bundle.Form.AvailableWritingSystemIds.Order().Select(ws => bundle.Form.get_String(ws)?.Text)
@@ -157,27 +176,14 @@ public static class TextWordsProjectionBuilder
         IWfiAnalysis analysis) => approved.Contains(analysis) ? "approved"
         : disapproved.Contains(analysis) ? "disapproved" : "unknown";
 
-    private static string? BestText(IMultiAccessorBase accessor) => accessor.AvailableWritingSystemIds.OrderBy(ws => ws)
-        .Select(ws => accessor.get_String(ws)?.Text).FirstOrDefault(text => !string.IsNullOrEmpty(text));
-
-    private static IEnumerable<string> TxtForms<TAccessor>(TAccessor accessor)
+    private static IEnumerable<WritingSystemText> TxtForms<TAccessor>(LcmCache cache, TAccessor accessor)
         where TAccessor : IMultiAccessorBase, ITsMultiString
     {
         foreach (var ws in accessor.AvailableWritingSystemIds.OrderBy(writingSystem => writingSystem))
         {
             var text = accessor.get_String(ws)?.Text;
-            if (!string.IsNullOrEmpty(text)) yield return text;
+            if (!string.IsNullOrEmpty(text)) yield return new(text, cache.WritingSystemFactory.GetStrFromWs(ws));
         }
-    }
-
-    private static string ReadTitle(IText text)
-    {
-        foreach (var writingSystem in text.Name.AvailableWritingSystemIds.OrderBy(id => id))
-        {
-            var value = text.Name.get_String(writingSystem)?.Text;
-            if (!string.IsNullOrEmpty(value)) return value;
-        }
-        return "(Untitled Text)";
     }
 
     private const int IncorrectSpellingStatus = 2;

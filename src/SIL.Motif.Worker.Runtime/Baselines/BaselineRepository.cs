@@ -24,7 +24,10 @@ public sealed record BaselineRecord(
 public sealed record CurrentBaselineEvidence(BaselineRecord Baseline, ProjectSummarySnapshot Summary);
 
 /// <summary>A current Baseline and the stored words of the Texts one read asked for.</summary>
-public sealed record CurrentBaselineTextWords(BaselineRecord Baseline, TextWordsProjection Projection);
+public sealed record CurrentBaselineTextWords(BaselineRecord Baseline, TextWordsProjection Projection)
+{
+    public IReadOnlyList<SIL.Motif.Contract.Responses.WritingSystemDisplay> WritingSystems { get; init; } = [];
+}
 
 /// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
 public sealed class BaselineRepository
@@ -58,20 +61,7 @@ public sealed class BaselineRepository
         var baseline = Read(reader);
         if (reader.IsDBNull(12))
             throw new InvalidDataException("The current Baseline has no stored project summary.");
-        try
-        {
-            var summary = JsonSerializer.Deserialize<ProjectSummarySnapshot>(
-                reader.GetString(12), MotifJson.CreateOptions());
-            if (summary is null || summary.WordCount < 0 || summary.OccurrenceCount < 0 ||
-                summary.WordformCount < 0 || summary.RuleCount < 0 || summary.LexemeCount < 0 ||
-                summary.Wordforms is null || summary.Texts is null)
-                throw new JsonException("The stored project summary has invalid counts or collections.");
-            return new CurrentBaselineEvidence(baseline, summary);
-        }
-        catch (JsonException exception)
-        {
-            throw new InvalidDataException("The stored Baseline project summary is malformed.", exception);
-        }
+        return new CurrentBaselineEvidence(baseline, ReadSummary(reader.GetString(12)));
     }
 
     /// <summary>
@@ -105,6 +95,13 @@ public sealed class BaselineRepository
         var texts = ReadRows<TextWordsProjectedText>(connection, transaction,
             "SELECT TextId, BundleDigest, TextJson FROM BaselineTextWords",
             "TextId", projectKey, requested, digest, IsValid, text => text.TextId);
+        using var summaryCommand = connection.CreateCommand();
+        summaryCommand.Transaction = transaction;
+        summaryCommand.CommandText = "SELECT SummaryJson FROM BaselineSummaries WHERE ProjectKey = $project;";
+        summaryCommand.Parameters.AddWithValue("$project", projectKey);
+        var summaryJson = summaryCommand.ExecuteScalar() as string
+            ?? throw DamagedTextWords("The project summary is missing.");
+        var summary = ReadSummary(summaryJson);
         var ordered = requested.Where(texts.ContainsKey).Select(id => texts[id]).ToArray();
         var wordformIds = ordered.SelectMany(text => text.Lines).SelectMany(line => line.Tokens)
             .Select(token => token.WordformId).OfType<Guid>().Distinct().ToArray();
@@ -114,7 +111,35 @@ public sealed class BaselineRepository
         if (wordforms.Count != wordformIds.Length)
             throw DamagedTextWords("A token names a wordform with no stored row.");
         return new CurrentBaselineTextWords(baseline, new TextWordsProjection(ordered, wordforms.Values
-            .OrderBy(wordform => wordform.WordformId.ToString("D"), StringComparer.Ordinal).ToArray()));
+            .OrderBy(wordform => wordform.WordformId.ToString("D"), StringComparer.Ordinal).ToArray()))
+            { WritingSystems = summary.WritingSystems };
+    }
+
+    private static ProjectSummarySnapshot ReadSummary(string json)
+    {
+        try
+        {
+            var summary = JsonSerializer.Deserialize<ProjectSummarySnapshot>(json, MotifJson.CreateOptions());
+            if (summary is null || summary.WordCount < 0 || summary.OccurrenceCount < 0 ||
+                summary.WordformCount < 0 || summary.RuleCount < 0 || summary.LexemeCount < 0 ||
+                summary.Wordforms is null || summary.Texts is null || summary.WordWritingSystems is null ||
+                summary.WritingSystems is null || summary.WritingSystems.Any(ws => ws is null ||
+                    string.IsNullOrEmpty(ws.Id) || ws.Name is null || ws.Abbreviation is null ||
+                    ws.FontFamily is null || ws.FontFeatures is null || !Enum.IsDefined(ws.Kind) ||
+                    ws.Position < 0 || ws.StyleSizes is null ||
+                    ws.StyleFonts is null || !ws.StyleSizes.Keys.Order().SequenceEqual(ws.StyleFonts.Keys.Order()) ||
+                    ws.StyleFonts.Values.Any(font => font is null || font.FontFamily is null || font.FontFeatures is null) ||
+                    ws.StyleSizes.Values.Any(size => !double.IsFinite(size) || size <= 0) ||
+                    SIL.Motif.Host.WritingSystems.WritingSystemDisplayReader.Styles.Any(style =>
+                        !ws.StyleSizes.TryGetValue(style, out var size) || !double.IsFinite(size) || size <= 0)))
+                throw new JsonException("The stored project summary has invalid counts or display settings.");
+            return summary;
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("The stored Baseline project summary is malformed. Refresh the project to rebuild it.",
+                exception);
+        }
     }
 
     // Filters by json_each so any number of ids binds as one parameter; each row must match its Baseline and key.
@@ -303,10 +328,10 @@ public sealed class BaselineRepository
             return false;
         foreach (var line in text.Lines)
         {
-            if (line is null || line.Number < 1 || line.Sentence is null || line.Tokens is null ||
+            if (line is null || line.Number < 1 || line.Sentence is null || string.IsNullOrEmpty(line.SentenceStyle) || line.Tokens is null ||
                 line.ParagraphId == Guid.Empty || line.SegmentId == Guid.Empty) return false;
             foreach (var token in line.Tokens)
-                if (token is null || token.Text is null || token.Forms is null || token.Forms.Any(form => form is null) ||
+                if (token is null || token.Text is null || token.Forms is null || token.Forms.Any(form => form?.Text is null || string.IsNullOrEmpty(form.WritingSystem)) ||
                     (token.WordformId is null) != (token.Status is null) ||
                     token.OccurrenceIndex < 0 ||
                     (token.AnalysisId is null) != (token.AnalysisKey is null) ||
@@ -342,7 +367,7 @@ public sealed class BaselineRepository
         analysis.Morphs.All(morph => morph is not null && morph.Form is not null && morph.Gloss is not null &&
             morph.Category is not null && (morph.LinkTarget is null || !string.IsNullOrWhiteSpace(morph.LinkTarget.Tool)));
 
-    // Vernacular text is stored unescaped and absent values are left out; the stored words are read by Motif only.
+    // Unescaped language text remains readable; explicit null tags preserve unknown or composed text.
     private static readonly JsonSerializerOptions TextWordsJson = new(MotifJson.CreateOptions())
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,

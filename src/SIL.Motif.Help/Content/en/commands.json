@@ -168,5 +168,10 @@
     "title": "Apply pending changes",
     "description": "Applies the current pending changes to the FieldWorks project as one unit of work. Use it after FieldWorks releases the project, then reload when Motif reports that changes were applied.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
+  "writing-systems": {
+    "title": "Show writing systems",
+    "description": "Reads fonts, features, direction and style sizes from the current Baseline, in FieldWorks writing-system order. Change these settings in FieldWorks, then capture a new Baseline to read them here.",
+    "source": "Hand-written from the shared writing-systems query."
   }
 }

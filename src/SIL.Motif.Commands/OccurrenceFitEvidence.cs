@@ -112,7 +112,8 @@ internal static class OccurrenceFitEvidenceResolver
         .Where(token => token.WordformId is not null)
         .OrderBy(token => token.OccurrenceIndex)
         .Select(token => new OccurrenceWordToken(token.OccurrenceIndex,
-            CanonicalId.FromGuid(token.WordformId!.Value).Value, token.Text))
+            CanonicalId.FromGuid(token.WordformId!.Value).Value, token.Text)
+            { FormWritingSystem = token.TextWritingSystem })
         .ToArray();
 
     private static string WordDigest(IReadOnlyList<OccurrenceWordToken> tokens)

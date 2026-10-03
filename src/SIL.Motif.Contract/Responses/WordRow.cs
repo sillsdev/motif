@@ -57,6 +57,14 @@ public enum WordRowReadingAvailability
 /// <param name="Tone">The tone that <paramref name="Meaning"/> takes.</param>
 public sealed record WordRow(string Word, WordRowOutcome Outcome, string Meaning, WordRowTone Tone)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? WordWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? GlossWritingSystem { get; init; }
+
     /// <summary>The stable comparison identity used for grouping, independent of Meaning's wording.</summary>
     public string MeaningCode { get; init; } = "not-parsed";
 

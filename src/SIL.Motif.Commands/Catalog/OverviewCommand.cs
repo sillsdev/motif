@@ -88,6 +88,7 @@ public static class OverviewCommand
                     YourWords = warningCounts.YourWords,
                 })
             {
+                WritingSystems = summary?.WritingSystems ?? [],
                 WordOrigins = assessedWords.Where(word => word.Origin is not null).ToDictionary(
                     word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                 SelectionResolved = selection is not null,

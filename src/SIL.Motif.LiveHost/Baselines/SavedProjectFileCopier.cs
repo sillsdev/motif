@@ -80,6 +80,14 @@ public sealed class SavedProjectFileCopier
             }
         }
 
+        foreach (var sourceSettings in WritingSystemSettingsFiles.Find(Path.GetDirectoryName(sourceFwDataPath)!))
+        {
+            var destinationSettingsFolder = Path.Combine(destinationDirectory, "SharedSettings");
+            Directory.CreateDirectory(destinationSettingsFolder);
+            await CopyFileAsync(sourceSettings, Path.Combine(destinationSettingsFolder, Path.GetFileName(sourceSettings)),
+                null, cancellationToken).ConfigureAwait(false);
+        }
+
         return new SavedProjectFilesCopy(destinationFwDataPath, writingSystemPaths, sourceLastWriteUtc);
     }
 

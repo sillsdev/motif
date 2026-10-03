@@ -822,6 +822,12 @@ try
             result = RenderCommand(OverviewCommand.Overview(new OverviewRequest(overviewProject)));
             break;
 
+        case "writing-systems":
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var writingSystemsProject))
+                return Usage(UsageLineFor("writing-systems"), asJson);
+            result = RenderCommand(WritingSystemsQuery.Query(new WritingSystemsRequest(writingSystemsProject)));
+            break;
+
         case "word-context":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var contextProject) ||
                 !flags.TryGetValue("word", out var contextWord) || string.IsNullOrWhiteSpace(contextWord))

@@ -1,5 +1,6 @@
 using SIL.LCModel;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.WritingSystems;
 
 namespace SIL.Motif.Host.Texts;
 
@@ -34,8 +35,18 @@ public static class ProjectSummaryReader
         var wordforms = LcmWordformCorpus.ExtractForms(cache)
             .Distinct(StringComparer.Ordinal).OrderBy(word => word, StringComparer.Ordinal).ToArray();
         return new ProjectSummarySnapshot(words, texts.Sum(text => text.OccurrenceCount), wordformCount,
-            ruleCount, entries.Count, wordforms, texts);
+            ruleCount, entries.Count, wordforms, texts)
+        { WritingSystems = WritingSystemDisplayReader.Read(cache), WordWritingSystems = ReadWordWritingSystems(cache) };
     }
+
+    public static IReadOnlyDictionary<string, string?> ReadWordWritingSystems(LcmCache cache) =>
+        cache.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+            .SelectMany(wordform => wordform.Form.AvailableWritingSystemIds.Select(ws =>
+                (Text: wordform.Form.get_String(ws)?.Text?.Trim().Normalize(System.Text.NormalizationForm.FormD),
+                 Tag: cache.WritingSystemFactory.GetStrFromWs(ws))))
+            .Where(value => !string.IsNullOrEmpty(value.Text)).GroupBy(value => value.Text!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(value => value.Tag).Distinct().Take(2).ToArray() is
+                { Length: 1 } tags ? tags[0] : null, StringComparer.Ordinal);
 
     private static string ReadTitle(IText text)
     {

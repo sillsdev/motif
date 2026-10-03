@@ -38,6 +38,8 @@ public static class ObjectFactsReader
         {
             Entry = entry is null ? null : new ObjectFactsEntry(Id(entry), entry.HeadWord?.Text ?? string.Empty)
             {
+                HeadwordWritingSystem = WritingSystemTextReader.SingleId(cache, entry.HeadWord),
+                MorphTypeWritingSystem = WritingSystemTextReader.BestAnalysis(cache, entry.LexemeFormOA?.MorphTypeRA?.Name).WritingSystem,
                 MorphType = Text(entry.LexemeFormOA?.MorphTypeRA?.Name),
                 FieldWorks = fieldWorks(entry),
             },
@@ -45,14 +47,16 @@ public static class ObjectFactsReader
                 .Where(sense => msa is null || sense.MorphoSyntaxAnalysisRA == msa)
                 .Select(sense => new ObjectFactsSense(Id(sense), sense.LexSenseOutline?.Text ?? string.Empty)
                 {
+                    GlossWritingSystem = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss).WritingSystem,
+                    DefinitionWritingSystem = WritingSystemTextReader.BestAnalysis(cache, sense.Definition).WritingSystem,
                     Gloss = Text(sense.Gloss),
                     Definition = Text(sense.Definition),
                     FieldWorks = fieldWorks(sense),
                 }).ToArray(),
             GrammaticalInfo = msa is null ? null : GrammaticalInfo(cache, msa, fieldWorks),
             Allomorphs = entry is null ? [] : new[] { entry.LexemeFormOA }.Concat(entry.AlternateFormsOS)
-                .OfType<IMoForm>().Select(form => Allomorph(form, form == allomorph, fieldWorks)).ToArray(),
-            Rule = rule is null ? null : Rule(rule, entry, fieldWorks),
+                .OfType<IMoForm>().Select(form => Allomorph(cache, form, form == allomorph, fieldWorks)).ToArray(),
+            Rule = rule is null ? null : Rule(cache, rule, entry, fieldWorks),
             TimingKey = TimingKey(reference, timed, msa, entry),
         };
     }
@@ -72,20 +76,26 @@ public static class ObjectFactsReader
         Func<ICmObject, TraceFieldWorksTarget?> fieldWorks)
     {
         ObjectFactsNamed? Named(ICmPossibility? category) => category is null ? null
-            : new ObjectFactsNamed(Id(category), Text(category.Name) ?? string.Empty) { FieldWorks = fieldWorks(category) };
+            : new ObjectFactsNamed(Id(category), Text(category.Name) ?? string.Empty)
+            {
+                NameWritingSystem = WritingSystemTextReader.BestAnalysis(cache, category.Name).WritingSystem,
+                FieldWorks = fieldWorks(category),
+            };
         IReadOnlyList<ObjectFactsSlot> Slots(IEnumerable<IMoInflAffixSlot> slots) => slots
             .Select(slot => new ObjectFactsSlot(Id(slot), Text(slot.Name) ?? string.Empty)
             {
+                NameWritingSystem = WritingSystemTextReader.BestAnalysis(cache, slot.Name).WritingSystem,
                 Optional = slot.Optional,
                 Templates = Templates(cache).Where(template =>
                         template.PrefixSlotsRS.Contains(slot) || template.SuffixSlotsRS.Contains(slot))
                     .Select(template => new ObjectFactsNamed(Id(template), Text(template.Name) ?? string.Empty)
                     {
+                        NameWritingSystem = WritingSystemTextReader.BestAnalysis(cache, template.Name).WritingSystem,
                         FieldWorks = fieldWorks(template),
                     }).ToArray(),
                 FieldWorks = fieldWorks(slot),
             }).ToArray();
-        ObjectFactsFeatures? Features(IFsFeatStruc? structure) => ObjectFactsReader.Features(structure, fieldWorks);
+        ObjectFactsFeatures? Features(IFsFeatStruc? structure) => ObjectFactsReader.Features(cache, structure, fieldWorks);
 
         return msa switch
         {
@@ -121,7 +131,7 @@ public static class ObjectFactsReader
         };
     }
 
-    private static ObjectFactsAllomorph Allomorph(IMoForm form, bool asked,
+    private static ObjectFactsAllomorph Allomorph(LcmCache cache, IMoForm form, bool asked,
         Func<ICmObject, TraceFieldWorksTarget?> fieldWorks)
     {
         var type = form.MorphTypeRA;
@@ -134,16 +144,22 @@ public static class ObjectFactsReader
         return new ObjectFactsAllomorph(Id(form),
             (type?.Prefix ?? string.Empty) + form.Form.BestVernacularAlternative?.Text + (type?.Postfix ?? string.Empty))
         {
+            FormWritingSystem = WritingSystemTextReader.SingleId(cache, form.Form.BestVernacularAlternative),
+            MorphTypeWritingSystem = WritingSystemTextReader.BestAnalysis(cache, type?.Name).WritingSystem,
             MorphType = Text(type?.Name),
             IsAsked = asked,
             Environments = environments.Distinct().Select(environment => new ObjectFactsEnvironment(Id(environment),
-                environment.StringRepresentation?.Text ?? string.Empty) { FieldWorks = fieldWorks(environment) })
+                environment.StringRepresentation?.Text ?? string.Empty)
+            {
+                NotationWritingSystem = WritingSystemTextReader.SingleId(cache, environment.StringRepresentation),
+                FieldWorks = fieldWorks(environment),
+            })
                 .ToArray(),
-            RequiredFeatures = Features((form as IMoAffixAllomorph)?.MsEnvFeaturesOA, fieldWorks),
+            RequiredFeatures = Features(cache, (form as IMoAffixAllomorph)?.MsEnvFeaturesOA, fieldWorks),
         };
     }
 
-    private static ObjectFactsRule Rule(ICmObject rule, ILexEntry? entry,
+    private static ObjectFactsRule Rule(LcmCache cache, ICmObject rule, ILexEntry? entry,
         Func<ICmObject, TraceFieldWorksTarget?> fieldWorks)
     {
         var (kind, name) = rule switch
@@ -152,7 +168,16 @@ public static class ObjectFactsReader
             IMoCompoundRule compound => ("compoundRule", Text(compound.Name)),
             _ => ("affixRule", AffixName(entry, (IMoMorphSynAnalysis)rule)),
         };
-        return new ObjectFactsRule(Id(rule), kind, name ?? string.Empty) { FieldWorks = fieldWorks(rule) };
+        return new ObjectFactsRule(Id(rule), kind, name ?? string.Empty)
+        {
+            NameWritingSystem = rule switch
+            {
+                IPhSegmentRule segment => WritingSystemTextReader.BestAnalysis(cache, segment.Name).WritingSystem,
+                IMoCompoundRule compound => WritingSystemTextReader.BestAnalysis(cache, compound.Name).WritingSystem,
+                _ => null,
+            },
+            FieldWorks = fieldWorks(rule),
+        };
     }
 
     // An affix is known by its entry, as FieldWorks shows it: headword, then its sense's gloss if any.
@@ -163,13 +188,16 @@ public static class ObjectFactsReader
         return gloss is null ? headword : $"{headword} ‘{gloss}’";
     }
 
-    private static ObjectFactsFeatures? Features(IFsFeatStruc? structure,
+    private static ObjectFactsFeatures? Features(LcmCache cache, IFsFeatStruc? structure,
         Func<ICmObject, TraceFieldWorksTarget?> fieldWorks)
     {
         if (structure is null) return null;
         var values = ClosedValues(structure).Select(value => new ObjectFactsFeatureValue(
             Text(value.FeatureRA?.Name) ?? string.Empty, Text(value.ValueRA?.Name) ?? string.Empty)
         {
+            FeatureWritingSystem = WritingSystemTextReader.BestAnalysis(cache, value.FeatureRA?.Name).WritingSystem,
+            ValueWritingSystem = WritingSystemTextReader.BestAnalysis(cache, value.ValueRA?.Name).WritingSystem,
+            ValueAbbreviationWritingSystem = WritingSystemTextReader.BestAnalysis(cache, value.ValueRA?.Abbreviation).WritingSystem,
             ValueAbbreviation = Text(value.ValueRA?.Abbreviation),
             FieldWorks = value.FeatureRA is { } feature ? fieldWorks(feature) : null,
         }).ToArray();

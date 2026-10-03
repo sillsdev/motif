@@ -57,6 +57,12 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
 
         Assert.NotEqual(firstToken.BundleDigest, secondToken.BundleDigest);
         Assert.Equal(secondToken.BundleDigest, current.Baseline.Token.BundleDigest);
+        var rtl = Assert.Single(current.WritingSystems, ws => ws.Id == SeededProject.RightToLeftTag);
+        Assert.Equal(SeededProject.MissingFont, rtl.FontFamily);
+        Assert.Equal("Ar", rtl.Abbreviation);
+        Assert.Equal(SeededProject.RightToLeftSizePoints, rtl.StyleSizes["Normal"]);
+        Assert.Equal(new SIL.Motif.Contract.Responses.WritingSystemStyleFont(SeededProject.MissingFont,
+            SeededProject.FontFeatures), rtl.StyleFonts["Normal"]);
         Assert.Equal(new HashSet<Guid> { firstText.TextId, secondText.TextId },
             current.Projection.Texts.Select(text => text.TextId).ToHashSet());
         Assert.Equal(Serialize(expected), Serialize(stored.Projection));
@@ -71,12 +77,20 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
     {
         using var cache = _pristine.NewScratch();
         var text = SeededProject.SeedText(cache, _pristine.Seed);
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var paragraph = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().GetObject(text.FirstParagraphId);
+            var rules = SIL.LCModel.Core.Text.TsStringUtils.MakePropsBldr();
+            rules.SetStrPropValue((int)SIL.LCModel.Core.KernelInterfaces.FwTextPropType.ktptNamedStyle, "Heading 1");
+            paragraph.StyleRules = rules.GetTextProps();
+        });
 
         var projected = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
 
         var line = Assert.Single(Assert.Single(projected.Texts, item => item.TextId == text.TextId)
             .Lines, item => item.SegmentId == text.FirstSegmentId);
         Assert.Equal(text.FirstParagraphId, line.ParagraphId);
+        Assert.Equal("Heading 1", line.SentenceStyle);
         Assert.False(line.ParseIsCurrent);
         var word = Assert.Single(line.Tokens, token => token.WordformId == text.AnalysedWordformId);
         Assert.Equal(0, word.OccurrenceIndex);

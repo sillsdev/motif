@@ -31,6 +31,10 @@ public sealed record ApprovedAnalysis(
     string MorphBreakdown,
     IReadOnlyList<AnalysisOccurrenceLink> Occurrences)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphBreakdownWritingSystem { get; init; }
+
     /// <summary>How many positions in the project's texts reference this analysis.</summary>
     public int OccurrenceCount => Occurrences.Count;
 }

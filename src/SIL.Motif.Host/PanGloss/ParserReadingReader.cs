@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SIL.LCModel;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection;
 
 namespace SIL.Motif.Host.PanGloss;
 
@@ -77,10 +78,10 @@ public static class ParserReadingReader
 
         var formText = morph.GuessedString
             ?? (form is null ? Missing(morph.Form) : Marked(form));
-        var gloss = msa?.Owner is ILexEntry owner
-            ? owner.AllSenses.FirstOrDefault(sense => sense.MorphoSyntaxAnalysisRA == msa)?.Gloss
-                .BestAnalysisAlternative.Text ?? string.Empty
-            : Missing(morph.Msa);
+        var glossString = msa?.Owner is ILexEntry glossOwner
+            ? glossOwner.AllSenses.FirstOrDefault(sense => sense.MorphoSyntaxAnalysisRA == msa)?.Gloss.BestAnalysisAlternative
+            : null;
+        var gloss = glossString?.Text ?? (msa?.Owner is ILexEntry ? string.Empty : Missing(morph.Msa));
         var category = msa is null ? string.Empty : msa.InterlinearAbbr ?? string.Empty;
         var entry = (ILexEntry?)form?.Owner ?? msa?.Owner as ILexEntry;
         return new ParserReadingMorph(
@@ -91,6 +92,12 @@ public static class ParserReadingReader
             morph.GuessedString is not null,
             (liveLink ?? (target => FieldWorksLinks.ForTarget(projectName, target)))(EntryTargetFor(cache, objects, morph)))
         {
+            FormWritingSystem = morph.GuessedString is null
+                ? WritingSystemTextReader.SingleId(cache, form?.Form.VernacularDefaultWritingSystem) : null,
+            GlossWritingSystem = WritingSystemTextReader.SingleId(cache, glossString),
+            CategoryWritingSystem = WritingSystemTextReader.SingleId(cache, msa?.InterlinearAbbrTSS),
+            InflectionTypeWritingSystem = WritingSystemTextReader.SingleId(cache, inflectionType?.Abbreviation.BestAnalysisAlternative),
+            EntryWritingSystem = WritingSystemTextReader.SingleId(cache, entry?.LexemeFormOA?.Form.VernacularDefaultWritingSystem),
             Entry = entry?.LexemeFormOA is { } lexemeForm ? Marked(lexemeForm) : null,
             AllomorphId = IdOf(morph.Form),
             GrammaticalInfoId = IdOf(morph.Msa),

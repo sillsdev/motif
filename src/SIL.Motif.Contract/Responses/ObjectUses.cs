@@ -147,6 +147,14 @@ public sealed record ObjectFacts
 /// <param name="Headword">The headword FieldWorks shows, with the morph type's markers, such as <c>ja-</c>.</param>
 public sealed record ObjectFactsEntry(string Id, string Headword)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? HeadwordWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphTypeWritingSystem { get; init; }
+
     /// <summary>The lexeme form's morph type, as FieldWorks names it, such as <c>prefix</c> or <c>root</c>.</summary>
     public string? MorphType { get; init; }
 
@@ -159,6 +167,18 @@ public sealed record ObjectFactsEntry(string Id, string Headword)
 /// <param name="Number">The sense's number in its entry, as FieldWorks numbers it, such as <c>1</c> or <c>2.1</c>.</param>
 public sealed record ObjectFactsSense(string Id, string Number)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NumberWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? GlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? DefinitionWritingSystem { get; init; }
+
     /// <summary>The gloss in the best analysis writing system, or <see langword="null"/> when it has none.</summary>
     public string? Gloss { get; init; }
 
@@ -204,6 +224,10 @@ public sealed record ObjectFactsGrammaticalInfo(string Id, string Kind)
 /// <param name="Name">Its name in the best analysis writing system.</param>
 public sealed record ObjectFactsNamed(string Id, string Name)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NameWritingSystem { get; init; }
+
     /// <summary>Where FieldWorks shows it.</summary>
     public TraceFieldWorksTarget? FieldWorks { get; init; }
 }
@@ -213,6 +237,10 @@ public sealed record ObjectFactsNamed(string Id, string Name)
 /// <param name="Name">The slot's name in the best analysis writing system.</param>
 public sealed record ObjectFactsSlot(string Id, string Name)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NameWritingSystem { get; init; }
+
     /// <summary>Whether a word may leave the slot empty.</summary>
     public bool Optional { get; init; }
 
@@ -226,13 +254,30 @@ public sealed record ObjectFactsSlot(string Id, string Name)
 /// <summary>A feature structure, in FieldWorks' notation and value by value.</summary>
 /// <param name="Notation">The structure in FieldWorks' long form, such as <c>[pol:negative]</c>.</param>
 /// <param name="Values">Its closed values, in the structure's order.</param>
-public sealed record ObjectFactsFeatures(string Notation, IReadOnlyList<ObjectFactsFeatureValue> Values);
+public sealed record ObjectFactsFeatures(string Notation, IReadOnlyList<ObjectFactsFeatureValue> Values)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NotationWritingSystem { get; init; }
+}
 
 /// <summary>One feature and its value.</summary>
 /// <param name="Feature">The feature's name, such as <c>Polarity</c>.</param>
 /// <param name="Value">The value's name, such as <c>negative</c>.</param>
 public sealed record ObjectFactsFeatureValue(string Feature, string Value)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FeatureWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? ValueWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? ValueAbbreviationWritingSystem { get; init; }
+
     /// <summary>The value's abbreviation, such as <c>neg</c>, which is how the parser writes it.</summary>
     public string? ValueAbbreviation { get; init; }
 
@@ -245,6 +290,14 @@ public sealed record ObjectFactsFeatureValue(string Feature, string Value)
 /// <param name="Form">The form with its morph type's markers, as FieldWorks writes it, such as <c>ja-</c>.</param>
 public sealed record ObjectFactsAllomorph(string Id, string Form)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphTypeWritingSystem { get; init; }
+
     /// <summary>The allomorph's morph type, as FieldWorks names it.</summary>
     public string? MorphType { get; init; }
 
@@ -266,6 +319,10 @@ public sealed record ObjectFactsAllomorph(string Id, string Form)
 /// <param name="Notation">The environment exactly as FieldWorks stores it, such as <c>/ _ [C]</c>.</param>
 public sealed record ObjectFactsEnvironment(string Id, string Notation)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NotationWritingSystem { get; init; }
+
     /// <summary>Where FieldWorks shows it: Environments.</summary>
     public TraceFieldWorksTarget? FieldWorks { get; init; }
 }
@@ -276,6 +333,10 @@ public sealed record ObjectFactsEnvironment(string Id, string Notation)
 /// <param name="Name">The rule's name, or an affix's headword and gloss.</param>
 public sealed record ObjectFactsRule(string Id, string Kind, string Name)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? NameWritingSystem { get; init; }
+
     /// <summary>Where FieldWorks edits the rule.</summary>
     public TraceFieldWorksTarget? FieldWorks { get; init; }
 }

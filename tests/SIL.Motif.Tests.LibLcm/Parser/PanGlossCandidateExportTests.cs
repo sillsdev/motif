@@ -138,6 +138,7 @@ public sealed class PanGlossCandidateExportTests : IDisposable
         try
         {
             SeededProject.Seed(master);
+            master.ServiceLocator.WritingSystemManager.Save();
             new FwDataProjectLoader().Save(master);
 
             publishedFwData = await PublishedBaselineFixture.PublishAsync(master, publishedRoot);
@@ -150,6 +151,8 @@ public sealed class PanGlossCandidateExportTests : IDisposable
 
         var directoriesBefore = DirectoriesUnder(publishedRoot);
         var manifestBefore = ManifestOf(publishedRoot);
+        var settingsBefore = Directory.GetFiles(Path.Combine(publishedRoot, "SharedSettings"))
+            .ToDictionary(path => Path.GetFileName(path)!, File.ReadAllText);
 
         // The hazard itself: a candidate opened in place from inside the immutable published directory.
         var candidate = new FwDataProjectLoader().LoadScratchCache(publishedFwData);
@@ -175,7 +178,11 @@ public sealed class PanGlossCandidateExportTests : IDisposable
         }
 
         Assert.Equal(directoriesBefore, DirectoriesUnder(publishedRoot));
-        Assert.Equal(manifestBefore, ManifestOf(publishedRoot));
+        var manifestAfter = ManifestOf(publishedRoot);
+        Assert.True(manifestBefore == manifestAfter, string.Join("\n", settingsBefore.Select(file =>
+            $"{file.Key} before:\n{file.Value}\nafter:\n" +
+            File.ReadAllText(Path.Combine(publishedRoot, "SharedSettings", file.Key!)))) +
+            $"\nManifest before:\n{manifestBefore}\nafter:\n{manifestAfter}");
     }
 
     private static string[] DirectoriesUnder(string root) =>

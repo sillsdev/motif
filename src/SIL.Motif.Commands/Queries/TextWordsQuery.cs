@@ -53,8 +53,8 @@ public static class TextWordsQuery
             var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity);
             var textsById = current.Projection.Texts.ToDictionary(text => text.TextId);
             var wordformsById = current.Projection.Wordforms.ToDictionary(wordform => wordform.WordformId);
-            var order = new List<(string Form, Guid? WordformId)>();
-            var accumulators = new Dictionary<(string Form, Guid? WordformId), WordAccumulator>();
+            var order = new List<(string Form, Guid? WordformId, string? WritingSystem)>();
+            var accumulators = new Dictionary<(string Form, Guid? WordformId, string? WritingSystem), WordAccumulator>();
             var texts = new List<TextLines>();
 
             foreach (var textId in request.TextIds)
@@ -75,10 +75,15 @@ public static class TextWordsQuery
                             ? CanonicalId.FromGuid(analysisId).Value : null;
                         var analysis = storedAnalysisId is not null
                             ? storedAnalyses.FirstOrDefault(item => item.StoredAnalysisId == storedAnalysisId) : null;
-                        var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0]);
+                        var primary = token.Forms.Count == 0 ? string.Empty : Canonicalize(token.Forms[0].Text);
                         tokens.Add(new TextToken(token.Text, primary.Length == 0 ? null : primary,
                             GlossOf(analysis), token.Status)
                         {
+                            TextWritingSystem = token.TextWritingSystem,
+                            FormWritingSystem = token.Forms.FirstOrDefault()?.WritingSystem,
+                            GlossWritingSystem = null,
+                            WordGlossWritingSystem = token.WordGlossWritingSystem,
+                            CategoryWritingSystem = token.CategoryWritingSystem,
                             Analysis = analysis,
                             StoredAnalyses = storedAnalyses,
                             WordGloss = token.WordGloss,
@@ -96,9 +101,9 @@ public static class TextWordsQuery
                         if (token.Status is null) continue;
                         foreach (var raw in token.Forms)
                         {
-                            var form = Canonicalize(raw);
+                            var form = Canonicalize(raw.Text);
                             if (form.Length == 0) continue;
-                            var wordKey = (form, token.WordformId);
+                            var wordKey = (form, token.WordformId, raw.WritingSystem);
                             if (!accumulators.TryGetValue(wordKey, out var accumulator))
                             {
                                 accumulator = new WordAccumulator(token.WordformId);
@@ -106,7 +111,11 @@ public static class TextWordsQuery
                                 order.Add(wordKey);
                             }
                             accumulator.Occurrences.Add(new WordOccurrence(
-                                text.TextId, text.Title, line.Number, line.Sentence, token.Status, analysis));
+                                text.TextId, text.Title, line.Number, line.Sentence, token.Status, analysis)
+                                {
+                                    SentenceWritingSystem = line.SentenceWritingSystem,
+                                    SentenceStyle = line.SentenceStyle, TextTitleWritingSystem = text.TitleWritingSystem,
+                                });
                         }
                     }
                     lines.Add(new TextLine(line.Number, tokens)
@@ -116,7 +125,7 @@ public static class TextWordsQuery
                         ParseIsCurrent = line.ParseIsCurrent,
                     });
                 }
-                texts.Add(new TextLines(text.TextId, text.Title, lines));
+                texts.Add(new TextLines(text.TextId, text.Title, lines) { TitleWritingSystem = text.TitleWritingSystem });
             }
 
             var words = order.Select(wordKey =>
@@ -133,12 +142,14 @@ public static class TextWordsQuery
                 return new TextWord(wordKey.Form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
                     approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false)
                 {
+                    FormWritingSystem = wordKey.WritingSystem,
                     Analyses = all,
                 };
             }).ToList();
 
             return CommandOutcome<TextWordsResponse>.Success(new TextWordsResponse(words, texts, HasBaseline: true,
-                OccurrenceCount: words.Sum(word => word.Occurrences.Count)));
+                OccurrenceCount: words.Sum(word => word.Occurrences.Count))
+            { WritingSystems = current.WritingSystems });
         });
     }
 
@@ -157,6 +168,11 @@ public static class TextWordsQuery
             morph.Form, morph.Gloss, morph.Category, morph.InflectionType, morph.Guessed,
             (liveLink ?? (target => FieldWorksLinks.ForTarget(projectName, target)))(morph.LinkTarget))
         {
+            FormWritingSystem = morph.FormWritingSystem,
+            GlossWritingSystem = morph.GlossWritingSystem,
+            CategoryWritingSystem = morph.CategoryWritingSystem,
+            InflectionTypeWritingSystem = morph.InflectionTypeWritingSystem,
+            EntryWritingSystem = morph.EntryWritingSystem,
             Entry = morph.Entry,
             AllomorphId = identities is { } ids && index < ids.Count ? ids[index].Form : null,
             GrammaticalInfoId = identities is { } msas && index < msas.Count ? msas[index].Msa : null,

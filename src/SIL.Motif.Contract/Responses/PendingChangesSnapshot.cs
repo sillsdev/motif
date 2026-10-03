@@ -8,6 +8,14 @@ public sealed record PendingChange(
     string ChangeId, string WordformId, string Word, string Kind, string? AssessmentId,
     string? DisplayReading, IReadOnlyList<string> OperationIds)
 {
+    /// <summary>Null means this word's spelling has no known single writing system.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public string? WordWritingSystem { get; init; }
+
+    /// <summary>A joined reading description has no single writing system; use the individual morph tags.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public string? DisplayReadingWritingSystem { get; init; }
+
     /// <summary>The word's readings, including the one this change addresses.</summary>
     public IReadOnlyList<ReviewAnalysis> Analyses { get; init; } = [];
 
@@ -66,7 +74,12 @@ public sealed record ChangeUncertainty(string Reason, IReadOnlyList<OccurrenceWo
     IReadOnlyList<OccurrenceWordToken> AfterTokens);
 
 /// <summary>A word token in the ordered sentence context used to explain uncertainty.</summary>
-public sealed record OccurrenceWordToken(int Index, string WordformId, string Form);
+public sealed record OccurrenceWordToken(int Index, string WordformId, string Form)
+{
+    /// <summary>Null means the captured form has no known single writing system.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+}
 
 /// <summary>The durable pending Draft and its per-change fit against the saved project.</summary>
 public sealed record PendingChangesSnapshot(

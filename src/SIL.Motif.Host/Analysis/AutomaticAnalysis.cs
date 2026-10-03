@@ -23,4 +23,9 @@ namespace SIL.Motif.Host.Analysis;
 /// the same presentational role as <see cref="ApprovedAnalysis.MorphBreakdown"/>, built from a different
 /// and coarser source.
 /// </param>
-public sealed record AutomaticAnalysis(string ContentDigest, string MorphBreakdown);
+public sealed record AutomaticAnalysis(string ContentDigest, string MorphBreakdown)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphBreakdownWritingSystem { get; init; }
+}

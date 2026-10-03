@@ -37,6 +37,10 @@ public sealed record WordFormAnalysisAggregate(
     IReadOnlyList<ApprovedAnalysis> ManualAnalyses,
     IReadOnlyList<AutomaticAnalysis>? AutomaticAnalyses)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
     /// <summary>
     /// How many analyses the parser produced for this word form — <b>the aggregate over-generation
     /// signal</b>. <c>null</c> when nothing is known (see <see cref="AutomaticAnalyses"/>); otherwise the

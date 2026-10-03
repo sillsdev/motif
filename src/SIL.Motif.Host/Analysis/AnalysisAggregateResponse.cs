@@ -28,6 +28,8 @@ public sealed record AnalysisAssessmentProvenance(string SelectionName, string S
 /// </param>
 public sealed record AnalysisAggregateResponse
 {
+    public IReadOnlyList<SIL.Motif.Contract.Responses.WritingSystemDisplay> WritingSystems { get; init; } = [];
+
     public AnalysisAggregateResponse(
         IReadOnlyList<WordFormAnalysisAggregate> WordForms,
         AnalysisAssessmentProvenance? Assessment,

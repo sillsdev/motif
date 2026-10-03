@@ -58,6 +58,9 @@ public sealed class BaselineBundleWriter
                     WritingSystemStore + "/" + Path.GetFileName(ldmlPath),
                     cancellationToken).ConfigureAwait(false);
             }
+            foreach (var settingsPath in WritingSystemSettingsFiles.Find(projectFolder))
+                await AddFileAsync(archive, settingsPath, "SharedSettings/" + Path.GetFileName(settingsPath),
+                    cancellationToken).ConfigureAwait(false);
         }
 
         await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -110,6 +113,9 @@ public sealed class BaselineBundleWriter
                     cancellationToken,
                     sourceLastWriteUtc).ConfigureAwait(false);
             }
+            foreach (var settingsPath in WritingSystemSettingsFiles.Find(Path.GetDirectoryName(fwDataPath)!))
+                await AddFileAsync(archive, settingsPath, "SharedSettings/" + Path.GetFileName(settingsPath),
+                    cancellationToken, sourceLastWriteUtc).ConfigureAwait(false);
         }
 
         await destination.FlushAsync(cancellationToken).ConfigureAwait(false);

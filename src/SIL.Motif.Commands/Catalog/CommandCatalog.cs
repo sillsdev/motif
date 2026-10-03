@@ -121,6 +121,9 @@ public static class CommandCatalog
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released),
         new CommandDescriptor("word read-state", typeof(WordReadStateRequest), typeof(WordReadStateResponse), CommandSurface.Developer),
 
+        new CommandDescriptor("writing-systems", typeof(WritingSystemsRequest),
+            typeof(WritingSystemsResponse), CommandSurface.Released),
+
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released),
         new CommandDescriptor("warnings", typeof(WarningsRequest), typeof(WarningsResponse), CommandSurface.Released),

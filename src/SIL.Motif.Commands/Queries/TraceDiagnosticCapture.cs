@@ -29,17 +29,14 @@ internal static class TraceDiagnosticCapture
         };
         using var reader = BaselineReadCache.Open(baseline.FwDataPath);
         var cache = reader.Cache;
-        var container = cache.ServiceLocator.WritingSystems;
-        var inventory = WritingSystemInventoryReader.Read(cache);
-        var definitions = container.CurrentVernacularWritingSystems.Concat(container.CurrentAnalysisWritingSystems).ToLookup(ws => ws.Id);
-        TraceWritingSystem Describe(GrammarWritingSystem ws, bool vernacular)
+        var systems = WritingSystemDisplayReader.Read(cache).Select(ws => new TraceWritingSystem(
+            ws.Id, ws.Name, ws.Kind == WritingSystemKind.Vernacular, ws.IsDefault,
+            ws.RightToLeft ? "rtl" : "ltr", ws.FontFamily)
         {
-            var definition = definitions[ws.Id].FirstOrDefault();
-            return new TraceWritingSystem(ws.Id, ws.Name, vernacular, ws.IsDefaultVernacular,
-                definition is null ? null : definition.RightToLeftScript ? "rtl" : "ltr", definition?.DefaultFontName);
-        }
-        var systems = inventory.Vernacular.Select(ws => Describe(ws, true))
-            .Concat(inventory.Analysis.Select(ws => Describe(ws, false))).ToArray();
+            FontFeatures = ws.FontFeatures,
+            StyleFonts = ws.StyleFonts,
+            StyleSizes = ws.StyleSizes,
+        }).ToArray();
         var capture = new TraceHostCapture(baseline.Token.ProjectIdentity, response.GrammarHash,
             response.GrammarHashSemantics, baseline.Token.BundleDigest, DateTimeOffset.UtcNow,
             wallElapsedMs, systems)
@@ -147,6 +144,14 @@ internal static class TraceDiagnosticCapture
         return named is { Length: > 0 } name && name != "***" ? name : null;
     }
 
+    private static string SizesKey(System.Collections.Generic.IReadOnlyDictionary<string, double>? sizes) =>
+        sizes is null ? string.Empty : SIL.Motif.Contract.Canonicalization.CanonicalJson.Canonicalize(
+            JsonSerializer.Serialize(sizes));
+
+    private static string FontsKey(IReadOnlyDictionary<string, WritingSystemStyleFont>? fonts) =>
+        fonts is null ? string.Empty : SIL.Motif.Contract.Canonicalization.CanonicalJson.Canonicalize(
+            JsonSerializer.Serialize(fonts));
+
     internal static TraceProvenanceComparison Compare(TraceHostCapture? recorded, TraceHostCapture? current)
     {
         string CompareValue(string? left, string? right) => string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right)
@@ -158,8 +163,10 @@ internal static class TraceDiagnosticCapture
             StringComparer.Ordinal.Equals(recorded.GrammarHashSemantics, current?.GrammarHashSemantics);
         var grammar = sameHashKind ? CompareValue(recorded?.GrammarHash, current?.GrammarHash) : "unknown";
         var writingSystems = recorded is null || current is null || recorded.WritingSystems.Count == 0 || current.WritingSystems.Count == 0
-            ? "unknown" : recorded.WritingSystems.Select(ws => (ws.Id, ws.IsVernacular, ws.IsDefault))
-                .SequenceEqual(current.WritingSystems.Select(ws => (ws.Id, ws.IsVernacular, ws.IsDefault))) ? "match" : "mismatch";
+            ? "unknown" : recorded.WritingSystems.Select(ws => (ws.Id, ws.IsVernacular, ws.IsDefault, ws.Direction, ws.Font, ws.FontFeatures,
+                    SizesKey(ws.StyleSizes), FontsKey(ws.StyleFonts)))
+                .SequenceEqual(current.WritingSystems.Select(ws => (ws.Id, ws.IsVernacular, ws.IsDefault, ws.Direction, ws.Font, ws.FontFeatures,
+                    SizesKey(ws.StyleSizes), FontsKey(ws.StyleFonts)))) ? "match" : "mismatch";
         var compatible = project == "match" && grammar == "match" && writingSystems == "match";
         return new TraceProvenanceComparison(project, grammar, writingSystems, compatible,
             compatible ? "" : $"Recorded evidence retained. Project: {project}; grammar: {grammar}; writing systems: {writingSystems}. Live navigation is unavailable.");

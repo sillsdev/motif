@@ -36,6 +36,9 @@ public sealed class SavedProjectFileCopierTests : IDisposable
         Assert.Equal(File.ReadAllBytes(fwDataPath), File.ReadAllBytes(copy.FwDataPath));
         Assert.NotEmpty(copy.WritingSystemPaths);
         Assert.All(copy.WritingSystemPaths, path => Assert.True(File.Exists(path)));
+        foreach (var sourceSettings in WritingSystemSettingsFiles.Find(Path.GetDirectoryName(fwDataPath)!))
+            Assert.Equal(File.ReadAllBytes(sourceSettings), File.ReadAllBytes(Path.Combine(destination,
+                "SharedSettings", Path.GetFileName(sourceSettings))));
     }
 
     [Fact]

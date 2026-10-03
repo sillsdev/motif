@@ -93,6 +93,10 @@ public sealed class ObjectFactsReaderTests : IDisposable
         Assert.Equal(("lexiconEdit", "Lexicon Edit"), (facts.Entry.FieldWorks!.Tool, facts.Entry.FieldWorks.ToolName));
         var sense = Assert.Single(facts.Senses);
         Assert.Equal(("1", "NEG.PERF", "not yet"), (sense.Number, sense.Gloss, sense.Definition));
+        Assert.Equal(NewLangProjFixture.VernacularTag, facts.Entry.HeadwordWritingSystem);
+        Assert.Equal(NewLangProjFixture.AnalysisTag, sense.GlossWritingSystem);
+        Assert.Equal(NewLangProjFixture.AnalysisTag, sense.DefinitionWritingSystem);
+        Assert.Null(sense.NumberWritingSystem);
         var info = facts.GrammaticalInfo!;
         Assert.Equal(("inflectionalAffix", "Verb"), (info.Kind, info.Category!.Name));
         Assert.Equal("Category Edit", info.Category.FieldWorks!.ToolName);
@@ -104,6 +108,7 @@ public sealed class ObjectFactsReaderTests : IDisposable
         Assert.Null(info.RequiredFeatures);
         var ja = facts.Allomorphs.Single(allomorph => allomorph.IsAsked);
         Assert.Equal("ja-", ja.Form);
+        Assert.Equal(NewLangProjFixture.VernacularTag, ja.FormWritingSystem);
         var required = ja.RequiredFeatures!;
         Assert.Equal(_grammar.JaRequired.LongName, required.Notation);
         var value = Assert.Single(required.Values);

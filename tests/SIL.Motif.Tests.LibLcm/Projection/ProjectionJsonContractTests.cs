@@ -29,7 +29,7 @@ public sealed class ProjectionJsonContractTests
 {
     [Fact]
     public void ProjectSummary_KeysAreTheContract() =>
-        AssertKeys(new ProjectSummaryProjection("p", 3), "projectName", "lexicalEntryCount");
+        AssertKeys(new ProjectSummaryProjection("p", 3), "projectName", "lexicalEntryCount", "writingSystems");
 
     [Fact]
     public void ProposalListItem_KeysAreTheContract() =>

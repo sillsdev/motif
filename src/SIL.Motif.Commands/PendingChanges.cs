@@ -876,10 +876,12 @@ public static class PendingChanges
         }
 
         var revision = Revision(current.ProposalJson);
-        currentBaseline ??= new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+        var baselineEvidence = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
+        currentBaseline ??= baselineEvidence?.Baseline;
         var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, currentBaseline?.Token.ProjectIdentity);
         changes = changes.Select(change => change with
         {
+            WordWritingSystem = baselineEvidence?.Summary.WordWritingSystems.GetValueOrDefault(change.Word),
             Analyses = change.Analyses.Select(analysis => analysis with
                 { Reading = navigation.Verify(analysis.Reading) }).ToArray(),
         }).ToArray();

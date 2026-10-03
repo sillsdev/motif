@@ -44,9 +44,31 @@ public sealed class ParserReadingReaderTests : IDisposable
         Assert.Equal(SeededProject.FirstForm, morph.Form);
         Assert.Equal(SeededProject.FirstGloss, morph.Gloss);
         Assert.Equal(msa.InterlinearAbbr, morph.Category);
+        Assert.Equal(NewLangProjFixture.VernacularTag, morph.FormWritingSystem);
+        Assert.Equal(NewLangProjFixture.VernacularTag, morph.EntryWritingSystem);
+        Assert.Equal(NewLangProjFixture.AnalysisTag, morph.GlossWritingSystem);
         Assert.False(morph.Guessed);
         Assert.Equal($"database=Sena 3&tool=lexiconEdit&guid={_seed.FirstEntryId:D}&tag=",
             HttpUtility.UrlDecode(morph.FieldWorksLink!["silfw://localhost/link?".Length..]));
+    }
+
+    [Fact]
+    public void AGlossFallbackKeepsItsActualWritingSystemInsteadOfTheDefault()
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        var msa = entry.MorphoSyntaxAnalysesOC.Single();
+        var rtl = _cache.ServiceLocator.WritingSystemManager.Get(SeededProject.RightToLeftTag);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            _cache.ServiceLocator.WritingSystems.AnalysisWritingSystems.Add(rtl);
+            _cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Add(rtl);
+            entry.SensesOS[0].Gloss.set_String(_cache.DefaultAnalWs, "");
+            entry.SensesOS[0].Gloss.set_String(rtl.Handle, "عربي");
+        });
+        var morph = Assert.Single(Assert.Single(ParserReadingReader.Read(_cache, "Sample", Evidence(
+            new ParseMorph(_seed.FirstLexemeFormId.ToString("D"), msa.Guid.ToString("D"), null, null)))).Morphs);
+        Assert.Equal("عربي", morph.Gloss);
+        Assert.Equal(rtl.Id, morph.GlossWritingSystem);
     }
 
     [Fact]
@@ -85,6 +107,8 @@ public sealed class ParserReadingReaderTests : IDisposable
         var morph = Assert.Single(reading.Morphs);
         Assert.Equal("(missing 0c686afa)", morph.Form);
         Assert.Equal("(missing 14ff3655)", morph.Gloss);
+        Assert.Null(morph.FormWritingSystem);
+        Assert.Null(morph.GlossWritingSystem);
         Assert.Null(morph.FieldWorksLink);
     }
 

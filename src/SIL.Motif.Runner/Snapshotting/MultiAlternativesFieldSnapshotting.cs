@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 
@@ -19,7 +20,10 @@ internal static class MultiAlternativesFieldSnapshotting
 
         foreach (var ws in accessor.AvailableWritingSystemIds)
         {
-            var text = accessor.get_String(ws)?.Text;
+            var value = accessor.get_String(ws);
+            var text = accessor is IMultiUnicode
+                ? value?.Text?.Normalize(NormalizationForm.FormD)
+                : value?.get_NormalizedForm(FwNormalizationMode.knmNFSC)?.Text;
             if (string.IsNullOrEmpty(text))
                 continue; // Empty is indistinguishable from absent; omit rather than write "".
 

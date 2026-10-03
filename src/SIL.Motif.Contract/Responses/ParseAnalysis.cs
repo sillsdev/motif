@@ -68,6 +68,26 @@ public sealed record ParserReading(IReadOnlyList<ParserReadingMorph> Morphs)
 public sealed record ParserReadingMorph(
     string Form, string Gloss, string Category, string? InflectionType, bool Guessed, string? FieldWorksLink)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? GlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? CategoryWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? InflectionTypeWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? EntryWritingSystem { get; init; }
+
     /// <summary>The entry's lexeme form, marked with the morph type, or <see langword="null"/> when unresolved.</summary>
     public string? Entry { get; init; }
 

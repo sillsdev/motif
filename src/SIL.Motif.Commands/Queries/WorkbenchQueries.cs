@@ -41,7 +41,10 @@ public sealed record TextWordsRequest(string ProjectPath, IReadOnlyList<Guid> Te
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was nothing to read.</param>
 /// <param name="OccurrenceCount">The command's total number of word occurrences across the returned Texts.</param>
 public sealed record TextWordsResponse(
-    IReadOnlyList<TextWord> Words, IReadOnlyList<TextLines> Texts, bool HasBaseline, int OccurrenceCount = 0);
+    IReadOnlyList<TextWord> Words, IReadOnlyList<TextLines> Texts, bool HasBaseline, int OccurrenceCount = 0)
+{
+    public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
+}
 
 /// <summary>One wordform and one of its spellings in the chosen Texts; homographs keep separate rows.</summary>
 /// <param name="Form">The form exactly as a Selection would send it to the parser (NFD).</param>
@@ -64,6 +67,10 @@ public sealed record TextWord(
     int CandidateCount = 0,
     bool IncorrectSpelling = false)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
     public IReadOnlyList<ProjectAnalysis> Analyses { get; init; } = [];
 }
 
@@ -77,7 +84,19 @@ public sealed record TextWord(
 /// </param>
 /// <param name="Analysis">The analysis chosen at this occurrence, or <see langword="null"/> when there is none.</param>
 public sealed record WordOccurrence(
-    Guid TextId, string TextTitle, int Line, string Sentence, string Status, ProjectAnalysis? Analysis);
+    Guid TextId, string TextTitle, int Line, string Sentence, string Status, ProjectAnalysis? Analysis)
+{
+    /// <summary>The source paragraph's named style; Normal when none was authored.</summary>
+    public string SentenceStyle { get; init; } = "Normal";
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? TextTitleWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? SentenceWritingSystem { get; init; }
+}
 
 /// <summary>One analysis the project holds, as morphs a person reads, with a key to compare it by.</summary>
 /// <param name="Key">
@@ -93,11 +112,17 @@ public sealed record ProjectAnalysis(string Key, IReadOnlyList<ParserReadingMorp
 }
 
 /// <summary>One chosen Text, line by line.</summary>
-public sealed record TextLines(Guid TextId, string Title, IReadOnlyList<TextLine> Lines);
+public sealed record TextLines(Guid TextId, string Title, IReadOnlyList<TextLine> Lines)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? TitleWritingSystem { get; init; }
+}
 
 /// <summary>One line of a Text: its number and its tokens in order.</summary>
 public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens)
 {
+
     /// <summary>The GUID of the paragraph that contains this line.</summary>
     public Guid ParagraphId { get; init; }
 
@@ -115,6 +140,26 @@ public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens)
 /// <param name="Status">For a word, as <see cref="WordOccurrence.Status"/>; <see langword="null"/> for punctuation.</param>
 public sealed record TextToken(string Text, string? Form, string? Gloss, string? Status)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? TextWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? GlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? WordGlossWritingSystem { get; init; }
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? CategoryWritingSystem { get; init; }
+
     /// <summary>The source wordform identity, or <see langword="null"/> for punctuation.</summary>
     public Guid? WordformId { get; init; }
 

@@ -5,6 +5,10 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>A word's complete stored context, independent of Selection membership or parser measurements.</summary>
 public sealed record WordContextResponse(string Word, bool HasBaseline)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? WordWritingSystem { get; init; }
+
     /// <summary>The exact Baseline supplying these analyses; null before a capture.</summary>
     public BaselineToken? Baseline { get; init; }
     /// <summary>The FieldWorks save represented by these analyses.</summary>

@@ -1,5 +1,7 @@
 using SIL.Motif.Host.Parser;
 using SIL.LCModel;
+using SIL.Motif.Projection;
+using SIL.Motif.Host.WritingSystems;
 
 namespace SIL.Motif.Host.Analysis;
 
@@ -88,7 +90,8 @@ public static class AnalysisAggregateReader
                 WordformGuid: wordform.Guid.ToString(),
                 Form: form,
                 ManualAnalyses: manual,
-                AutomaticAnalyses: automatic));
+                AutomaticAnalyses: automatic)
+            { FormWritingSystem = WritingSystemTextReader.SingleId(cache, wordform.Form.VernacularDefaultWritingSystem) });
 
             if (manual.Count == 0 && wordform.SpellingStatus != IncorrectSpellingStatus)
             {
@@ -106,7 +109,8 @@ public static class AnalysisAggregateReader
             ? null
             : new UnanalysedReachFigure(unanalysedCount, unanalysedParsedCount);
 
-        return new AnalysisAggregateResponse(wordforms, provenance, unanalysedReach);
+        return new AnalysisAggregateResponse(wordforms, provenance, unanalysedReach)
+        { WritingSystems = WritingSystemDisplayReader.Read(cache) };
     }
 
     private static ApprovedAnalysis BuildApproved(IWfiAnalysis analysis)

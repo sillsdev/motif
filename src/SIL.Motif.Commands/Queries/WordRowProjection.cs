@@ -25,6 +25,8 @@ public static class WordRowProjection
         var panGlossMorphs = panGloss?.Morphs ?? [];
         return new WordRow(word.Word, outcome, comparison.Headline, comparison.Tone)
         {
+            WordWritingSystem = word.WordWritingSystem,
+            GlossWritingSystem = null,
             Comparison = comparison,
             MeaningCode = comparison.MeaningCode,
             MeaningDetail = comparison.Detail,

@@ -72,6 +72,7 @@ public static class CommandTextRenderer
             InspectResponse r => RenderInspect(r),
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
+            WritingSystemsResponse r => RenderWritingSystems(r),
             WordContextResponse r => RenderWordContext(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
@@ -337,6 +338,20 @@ public static class CommandTextRenderer
             if (CandidateLine(touched.ByMembershipOnly, touched.BySpellingOnly) is { } candidates)
                 text.AppendLine($"           Not counted: {candidates}");
         }
+        return text.ToString();
+    }
+
+    private static string RenderWritingSystems(WritingSystemsResponse response)
+    {
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read writing systems." + Environment.NewLine;
+        var text = new StringBuilder();
+        foreach (var ws in response.WritingSystems)
+        {
+            text.AppendLine($"{ws.Kind} {ws.Position + 1}: {ws.Name} ({ws.Id}, {ws.Abbreviation}){(ws.IsDefault ? " [default]" : "")}");
+            text.AppendLine($"  {ws.FontFamily}; {(ws.RightToLeft ? "right to left" : "left to right")}; features: {ws.FontFeatures}");
+            foreach (var size in ws.StyleSizes) text.AppendLine($"  {size.Key}: {size.Value.ToString(CultureInfo.InvariantCulture)} pt");
+        }
+        text.AppendLine("Change fonts and direction in FieldWorks: Format > Set up Vernacular/Analysis Writing Systems; sizes: Format > Styles.");
         return text.ToString();
     }
 

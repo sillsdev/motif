@@ -16,12 +16,21 @@ public sealed record ApprovedAnalysisView(
     string MorphBreakdown,
     IReadOnlyList<AnalysisOccurrenceView> Occurrences)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphBreakdownWritingSystem { get; init; }
+
     /// <summary>How many project-text positions reference this analysis.</summary>
     public int OccurrenceCount => Occurrences.Count;
 }
 
 /// <summary>One automatic analysis recorded by an Assessment.</summary>
-public sealed record AutomaticAnalysisView(string ContentDigest, string MorphBreakdown);
+public sealed record AutomaticAnalysisView(string ContentDigest, string MorphBreakdown)
+{
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? MorphBreakdownWritingSystem { get; init; }
+}
 
 /// <summary>A recorded batch case and its frozen comparison, absent when expectations were not collected.</summary>
 public sealed record AssessmentAnalysisCase(ParseWordEvidence Morphology, WordCorrectness? Correctness);
@@ -36,6 +45,10 @@ public sealed record WordFormAnalysisView(
     IReadOnlyList<ApprovedAnalysisView> ManualAnalyses,
     IReadOnlyList<AutomaticAnalysisView>? AutomaticAnalyses = null)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? FormWritingSystem { get; init; }
+
     /// <summary>How many manually approved analyses the word form has.</summary>
     public int ManualAnalysisCount => ManualAnalyses.Count;
 
@@ -58,6 +71,8 @@ public sealed record AnalysisAggregateProjection(
     IReadOnlyList<WordFormAnalysisView> WordForms,
     UnanalysedReachView? UnanalysedReach = null)
 {
+    public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
+
     /// <summary>The recorded source of manual facts, independent of current digests supplied for comparison.</summary>
     public AnalysisProjectContext? ProjectContext { get; init; }
 

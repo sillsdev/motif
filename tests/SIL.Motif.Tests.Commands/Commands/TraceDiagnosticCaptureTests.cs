@@ -8,6 +8,36 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class TraceDiagnosticCaptureTests
 {
+    [Theory]
+    [InlineData("font")]
+    [InlineData("direction")]
+    [InlineData("features")]
+    [InlineData("size")]
+    [InlineData("styleFont")]
+    public void ChangedDisplaySettingsInvalidateWritingSystemCompatibility(string field)
+    {
+        var recorded = Capture();
+        var system = recorded.WritingSystems[0] with
+        {
+            FontFeatures = "smcp=1",
+            StyleFonts = new Dictionary<string, WritingSystemStyleFont> { ["Normal"] = new("Noto Sans Arabic", "smcp=1") },
+            StyleSizes = new Dictionary<string, double> { ["Normal"] = 10 },
+        };
+        recorded = recorded with { WritingSystems = [system] };
+        var changed = field switch
+        {
+            "font" => system with { Font = "Another font" },
+            "direction" => system with { Direction = "ltr" },
+            "features" => system with { FontFeatures = "smcp=0" },
+            "size" => system with { StyleSizes = new Dictionary<string, double> { ["Normal"] = 18 } },
+            _ => system with { StyleFonts = new Dictionary<string, WritingSystemStyleFont> { ["Normal"] = new("Another font", "smcp=1") } },
+        };
+        Assert.True(TraceDiagnosticCapture.Compare(recorded, recorded).IsCompatible);
+        var comparison = TraceDiagnosticCapture.Compare(recorded, recorded with { WritingSystems = [changed] });
+        Assert.Equal("mismatch", comparison.WritingSystemsStatus);
+        Assert.False(comparison.IsCompatible);
+    }
+
     [Fact]
     public void ExplicitIncompleteSearchIsNotReinterpretedAsComplete()
     {

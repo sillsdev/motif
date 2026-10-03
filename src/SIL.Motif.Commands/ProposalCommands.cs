@@ -93,7 +93,8 @@ public static partial class ProposalCommands
         {
             var fullPath = ResolveProjectPath(fwDataPath);
             using var reader = BaselineReadCache.Open(fullPath);
-            return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(reader.Cache));
+            return CommandOutcome<ProjectSummaryProjection>.Success(ProjectSummaryReader.Read(reader.Cache) with
+            { WritingSystems = SIL.Motif.Host.WritingSystems.WritingSystemDisplayReader.Read(reader.Cache) });
         }
         catch (Exception ex)
         {

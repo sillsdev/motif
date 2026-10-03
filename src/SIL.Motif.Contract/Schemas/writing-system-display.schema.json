@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/WritingSystemDisplay",
+  "$defs": {
+    "WritingSystemDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "abbreviation",
+        "fontFamily",
+        "fontFeatures",
+        "kind",
+        "position",
+        "isDefault",
+        "rightToLeft",
+        "styleSizes",
+        "styleFonts"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "abbreviation": {
+          "type": "string"
+        },
+        "fontFamily": {
+          "type": "string"
+        },
+        "fontFeatures": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "vernacular",
+            "analysis"
+          ]
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "isDefault": {
+          "type": "boolean"
+        },
+        "rightToLeft": {
+          "type": "boolean"
+        },
+        "styleSizes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "required": [
+            "Normal",
+            "Paragraph",
+            "Dictionary-Headword",
+            "Dictionary-Vernacular",
+            "Dictionary-POS",
+            "Title_Main"
+          ],
+          "properties": {
+            "Normal": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "Paragraph": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "Dictionary-Headword": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "Dictionary-Vernacular": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "Dictionary-POS": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "Title_Main": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "styleFonts": {
+          "type": "object",
+          "required": [
+            "Normal",
+            "Paragraph",
+            "Dictionary-Headword",
+            "Dictionary-Vernacular",
+            "Dictionary-POS",
+            "Title_Main"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/WritingSystemStyleFont"
+          }
+        }
+      }
+    },
+    "WritingSystemText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "writingSystem"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "writingSystem": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "WritingSystemStyleFont": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fontFamily",
+        "fontFeatures"
+      ],
+      "properties": {
+        "fontFamily": {
+          "type": "string"
+        },
+        "fontFeatures": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

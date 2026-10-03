@@ -30,6 +30,10 @@ public sealed record AssessCommandResponse(
 public sealed record AssessmentWordResult(
     string Word, string Outcome, bool IsIncomplete, string CompletionStatus, int? ElapsedMs, string? RawSignature)
 {
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? WordWritingSystem { get; init; }
+
     /// <summary>The shared comparison supplied by the command, including analysis matches and meaning identity.</summary>
     public WordComparison? Comparison { get; init; }
 
