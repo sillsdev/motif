@@ -259,6 +259,22 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal void ScrollIntoView(string automationId)
     {
+        if (FindOptionalByAutomationId(automationId) is null)
+        {
+            foreach (var panel in Window.GetLogicalDescendants().OfType<ResultsInTextPanel>()
+                         .Where(panel => panel.IsEffectivelyVisible))
+            {
+                var lines = panel.FindControl<ItemsControl>("TextLineItems")!;
+                for (var index = 0; index < lines.ItemCount; index++)
+                {
+                    lines.ScrollIntoView(index);
+                    Window.UpdateLayout();
+                    Pump();
+                    if (FindOptionalByAutomationId(automationId) is not null) break;
+                }
+                if (FindOptionalByAutomationId(automationId) is not null) break;
+            }
+        }
         var target = FindByAutomationId(automationId);
         target.BringIntoView();
         Pump();

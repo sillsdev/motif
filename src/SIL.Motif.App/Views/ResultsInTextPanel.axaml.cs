@@ -13,6 +13,7 @@ namespace SIL.Motif.App.Views;
 public sealed partial class ResultsInTextPanel : UserControl
 {
     private readonly List<Control> _visibilityAncestors = [];
+    private readonly ItemsControl _lineItems;
 
     public ResultsInTextPanel(ResultsInTextViewModel inText)
     {
@@ -20,6 +21,7 @@ public sealed partial class ResultsInTextPanel : UserControl
         InText = inText;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        _lineItems = this.FindControl<ItemsControl>("TextLineItems")!;
         InText.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ResultsInTextViewModel.SelectedToken) && InText.SelectedToken is { } token)
@@ -78,10 +80,13 @@ public sealed partial class ResultsInTextPanel : UserControl
 
     private bool FocusNeighbour(Control strip, int direction)
     {
-        var strips = this.GetVisualDescendants().OfType<Border>()
-            .Where(border => border.Name == "WordStrip" && border.IsEffectivelyVisible).ToList();
-        var next = strips.IndexOf((Border)strip) + direction;
-        return next >= 0 && next < strips.Count && strips[next].Focus(NavigationMethod.Directional);
+        if (strip.Tag is not ResultsTokenViewModel current) return false;
+        var tokens = InText.VisibleLines.SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
+        var index = tokens.IndexOf(current);
+        var next = index + direction;
+        if (index < 0 || next < 0 || next >= tokens.Count) return false;
+        BringTokenLineIntoView(tokens[next]);
+        return StripFor(tokens[next])?.Focus(NavigationMethod.Directional) == true;
     }
 
     private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
@@ -104,18 +109,31 @@ public sealed partial class ResultsInTextPanel : UserControl
     {
         if (InText.SelectedToken is not { } token) return;
         InText.CloseTokenCard();
-        Dispatcher.UIThread.Post(() => StripFor(token)?.Focus(NavigationMethod.Directional), DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() =>
+        {
+            BringTokenLineIntoView(token);
+            StripFor(token)?.Focus(NavigationMethod.Directional);
+        }, DispatcherPriority.Loaded);
     }
 
     // The card is built under its line after the selection changes, so focus waits for that layout pass.
     private void FocusCard(ResultsTokenViewModel token)
     {
         if (!ReferenceEquals(InText.SelectedToken, token)) return;
+        BringTokenLineIntoView(token);
         var card = this.GetVisualDescendants().OfType<Border>().FirstOrDefault(border =>
             border.Classes.Contains("wordCard") && ReferenceEquals(border.DataContext, token));
         if (card is null) return;
         card.Focus(NavigationMethod.Directional);
         card.BringIntoView();
+    }
+
+    private void BringTokenLineIntoView(ResultsTokenViewModel token)
+    {
+        var line = InText.VisibleLines.FirstOrDefault(line => line.Tokens.Contains(token));
+        if (line is null) return;
+        _lineItems.ScrollIntoView(InText.VisibleLines.IndexOf(line));
+        _lineItems.UpdateLayout();
     }
 
     private Border? StripFor(ResultsTokenViewModel token) => this.GetVisualDescendants().OfType<Border>()

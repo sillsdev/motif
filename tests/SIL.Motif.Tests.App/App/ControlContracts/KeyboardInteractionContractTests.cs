@@ -236,9 +236,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             try
             {
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
-                var panel = AnalyzeTextsLayoutTests.Panel(window);
-                var occurrences = AnalyzeTextsLayoutTests.Strips(panel)
-                    .Select(strip => Assert.IsType<ResultsTokenViewModel>(strip.Tag)).ToArray();
+                var occurrences = inText.SelectedText!.Lines.SelectMany(line => line.Tokens)
+                    .Where(token => token.IsWord).ToArray();
                 Assert.NotEmpty(occurrences);
 
                 await inText.OpenTokenCardAsync(occurrences[0]);

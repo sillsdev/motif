@@ -172,7 +172,10 @@
                 Click="OnGoToTextsClick" AutomationProperties.Name="Choose texts to analyze" />
       </StackPanel>
       <ScrollViewer Grid.Row="2" IsVisible="{Binding InText.HasLines}">
-        <ItemsControl ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
+        <ItemsControl x:Name="TextLineItems" ItemsSource="{Binding InText.VisibleLines}" AutomationProperties.Name="Text lines and parser results">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">

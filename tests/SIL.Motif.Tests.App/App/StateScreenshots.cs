@@ -821,9 +821,15 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public ResultsTokenViewModel Token(string form) =>
             InText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.Form == form);
 
-        public Border Strip(string form) =>
-            Visible<Border>(border => border.Name == "WordStrip" && border.DataContext is ResultsTokenViewModel token &&
-                token.Form == form).First();
+        public Border Strip(string form)
+        {
+            var token = Token(form);
+            var line = InText.VisibleLines.First(line => line.Tokens.Contains(token));
+            var panel = Visible<ResultsInTextPanel>(_ => true).Single();
+            panel.FindControl<ItemsControl>("TextLineItems")!.ScrollIntoView(InText.VisibleLines.IndexOf(line));
+            PageScreenshots.Settle(Window);
+            return Visible<Border>(border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token)).First();
+        }
 
         public async Task<string> Hover(WorkspacePage? page, Func<Control> find, string what, TextsTab? tab = null)
         {
