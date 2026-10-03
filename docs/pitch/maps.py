@@ -1,4 +1,4 @@
-"""Chapter-opener backgrounds: one region of the world per chapter, land a shade darker than the page.
+"""Chapter-opener backgrounds: one region of the world per chapter, white page, land a light tint of the chapter colour so it prints.
 
 Run from docs/pitch: `python maps.py` rewrites art/chapter-1.svg to art/chapter-5.svg. The coastlines and borders
 are Natural Earth's 1:50m countries (public domain), fetched once from the world-atlas package into dist/.
@@ -51,13 +51,13 @@ def merc(lat):
     return math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
 
 
-# page colour, land colour, centre lon/lat, px per degree, where the centre sits on the page
+# page colour, land colour (the chapter colour at 30% on white), centre lon/lat, px per degree, where the centre sits on the page
 regions = {
-    1: ('#005CB9', '#004A96', (18, 3), 10.2, (700, 395)),     # Africa
-    2: ('#00A7E1', '#0094C8', (80, 22), 19.0, (690, 330)),    # India and South Asia
-    3: ('#003049', '#001F30', (113, 6), 13.5, (640, 360)),    # Southeast Asia
-    4: ('#6CC4EA', '#5AB2D9', (-72, -6), 8.4, (720, 400)),    # Latin America
-    5: ('#FF6B00', '#EB6200', (151, -7), 17.0, (640, 330)),   # New Guinea and the western Pacific
+    1: ('#FFFFFF', '#B2CEEA', (18, 3), 10.2, (700, 395)),     # Africa
+    2: ('#FFFFFF', '#B2E5F6', (80, 22), 19.0, (690, 330)),    # India and South Asia
+    3: ('#FFFFFF', '#B2C1C8', (113, 6), 13.5, (640, 360)),    # Southeast Asia
+    4: ('#FFFFFF', '#D3EDF9', (-72, -6), 8.4, (720, 400)),    # Latin America
+    5: ('#FFFFFF', '#FFD3B2', (151, -7), 17.0, (640, 330)),   # New Guinea and the western Pacific
 }
 
 for n, (bg, land, (lon0, lat0), k, (cx, cy)) in regions.items():

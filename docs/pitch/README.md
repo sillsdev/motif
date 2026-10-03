@@ -2,13 +2,13 @@
 
 A pitch for the whole HermitCrab → PanGloss → Motif effort, for SIL leadership, the FieldWorks and
 HermitCrab teams, and prospective partners. It presents the work as a continuation of forty years of SIL
-parsing, with Motif as a proving ground whose Phase 1 tools move into FieldWorks, and sets out a
+parsing, with Motif as a working demonstration whose Phase 1 tools move into FieldWorks, and sets out a
 two-phase plan (Phase 1 for Bible translation, Phase 2 for every language community). The look is
 SIL Global's: landscape letter pages, SIL blues, and SIL's own open fonts, with the cover showing one
 word in several scripts, each in its SIL font.
 
 There are two decks. **`pitch.md`** is the full paper, *A Working Grammar for Every Language*.
-**`pitch-short.md`** is *Motif in Brief*: eight pages on what Motif is today and where it goes.
+**`pitch-short.md`** is *Motif in Brief*: eight pages on what the Motif demonstration shows today and where it goes.
 Everything else is formatting. Edit the words there; the build turns them into a PDF and an HTML page.
 
 ## Build
@@ -43,7 +43,7 @@ fetched by `npx` on first run.
 |---|---|
 | `cover` | Title page; `<div class="scripts">` holds the multiscript strip, `######` is the byline |
 | `toc` | Contents; `*n*` at the end of an item is its page number |
-| `chapter c1` … `c6` | Chapter opener in that colour; `######` is the chapter pill |
+| `chapter c1` … `c6` | Chapter opener on white, its map tinted in that colour; `######` is the chapter pill |
 | `cols` | Two columns; `<div class="break"></div>` starts the second |
 | `cards` / `cards2` | Each list item becomes a card, three or two per row |
 | `axes` | A comparison table with tinted Today / Phase 1 / Phase 2 columns |
@@ -63,7 +63,8 @@ geometry. To change one, edit its SVG in `diagrams/` directly.
 
 Most pages carry one figure from `figures/`. Each is a Claude Design artboard, kept verbatim from the canvas
 [Pitch image options](https://claude.ai/artifact/EjB9HVrNXq69gK6djdRjra), page *Deck figures (in use)*, where
-`figures/NAME.dc.html` is the artboard `fig-NAME`. The canvas's other pages hold the options that were not chosen.
+`figures/NAME.dc.html` is the artboard `fig-NAME`. The canvas's other pages hold the options that were not chosen. One exception: `figures/flourishing.dc.html`
+was written by hand in the same artboard shape and is not on the canvas yet.
 
 A figure is a line of its own: `![](figures/tools.dc.html)`, with `wide` to span both columns of a `cols` page
 or `narrow` on a full-width page. `build.ps1` inlines the artboard's markup unscaled, so it is drawn at the size

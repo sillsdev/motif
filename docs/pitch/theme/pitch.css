@@ -32,9 +32,10 @@
   --phase1: #D0DCF5;
   --phase2: #C0EEF6;
   --cover: #003049;
-  /* each chapter colour pairs with an AA text colour: white on the dark ones, navy on the light ones */
+  /* chapter openers print on white: the map's land is a light tint of the chapter colour, and the title takes a
+     darker shade of it that keeps AA contrast over that tint */
   --c1: #005CB9; --c2: #00A7E1; --c3: #003049; --c4: #6CC4EA; --c5: #FF6B00; --c6: #2B5F8A;
-  --on-c1: #FFFFFF; --on-c2: #003049; --on-c3: #FFFFFF; --on-c4: #003049; --on-c5: #003049; --on-c6: #FFFFFF;
+  --ink-c1: #0053A6; --ink-c2: #00688B; --ink-c3: #003049; --ink-c4: #3C6E83; --ink-c5: #9E4200; --ink-c6: #2B5F8A;
   --serif: 'Charis SIL', Georgia, 'Times New Roman', serif;
   --sans: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
   --mono: 'JetBrains Mono', Consolas, monospace;
@@ -117,9 +118,9 @@ section.chapter h6 { font: 600 13px var(--sans); border: 1.2px solid currentColo
 section.chapter p:has(img) { position: absolute; inset: 0; margin: 0; }
 section.chapter img { display: block; width: 100%; height: 100%; }
 section.chapter h1, section.chapter h6 { position: relative; }
-section.chapter.c1 { background: var(--c1); color: var(--on-c1); } section.chapter.c2 { background: var(--c2); color: var(--on-c2); }
-section.chapter.c3 { background: var(--c3); color: var(--on-c3); } section.chapter.c4 { background: var(--c4); color: var(--on-c4); }
-section.chapter.c5 { background: var(--c5); color: var(--on-c5); } section.chapter.c6 { background: var(--c6); color: var(--on-c6); }
+section.chapter { background: var(--ground); }
+section.chapter.c1 { color: var(--ink-c1); } section.chapter.c2 { color: var(--ink-c2); } section.chapter.c3 { color: var(--ink-c3); }
+section.chapter.c4 { color: var(--ink-c4); } section.chapter.c5 { color: var(--ink-c5); } section.chapter.c6 { color: var(--ink-c6); }
 
 /* two columns */
 section.cols { columns: 2; column-gap: 40px; column-fill: auto; }

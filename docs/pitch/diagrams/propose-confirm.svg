@@ -10,12 +10,12 @@
   <rect x="120" y="120" width="280" height="56" rx="12" fill="#F2F6FA"/>
   <text x="260" y="155" font-family="'Charis SIL', Georgia, serif" fill="#003049" text-anchor="middle" font-style="italic"><tspan x="260" dy="0" font-size="20" font-weight="400">hawatanipenda</tspan></text>
   <rect x="120" y="232" width="280" height="72" rx="12" fill="#D0DCF5"/>
-  <text x="134" y="264.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">The FST proposes</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">in microseconds; never misses one</tspan></text>
+  <text x="134" y="264.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">A fast form proposes</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">almost at once; built not to miss one</tspan></text>
   <rect x="120" y="360" width="280" height="56" rx="12" fill="#F2F6FA"/>
   <text x="134" y="393.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">A handful of candidates</tspan></text>
   <rect x="120" y="472" width="280" height="72" rx="12" fill="#C0EEF6"/>
-  <text x="134" y="504.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">HermitCrab confirms</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">the exact engine checks each one</tspan></text>
+  <text x="134" y="504.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#003049" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">HermitCrab confirms</tspan><tspan x="134" dy="18" font-size="13" font-weight="400">the full engine checks each one</tspan></text>
   <rect x="120" y="600" width="280" height="56" rx="12" fill="#003049"/>
   <text x="134" y="633.0" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#F9FAFB" text-anchor="start"><tspan x="134" dy="0" font-size="15" font-weight="600">Correct analyses, fast</tspan></text>
-  <text x="474" y="300" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#005CB9" text-anchor="start"><tspan x="474" dy="0" font-size="13" font-weight="400">A rule the FST</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">can't compile</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">safely goes to</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">the exact engine</tspan></text>
+  <text x="474" y="300" font-family="'Source Sans 3', 'Segoe UI', Arial, sans-serif" fill="#005CB9" text-anchor="start"><tspan x="474" dy="0" font-size="13" font-weight="400">A rule that</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">can't be compiled</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">safely goes to</tspan><tspan x="474" dy="16" font-size="13" font-weight="400">the full engine</tspan></text>
 </svg>
