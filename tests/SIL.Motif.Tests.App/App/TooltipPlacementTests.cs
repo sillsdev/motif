@@ -82,6 +82,9 @@ public sealed class TooltipPlacementTests
                                 failures.Add($"{where}: the {scene} scene showed no such owner");
                                 continue;
                             }
+                            if (owner.Key == "opinion on a word card")
+                                Assert.True(ClearTipPlacement.GetIsEnabled(control),
+                                    $"{where}: the opinion tooltip must use measured clear placement.");
                             if (await Hover(scenes, control) is not { } tip)
                             {
                                 var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
