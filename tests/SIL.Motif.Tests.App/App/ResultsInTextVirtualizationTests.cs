@@ -178,6 +178,55 @@ public sealed class ResultsInTextVirtualizationTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public void PageDownMovesByTheReaderViewportLines()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var client = new FakeCommandClient();
+            var selection = new SelectionViewModel(client);
+            var texts = new TextWordsViewModel(client, selection);
+            var assess = new AssessViewModel(client, selection);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { },
+                new ChangesViewModel(client), client);
+            var text = new ResultsTextViewModel(new TextLines(Guid.NewGuid(), "Long Text",
+                Enumerable.Range(1, 64).Select(number => new TextLine(number,
+                    [new TextToken($"word-{number}", $"word-{number}", null, null)])).ToArray()),
+                new Dictionary<string, AssessmentWordResult>());
+            inText.Texts.Add(text);
+            inText.SelectedText = text;
+            var panel = new ResultsInTextPanel(inText);
+            var window = new Window { Content = panel, Width = 1040, Height = 780 };
+            window.Show();
+            try
+            {
+                PageScreenshots.Settle(window);
+                var lines = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(),
+                    control => ReferenceEquals(control.ItemsSource, inText.VisibleLines));
+                var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
+                    viewer => ReferenceEquals(viewer.Content, lines));
+                var first = Assert.IsType<ResultsLineViewModel>(lines.ContainerFromIndex(0)?.DataContext);
+                var localLinesPerPage = Math.Max(1,
+                    (int)Math.Floor(reader.Viewport.Height / Math.Max(1, lines.ContainerFromIndex(0)!.Bounds.Height)));
+                Assert.InRange(localLinesPerPage, 1, text.Lines.Count - 1);
+
+                var firstStrip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, first.Tokens[0]));
+                Assert.True(firstStrip.Focus(NavigationMethod.Directional));
+                Assert.Same(firstStrip, window.FocusManager!.GetFocusedElement());
+                window.KeyPress(Key.PageDown, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+
+                var focused = Assert.IsType<Border>(window.FocusManager!.GetFocusedElement());
+                Assert.Same(inText.VisibleLines[localLinesPerPage].Tokens[0], focused.Tag);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
     private static void AssertBounded(ItemsControl lines)
     {
         Assert.Equal(2000, lines.ItemCount);

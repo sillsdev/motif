@@ -872,6 +872,15 @@
     },
     {
       "kind": "guide",
+      "code": "keyboard-shortcuts",
+      "slug": "keyboard-shortcuts",
+      "title": "Keyboard shortcuts",
+      "description": "Keyboard shortcut Guide fixture for the published page outline.",
+      "helpPage": "# Keyboard shortcuts\n\nThis fixture supplies the Guide page required by the site outline.\n",
+      "url": "https://motif-docs.pages.dev/guide/keyboard-shortcuts/"
+    },
+    {
+      "kind": "guide",
       "code": "timing",
       "slug": "timing",
       "title": "Timing",

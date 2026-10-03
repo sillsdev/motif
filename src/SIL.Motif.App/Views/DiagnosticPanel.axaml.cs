@@ -100,14 +100,17 @@ public sealed partial class DiagnosticPanel : UserControl
 
     private async void OnCopyJsonClick(object? sender, RoutedEventArgs e) => await Tools.CopyJsonAsync();
 
+    [KeyboardShortcutHandler("DiagnosticTree:PreviousTreeItem", "DiagnosticTree:NextTreeItem")]
     private void OnTreeKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyModifiers != KeyModifiers.None || e.Key is not (Key.Down or Key.Up) ||
-            sender is not TreeView tree || e.Source is not Control source) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.DiagnosticTree, e.Key, e.KeyModifiers);
+        if (entry is null || sender is not TreeView tree || e.Source is not Control source) return;
         var current = source as TreeViewItem ?? source.GetLogicalAncestors().OfType<TreeViewItem>().FirstOrDefault();
-        if (current is null) return;
+        if (current is null || !KeyboardShortcutRegistry.Allows(entry,
+                KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
+        var isNext = entry.Behavior == KeyboardShortcutBehavior.NextTreeItem;
         TreeViewItem? target = null;
-        if (e.Key == Key.Down && current.IsExpanded && current.ItemCount > 0)
+        if (isNext && current.IsExpanded && current.ItemCount > 0)
             target = Realize(current, 0);
         else
         {
@@ -115,7 +118,7 @@ public sealed partial class DiagnosticPanel : UserControl
             while (cursor.GetLogicalAncestors().OfType<ItemsControl>().FirstOrDefault() is { } owner)
             {
                 var index = owner.IndexFromContainer(cursor);
-                if (e.Key == Key.Up)
+                if (entry.Behavior == KeyboardShortcutBehavior.PreviousTreeItem)
                 {
                     target = index == 0 ? owner as TreeViewItem : Realize(owner, index - 1);
                     if (index > 0)

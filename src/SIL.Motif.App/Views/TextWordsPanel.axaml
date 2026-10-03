@@ -10,7 +10,7 @@
     <WrapPanel Grid.Row="0" HorizontalAlignment="Stretch">
       <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center" />
-      <TextBox Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
+      <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                AutomationProperties.Name="Search words" />
       <Button Content="{Binding Words.HandOffCheckedWordsLabel}"
               Command="{Binding Words.HandOffCheckedWordsCommand}"
@@ -55,6 +55,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TextWordRowViewModel">
             <views:WordRow Row="{Binding Listed.Row}" List="word-list" IsOpen="{Binding Listed.IsOpen}"
+                           StagedText="{Binding StagedText}"
                            IsChecked="{Binding IsChecked}" Columns="{x:Static views:WordRowColumnSets.WordList}">
               <views:WordRow.Card>
                 <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">

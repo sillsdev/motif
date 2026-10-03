@@ -89,7 +89,10 @@ public sealed class HelpCatalog
                 var localizedGuides = locale == EnglishLocale
                     ? Array.Empty<KeyValuePair<string, string>>()
                     : ReadGuidePages(locale);
-                entries.AddRange(BuildGuideEntries(locale, ReadGuidePages(EnglishLocale), localizedGuides));
+                entries.AddRange(BuildGuideEntries(
+                    locale,
+                    WithGeneratedShortcutPage(EnglishLocale),
+                    locale == EnglishLocale ? localizedGuides : WithGeneratedShortcutPage(locale)));
                 continue;
             }
 
@@ -233,6 +236,13 @@ public sealed class HelpCatalog
                 resource.LogicalName[prefix.Length..^3],
                 ReadResource(assembly, resource.Name)))
             .ToArray();
+    }
+
+    private static KeyValuePair<string, string>[] WithGeneratedShortcutPage(string locale)
+    {
+        var pages = ReadGuidePages(locale).ToDictionary(page => page.Key, page => page.Value, StringComparer.Ordinal);
+        pages["keyboard-shortcuts"] = KeyboardShortcutCatalog.RenderHelpPage(CultureInfo.GetCultureInfo(locale));
+        return pages.OrderBy(page => page.Key, StringComparer.Ordinal).ToArray();
     }
 
     private static GuideMetadata ReadGuideMetadata(string markdown)

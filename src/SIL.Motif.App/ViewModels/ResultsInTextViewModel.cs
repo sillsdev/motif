@@ -198,6 +198,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private ResultsInTextFilter _filter = ResultsInTextFilter.All;
 
     [ObservableProperty]
+    private string _searchText = string.Empty;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedToken))]
     private ResultsTokenViewModel? _selectedToken;
 
@@ -513,6 +516,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     partial void OnFilterChanged(ResultsInTextFilter value) => RefreshLines();
 
+    partial void OnSearchTextChanged(string value) => RefreshLines();
+
     internal void ClearProject()
     {
         _readStateGeneration++;
@@ -622,7 +627,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             var any = false;
             foreach (var token in line.Tokens.Where(token => token.IsWord))
             {
-                var matches = !HasAssessment || MatchesFilter(token);
+                var searchMatches = string.IsNullOrWhiteSpace(SearchText) ||
+                    token.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase);
+                var matches = searchMatches && (!HasAssessment || MatchesFilter(token));
                 token.IsDimmed = !matches;
                 any |= matches;
             }
@@ -963,7 +970,10 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         SelectedToken is { IsWord: true } token && choice is not null && token.Marking.FixChoices.Contains(choice);
 
     private static bool CanStageMarkingChoice(ResultsTokenViewModel token, AnalysisMarkingChoice? choice) =>
-        token.IsWord && choice is not null && token.Marking.FixChoices.Contains(choice);
+        token.IsWord && choice is not null && (token.Marking.FixChoices.Contains(choice) ||
+            choice.StoredAnalysisId is { } analysisId && token.Marking.FieldWorksAnalyses
+                .FirstOrDefault(analysis => analysis.StoredAnalysisId == analysisId) is { } analysis &&
+            AnalysisMarkingState.OpinionChoicesFor(analysis).Contains(choice));
 
     private async Task StagePrimaryMarkingActionAsync()
     {

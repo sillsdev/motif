@@ -32,6 +32,133 @@ public sealed class AnalyzeTextsLayoutTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
+    public void KeyboardReaderWalkthroughStagesOpinionsThenShowsThemInReview()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
+                inText.CloseTokenCard();
+                Settle(window);
+                var panel = Panel(window);
+                var sungura = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "Sungura");
+                var watoto = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "watoto");
+                var hawajafika = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "hawajafika");
+                var mwalimu = inText.VisibleLines.SelectMany(line => line.Tokens).Single(token => token.Form == "mwalimu");
+
+                Assert.True(StripOf(panel, "Sungura").Focus());
+                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(inText.VisibleLines[0].Tokens.Single(token => token.Form == "alikula"), FocusedToken(panel));
+                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(inText.VisibleLines[0].Tokens.Single(token => token.Form == "chakula"), FocusedToken(panel));
+                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(watoto, FocusedToken(panel));
+                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(hawajafika, FocusedToken(panel));
+
+                await inText.OpenTokenCardAsync(hawajafika);
+                Settle(window);
+                Assert.True(OpenCard(window).Focus());
+                window.KeyPress(Key.U, RawInputModifiers.None, PhysicalKey.None, null);
+                await WaitForPendingChanges(workspace, window, 1);
+                Assert.Equal(ChangeKinds.Candidate, Assert.Single(workspace.Context.Changes.Items).Kind);
+
+                inText.CloseTokenCard();
+                Settle(window);
+                Assert.True(StripOf(panel, "mwalimu").Focus());
+                window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
+                await WaitForPendingChanges(workspace, window, 2);
+                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" && change.Kind == ChangeKinds.Approve);
+
+                window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(watoto, FocusedToken(panel));
+                window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.None, null);
+                Settle(window);
+                Assert.Same(sungura, FocusedToken(panel));
+                window.KeyPress(Key.D, RawInputModifiers.None, PhysicalKey.None, null);
+                await WaitForPendingChanges(workspace, window, 3);
+
+                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "Sungura" && change.Kind == ChangeKinds.Reject);
+                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "hawajafika" &&
+                    change.Kind == ChangeKinds.Candidate &&
+                    change.AfterOpinionMark == SIL.Motif.App.Controls.OpinionMarkKind.Unknown);
+                Assert.Empty(Assert.IsType<FakeCommandClient>(workspace.Context.Commands).ApplyPendingRequests);
+
+                workspace.CurrentPage = WorkspacePage.Review;
+                Settle(window);
+                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
+                var reviewText = string.Join(" ", review.GetVisualDescendants().OfType<TextBlock>()
+                    .Select(text => text.Text).Where(text => !string.IsNullOrWhiteSpace(text)));
+                Assert.Contains("Sungura", reviewText, StringComparison.Ordinal);
+                Assert.Contains("mwalimu", reviewText, StringComparison.Ordinal);
+                Assert.Contains("hawajafika", reviewText, StringComparison.Ordinal);
+                Assert.Contains("Approved", reviewText, StringComparison.Ordinal);
+                Assert.Contains("Unknown", reviewText, StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void WordListAndListsRowsStageOpinionsFromTheKeyboard()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts();
+            try
+            {
+                var page = workspace.PageModel<TextsPageModel>();
+                page.AnalyzeView = AnalyzeTextsView.WordList;
+                Settle(window);
+                var unknownWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(), row =>
+                    row.List == "word-list" && row.Row?.Word == "mwalimu");
+                unknownWord.FocusRow();
+                window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
+                await WaitForPendingChanges(workspace, window, 1);
+                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" &&
+                    change.Kind == ChangeKinds.Approve);
+
+                page.Tab = TextsTab.Lists;
+                Settle(window);
+                var approvedWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(), row =>
+                    row.List == "lists" && row.Row?.Word == "hawajafika");
+                approvedWord.FocusRow();
+                window.KeyPress(Key.U, RawInputModifiers.None, PhysicalKey.None, null);
+                await WaitForPendingChanges(workspace, window, 2);
+                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "hawajafika" &&
+                    change.Kind == ChangeKinds.Candidate);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    private static ResultsTokenViewModel FocusedToken(ResultsInTextPanel panel) =>
+        Assert.IsType<ResultsTokenViewModel>(Assert.Single(Strips(panel), strip => strip.IsFocused).Tag);
+
+    private static async Task WaitForPendingChanges(WorkspaceShellViewModel workspace, Window window, int count)
+    {
+        for (var attempt = 0; attempt < 60 && workspace.Context.Changes.Items.Count < count; attempt++)
+        {
+            await Task.Delay(10);
+            Settle(window);
+        }
+        Assert.Equal(count, workspace.Context.Changes.Items.Count);
+    }
+
+    [Fact]
     public void TheOpenWordCardHasARaisedSurfaceAndAShadowInBothThemes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -147,6 +147,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
         Assess.Words.Routes.OpenInText = OpenWord;
         Assess.Words.Routes.TryWord = TryWord;
+        Assess.Words.Routes.Changes = Changes;
+        Assess.Words.Routes.StageOpinion = change => Changes.StageStoredOpinionAsync(change);
         Evidence.PropertyChanged += OnEvidencePropertyChanged;
         _projectParticipants.Add(baseline);
         _projectParticipants.Add(selection);

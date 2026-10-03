@@ -598,6 +598,11 @@ internal static class TooltipOwners
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Views/WordRowCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
+        new("Word Analyses link in a word card", "Views/ResultsInTextPanel.axaml", "{Binding WordLinkText}",
+            TooltipScene.WordCard,
+            control => control is HyperlinkButton &&
+                control.GetVisualAncestors().OfType<Border>().Any(border => border.Classes.Contains("wordCard")) &&
+                AutomationProperties.GetName(control) == "Open alikula in Word Analyses"),
         new("mark unread without a text occurrence", "Views/WordRowCard.axaml", "{Binding MarkUnreadDisabledReason}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread"),

@@ -238,7 +238,7 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBox DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+            <TextBox x:Name="MatrixWordSearch" DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                      Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
                      AutomationProperties.Name="Search the listed words" />

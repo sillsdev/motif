@@ -267,19 +267,31 @@ public sealed partial class WordRow : UserControl
         Toggle();
     }
 
+    [KeyboardShortcutHandler(
+        "WordList:OpenWordCard", "Lists:OpenWordCard", "WordList:PreviousRow", "Lists:PreviousRow",
+        "WordList:NextRow", "Lists:NextRow", "Matrix:OpenWordCard", "Matrix:PreviousRow", "Matrix:NextRow",
+        "ReviewChanges:OpenWordCard", "ReviewChanges:PreviousRow", "ReviewChanges:NextRow")]
     private void OnBodyKeyDown(object? sender, KeyEventArgs e)
     {
         // The tick and the next steps inside the row keep their own keys.
         if (!ReferenceEquals(e.Source, _body)) return;
-        switch (e.Key)
+        var scope = WordShortcutScope();
+        var entry = scope is { } wordScope
+            ? KeyboardShortcutRegistry.Find(wordScope, e.Key, e.KeyModifiers, targetBehaviors:
+                [KeyboardShortcutBehavior.OpenWordCard, KeyboardShortcutBehavior.PreviousRow,
+                    KeyboardShortcutBehavior.NextRow])
+            : null;
+        if (entry is not null && !KeyboardShortcutRegistry.Allows(entry,
+                KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
+        switch (entry?.Behavior)
         {
-            case Key.Enter or Key.Space:
+            case KeyboardShortcutBehavior.OpenWordCard:
                 Toggle();
                 break;
-            case Key.Down:
+            case KeyboardShortcutBehavior.NextRow:
                 MoveFocus(1);
                 break;
-            case Key.Up:
+            case KeyboardShortcutBehavior.PreviousRow:
                 MoveFocus(-1);
                 break;
             default:
@@ -289,13 +301,106 @@ public sealed partial class WordRow : UserControl
     }
 
     // Esc anywhere in an open row, its card or its links included, closes the card and returns to the row.
-    private void OnRowKeyDown(object? sender, KeyEventArgs e)
+    [KeyboardShortcutHandler(
+        "WordList:CloseWordCard", "Lists:CloseWordCard", "WordList:PreviousScreen", "Lists:PreviousScreen",
+        "WordList:NextScreen", "Lists:NextScreen", "WordList:FirstItem", "Lists:FirstItem",
+        "WordList:LastItem", "Lists:LastItem", "WordList:Approve", "Lists:Approve",
+        "WordList:Disapprove", "Lists:Disapprove", "WordList:Unknown", "Lists:Unknown",
+        "Matrix:CloseWordCard", "Matrix:PreviousScreen", "Matrix:NextScreen", "Matrix:FirstItem", "Matrix:LastItem",
+        "ReviewChanges:CloseWordCard", "ReviewChanges:PreviousScreen", "ReviewChanges:NextScreen",
+        "ReviewChanges:FirstItem", "ReviewChanges:LastItem")]
+    private async void OnRowKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || !IsOpen) return;
-        IsOpen = false;
-        FocusRow();
-        e.Handled = true;
+        var wordScope = WordShortcutScope();
+        var entry = wordScope is { } scope
+            ? KeyboardShortcutRegistry.Find(scope, e.Key, e.KeyModifiers, targetBehaviors:
+                [KeyboardShortcutBehavior.CloseWordCard, KeyboardShortcutBehavior.PreviousScreen,
+                    KeyboardShortcutBehavior.NextScreen, KeyboardShortcutBehavior.FirstItem,
+                    KeyboardShortcutBehavior.LastItem, KeyboardShortcutBehavior.Approve,
+                    KeyboardShortcutBehavior.Disapprove, KeyboardShortcutBehavior.Unknown])
+            : null;
+        if (entry is null || IsNestedAction(e.Source)
+            || !KeyboardShortcutRegistry.Allows(entry,
+                KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
+        switch (entry.Behavior)
+        {
+            case KeyboardShortcutBehavior.CloseWordCard when IsOpen:
+                IsOpen = false;
+                FocusRow();
+                e.Handled = true;
+                break;
+            case KeyboardShortcutBehavior.PreviousScreen:
+            case KeyboardShortcutBehavior.NextScreen:
+                e.Handled = MovePage(entry.Behavior == KeyboardShortcutBehavior.PreviousScreen ? -1 : 1);
+                break;
+            case KeyboardShortcutBehavior.FirstItem:
+            case KeyboardShortcutBehavior.LastItem:
+                e.Handled = MoveBoundary(entry.Behavior == KeyboardShortcutBehavior.FirstItem);
+                break;
+            case KeyboardShortcutBehavior.Approve:
+            case KeyboardShortcutBehavior.Disapprove:
+            case KeyboardShortcutBehavior.Unknown:
+                e.Handled = true;
+                var result = await StageOpinionAsync(entry.Behavior).ConfigureAwait(true);
+                KeyboardShortcutStatus.Announce(this, result.StatusMessage);
+                break;
+        }
     }
+
+    private bool MovePage(int direction)
+    {
+        var list = this.FindAncestorOfType<ItemsControl>();
+        var index = RowIndex(list);
+        if (list is null || index < 0) return false;
+        var viewportHeight = list.FindAncestorOfType<ScrollViewer>()?.Viewport.Height ?? list.Bounds.Height;
+        var visibleRows = Math.Max(1, (int)Math.Floor(viewportHeight / Math.Max(1, Bounds.Height)));
+        return FocusAt(list, Math.Clamp(index + direction * visibleRows, 0, list.ItemCount - 1));
+    }
+
+    private KeyboardShortcutScope? WordShortcutScope() => List switch
+    {
+        "word-list" => KeyboardShortcutScope.WordList,
+        "lists" => KeyboardShortcutScope.Lists,
+        "matrix" => KeyboardShortcutScope.Matrix,
+        "review" => KeyboardShortcutScope.ReviewChanges,
+        _ => null,
+    };
+
+    private bool MoveBoundary(bool first)
+    {
+        var list = this.FindAncestorOfType<ItemsControl>();
+        return list is not null && list.ItemCount > 0 && FocusAt(list, first ? 0 : list.ItemCount - 1);
+    }
+
+    private bool FocusAt(ItemsControl list, int index)
+    {
+        if (index < 0 || index >= list.ItemCount) return false;
+        list.ScrollIntoView(index);
+        list.UpdateLayout();
+        var container = list.ContainerFromIndex(index);
+        var row = container is WordRow direct ? direct : container?.GetVisualDescendants().OfType<WordRow>().FirstOrDefault();
+        row?.FocusRow();
+        return row is not null;
+    }
+
+    private int RowIndex(ItemsControl? list)
+    {
+        if (list is null) return -1;
+        var container = this.GetVisualAncestors().OfType<Control>().FirstOrDefault(ancestor => list.IndexFromContainer(ancestor) >= 0);
+        return container is null ? -1 : list.IndexFromContainer(container);
+    }
+
+    private async Task<KeyboardOpinionShortcutResult> StageOpinionAsync(KeyboardShortcutBehavior behavior)
+    {
+        if (DataContext is TextWordRowViewModel word) return await word.StageOpinionShortcutAsync(behavior);
+        if (DataContext is CompareWordViewModel compare) return await compare.StageOpinionShortcutAsync(behavior);
+        var name = Row?.Word ?? "This word";
+        return new(true, $"{name} has no stored analysis to change.");
+    }
+
+    private bool IsNestedAction(object? source) => source is Control control &&
+        control.GetSelfAndVisualAncestors().TakeWhile(ancestor => !ReferenceEquals(ancestor, this))
+            .Any(ancestor => ancestor is Button or ToggleButton or CheckBox or TextBox or ComboBox);
 
     private void MoveFocus(int step)
     {

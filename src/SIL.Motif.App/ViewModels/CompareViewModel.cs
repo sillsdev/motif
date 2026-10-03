@@ -560,6 +560,8 @@ public sealed partial class CompareViewModel : ObservableObject
             pending.TryGetValue(word.Word, out var changes);
             word.PendingState = PendingChangeStates.FromChanges(changes);
             word.HasPendingChange = word.PendingState != PendingChangeState.None;
+            word.StagedOpinionText = changes?.FirstOrDefault(change => change.StoredAnalysisId is not null &&
+                change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate)?.TransitionText;
         }
         foreach (var cell in Cells)
         {
@@ -1020,6 +1022,14 @@ public sealed partial class CompareWordViewModel : ObservableObject
     public string FirstReading { get; }
 
     public IReadOnlyList<CompareReadingChoice> ReadingChoices { get; }
+
+    [ObservableProperty]
+    private string? _stagedOpinionText;
+
+    internal Task<KeyboardOpinionShortcutResult> StageOpinionShortcutAsync(KeyboardShortcutBehavior behavior) =>
+        KeyboardOpinionShortcuts.StageAsync(Word, null, Marking.FieldWorksAnalyses.Select(analysis =>
+            new KeyboardStoredAnalysis(analysis.StoredAnalysisId, analysis.Opinion, analysis.Morphs)).ToArray(),
+            WordRow.OpinionRoutes, behavior);
 
     /// <summary>Whether FieldWorks holds more than one analysis of the word, so the card names each opinion.</summary>
     public bool HasSeveralOpinions => OpinionMarks.Count > 1;

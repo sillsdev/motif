@@ -1,0 +1,39 @@
+{
+  "introduction": "Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text.",
+  "keyHeading": "Key",
+  "windowsHeading": "Windows / Linux",
+  "macHeading": "macOS",
+  "scopeHeading": "Page or scope",
+  "actionHeading": "Action",
+  "modifierSeparator": "+",
+  "alternativeSeparator": " or ",
+  "keyNames": {
+    "Left": "←",
+    "Right": "→",
+    "Up": "↑",
+    "Down": "↓",
+    "PageUp": "Page Up",
+    "PageDown": "Page Down",
+    "Enter": "Enter",
+    "Space": "Space",
+    "Escape": "Esc",
+    "OemQuestion": "/",
+    "OemComma": ",",
+    "OemPlus": "=",
+    "Add": "Keypad +",
+    "OemMinus": "-",
+    "Subtract": "Keypad -",
+    "D0": "0",
+    "NumPad0": "Keypad 0"
+  },
+  "keyLabels": {
+    "OemQuestion": "?",
+    "Escape": "Escape"
+  },
+  "modifierNames": {
+    "Control": "Ctrl",
+    "Meta": "⌘",
+    "Alt": "Alt",
+    "Shift": "Shift"
+  }
+}

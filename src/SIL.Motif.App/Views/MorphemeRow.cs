@@ -130,13 +130,19 @@ public sealed class MorphemeRow : WrapPanel
             InspectLink.Request(block, reference, morph.Captured);
             e.Handled = true;
         };
-        block.KeyDown += (_, e) =>
-        {
-            if (e.Key is not (Key.Enter or Key.Space)) return;
-            InspectLink.Request(block, reference, morph.Captured);
-            e.Handled = true;
-        };
+        block.KeyDown += OnInspectKeyDown;
         return block;
+    }
+
+    [KeyboardShortcutHandler("Morpheme:InspectMorpheme")]
+    private void OnInspectKeyDown(object? sender, KeyEventArgs e)
+    {
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Morpheme, e.Key, e.KeyModifiers);
+        if (entry?.Behavior != KeyboardShortcutBehavior.InspectMorpheme ||
+            sender is not Border { Tag: ParserReadingMorphViewModel { InspectSubject: { } subject } morph } block ||
+            !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
+        InspectLink.Request(block, subject, morph.Captured);
+        e.Handled = true;
     }
 
     private static HyperlinkButton FormLink(ParserReadingMorphViewModel morph)

@@ -43,14 +43,20 @@ public sealed partial class ReviewPanel : UserControl
         }
     }
 
+    [KeyboardShortcutHandler(
+        "ReviewChanges:PreviousRow", "ReviewChanges:NextRow", "ReviewChanges:FirstItem", "ReviewChanges:LastItem")]
     private void OnReviewKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyModifiers != KeyModifiers.None || e.Key is not (Key.Down or Key.Up or Key.Home or Key.End) ||
-            e.Source is not Control source) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.ReviewChanges, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.PreviousRow, KeyboardShortcutBehavior.NextRow,
+                KeyboardShortcutBehavior.FirstItem, KeyboardShortcutBehavior.LastItem]);
+        if (entry is null || e.Source is not Control source) return;
         var groups = _groups;
         var row = source.GetVisualAncestors().OfType<WordRow>().FirstOrDefault();
         if (row is null || !ReferenceEquals(source, row.FindControl<Border>("Body")) ||
-            row.FindAncestorOfType<ItemsControl>() is not { Name: "ReviewPanelItemsItems" } list) return;
+            row.FindAncestorOfType<ItemsControl>() is not { Name: "ReviewPanelItemsItems" } list ||
+            !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(source),
+                hasFocusedItem: true)) return;
         var rowContainer = row.GetVisualAncestors().OfType<Control>()
             .FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
         var groupContainer = list.GetVisualAncestors().OfType<Control>()
@@ -61,11 +67,15 @@ public sealed partial class ReviewPanel : UserControl
         var rowIndex = list.IndexFromContainer(rowContainer);
         if (groupIndex < 0 || rowIndex < 0) return;
 
-        var step = e.Key is Key.Up or Key.Home ? -1 : 1;
-        if (e.Key is Key.Home or Key.End)
+        var movePrevious = entry.Behavior is KeyboardShortcutBehavior.PreviousRow or KeyboardShortcutBehavior.FirstItem;
+        var moveToBoundary = entry.Behavior is KeyboardShortcutBehavior.FirstItem or KeyboardShortcutBehavior.LastItem;
+        var step = movePrevious ? -1 : 1;
+        if (moveToBoundary)
         {
-            groupIndex = step < 0 ? 0 : groups.ItemCount - 1;
-            rowIndex = step < 0 ? 0 : ((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items.Count - 1;
+            groupIndex = entry.Behavior == KeyboardShortcutBehavior.FirstItem ? 0 : groups.ItemCount - 1;
+            rowIndex = entry.Behavior == KeyboardShortcutBehavior.FirstItem
+                ? 0
+                : ((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items.Count - 1;
         }
         else rowIndex += step;
         while (groupIndex >= 0 && groupIndex < groups.ItemCount)

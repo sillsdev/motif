@@ -65,10 +65,14 @@ public sealed partial class ComparePanel : UserControl
         e.Handled = true;
     }
 
+    [KeyboardShortcutHandler("Matrix:ToggleMatrixCell")]
     private void OnCellKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Space) ||
-            sender is not Control { Tag: CompareCellViewModel { IsEmptyImpossible: false } cell }) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Matrix, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.ToggleMatrixCell]);
+        if (entry?.Behavior != KeyboardShortcutBehavior.ToggleMatrixCell ||
+            sender is not Control { Tag: CompareCellViewModel { IsEmptyImpossible: false } cell } ||
+            !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
         Compare.Toggle(cell, additive: e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Shift));
         e.Handled = true;
     }

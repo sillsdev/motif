@@ -114,7 +114,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
       <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
@@ -160,6 +160,9 @@
                                    AutomationProperties.Name="Machine store recovery instructions" />
         </DockPanel>
       </Border>
+      <TextBlock x:Name="KeyboardShortcutStatusLine" Grid.Row="4" Classes="muted noticeText"
+                 IsVisible="False" AutomationProperties.LiveSetting="Polite"
+                 AutomationProperties.Name="Keyboard shortcut status" />
     </Grid>
 
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,*">

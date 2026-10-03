@@ -348,11 +348,26 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         ArgumentException.ThrowIfNullOrWhiteSpace(word);
         ArgumentException.ThrowIfNullOrWhiteSpace(storedAnalysisId);
         ArgumentNullException.ThrowIfNull(displayReading);
+        await StageStoredOpinionAsync(new PendingStoredOpinionChange(ChangeKinds.Approve, word, null,
+            storedAnalysisId, displayReading), originPage).ConfigureAwait(true);
+    }
+
+    internal async Task<bool> StageStoredOpinionAsync(PendingStoredOpinionChange change,
+        WorkspacePage originPage = WorkspacePage.Texts)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (change.Kind is not (ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate))
+            throw new ArgumentOutOfRangeException(nameof(change), "A stored analysis opinion must be Approved, Disapproved or Unknown.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(change.Word);
+        ArgumentException.ThrowIfNullOrWhiteSpace(change.StoredAnalysisId);
+        if (ProjectPath is not { } path) return false;
+        var generation = _projectGeneration;
         using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
             UsageArgumentShape.Text("kind"), UsageArgumentShape.Text("storedAnalysisId"));
-        await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, ChangeKinds.Approve, "", word,
-            StoredAnalysisId: storedAnalysisId, DisplayReading: displayReading,
-            OriginPage: originPage.ToString())).ConfigureAwait(true);
+        return await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, change.Kind,
+            change.WordformId is { } wordformId ? CanonicalId.FromGuid(wordformId).Value : string.Empty,
+            change.Word, StoredAnalysisId: change.StoredAnalysisId, DisplayReading: change.DisplayReading,
+            OriginPage: originPage.ToString()), path, generation, CancellationToken.None).ConfigureAwait(true);
     }
 
     private async Task AddOneAsync(string kind, CompareWordViewModel word, CompareReadingChoice? choice,

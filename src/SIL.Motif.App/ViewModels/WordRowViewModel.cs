@@ -20,6 +20,10 @@ public sealed class WordRowRoutes : ObservableObject
     /// <summary>Opens Try a Word on a word.</summary>
     public Action<string>? TryWord { get; set; }
 
+    internal Func<PendingStoredOpinionChange, Task<bool>>? StageOpinion { get; set; }
+
+    internal ChangesViewModel? Changes { get; set; }
+
     public bool HasTexts
     {
         get => _hasTexts;
@@ -115,6 +119,8 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The row's facts as the projection gave them, with the read state as it is now.</summary>
     public WordRow Row => _row;
+
+    internal WordRowRoutes? OpinionRoutes => _routes;
 
     internal WordRowViewModel WithOpinionMark(OpinionMarkKind opinion) => new(_row with
     {

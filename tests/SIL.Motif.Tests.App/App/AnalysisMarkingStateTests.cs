@@ -236,6 +236,17 @@ public sealed class AnalysisMarkingStateTests
     }
 
     [Fact]
+    public void ApprovedAnalysisCanReturnToUnknownThroughTheFixChoices()
+    {
+        var state = AnalysisMarkingState.Create(
+            Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("book", Book));
+
+        Assert.Contains(state.FixChoices, choice => choice.Kind == AnalysisMarkingActionKind.MakeUnknown &&
+            choice.Label == "Make Unknown" && choice.StoredAnalysisId == "stored-1" &&
+            choice.ChangeKind == ChangeKinds.Candidate && choice.Subtitle == "Approved → Unknown");
+    }
+
+    [Fact]
     public void DisapprovedToApprovedFixChoiceIsNamedApprove()
     {
         var state = AnalysisMarkingState.Create(
@@ -252,11 +263,11 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Disapproved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Accept PanGloss's analysis", "Add as Unknown", "Add PanGloss's analyses as Unknown",
+        Assert.Equal(["Approve", "Make Unknown", "Accept PanGloss's analysis", "Add as Unknown", "Add PanGloss's analyses as Unknown",
             "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
-        Assert.Equal(ChangeKinds.Approve, state.FixChoices[0].ChangeKind);
-        Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[1].ChangeKind);
+        Assert.Equal(ChangeKinds.Approve, state.FixChoices[2].ChangeKind);
+        Assert.Equal(ChangeKinds.AddCandidate, state.FixChoices[3].ChangeKind);
     }
 
     [Fact]
@@ -265,7 +276,7 @@ public sealed class AnalysisMarkingStateTests
         var state = AnalysisMarkingState.Create(
             Token(Stored(Book, ReadingGrade.Approved, "stored-1")), Result("different", Child));
 
-        Assert.Equal(["Disapprove", "Add as Unknown", "Keep FieldWorks", "Remove analysis"],
+        Assert.Equal(["Disapprove", "Make Unknown", "Add as Unknown", "Keep FieldWorks", "Remove analysis"],
             state.FixChoices.Select(choice => choice.Label));
         Assert.DoesNotContain(state.FixChoices, choice => choice.ChangeKind == ChangeKinds.Approve ||
             choice.Kind == AnalysisMarkingActionKind.AcceptNewSet);

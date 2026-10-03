@@ -43,9 +43,13 @@ public sealed partial class MiniMatrix : UserControl
         e.Handled = true;
     }
 
+    [KeyboardShortcutHandler("MiniMatrix:ToggleMatrixCell")]
     private void OnCellKeyDown(object? sender, KeyEventArgs e)
     {
-        if (!IsInteractive || e.Key is not (Key.Enter or Key.Space) || DataContext is not CompareViewModel compare) return;
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.MiniMatrix, e.Key, e.KeyModifiers);
+        if (!IsInteractive || entry?.Behavior != KeyboardShortcutBehavior.ToggleMatrixCell
+            || !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)
+            || DataContext is not CompareViewModel compare) return;
         if (sender is not Control { Tag: CompareCellViewModel { IsEmptyImpossible: false } cell }) return;
         compare.Toggle(cell, additive: true);
         e.Handled = true;

@@ -314,15 +314,17 @@ public sealed record AnalysisMarkingState(
         if (markingClass is AnalysisMarkingClass.NotAssessed or AnalysisMarkingClass.Refused or AnalysisMarkingClass.Capped)
             return RemovalChoices(stored);
 
-        var choices = new List<AnalysisMarkingChoice>();
         if (markingClass == AnalysisMarkingClass.None && stored.Any(analysis =>
                 analysis.Opinion == ReadingGrade.Approved))
         {
-            choices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
+            var noParseChoices = new List<AnalysisMarkingChoice>();
+            noParseChoices.Add(Choice(AnalysisMarkingActionKind.KeepFieldWorks, "Keep FieldWorks", "Nothing staged",
                 null, null, null, string.Empty, string.Empty, null));
-            AddRemovalChoices(choices, stored);
-            return choices;
+            AddRemovalChoices(noParseChoices, stored);
+            return noParseChoices;
         }
+
+        var choices = stored.SelectMany(OpinionChoicesFor).ToList();
 
         var parserOnlyReadings = readings.Select((reading, index) => (reading, index))
             .Where(item => item.reading.IsParserOnly).ToArray();
@@ -344,30 +346,6 @@ public sealed record AnalysisMarkingState(
                 null, null, null, string.Empty, string.Empty, null));
             AddRemovalChoices(choices, stored);
             return choices;
-        }
-
-        foreach (var analysis in stored)
-        {
-            if (analysis.Opinion == ReadingGrade.Approved)
-                choices.Add(Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove",
-                    "Approved → Disapproved", analysis.StoredAnalysisId, null, null,
-                    "Approved", "Disapproved", ChangeKinds.Reject));
-            else if (analysis.Opinion == ReadingGrade.Disapproved)
-            {
-                choices.Add(Choice(AnalysisMarkingActionKind.Approve, "Approve", "Disapproved → Approved",
-                    analysis.StoredAnalysisId, null, null, "Disapproved", "Approved", ChangeKinds.Approve));
-                choices.Add(Choice(AnalysisMarkingActionKind.MakeUnknown, "Make Unknown",
-                    "Disapproved → Unknown", analysis.StoredAnalysisId, null, null,
-                    "Disapproved", "Unknown", ChangeKinds.Candidate));
-            }
-            else
-            {
-                choices.Add(Choice(AnalysisMarkingActionKind.Approve, "Approve", "Unknown → Approved",
-                    analysis.StoredAnalysisId, null, null, "Unknown", "Approved", ChangeKinds.Approve));
-                choices.Add(Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove",
-                    "Unknown → Disapproved", analysis.StoredAnalysisId, null, null,
-                    "Unknown", "Disapproved", ChangeKinds.Reject));
-            }
         }
 
         for (var index = 0; index < readings.Count; index++)
@@ -433,6 +411,36 @@ public sealed record AnalysisMarkingState(
         string? storedAnalysisId, ParseAnalysis? reading, int? readingIndex, string now, string afterApply,
         string? changeKind) => new(kind, label, subtitle, storedAnalysisId, reading, readingIndex,
         now, afterApply, changeKind);
+
+    internal static IReadOnlyList<AnalysisMarkingChoice> OpinionChoicesFor(FieldWorksAnalysisMarking analysis)
+    {
+        ArgumentNullException.ThrowIfNull(analysis);
+        var id = analysis.StoredAnalysisId;
+        return analysis.Opinion switch
+        {
+            ReadingGrade.Approved =>
+            [
+                Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove", "Approved → Disapproved", id,
+                    null, null, "Approved", "Disapproved", ChangeKinds.Reject),
+                Choice(AnalysisMarkingActionKind.MakeUnknown, "Make Unknown", "Approved → Unknown", id,
+                    null, null, "Approved", "Unknown", ChangeKinds.Candidate),
+            ],
+            ReadingGrade.Disapproved =>
+            [
+                Choice(AnalysisMarkingActionKind.Approve, "Approve", "Disapproved → Approved", id,
+                    null, null, "Disapproved", "Approved", ChangeKinds.Approve),
+                Choice(AnalysisMarkingActionKind.MakeUnknown, "Make Unknown", "Disapproved → Unknown", id,
+                    null, null, "Disapproved", "Unknown", ChangeKinds.Candidate),
+            ],
+            _ =>
+            [
+                Choice(AnalysisMarkingActionKind.Approve, "Approve", "Unknown → Approved", id,
+                    null, null, "Unknown", "Approved", ChangeKinds.Approve),
+                Choice(AnalysisMarkingActionKind.Disapprove, "Disapprove", "Unknown → Disapproved", id,
+                    null, null, "Unknown", "Disapproved", ChangeKinds.Reject),
+            ],
+        };
+    }
 
     private static string ResolveOpinion(IReadOnlyList<FieldWorksAnalysisMarking> stored,
         IReadOnlyList<PanGlossReadingMarking> readings)

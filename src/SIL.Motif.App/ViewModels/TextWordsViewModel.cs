@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
@@ -321,6 +322,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
             Response = outcome.Value;
 
             foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
+            foreach (var row in _all) row.DetachPendingChanges();
             _all.Clear();
             _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes,
                 Path.GetFileNameWithoutExtension(path), WordCardTokenFactory)));
@@ -386,6 +388,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private void ClearWords()
     {
         foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
+        foreach (var row in _all) row.DetachPendingChanges();
         _all.Clear();
         Rows.Clear();
         OccurrenceCount = 0;
@@ -483,6 +486,9 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isChecked;
 
+    [ObservableProperty]
+    private string? _stagedText;
+
     // What the latest Assessment came to for this word; null before one, or when the word was not in it.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Listed))]
@@ -523,6 +529,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     private readonly TextWord _word;
     private readonly WordRowRoutes? _routes;
     private readonly string? _projectName;
+    private NotifyCollectionChangedEventHandler? _pendingChangesHandler;
 
     private AssessWordRowViewModel ProjectAssessment(AssessWordRowViewModel result)
     {
@@ -573,6 +580,12 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         _routes = routes;
         _projectName = projectName;
         _wordCardTokenFactory = wordCardTokenFactory;
+        if (_routes?.Changes is { } changes)
+        {
+            _pendingChangesHandler = (_, _) => UpdateStagedText();
+            changes.Items.CollectionChanged += _pendingChangesHandler;
+            UpdateStagedText();
+        }
         Form = word.Form;
         WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
         OccurrenceCount = word.Occurrences.Count;
@@ -617,6 +630,28 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         _word.Occurrences.Select(occurrence => new WordOccurrenceRowViewModel(occurrence)).ToArray();
     public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses => _approvedAnalyses ??=
         _word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
+
+    internal Task<KeyboardOpinionShortcutResult> StageOpinionShortcutAsync(KeyboardShortcutBehavior behavior) =>
+        KeyboardOpinionShortcuts.StageAsync(Form, WordformId, _word.Analyses.Select(analysis =>
+            new KeyboardStoredAnalysis(analysis.StoredAnalysisId ?? string.Empty,
+                analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate, analysis.Morphs)).ToArray(),
+            _routes, behavior);
+
+    private void UpdateStagedText()
+    {
+        if (_routes?.Changes is not { } changes) return;
+        var storedIds = _word.Analyses.Select(analysis => analysis.StoredAnalysisId).ToHashSet(StringComparer.Ordinal);
+        StagedText = changes.Items.FirstOrDefault(change => change.Word == Form &&
+            change.StoredAnalysisId is { } id && storedIds.Contains(id) &&
+            change.Kind is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate)?.TransitionText;
+    }
+
+    internal void DetachPendingChanges()
+    {
+        if (_pendingChangesHandler is not { } handler || _routes?.Changes is not { } changes) return;
+        changes.Items.CollectionChanged -= handler;
+        _pendingChangesHandler = null;
+    }
 
     private static IEnumerable<string> DistinctGlosses(TextWord word) =>
         word.Occurrences.Select(occurrence => occurrence.Analysis)

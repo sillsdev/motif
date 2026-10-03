@@ -22,6 +22,9 @@
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
+        <TextBox x:Name="ReaderWordSearch" DockPanel.Dock="Left" Text="{Binding InText.SearchText}"
+                 PlaceholderText="Search words..." Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+                 IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="Search words in Analyze texts" />
         <Button DockPanel.Dock="Right" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
@@ -369,7 +372,8 @@
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                             <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                                             VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}">
+                                             VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}"
+                                             ToolTip.Tip="{Binding WordLinkText}">
                               <TextBlock Text="{Binding WordLinkText}" TextWrapping="NoWrap"
                                          TextTrimming="CharacterEllipsis"
                                          AutomationProperties.Name="{Binding WordLinkText}" />

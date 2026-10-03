@@ -266,6 +266,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "KeyboardShortcutsFlyoutView",
+    "name": "KeyboardShortcutsFlyoutViewShortcutsItems",
+    "source": "app:KeyboardShortcutRegistry.Entries",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
     "view": "MainWindow",
     "name": "MainWindowStoppedWordsItems",
     "source": "ActiveParseProgress.StoppedWords",

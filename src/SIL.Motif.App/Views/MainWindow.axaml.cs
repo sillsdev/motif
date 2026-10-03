@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -25,9 +26,13 @@ public sealed partial class MainWindow : Window
     private readonly ProblemReportWindowServices _problemReportServices;
     private ProblemReportPreviewWindow? _currentProblemReportPreview;
     private string? _helpAutomationId;
+    private readonly Flyout _keyboardShortcutsFlyout;
+    private readonly DispatcherTimer _keyboardStatusTimer;
     private Control? _inspectedFrom;
     private HelpPopupView? HelpPopup =>
         this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
+
+    internal Flyout KeyboardShortcutsFlyout => _keyboardShortcutsFlyout;
 
     /// <summary>A window at the XAML's own size that neither reads nor writes the remembered bounds, as tests need.</summary>
     public MainWindow() : this(rememberBounds: false)
@@ -49,6 +54,17 @@ public sealed partial class MainWindow : Window
     public MainWindow(bool rememberBounds, IUriLauncher? uriLauncher)
     {
         AvaloniaXamlLoader.Load(this);
+        _keyboardShortcutsFlyout = new Flyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Content = new KeyboardShortcutsFlyoutView(),
+        };
+        _keyboardStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _keyboardStatusTimer.Tick += (_, _) =>
+        {
+            _keyboardStatusTimer.Stop();
+            ShowKeyboardStatus(null);
+        };
         _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
         _problemReportServices = new ProblemReportWindowServices(new AvaloniaClipboard(this), _uriLauncher);
         if (HelpPopup is { } helpView)
@@ -218,17 +234,41 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    [KeyboardShortcutHandler(
+        "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts",
+        "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch", "Matrix:FocusWordSearch")]
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        var modifiers = e.KeyModifiers;
+        var scope = SearchScope();
+        var windowEntry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, modifiers);
+        var inspectorIsOpen = DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true };
+        var entry = inspectorIsOpen && windowEntry?.Behavior == KeyboardShortcutBehavior.Back
+            ? windowEntry
+            : KeyboardShortcutRegistry.Find(scope, e.Key, modifiers) ?? windowEntry;
+        if (entry?.Behavior == KeyboardShortcutBehavior.ShowShortcuts
+            && KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
+        {
+            e.Handled = true;
+            this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
+            if (this.FindControl<Button>("HelpButton") is { } shortcutButton) _keyboardShortcutsFlyout.ShowAt(shortcutButton);
+            return;
+        }
+        if (entry?.Behavior == KeyboardShortcutBehavior.FocusWordSearch)
+        {
+            if (FindWordSearch(scope) is { } search) search.Focus();
+            e.Handled = true;
+            return;
+        }
         // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
-        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None &&
+        if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
             DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true } shell)
         {
             e.Handled = true;
             shell.Inspector.Back();
             return;
         }
-        if (e.Key != Key.F1) return;
+        if (entry?.Behavior != KeyboardShortcutBehavior.ShowHelp) return;
         e.Handled = true;
         _helpAutomationId = e.Source is Control control
             ? Avalonia.Automation.AutomationProperties.GetAutomationId(control)
@@ -237,6 +277,40 @@ public sealed partial class MainWindow : Window
         if (this.FindControl<Button>("HelpButton") is { } button)
             button.Flyout?.ShowAt(button);
     }
+
+    internal void ShowKeyboardStatus(string? message)
+    {
+        if (this.FindControl<TextBlock>("KeyboardShortcutStatusLine") is not { } line) return;
+        _keyboardStatusTimer.Stop();
+        line.Text = message ?? string.Empty;
+        line.IsVisible = !string.IsNullOrWhiteSpace(message);
+        if (line.IsVisible) _keyboardStatusTimer.Start();
+    }
+
+    private KeyboardShortcutScope SearchScope()
+    {
+        if (DataContext is not WorkspaceShellViewModel shell) return KeyboardShortcutScope.Window;
+        if (shell.CurrentPage != WorkspacePage.Texts) return KeyboardShortcutScope.Window;
+        return shell.PageModel<TextsPageModel>().Tab switch
+        {
+            TextsTab.AnalyzeTexts when shell.PageModel<TextsPageModel>().AnalyzeView == AnalyzeTextsView.TextReader => KeyboardShortcutScope.TextReader,
+            TextsTab.AnalyzeTexts => KeyboardShortcutScope.WordList,
+            TextsTab.Lists => KeyboardShortcutScope.Lists,
+            TextsTab.Matrix => KeyboardShortcutScope.Matrix,
+            _ => KeyboardShortcutScope.Window,
+        };
+    }
+
+    private TextBox? FindWordSearch(KeyboardShortcutScope scope) => this.GetVisualDescendants().OfType<TextBox>()
+        .FirstOrDefault(box => box.IsEffectivelyVisible &&
+            (scope switch
+            {
+                KeyboardShortcutScope.TextReader => box.Name == "ReaderWordSearch",
+                KeyboardShortcutScope.WordList => box.Name == "WordListSearch",
+                KeyboardShortcutScope.Lists => box.Name == "ListsWordSearch",
+                KeyboardShortcutScope.Matrix => box.Name == "MatrixWordSearch",
+                _ => false,
+            }));
 
     private void OnHelpFlyoutOpened(object? sender, EventArgs e)
     {

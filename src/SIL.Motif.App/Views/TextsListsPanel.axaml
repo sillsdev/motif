@@ -49,6 +49,9 @@
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
+      <TextBox x:Name="ListsWordSearch" DockPanel.Dock="Left" Text="{Binding Lists.Compare.SearchText}"
+               PlaceholderText="Search words..." Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+               AutomationProperties.Name="Search words in Lists" />
       <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
         <Button Content="{Binding Lists.ParseAgainLabel}" Command="{Binding Lists.ParseAgainCommand}"
                 IsVisible="{Binding Lists.CanParseAgain}"
@@ -78,7 +81,7 @@
           <DataTemplate x:DataType="vm:CompareWordViewModel">
             <views:WordRow Row="{Binding WordRow}" List="lists" IsChecked="{Binding IsChecked}"
                            ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
-                           IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
+                           IsOpen="{Binding IsExpanded}" StagedText="{Binding StagedOpinionText}">
               <views:WordRow.Card>
                     <views:WordRowCard DataContext="{Binding}" CardToken="{Binding CardToken}" />
               </views:WordRow.Card>
