@@ -66,10 +66,13 @@ public sealed class AdapterCancellationTests(PristineProjectFixture pristine)
             var queued = GatedCalls(client, project.FwDataPath, outputDirectory, loaded.Value!.Revision)
                 .Select(call => (call.Name, Outcome: call.Run(queuedCancellation.Token)))
                 .ToArray();
-            var competingTrace = Assert.Single(queued, call => call.Name == "TraceWord");
-            var busy = await competingTrace.Outcome;
-            Assert.Equal(FailureReason.Busy, busy.Refusal?.Reason);
-            queued = queued.Where(call => call.Name != "TraceWord").ToArray();
+            foreach (var competingParse in queued.Where(call => call.Name is "TraceWord" or "Handoff"))
+            {
+                var busy = await competingParse.Outcome;
+                Assert.Equal(FailureReason.Busy, busy.Refusal?.Reason);
+                Assert.Equal("parse.already-running-here", busy.Refusal?.Code);
+            }
+            queued = queued.Where(call => call.Name is not ("TraceWord" or "Handoff")).ToArray();
             await Task.Delay(100);
             Assert.All(queued, call => Assert.False(call.Outcome.IsCompleted, $"{call.Name} did not wait."));
 

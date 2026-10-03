@@ -792,8 +792,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Cancels and awaits any active run, so nothing keeps running past this workspace's lifetime.</summary>
     public async ValueTask DisposeAsync()
     {
-        await Assess.DisposeAsync().ConfigureAwait(true);
-        await Context.StopPageWorkAsync().ConfigureAwait(true);
+        await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);
     }
 }

@@ -405,14 +405,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         foreach (var page in _pages.ToArray()) await page.StopWorkAsync().ConfigureAwait(true);
     }
 
-    private async Task StopProjectWorkAsync()
+    /// <summary>Cancels and awaits project commands and page work before switching or closing the workspace.</summary>
+    internal async Task StopProjectWorkAsync()
     {
-        // Await each command's unwind; its page model outlives this project.
-        if (Assess.IsActive)
-        {
-            Assess.CancelCommand.Execute(null);
-            if (Assess.RunCommand.ExecutionTask is { } running) await running.ConfigureAwait(true);
-        }
+        await Assess.DisposeAsync().ConfigureAwait(true);
+        await Assess.Trace.StopAsync().ConfigureAwait(true);
         await StopPageWorkAsync().ConfigureAwait(true);
     }
 

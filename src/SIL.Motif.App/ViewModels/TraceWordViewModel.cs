@@ -630,6 +630,14 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public void SetWord(string word) => WordToTry = word;
 
+    /// <summary>Cancels the word trace and returns once its invocation and progress tracking have ended.</summary>
+    public async Task StopAsync()
+    {
+        CancelRunning();
+        if (TryCommand.IsRunning && TryCommand.ExecutionTask is { } running)
+            await running.ConfigureAwait(true);
+    }
+
     public void Reset()
     {
         CancelRunning();

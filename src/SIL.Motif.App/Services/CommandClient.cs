@@ -104,9 +104,12 @@ public sealed partial class CommandClient : ICommandClient
         HandoffRequest request, IProgress<AssessmentProgress> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
-        return AfterStartGate(GatedCommand.Handoff, cancellationToken, () => OneAtATime(
-            () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
-                progress.Report, cancellationToken), cancellationToken));
+        Task<CommandOutcome<HandoffCommandResponse>> Run() =>
+            AfterStartGate(GatedCommand.Handoff, cancellationToken, () => OneAtATime(
+                () => HandoffCommand.Handoff(request, _managedRoot, _options.ParserPath,
+                    progress.Report, cancellationToken), cancellationToken));
+        return request.Assess && request.InvocationId is null && request.SelectedTrace is null
+            ? ParseOneAtATime(Run) : Run();
     }
 
     public Task<CommandOutcome<ProjectStoreResetResponse>> DeleteRefusedStoreAsync(

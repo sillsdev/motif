@@ -99,7 +99,21 @@ public static class AssessCommand
     /// </summary>
     internal static CommandOutcome<AssessCommandResponse> Run(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken) =>
+        RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null);
+
+    /// <summary>Measures within a caller-owned admission for this project, shared with its later parsing.</summary>
+    internal static CommandOutcome<AssessCommandResponse> RunAdmitted(
+        AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease admission)
+    {
+        ArgumentNullException.ThrowIfNull(admission);
+        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission);
+    }
+
+    private static CommandOutcome<AssessCommandResponse> RunCore(
+        AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
@@ -109,8 +123,8 @@ public static class AssessCommand
         {
             if (cancellationToken.IsCancellationRequested)
                 return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
-            using var parseLease = ProjectParseLease.TryAcquire(database);
-            if (parseLease is null)
+            using var parseLease = admission is null ? ProjectParseLease.TryAcquire(database) : null;
+            if (admission is null && parseLease is null)
                 return CommandOutcome<AssessCommandResponse>.Refused(ProjectParseLease.BusyRefusal());
             if (request.PerWordLimitMs is <= 0)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(

@@ -73,6 +73,59 @@ public sealed class WorkspaceShellViewModelTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task ProjectShutdownAwaitsTraceUnwindAndCancelsContextReads(bool switchProject)
+    {
+        var (fake, picker, _, _, workspace) = NewWorkspace();
+        await ChooseProjectAsync(fake, picker, workspace, ProjectPath);
+        var cancelled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var unwind = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.OnTraceWord(async (_, token) =>
+        {
+            using var registration = token.Register(() => cancelled.TrySetResult());
+            await unwind.Task;
+            return CommandOutcome<WordTraceResponse>.Refused(new Refusal("trace.cancelled",
+                FailureReason.Cancelled, "Cancelled"));
+        });
+        var contextReads = new List<CancellationToken>();
+        fake.WordContextHandler = async (_, token) =>
+        {
+            contextReads.Add(token);
+            await Task.Delay(Timeout.Infinite, token);
+            return CommandOutcome<WordContextResponse>.Success(new("motifa", false));
+        };
+        var trace = workspace.Assess.Trace;
+        trace.Result = WordTraceQuery.LoadDiagnostic(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
+        trace.SetWord("motifa");
+        var running = trace.TryCommand.ExecuteAsync(null);
+        var oldReads = contextReads.ToArray();
+        Assert.NotEmpty(oldReads);
+        var stopping = switchProject
+            ? workspace.Context.OpenProjectAsync(@"C:\projects\two.fwdata")
+            : workspace.DisposeAsync().AsTask();
+        try
+        {
+            await cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(stopping.IsCompleted, "Shutdown returned before the trace invocation unwound.");
+            unwind.TrySetResult();
+            await stopping.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(running.IsCompletedSuccessfully);
+            Assert.False(trace.ParseProgress.IsActive);
+            Assert.All(oldReads, token => Assert.True(token.IsCancellationRequested));
+            Assert.All(contextReads, token => Assert.True(token.IsCancellationRequested));
+        }
+        finally
+        {
+            trace.CancelCommand.Execute(null);
+            unwind.TrySetResult();
+            await running.WaitAsync(TimeSpan.FromSeconds(5));
+            await stopping.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DisposalWaitsForTheProjectMenuReadEvenWhenItFails(bool failRead)
     {
         var response = new TaskCompletionSource<IReadOnlyList<KnownProjectSummary>>(

@@ -187,6 +187,20 @@ public sealed class TryWordPageModel : PageModel
     /// <summary>Traces a recent word again.</summary>
     public IRelayCommand<string?> OpenRecentWordCommand { get; }
 
+    protected override async Task OnStopWorkAsync()
+    {
+        await Trace.StopAsync().ConfigureAwait(true);
+        _wordContextGeneration++;
+        _wordContextCancellation?.Cancel();
+        _wordContextCancellation?.Dispose();
+        _wordContextCancellation = null;
+        _resultContextGeneration++;
+        _resultContextCancellation?.Cancel();
+        _resultContextCancellation?.Dispose();
+        _resultContextCancellation = null;
+        _timingGeneration++;
+    }
+
     protected override void OnProjectCleared()
     {
         _wordContextGeneration++;

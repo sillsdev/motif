@@ -8,6 +8,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using System.Globalization;
+using System.Diagnostics;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
@@ -18,6 +19,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Store;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -89,6 +91,76 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             await second.KnownProjectsLoaded;
             Assert.Empty(second.Workspace.Project.KnownProjects);
             await host.StopAsync();
+        });
+    }
+
+    [Fact]
+    public void ClosingAHeldTraceReleasesItsLeaseBeforeASameProcessRestart()
+    {
+        var host = MotifAppHost.Shared;
+        using var project = new WalkthroughProject(pristine);
+        var parser = FakeParser.CopyRecordingInvocations(Path.Combine(NewRoot(), "parser"));
+        var started = Path.Combine(project.ManagedRoot, "trace-started");
+        var processId = Path.Combine(project.ManagedRoot, "trace-pid");
+        FakeParser.BehaveBesideExecutable(parser, new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                ["parse"] = new { heartbeatPath = started, processIdPath = processId },
+            },
+        });
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath),
+            project.ManagedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        var skipped = ProjectSetupCommands.Skip(new SkipSetupRequest(project.FwDataPath));
+        Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
+        var picker = new RecordingProjectPicker(project.FwDataPath);
+        var options = Options(project.ManagedRoot, picker) with { ParserPath = parser,
+            RunnerLauncher = new NoRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parser)) };
+
+        host.Run("close a held trace, then restart and trace the same project", JourneyLimit, async () =>
+        {
+            var first = host.Start(options);
+            Task? tracing = null;
+            try
+            {
+                await first.KnownProjectsLoaded;
+                await SelectNewProjectAsync(first, () => picker.Calls == 1);
+                await Until(() => first.Workspace.Baseline.HasBaseline, "the Baseline did not load");
+                var trace = first.Workspace.Assess.Trace;
+                trace.SetWord("motifa");
+                tracing = trace.TryCommand.ExecuteAsync(null);
+                await Until(() => File.Exists(started), "the held trace did not start");
+                Assert.True(trace.ParseProgress.IsActive);
+                using var invocation = Process.GetProcessById(int.Parse(File.ReadAllText(processId),
+                    CultureInfo.InvariantCulture));
+                await host.StopAsync();
+
+                Assert.True(first.Closed.IsCompletedSuccessfully);
+                Assert.True(tracing.IsCompletedSuccessfully, "Closing left the trace invocation running.");
+                Assert.False(trace.IsLoading);
+                Assert.False(trace.ParseProgress.IsActive);
+                Assert.True(invocation.HasExited, "Closing left the parser process alive.");
+                using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+                using (var admission = ProjectParseLease.TryAcquire(database))
+                    Assert.NotNull(admission);
+
+                FakeParser.BehaveBesideExecutable(parser, new { });
+                var second = host.Start(options);
+                await second.KnownProjectsLoaded;
+                await SelectNewProjectAsync(second, () => picker.Calls == 2);
+                await Until(() => second.Workspace.Baseline.HasBaseline, "the restarted Baseline did not load");
+                second.Workspace.Assess.Trace.SetWord("motifa");
+                await second.Workspace.Assess.Trace.TryCommand.ExecuteAsync(null);
+                Assert.NotNull(second.Workspace.Assess.Trace.Result);
+                Assert.Null(second.Workspace.Assess.Trace.Refusal);
+                await host.StopAsync();
+            }
+            finally
+            {
+                first.Workspace.Assess.Trace.CancelCommand.Execute(null);
+                if (tracing is not null) await tracing.WaitAsync(StepLimit);
+            }
         });
     }
 

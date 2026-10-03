@@ -21,6 +21,7 @@ using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Handoff;
@@ -99,7 +100,8 @@ public static class HandoffCommand
 
     /// <summary>
     /// Writes a Handoff folder against explicitly supplied collaborators — a fake Assessor and a fake
-    /// invoker stand in for a real PanGloss in tests. Admission and containment are the invoker's.
+    /// invoker stand in for a real PanGloss in tests. Fresh Assessments and their automatic traces share
+    /// one project admission; the invoker provides machine admission and process containment.
     /// </summary>
     internal static CommandOutcome<HandoffCommandResponse> Run(
         HandoffRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
@@ -127,6 +129,12 @@ public static class HandoffCommand
 
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
+            if (cancellationToken.IsCancellationRequested)
+                return CommandOutcome<HandoffCommandResponse>.Refused(Cancelled(request.ProjectPath));
+            var parses = request.Assess && request.InvocationId is null && request.SelectedTrace is null;
+            using var parseLease = parses ? ProjectParseLease.TryAcquire(database) : null;
+            if (parses && parseLease is null)
+                return CommandOutcome<HandoffCommandResponse>.Refused(ProjectParseLease.BusyRefusal());
             BaselineReadCache? sourceReader = null;
             try
             {
@@ -314,10 +322,10 @@ public static class HandoffCommand
                 }
                 else if (request.Assess)
                 {
-                    var assessOutcome = AssessCommand.Run(
+                    var assessOutcome = AssessCommand.RunAdmitted(
                         new AssessRequest(request.ProjectPath, request.Selection), managedRoot,
                         assessor, invoker, ForwardExceptComplete(onProgress),
-                        cancellationToken);
+                        cancellationToken, parseLease!);
                     if (!assessOutcome.Succeeded)
                     {
                         // The person cancelled a Handoff, not an Assessment; the nested code must not leak out.

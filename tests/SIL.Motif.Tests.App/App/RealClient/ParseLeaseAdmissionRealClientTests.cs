@@ -1,3 +1,5 @@
+using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Handoff;
 using System.Diagnostics;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
@@ -112,6 +114,55 @@ public sealed class ParseLeaseAdmissionRealClientTests(PristineProjectFixture pr
             if (!child.Process.HasExited) child.Process.Kill(entireProcessTree: true);
             await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
         }
+    }
+
+    [Fact]
+    public async Task AHandoffAutomaticTraceKeepsAdmissionAcrossProcesses()
+    {
+        using var project = await GrammarClientProject.OpenAsync(pristine);
+        var heartbeat = Path.Combine(project.ManagedRoot, "handoff-trace-heartbeat");
+        project.Behave(new
+        {
+            subcommands = new Dictionary<string, object>
+            {
+                ["parse"] = new { heartbeatPath = heartbeat },
+            },
+        });
+        var words = Path.Combine(project.ManagedRoot, "handoff-words.txt");
+        var destination = Path.Combine(project.ManagedRoot, "held-handoff");
+        File.WriteAllText(words, SeededProject.AnalysedWordForm + "\n");
+        using var cancellation = new CancellationTokenSource();
+        var handoff = project.Client.HandoffAsync(new HandoffRequest(
+                project.FwDataPath, destination,
+                new SelectionRequest(false, [], [SeededProject.AnalysedWordForm], false, null), true),
+            new Progress<AssessmentProgress>(), cancellation.Token);
+        try
+        {
+            await WaitForFile(heartbeat, TimeSpan.FromSeconds(30));
+            Assert.Single(project.Invocations(), command => command == "batch");
+            Assert.Single(project.Invocations(), command => command == "parse");
+            var cli = await CliProcess.RunAsync(project.ManagedRoot, project.ParserPath, true,
+                "assess", project.FwDataPath, "--words", words, "--json");
+            Assert.True(cli.ExitCode != 0, cli.FailureDetails);
+            Assert.Contains("parse.already-running", cli.Error);
+            var other = RealCommandClient.Create(project.ManagedRoot, project.ParserPath);
+            var trace = await other.TraceWordAsync(new WordTraceRequest(project.FwDataPath, "motifa"),
+                CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(FailureReason.Busy, trace.Refusal?.Reason);
+            Assert.Single(project.Invocations(), command => command == "batch");
+            Assert.Single(project.Invocations(), command => command == "parse");
+        }
+        finally
+        {
+            cancellation.Cancel();
+            var cancelled = await handoff.WaitAsync(TimeSpan.FromSeconds(20));
+            Assert.Equal("handoff.cancelled", cancelled.Refusal?.Code);
+            Assert.False(Directory.Exists(destination));
+        }
+        project.Behave(new { });
+        var retry = await project.Client.AssessAsync(AssessRequest(project.FwDataPath),
+            new Progress<AssessmentProgress>(), CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.True(retry.Succeeded, retry.Refusal?.Message);
     }
 
     private static AssessRequest AssessRequest(string projectPath) => new(
