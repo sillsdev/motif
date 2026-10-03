@@ -23,7 +23,7 @@ public static class HandoffFileExpectations
     private static readonly HandoffFileDefinition Grammar = new(
         "grammar.json", "The grammar Motif exports for PanGloss to parse.");
     private static readonly HandoffFileDefinition Intro = new(
-        "handoff.md", "Explains the included material and carries the prepared question for the chat model.");
+        "handoff.md", "Explains the included material and gives reading examples.");
     private static readonly HandoffFileDefinition ParseResults = new(
         "parse-results.json", "One result for each selected word, including its parser outcome and timing.");
     private static readonly HandoffFileDefinition Reader = new(

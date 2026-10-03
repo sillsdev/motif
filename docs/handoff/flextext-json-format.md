@@ -1,25 +1,21 @@
 # The Texts format — FLExText as JSON
 
-Each file under `texts/` is one interlinearised document from the language project — a real
-sentence, broken into words, each word broken into morphemes, each with its own gloss and
-category where an analysis exists for it. It is the same information FieldWorks would export as
-a `.flextext` XML file, carried over into JSON with exactly the same names, so nothing here is a
-new vocabulary to learn if you already know FLExText — and nothing is lost if you don't.
+`texts.json` is a JSON array with one `{key, document}` record per selected Text. The `key` identifies
+that Text; `document` contains its interlinearised content in FLExText-like JSON, with sentences,
+words, morphemes, glosses, and categories where analyses exist. The current Handoff writes JSON only:
+it does not write XML siblings or offer a `--flextext` option.
 
-## Why JSON, and what stays identical to FLExText
+## How JSON uses FLExText names
 
-FLExText's element structure becomes JSON with the elements as keys, repeated elements as
-arrays, and every `item` collapsed to `{"type", "lang", "value"}`. Motif's own FLExText XML
-writer and this JSON writer both serialize the same in-memory reading of the project, so the two
-can never drift from each other — the mapping below applies to either. JSON is the default
-because every file dropped into a chat model is read as tokens, and JSON costs measurably fewer
-of them than XML for the same content; the XML sibling is written only when explicitly asked
-for, for a FieldWorks round trip this Handoff is not part of.
+Inside each `document`, FLExText element names become JSON object keys, repeated elements become
+arrays, and each `item` is represented as `{"type", "lang", "value"}`. This page describes the
+JSON representation written by Handoff; it does not describe an XML export route.
 
 ## Shape
 
 ```text
-{ "document":
+[
+{ "key": "text-title-guid", "document":
   { "interlinear-text": [
       { "guid": "...", "item": [ {type, lang, value}, ... ],
         "paragraphs": { "paragraph": [
@@ -34,10 +30,11 @@ for, for a FieldWorks round trip this Handoff is not part of.
             ] } }
         ] } }
   ] } }
+]
 ```
 
-A `document` may hold more than one `interlinear-text`, one per Text the person chose when they
-ran the Handoff. `word` carries no `morphemes` object at all for an unanalysed word or for
+A record's `document` contains one `interlinear-text` for its selected Text. `word` carries no
+`morphemes` object at all for an unanalysed word or for
 punctuation — punctuation words also carry no `guid`, because the underlying FieldWorks
 punctuation object is not addressed the way an analysed word is.
 
@@ -71,17 +68,13 @@ or `text-is-translation`, all of which a `.flextext` file exported directly from
 carry. A file here that lacks a segment number or an annotator's note is not missing data Motif
 dropped — Motif's projection never reads those fields to begin with.
 
-## `analysisStatus`: Motif's vocabulary, not FLExText's XML enumeration
+## `analysisStatus`: Motif's JSON vocabulary
 
-Every analysed word's `morphemes` object carries `analysisStatus`. In this JSON mirror, its
-value is one of exactly three strings — `"unanalysed"`, `"approved"`, or `"unapproved"` — Motif's
-own vocabulary for what LibLCM actually distinguishes: whether an analysis is chosen at all, and
-if so, whether the project's human agent has approved it. **This is not the same enumeration
-FLExText's own XSD defines for the XML format** (`humanApproved`, `guess`,
-`guessByHumanApproved`, `guessByStatisticalAnalysis`) — only the `--flextext` XML sibling
-translates into that enumeration, mapping `approved` to `humanApproved` and `unapproved` to
-`guess`. A reader working only from the JSON should not expect to see FLExText's XML status
-strings verbatim; they are the JSON's own three values throughout.
+An analysed word's `morphemes` object carries `analysisStatus`, with exactly one of two values:
+`"approved"` or `"unapproved"`. This says whether the project's human agent approved its chosen
+analysis. An unanalysed word has no `morphemes` object and therefore no `analysisStatus` field in
+`texts.json`. FLExText's own XSD defines a separate XML enumeration (`humanApproved`, `guess`,
+`guessByHumanApproved`, `guessByStatisticalAnalysis`); those strings are not written by Handoff.
 
 Before drawing any linguistic conclusion from a corpus of these files — "this suffix always
 attaches to nouns," "this root never co-occurs with that affix" — restrict the reasoning to
@@ -94,7 +87,8 @@ promote a guess into an approved analysis without a person's confirmation.
 Invented language, invented sentence — not real project data:
 
 ```json
-{ "document": { "interlinear-text": [
+[
+{ "key": "toy-story-1-example-guid", "document": { "interlinear-text": [
   { "guid": "00000000-0000-0000-0000-000000000001",
     "item": [ {"type": "title", "lang": "en", "value": "Toy Story 1"} ],
     "paragraphs": { "paragraph": [
@@ -131,6 +125,7 @@ Invented language, invented sentence — not real project data:
         ] } }
     ] } }
 ] } }
+]
 ```
 
 Read against the tables above: the sentence's free translation is "She ran quickly." (the

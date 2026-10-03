@@ -82,7 +82,7 @@ import guideFeatures from '../../data/guide-features.json';
 		<aside class="home-ai-band">
 			<div>
 				<h3>Works with the AI you already use</h3>
-				<p>Or make an <strong>AI Handoff</strong> folder and drag it into a chat. Check what it contains first: it holds real project data. Or let an agent drive Motif directly: every command answers in JSON, and one call describes them all.</p>
+				<p>Or make an <strong>AI Handoff</strong> folder and drag it into a chat. Check what it contains first: it holds real project data. Or let an agent drive Motif directly: commands with documented <code>--json</code> support return structured responses, with enqueue-only job-ID exceptions explained in the agent Guide.</p>
 			</div>
 			<pre><code>{'motif help --all --json\nmotif handoff <project> --out <folder> --invocation <id> [--no-assess] [--json]'}</code></pre>
 			<p><a href="/llms.txt">/llms.txt — the full site index for agents</a></p>
@@ -110,7 +110,7 @@ import guideFeatures from '../../data/guide-features.json';
 			<article class="home-card home-card--audience">
 				<h3>Language technologist</h3>
 				<p class="home-audience-situation"><HomeLocalizedText message="home.audienceTechnologistSituation" /></p>
-				<p>Timing, JSON output for every command, and documentation written for agents.</p>
+			<p>Timing, structured output for commands with documented <code>--json</code> support, and documentation written for agents.</p>
 			</article>
 		</div>
 	</HomeSection>

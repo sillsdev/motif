@@ -1,6 +1,6 @@
 # Prepare an AI Handoff
 
-`handoff` writes a folder containing a grammar and selected Texts, plus retained parse evidence when an invocation is selected. The folder includes reference files so a reader can understand the data without a network connection or package installation.
+`handoff` writes a folder containing a grammar and selected Texts, plus retained parse evidence when an invocation is selected. The folder includes a short orientation and a Python helper; the full format and parser references are linked online and require network access.
 
 ## When to use it
 

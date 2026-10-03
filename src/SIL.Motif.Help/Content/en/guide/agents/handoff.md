@@ -1,13 +1,13 @@
 # Reading a Handoff
 
-A Motif Handoff is a folder for an agent to inspect without connecting to the project or running Motif. Start with `handoff.md`: it explains the included material and contains the question prepared for the chat model.
+Start with `handoff.md` for the included files and reading examples; use the separate `pastedHeader` text for the prepared chat prompt.
 
 An assessed Handoff lists files alphabetically: `grammar.json`, `handoff.md`, `parse-results.json`, `read_results.py`, then `texts.json`. A Baseline-only Handoff omits `parse-results.json`. The App's one-word Handoff contains `grammar.json`, `handoff.md`, `read_results.py`, `texts.json`, then `traces/<word>.trace.json`; it carries the raw diagnostic and omits batch parse results.
 
 | File | Description |
 |---|---|
 | `grammar.json` | The grammar Motif exports for PanGloss to parse. |
-| `handoff.md` | Explains the included material and carries the prepared question for the chat model. |
+| `handoff.md` | Explains the included material and gives reading examples. |
 | `parse-results.json` | One result for each selected word, including its parser outcome and timing. |
 | `read_results.py` | Queries the Handoff's JSON files from a terminal. |
 | `texts.json` | The selected Texts with the analyses the project stores. |

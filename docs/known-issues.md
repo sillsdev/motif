@@ -7,23 +7,12 @@ section K there.
 Each entry says what is wrong, how it was found, and what fixing it would involve. None of them
 currently fail the build or the suite.
 
-## Tests that pass but should not be trusted
-
-**`TheFallbackEngineIsReachable_AndAgreesOnWhichWordsParse` is skipped, not deleted.** It compared two
-parser engines; there is one engine now, so it compared a run against itself. Restoring it needs a
-second engine to exist — see `K48`.
-
 ## Duplication worth removing
 
 **Two renderers share a shape.** `CommandTextRenderer` and `ProposalCommandRenderer` both define
 `Render<T>(CommandOutcome<T>, bool, bool) where T : class` and a matching `RenderRefusal` that builds a
 `FailureEnvelope`. The only functional difference is one `corpus.` prefix check. A third such renderer
 is plausible as more command families become typed.
-
-**One resource path, two private constants.** `"SIL.Motif.Commands.Handoff.Assets.instructions.md"`
-is a `private const` in both `HandoffWriter` and `HandoffViewModel`. Renaming the asset desyncs one
-silently and the app's read fails at run time. An `internal const` on `HandoffWriter` would remove it;
-the app already references Commands.
 
 ## Unfinished by choice
 

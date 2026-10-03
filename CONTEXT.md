@@ -291,11 +291,13 @@ FieldWorks adapter or the `net10.0` Host owns loading, saving, locking, and disp
 _Avoid_: cache, session, connection
 
 **Motif store**:
-Everything Motif keeps about **one language project**, in that project's paired sibling database:
-Proposals, Drafts, jobs, Assessments, Reports, Receipts, Corpora, and the applied index.
-Content digests still identify immutable intent and evidence, but the storage container is not itself
-content-addressed. There is no merge engine and no replication. Nothing about a project lives anywhere
-else, and nothing that is not about a project lives here — that is the Machine store.
+Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Receipts, Corpora, and the
+applied index — live in the project's paired sibling database. File-backed Baselines and parser
+artifacts live separately under the Motif worker root, which defaults on Windows to
+`%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
+immutable intent and evidence, but neither storage location is content-addressed. There is no merge
+engine and no replication. The Machine store holds what belongs to the installation rather than to a
+project.
 _Avoid_: proposal store, change store, database, repository, queue
 
 **Machine store**:
@@ -354,13 +356,12 @@ naming its Documents, with each one's origin and licence. It names files; it doe
 _Avoid_: import, package, archive, manifest
 
 **Handoff**:
-The five flat files Motif writes for a person to give to a chat model, plus the block of text they paste
-ahead of their question: the grammar in PanGloss's JSON, every chosen Text in one JSON mirror of FLExText,
-the Assessment, one helper script for reading them, and one short file saying what each is. Five whatever
-was selected; four when no Assessment was run, because an absent Assessment is left out rather than written
-empty. The long explanations do not travel in it; the pasted text links to them. Outbound,
-where a Corpus bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also *AI
-handoff* where the audience needs the qualifier.
+The folder Motif writes for a person to give to a chat model, plus the separate block of text they paste
+ahead of their question. It contains the grammar in PanGloss's JSON, every chosen Text in `texts.json`,
+one helper script, and a short orientation; it adds `parse-results.json` for an Assessment and may add a
+trace diagnostic. The longer format and parser explanations are linked online. Outbound, where a Corpus
+bundle is inbound. Motif sends nothing anywhere; the person drags the files. Also *AI handoff* where the
+audience needs the qualifier.
 _Avoid_: export, bundle, package, dump, advice folder
 
 **Licence capabilities**:
