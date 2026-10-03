@@ -153,8 +153,8 @@
 
   <!-- A severity's glyph on its own: a warning's triangle bare, an error's ! and a note's i each in a ring. -->
   <Style Selector="Border.severityGlyph">
-    <Setter Property="Width" Value="{DynamicResource Component.Mark.GlyphSize}" />
-    <Setter Property="Height" Value="{DynamicResource Component.Mark.GlyphSize}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.Mark.GlyphSize}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Mark.GlyphSize}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Mark.GlyphRadius}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />

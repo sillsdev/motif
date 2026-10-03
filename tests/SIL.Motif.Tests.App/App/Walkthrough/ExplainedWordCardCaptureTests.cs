@@ -4,6 +4,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Styling;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Tests.App;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -46,6 +47,7 @@ public sealed class ExplainedWordCardCaptureTests
                     startGate: gate, timeProvider: clock, parserPath: project.ParserPath);
                 walkthrough.Window.Width = WalkthroughArtifacts.Width;
                 walkthrough.Window.Height = 800;
+                TestFontScale.ApplyMacLineHeight(walkthrough.Window);
                 walkthrough.Show();
                 WalkthroughReplay.Run(walkthrough, script with { Steps = steps[..stage] }, help, clock,
                     [], [], deadline, root, preparation);

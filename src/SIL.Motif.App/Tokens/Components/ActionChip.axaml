@@ -9,7 +9,6 @@
     <StaticResource x:Key="Component.ActionChip.CaretSize" ResourceKey="Primitive.Size.5" />
   </Styles.Resources>
   <Style Selector="Button.actionChip">
-    <Setter Property="Height" Value="{DynamicResource Component.ActionChip.Height}" />
     <Setter Property="MinHeight" Value="{DynamicResource Component.ActionChip.Height}" />
     <Setter Property="Padding" Value="{DynamicResource Component.ActionChip.Padding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.ActionChip.Radius}" />

@@ -48,8 +48,8 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
   </Style>
-  <Style Selector=":is(Button).outcomeLegendLink:pointerover :is(TextBlock)">
-    <Setter Property="TextDecorations" Value="Underline" />
+  <Style Selector="HyperlinkButton.outcomeLegendLink:pointerover">
+    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
   </Style>
   <Style Selector=":is(StackPanel).outcomeLegendLabel">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />

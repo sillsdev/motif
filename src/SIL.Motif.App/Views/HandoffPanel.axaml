@@ -80,7 +80,7 @@
             <Button x:Name="AllFilesButton"
                     Content="{Binding Handoff.Files.Count, StringFormat='Drag all {0} files into your chat'}"
                     Click="OnAllFilesClick"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="{DynamicResource Component.Handoff.DragHeight}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" MinHeight="{DynamicResource Component.Handoff.DragHeight}"
                     ToolTip.Tip="Drag into a chat. From the keyboard, press Enter to copy the folder path."
                     ToolTip.Placement="Top" ToolTip.VerticalOffset="0"
                     AutomationProperties.Name="{x:Static vm:WindowCopy.DragAllAiHandoffFiles}"

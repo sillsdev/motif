@@ -52,10 +52,10 @@
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
   <Style Selector=":is(Control).wordRow">
-    <Setter Property="Height" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
   </Style>
   <Style Selector=":is(Control).analysisRow">
-    <Setter Property="Height" Value="{DynamicResource Component.WordStrip.AnalysisRowHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.AnalysisRowHeight}" />
   </Style>
   <Style Selector="StackPanel.stripRows">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
@@ -86,11 +86,11 @@
   </Style>
   <Style Selector="TextBlock.stripMorphForm">
     <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.MorphType}" />
-    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
   </Style>
   <Style Selector="TextBlock.stripMorphGloss">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Dense}" />
-    <Setter Property="LineHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.LineHeight}" />
   </Style>
   <Style Selector="Border.warningMorphUnderline">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />

@@ -39,7 +39,6 @@
     <Setter Property="Padding" Value="{DynamicResource Component.FilterChip.CompactPadding}" />
     <Setter Property="Margin" Value="{DynamicResource Component.FilterChip.CompactMargin}" />
     <Setter Property="MinHeight" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
-    <Setter Property="Height" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
   <Style Selector="Button.filterChip.compact StackPanel.filterChipRow">

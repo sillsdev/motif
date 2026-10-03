@@ -6,6 +6,7 @@ namespace SIL.Motif.Tests.App;
 internal static class TestFontScale
 {
     private const double CrossPlatformIncrease = 1.08;
+    private const double MacLineHeightScale = 4.0 / 3.0;
 
     private static readonly string[] TypographyResources =
     [
@@ -38,12 +39,22 @@ internal static class TestFontScale
 
     public static void ApplyEightPercentIncrease(Window window)
     {
+        ApplyTypographyScale(window, CrossPlatformIncrease);
+    }
+
+    public static void ApplyMacLineHeight(Window window)
+    {
+        ApplyTypographyScale(window, MacLineHeightScale);
+    }
+
+    private static void ApplyTypographyScale(Window window, double scale)
+    {
         var application = Application.Current ?? throw new InvalidOperationException("Avalonia is not initialized.");
         foreach (var key in TypographyResources)
         {
             if (application.FindResource(key) is not double baseSize)
                 throw new InvalidOperationException($"Typography resource '{key}' is not a font size.");
-            window.Resources[key] = baseSize * CrossPlatformIncrease;
+            window.Resources[key] = baseSize * scale;
         }
     }
 }

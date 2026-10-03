@@ -31,10 +31,7 @@ public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
                 Width = 1036,
                 Height = 660,
             };
-            TestFontScale.ApplyEightPercentIncrease(window);
-            const double stressFontScale = 1.25;
-            window.Resources["Intent.Type.Section"] = 16 * stressFontScale;
-            window.Resources["Intent.Type.Label"] = 11 * stressFontScale;
+            TestFontScale.ApplyMacLineHeight(window);
             try
             {
                 window.Show();

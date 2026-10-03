@@ -538,7 +538,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Handoff", "the page header", host => Add(host, Box("handoffHeader")), Border.PaddingProperty,
             "Component.Handoff.HeaderPadding");
 
-        yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.HeightProperty, "Component.TopBar.Height");
+        yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.MinHeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
         yield return new("TopBar", "the project menu", host => Add(host, Press("projectMenu")),
             Button.MaxWidthProperty, "Component.TopBar.ProjectMenuMaxWidth");
@@ -549,7 +549,7 @@ public sealed partial class ComponentStyleTests
 
         yield return new("Menu", "a menu", host => Add(host, Stack("menu")), StackPanel.WidthProperty, "Component.Menu.Width");
         yield return new("Menu", "a menu action", host => Add(host, Press("menuAction")), Button.MarginProperty, "Intent.Gap.CompactItem");
-        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.HeightProperty, "Component.Menu.ButtonHeight");
+        yield return new("Menu", "a menu button", host => Add(host, Press("menuButton")), Button.MinHeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Menu", "a menu entry", host => Add(host, Press("menuEntry")), Button.PaddingProperty, "Component.Menu.EntryPadding");
         yield return new("Menu", "a menu entry's detail", host => InsideButton(host, Press("menuEntry"), "menuDetail"),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
@@ -813,8 +813,6 @@ public sealed partial class ComponentStyleTests
                 TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
         yield return new("Mark", "a glyph's sign", host => Inside(host, Box("severityGlyph", "error")),
             TextBlock.FontSizeProperty, "Component.Mark.GlyphType");
-        yield return new("ActionChip", "the primary action", host => Add(host, Press("actionChip", "primary")),
-            Button.HeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the primary action floor", host => Add(host, Press("actionChip", "primary")),
             Button.MinHeightProperty, "Component.ActionChip.Height");
         yield return new("ActionChip", "the Fix menu action", host => Add(host, Press("actionChip", "fix")),
@@ -877,7 +875,7 @@ public sealed partial class ComponentStyleTests
         yield return new("WordStrip", "an open word strip", host => Add(host, Box("wordStrip", "open")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("WordStrip", "an analysis row", host => Add(host, Box("stripRow", "analysisRow")),
-            Control.HeightProperty, "Component.WordStrip.AnalysisRowHeight");
+            Control.MinHeightProperty, "Component.WordStrip.AnalysisRowHeight");
         yield return new("WordStrip", "an analysis row rule", host => Add(host, Box("stripRow")),
             Border.BorderBrushProperty, "Intent.Marking.Divider");
         yield return new("UnreadMark", "the unread dot alone", host => Add(host, Box("unreadMark", "dotOnly")),
@@ -885,7 +883,7 @@ public sealed partial class ComponentStyleTests
         yield return new("HoverReveal", "a hidden secondary action", RevealControl,
             Control.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new("HoverReveal", "the staged button height", host => Add(host, Press("revealControl", "revealButton")),
-            Button.HeightProperty, "Component.HoverReveal.Height");
+            Button.MinHeightProperty, "Component.HoverReveal.Height");
         yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
@@ -907,7 +905,7 @@ public sealed partial class ComponentStyleTests
                 Assert.IsType<StackPanel>(DensityWordStrip(host, normal: true).Child).Children.OfType<TextBlock>().Single(),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
-            Control.HeightProperty, "Component.Density.CompactMarkSize");
+            Control.MinHeightProperty, "Component.Density.CompactMarkSize");
         yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
             TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("ToolTip", "a staged strip's tooltip words", TipInStagedStrip,

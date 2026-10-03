@@ -47,6 +47,7 @@ public sealed class TooltipPlacementTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
+            TestFontScale.ApplyMacLineHeight(scenes.Window);
             var prior = Application.Current!.RequestedThemeVariant;
             var owners = TooltipOwners.All.Where(owner => Owners.Contains(owner.Key)).ToList();
             Assert.Equal(Owners.Length, owners.Count);
@@ -129,6 +130,7 @@ public sealed class TooltipPlacementTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var scenes = await TooltipScenes.Open();
+            TestFontScale.ApplyMacLineHeight(scenes.Window);
             try
             {
                 var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word form");

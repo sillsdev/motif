@@ -68,7 +68,7 @@ public sealed class AnalyzeTextsLayoutTests
             var (workspace, window) = await OpenAnalyzeTexts();
             try
             {
-                TestFontScale.ApplyEightPercentIncrease(window);
+                TestFontScale.ApplyMacLineHeight(window);
                 Settle(window);
                 var panel = Panel(window);
                 var card = OpenCard(window);

@@ -71,8 +71,8 @@
   </Style>
 
   <Style Selector="Border.stepMark">
-    <Setter Property="Width" Value="{DynamicResource Component.Handoff.StepMarkSize}" />
-    <Setter Property="Height" Value="{DynamicResource Component.Handoff.StepMarkSize}" />
+    <Setter Property="MinWidth" Value="{DynamicResource Component.Handoff.StepMarkSize}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Component.Handoff.StepMarkSize}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Handoff.StepMarkRadius}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Emphasis.Fill}" />
     <Setter Property="VerticalAlignment" Value="Top" />
