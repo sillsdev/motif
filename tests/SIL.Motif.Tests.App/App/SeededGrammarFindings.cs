@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using System.Text.Json;
 
 namespace SIL.Motif.Tests.App;
 
@@ -17,11 +18,19 @@ internal static class SeededGrammarFindings
 
     public static IReadOnlyList<GrammarWarning> All()
     {
+        using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
+            "TestFixtures", "GrammarHealth", "catalog-advice-v0.6.0.json")));
         var findings = new List<GrammarWarning>();
         void Add(string code, string group, GrammarWarningPart? subject, string problem, int count,
             GrammarFindingOrigin origin = GrammarFindingOrigin.Import, string? explanation = null,
             string? guidance = null)
         {
+            if (catalog.RootElement.TryGetProperty(code, out var advice))
+            {
+                explanation ??= advice.GetProperty("explanation").GetString();
+                guidance ??= advice.GetProperty("guidance").GetString()!
+                    .Replace("{subject}", subject?.Title ?? subject?.Text ?? "the item", StringComparison.Ordinal);
+            }
             var text = $"warning: {code}: " + (subject is null ? problem : $"{subject.Text}: {problem}");
             var words = subject?.Reach is { IsRoute: true } reach
                 ? new WarningWords(reach.Path == WarningWordsPath.Spelling ? WarningWordsMatch.Spelling

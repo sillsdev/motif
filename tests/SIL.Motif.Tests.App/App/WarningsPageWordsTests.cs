@@ -9,8 +9,12 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using WordRowFact = SIL.Motif.Contract.Responses.WordRow;
 
@@ -23,6 +27,90 @@ public sealed class WarningsPageWordsTests
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public WarningsPageWordsTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+
+    [Fact]
+    public void ScreenshotFindingsCarryPanGlossAdviceForEveryKind()
+    {
+        Assert.All(SeededGrammarFindings.All(), warning =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(warning.Explanation), warning.Code);
+            Assert.False(string.IsNullOrWhiteSpace(warning.Guidance), warning.Code);
+        });
+    }
+
+    [Fact]
+    public Task EverySeededKindShowsProducerAdviceBeforeTheSmallParserMessage() =>
+        AssertAdviceVisible(SeededGrammarFindings.All());
+
+    [Fact]
+    public async Task CapturedParserAdviceReachesTheStoredWarningsViewForEveryKind()
+    {
+        using var pristine = new PristineProjectFixture();
+        var project = pristine.CopyProjectFile();
+        var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.WarningAdvice", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), managedRoot);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+                "pangloss-v0.6.0-seeded.json"));
+            var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
+            {
+                Respond = _ => new PanGlossOutcome.Completed(raw, string.Empty, TimeSpan.Zero),
+            }, CancellationToken.None);
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(project));
+            Assert.True(stored.Succeeded, stored.Refusal?.Message);
+            await AssertAdviceVisible(stored.Value!.Check!.Findings);
+        }
+        finally
+        {
+            if (Directory.Exists(managedRoot)) Directory.Delete(managedRoot, recursive: true);
+        }
+    }
+
+    private async Task AssertAdviceVisible(IReadOnlyList<GrammarWarning> findings)
+    {
+        foreach (var warning in findings.DistinctBy(finding => finding.Code))
+        {
+            var fake = new FakeCommandClient();
+            fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
+            var grammar = new GrammarViewModel(fake);
+            await grammar.SetProjectAsync("/tmp/warnings-advice.fwdata");
+            _avalonia.Invoke(() =>
+            {
+                var panel = new GrammarPanel(grammar);
+                var window = new Window { Content = panel, Width = 1040, Height = 900 };
+                try
+                {
+                    window.Show();
+                    Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows))
+                        .ToggleOpenCommand.Execute(null);
+                    window.UpdateLayout();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    var texts = panel.GetVisualDescendants().OfType<CopyableTextBlock>()
+                        .Where(text => text.IsEffectivelyVisible).ToArray();
+                    var explanation = Assert.Single(texts, text => text.Text == warning.Explanation);
+                    var guidance = Assert.Single(texts, text => text.Text == warning.Guidance);
+                    var message = Assert.Single(texts, text => text.Classes.Contains("warningRawMessage"));
+                    Assert.Contains(texts, text => text.Text == "What to do in FieldWorks");
+                    Assert.DoesNotContain(texts, text => text.Text == "PanGloss gives no advice for this kind yet");
+                    Assert.Equal(warning.Description, message.Text);
+                    Assert.True(message.FontSize < explanation.FontSize);
+                    Assert.True(message.FontSize < guidance.FontSize);
+                    var parent = message.GetVisualParent()!;
+                    Assert.Same(parent, explanation.GetVisualParent()!.GetVisualParent());
+                    Assert.True(Array.IndexOf(parent.GetVisualChildren().ToArray(), message) >
+                        Array.IndexOf(parent.GetVisualChildren().ToArray(), guidance.GetVisualParent()));
+                }
+                finally
+                {
+                    window.Close();
+                }
+            });
+        }
+    }
 
     [Fact]
     public async Task ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink()

@@ -181,6 +181,38 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void CapturedPinnedParserAdviceSurvivesReadingAndStorageForEveryKind()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "pangloss-v0.6.0-seeded.json"));
+        using var document = JsonDocument.Parse(raw);
+        var diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
+        Assert.True(diagnostics.Select(item => item.GetProperty("code").GetString()).Distinct().Count() >= 3);
+        var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
+        {
+            Respond = _ => new PanGlossOutcome.Completed(raw, string.Empty, TimeSpan.Zero),
+        }, CancellationToken.None);
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        foreach (var findings in new[] { outcome.Value!.Findings, stored.Value!.Check!.Findings })
+        {
+            Assert.Equal(diagnostics.Length, findings.Count);
+            foreach (var (diagnostic, finding) in diagnostics.Zip(findings))
+            {
+                Assert.Equal(diagnostic.GetProperty("code").GetString(), finding.Code);
+                Assert.Equal(diagnostic.GetProperty("explanation").GetString(), finding.Explanation);
+                Assert.Equal(diagnostic.GetProperty("guidance").GetString(), finding.Guidance);
+                Assert.Equal(diagnostic.GetProperty("description").GetString(), finding.Description);
+                Assert.False(string.IsNullOrWhiteSpace(finding.Explanation));
+                Assert.False(string.IsNullOrWhiteSpace(finding.Guidance));
+            }
+        }
+    }
+
+    [Fact]
     public void NoBaselineIsASuccessfulEmptyAnswer_AndNeverReachesTheParser()
     {
         var fwDataPath = _pristine.CopyProjectFile();
