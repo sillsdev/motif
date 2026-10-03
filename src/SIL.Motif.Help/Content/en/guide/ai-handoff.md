@@ -2,6 +2,8 @@
 
 **AI Handoff** writes a folder you can share with a chat model. It includes project context for the words you parsed and a starter question. The page shows what it plans to write and a data-sensitivity notice before you start; the folder can include real grammar rules, lexicon entries, and sentences from the selected Texts.
 
+Only one parse can run for a project at a time. A Handoff that needs a fresh parse runs it before writing. Motif refuses another parse request for the project until the Handoff finishes.
+
 From Try a Word, **AI Handoff for this word** keeps the displayed trace and the Baseline captured with it. Motif does not parse the word again or make a replacement trace; this Handoff includes the raw diagnostic and leaves out measured results from a separate parse.
 
 1. Read the notice. If it says the files will include only words chosen on the Texts page, choose **Hand off every parsed word instead** to use every word from the last parse.
@@ -9,7 +11,7 @@ From Try a Word, **AI Handoff for this word** keeps the displayed trace and the 
 3. Choose an output folder when prompted and wait for Motif to finish writing.
 4. Review the files, then drag the files into your chat or use the page’s copy actions for the prompt and paths.
 
-The page shows when the files were last written and marks them out of date when a newer parse finishes. Dates include the day when they are not from today. The `read_results.py` reader works over `parse-results.json` and `texts.json`. Write the Handoff again when you want the chat model to receive newer results. Only share the files if you are comfortable sending their linguistic data to that service.
+The page shows when the files were last written and marks them out of date when a newer parse finishes. Times use your local clock; a timestamp from another day includes its weekday and date. The `read_results.py` reader works over `parse-results.json` and `texts.json`. Write the Handoff again when you want the chat model to receive newer results. Only share the files if you are comfortable sending their linguistic data to that service.
 
 ![AI Handoff files ready to share](shot:handoff-cancel-retry/completed-files)
 

@@ -14,4 +14,4 @@ In **Detailed statistics**, **Stopped** counts words recorded as stopping at a t
 
 ![Saved parse timings on the Timing page](shot:review-apply-refresh-parse/timing)
 
-A refused word wears **PanGloss can’t read it** and keeps the parser’s reason on its row and card. It is not a completed search that found no analysis; timing shows only measurements the parser recorded.
+A refused word wears **PanGloss can’t read it** and keeps the parser’s reason on its row and card. It is not a completed search that found no analysis; timing shows only measurements the parser recorded. Refused words are left out of **Re-run chosen words** because repeating them cannot produce a parse time.

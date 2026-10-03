@@ -6,6 +6,8 @@
 
 Use a retained invocation when you want its Baseline, Selection, and parse evidence in the Handoff. Use `--no-assess` for a Baseline-only Handoff; `--texts` can then restrict which Texts are included. The folder contains real language data, so inspect it before sharing it with a chat model.
 
+Without `--invocation` or `--no-assess`, the Handoff makes a fresh parse of the chosen words before writing. Motif refuses another parse request for the project until the Handoff finishes.
+
 ## Example
 
 ```powershell

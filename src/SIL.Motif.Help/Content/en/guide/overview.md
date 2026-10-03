@@ -13,7 +13,7 @@ The **Grammar warnings** card gives the warning count and any nonzero error coun
 
 These are separate measures, not one overall score. The project's counts appear after you press **Refresh**, which also checks the grammar. **Speed**, **Text coverage**, and **Approved analyses kept** show parse results after you choose **Parse all words**.
 
-The top bar says whether these numbers are current. If you have saved in FieldWorks since the last Refresh, the top bar says when, and offers **Refresh**. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
+The top bar says whether these numbers are current. If you have saved in FieldWorks since the last Refresh, the top bar says when, and offers **Refresh**. Times use your local clock; a save from another day includes its weekday and date. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
 
 Choose a card's link, such as **Slowest words →**, **Texts →**, **Matrix →**, or **Warnings →**, to see more on that page. Hover over or focus a card to show its link. Each **Look first** row opens the words or timings it names; hover or focus the row to show its word-count link. Expand **Project history** to see recorded activity. For a closer explanation of each measure and how to read its breakdowns, see [Reading the Overview](guide:reading-the-overview).
 

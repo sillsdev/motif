@@ -2,6 +2,8 @@
 
 Use **Try a Word** to trace one word through the grammar. The word does not need to appear in a chosen text or exist in the FieldWorks project.
 
+A live trace belongs to the open project. Switching projects or closing the project cancels a trace in progress and clears its result; open that project again to try the word again.
+
 1. Enter a word in **Type any word...**.
 2. Choose **Try it** and wait for the trace. Choose **Cancel** to interrupt a running search.
 3. Read the result and any search limit. **Search incomplete** takes precedence even if the parser found an analysis; an unfinished search cannot establish that no analysis exists.
@@ -26,7 +28,7 @@ An earlier parse's measured times appear in a separate block named by the word's
 
 Hover over the result or use keyboard focus to reveal **Analyze texts**, **Timing**, and **AI Handoff**. **Analyze texts** opens the returned word in its text, where opinions are changed. These actions keep addressing the displayed result when you edit or clear the input for another Try. **AI Handoff** keeps this diagnostic and the Baseline recorded with it; it does not parse the word again or make a replacement trace. The menu beside **Try it** contains recent words and tools for copying, saving or opening a trace. **Copy for a chat model** includes the instructions, one-line summary, and original diagnostic JSON; review it before sharing because it can contain real project data. **Full derivation** starts folded and provides all recorded steps and filters. Saving keeps the original diagnostic regardless of display filters.
 
-Both views name the Baseline that actually produced the trace, using its capture time in the computer's local time. A trace without a recorded Baseline says so. When the earlier parse and the trace record different Baseline identities, the page says **This trace and the earlier parse used different Baselines. Refresh and try again.** That difference does not establish that a grammar change caused a failed search. Capture details keep the source project's save time as well. A Refresh published while a request waits can change which Baseline it uses. An older workspace description cannot relabel the returned evidence.
+Both views name the Baseline that actually produced the trace, using its capture time in the computer's local time; a timestamp from another day includes its weekday and date. A trace without a recorded Baseline says so. When the earlier parse and the trace record different Baseline identities, the page says **This trace and the earlier parse used different Baselines. Refresh and try again.** That difference does not establish that a grammar change caused a failed search. Capture details keep the source project's save time as well. A Refresh published while a request waits can change which Baseline it uses. An older workspace description cannot relabel the returned evidence.
 
 Recorded details can include the replacement lexical entry for a Blocked event, the template slots a branch applied or skipped, and the completion gate that ended a partial attempt. A completed lookup records how many possible roots it returned; those are not counts of successful analyses. Typed rejection details retain the operands PanGloss actually tested, including any authored environment identity and text. A phonological step with an unavailable reason remains unknown.
 
