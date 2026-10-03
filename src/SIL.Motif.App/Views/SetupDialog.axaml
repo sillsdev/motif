@@ -13,7 +13,7 @@
       <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Group}">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
           <TextBlock Classes="setupCaption" Text="{Binding StepCaption}" VerticalAlignment="Center" />
-          <ItemsControl Grid.Column="1" ItemsSource="{Binding Indicators}" VerticalAlignment="Center">
+          <ItemsControl x:Name="SetupDialogIndicatorsItems" Grid.Column="1" ItemsSource="{Binding Indicators}" VerticalAlignment="Center">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
@@ -65,7 +65,10 @@
             </StackPanel>
             <Border Classes="setupTextList">
               <ScrollViewer MaxHeight="{DynamicResource Component.Setup.TextListHeight}">
-                <ItemsControl ItemsSource="{Binding Selection.Texts}">
+                <ItemsControl x:Name="SetupDialogTextsItems" ItemsSource="{Binding Selection.Texts}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TextChoiceViewModel">
                       <Border Classes="setupTextRow">

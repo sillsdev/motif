@@ -252,6 +252,9 @@ public sealed class InspectorTests
                 Assert.Equal(5, uses.Shown.Count);
 
                 Assert.Equal("Allomorph can't be split into phonemes", Assert.Single(workspace.Inspector.Warnings).Title);
+                var factItems = InspectorPanel(window).FindControl<ItemsControl>("InspectorFactsItems")!;
+                factItems.ScrollIntoView(factItems.ItemCount - 1);
+                Settle(window);
                 var facts = sections[^1].GetVisualDescendants().OfType<HyperlinkButton>()
                     .Where(link => link is not InspectLink && link.IsEffectivelyVisible).ToArray();
                 Assert.NotEmpty(facts);

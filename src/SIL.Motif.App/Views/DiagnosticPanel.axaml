@@ -6,7 +6,7 @@
              x:Class="SIL.Motif.App.Views.DiagnosticPanel"
              x:DataType="vm:TraceWordViewModel"
              SizeChanged="OnPanelSizeChanged">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <Border>
     <StackPanel Classes="diagnosticBody" Spacing="{DynamicResource Intent.Space.Group}">
       <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding $parent[views:DiagnosticPanel].ShowResultSummary}">
@@ -66,7 +66,10 @@
       <Border Classes="card" IsVisible="{Binding HasNoParseReasons}" AutomationProperties.Name="Why it did not parse">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontWeight="SemiBold" />
-          <ItemsControl ItemsSource="{Binding NoParseReasons}">
+          <ItemsControl x:Name="DiagnosticPanelNoParseReasonsItems" ItemsSource="{Binding NoParseReasons}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String">
                 <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
@@ -89,7 +92,10 @@
             <views:CopyableTextBlock Text="{Binding StopGroupsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" TextWrapping="Wrap" Text="{Binding StopGroupsSummary}" />
           </StackPanel>
-          <ItemsControl ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Recorded stopped attempts">
+          <ItemsControl x:Name="DiagnosticPanelStopGroupsItems" ItemsSource="{Binding StopGroups}" AutomationProperties.Name="Recorded stopped attempts">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TraceStopGroupViewModel">
                 <Button Classes="stopGroup" Classes.chosen="{Binding IsSelected}" HorizontalAlignment="Stretch"
@@ -124,7 +130,10 @@
           <views:CopyableTextBlock Text="{Binding ClosestAttemptsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
           <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." />
         </StackPanel>
-        <ItemsControl ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
+        <ItemsControl x:Name="DiagnosticPanelClosestAttemptsItems" ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceCandidateViewModel">
               <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
@@ -150,7 +159,10 @@
                     <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" TextWrapping="Wrap"
                                              Text="{Binding ParserCode, StringFormat='Code from the parser: {0}'}"
                                              IsVisible="{Binding HasParserCode}" AutomationProperties.Name="The parser's code" />
-                    <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl x:Name="DiagnosticPanelStepsItems" ItemsSource="{Binding Steps}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:TraceStepViewModel">
                           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}"
@@ -173,7 +185,10 @@
                   <Expander Header="Recorded tree context" IsExpanded="{Binding IsTreeContextExpanded, Mode=TwoWay}" IsVisible="{Binding HasTreeContext}">
                     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                       <views:CopyableTextBlock Classes="muted" Text="Membership in this derivation is not recorded." TextWrapping="Wrap" />
-                      <ItemsControl ItemsSource="{Binding RecordedTreeContext}">
+                      <ItemsControl x:Name="DiagnosticPanelRecordedTreeContextItems" ItemsSource="{Binding RecordedTreeContext}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:TraceStepViewModel">
                             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
@@ -216,7 +231,7 @@
                      AutomationProperties.Name="Filter diagnostic trace by rule" />
             <TextBox Grid.Column="2" Text="{Binding MorphFilter}" PlaceholderText="Morph or form"
                      AutomationProperties.Name="Filter diagnostic trace by morph" />
-            <ComboBox Grid.Column="3" ItemsSource="{Binding OutcomeFilters}" SelectedItem="{Binding OutcomeFilter}"
+            <ComboBox x:Name="DiagnosticPanelOutcomeFiltersItems" Grid.Column="3" ItemsSource="{Binding OutcomeFilters}" SelectedItem="{Binding OutcomeFilter}"
                       AutomationProperties.Name="Filter diagnostic trace by outcome" />
           </Grid>
           <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedFilterDescription}"
@@ -238,7 +253,10 @@
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Did not succeed" Margin="{DynamicResource Component.TryWord.SmallInset}" />
                 <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="Time" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
               </Grid>
-              <ItemsControl Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
+              <ItemsControl x:Name="DiagnosticPanelEffortItems" Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:TraceEffortViewModel">
                     <Grid ColumnDefinitions="2*,*,*,*,*,3*,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Component.TryWord.SmallRowInset}">
@@ -260,9 +278,14 @@
                 ColumnSpacing="{DynamicResource Intent.Space.Group}">
             <TreeView x:Name="TreeHost" ItemsSource="{Binding FilteredRoots}" SelectedItem="{Binding SelectedStep}"
                       AutomationProperties.Name="Filtered full derivation tree" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <TreeView.Template>
+                <ControlTemplate><ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" /></ControlTemplate>
+              </TreeView.Template>
+              <TreeView.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></TreeView.ItemsPanel>
               <TreeView.Styles>
                 <Style Selector="TreeViewItem" x:DataType="vm:TraceStepViewModel">
-                  <Setter Property="IsExpanded" Value="{Binding ExpandForFilter}" />
+                  <Setter Property="ItemsPanel"><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></Setter>
+                  <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                   <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
                 </Style>
               </TreeView.Styles>
@@ -308,7 +331,10 @@
                 <views:CopyableTextBlock Text="{Binding RecordedReasonText}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding RecordedExplanationText}" TextWrapping="Wrap" />
                 <views:CopyableTextBlock Text="{Binding RecordedRejectionText}" TextWrapping="Wrap" />
-                <ItemsControl ItemsSource="{Binding AttemptedMorphs}" IsVisible="{Binding HasAttemptedMorphs}">
+                <ItemsControl x:Name="DiagnosticPanelAttemptedMorphsItems" ItemsSource="{Binding AttemptedMorphs}" IsVisible="{Binding HasAttemptedMorphs}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TraceMorphViewModel">
                       <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallRowInset}">
@@ -342,5 +368,5 @@
         </StackPanel>
       </Expander>
     </StackPanel>
-  </ScrollViewer>
+  </Border>
 </UserControl>

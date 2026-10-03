@@ -4,5 +4,6 @@
     <StaticResource x:Key="Component.Statistics.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Statistics.FilterWidth" ResourceKey="Primitive.Size.204" />
     <StaticResource x:Key="Component.Statistics.CellMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
+    <StaticResource x:Key="Component.Statistics.ViewportHeight" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
 </Styles>

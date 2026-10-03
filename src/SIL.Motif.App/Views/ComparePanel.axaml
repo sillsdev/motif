@@ -47,7 +47,7 @@
       <DockPanel>
         <views:FilterChip DockPanel.Dock="Left" VerticalAlignment="Top" Label="All words" Count="{Binding Compare.TotalCount}"
                           IsActive="{Binding !Compare.AnySelected}" Command="{Binding Compare.ClearSelectionCommand}" />
-        <ItemsControl ItemsSource="{Binding Compare.Presets}">
+        <ItemsControl x:Name="ComparePanelPresetsItems" ItemsSource="{Binding Compare.Presets}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <WrapPanel />
@@ -68,7 +68,7 @@
         <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →"
                                  TextWrapping="Wrap" VerticalAlignment="Center"
                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-        <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
+        <ItemsControl x:Name="ComparePanelColumnsItems" Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <UniformGrid Columns="5" ColumnSpacing="{DynamicResource Intent.Space.Compact}" />
@@ -89,7 +89,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </Grid>
-      <ItemsControl ItemsSource="{Binding Compare.Rows}">
+      <ItemsControl x:Name="ComparePanelRowsItems" ItemsSource="{Binding Compare.Rows}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Classes="matrixRows" />
@@ -110,7 +110,7 @@
                   <TextBlock Classes="muted" Text="{Binding CountText}" FontSize="{DynamicResource Intent.Type.Label}" />
                 </StackPanel>
               </Button>
-              <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+              <ItemsControl x:Name="ComparePanelCellsItems" Grid.Column="1" ItemsSource="{Binding Cells}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <UniformGrid Columns="5" ColumnSpacing="{DynamicResource Intent.Space.Compact}" />
@@ -141,7 +141,7 @@
         </Expander.Header>
         <StackPanel Grid.IsSharedSizeScope="True" Margin="{DynamicResource Intent.Gap.AfterRelated}">
           <views:WordRowHeader />
-          <ListBox Classes="wordRows" ItemsSource="{Binding Compare.FixFirstRows}"
+          <ListBox x:Name="ComparePanelFixFirstRowsItems" Classes="wordRows" ItemsSource="{Binding Compare.FixFirstRows}"
                    MaxHeight="{DynamicResource Component.TextsPage.FixFirstListHeight}"
                    KeyboardNavigation.TabNavigation="Continue"
                    AutomationProperties.Name="Words to check first">
@@ -205,7 +205,7 @@
                          Margin="{DynamicResource Intent.Gap.AfterGroup}" />
               <TextBlock DockPanel.Dock="Right" Classes="matrixSharedCount" Text="{Binding Compare.SharedMoreText}"
                          IsVisible="{Binding Compare.SharedMoreText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-              <ItemsControl ItemsSource="{Binding Compare.Shared}">
+              <ItemsControl x:Name="ComparePanelSharedItems" ItemsSource="{Binding Compare.Shared}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <WrapPanel />
@@ -227,7 +227,7 @@
           </Border>
 
           <DockPanel Grid.Row="2">
-            <ComboBox DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
+            <ComboBox x:Name="ComparePanelSortChoicesItems" DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
                       SelectedItem="{Binding Compare.Sort}"
                       MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
@@ -283,7 +283,7 @@
 
           <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
             <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="Meaning" />
-            <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
+            <ListBox x:Name="ComparePanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                      MaxHeight="{DynamicResource Component.TextsPage.CompareWordsListHeight}"
                      KeyboardNavigation.TabNavigation="Continue"
                      AutomationProperties.Name="Words in the chosen cells">

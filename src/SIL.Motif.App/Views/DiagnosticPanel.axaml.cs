@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 
@@ -52,6 +54,7 @@ public sealed partial class DiagnosticPanel : UserControl
         ShowAttemptSummaries = showAttemptSummaries;
         DataContext = tools.Trace;
         AvaloniaXamlLoader.Load(this);
+        this.FindControl<TreeView>("TreeHost")!.AddHandler(InputElement.KeyDownEvent, OnTreeKeyDown, RoutingStrategies.Tunnel);
         if (showAnalyses) this.FindControl<ContentControl>("AnalysesHost")!.Content = new TraceAnalysesView();
         // Inside Try a Word the page already holds the inset and the answer, so the trace starts flush.
         if (!showResultSummary) Classes.Add("embedded");
@@ -96,6 +99,51 @@ public sealed partial class DiagnosticPanel : UserControl
     }
 
     private async void OnCopyJsonClick(object? sender, RoutedEventArgs e) => await Tools.CopyJsonAsync();
+
+    private void OnTreeKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.None || e.Key is not (Key.Down or Key.Up) ||
+            sender is not TreeView tree || e.Source is not Control source) return;
+        var current = source as TreeViewItem ?? source.GetLogicalAncestors().OfType<TreeViewItem>().FirstOrDefault();
+        if (current is null) return;
+        TreeViewItem? target = null;
+        if (e.Key == Key.Down && current.IsExpanded && current.ItemCount > 0)
+            target = Realize(current, 0);
+        else
+        {
+            var cursor = current;
+            while (cursor.GetLogicalAncestors().OfType<ItemsControl>().FirstOrDefault() is { } owner)
+            {
+                var index = owner.IndexFromContainer(cursor);
+                if (e.Key == Key.Up)
+                {
+                    target = index == 0 ? owner as TreeViewItem : Realize(owner, index - 1);
+                    if (index > 0)
+                        while (target is { IsExpanded: true, ItemCount: > 0 }) target = Realize(target, target.ItemCount - 1);
+                    break;
+                }
+                if (index + 1 < owner.ItemCount)
+                {
+                    target = Realize(owner, index + 1);
+                    break;
+                }
+                if (owner is not TreeViewItem parent) break;
+                cursor = parent;
+            }
+        }
+        if (target is null) return;
+        tree.SelectedItem = target.DataContext;
+        target.BringIntoView();
+        target.Focus();
+        e.Handled = true;
+
+        TreeViewItem? Realize(ItemsControl owner, int index)
+        {
+            owner.ScrollIntoView(index);
+            tree.UpdateLayout();
+            return owner.ContainerFromIndex(index) as TreeViewItem;
+        }
+    }
 
     private async void OnCopyInstructionsClick(object? sender, RoutedEventArgs e) => await Tools.CopyInstructionsAsync();
 

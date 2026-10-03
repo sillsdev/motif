@@ -1,0 +1,709 @@
+[
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelPresetsItems",
+    "source": "Compare.Presets",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelColumnsItems",
+    "source": "Compare.Columns",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelRowsItems",
+    "source": "Compare.Rows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelCellsItems",
+    "source": "Cells",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelFixFirstRowsItems",
+    "source": "Compare.FixFirstRows",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelSharedItems",
+    "source": "Compare.Shared",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelSortChoicesItems",
+    "source": "Compare.SortChoices",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "ComparePanel",
+    "name": "ComparePanelWordsItems",
+    "source": "Compare.Words",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelNoParseReasonsItems",
+    "source": "NoParseReasons",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelStopGroupsItems",
+    "source": "StopGroups",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelClosestAttemptsItems",
+    "source": "ClosestAttempts",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelStepsItems",
+    "source": "Steps",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelRecordedTreeContextItems",
+    "source": "RecordedTreeContext",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelOutcomeFiltersItems",
+    "source": "OutcomeFilters",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelEffortItems",
+    "source": "Effort",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "TreeHost",
+    "source": "FilteredRoots",
+    "mode": "tree",
+    "control": "TreeView"
+  },
+  {
+    "view": "DiagnosticPanel",
+    "name": "DiagnosticPanelAttemptedMorphsItems",
+    "source": "AttemptedMorphs",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "DifferencePanel",
+    "name": "DifferencePanelMovesItems",
+    "source": "Difference.Moves",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "DifferencePanel",
+    "name": "DifferencePanelWordsItems",
+    "source": "Difference.Words",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "ExpertTracePanel",
+    "name": "ExpertTracePanelExpertAttemptsItems",
+    "source": "ExpertAttempts",
+    "mode": "popup",
+    "control": "ComboBox"
+  },
+  {
+    "view": "ExpertTracePanel",
+    "name": "ExpertTracePanelExpertEventsItems",
+    "source": "ExpertEvents",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ExpertTracePanel",
+    "name": "ExpertTracePanelExpertPhonologicalEventsItems",
+    "source": "ExpertPhonologicalEvents",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ExpertTracePanel",
+    "name": "ExpertTracePanelExpertEnvironmentTokensItems",
+    "source": "ExpertEnvironmentTokens",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelRowsItems",
+    "source": "Grammar.Warnings.Rows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelDetailsItems",
+    "source": "Details",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelEntryLinksItems",
+    "source": "EntryLinks",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelWordRowsItems",
+    "source": "WordRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelMembershipCandidateRowsItems",
+    "source": "MembershipCandidateRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "GrammarPanel",
+    "name": "GrammarPanelSpellingCandidateRowsItems",
+    "source": "SpellingCandidateRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "HandoffPanel",
+    "name": "HandoffPanelPlannedFilesItems",
+    "source": "PlannedFiles",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "HandoffPanel",
+    "name": "HandoffPanelFilesItems",
+    "source": "Handoff.Files",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "HandoffPanel",
+    "name": "HandoffPanelQuestionsItems",
+    "source": "Questions",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorShownItems",
+    "source": "Shown",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorCrumbsItems",
+    "source": "Crumbs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorTraceDetailsItems",
+    "source": "TraceDetails",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorWhatItIsItems",
+    "source": "WhatItIs",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorShownWarningsItems",
+    "source": "ShownWarnings",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Inspector",
+    "name": "InspectorFactsItems",
+    "source": "Facts",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "MainWindow",
+    "name": "MainWindowStoppedWordsItems",
+    "source": "ActiveParseProgress.StoppedWords",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "MainWindow",
+    "name": "PageList",
+    "source": "Pages",
+    "mode": "finite",
+    "control": "ListBox"
+  },
+  {
+    "view": "MiniMatrix",
+    "name": "MiniMatrixColumnsItems",
+    "source": "Columns",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "MiniMatrix",
+    "name": "MiniMatrixRowsItems",
+    "source": "Rows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "MiniMatrix",
+    "name": "MiniMatrixCellsItems",
+    "source": "Cells",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewPageChooseProjectRowsItems",
+    "source": "ChooseProjectRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewPageLookFirstRowsItems",
+    "source": "LookFirstRows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewPageLegendItems",
+    "source": "#OverviewKindBar.Legend",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewPageWarningKindRowsItems",
+    "source": "WarningKindRows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/OverviewPage",
+    "name": "OverviewPageEntriesItems",
+    "source": "History.Entries",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageMatrixCellsItems",
+    "source": "MatrixCells",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageTextsListsItems",
+    "source": "TextsLists",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageLegendItems",
+    "source": "#KindBar.Legend",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageKindCallSharesItems",
+    "source": "KindCallShares",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageRuleRowsItems",
+    "source": "RuleRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "Pages/TimingPage",
+    "name": "TimingPageCostliestRuleWordRowsItems",
+    "source": "CostliestRuleWordRows",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelTextsItems",
+    "source": "InText.Texts",
+    "mode": "popup",
+    "control": "ComboBox"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "TextLineItems",
+    "source": "InText.VisibleLines",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelTokensItems",
+    "source": "Tokens",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelWarningMarkedFieldWorksMorphsItems",
+    "source": "WarningMarkedFieldWorksMorphs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelPanGlossReadingMorphsItems",
+    "source": "PanGlossReadingMorphs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelFixChoicesItems",
+    "source": "Marking.FixChoices",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelStagedChangesItems",
+    "source": "StagedChanges",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelFieldWorksAnalysesItems",
+    "source": "FieldWorksAnalyses",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelReadingsItems",
+    "source": "Readings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelNamedWarningDetailsItems",
+    "source": "NamedWarningDetails",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelMembershipCandidateWarningsItems",
+    "source": "MembershipCandidateWarnings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelSpellingCandidateWarningsItems",
+    "source": "SpellingCandidateWarnings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelTimingSharesItems",
+    "source": "TimingShares",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelFixChoicesItems38",
+    "source": "Marking.FixChoices",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ResultsInTextPanel",
+    "name": "ResultsInTextPanelReadingChoicesItems",
+    "source": "Readings",
+    "mode": "popup",
+    "control": "ComboBox"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewGroups",
+    "source": "ReviewGroups",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewPanelItemsItems",
+    "source": "Items",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewPanelAfterWordsItems",
+    "source": "AfterWords",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewPanelRowMorphsItems",
+    "source": "RowMorphs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewPanelBeforeWordsItems",
+    "source": "BeforeWords",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ReviewPanelContextTokensItems",
+    "source": "ContextTokens",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "ReviewPanel",
+    "name": "ApplyBlockers",
+    "source": "ApplyBlockers",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "SelectionPanel",
+    "name": "SelectionPanelTextsItems",
+    "source": "Selection.Texts",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "SetupDialog",
+    "name": "SetupDialogIndicatorsItems",
+    "source": "Indicators",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "SetupDialog",
+    "name": "SetupDialogTextsItems",
+    "source": "Selection.Texts",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "StatisticsPanel",
+    "name": "StatisticsPanelGroupChoicesItems",
+    "source": "Statistics.GroupChoices",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "StatisticsPanel",
+    "name": "Grid",
+    "source": "Statistics.Rows",
+    "mode": "grid",
+    "control": "DataGrid"
+  },
+  {
+    "view": "TextWordsPanel",
+    "name": "TextWordsPanelRowsItems",
+    "source": "Words.Rows",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TextWordsPanel",
+    "name": "TextWordsPanelOccurrencesItems",
+    "source": "Occurrences",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TextsListsPanel",
+    "name": "TextsListsPanelListsItems",
+    "source": "Lists.Lists",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TextsListsPanel",
+    "name": "TextsListsPanelSortChoicesItems",
+    "source": "Lists.Compare.SortChoices",
+    "mode": "finite",
+    "control": "ComboBox"
+  },
+  {
+    "view": "TextsListsPanel",
+    "name": "TextsListsPanelWordsItems",
+    "source": "Lists.Compare.Words",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TraceAnalysesView",
+    "name": "TraceAnalysesViewAnalysesItems",
+    "source": "Analyses",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TraceAnalysesView",
+    "name": "TraceAnalysesViewMorphsItems",
+    "source": "Morphs",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "TraceAnalysesView",
+    "name": "TraceAnalysesViewSourceAnalysesItems",
+    "source": "SourceAnalyses",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelRecentWordsItems",
+    "source": "RecentWords",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelResultOpinionsItems",
+    "source": "ResultOpinions",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelFieldWorksAnalysesItems",
+    "source": "FieldWorksAnalyses",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelPiecesItems",
+    "source": "Pieces",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelStatusPartsItems",
+    "source": "StatusParts",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelPlainStepsItems",
+    "source": "Trace.PlainSteps",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "TryWordPanel",
+    "name": "TryWordPanelEarlierRuleTimesItems",
+    "source": "EarlierRuleTimes",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordRow",
+    "name": "FieldWorksMorphemes",
+    "source": "FieldWorksMorphemes",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordRow",
+    "name": "WordRowPanGlossMorphemesItems",
+    "source": "PanGlossMorphemes",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordRowCard",
+    "name": "WordRowCardOpinionMarksItems",
+    "source": "OpinionMarks",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordRowCard",
+    "name": "WordRowCardReadingsItems",
+    "source": "Readings",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordRowCard",
+    "name": "WordRowCardNotBuiltAnalysesItems",
+    "source": "NotBuiltAnalyses",
+    "mode": "rows",
+    "control": "ItemsControl"
+  }
+]

@@ -50,7 +50,7 @@
 
     <Grid Grid.Row="3" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
       <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.WordList}" />
-      <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.Rows}"
+      <ListBox x:Name="TextWordsPanelRowsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.Rows}"
                AutomationProperties.Name="Words to test" KeyboardNavigation.TabNavigation="Continue">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TextWordRowViewModel">
@@ -63,7 +63,10 @@
                                            IsVisible="{Binding HasSeveralAnalyses}" />
                   <views:CopyableTextBlock Classes="wordRowCardHeading" Text="WHERE IT APPEARS"
                                            HorizontalAlignment="Stretch" TextAlignment="Left" />
-                  <ItemsControl ItemsSource="{Binding Occurrences}">
+                  <ItemsControl x:Name="TextWordsPanelOccurrencesItems" ItemsSource="{Binding Occurrences}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">

@@ -51,7 +51,10 @@
                 AutomationProperties.Name="What the AI Handoff will contain">
           <StackPanel Spacing="{DynamicResource Component.Handoff.CardGap}">
             <views:CopyableTextBlock Classes="section-title" Text="What goes in" FontSize="{DynamicResource Component.Handoff.TitleSize}" />
-            <ItemsControl ItemsSource="{Binding PlannedFiles}">
+            <ItemsControl x:Name="HandoffPanelPlannedFilesItems" ItemsSource="{Binding PlannedFiles}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Component.Handoff.PlannedGap}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
@@ -86,8 +89,11 @@
                     AutomationProperties.Name="{x:Static vm:WindowCopy.DragAllAiHandoffFiles}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.DragAllHandoffFiles}" />
 
-            <ItemsControl ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"
+            <ItemsControl x:Name="HandoffPanelFilesItems" ItemsSource="{Binding Handoff.Files}" AutomationProperties.Name="AI Handoff files"
                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandoffFiles}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HandoffFileViewModel">
                   <Border Classes="handoffFile" PointerPressed="OnFileTilePointerPressed"
@@ -157,7 +163,10 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <views:CopyableTextBlock Text="Try asking" FontWeight="SemiBold" />
             <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="Click a question to copy it." />
-            <ItemsControl ItemsSource="{Binding Questions}">
+            <ItemsControl x:Name="HandoffPanelQuestionsItems" ItemsSource="{Binding Questions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
                   <Button Classes="handoffQuestion" Click="OnCopyQuestionClick" Tag="{Binding}"

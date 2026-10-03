@@ -8,7 +8,7 @@
   <Grid Classes="wordRowCardGrid" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
     <views:CopyableTextBlock Classes="wordRowCardLabel" Text="FieldWorks" />
     <StackPanel Grid.Column="1" Classes="wordRowCardSection">
-      <ItemsControl ItemsSource="{Binding OpinionMarks}" IsVisible="{Binding HasSeveralOpinions}">
+      <ItemsControl x:Name="WordRowCardOpinionMarksItems" ItemsSource="{Binding OpinionMarks}" IsVisible="{Binding HasSeveralOpinions}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <WrapPanel />
@@ -33,7 +33,10 @@
                       HorizontalAlignment="Left" />
       <views:CopyableTextBlock Text="{Binding WordRow.RefusalReason}" TextWrapping="Wrap"
                                IsVisible="{Binding WordRow.HasRefusalReason}" Classes="wordRowNote" />
-      <ItemsControl ItemsSource="{Binding Readings}">
+      <ItemsControl x:Name="WordRowCardReadingsItems" ItemsSource="{Binding Readings}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
             <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="True" RevealLinks="True" CompactLinks="True" />
@@ -47,7 +50,10 @@
     <views:CopyableTextBlock Grid.Row="2" Classes="wordRowCardLabel" Text="NOT BUILT" IsVisible="{Binding ShowsMissedApproved}" />
     <StackPanel Grid.Row="2" Grid.Column="1" Classes="wordRowCardSection" IsVisible="{Binding ShowsMissedApproved}">
       <views:CopyableTextBlock Classes="muted" Text="Approved analyses PanGloss did not build" />
-      <ItemsControl ItemsSource="{Binding NotBuiltAnalyses}">
+      <ItemsControl x:Name="WordRowCardNotBuiltAnalysesItems" ItemsSource="{Binding NotBuiltAnalyses}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ParserReadingViewModel">
             <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="True" RevealLinks="True" CompactLinks="True" />

@@ -35,9 +35,7 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private void Rebuild()
     {
-        Children.Clear();
-        foreach (var part in Parts ?? [])
-            Children.Add(ControlFor(part));
+        ProgressivePanel.Populate(this, Parts ?? [], (part, _) => ControlFor(part));
     }
 
     private static Control ControlFor(GrammarWarningPart part)

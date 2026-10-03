@@ -7,7 +7,7 @@
              x:DataType="vm:TraceWordViewModel">
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
     <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}">
-      <ComboBox ItemsSource="{Binding ExpertAttempts}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
+      <ComboBox x:Name="ExpertTracePanelExpertAttemptsItems" ItemsSource="{Binding ExpertAttempts}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
                 PlaceholderText="Show one analysis path" AutomationProperties.Name="Expert attempt">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TraceCandidateViewModel">
@@ -26,7 +26,10 @@
       <TextBlock Grid.Column="2" Text="Outcome" />
       <TextBlock Grid.Column="3" Text="Notation" />
     </Grid>
-    <ItemsControl ItemsSource="{Binding ExpertEvents}" AutomationProperties.Name="Expert trace events">
+    <ItemsControl x:Name="ExpertTracePanelExpertEventsItems" ItemsSource="{Binding ExpertEvents}" AutomationProperties.Name="Expert trace events">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TraceStepViewModel">
           <Border Classes="hoverReveal" BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
@@ -81,7 +84,10 @@
         <TextBlock Text="Recorded phonological events in this view; each row retains its own outcome." Classes="muted" TextWrapping="Wrap" />
         <TextBlock Text="No phonological events recorded in this view" IsVisible="{Binding !HasExpertPhonologicalEvents}"
                    Classes="muted" TextWrapping="Wrap" />
-        <ItemsControl ItemsSource="{Binding ExpertPhonologicalEvents}">
+        <ItemsControl x:Name="ExpertTracePanelExpertPhonologicalEventsItems" ItemsSource="{Binding ExpertPhonologicalEvents}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TraceStepViewModel">
               <Grid ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
@@ -128,7 +134,10 @@
         <Expander Header="Environment notation" IsExpanded="False" AutomationProperties.Name="Expert environment notation">
           <StackPanel>
           <TextBlock Text="Environment not recorded" IsVisible="{Binding !HasExpertEnvironment}" Classes="muted" />
-          <ItemsControl ItemsSource="{Binding ExpertEnvironmentTokens}">
+          <ItemsControl x:Name="ExpertTracePanelExpertEnvironmentTokensItems" ItemsSource="{Binding ExpertEnvironmentTokens}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EnvironmentToken">
                 <Grid ColumnDefinitions="*,3*" ColumnSpacing="{DynamicResource Intent.Space.Related}">

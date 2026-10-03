@@ -779,18 +779,36 @@ public sealed class TryWordPageTests
                 Settle(window);
                 var tree = window.GetVisualDescendants().OfType<TreeView>().Single(control =>
                     AutomationProperties.GetName(control) == "Filtered full derivation tree");
-                var scroll = tree.GetVisualDescendants().OfType<ScrollViewer>().First();
-                var notation = tree.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Where(block => block.IsEffectivelyVisible && block.Classes.Contains("traceNotation")).ToArray();
-                Assert.NotEmpty(notation);
-                foreach (var block in notation)
-                {
-                    var origin = block.TranslatePoint(default, tree)!.Value;
-                    Assert.True(origin.X + block.Bounds.Width <= tree.Bounds.Width + 1,
-                        $"Notation extends past the {width}px tree viewport: {block.Text}");
-                }
+                var scroll = tree.GetVisualAncestors().OfType<ScrollViewer>().First();
+                var measuredNodes = 0;
+                MeasureNotation(tree);
+                Assert.True(measuredNodes > 1, "The filtered tree must expose expanded child notation.");
                 Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 1,
                     $"The {width}px filtered tree requires horizontal scrolling for its wrapped notation.");
+
+                void MeasureNotation(ItemsControl owner)
+                {
+                    for (var index = 0; index < owner.ItemCount; index++)
+                    {
+                        owner.ScrollIntoView(index);
+                        Settle(window);
+                        var item = Assert.IsType<TreeViewItem>(owner.ContainerFromIndex(index));
+                        var notation = item.GetVisualDescendants().OfType<CopyableTextBlock>()
+                            .Where(block => block.IsEffectivelyVisible && block.Classes.Contains("traceNotation") &&
+                                ReferenceEquals(block.DataContext, item.DataContext)).ToArray();
+                        Assert.NotEmpty(notation);
+                        foreach (var block in notation)
+                        {
+                            block.BringIntoView();
+                            Settle(window);
+                            var origin = block.TranslatePoint(default, tree)!.Value;
+                            Assert.True(origin.X >= 0 && origin.X + block.Bounds.Width <= tree.Bounds.Width + 1,
+                                $"Notation extends past the {width}px tree viewport: {block.Text}");
+                        }
+                        measuredNodes++;
+                        if (item.IsExpanded) MeasureNotation(item);
+                    }
+                }
             }
             finally { window.Close(); }
         });

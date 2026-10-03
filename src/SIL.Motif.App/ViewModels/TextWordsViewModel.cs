@@ -327,8 +327,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
             _selection.ClearTextCounts();
             foreach (var textId in textIds)
             {
-                var occurrences = _all.Sum(row => row.Occurrences.Count(occurrence => occurrence.TextId == textId));
-                var distinct = _all.Count(row => row.Occurrences.Any(occurrence => occurrence.TextId == textId));
+                var occurrences = outcome.Value.Words.Sum(word => word.Occurrences.Count(occurrence => occurrence.TextId == textId));
+                var distinct = outcome.Value.Words.Count(word => word.Occurrences.Any(occurrence => occurrence.TextId == textId));
                 _selection.SetTextCounts(textId, occurrences, distinct);
             }
         }
@@ -490,14 +490,13 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     partial void OnLastResultChanged(AssessWordRowViewModel? value)
     {
-        var wasOpen = _listed?.IsOpen == true;
-        _listed = value is null ? null : ListedWordViewModel.Of(ProjectAssessment(value), _routes);
-        if (_listed is not null) _listed.IsOpen = wasOpen;
-        else if (wasOpen) _notParsed.IsOpen = true;
+        var wasOpen = (_listed ?? _notParsed)?.IsOpen == true;
+        _listed = null;
+        if (wasOpen) Listed.IsOpen = true;
     }
 
     private ListedWordViewModel? _listed;
-    private readonly ListedWordViewModel _notParsed;
+    private ListedWordViewModel? _notParsed;
     private readonly TextWord _word;
     private readonly WordRowRoutes? _routes;
     private readonly string? _projectName;
@@ -536,7 +535,12 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     /// The word as the Word list shows it: its row and card from the latest parse, or, before one reaches it, what
     /// FieldWorks holds and Not parsed.
     /// </summary>
-    public ListedWordViewModel Listed => _listed ?? _notParsed;
+    public ListedWordViewModel Listed => LastResult is { } result
+        ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes)
+        : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
+            WordProjectStatuses.StandingOf(_word),
+            (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
+            _word.Occurrences.Count, _routes));
 
     public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null)
     {
@@ -546,9 +550,6 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         _projectName = projectName;
         Form = word.Form;
         WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
-        var held = word.Approved.FirstOrDefault() ?? (word.Analyses.Count == 1 ? word.Analyses[0] : null);
-        _notParsed = new ListedWordViewModel(WordRowViewModel.NotParsed(word.Form, WordProjectStatuses.StandingOf(word),
-            held?.Morphs, word.Occurrences.Count, routes));
         OccurrenceCount = word.Occurrences.Count;
         HasApproved = word.Approved.Count > 0;
 
@@ -568,9 +569,6 @@ public sealed partial class TextWordRowViewModel : ObservableObject
                 WordProjectStatus.IncorrectSpelling => "FieldWorks marks this spelling as incorrect",
                 _ => "Not analysed in the project",
             };
-
-        Occurrences = word.Occurrences.Select(occurrence => new WordOccurrenceRowViewModel(occurrence)).ToArray();
-        ApprovedAnalyses = word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
     }
 
     public string Form { get; }
@@ -587,8 +585,13 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     public string StatusLabel { get; }
     public string ProjectSummary { get; }
-    public IReadOnlyList<WordOccurrenceRowViewModel> Occurrences { get; }
-    public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses { get; }
+    private IReadOnlyList<WordOccurrenceRowViewModel>? _occurrences;
+    private IReadOnlyList<ProjectAnalysisViewModel>? _approvedAnalyses;
+
+    public IReadOnlyList<WordOccurrenceRowViewModel> Occurrences => _occurrences ??=
+        _word.Occurrences.Select(occurrence => new WordOccurrenceRowViewModel(occurrence)).ToArray();
+    public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses => _approvedAnalyses ??=
+        _word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
 
     private static IEnumerable<string> DistinctGlosses(TextWord word) =>
         word.Occurrences.Select(occurrence => occurrence.Analysis)

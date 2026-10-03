@@ -21,12 +21,53 @@ public sealed class TextWordsViewModelTests
     private static ProjectAnalysis Analysis(string key, string gloss) =>
         new(key, [new ParserReadingMorph("kitabu", gloss, "n", null, false, null)]);
 
+    [Fact]
+    public void LargeWordListsDelayOccurrenceProjectionsUntilARowIsRead()
+    {
+        var analysis = Analysis("book", "book");
+        var occurrences = Enumerable.Range(0, 500).Select(index =>
+            new WordOccurrence(TextId, "Story", index + 1, "kitabu", "approved", analysis)).ToArray();
+        var word = new TextWord("kitabu", Guid.NewGuid().ToString(), occurrences, [analysis], [])
+            { Analyses = [analysis] };
+        _ = new TextWordRowViewModel(word);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var rows = Enumerable.Range(0, 2000).Select(_ => new TextWordRowViewModel(word)).ToArray();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allocated < 32 * 1024 * 1024, $"Creating the list allocated {allocated:N0} bytes before a row was read.");
+        Assert.All(rows, row => Assert.Equal(500, row.OccurrenceCount));
+        Assert.Equal(500, rows[0].Occurrences.Count);
+        Assert.Equal("book", Assert.Single(rows[0].ApprovedAnalyses).Gloss);
+    }
+
     private static (FakeCommandClient Fake, SelectionViewModel Selection, TextWordsViewModel Words) NewViewModel()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var words = new TextWordsViewModel(fake, selection);
         return (fake, selection, words);
+    }
+
+    [Fact]
+    public async Task ReloadingCountsLargeTextsWithoutMaterializingEveryOccurrenceRow()
+    {
+        var (fake, selection, words) = NewViewModel();
+        fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Story")], HasBaseline: true));
+        await selection.SetProjectAsync(ProjectPath);
+        await words.SetProjectAsync(ProjectPath);
+        selection.Texts[0].IsChecked = true;
+        var analysis = Analysis("book", "book");
+        var occurrences = Enumerable.Range(0, 500).Select(index =>
+            new WordOccurrence(TextId, "Story", index + 1, "kitabu", "approved", analysis)).ToArray();
+        var source = Enumerable.Range(0, 2000).Select(index => new TextWord($"word-{index}", null,
+            occurrences, [analysis], []) { Analyses = [analysis] }).ToArray();
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(source, [], true, OccurrenceCount: 1_000_000));
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        await words.ReloadAsync();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allocated < 32 * 1024 * 1024, $"Reloading allocated {allocated:N0} bytes before a row was read.");
+        Assert.Equal(2000, words.Rows.Count);
+        Assert.Equal($"{1_000_000:N0} words · {2_000:N0} distinct", selection.Texts[0].CountsText);
+        Assert.Equal(500, words.Rows[0].Occurrences.Count);
     }
 
     [Theory]

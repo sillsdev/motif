@@ -4,7 +4,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ListWordCard">
   <StackPanel x:Name="Root" Classes="listCard" x:DataType="vm:ListWordCardViewModel">
-    <Panel x:Name="AlignmentHost" />
+    <StackPanel x:Name="AlignmentHost" />
     <views:CopyableTextBlock Classes="listCardSentence" Text="{Binding WhereTheyPart}" TextWrapping="Wrap" />
     <Button Classes="listCardCompare" Content="{Binding CompareLabel}" Command="{Binding CompareCommand}"
             HorizontalAlignment="Left" AutomationProperties.Name="{Binding CompareName}" />

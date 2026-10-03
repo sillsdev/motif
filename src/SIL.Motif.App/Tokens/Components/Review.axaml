@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
-    <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
+    <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />
     <StaticResource x:Key="Component.Review.GroupRadius" ResourceKey="Primitive.Radius.6" />
     <StaticResource x:Key="Component.Review.HeaderPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Review.RowPadding" ResourceKey="Primitive.Inset.8_4_8_4" />

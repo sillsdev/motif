@@ -57,7 +57,7 @@
                               AutomationProperties.AutomationId="{x:Static app:AutomationIds.FieldWorksMorphemeScroll}"
                               Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
-                <ItemsControl x:Name="FieldWorksMorphemes" ItemsSource="{Binding FieldWorksMorphemes}">
+                <views:ProgressiveItemsControl x:Name="FieldWorksMorphemes" FullItemsSource="{Binding FieldWorksMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Orientation="Horizontal" />
@@ -73,7 +73,7 @@
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                </views:ProgressiveItemsControl>
                 </ScrollViewer>
               </Grid>
 
@@ -88,7 +88,7 @@
                 <ScrollViewer x:Name="PanGlossMorphemes" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
                 <StackPanel>
-                <ItemsControl ItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
+                <views:ProgressiveItemsControl x:Name="WordRowPanGlossMorphemesItems" FullItemsSource="{Binding PanGlossMorphemes}" IsVisible="{Binding HasPanGlossMorphemes}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <StackPanel Orientation="Horizontal" />
@@ -105,7 +105,7 @@
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                </views:ProgressiveItemsControl>
                 <views:CopyableTextBlock Text="{Binding ReadingCountText}" Classes="wordRowNote"
                                          IsVisible="{Binding ReadingCountText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>

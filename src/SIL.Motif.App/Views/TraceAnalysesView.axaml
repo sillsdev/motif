@@ -9,7 +9,10 @@
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
     <views:CopyableTextBlock Text="{Binding AnalysesHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-    <ItemsControl ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
+    <ItemsControl x:Name="TraceAnalysesViewAnalysesItems" ItemsSource="{Binding Analyses}" AutomationProperties.Name="Recorded analyses">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:TraceAnalysisViewModel">
           <Border Classes="card" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
@@ -25,7 +28,7 @@
               <views:CopyableTextBlock Text="{Binding ProjectionErrorText}" ToolTip.Tip="{Binding ProjectionError}"
                                        IsVisible="{Binding HasProjectionError}"
                                        Classes="muted" TextWrapping="Wrap" />
-              <ItemsControl ItemsSource="{Binding Morphs}">
+              <views:ProgressiveItemsControl x:Name="TraceAnalysesViewMorphsItems" FullItemsSource="{Binding Morphs}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <WrapPanel Orientation="Horizontal" />
@@ -66,14 +69,17 @@
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
-              </ItemsControl>
+              </views:ProgressiveItemsControl>
             </StackPanel>
           </Border>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
     <Expander Header="Parser record" AutomationProperties.Name="Recorded source analyses" IsExpanded="{Binding ShowParserRecord, Mode=TwoWay}" IsVisible="{Binding IsExpert}">
-      <ItemsControl ItemsSource="{Binding SourceAnalyses}">
+      <ItemsControl x:Name="TraceAnalysesViewSourceAnalysesItems" ItemsSource="{Binding SourceAnalyses}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="responses:TraceAnalysis">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">

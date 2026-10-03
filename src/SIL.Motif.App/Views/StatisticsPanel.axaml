@@ -26,7 +26,7 @@
     </Grid>
 
     <DockPanel LastChildFill="False" DockPanel.Dock="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}">
-      <ComboBox ItemsSource="{Binding Statistics.GroupChoices}"
+      <ComboBox x:Name="StatisticsPanelGroupChoicesItems" ItemsSource="{Binding Statistics.GroupChoices}"
                 SelectedItem="{Binding Statistics.SelectedGroupChoice}"
                 AutomationProperties.Name="Statistics group"
                 Margin="{DynamicResource Intent.Gap.AfterGroup}">

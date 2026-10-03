@@ -144,6 +144,9 @@ public sealed partial class ResultsInTextPanel : UserControl
         if (line is null) return;
         _lineItems.ScrollIntoView(InText.VisibleLines.IndexOf(line));
         _lineItems.UpdateLayout();
+        foreach (var words in this.GetVisualDescendants().OfType<ProgressiveItemsControl>())
+            if (ReferenceEquals(words.FullItemsSource, line.Tokens)) words.ShowItem(token);
+        _lineItems.UpdateLayout();
     }
 
     private Border? StripFor(ResultsTokenViewModel token) => this.GetVisualDescendants().OfType<Border>()

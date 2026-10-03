@@ -10,7 +10,7 @@
         Margin="{DynamicResource Component.TextsPage.ReaderInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
       <DockPanel LastChildFill="True">
-        <ComboBox DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
+        <ComboBox x:Name="ResultsInTextPanelTextsItems" DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                   IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
                   MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
                   MaxWidth="{DynamicResource Component.TextsPage.TextPickerMaxWidth}"
@@ -190,7 +190,7 @@
                   <TextBlock Classes="gutterLabel analysisRow" Text="FieldWorks" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
                 </StackPanel>
-                <ItemsControl Grid.Column="1" ItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
+                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" Grid.Column="1" FullItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" HorizontalAlignment="Stretch" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
@@ -226,7 +226,7 @@
                             <Border Classes="stripRow stripFieldWorks analysisRow"
                                     AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                                <ItemsControl ItemsSource="{Binding WarningMarkedFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelWarningMarkedFieldWorksMorphsItems" FullItemsSource="{Binding WarningMarkedFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
                                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ResultsStripMorphViewModel">
@@ -238,7 +238,7 @@
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                </views:ProgressiveItemsControl>
                                 <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMoreFieldWorksAnalyses}">
                                   <TextBlock Text="{Binding MoreFieldWorksLabel}" />
                                 </Border>
@@ -250,7 +250,7 @@
                                     Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
                                     Classes.capped="{Binding IsPanGlossCapped}">
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                                <ItemsControl ItemsSource="{Binding PanGlossReadingMorphs}" IsVisible="{Binding ShowsPanGlossReading}">
+                                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelPanGlossReadingMorphsItems" FullItemsSource="{Binding PanGlossReadingMorphs}" IsVisible="{Binding ShowsPanGlossReading}">
                                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
@@ -260,7 +260,7 @@
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                </views:ProgressiveItemsControl>
                                 <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
                                   <TextBlock Text="{Binding MorePanGlossLabel}" />
                                 </Border>
@@ -296,7 +296,7 @@
                                               CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect">
                                         <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
                                       </Button>
-                                      <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
+                                      <ItemsControl x:Name="ResultsInTextPanelFixChoicesItems" ItemsSource="{Binding Marking.FixChoices}">
                                         <ItemsControl.ItemTemplate>
                                           <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
                                             <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
@@ -318,8 +318,11 @@
                               </StackPanel>
                             </StackPanel>
                           </Border>
-                          <ItemsControl ItemsSource="{Binding StagedChanges}" IsVisible="{Binding HasStagedChanges}"
+                          <views:ProgressiveItemsControl x:Name="ResultsInTextPanelStagedChangesItems" FullItemsSource="{Binding StagedChanges}" IsVisible="{Binding HasStagedChanges}"
                                         AutomationProperties.AutomationId="{Binding StagedAutomationId}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
                                 <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}"
@@ -335,12 +338,12 @@
                                 </Border>
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                          </ItemsControl>
+                          </views:ProgressiveItemsControl>
                         </StackPanel>
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                </views:ProgressiveItemsControl>
               </Grid>
               <ContentControl Content="{Binding OpenCard}" IsVisible="{Binding HasOpenCard}"
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
@@ -378,7 +381,10 @@
                             <views:CopyableTextBlock Classes="wordCardHeading" Text="In FieldWorks · now" />
                             <views:CopyableTextBlock Classes="muted" Text="Nothing in FieldWorks for this word."
                                                      IsVisible="{Binding HasNothingStored}" />
-                            <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                            <views:ProgressiveItemsControl x:Name="ResultsInTextPanelFieldWorksAnalysesItems" FullItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
                                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
@@ -391,7 +397,7 @@
                                   </Grid>
                                 </DataTemplate>
                               </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            </views:ProgressiveItemsControl>
                           </StackPanel>
                         </Border>
                         <Border Classes="wordCardSection hoverReveal">
@@ -409,7 +415,10 @@
                                 </DockPanel>
                                 <views:CopyableTextBlock Classes="hint" Text="{Binding ComparisonDetail}"
                                                          IsVisible="{Binding HasComparisonDetail}" TextWrapping="Wrap" />
-                                <ItemsControl ItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
+                                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelReadingsItems" FullItemsSource="{Binding Readings}" IsVisible="{Binding HasReadings}">
+                                  <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                  </ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ResultsReadingViewModel">
                                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -418,7 +427,7 @@
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                </views:ProgressiveItemsControl>
                               </StackPanel>
                             </Border>
                           </StackPanel>
@@ -428,7 +437,10 @@
                             <views:CopyableTextBlock Classes="wordCardHeading" Text="{Binding WarningSectionHeading}" />
                             <views:CopyableTextBlock Classes="muted" Text="No stored warning names this word."
                                                      IsVisible="{Binding HasNoNamedWarning}" />
-                            <ItemsControl ItemsSource="{Binding NamedWarningDetails}" IsVisible="{Binding HasNamedWarning}">
+                            <views:ProgressiveItemsControl x:Name="ResultsInTextPanelNamedWarningDetailsItems" FullItemsSource="{Binding NamedWarningDetails}" IsVisible="{Binding HasNamedWarning}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:NamedWarningCardViewModel">
                                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -443,7 +455,7 @@
                                   </StackPanel>
                                 </DataTemplate>
                               </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            </views:ProgressiveItemsControl>
                             <views:CopyableTextBlock Classes="muted" Text="{Binding NamedMorphemeSentence}"
                                                      IsVisible="{Binding HasNamedMorphemeNames}" />
                             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
@@ -454,8 +466,11 @@
                             </StackPanel>
                             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
                                         IsVisible="{Binding HasWarningCandidates}">
-                              <ItemsControl ItemsSource="{Binding MembershipCandidateWarnings}"
+                              <views:ProgressiveItemsControl x:Name="ResultsInTextPanelMembershipCandidateWarningsItems" FullItemsSource="{Binding MembershipCandidateWarnings}"
                                             IsVisible="{Binding HasMembershipCandidateWarnings}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                   <DataTemplate x:DataType="vm:WarningCandidateViewModel">
                                     <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -464,9 +479,12 @@
                                     </StackPanel>
                                   </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                              <ItemsControl ItemsSource="{Binding SpellingCandidateWarnings}"
+                              </views:ProgressiveItemsControl>
+                              <views:ProgressiveItemsControl x:Name="ResultsInTextPanelSpellingCandidateWarningsItems" FullItemsSource="{Binding SpellingCandidateWarnings}"
                                             IsVisible="{Binding HasSpellingCandidateWarnings}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                   <DataTemplate x:DataType="vm:WarningCandidateViewModel">
                                     <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -475,14 +493,17 @@
                                     </StackPanel>
                                   </DataTemplate>
                                 </ItemsControl.ItemTemplate>
-                              </ItemsControl>
+                              </views:ProgressiveItemsControl>
                             </StackPanel>
                           </StackPanel>
                         </Border>
                         <Border Classes="wordCardSection hoverReveal" IsVisible="{Binding HasTimingEvidence}">
                           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                             <views:CopyableTextBlock Classes="wordCardHeading" Text="Time by rule" />
-                            <ItemsControl ItemsSource="{Binding TimingShares}" IsVisible="{Binding HasTimingShares}">
+                            <ItemsControl x:Name="ResultsInTextPanelTimingSharesItems" ItemsSource="{Binding TimingShares}" IsVisible="{Binding HasTimingShares}">
+                              <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                              </ItemsControl.ItemsPanel>
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:TimingShareViewModel">
                                   <DockPanel LastChildFill="False">
@@ -512,7 +533,7 @@
                                               CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect">
                                         <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
                                       </Button>
-                                      <ItemsControl ItemsSource="{Binding Marking.FixChoices}">
+                                      <ItemsControl x:Name="ResultsInTextPanelFixChoicesItems38" ItemsSource="{Binding Marking.FixChoices}">
                                         <ItemsControl.ItemTemplate>
                                           <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
                                             <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
@@ -542,7 +563,7 @@
                             </WrapPanel>
                             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" IsVisible="{Binding HasReadings}">
                               <views:CopyableTextBlock Classes="muted" Text="Approve one analysis at a time." />
-                              <ComboBox ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
+                              <ComboBox x:Name="ResultsInTextPanelReadingChoicesItems" ItemsSource="{Binding Readings}" SelectedItem="{Binding SelectedReading}"
                                         AutomationProperties.Name="Choose a PanGloss reading for this word">
                                 <ComboBox.ItemTemplate>
                                   <DataTemplate x:DataType="vm:ResultsReadingViewModel">

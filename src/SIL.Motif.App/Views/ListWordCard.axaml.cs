@@ -34,22 +34,23 @@ public sealed partial class ListWordCard : UserControl
         root.DataContext = card;
         var host = this.FindControl<Panel>("AlignmentHost")!;
         host.Children.Clear();
-        if (card is not null) host.Children.Add(Alignment(card));
+        if (card is not null) ProgressivePanel.PopulatePages(host, card.Segments.Count,
+            (offset, count) => [Alignment(card, offset, count)]);
     }
 
-    private static Grid Alignment(ListWordCardViewModel card)
+    private static Control Alignment(ListWordCardViewModel card, int offset, int count)
     {
         var grid = new Grid { Classes = { "listCardAlignment" }, RowDefinitions = new RowDefinitions("Auto,Auto") };
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        var columns = Math.Max(card.Segments.Count, 1);
+        var columns = Math.Max(count, 1);
         for (var index = 0; index < columns; index++) grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
         Place(grid, Label("FieldWorks"), 0, 0);
         Place(grid, Label("PanGloss"), 1, 0);
-        for (var index = 0; index < card.Segments.Count; index++)
+        for (var index = 0; index < count; index++)
         {
-            var segment = card.Segments[index];
+            var segment = card.Segments[offset + index];
             if (card.HasFieldWorksAnalysis) Place(grid, Span(segment.FieldWorks, parted: segment.IsParted, blue: false), 0, index + 1);
             if (card.ShowsPanGlossMorphemes) Place(grid, Span(segment.PanGloss, parted: false, blue: true), 1, index + 1);
         }
@@ -66,7 +67,12 @@ public sealed partial class ListWordCard : UserControl
         if (card.HasPanGlossNote)
             Place(grid, new CopyableTextBlock { Text = card.PanGlossNote, Classes = { "muted", "listCardNote" } },
                 1, columns + 1);
-        return grid;
+        return new ScrollViewer
+        {
+            Content = grid,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+        };
     }
 
     private static TextBlock Label(string text) => new CopyableTextBlock
@@ -76,7 +82,7 @@ public sealed partial class ListWordCard : UserControl
     private static Border Span(IReadOnlyList<ListWordCardMorphViewModel> morphs, bool parted, bool blue)
     {
         var chips = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "listCardChips" } };
-        foreach (var morph in morphs) chips.Children.Add(Chip(morph, blue && morph.IsDifferent));
+        ProgressivePanel.Populate(chips, morphs, (morph, _) => Chip(morph, blue && morph.IsDifferent));
         var span = new Border { Child = chips, Classes = { "listCardSpan" } };
         if (parted && morphs.Count > 0) span.Classes.Add("parted");
         return span;

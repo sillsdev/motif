@@ -94,10 +94,8 @@ public sealed class MorphemeRow : WrapPanel
 
     private void Rebuild()
     {
-        Children.Clear();
         var morphs = Morphs ?? [];
-        for (var index = 0; index < morphs.Count; index++)
-            Children.Add(BlockFor(morphs[index], last: index == morphs.Count - 1));
+        ProgressivePanel.Populate(this, morphs, (morph, index) => BlockFor(morph, last: index == morphs.Count - 1));
     }
 
     private Control BlockFor(ParserReadingMorphViewModel morph, bool last)

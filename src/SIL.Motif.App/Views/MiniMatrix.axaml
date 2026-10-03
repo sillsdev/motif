@@ -15,7 +15,7 @@
     </DockPanel>
     <Grid ColumnDefinitions="Auto,*">
       <Border Width="{DynamicResource Component.TextsPage.MiniMatrixRowLabelWidth}" />
-      <ItemsControl Grid.Column="1" ItemsSource="{Binding Columns}">
+      <ItemsControl x:Name="MiniMatrixColumnsItems" Grid.Column="1" ItemsSource="{Binding Columns}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
@@ -28,7 +28,7 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Grid>
-    <ItemsControl ItemsSource="{Binding Rows}">
+    <ItemsControl x:Name="MiniMatrixRowsItems" ItemsSource="{Binding Rows}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><StackPanel Spacing="{DynamicResource Intent.Space.Compact}" /></ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
@@ -38,7 +38,7 @@
             <TextBlock Width="{DynamicResource Component.TextsPage.MiniMatrixRowLabelWidth}"
                        Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Text="{Binding Label}"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}">
+            <ItemsControl x:Name="MiniMatrixCellsItems" Grid.Column="1" ItemsSource="{Binding Cells}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>

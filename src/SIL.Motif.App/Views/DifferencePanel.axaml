@@ -16,7 +16,7 @@
                                Text="{Binding Difference.RunComparisonText}" />
     </StackPanel>
 
-    <ListBox Grid.Row="1" Classes="dense" MaxHeight="{DynamicResource Component.DifferencePanel.MoveListHeight}"
+    <ListBox x:Name="DifferencePanelMovesItems" Grid.Row="1" Classes="dense" MaxHeight="{DynamicResource Component.DifferencePanel.MoveListHeight}"
              ItemsSource="{Binding Difference.Moves}" AutomationProperties.Name="Moves between cells, worst first">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:MoveViewModel">
@@ -35,7 +35,7 @@
 
     <views:WordRowHeader Grid.Row="2" Columns="{x:Static views:WordRowColumnSets.WhatChanged}"
                          IsVisible="{Binding Difference.HasChosenMove}" />
-    <ListBox Grid.Row="3" Classes="wordRows" ItemsSource="{Binding Difference.Words}"
+    <ListBox x:Name="DifferencePanelWordsItems" Grid.Row="3" Classes="wordRows" ItemsSource="{Binding Difference.Words}"
              AutomationProperties.Name="Words in the chosen move"
              IsVisible="{Binding Difference.HasChosenMove}" KeyboardNavigation.TabNavigation="Continue">
       <ListBox.ItemTemplate>

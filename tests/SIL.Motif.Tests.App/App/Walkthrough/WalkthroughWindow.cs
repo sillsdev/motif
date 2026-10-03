@@ -283,6 +283,7 @@ public sealed class WalkthroughWindow : IDisposable
                     lines.ScrollIntoView(index);
                     Window.UpdateLayout();
                     Pump();
+                    RealizeWrappingItem(automationId);
                     if (FindOptionalByAutomationId(automationId) is not null) break;
                 }
                 if (FindOptionalByAutomationId(automationId) is not null) break;
@@ -292,6 +293,21 @@ public sealed class WalkthroughWindow : IDisposable
         target.BringIntoView();
         Pump();
         Window.UpdateLayout();
+    }
+
+    private void RealizeWrappingItem(string automationId)
+    {
+        foreach (var items in Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
+                     .Where(items => items.IsEffectivelyVisible).ToArray())
+        {
+            foreach (var item in items.FullItemsSource?.Cast<object>() ?? [])
+            {
+                if (FindOptionalByAutomationId(automationId) is not null) return;
+                items.ShowItem(item);
+                Window.UpdateLayout();
+                Pump();
+            }
+        }
     }
 
     internal void ClickAutomationId(string automationId)

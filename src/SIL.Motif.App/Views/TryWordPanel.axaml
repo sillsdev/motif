@@ -17,7 +17,7 @@
               <Flyout Placement="BottomEdgeAlignedRight">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" MinWidth="{DynamicResource Component.TryWord.SidebarWidth}">
                   <TextBlock Text="Recent words" FontWeight="SemiBold" />
-                  <ItemsControl ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
+                  <ItemsControl x:Name="TryWordPanelRecentWordsItems" ItemsSource="{Binding RecentWords}" AutomationProperties.Name="Recent words">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
                         <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Related}" LineSpacing="{DynamicResource Intent.Space.Compact}" />
@@ -78,7 +78,7 @@
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
               <views:MarkChip Mark="{Binding ResultOutcomeMark}" Text="{Binding ResultOutcomeText}" />
-              <ItemsControl ItemsSource="{Binding ResultOpinions}">
+              <ItemsControl x:Name="TryWordPanelResultOpinionsItems" ItemsSource="{Binding ResultOpinions}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}" /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
@@ -109,18 +109,21 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="FieldWorks beside the parser" FontWeight="SemiBold" />
           <views:CopyableTextBlock Text="{Binding FieldWorksContextStatus}" Classes="muted" TextWrapping="Wrap" />
-          <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
+          <ItemsControl x:Name="TryWordPanelFieldWorksAnalysesItems" ItemsSource="{Binding FieldWorksAnalyses}" AutomationProperties.Name="Every stored FieldWorks analysis">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordStoredAnalysis">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                   <views:MarkChip Mark="{Binding OpinionMark}" Text="{Binding OpinionLabel}" HorizontalAlignment="Left" />
-                  <ItemsControl ItemsSource="{Binding Pieces}">
+                  <views:ProgressiveItemsControl x:Name="TryWordPanelPiecesItems" FullItemsSource="{Binding Pieces}">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:TryWordTracePiece">
                         <StackPanel Margin="{DynamicResource Intent.Gap.AfterRelated}" Spacing="{DynamicResource Intent.Space.Minimal}">
                           <views:MorphemeRow Morphs="{Binding Morphs}" RevealLinks="True" CompactLinks="True" />
-                          <ItemsControl ItemsSource="{Binding StatusParts}">
+                          <ItemsControl x:Name="TryWordPanelStatusPartsItems" ItemsSource="{Binding StatusParts}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}" />
@@ -139,7 +142,7 @@
                         </StackPanel>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  </views:ProgressiveItemsControl>
                 </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -154,8 +157,11 @@
       <Border Classes="card" IsVisible="{Binding Trace.ShowsPlainTrace}" AutomationProperties.Name="Recorded trace context">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <TextBlock Text="Recorded trace" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-          <ListBox ItemsSource="{Binding Trace.PlainSteps}" SelectedItem="{Binding Trace.PlainSelectedStep, Mode=TwoWay}"
+          <ListBox x:Name="TryWordPanelPlainStepsItems" ItemsSource="{Binding Trace.PlainSteps}" SelectedItem="{Binding Trace.PlainSelectedStep, Mode=TwoWay}"
                    AutomationProperties.Name="Plain trace steps">
+            <ListBox.Template>
+              <ControlTemplate><ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" /></ControlTemplate>
+            </ListBox.Template>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:TraceStepViewModel">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
@@ -189,7 +195,10 @@
             <TextBlock Grid.Column="1" Classes="muted" Text="Time" FontWeight="SemiBold" TextAlignment="Right" />
             <TextBlock Grid.Column="2" Classes="muted" Text="{Binding EarlierShareHeader}" FontWeight="SemiBold" TextAlignment="Right" IsVisible="{Binding HasEarlierShares}" />
           </Grid>
-          <ItemsControl ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="Earlier rule times">
+          <ItemsControl x:Name="TryWordPanelEarlierRuleTimesItems" ItemsSource="{Binding EarlierRuleTimes}" AutomationProperties.Name="Earlier rule times">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TryWordEarlierRuleTime">
                 <Border BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}" Padding="{DynamicResource Component.TryWord.SmallInset}">

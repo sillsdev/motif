@@ -13,7 +13,10 @@
         <views:CopyableTextBlock Classes="muted" Text="{Binding Meanings}" TextWrapping="Wrap" IsVisible="{Binding HasMeanings}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding NotCountingText}" TextWrapping="Wrap" IsVisible="{Binding HasNotCounting}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding EmptyText}" TextWrapping="Wrap" IsVisible="{Binding IsEmpty}" />
-        <ItemsControl ItemsSource="{Binding Shown}">
+        <ItemsControl x:Name="InspectorShownItems" ItemsSource="{Binding Shown}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:InspectorWordViewModel">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
@@ -40,7 +43,7 @@
         <DockPanel>
           <Button DockPanel.Dock="Right" Classes="inspectorClose" Content="✕" Command="{Binding CloseCommand}"
                   AutomationProperties.Name="Close the inspector" ToolTip.Tip="Close (Esc steps back)" />
-          <ItemsControl ItemsSource="{Binding Crumbs}" AutomationProperties.Name="Breadcrumb">
+          <views:ProgressiveItemsControl x:Name="InspectorCrumbsItems" FullItemsSource="{Binding Crumbs}" AutomationProperties.Name="Breadcrumb">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
                 <WrapPanel />
@@ -59,7 +62,7 @@
                 </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          </views:ProgressiveItemsControl>
         </DockPanel>
       </Border>
 
@@ -73,7 +76,10 @@
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <views:CopyableTextBlock Classes="inspectorSectionTitle" Text="{Binding TraceTitle}" />
               <views:CopyableTextBlock Classes="inspectorSource" Text="From this trace" />
-              <ItemsControl ItemsSource="{Binding TraceDetails}">
+              <ItemsControl x:Name="InspectorTraceDetailsItems" ItemsSource="{Binding TraceDetails}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:InspectorDetail">
                     <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
@@ -96,7 +102,10 @@
                          AutomationProperties.Name="{Binding FreshnessTip}" IsVisible="{Binding WhatItIsFromBaseline}" />
                 <views:CopyableTextBlock Classes="inspectorSource" Text="{Binding WhatItIsSource}" />
               </StackPanel>
-              <ItemsControl ItemsSource="{Binding WhatItIs}">
+              <ItemsControl x:Name="InspectorWhatItIsItems" ItemsSource="{Binding WhatItIs}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="x:String">
                     <views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" />
@@ -132,7 +141,10 @@
               <views:CopyableTextBlock Classes="inspectorSource" Text="From the last grammar check" />
               <views:CopyableTextBlock Classes="muted" Text="{Binding WarningsNote}" TextWrapping="Wrap"
                                        IsVisible="{Binding HasWarningsNote}" />
-              <ItemsControl ItemsSource="{Binding ShownWarnings}">
+              <ItemsControl x:Name="InspectorShownWarningsItems" ItemsSource="{Binding ShownWarnings}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:InspectorWarningViewModel">
                     <Border Classes="inspectorWarning" Margin="{DynamicResource Intent.Gap.AfterRelated}">
@@ -164,7 +176,10 @@
               </StackPanel>
               <views:CopyableTextBlock Classes="muted" Text="{Binding FactsNote}" TextWrapping="Wrap"
                                        IsVisible="{Binding HasFactsNote}" />
-              <ItemsControl ItemsSource="{Binding Facts}">
+              <ItemsControl x:Name="InspectorFactsItems" ItemsSource="{Binding Facts}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:InspectorFactViewModel">
                     <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">

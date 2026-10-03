@@ -78,13 +78,13 @@ public sealed class ResultsInTextVirtualizationTests
             var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { },
                 new ChangesViewModel(client), client);
             var text = new ResultsTextViewModel(new TextLines(Guid.NewGuid(), "Long Text",
-                Enumerable.Range(1, 64).Select(number => new TextLine(number,
+                Enumerable.Range(1, 2000).Select(number => new TextLine(number,
                     [new TextToken($"word-{number}", $"word-{number}", null, null)])).ToArray()),
                 new Dictionary<string, AssessmentWordResult>());
             inText.Texts.Add(text);
             inText.SelectedText = text;
             var panel = new ResultsInTextPanel(inText);
-            var window = new Window { Content = panel, Width = 1040, Height = 780 };
+            var window = new Window { Content = panel, Width = 1240, Height = 780 };
             window.Show();
             try
             {
@@ -130,9 +130,57 @@ public sealed class ResultsInTextVirtualizationTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    [Fact]
+    public void ALongSentencePagesItsStripsAndKeyboardNavigationCrossesThePageBoundary()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var client = new FakeCommandClient();
+            var selection = new SelectionViewModel(client);
+            var texts = new TextWordsViewModel(client, selection);
+            var assess = new AssessViewModel(client, selection);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { },
+                new ChangesViewModel(client), client);
+            var text = new ResultsTextViewModel(new TextLines(Guid.NewGuid(), "Long sentence",
+                [new TextLine(1, Enumerable.Range(0, 500).Select(index =>
+                    new TextToken($"word-{index}", $"word-{index}", null, null)).ToArray())]),
+                new Dictionary<string, AssessmentWordResult>());
+            inText.Texts.Add(text);
+            inText.SelectedText = text;
+            var panel = new ResultsInTextPanel(inText);
+            var window = new Window { Content = panel, Width = 1240, Height = 780 };
+            window.Show();
+            try
+            {
+                PageScreenshots.Settle(window);
+                var words = Assert.Single(panel.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                    control => ReferenceEquals(control.FullItemsSource, text.Lines[0].Tokens));
+                Assert.InRange(words.GetRealizedContainers().Count(), 1, 22);
+                var strip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, text.Lines[0].Tokens[19]));
+                Assert.True(strip.Focus(NavigationMethod.Directional));
+                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+                Assert.Same(text.Lines[0].Tokens[20], Assert.IsType<Border>(window.FocusManager!.GetFocusedElement()).Tag);
+                Assert.InRange(words.GetRealizedContainers().Count(), 1, 22);
+                await inText.OpenTokenCardAsync(text.Lines[0].Tokens[^1]);
+                PageScreenshots.Settle(window);
+                var card = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+                Assert.Same(text.Lines[0].Tokens[^1], card.DataContext);
+                Assert.Same(card, window.FocusManager!.GetFocusedElement());
+                Assert.Contains(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, text.Lines[0].Tokens[^1]));
+                Assert.InRange(words.GetRealizedContainers().Count(), 1, 22);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromSeconds(30));
+    }
+
     private static void AssertBounded(ItemsControl lines)
     {
-        Assert.Equal(64, lines.ItemCount);
+        Assert.Equal(2000, lines.ItemCount);
         var realized = lines.GetRealizedContainers().Count();
         Assert.InRange(realized, 1, 31);
     }

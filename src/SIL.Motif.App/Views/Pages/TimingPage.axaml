@@ -4,7 +4,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
-  <Grid>
+  <Grid RowDefinitions="*,Auto">
     <ScrollViewer IsVisible="{Binding !Context.NeedsAssessment}">
     <Border Classes="timingPage">
       <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
@@ -50,7 +50,7 @@
               <Flyout Placement="BottomEdgeAlignedLeft">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                   <views:CopyableTextBlock Classes="section-title" Text="Matrix cell" />
-                  <ComboBox ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
+                  <ComboBox x:Name="TimingPageMatrixCellsItems" ItemsSource="{Binding MatrixCells}" SelectedItem="{Binding SelectedMatrixCell}"
                             Width="{DynamicResource Component.Timing.SourcePickerWidth}"
                             PlaceholderText="Choose a cell" AutomationProperties.Name="Matrix cell from Texts">
                     <ComboBox.ItemTemplate>
@@ -71,7 +71,7 @@
               <Flyout Placement="BottomEdgeAlignedLeft">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                   <views:CopyableTextBlock Classes="section-title" Text="List from Texts" />
-                  <ComboBox ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
+                  <ComboBox x:Name="TimingPageTextsListsItems" ItemsSource="{Binding TextsLists}" SelectedItem="{Binding SelectedTextsList}"
                             Width="{DynamicResource Component.Timing.SourcePickerWidth}"
                             PlaceholderText="Choose a list" AutomationProperties.Name="List from Texts">
                     <ComboBox.ItemTemplate>
@@ -173,7 +173,7 @@
                                      Height="{DynamicResource Component.Timing.BarHeight}"
                                      AutomationProperties.Name="Share of total word time by kind" />
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
-                  <ItemsControl Grid.Column="0" ItemsSource="{Binding #KindBar.Legend}"
+                  <ItemsControl x:Name="TimingPageLegendItems" Grid.Column="0" ItemsSource="{Binding #KindBar.Legend}"
                                 AutomationProperties.Name="Timing by kind">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
@@ -196,7 +196,7 @@
                           Command="{Binding ToggleKindCallsCommand}" IsVisible="{Binding HasKindCalls}"
                           AutomationProperties.Name="{Binding KindCallsButtonName}" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding KindCallShares}" IsVisible="{Binding ShowKindCalls}"
+                <ItemsControl x:Name="TimingPageKindCallSharesItems" ItemsSource="{Binding KindCallShares}" IsVisible="{Binding ShowKindCalls}"
                               AutomationProperties.Name="Calls by kind">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -242,8 +242,11 @@
                                            views:ClearTipPlacement.IsEnabled="True"
                                            Background="{DynamicResource Intent.Clear}" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding RuleRows}"
+                <ItemsControl x:Name="TimingPageRuleRowsItems" ItemsSource="{Binding RuleRows}"
                               AutomationProperties.Name="Timing by rule">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TimingRuleRow">
                       <Border Classes="hoverReveal">
@@ -328,8 +331,11 @@
             <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
             <StackPanel Grid.IsSharedSizeScope="True">
               <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
-              <ItemsControl ItemsSource="{Binding CostliestRuleWordRows}" AutomationProperties.Name="Words under this rule"
+              <ItemsControl x:Name="TimingPageCostliestRuleWordRowsItems" ItemsSource="{Binding CostliestRuleWordRows}" AutomationProperties.Name="Words under this rule"
                             KeyboardNavigation.TabNavigation="Continue">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ListedWordViewModel">
                     <views:WordRow Row="{Binding Row}" List="timing-rule-words" IsOpen="{Binding IsOpen}"
@@ -351,14 +357,14 @@
             <views:CopyableTextBlock Text="{Binding PercentileSummary}" />
           </StackPanel>
         </Border>
-
-        <Expander Header="Detailed statistics" IsVisible="{Binding ShowStatistics}"
-                  Expanded="OnStatisticsExpanded">
-          <ContentControl x:Name="StatisticsHost" />
-        </Expander>
       </StackPanel>
     </Border>
     </ScrollViewer>
+    <Expander Grid.Row="1" Header="Detailed statistics" IsVisible="{Binding ShowStatistics}"
+              MaxHeight="{DynamicResource Component.Statistics.ViewportHeight}" Expanded="OnStatisticsExpanded">
+      <ContentControl x:Name="StatisticsHost" />
+    </Expander>
+
     <Border Classes="card" IsVisible="{Binding Context.NeedsAssessment}"
             HorizontalAlignment="Center" VerticalAlignment="Center">
       <views:ParsePrompt DataContext="{Binding Context}" />

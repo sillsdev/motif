@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
@@ -38,23 +40,68 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
                 parseFindings.Select(finding => Guid.Parse(Assert.Single(finding.Subject).SubjectGuid!)).Order());
             var row = Assert.Single(warnings.Rows.Cast<GrammarWarningRowViewModel>(),
                 item => item.GroupCode == GrammarFindingCodes.ParseAllomorphUnsegmentable);
-            Assert.Equal(15, row.RepeatCount);
-            Assert.Equal(15, row.Details.Count);
+            Assert.Equal(project.Allomorphs.Count, parseFindings.Length);
+            Assert.Equal(parseFindings.Length, row.RepeatCount);
+            Assert.Equal(row.RepeatCount, row.Details.Count);
+            Assert.Equal(warnings.Findings.Count, warnings.TotalCount);
             Assert.Equal(WarningDisplayState.SpellingCandidates, row.AttributionState);
             Assert.Equal("None of your words", row.LineSummaryText);
             Assert.Equal("5 spelling matches", row.SpellingCandidatesText);
             Assert.Equal(["chat", "chats", "fenêtre", "fenêtres", "très"],
                 row.SpellingCandidateRows.Select(word => word.Word).Order(StringComparer.Ordinal));
             row.ToggleOpenCommand.Execute(null);
-            walkthrough.Window.UpdateLayout();
+            PageScreenshots.Settle(walkthrough.Window);
             var visibleText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                 .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
             Assert.Contains(row.SpellingCandidatesText, visibleText);
             Assert.Contains(row.ReachStateText, visibleText);
-            foreach (var finding in parseFindings)
+            var groups = Assert.Single(walkthrough.Window.GetVisualDescendants().OfType<ItemsControl>(),
+                control => control.Name == "GrammarPanelRowsItems");
+            var scroll = groups.GetVisualAncestors().OfType<ScrollViewer>().First();
+            var descriptions = parseFindings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
+            var expectedAllomorphs = project.Allomorphs.Select(item => item.AllomorphId).ToHashSet();
+            foreach (var height in new[] { walkthrough.Window.Height, walkthrough.Window.MinHeight })
             {
-                Assert.Contains(finding.Description, visibleText);
-                Assert.Contains("no character definition matches at position", finding.Description);
+                walkthrough.Window.Height = height;
+                scroll.Offset = default;
+                PageScreenshots.Settle(walkthrough.Window);
+                var readableDescriptions = new HashSet<string>(StringComparer.Ordinal);
+                var reachedAllomorphs = new HashSet<Guid>();
+                var direction = 1;
+                walkthrough.WaitUntil(() =>
+                {
+                    foreach (var text in groups.GetVisualDescendants().OfType<TextBlock>()
+                        .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("warningRawMessage") &&
+                            text.Text is not null && descriptions.Contains(text.Text)))
+                    {
+                        var origin = text.TranslatePoint(default, scroll)!.Value;
+                        if (origin.Y < 0 || origin.Y + text.Bounds.Height > scroll.Viewport.Height) continue;
+                        Assert.True(text.Bounds.Width > 0 && text.Bounds.Height > 0);
+                        Assert.True(origin.X >= 0 && origin.X + text.Bounds.Width <= scroll.Viewport.Width + 1,
+                            $"Warning description extends past the viewport: {text.Text}");
+                        var detail = Assert.IsType<GrammarWarningDetailViewModel>(text.DataContext);
+                        var allomorph = Guid.Parse(Assert.Single(detail.Warning.Subject).SubjectGuid!);
+                        Assert.Contains(allomorph, expectedAllomorphs);
+                        reachedAllomorphs.Add(allomorph);
+                        readableDescriptions.Add(text.Text!);
+                    }
+                    if (reachedAllomorphs.SetEquals(expectedAllomorphs) &&
+                        readableDescriptions.SetEquals(descriptions)) return true;
+                    if (scroll.Offset.Y >= scroll.Extent.Height - scroll.Viewport.Height) direction = -1;
+                    if (scroll.Offset.Y <= 0) direction = 1;
+                    scroll.Offset = scroll.Offset.WithY(scroll.Offset.Y + direction * scroll.Viewport.Height / 4);
+                    PageScreenshots.Settle(walkthrough.Window);
+                    return false;
+                }, TimeSpan.FromMinutes(1), "not every allomorph warning became readable by scrolling",
+                    () => $"Reached {reachedAllomorphs.Count}/{row.RepeatCount} at height {height}; " +
+                        $"missing '{string.Join("; ", descriptions.Except(readableDescriptions))}'; " +
+                        $"scroll offset={scroll.Offset.Y}, extent={scroll.Extent.Height}, viewport={scroll.Viewport.Height}");
+                Assert.Equal(row.RepeatCount, reachedAllomorphs.Count);
+                foreach (var finding in parseFindings)
+                {
+                    Assert.Contains(finding.Description, readableDescriptions);
+                    Assert.Contains("no character definition matches at position", finding.Description);
+                }
             }
             foreach (var form in new[] { "chat", "très", "fenêtre" })
             {

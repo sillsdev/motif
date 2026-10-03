@@ -27,7 +27,7 @@
 
       <TextBox PlaceholderText="Search texts..." Text="{Binding Selection.SearchText}"
                AutomationProperties.Name="Search texts" />
-      <ListBox ItemsSource="{Binding Selection.Texts}"
+      <ListBox x:Name="SelectionPanelTextsItems" ItemsSource="{Binding Selection.Texts}"
                MaxHeight="{DynamicResource Component.TextsPage.SelectionListHeight}"
                AutomationProperties.Name="Texts to analyze">
         <ListBox.ItemTemplate>

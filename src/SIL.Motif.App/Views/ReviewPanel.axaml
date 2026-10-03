@@ -30,7 +30,7 @@
         <ItemsControl x:Name="ReviewGroups" ItemsSource="{Binding ReviewGroups}"
                       AutomationProperties.Name="Changes grouped for review">
           <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><StackPanel Classes="reviewRelated" /></ItemsPanelTemplate>
+            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ReviewChangeGroupViewModel">
@@ -62,8 +62,11 @@
                   </Border>
                   <StackPanel Grid.IsSharedSizeScope="True">
                     <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Review}" />
-                    <ItemsControl ItemsSource="{Binding Items}" KeyboardNavigation.TabNavigation="Continue"
+                    <ItemsControl x:Name="ReviewPanelItemsItems" ItemsSource="{Binding Items}" KeyboardNavigation.TabNavigation="Continue"
                                   AutomationProperties.Name="{Binding Title, StringFormat='Changes in {0}'}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ChangeViewModel">
                           <views:WordRow Row="{Binding Listed.Row}" List="review" IsOpen="{Binding Listed.IsOpen}"
@@ -74,7 +77,7 @@
                               <StackPanel Classes="reviewCompact">
                                 <WrapPanel IsVisible="{Binding HasUncertainty}">
                                   <views:CopyableTextBlock Classes="reviewSmall reviewGapEnd" Text="Now reads" VerticalAlignment="Center" />
-                                  <ItemsControl ItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
+                                  <views:ProgressiveItemsControl x:Name="ReviewPanelAfterWordsItems" FullItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
                                     <ItemsControl.ItemsPanel>
                                       <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
@@ -85,7 +88,7 @@
                                         </Border>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
-                                  </ItemsControl>
+                                  </views:ProgressiveItemsControl>
                                 </WrapPanel>
                                 <WrapPanel Classes="reviewActions">
                                   <views:CopyableTextBlock Classes="wordRowStaged reviewGapEnd" Text="{Binding TransitionText}"
@@ -115,7 +118,7 @@
                                                            IsVisible="{Binding RowAnalysisIsParserBuilt}" />
                                   <Border Classes="reviewAnalysis" Classes.parser="{Binding RowAnalysisIsParserBuilt}"
                                           HorizontalAlignment="Left">
-                                    <ItemsControl ItemsSource="{Binding RowMorphs}">
+                                    <views:ProgressiveItemsControl x:Name="ReviewPanelRowMorphsItems" FullItemsSource="{Binding RowMorphs}">
                                       <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                           <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
@@ -129,14 +132,14 @@
                                           </StackPanel>
                                         </DataTemplate>
                                       </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    </views:ProgressiveItemsControl>
                                   </Border>
                                 </StackPanel>
                                 <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
                                                          IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
                                 <StackPanel Classes="reviewCompact" IsVisible="{Binding HasUncertainty}">
                                   <views:CopyableTextBlock Classes="reviewSmall" Text="Sentence when the change was made" />
-                                  <ItemsControl ItemsSource="{Binding BeforeWords}" AutomationProperties.Name="Sentence when the change was made">
+                                  <views:ProgressiveItemsControl x:Name="ReviewPanelBeforeWordsItems" FullItemsSource="{Binding BeforeWords}" AutomationProperties.Name="Sentence when the change was made">
                                     <ItemsControl.ItemsPanel>
                                       <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
@@ -147,12 +150,12 @@
                                         </Border>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
-                                  </ItemsControl>
+                                  </views:ProgressiveItemsControl>
                                 </StackPanel>
                                 <Border IsVisible="{Binding HasUnavailableContext}">
                                   <views:ParsePrompt DataContext="{Binding $parent[views:ReviewPanel].Page.Context}" />
                                 </Border>
-                                <ItemsControl ItemsSource="{Binding ContextTokens}" AutomationProperties.Name="Sentence context"
+                                <views:ProgressiveItemsControl x:Name="ReviewPanelContextTokensItems" FullItemsSource="{Binding ContextTokens}" AutomationProperties.Name="Sentence context"
                                               IsVisible="{Binding ContextTokens.Count}">
                                   <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
@@ -164,7 +167,7 @@
                                       </Border>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                </views:ProgressiveItemsControl>
                                 <views:ListedWordCard DataContext="{Binding Listed}" />
                               </StackPanel>
                             </views:WordRow.Card>

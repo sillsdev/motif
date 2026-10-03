@@ -130,7 +130,7 @@ internal static class LayoutAssertions
         {
             if (Contains(BoundsIn(ancestor, layoutRoot), textBounds)) continue;
             var scrollCanRevealText = text.GetSelfAndVisualAncestors().OfType<ScrollViewer>()
-                .Any(scroll => IsWithinScrollExtent(text, scroll));
+                .Any(scroll => IsWithinScrollExtent(text, scroll)) || DataGridCanRevealText(text, ancestor);
             Assert.True(scrollCanRevealText,
                 $"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
                 $"Path: {path}.{TooltipDetails(text, layoutRoot)}");
@@ -247,6 +247,24 @@ internal static class LayoutAssertions
         var canScrollX = visibleX || scroll.HorizontalScrollBarVisibility != ScrollBarVisibility.Disabled;
         var canScrollY = visibleY || scroll.VerticalScrollBarVisibility != ScrollBarVisibility.Disabled;
         return canScrollX && canScrollY;
+    }
+
+    private static bool DataGridCanRevealText(TextBlock text, Visual clippedBy)
+    {
+        var row = text.GetVisualAncestors().OfType<DataGridRow>().FirstOrDefault();
+        var grid = row?.GetVisualAncestors().OfType<DataGrid>().FirstOrDefault();
+        if (row is null || grid is null || !row.GetVisualAncestors().Contains(clippedBy) ||
+            (!ReferenceEquals(clippedBy, grid) && !clippedBy.GetVisualAncestors().Contains(grid))) return false;
+        if (grid.ItemsSource is not { } source || !source.Cast<object>().Any(item => Equals(item, row.DataContext)))
+            return false;
+        var presenter = grid.GetVisualDescendants().OfType<DataGridRowsPresenter>().Single();
+        if (text.Bounds.Height > presenter.Bounds.Height + Tolerance) return false;
+        var bounds = BoundsIn(text, presenter);
+        var bars = grid.GetVisualDescendants().OfType<ScrollBar>()
+            .Where(bar => bar.IsEffectivelyVisible && bar.Maximum > bar.Minimum).ToArray();
+        var visibleX = bounds.Left >= -Tolerance && bounds.Right <= presenter.Bounds.Width + Tolerance;
+        var visibleY = bounds.Top >= -Tolerance && bounds.Bottom <= presenter.Bounds.Height + Tolerance;
+        return visibleX && (visibleY || bars.Any(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical));
     }
 
     private static Rect BoundsIn(Visual visual, Visual root)

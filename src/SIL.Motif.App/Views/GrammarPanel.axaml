@@ -90,7 +90,10 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1">
-          <ItemsControl ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">
+          <ItemsControl x:Name="GrammarPanelRowsItems" ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                 <Border Classes="warningRow hoverReveal">
@@ -115,7 +118,10 @@
                                                 IsVisible="{Binding HasRefreshStatus}" TextWrapping="Wrap" />
                       <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}"
                                                 IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
-                      <ItemsControl ItemsSource="{Binding Details}">
+                      <ItemsControl x:Name="GrammarPanelDetailsItems" ItemsSource="{Binding Details}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:GrammarWarningDetailViewModel">
                             <Border Classes="card warningDetail">
@@ -133,7 +139,10 @@
                                 <Border Classes="hoverReveal warningSubjects">
                                   <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
                                 </Border>
-                                <ItemsControl ItemsSource="{Binding EntryLinks}" IsVisible="{Binding HasEntryLinks}">
+                                <ItemsControl x:Name="GrammarPanelEntryLinksItems" ItemsSource="{Binding EntryLinks}" IsVisible="{Binding HasEntryLinks}">
+                                  <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                                  </ItemsControl.ItemsPanel>
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:GrammarWarningEntryLink">
                                       <HyperlinkButton Classes="warningEntryAction" Content="{Binding Label}"
@@ -162,7 +171,10 @@
                                                  IsVisible="{Binding HasExactRows}" />
                         <Grid IsSharedSizeScope="True" RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
                           <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Warnings}" />
-                          <ItemsControl Grid.Row="1" ItemsSource="{Binding WordRows}" IsVisible="{Binding HasExactRows}">
+                          <ItemsControl x:Name="GrammarPanelWordRowsItems" Grid.Row="1" ItemsSource="{Binding WordRows}" IsVisible="{Binding HasExactRows}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:WordRowViewModel">
                                 <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
@@ -175,7 +187,10 @@
                                                IsVisible="{Binding HasNoExactUses}" />
                       <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
-                        <ItemsControl ItemsSource="{Binding MembershipCandidateRows}">
+                        <ItemsControl x:Name="GrammarPanelMembershipCandidateRowsItems" ItemsSource="{Binding MembershipCandidateRows}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
                               <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
@@ -185,7 +200,10 @@
                       </StackPanel>
                       <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingCandidatesText}" />
-                        <ItemsControl ItemsSource="{Binding SpellingCandidateRows}">
+                        <ItemsControl x:Name="GrammarPanelSpellingCandidateRowsItems" ItemsSource="{Binding SpellingCandidateRows}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
                               <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />

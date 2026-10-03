@@ -1255,6 +1255,13 @@ public sealed class TraceEffortViewModel
 /// <summary>One recorded derivation event, with its own children and shared row selection state.</summary>
 public sealed class TraceStepViewModel : ObservableObject
 {
+    private bool _isExpanded;
+    /// <summary>Remembers expansion while an off-screen tree node has no container.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
     private bool _isSelected;
     public bool IsSelected
     {
@@ -1496,6 +1503,7 @@ public sealed class TraceStepViewModel : ObservableObject
         _directions = directions;
         IsDeepest = isDeepest;
         ExpandForFilter = expandForFilter;
+        _isExpanded = expandForFilter;
         Children = children;
         Label = Source is { Length: > 0 } ? $"{TraceStepKinds.Describe(Type)}: {Source}" : TraceStepKinds.Describe(Type);
     }

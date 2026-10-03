@@ -6,5 +6,7 @@
         Height="{DynamicResource Component.Shell.DiagnosticHeight}"
         MinWidth="{DynamicResource Component.Shell.DiagnosticMinWidth}"
         MinHeight="{DynamicResource Component.Shell.DiagnosticMinHeight}">
-  <ContentControl x:Name="PanelHost" />
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ContentControl x:Name="PanelHost" />
+  </ScrollViewer>
 </Window>

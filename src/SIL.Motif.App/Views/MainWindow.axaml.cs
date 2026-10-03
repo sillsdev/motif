@@ -164,14 +164,22 @@ public sealed partial class MainWindow : Window
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>
     public IReadOnlyList<MenuItem> RecentProjectItems =>
         this.FindControl<Button>("OpenRecentButton")?.Flyout is MenuFlyout menu
-            ? menu.Items.OfType<MenuItem>().ToList()
+            ? menu.Items.OfType<MenuItem>().Where(item => item.CommandParameter is RecentProjectViewModel).ToList()
             : [];
 
-    private void RebuildRecentProjects(WorkspaceShellViewModel workspace)
+    private const int RecentProjectPageSize = 20;
+
+    private void RebuildRecentProjects(WorkspaceShellViewModel workspace, int offset = 0)
     {
         if (this.FindControl<Button>("OpenRecentButton")?.Flyout is not MenuFlyout menu) return;
         menu.Items.Clear();
-        foreach (var recent in workspace.RecentProjects)
+        if (offset > 0)
+        {
+            var previous = new MenuItem { Header = $"Previous {RecentProjectPageSize}", StaysOpenOnClick = true };
+            previous.Click += (_, _) => ChangePage(previous, Math.Max(0, offset - RecentProjectPageSize), false);
+            menu.Items.Add(previous);
+        }
+        foreach (var recent in workspace.RecentProjects.Skip(offset).Take(RecentProjectPageSize))
         {
             var item = new MenuItem
             {
@@ -184,6 +192,29 @@ public sealed partial class MainWindow : Window
             // Close after the command consumes Click; pinned by `NewProjectsAppearAndMissingProjectsLeaveOpenRecent`.
             item.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
             menu.Items.Add(item);
+        }
+        var remaining = workspace.RecentProjects.Count - offset - RecentProjectPageSize;
+        if (remaining > 0)
+        {
+            var next = new MenuItem { Header = $"Show {Math.Min(remaining, RecentProjectPageSize)} more", StaysOpenOnClick = true };
+            next.Click += (_, _) => ChangePage(next, offset + RecentProjectPageSize, true);
+            menu.Items.Add(next);
+        }
+
+        void ChangePage(MenuItem clicked, int pageOffset, bool forward)
+        {
+            var restoreFocus = clicked.IsFocused;
+            Dispatcher.UIThread.Post(() =>
+            {
+                RebuildRecentProjects(workspace, pageOffset);
+                if (!restoreFocus) return;
+                var items = menu.Items.OfType<MenuItem>().ToArray();
+                var prefix = forward ? "Show " : "Previous ";
+                var target = items.FirstOrDefault(item => item.Header is string header &&
+                    header.StartsWith(prefix, StringComparison.Ordinal)) ?? items.FirstOrDefault();
+                target?.BringIntoView();
+                target?.Focus();
+            });
         }
     }
 

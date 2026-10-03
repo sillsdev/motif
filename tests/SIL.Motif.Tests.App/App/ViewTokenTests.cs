@@ -206,7 +206,9 @@ public sealed class ViewTokenTests
             StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", markup,
             StringComparison.Ordinal);
-        Assert.Contains("<ComboBox ItemsSource=\"{Binding Readings}\"", markup, StringComparison.Ordinal);
+        var readingChoice = Assert.Single(view.Descendants(), element => element.Name.LocalName == "ComboBox" &&
+            (string?)element.Attribute("ItemsSource") == "{Binding Readings}");
+        Assert.Equal("{Binding SelectedReading}", (string?)readingChoice.Attribute("SelectedItem"));
         Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
     }
 

@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -122,6 +123,41 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Close();
             }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DataGridScrollingDoesNotExcuseClippedCellsOrDisabledScrollbars(bool clipCell)
+    {
+        avalonia.Invoke(() =>
+        {
+            var grid = new DataGrid
+            {
+                ItemsSource = Enumerable.Range(0, 10).Select(index => $"word-{index}").ToArray(),
+                RowHeight = 32,
+                VerticalScrollBarVisibility = clipCell ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled,
+            };
+            grid.Columns.Add(new DataGridTemplateColumn
+            {
+                Header = "Word",
+                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                CellTemplate = new FuncDataTemplate<object>((item, _) => new CopyableTextBlock
+                {
+                    Text = item.ToString(),
+                    MinHeight = clipCell ? 80 : 0,
+                }),
+            });
+            var window = new Window { Content = grid, Width = 1040, Height = 90 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertCurrent(grid));
+                Assert.Contains("is clipped outside a scroll viewport", error.Message, StringComparison.Ordinal);
+            }
+            finally { window.Close(); }
         });
     }
 

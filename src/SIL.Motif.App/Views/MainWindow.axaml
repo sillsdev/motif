@@ -196,7 +196,10 @@
                     AutomationProperties.Name="See stopped words while parsing"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseStoppedWords}">
             <ScrollViewer MaxHeight="{DynamicResource Component.Shell.ParseStoppedMaxHeight}">
-              <ItemsControl ItemsSource="{Binding ActiveParseProgress.StoppedWords}">
+              <ItemsControl x:Name="MainWindowStoppedWordsItems" ItemsSource="{Binding ActiveParseProgress.StoppedWords}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:StoppedParseWordViewModel">
                     <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
