@@ -751,7 +751,8 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                var button = ButtonNamed(window, "Drag all AI Handoff files");
+                var button = window.GetVisualDescendants().OfType<Button>().Single(candidate =>
+                    AutomationProperties.GetAutomationId(candidate) == SIL.Motif.App.AutomationIds.DragAllHandoffFiles);
                 Assert.True(button.Focusable);
                 using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
                 var press = new PointerPressedEventArgs(

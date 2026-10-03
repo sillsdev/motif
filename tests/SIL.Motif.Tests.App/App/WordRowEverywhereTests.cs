@@ -89,9 +89,9 @@ public sealed class WordRowEverywhereTests
                     button => ReferenceEquals(button.Command, texts.Words.HandOffCheckedWordsCommand));
                 Assert.Equal("AI Handoff", handoff.Content);
                 Assert.False(handoff.IsEffectivelyEnabled);
-                Assert.Equal("Tick words first.", ToolTip.GetTip(handoff));
+                Assert.Equal(texts.Words.HandOffCheckedWordsHelpText, ToolTip.GetTip(handoff));
                 texts.Words.Rows[0].IsChecked = true;
-                Assert.Equal("AI Handoff for this word", handoff.Content);
+                Assert.Equal(WindowCopy.AiHandoffForThisWord, handoff.Content);
                 foreach (var (width, height) in new[] { (1040, 780), (1240, 780), (1040, 1000), (1240, 1000) })
                 {
                     window.Width = width;

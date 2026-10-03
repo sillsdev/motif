@@ -120,16 +120,16 @@ public sealed class TextsListsViewModelTests
         var (compare, lists) = Loaded(withSecondApprovedNoParse: true);
         lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Lost"));
 
-        Assert.Equal("AI Handoff for this list", lists.HandOffListLabel);
-        Assert.Equal("AI Handoff", lists.HandOffCheckedWordsLabel);
-        Assert.Equal("Tick words first.", lists.HandOffCheckedWordsHelpText);
+        Assert.Equal(WindowCopy.AiHandoffForThisList, lists.HandOffListLabel);
+        Assert.Equal(WindowCopy.AiHandoff, lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.TickWordsFirst, lists.HandOffCheckedWordsHelpText);
 
         compare.Words[0].IsChecked = true;
-        Assert.Equal("AI Handoff for this word", lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.AiHandoffForThisWord, lists.HandOffCheckedWordsLabel);
         Assert.Equal(string.Empty, lists.HandOffCheckedWordsHelpText);
 
         compare.Words[1].IsChecked = true;
-        Assert.Equal("AI Handoff for 2 words", lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.AiHandoffForWordCount(2), lists.HandOffCheckedWordsLabel);
     }
 
     [Fact]

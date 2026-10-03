@@ -13,6 +13,7 @@
     <StaticResource x:Key="Component.OutcomeBar.SwatchMargin" ResourceKey="Primitive.Inset.0_0_6_0" />
     <StaticResource x:Key="Component.OutcomeBar.LegendEntryMargin" ResourceKey="Primitive.Inset.0_0_18_0" />
     <StaticResource x:Key="Component.OutcomeBar.LegendTextMargin" ResourceKey="Primitive.Inset.0_0_4_0" />
+    <StaticResource x:Key="Component.OutcomeBar.LegendLineHeight" ResourceKey="Primitive.Size.20" />
   </Styles.Resources>
   <Style Selector=":is(StackPanel).outcomeBar">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
@@ -52,6 +53,12 @@
   </Style>
   <Style Selector=":is(StackPanel).outcomeLegendLabel">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector="StackPanel.outcomeLegendLabel > :is(TextBlock).outcomeLegendText">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.OutcomeBar.LegendLineHeight}" />
+  </Style>
+  <Style Selector="StackPanel.outcomeLegendLabel > :is(Decorator).markGlyphHost.inline">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.OutcomeBar.LegendLineHeight}" />
   </Style>
   <Style Selector=":is(TextBlock).outcomeLegendCount">
     <Setter Property="FontWeight" Value="SemiBold" />

@@ -40,6 +40,12 @@ public static class AutomationIds
     public const string HandoffFiles = "motif-handoff-files";
     public const string FreshnessLabel = "motif-freshness-label";
     public const string FreshnessDetail = "motif-freshness-detail";
+    public const string ParsePromptText = "motif-parse-prompt-text";
+    public const string HandOffList = "motif-handoff-list";
+    public const string HandOffCheckedWords = "motif-handoff-checked-words";
+    public const string TryWordHandOff = "motif-try-word-handoff";
+    public const string DragAllHandoffFiles = "motif-drag-all-handoff-files";
+    public const string FieldWorksMorphemeScroll = "motif-fieldworks-morpheme-scroll";
     public const string ApplyReceipt = "motif-apply-receipt";
     public const string TryWordInput = "motif-try-word-input";
     public const string TryWordRun = "motif-try-word-run";

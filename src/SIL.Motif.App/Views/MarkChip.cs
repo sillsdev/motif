@@ -24,11 +24,15 @@ public sealed class MarkChip : Border
     public static readonly StyledProperty<bool> CompactProperty =
         AvaloniaProperty.Register<MarkChip, bool>(nameof(Compact));
 
+    public static readonly StyledProperty<bool> WrapTextProperty =
+        AvaloniaProperty.Register<MarkChip, bool>(nameof(WrapText));
+
     static MarkChip()
     {
         MarkProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
         TextProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
         CompactProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
+        WrapTextProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
     }
 
     public MarkChip()
@@ -61,6 +65,13 @@ public sealed class MarkChip : Border
         set => SetValue(CompactProperty, value);
     }
 
+    /// <summary>Whether the chip's words may wrap in a constrained cell.</summary>
+    public bool WrapText
+    {
+        get => GetValue(WrapTextProperty);
+        set => SetValue(WrapTextProperty, value);
+    }
+
     // Inside a button the button owns the pointer, so the chip's words are plain there and selectable elsewhere.
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -78,14 +89,27 @@ public sealed class MarkChip : Border
         MarkClasses.SetMark(this, Mark);
         Classes.Set("plain", Mark is null);
         Classes.Set("compact", Compact);
+        Classes.Set("wrapText", WrapText);
 
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "markChipRow" } };
-        if (Mark is { } mark && GlyphOf(mark) is { } glyph) row.Children.Add(glyph);
+        var glyph = Mark is { } mark ? GlyphOf(mark) : null;
+        var row = WrapText
+            ? (Panel)new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions(glyph is null ? "*" : "Auto,*"),
+                Classes = { "markChipRow" },
+            }
+            : new StackPanel { Orientation = Orientation.Horizontal, Classes = { "markChipRow" } };
+        if (glyph is not null)
+        {
+            if (row is Grid grid) Grid.SetColumn(glyph, 0);
+            row.Children.Add(glyph);
+        }
         if (Text is { Length: > 0 } text)
         {
             var words = Words(text, _insideButton);
             words.Classes.Add("markWord");
             if (Mark is { } owner) words.Classes.AddRange([owner.KindClass, owner.KindClass + "Mark", owner.Value]);
+            if (row is Grid gridRow) Grid.SetColumn(words, glyph is null ? 0 : 1);
             row.Children.Add(words);
         }
         Child = row;

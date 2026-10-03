@@ -197,6 +197,7 @@ public sealed class CrashWindowTests(AvaloniaHeadlessFixture avalonia)
                         window.UpdateLayout();
                         Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     }
+                    LayoutAssertions.BeforeCapture(window);
                     using var frame = window.CaptureRenderedFrame()!;
                     frame.Save(Path.Combine(folder, $"error-window-{(expanded ? "details" : "summary")}-{theme}.png"),
                         PngBitmapEncoderOptions.Default);

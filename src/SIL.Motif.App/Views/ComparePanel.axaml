@@ -52,7 +52,8 @@
 
     <StackPanel Grid.Row="1" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}" AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →" VerticalAlignment="Center"
+        <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →"
+                                 TextWrapping="Wrap" VerticalAlignment="Center"
                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
         <ItemsControl Grid.Column="1" ItemsSource="{Binding Compare.Columns}">
           <ItemsControl.ItemsPanel>
@@ -149,141 +150,145 @@
       </Expander>
     </Border>
 
-    <Border Grid.Row="3" Classes="card matrixChosen">
-      <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
-        <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
-          <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
-                      Margin="{DynamicResource Intent.Gap.AfterGroup}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
-                        DataContext="{Binding Compare.ChosenCell}" x:DataType="vm:CompareCellViewModel"
-                        IsVisible="{Binding $parent[views:ComparePanel].Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNotNull}}">
-              <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}"
-                                    VerticalAlignment="Center" />
-              <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="SemiBold" />
-              <TextBlock Classes="matrixChosenWord muted" Text="×" />
-              <views:MarkGlyph Classes="inline bodyText matrixChosenWord" Mark="{Binding OutcomeMark}" />
-              <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
-                         Text="{Binding ColumnLabel}" />
-              <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Label}" Compact="True" />
+    <ScrollViewer x:Name="MatrixDetailsScroll" Grid.Row="3" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+      <Border Classes="card matrixChosen">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
+          <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
+            <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
+                        Margin="{DynamicResource Intent.Gap.AfterGroup}">
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                          DataContext="{Binding Compare.ChosenCell}" x:DataType="vm:CompareCellViewModel"
+                          IsVisible="{Binding $parent[views:ComparePanel].Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <controls:OpinionMark Kind="{Binding OpinionMark}" IsVisible="{Binding IsOpinionMarkVisible}"
+                                      VerticalAlignment="Center" />
+                <TextBlock Classes="matrixChosenWord" Text="{Binding RowLabel}" FontWeight="SemiBold" />
+                <TextBlock Classes="matrixChosenWord muted" Text="×" />
+                <views:MarkGlyph Classes="inline bodyText matrixChosenWord" Mark="{Binding OutcomeMark}" />
+                <TextBlock Classes="matrixChosenWord outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
+                           Text="{Binding ColumnLabel}" />
+                <views:MarkChip Mark="{Binding MeaningMark}" Text="{Binding Label}" Compact="True" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                          IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}">
+                <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" />
+                <views:MarkChip Classes="matrixListMeaning" Mark="{Binding Compare.ListMeaningMark}"
+                                Text="{Binding Compare.ListMeaning}" Compact="True"
+                                IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
-                        IsVisible="{Binding Compare.ChosenCell, Converter={x:Static ObjectConverters.IsNull}}">
-              <TextBlock Classes="matrixChosenWord" Text="{Binding Compare.ListHeading}" FontWeight="SemiBold" />
-              <views:MarkChip Classes="matrixListMeaning" Mark="{Binding Compare.ListMeaningMark}"
-                              Text="{Binding Compare.ListMeaning}" Compact="True"
-                              IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            </StackPanel>
-          </StackPanel>
-          <DockPanel VerticalAlignment="Center">
-            <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
-                                     Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}"
-                                     TextTrimming="CharacterEllipsis" />
+            <DockPanel VerticalAlignment="Center">
+              <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}"
+                                       Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+              <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.ListExplanation}"
+                                       TextTrimming="CharacterEllipsis" />
+            </DockPanel>
           </DockPanel>
-        </DockPanel>
 
-        <Border Grid.Row="1" Classes="matrixShared" IsVisible="{Binding Compare.HasShared}"
-                AutomationProperties.Name="What these words share">
-          <DockPanel>
-            <TextBlock DockPanel.Dock="Left" Classes="matrixSharedHeading" Text="What these words share:"
-                       Margin="{DynamicResource Intent.Gap.AfterGroup}" />
-            <TextBlock DockPanel.Dock="Right" Classes="matrixSharedCount" Text="{Binding Compare.SharedMoreText}"
-                       IsVisible="{Binding Compare.SharedMoreText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            <ItemsControl ItemsSource="{Binding Compare.Shared}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:CompareSharedMorphemeViewModel">
-                  <StackPanel Classes="matrixSharedItem" Orientation="Horizontal"
-                              AutomationProperties.Name="{Binding AccessibleName}">
-                    <TextBlock Classes="matrixSharedCount" Text="{Binding Separator}"
-                               IsVisible="{Binding HasSeparator}" />
-                    <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                    <TextBlock Classes="matrixSharedCount" Text="{Binding CountText}" />
-                  </StackPanel>
+          <Border Grid.Row="1" Classes="matrixShared" IsVisible="{Binding Compare.HasShared}"
+                  AutomationProperties.Name="What these words share">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Classes="matrixSharedHeading" Text="What these words share:"
+                         Margin="{DynamicResource Intent.Gap.AfterGroup}" />
+              <TextBlock DockPanel.Dock="Right" Classes="matrixSharedCount" Text="{Binding Compare.SharedMoreText}"
+                         IsVisible="{Binding Compare.SharedMoreText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <ItemsControl ItemsSource="{Binding Compare.Shared}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CompareSharedMorphemeViewModel">
+                    <StackPanel Classes="matrixSharedItem" Orientation="Horizontal"
+                                AutomationProperties.Name="{Binding AccessibleName}">
+                      <TextBlock Classes="matrixSharedCount" Text="{Binding Separator}"
+                                 IsVisible="{Binding HasSeparator}" />
+                      <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                      <TextBlock Classes="matrixSharedCount" Text="{Binding CountText}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </DockPanel>
+          </Border>
+
+          <DockPanel Grid.Row="2">
+            <ComboBox DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
+                      SelectedItem="{Binding Compare.Sort}"
+                      MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      AutomationProperties.Name="Order the listed words">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareSort">
+                  <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+                     Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                     Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
+                     AutomationProperties.Name="Search the listed words" />
+            <WrapPanel HorizontalAlignment="Right">
+              <Button Content="AI Handoff" Command="{Binding Compare.HandOffCommand}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      AutomationProperties.Name="AI Handoff for the listed words" />
+              <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
+                      IsVisible="{Binding Compare.HasCheckedWords}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      AutomationProperties.Name="Add checked words as Unknown" />
+              <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
+                      IsVisible="{Binding Compare.HasCheckedWords}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      AutomationProperties.Name="Mark checked words as incorrect spelling" />
+              <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
+                           IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                           ToolTip.Tip="Parse the stopped and unparsed words again"
+                           views:ClearTipPlacement.IsEnabled="True"
+                           AutomationProperties.Name="Parse the stopped and unparsed words again">
+                <SplitButton.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                      <views:CopyableTextBlock Classes="muted" Text="Seconds per word" VerticalAlignment="Center" />
+                      <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
+                                     Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
+                                     AutomationProperties.Name="Seconds each word gets when run again" />
+                    </StackPanel>
+                  </Flyout>
+                </SplitButton.Flyout>
+              </SplitButton>
+            </WrapPanel>
           </DockPanel>
-        </Border>
 
-        <DockPanel Grid.Row="2">
-          <ComboBox DockPanel.Dock="Left" VerticalAlignment="Top" ItemsSource="{Binding Compare.SortChoices}"
-                    SelectedItem="{Binding Compare.Sort}"
-                    MinWidth="{DynamicResource Component.TextsPage.CompareSortMinWidth}"
-                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                    AutomationProperties.Name="Order the listed words">
-            <ComboBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:CompareSort">
-                <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <TextBox DockPanel.Dock="Left" VerticalAlignment="Top" Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
-                   Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                   Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
-                   AutomationProperties.Name="Search the listed words" />
-          <WrapPanel HorizontalAlignment="Right">
-            <Button Content="AI Handoff" Command="{Binding Compare.HandOffCommand}"
-                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                    AutomationProperties.Name="AI Handoff for the listed words" />
-            <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
-                    IsVisible="{Binding Compare.HasCheckedWords}"
-                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                    ToolTip.Tip="{Binding Compare.CheckedWordText}"
-                    AutomationProperties.Name="Add checked words as Unknown" />
-            <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
-                    IsVisible="{Binding Compare.HasCheckedWords}"
-                    Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                    ToolTip.Tip="{Binding Compare.CheckedWordText}"
-                    AutomationProperties.Name="Mark checked words as incorrect spelling" />
-            <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
-                         IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                         ToolTip.Tip="Parse the stopped and unparsed words again"
-                         views:ClearTipPlacement.IsEnabled="True"
-                         AutomationProperties.Name="Parse the stopped and unparsed words again">
-              <SplitButton.Flyout>
-                <Flyout Placement="BottomEdgeAlignedRight">
-                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                    <views:CopyableTextBlock Classes="muted" Text="Seconds per word" VerticalAlignment="Center" />
-                    <NumericUpDown Value="{Binding Compare.RerunSeconds}" Minimum="1" Maximum="3600" Increment="10"
-                                   Width="{DynamicResource Component.TextsPage.RerunTimeWidth}" FormatString="0"
-                                   AutomationProperties.Name="Seconds each word gets when run again" />
-                  </StackPanel>
-                </Flyout>
-              </SplitButton.Flyout>
-            </SplitButton>
-          </WrapPanel>
-        </DockPanel>
+          <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Minimal}">
+            <views:RefusalBlock DataContext="{Binding Compare.Changes.ShownRefusal}" />
+            <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.Changes.CollectionNotice}" TextWrapping="Wrap"
+                                     IsVisible="{Binding Compare.Changes.CollectionNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
 
-        <StackPanel Grid.Row="3" Spacing="{DynamicResource Intent.Space.Minimal}">
-          <views:RefusalBlock DataContext="{Binding Compare.Changes.ShownRefusal}" />
-          <views:CopyableTextBlock Classes="muted" Text="{Binding Compare.Changes.CollectionNotice}" TextWrapping="Wrap"
-                                   IsVisible="{Binding Compare.Changes.CollectionNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-        </StackPanel>
-
-        <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-          <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="Meaning" />
-          <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
-                   KeyboardNavigation.TabNavigation="Continue"
-                   AutomationProperties.Name="Words in the chosen cells">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:CompareWordViewModel">
-                <views:WordRow Row="{Binding WordRow}" List="matrix" IsChecked="{Binding IsChecked}"
-                               ShowsMeaning="{Binding $parent[views:ComparePanel].Compare.ShowsMeaning}"
-                               IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
-                  <views:WordRow.Card>
-                    <views:WordRowCard />
-                  </views:WordRow.Card>
-                </views:WordRow>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+          <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
+            <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="Meaning" />
+            <ListBox Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
+                     MaxHeight="{DynamicResource Component.TextsPage.CompareWordsListHeight}"
+                     KeyboardNavigation.TabNavigation="Continue"
+                     AutomationProperties.Name="Words in the chosen cells">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:CompareWordViewModel">
+                  <views:WordRow Row="{Binding WordRow}" List="matrix" IsChecked="{Binding IsChecked}"
+                                 ShowsMeaning="{Binding $parent[views:ComparePanel].Compare.ShowsMeaning}"
+                                 IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
+                    <views:WordRow.Card>
+                      <views:WordRowCard />
+                    </views:WordRow.Card>
+                  </views:WordRow>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
         </Grid>
-      </Grid>
-    </Border>
+      </Border>
+    </ScrollViewer>
   </Grid>
 </UserControl>

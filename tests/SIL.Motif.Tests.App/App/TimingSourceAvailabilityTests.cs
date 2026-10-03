@@ -15,6 +15,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class TimingSourceAvailabilityTests
 {
     private const string ProjectPath = @"C:\projects\reading.fwdata";
@@ -41,9 +42,8 @@ public sealed class TimingSourceAvailabilityTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 
-                var controls = Assert.Single(window.GetVisualDescendants().OfType<StackPanel>(),
+                var controls = Assert.Single(window.GetVisualDescendants().OfType<WrapPanel>(),
                     panel => AutomationProperties.GetName(panel) == "Timing controls");
-                Assert.Equal(Orientation.Horizontal, controls.Orientation);
                 foreach (var name in new[]
                          {
                              "Words from a Matrix cell", "Words from a list", "More ways to choose words",

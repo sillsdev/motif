@@ -15,6 +15,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using LiveMarkdown.Avalonia;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -373,6 +374,13 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Baseline of", text);
                 Assert.Contains("saved", text);
                 Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers.", text);
+                Assert.True(workspace.FreshnessIsStale);
+                var freshnessLabel = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
+                    AutomationProperties.GetAutomationId(block) == AutomationIds.FreshnessLabel);
+                var freshnessDetail = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
+                    AutomationProperties.GetAutomationId(block) == AutomationIds.FreshnessDetail);
+                Assert.Equal(workspace.FreshnessLabel, freshnessLabel.Text);
+                Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
                 Assert.Equal(2, page.GetVisualDescendants().OfType<OutcomeBar>().Count());
                 var overviewModel = workspace.PageModel<OverviewPageModel>();
                 Assert.Equal(Mark.ParserRefusal,
@@ -445,7 +453,10 @@ public sealed class MainWindowSmokeTests
 
                 var page = Assert.Single(window.GetLogicalDescendants().OfType<OverviewPage>());
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Contains("Nothing parsed since the last Refresh.", text);
+                Assert.True(workspace.Context.NeedsAssessment);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(), prompt =>
+                    AutomationProperties.GetAutomationId(prompt) == AutomationIds.ParsePromptText &&
+                    prompt.Text == workspace.Context.ParsePromptText && prompt.IsEffectivelyVisible);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse all words");
                 Assert.Contains("Not checked yet", text);
@@ -1288,12 +1299,12 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(list) == "Words in the selected list").IsEffectivelyVisible);
 
                 var listHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "AI Handoff for this list");
+                    AutomationProperties.GetName(button) == page.TextsLists.HandOffListLabel);
                 var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "AI Handoff for ticked words in this list");
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.HandOffCheckedWords);
 
-                Assert.Equal("AI Handoff for this list", listHandoff.Content);
-                Assert.Equal("AI Handoff", checkedHandoff.Content);
+                Assert.Equal(page.TextsLists.HandOffListLabel, listHandoff.Content);
+                Assert.Equal(page.TextsLists.HandOffCheckedWordsLabel, checkedHandoff.Content);
                 Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
                 Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
 
@@ -1441,7 +1452,7 @@ public sealed class MainWindowSmokeTests
                     Assert.Contains(tiles, tile => AutomationProperties.GetName(tile) == file.DragAccessibleName);
 
                 Assert.Contains(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Drag all AI Handoff files" && button.Focusable);
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.DragAllHandoffFiles && button.Focusable);
                 var handoffNames = panel.GetLogicalDescendants()
                     .OfType<Control>()
                     .Select(control => AutomationProperties.GetName(control))
@@ -1452,9 +1463,9 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(button) == "Write the AI Handoff folder");
 
                 var tile = tiles.Single(item =>
-                    AutomationProperties.GetName(item) == "Drag parse-results.json");
+                    AutomationProperties.GetName(item) == files[2].DragAccessibleName);
                 var tileText = tile.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(text => text.Text == "parse-results.json");
+                    .Single(text => text.Text == files[2].RelativePath);
                 RaiseLeftPointerPress(tileText, window);
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 

@@ -6,6 +6,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Headless;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -161,6 +162,12 @@ internal sealed class TooltipScenes
     private readonly FakeCommandClient _client;
     private TaskCompletionSource<bool>? _parseProgressRelease;
     private Task<bool>? _parseProgressTask;
+    public WordRow? MatrixTargetRow { get; private set; }
+
+    public bool ParseProgressBandIsVisible => Visible<Control>()
+        .Where(control => AutomationProperties.GetAutomationId(control) == AutomationIds.ParseProgressDetails)
+        .SelectMany(control => control.GetVisualAncestors().OfType<Border>())
+        .Any(border => border.Classes.Contains("notice") && border.IsEffectivelyVisible);
 
     private TooltipScenes(WorkspaceShellViewModel workspace, MainWindow window, FakeCommandClient client)
     {
@@ -172,6 +179,10 @@ internal sealed class TooltipScenes
     public WorkspaceShellViewModel Workspace { get; }
 
     public MainWindow Window { get; }
+
+    public Border ParseProgressBand => Window.GetVisualDescendants().OfType<Control>()
+        .Single(control => AutomationProperties.GetAutomationId(control) == AutomationIds.ParseProgressDetails)
+        .GetVisualAncestors().OfType<Border>().First(border => border.Classes.Contains("notice"));
 
     private ResultsInTextViewModel InText => Workspace.PageModel<TextsPageModel>().ResultsInText;
 
@@ -255,7 +266,27 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.Matrix:
                 Show(WorkspacePage.Texts, TextsTab.Matrix);
-                Visible<WordRow>().First().FocusRow();
+                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
+                    "the Sample Assessment to finish");
+                if (Workspace.Assess.RunCommand.ExecutionTask is { } assessment)
+                    await assessment;
+                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
+                    "the Sample Assessment task to return");
+                PageScreenshots.Settle(Window);
+                var wordRowsList = Visible<ListBox>().Single(box =>
+                    AutomationProperties.GetName(box) == "Words in the chosen cells");
+                var word = Workspace.Assess.Compare.Words.First();
+                var wordIndex = Workspace.Assess.Compare.Words.IndexOf(word);
+                wordRowsList.ScrollIntoView(wordIndex);
+                PageScreenshots.Settle(Window);
+                var container = wordRowsList.ContainerFromIndex(wordIndex);
+                Assert.NotNull(container);
+                var row = container.GetVisualDescendants().OfType<WordRow>().Single();
+                row.GetVisualDescendants().OfType<Border>()
+                    .First(border => border.Classes.Contains("wordRowBody")).BringIntoView();
+                PageScreenshots.Settle(Window);
+                MatrixTargetRow = row;
+                row.FocusRow();
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;

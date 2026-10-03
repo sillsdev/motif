@@ -26,6 +26,7 @@ namespace SIL.Motif.Tests.App;
 /// first parse, and each word strip carries the Word, FieldWorks and PanGloss lines with one action and one Fix.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class AnalyzeTextsLayoutTests
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
@@ -122,7 +123,7 @@ public sealed class AnalyzeTextsLayoutTests
                     strip.Tag is ResultsTokenViewModel { Form: "alikula" });
                 var warningIcon = Assert.Single(warningStrip.GetVisualDescendants().OfType<MarkGlyph>(),
                     glyph => glyph.Mark == Mark.Warning);
-                Assert.IsType<PathIcon>(Assert.Single(warningIcon.Children));
+                Assert.IsType<PathIcon>(warningIcon.Child);
                 var warningStatus = warningIcon.FindAncestorOfType<StackPanel>()!;
                 Assert.Equal("Named in 1", Avalonia.Automation.AutomationProperties.GetName(warningStatus));
                 Assert.Contains(warningStatus.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "1");
@@ -581,8 +582,9 @@ public sealed class AnalyzeTextsLayoutTests
                     (ResultsTokenViewModel)alikula.Tag!);
                 Settle(window);
                 var wordLink = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<HyperlinkButton>(),
-                    link => link.Content as string == "Word Analyses ↗");
+                    link => Avalonia.Automation.AutomationProperties.GetName(link) == "Open alikula in Word Analyses");
                 Assert.Equal("Open alikula in Word Analyses", Avalonia.Automation.AutomationProperties.GetName(wordLink));
+                Assert.Contains(wordLink.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Word Analyses ↗");
                 Assert.Equal(0, wordLink.Opacity);
                 Assert.True(wordLink.Focus(NavigationMethod.Tab));
                 Settle(window);

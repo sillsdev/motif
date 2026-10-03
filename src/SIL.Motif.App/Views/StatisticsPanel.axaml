@@ -52,7 +52,7 @@
                AutomationProperties.Name="Statistics word scope" />
 
     <views:RefusalBlock DataContext="{Binding Statistics.ShownRefusal}" DockPanel.Dock="Top" />
-    <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" TextWrapping="Wrap"
+    <views:CopyableTextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" Margin="{DynamicResource Intent.Gap.AfterRelated}" HorizontalAlignment="Stretch" TextWrapping="Wrap"
                Text="{Binding Statistics.ShadingNote}" />
     <views:CopyableTextBlock Text="Showing the last successful statistics; they may be out of date."
                IsVisible="{Binding Statistics.IsStale}"

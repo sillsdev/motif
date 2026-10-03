@@ -388,9 +388,9 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The AI Handoff button's words, naming how many listed words it sends.</summary>
     public string HandOffLabel => Words.Count switch
     {
-        0 => "AI Handoff",
-        1 => "AI Handoff for this word",
-        var count => $"AI Handoff for {count:N0} words",
+        0 => WindowCopy.AiHandoff,
+        1 => WindowCopy.AiHandoffForThisWord,
+        var count => WindowCopy.AiHandoffForWordCount(count),
     };
 
     /// <summary>

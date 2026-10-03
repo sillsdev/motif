@@ -53,8 +53,14 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <Style Selector="Border.matrixCell.compact :is(TextBlock).matrixCellCount">
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
   <Style Selector="Border.matrixCell.compact :is(TextBlock).matrixCellLabel, Border.matrixCell.compact Ellipse.matrixPending">
     <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.markChip.wrapText Grid.markChipRow :is(TextBlock).markWord">
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="Border.matrixCell.good :is(TextBlock), Border.matrixCell.fine :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Fine}" />
@@ -121,7 +127,7 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector=":is(Grid).markGlyphHost.matrixChosenWord > :is(TextBlock).markGlyph">
+  <Style Selector=":is(Decorator).markGlyphHost.matrixChosenWord > :is(TextBlock).markGlyph">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>

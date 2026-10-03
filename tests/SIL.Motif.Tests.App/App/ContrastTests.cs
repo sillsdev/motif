@@ -442,9 +442,10 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(listsWindow);
                         PageScreenshots.Settle(reviewWindow);
                         var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
-                        var ticked = Disabled(listsWindow, "AI Handoff for ticked words in this list", failures);
+                        var ticked = DisabledByAutomationId(listsWindow,
+                            SIL.Motif.App.AutomationIds.HandOffCheckedWords, failures);
                         var whole = lists.HandOffListUnavailable
-                            ? Disabled(listsWindow, "AI Handoff for this list", failures) : null;
+                            ? DisabledByAutomationId(listsWindow, SIL.Motif.App.AutomationIds.HandOffList, failures) : null;
                         var owners = new[] { apply, ticked, whole }.OfType<Button>().ToList();
                         var reasons = new List<(string What, TextBlock Text)>();
                         foreach (var owner in owners)
@@ -483,6 +484,17 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         if (button is null) failures.Add($"'{name}' is not shown");
         else if (button.IsEffectivelyEnabled) failures.Add($"'{name}' is enabled, so it shows no reason");
         else if (ToolTip.GetTip(button) is not string { Length: > 0 }) failures.Add($"'{name}' is disabled with no reason in its tooltip");
+        return button is { IsEffectivelyEnabled: false } ? button : null;
+    }
+
+    private static Button? DisabledByAutomationId(Window window, string automationId, List<string> failures)
+    {
+        var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(candidate =>
+            AutomationProperties.GetAutomationId(candidate) == automationId);
+        if (button is null) failures.Add($"'{automationId}' is not shown");
+        else if (button.IsEffectivelyEnabled) failures.Add($"'{automationId}' is enabled, so it shows no reason");
+        else if (ToolTip.GetTip(button) is not string { Length: > 0 })
+            failures.Add($"'{automationId}' is disabled with no reason in its tooltip");
         return button is { IsEffectivelyEnabled: false } ? button : null;
     }
 

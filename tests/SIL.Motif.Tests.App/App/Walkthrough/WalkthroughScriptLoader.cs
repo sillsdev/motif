@@ -110,7 +110,8 @@ internal static class WalkthroughScriptLoader
     {
         CheckProperties(element, $"step '{id}'", "id", "kind", "automationId", "condition", "expectedText", "timeoutMs");
         var condition = ReadRequiredString(element, "condition", $"step '{id}'");
-        if (condition is not ("visible" or "hidden" or "enabled" or "text" or "assessmentPublished"))
+        if (condition is not ("visible" or "hidden" or "enabled" or "text" or "assessmentPublished" or
+            "parseProgressVisibleOrCompleted"))
             throw Invalid($"step '{id}' has unknown wait condition '{condition}'");
         var expected = element.TryGetProperty("expectedText", out var value)
             ? ReadString(value, $"step '{id}'.expectedText") : null;

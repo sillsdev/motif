@@ -134,6 +134,7 @@
   </Style>
 
   <Style Selector=":is(TextBlock).wordRowForm">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
@@ -193,12 +194,12 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="Grid.markGlyphHost.wordRowHeading :is(TextBlock).markGlyph">
+  <Style Selector="Decorator.markGlyphHost.wordRowHeading :is(TextBlock).markGlyph">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <Style Selector="Grid.markGlyphHost.wordRowHeading">
+  <Style Selector="Decorator.markGlyphHost.wordRowHeading">
     <Setter Property="doc:TextElement.Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
 

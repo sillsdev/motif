@@ -16,7 +16,7 @@
     <StaticResource x:Key="Component.Review.ActionPadding" ResourceKey="Primitive.Inset.8_3_8_3" />
     <StaticResource x:Key="Component.Review.GapStart" ResourceKey="Primitive.Inset.10_0_0_0" />
     <StaticResource x:Key="Component.Review.GapEnd" ResourceKey="Primitive.Inset.0_0_6_0" />
-    <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.Review.RightWidth" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
   <Style Selector="Grid.reviewLayout">
     <Setter Property="Margin" Value="{DynamicResource Component.Review.PageMargin}" />

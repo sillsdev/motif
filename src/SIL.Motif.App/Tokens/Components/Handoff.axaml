@@ -7,7 +7,7 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Handoff.HeaderPadding" ResourceKey="Primitive.Inset.20_8_20_8" />
     <StaticResource x:Key="Component.Handoff.PageMargin" ResourceKey="Primitive.Inset.24_16_24_20" />
-    <StaticResource x:Key="Component.Handoff.ColumnGap" ResourceKey="Primitive.Space.28" />
+    <StaticResource x:Key="Component.Handoff.ColumnGap" ResourceKey="Primitive.Space.20" />
     <StaticResource x:Key="Component.Handoff.GuideWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.Handoff.SectionGap" ResourceKey="Primitive.Space.14" />
     <StaticResource x:Key="Component.Handoff.CardGap" ResourceKey="Primitive.Space.10" />

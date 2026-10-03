@@ -14,6 +14,7 @@ namespace SIL.Motif.Tests.App;
 /// <see cref="PageScreenshots"/>, it runs only when <c>MOTIF_SCREENSHOTS</c> names a folder.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class AnalyzeTextsScreenshots
 {
     [ScreenshotFact]
@@ -131,6 +132,7 @@ public sealed class AnalyzeTextsScreenshots
     {
         window.Width = width;
         AnalyzeTextsLayoutTests.Settle(window);
+        LayoutAssertions.BeforeCapture(window);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }

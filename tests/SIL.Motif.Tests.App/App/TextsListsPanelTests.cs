@@ -77,7 +77,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 row.GetVisualDescendants().OfType<CheckBox>().Single().IsChecked = true;
 
                 Assert.True(compare.Words.Single().IsChecked);
-                Assert.Equal("AI Handoff for this word", lists.HandOffCheckedWordsLabel);
+                Assert.Equal(WindowCopy.AiHandoffForThisWord, lists.HandOffCheckedWordsLabel);
             }
             finally
             {
@@ -105,13 +105,13 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                     .Where(button => button.IsEffectivelyVisible && button.DataContext is TextsListDefinitionViewModel)
                     .Select(button => ((TextsListDefinitionViewModel)button.DataContext!).Name).ToArray();
                 Assert.Equal(lists.Lists.Where(list => list.HasWords).Select(list => list.Name), visibleLists);
-                Assert.Equal("AI Handoff for this list", lists.HandOffListLabel);
-                Assert.Equal("AI Handoff", lists.HandOffCheckedWordsLabel);
-                Assert.Equal("Tick words first.", lists.HandOffCheckedWordsHelpText);
+                Assert.Equal(WindowCopy.AiHandoffForThisList, lists.HandOffListLabel);
+                Assert.Equal(WindowCopy.AiHandoff, lists.HandOffCheckedWordsLabel);
+                Assert.Equal(WindowCopy.TickWordsFirst, lists.HandOffCheckedWordsHelpText);
 
                 var checkedWords = panel.GetVisualDescendants().OfType<Button>()
                     .Single(button => ReferenceEquals(button.Command, lists.HandOffCheckedWordsCommand));
-                Assert.Equal("Tick words first.", ToolTip.GetTip(checkedWords));
+                Assert.Equal(lists.HandOffCheckedWordsHelpText, ToolTip.GetTip(checkedWords));
                 Assert.True(ToolTip.GetShowOnDisabled(checkedWords));
             }
             finally

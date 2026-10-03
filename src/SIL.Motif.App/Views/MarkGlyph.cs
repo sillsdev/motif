@@ -8,7 +8,7 @@ using SIL.Motif.App.ViewModels;
 namespace SIL.Motif.App.Views;
 
 /// <summary>Draws a mark's declared vector icon or its font glyph.</summary>
-public sealed class MarkGlyph : Grid
+public sealed class MarkGlyph : Decorator
 {
     /// <summary>The mark whose sign this control draws.</summary>
     public static readonly StyledProperty<Mark?> MarkProperty =
@@ -33,7 +33,7 @@ public sealed class MarkGlyph : Grid
 
     private void Rebuild()
     {
-        Children.Clear();
+        Child = null;
         MarkClasses.SetMark(this, Mark);
         if (Mark is not { Glyph.Length: > 0 } mark)
         {
@@ -54,6 +54,6 @@ public sealed class MarkGlyph : Grid
         glyph.Classes.AddRange(classes);
         glyph.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
         glyph.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
-        Children.Add(glyph);
+        Child = glyph;
     }
 }

@@ -196,6 +196,7 @@ internal static class InteractiveControlSweep
         DataGrid or DataGridColumnHeader or DataGridRow or DataGridCell => InteractiveControlFamily.Grid,
         TreeView or TreeViewItem => InteractiveControlFamily.Tree,
         MorphemeRow => InteractiveControlFamily.Morpheme,
+        ScrollViewer { Name: "FieldWorksMorphemeScroll" } => InteractiveControlFamily.ScrollViewport,
         TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
         ProgressBar => InteractiveControlFamily.Progress,
@@ -234,6 +235,9 @@ internal static class InteractiveControlSweep
 
     private static string SourceFor(InteractiveControlFamily family)
     {
+        if (family == InteractiveControlFamily.ScrollViewport)
+            return "src/SIL.Motif.App/Views/WordRow.axaml";
+
         var sources = InteractiveMarkupContracts.TypesForFamily(family)
             .Concat(InteractiveControlManifest.GeneratedFamilies
                 .Where(generated => generated.Family == family)

@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Controls.Shapes;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -530,6 +531,8 @@ internal static class TooltipOwners
         },
         new("refresh", "Views/MainWindow.axaml", "Capture a new Baseline from FieldWorks' last save.", TooltipScene.Overview,
             control => control is Button && Name(control) == "Refresh the project"),
+        new("project name", "Views/MainWindow.axaml", "{Binding ProjectName}", TooltipScene.Overview,
+            control => control is TextBlock && control.Classes.Contains("projectName")),
         new("collapsed sidebar entry", "Views/MainWindow.axaml", "{Binding Title}", TooltipScene.CollapsedSidebar,
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
                 list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
@@ -562,6 +565,9 @@ internal static class TooltipOwners
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word row", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
             control => control is Border && control.Classes.Contains("wordRowBody")),
+        new("word form", "Views/WordRow.axaml", "{Binding Word}", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordRowForm") &&
+                control.FindAncestorOfType<WordRow>() is not null),
         new("places in a word row", "Views/WordRow.axaml", "{Binding PlacesTooltip}", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordRowPlaces") &&
                 control.FindAncestorOfType<WordRow>() is not null),
@@ -644,13 +650,15 @@ internal static class TooltipOwners
             Pending = "no tooltip scene opens a list row's card",
         },
         new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
-            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for ticked words in this list"),
+            TooltipScene.Lists, control => control is Button &&
+                AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffCheckedWords),
         new("checked words to AI Handoff in Analyze texts", "Views/TextWordsPanel.axaml", "{Binding Words.HandOffCheckedWordsHelpText}",
             TooltipScene.AnalyzeWordList, control => control is Button &&
                 Name(control) is { } name && name.StartsWith("AI Handoff", StringComparison.Ordinal) &&
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
         new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListDisabledReason}",
-            TooltipScene.Lists, control => control is Button && Name(control) == "AI Handoff for this list")
+            TooltipScene.Lists, control => control is Button &&
+                AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffList)
         {
             Gap = "while the list can go to AI Handoff its reason is empty, and an empty tooltip still opens",
         },
@@ -662,6 +670,18 @@ internal static class TooltipOwners
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event."),
         new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details."),
+        new("trimmed trace notation", "Views/DiagnosticPanel.axaml", "{Binding Notation}", TooltipScene.TryAWordRecordedDetails,
+            control => control is CopyableTextBlock && control.Classes.Contains("traceNotation") &&
+                control.FindAncestorOfType<DiagnosticPanel>() is not null && ToolTip.GetTip(control) is string)
+        {
+            Pending = "the notation is trimmed only when wider than its column; the Expert screenshot states capture it",
+        },
+        new("trimmed recorded-step notation", "Views/DiagnosticPanel.axaml", "{Binding Notation}", TooltipScene.TryAWordRecordedDetails,
+            control => control is CopyableTextBlock && control.Classes.Contains("traceNotation") &&
+                control.FindAncestorOfType<DiagnosticPanel>() is not null && ToolTip.GetTip(control) is string)
+        {
+            Pending = "the recorded step's notation is trimmed only when wider than its column; screenshot states capture it",
+        },
         new("expert input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
                 control.FindAncestorOfType<Expander>() is null &&

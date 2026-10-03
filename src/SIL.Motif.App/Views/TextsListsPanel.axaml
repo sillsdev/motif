@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
@@ -56,10 +57,12 @@
                 ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
         <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
                 Command="{Binding Lists.HandOffCheckedWordsCommand}"
-                AutomationProperties.Name="AI Handoff for ticked words in this list"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffCheckedWords}"
+                AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForTickedWordsInThisList}"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
                 ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
         <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffList}"
                 AutomationProperties.Name="{Binding Lists.HandOffListLabel}"
                 AutomationProperties.HelpText="{Binding Lists.HandOffListDisabledReason}"
                 ToolTip.Tip="{Binding Lists.HandOffListDisabledReason}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />

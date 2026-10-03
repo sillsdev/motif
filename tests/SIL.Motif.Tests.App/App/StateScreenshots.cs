@@ -421,7 +421,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("lists", "disabled-hover", async stage =>
         {
             await stage.ChooseList();
-            var button = stage.Named<Button>("AI Handoff for ticked words in this list");
+            var button = stage.Visible<Button>(candidate =>
+                AutomationProperties.GetAutomationId(candidate) == SIL.Motif.App.AutomationIds.HandOffCheckedWords).Single();
             return $"{(button.IsEffectivelyEnabled ? "Enabled" : "Disabled")} button. " +
                 await stage.Hover(null, () => button, "Tick words first");
         });
@@ -685,7 +686,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 
         // AI Handoff.
         yield return new("ai-handoff", "drag-tooltip", stage => stage.Hover(WorkspacePage.AiHandoff,
-            () => stage.Named<Button>("Drag all AI Handoff files"), "the drag-all button"));
+            () => stage.Visible<Button>(button =>
+                AutomationProperties.GetAutomationId(button) == SIL.Motif.App.AutomationIds.DragAllHandoffFiles).Single(),
+            "the drag-all button"));
         yield return new("ai-handoff", "question-hover", stage => stage.Hover(WorkspacePage.AiHandoff,
             () => stage.Visible<Button>(button => button.Classes.Contains("handoffQuestion")).First(), "the first question"));
         yield return new("ai-handoff", "handoff-md-expanded", stage => stage.Expand(WorkspacePage.AiHandoff,
@@ -758,6 +761,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
     // Two matching frames in a row, so no chevron is caught turning; a blinking caret ends the bounded run instead.
     private static void Save(MainWindow window, string path)
     {
+        LayoutAssertions.AssertCurrent(window);
         byte[]? previous = null;
         byte[] current = [];
         for (var pass = 0; pass < 40; pass++)

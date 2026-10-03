@@ -22,6 +22,7 @@ namespace SIL.Motif.Tests.App;
 /// rule recorded is shown as unattributed, and that no count is shown without saying what it counts.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
+[Trait("MotifTestLevel", "System")]
 public sealed class TimingSharesTests
 {
     private const string ProjectPath = @"C:\projects\sample.fwdata";
@@ -393,7 +394,7 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
-    public void TimingControlsStayInOneRowAndCallsOpenOnRequest()
+    public void TimingControlsWrapWithinPageAndCallsOpenOnRequest()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -405,16 +406,9 @@ public sealed class TimingSharesTests
                 window.Show();
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
-                var strip = window.GetLogicalDescendants().OfType<StackPanel>()
+                var strip = window.GetLogicalDescendants().OfType<WrapPanel>()
                     .Single(panel => AutomationProperties.GetName(panel) == "Timing controls");
-                Assert.Equal(Orientation.Horizontal, strip.Orientation);
                 var visibleControls = strip.Children.OfType<Control>().Where(control => control.IsEffectivelyVisible).ToArray();
-                var bounds = visibleControls.Select(control =>
-                {
-                    var top = control.TranslatePoint(default, window)!.Value.Y;
-                    return (Top: top, Bottom: top + control.Bounds.Height);
-                }).ToArray();
-                Assert.True(bounds.Max(control => control.Top) < bounds.Min(control => control.Bottom));
                 var rightmost = visibleControls.Max(control =>
                     control.TranslatePoint(default, window)!.Value.X + control.Bounds.Width);
                 var page = window.GetLogicalDescendants().OfType<Border>()
@@ -422,6 +416,13 @@ public sealed class TimingSharesTests
                 var pageRight = page.TranslatePoint(default, window)!.Value.X + page.Bounds.Width - page.Padding.Right;
                 Assert.True(rightmost <= pageRight,
                     $"Timing controls extend to {rightmost:F1} px past the page's {pageRight:F1} px content edge.");
+                Assert.All(visibleControls, control =>
+                {
+                    var origin = control.TranslatePoint(default, window)!.Value;
+                    Assert.True(origin.Y >= strip.TranslatePoint(default, window)!.Value.Y &&
+                        origin.Y + control.Bounds.Height <= strip.TranslatePoint(default, window)!.Value.Y + strip.Bounds.Height,
+                        $"{AutomationProperties.GetName(control) ?? control.GetType().Name} escapes the Timing control strip.");
+                });
 
                 var calls = window.GetLogicalDescendants().OfType<Button>()
                     .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");

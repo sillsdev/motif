@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
@@ -11,7 +12,8 @@
     <Border Classes="wordRowEdge">
       <StackPanel>
         <Border x:Name="Body" Classes="wordRowBody hoverReveal" Classes.open="{Binding #Self.IsOpen}" Focusable="True" IsTabStop="True"
-                ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}">
+                ToolTip.Tip="{Binding Summary}" AutomationProperties.Name="{Binding Summary}"
+                views:ClearTipPlacement.IsEnabled="True">
           <StackPanel>
         <Grid x:Name="Line" Classes="wordRowLine">
           <Grid.ColumnDefinitions>
@@ -38,7 +40,8 @@
               </Grid.ColumnDefinitions>
 
               <StackPanel x:Name="WordCell" Classes="wordRowWord" VerticalAlignment="Center">
-                <views:CopyableTextBlock Classes="wordRowForm" Text="{Binding Word}" TextTrimming="CharacterEllipsis" />
+                <views:CopyableTextBlock Classes="wordRowForm" Text="{Binding Word}" TextTrimming="CharacterEllipsis"
+                                         ToolTip.Tip="{Binding Word}" views:ClearTipPlacement.IsEnabled="True" />
                 <views:CopyableTextBlock Classes="wordRowGloss" Text="{Binding Gloss}" TextWrapping="Wrap"
                            IsVisible="{Binding Gloss, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <views:CopyableTextBlock Classes="wordRowStaged" Text="{Binding #Self.StagedText}" TextTrimming="CharacterEllipsis"
@@ -50,7 +53,9 @@
                 <controls:OpinionMark Grid.Column="0" Kind="{Binding OpinionKind}" IsVisible="{Binding HasOpinionMark}"
                                       VerticalAlignment="Top" Margin="{DynamicResource Intent.Gap.AfterRelated}"
                                       AutomationProperties.Name="{Binding OpinionLabel}" />
-                <ScrollViewer x:Name="FieldWorksMorphemeScroll" Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+                <ScrollViewer x:Name="FieldWorksMorphemeScroll"
+                              AutomationProperties.AutomationId="{x:Static app:AutomationIds.FieldWorksMorphemeScroll}"
+                              Grid.Column="1" HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
                 <ItemsControl x:Name="FieldWorksMorphemes" ItemsSource="{Binding FieldWorksMorphemes}">
                   <ItemsControl.ItemsPanel>

@@ -623,9 +623,16 @@ internal static class WalkthroughReplay
             "text" => string.Equals(window.TextByAutomationId(step.AutomationId!), step.ExpectedText,
                 StringComparison.Ordinal),
             "assessmentPublished" => AssessmentIsPublished(window, control),
+            "parseProgressVisibleOrCompleted" => ParseProgressVisibleOrCompleted(window, control),
             _ => false,
         };
     }
+
+    private static bool ParseProgressVisibleOrCompleted(WalkthroughWindow window, Control progress) =>
+        progress.IsEffectivelyVisible && progress.Bounds.Width > 0 && progress.Bounds.Height > 0 ||
+        window.Workspace.Assess.State == RunState.Completed &&
+        window.Workspace.Context.EvidencePublication.IsCompleted &&
+        !window.Workspace.Context.NeedsAssessment;
 
     private static bool AssessmentIsPublished(WalkthroughWindow window, Control coverage)
     {

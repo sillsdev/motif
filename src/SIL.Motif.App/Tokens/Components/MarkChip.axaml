@@ -26,6 +26,9 @@
   <Style Selector="StackPanel.markChipRow">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="Grid.markChipRow">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
   <Style Selector="Border.markChip :is(TextBlock).markWord, Border.markChip :is(TextBlock).markGlyph">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />

@@ -81,6 +81,7 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
 
                 Assert.Equal(baselineToken, walkthrough.Workspace.Baseline.Token);
                 Assert.Equal(invocationsBeforeSave, FakeParser.Invocations(parserPath));
+                Assert.True(walkthrough.Workspace.FreshnessIsStale);
                 var renderedText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(text => text.IsVisible).Select(text => text.Text).OfType<string>().ToArray();
                 Assert.Contains("FieldWorks saved since", renderedText);

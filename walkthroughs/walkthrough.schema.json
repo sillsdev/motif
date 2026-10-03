@@ -41,7 +41,7 @@
               "id": { "$ref": "#/$defs/stepId" },
               "kind": { "const": "waitFor" },
               "automationId": { "$ref": "#/$defs/automationId" },
-              "condition": { "enum": ["visible", "hidden", "enabled", "text", "assessmentPublished"] },
+              "condition": { "enum": ["visible", "hidden", "enabled", "text", "assessmentPublished", "parseProgressVisibleOrCompleted"] },
               "expectedText": { "type": "string", "minLength": 1, "pattern": "\\S" },
               "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 120000 }
             },

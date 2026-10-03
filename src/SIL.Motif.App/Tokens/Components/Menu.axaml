@@ -41,6 +41,7 @@
   <Style Selector="Button.menuEntry :is(TextBlock).menuTitle">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector="Button.menuEntry :is(TextBlock).menuDetail">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />

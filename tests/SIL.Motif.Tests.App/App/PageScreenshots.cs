@@ -163,6 +163,10 @@ public sealed class PageScreenshots
                                 Assert.Contains(renderedText, text => text?.Contains("saved Fri 2 Oct, 6:47 PM", StringComparison.Ordinal) == true);
                                 Assert.DoesNotContain(renderedText, text => text?.Contains(
                                     "FieldWorks has changed since the Baseline behind these numbers", StringComparison.Ordinal) == true);
+                                Assert.True(workspace.FreshnessIsStale);
+                                var freshnessDetail = window.GetVisualDescendants().OfType<CopyableTextBlock>().Single(text =>
+                                    AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.FreshnessDetail);
+                                Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
                             }
                             var file = $"overview-{state}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
@@ -564,6 +568,7 @@ public sealed class PageScreenshots
     internal static void Save(MainWindow window, string path)
     {
         Settle(window);
+        LayoutAssertions.BeforeCapture(window);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }

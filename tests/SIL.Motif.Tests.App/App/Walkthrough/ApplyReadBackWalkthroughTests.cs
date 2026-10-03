@@ -155,10 +155,9 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(File.GetLastWriteTimeUtc(project.FwDataPath), refreshedSourceLastWrite.UtcDateTime);
             Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
             Assert.True(walkthrough.Workspace.Context.NeedsAssessment);
-            Assert.Equal("Refreshed. Parse all words to update the numbers.",
-                walkthrough.Workspace.FreshnessDetail);
+            Assert.Equal(ProjectFreshness.Refreshed, walkthrough.Workspace.Freshness);
             Assert.True(freshnessLabel.IsEffectivelyVisible);
-            Assert.Equal("Refreshed", freshnessLabel.Text);
+            Assert.Equal(walkthrough.Workspace.FreshnessLabel, freshnessLabel.Text);
             Assert.True(freshnessDetail.IsEffectivelyVisible);
             Assert.Equal(walkthrough.Workspace.FreshnessDetail, freshnessDetail.Text);
 

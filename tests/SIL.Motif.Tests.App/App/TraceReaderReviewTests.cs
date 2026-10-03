@@ -242,6 +242,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
                 if (scene == "unavailable")
                     window.GetVisualDescendants().OfType<Expander>().Single(expander => Avalonia.Automation.AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
                 PageScreenshots.Settle(window);
+                LayoutAssertions.BeforeCapture(window);
                 using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("No trace frame rendered.");
                 frame.Save(Path.Combine(folder, $"trace-review-{scene}-{theme}-{width}.png"), PngBitmapEncoderOptions.Default);
             });

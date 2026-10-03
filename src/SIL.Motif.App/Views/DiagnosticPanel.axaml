@@ -185,7 +185,8 @@
                                                       IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                               <views:CopyableTextBlock Text="{Binding RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
                               <views:CopyableTextBlock Text="{Binding RecordedProducerEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
-                              <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation"
+                                                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Notation}" />
                             </StackPanel>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -270,12 +271,13 @@
 
                     <Grid ColumnDefinitions="2*,*" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" />
+                        <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="muted" TextWrapping="WrapWithOverflow" />
                         <views:CopyableTextBlock Text="{Binding RecordedLabel}" TextWrapping="Wrap" />
                         <views:CopyableTextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
                       </StackPanel>
                       <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation" TextWrapping="Wrap" />
+                        <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation"
+                                                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Notation}" />
                         <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation" TextWrapping="Wrap"
                                                  IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
@@ -288,7 +290,7 @@
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" DataContext="{Binding SelectedStep}">
                 <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-                <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="status" />
+                <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="status" TextWrapping="WrapWithOverflow" />
                 <views:CopyableTextBlock Text="{Binding Type}" FontWeight="SemiBold" />
                 <views:CopyableTextBlock Text="{Binding ProducerSourceText}" Classes="traceNotation"
                            IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />

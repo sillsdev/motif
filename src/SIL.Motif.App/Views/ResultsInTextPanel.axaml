@@ -322,7 +322,8 @@
                                         AutomationProperties.AutomationId="{Binding StagedAutomationId}">
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
-                                <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}">
+                                <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}"
+                                        views:ClearTipPlacement.IsEnabled="True">
                                   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
                                     <TextBlock Classes="stagedLabel" Text="Staged" />
                                     <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
@@ -363,9 +364,11 @@
                             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" VerticalAlignment="Center"
                                                      Text="Esc closes · ← → next word"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover" Content="{Binding WordLinkText}"
+                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                                             VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}" />
+                                             VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}">
+                              <TextBlock Text="{Binding WordLinkText}" TextWrapping="Wrap" />
+                            </HyperlinkButton>
                           </DockPanel>
                         </Border>
                         <Border Classes="wordCardSection hoverReveal">
@@ -376,14 +379,14 @@
                             <ItemsControl ItemsSource="{Binding FieldWorksAnalyses}" IsVisible="{Binding HasFieldWorksAnalyses}">
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:FieldWorksAnalysisDisplayViewModel">
-                                  <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+                                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
                                     <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
-                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                                                 VerticalAlignment="Top">
                                       <controls:OpinionMark Kind="{Binding OpinionMarkKind}" ToolTip.Tip="{Binding OpinionLabel}" />
                                       <views:CopyableTextBlock Text="{Binding OpinionLabel}" FontWeight="SemiBold" />
                                     </StackPanel>
-                                  </StackPanel>
+                                  </Grid>
                                 </DataTemplate>
                               </ItemsControl.ItemTemplate>
                             </ItemsControl>

@@ -32,19 +32,21 @@ public sealed class TextsListsHandoffAvailabilityTests
                 FakeComposedWindow.Click(window, "Lists tab");
 
                 var lists = workspace.PageModel<TextsPageModel>().TextsLists;
-                var emptyListReason = "No words in this list to send to AI Handoff.";
                 var wholeListButton = window.GetVisualDescendants().OfType<Button>()
                     .Single(button => ReferenceEquals(button.Command, lists.HandOffListCommand));
                 var checkedWordsButton = window.GetVisualDescendants().OfType<Button>()
                     .Single(button => ReferenceEquals(button.Command, lists.HandOffCheckedWordsCommand));
                 Assert.False(wholeListButton.IsEffectivelyEnabled);
                 Assert.False(checkedWordsButton.IsEffectivelyEnabled);
-                Assert.Equal(emptyListReason, lists.HandOffListDisabledReason);
-                Assert.Equal("This word list has no words to tick.",
+                Assert.NotEmpty(lists.HandOffListDisabledReason);
+                Assert.NotEmpty(lists.HandOffCheckedWordsHelpText);
+                Assert.Equal(lists.HandOffCheckedWordsHelpText,
                     AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal(emptyListReason, ToolTip.GetTip(wholeListButton));
-                Assert.Equal(emptyListReason, AutomationProperties.GetHelpText(wholeListButton));
-                Assert.Empty(VisibleReasons(window));
+                Assert.Equal(lists.HandOffCheckedWordsHelpText, ToolTip.GetTip(checkedWordsButton));
+                Assert.Equal(lists.HandOffListDisabledReason, ToolTip.GetTip(wholeListButton));
+                Assert.Equal(lists.HandOffListDisabledReason, AutomationProperties.GetHelpText(wholeListButton));
+                Assert.Empty(VisibleReasons(window, lists.HandOffListDisabledReason,
+                    lists.HandOffCheckedWordsDisabledReason));
 
                 var words = workspace.Context.Assess.Words;
                 words.Load([new AssessmentWordResult(
@@ -57,14 +59,13 @@ public sealed class TextsListsHandoffAvailabilityTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
 
-                const string untickedWordsReason = "Tick words first.";
                 Assert.True(wholeListButton.IsEffectivelyEnabled);
                 Assert.False(checkedWordsButton.IsEffectivelyEnabled);
                 Assert.Empty(lists.HandOffListDisabledReason);
-                Assert.Equal(untickedWordsReason, lists.HandOffCheckedWordsDisabledReason);
-                Assert.Equal(untickedWordsReason, AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal(untickedWordsReason, ToolTip.GetTip(checkedWordsButton));
-                Assert.Empty(VisibleReasons(window));
+                Assert.NotEmpty(lists.HandOffCheckedWordsDisabledReason);
+                Assert.Equal(lists.HandOffCheckedWordsDisabledReason, AutomationProperties.GetHelpText(checkedWordsButton));
+                Assert.Equal(lists.HandOffCheckedWordsDisabledReason, ToolTip.GetTip(checkedWordsButton));
+                Assert.Empty(VisibleReasons(window, lists.HandOffCheckedWordsDisabledReason));
             }
             finally
             {
@@ -76,16 +77,10 @@ public sealed class TextsListsHandoffAvailabilityTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    private static IReadOnlyList<string?> VisibleReasons(MainWindow window)
+    private static IReadOnlyList<string?> VisibleReasons(MainWindow window, params string[] reasons)
     {
         window.UpdateLayout();
         Dispatcher.UIThread.RunJobs();
-        var reasons = new HashSet<string>
-        {
-            "Choose a word list first.",
-            "No words in this list to send to AI Handoff.",
-            "Tick words first.",
-        };
         return window.GetVisualDescendants().OfType<TextBlock>()
             .Where(text => text.IsEffectivelyVisible && text.Text is { } value && reasons.Contains(value))
             .Select(text => text.Text).ToArray();

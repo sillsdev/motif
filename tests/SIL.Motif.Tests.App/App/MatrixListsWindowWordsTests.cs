@@ -246,12 +246,12 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         ]);
         var lists = new TextsListsViewModel(compare);
 
-        Assert.Equal("AI Handoff for this list", lists.HandOffListLabel);
-        Assert.Equal("AI Handoff", lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.AiHandoffForThisList, lists.HandOffListLabel);
+        Assert.Equal(WindowCopy.AiHandoff, lists.HandOffCheckedWordsLabel);
         compare.Words[0].IsChecked = true;
-        Assert.Equal("AI Handoff for this word", lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.AiHandoffForThisWord, lists.HandOffCheckedWordsLabel);
         compare.Words[1].IsChecked = true;
-        Assert.Equal("AI Handoff for 2 words", lists.HandOffCheckedWordsLabel);
+        Assert.Equal(WindowCopy.AiHandoffForWordCount(2), lists.HandOffCheckedWordsLabel);
     }
 
     [Fact]
@@ -354,9 +354,10 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
                 or ChangeKinds.Reject or ChangeKinds.Candidate);
             Assert.Contains(matrixButtons, button => Equals(button.Content, "Add as Unknown"));
 
-            var listButtons = Buttons(new TextsListsPanel(new TextsListsViewModel(compare)));
-            Assert.Single(listButtons, button => Equals(button.Content, "AI Handoff for this list"));
-            Assert.Single(listButtons, button => Equals(button.Content, "AI Handoff"));
+            var lists = new TextsListsViewModel(compare);
+            var listButtons = Buttons(new TextsListsPanel(lists));
+            Assert.Single(listButtons, button => Equals(button.Content, lists.HandOffListLabel));
+            Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff));
             Assert.DoesNotContain(listButtons, button => button.CommandParameter is string);
         });
     }

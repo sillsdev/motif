@@ -28,7 +28,8 @@
                 AutomationProperties.Name="Project menu"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
           <StackPanel Classes="topBarGroup" Orientation="Horizontal">
-            <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="projectName" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding ProjectName}" />
             <TextBlock Classes="disclosure" Text="&#x25BE;" VerticalAlignment="Center" />
           </StackPanel>
           <Button.Flyout>
@@ -164,7 +165,8 @@
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,*">
 
       <Border Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Classes="notice"
-              IsVisible="{Binding ShowsParseAllWordsProgress}">
+              IsVisible="{Binding ShowsParseAllWordsProgress}"
+              IsHitTestVisible="{Binding ShowsParseAllWordsProgress}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Text="{Binding ActiveParseProgress.StatusText}"

@@ -104,6 +104,7 @@
   <StaticResource x:Key="Primitive.Space.16" ResourceKey="SemiSpacingBase" />
   <x:Double x:Key="Primitive.Space.1">1</x:Double>
   <x:Double x:Key="Primitive.Space.10">10</x:Double>
+  <x:Double x:Key="Primitive.Space.20">20</x:Double>
   <x:Double x:Key="Primitive.Space.28">28</x:Double>
 
   <Thickness x:Key="Primitive.Inset.0_0_0_0">0</Thickness>
@@ -217,7 +218,7 @@
   <x:Double x:Key="Primitive.Size.150">150</x:Double>
   <x:Double x:Key="Primitive.Size.156">156</x:Double>
   <x:Double x:Key="Primitive.Size.170">170</x:Double>
-  <x:Double x:Key="Primitive.Size.174">174</x:Double>
+  <x:Double x:Key="Primitive.Size.176">176</x:Double>
   <x:Double x:Key="Primitive.Size.190">190</x:Double>
   <x:Double x:Key="Primitive.Size.204">204</x:Double>
   <x:Double x:Key="Primitive.Size.220">220</x:Double>
@@ -226,6 +227,7 @@
   <x:Double x:Key="Primitive.Size.240">240</x:Double>
   <x:Double x:Key="Primitive.Size.280">280</x:Double>
   <x:Double x:Key="Primitive.Size.320">320</x:Double>
+  <x:Double x:Key="Primitive.Size.360">360</x:Double>
   <x:Double x:Key="Primitive.Size.600">600</x:Double>
   <x:Double x:Key="Primitive.Size.780">780</x:Double>
   <x:Double x:Key="Primitive.Size.820">820</x:Double>
@@ -240,6 +242,8 @@
   <x:Double x:Key="Primitive.Size.760">760</x:Double>
   <x:Double x:Key="Primitive.Size.1100">1100</x:Double>
   <x:Double x:Key="Primitive.Size.13">13</x:Double>
+  <x:Double x:Key="Primitive.Size.16">16</x:Double>
+  <x:Double x:Key="Primitive.Size.20">20</x:Double>
   <x:Double x:Key="Primitive.Size.15">15</x:Double>
   <x:Double x:Key="Primitive.Size.17">17</x:Double>
   <x:Double x:Key="Primitive.Size.19">19</x:Double>

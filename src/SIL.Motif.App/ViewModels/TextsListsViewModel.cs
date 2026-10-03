@@ -148,20 +148,20 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public bool ShowsMeaning => SelectedList?.HasSeveralMeanings ?? true;
 
     public string HandOffListDisabledReason => SelectedList is null
-        ? "Choose a word list first."
-        : SelectedList.HasWords ? string.Empty : "No words in this list to send to AI Handoff.";
+        ? WindowCopy.ChooseAWordListFirst
+        : SelectedList.HasWords ? string.Empty : WindowCopy.NoWordsInListForHandoff;
 
-    public string HandOffListLabel => "AI Handoff for this list";
+    public string HandOffListLabel => WindowCopy.AiHandoffForThisList;
 
     /// <summary>Names the ticked words the second AI Handoff button sends, so it never reads like the first.</summary>
     public string HandOffCheckedWordsLabel => SelectedList is { } list
         ? Compare.CheckedWordsInCells(list.Cells).Count switch
         {
-            0 => "AI Handoff",
-            1 => "AI Handoff for this word",
-            var count => $"AI Handoff for {count:N0} words",
+            0 => WindowCopy.AiHandoff,
+            1 => WindowCopy.AiHandoffForThisWord,
+            var count => WindowCopy.AiHandoffForWordCount(count),
         }
-        : "AI Handoff";
+        : WindowCopy.AiHandoff;
 
     public bool HandOffListUnavailable => HandOffListDisabledReason.Length > 0;
 
@@ -171,10 +171,10 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public bool HandOffCheckedWordsUnavailable => HandOffCheckedWordsDisabledReason.Length > 0;
 
     public string HandOffCheckedWordsHelpText => SelectedList is not { } list
-        ? "Choose a word list first."
-        : !list.HasWords ? "This word list has no words to tick."
+        ? WindowCopy.ChooseAWordListFirst
+        : !list.HasWords ? WindowCopy.NoWordsInListToTick
         : Compare.CheckedWordsInCells(list.Cells).Count == 0
-            ? "Tick words first."
+            ? WindowCopy.TickWordsFirst
             : string.Empty;
 
     private Action<IReadOnlyList<string>>? _handOff;

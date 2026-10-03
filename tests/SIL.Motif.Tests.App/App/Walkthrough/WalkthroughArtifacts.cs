@@ -151,6 +151,7 @@ internal static class WalkthroughArtifacts
     internal static byte[] CaptureFrame(Window window, double scale = 1)
     {
         if (scale is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(scale));
+        LayoutAssertions.BeforeCapture(window);
         var size = window.Bounds.Size;
         using var bitmap = new RenderTargetBitmap(
             new PixelSize((int)Math.Round(size.Width * scale), (int)Math.Round(size.Height * scale)),

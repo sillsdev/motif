@@ -178,6 +178,13 @@ CI's Ubuntu or macOS jobs, read [`cross-platform`](.claude/skills/cross-platform
 run and nothing else. Documents written before that date use the old words — they are historical
 records, not counter-examples.
 
+**DONE for UI, layout, progress, shared-control, or window-copy work requires final-source validation.**
+Run `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` set to the pinned executable
+from `pangloss-release.json`, and set `MOTIF_SCREENSHOTS` so page and state captures run too. Report the
+tested source SHA, parser path/version, completed capture states, all skipped test categories, and any
+Windows-only follow-up. A missing parser, skipped capture run, failed gate, or missing final result means
+validation is incomplete.
+
 ## Comments
 
 **Authoritative rules: `.claude/skills/code-comments/SKILL.md`. Enforced by

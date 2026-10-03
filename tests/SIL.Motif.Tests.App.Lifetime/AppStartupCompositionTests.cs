@@ -394,8 +394,10 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
                 stage = "Overview prompt";
                 await ShowPageAsync(session, WorkspacePage.Overview);
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Nothing parsed since the last Refresh." && text.IsEffectivelyVisible &&
+                Assert.True(workspace.Context.NeedsAssessment);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
+                    text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible &&
                     text.GetVisualAncestors().Any(ancestor => ancestor is OverviewPage));
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
                     button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
@@ -404,8 +406,9 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
                 stage = "Review prompt";
                 await ShowPageAsync(session, WorkspacePage.Review);
-                Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Nothing parsed since the last Refresh." && text.IsEffectivelyVisible);
+                Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
+                    text.IsEffectivelyVisible);
                 Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
                     button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
                     ReferenceEquals(button.Command, workspace.ParseAllWordsCommand));
@@ -415,9 +418,10 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 var texts = workspace.PageModel<TextsPageModel>();
                 Assert.True(texts.ShowParsePrompt);
                 Assert.False(texts.ShowMatrixContent);
-                Assert.Contains("Nothing parsed since the last Refresh.",
-                    await UntilFound(session.Window, () => "the Texts prompt did not appear",
-                        text => text == "Nothing parsed since the last Refresh."));
+                await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
+                        AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
+                        text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible),
+                    "the Texts prompt did not appear");
                 var parseButton = session.Window.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Parse all words" && button.IsEffectivelyVisible &&
                     button.GetVisualAncestors().Any(ancestor => ancestor.GetType().Name == "TextsPage"));
@@ -427,8 +431,9 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Click(session.Window, parseButton);
                 await Until(() => File.Exists(startedPath), "the parse did not reach the held fake parser");
                 Assert.True(texts.ShowParsePrompt);
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Parsing… see the top row." && text.IsEffectivelyVisible);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
+                    text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible);
                 await Until(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParseProgressDetails &&
                     text.Text == "Parsing · 0 of 1 words · estimating time" && text.IsEffectivelyVisible),

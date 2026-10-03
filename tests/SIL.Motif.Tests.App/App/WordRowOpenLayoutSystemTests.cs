@@ -42,6 +42,7 @@ public sealed class WordRowOpenLayoutSystemTests
                 var openedRow = Row("Sungura");
                 openedRow.IsOpen = true;
                 PageScreenshots.Settle(window);
+                LayoutAssertions.BeforeCapture(window);
 
                 var panel = window.GetVisualDescendants().OfType<TextWordsPanel>().Single();
                 var heading = panel.GetVisualDescendants().OfType<CopyableTextBlock>()

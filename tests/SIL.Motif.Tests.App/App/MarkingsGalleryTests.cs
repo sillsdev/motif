@@ -262,6 +262,7 @@ public sealed class MarkingsGalleryTests
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
                     Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    LayoutAssertions.BeforeCapture(window);
                     using var frame = window.CaptureRenderedFrame()
                         ?? throw new InvalidOperationException($"No frame rendered for the {name} gallery.");
                     frame.Save(Path.Combine(folder, $"markings-gallery-{name}.png"), PngBitmapEncoderOptions.Default);

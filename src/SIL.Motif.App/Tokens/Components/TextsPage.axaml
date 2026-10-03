@@ -12,13 +12,14 @@
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />
     <StaticResource x:Key="Component.TextsPage.AssessmentStatusPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
+    <StaticResource x:Key="Component.TextsPage.CompareWordsListHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.CompareSortMinWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.RerunTimeWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.140" />
-    <StaticResource x:Key="Component.TextsPage.WideMatrixRowLabelWidth" ResourceKey="Primitive.Size.174" />
+    <StaticResource x:Key="Component.TextsPage.WideMatrixRowLabelWidth" ResourceKey="Primitive.Size.176" />
     <StaticResource x:Key="Component.TextsPage.MiniMatrixRowLabelWidth" ResourceKey="Primitive.Size.92" />
-    <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.220" />
+    <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.230" />
     <StaticResource x:Key="Component.TextsPage.TextPickerWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />
     <StaticResource x:Key="Component.TextsPage.TextPickerGap" ResourceKey="Primitive.Inset.0_0_4_0" />

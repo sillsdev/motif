@@ -28,8 +28,9 @@
           </StackPanel>
         </Border>
 
-        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
-                    AutomationProperties.Name="Timing controls">
+        <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Compact}"
+                   LineSpacing="{DynamicResource Intent.Space.Compact}"
+                   AutomationProperties.Name="Timing controls">
           <views:CopyableTextBlock Classes="muted" Text="Words" VerticalAlignment="Center" />
           <Button Classes="filterChip" Classes.active="{Binding IsAllSelected}"
                   Content="{Binding AllWordsButtonText}" Command="{Binding SelectWordSetCommand}"
@@ -133,7 +134,7 @@
               </Flyout>
             </Button.Flyout>
           </Button>
-        </StackPanel>
+        </WrapPanel>
 
         <views:RefusalBlock DataContext="{Binding TimingRefusal}" />
         <Border Classes="card" IsVisible="{Binding IsLoadingTiming}">

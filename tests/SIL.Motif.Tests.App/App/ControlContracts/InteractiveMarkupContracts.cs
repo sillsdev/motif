@@ -55,6 +55,7 @@ internal static class InteractiveMarkupContracts
             [(AvaloniaNamespace, "CheckBox")] = InteractiveControlFamily.Check,
             [(AvaloniaNamespace, "RadioButton")] = InteractiveControlFamily.Radio,
             [(AvaloniaNamespace, "Expander")] = InteractiveControlFamily.Disclosure,
+            [(AvaloniaNamespace, "ScrollViewer")] = InteractiveControlFamily.ScrollViewport,
             [(AvaloniaNamespace, "ListBox")] = InteractiveControlFamily.List,
             [(AvaloniaNamespace, "DataGrid")] = InteractiveControlFamily.Grid,
             [(AvaloniaNamespace, "TreeView")] = InteractiveControlFamily.Tree,

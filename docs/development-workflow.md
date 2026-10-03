@@ -81,8 +81,17 @@ automatic authority over a normative contract or its tests.
 
 For documentation-only changes, use proportional validation: inspect links and names, check Markdown
 structure and whitespace, and run the repository comment/build gate only when the touched file types or
-repository policy require it. The normal build commands are `./build.ps1` and `./test.ps1`; `test.ps1`
-has no `TestFilter` or `TestProject` switches. Do not claim a full .NET run for Markdown-only work.
+repository policy require it. The normal build commands are `./build.ps1` and `./test.ps1`. The test
+wrapper defaults to Unit and Integration; `-System` selects System tests and `-All` selects every level.
+Use `-Project <name-or-path>` to select a test project and `-Filter <expression>` with `-Project` to
+narrow its tests. Do not claim a full .NET run for Markdown-only work.
+
+For UI, layout, progress, shared-control, or window-copy changes, do not report DONE until the final
+source passes `pwsh ./test.ps1 -All -Configuration Release` with `MOTIF_PANGLOSS_EXE` pointing to the
+pinned executable in `pangloss-release.json`. Set `MOTIF_SCREENSHOTS` as well so page and state capture
+checks run, and report every skipped test category. Record the tested source SHA, the completed command
+and capture states, parser path/version, and any required Windows-only follow-up. A missing parser,
+skipped capture run, failed gate, or missing final result means validation is incomplete.
 
 ## Jira and external systems
 

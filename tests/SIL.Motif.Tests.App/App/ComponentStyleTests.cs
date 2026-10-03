@@ -2,12 +2,14 @@ using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
@@ -126,6 +128,36 @@ public sealed partial class ComponentStyleTests
             finally
             {
                 window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ExpanderChevronStaysInsideItsHeaderColumn()
+    {
+        _avalonia.Invoke(() =>
+        {
+            foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+            {
+                var expander = new Expander { Header = "Details", IsExpanded = true };
+                var window = new Window { Content = expander, RequestedThemeVariant = variant, Width = 400, Height = 300 };
+                try
+                {
+                    window.Show();
+                    Dispatcher.UIThread.RunJobs();
+                    window.UpdateLayout();
+                    Assert.True(ExpanderChevronAlignment.GetIsEnabled(expander));
+                    var chevron = expander.GetVisualDescendants().OfType<PathIcon>()
+                        .Single(icon => icon.Name == "PART_PathIcon");
+                    Assert.True(Application.Current!.TryGetResource(
+                        "Component.Interaction.ExpanderChevronMargin", variant, out var expected));
+                    Assert.Equal(expected, chevron.Margin);
+                    LayoutAssertions.AssertCurrent(window);
+                }
+                finally
+                {
+                    window.Close();
+                }
             }
         });
     }
@@ -680,6 +712,8 @@ public sealed partial class ComponentStyleTests
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
         yield return new("WordRow", "a row's height", host => Add(host, With(new Grid(), ["wordRowLine"])),
             Control.MinHeightProperty, "Component.WordRow.MinHeight");
+        yield return new("WordRow", "the word form's hit area", host => Add(host, Text("wordRowForm")),
+            TextBlock.BackgroundProperty, "Intent.Clear");
         yield return new("WordRow", "the word", host => Add(host, Text("wordRowForm")),
             TextBlock.FontSizeProperty, "Intent.Type.Navigation");
         yield return new("WordRow", "the gloss", host => Add(host, Text("wordRowGloss")),
@@ -985,7 +1019,7 @@ public sealed partial class ComponentStyleTests
     {
         var glyph = new MarkGlyph { Mark = mark, Classes = { "inline" } };
         host.Children.Add(glyph);
-        return Assert.IsType<PathIcon>(Assert.Single(glyph.Children));
+        return Assert.IsType<PathIcon>(glyph.Child);
     }
 
     private static TextBlock MatrixChosenMark(Panel host)
@@ -994,7 +1028,7 @@ public sealed partial class ComponentStyleTests
         var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Same };
         group.Children.Add(mark);
         host.Children.Add(group);
-        return Assert.IsType<TextBlock>(Assert.Single(mark.Children));
+        return Assert.IsType<TextBlock>(mark.Child);
     }
 
     private static PathIcon MatrixChosenIcon(Panel host)
@@ -1003,7 +1037,7 @@ public sealed partial class ComponentStyleTests
         var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Stopped };
         group.Children.Add(mark);
         host.Children.Add(group);
-        return Assert.IsType<PathIcon>(Assert.Single(mark.Children));
+        return Assert.IsType<PathIcon>(mark.Child);
     }
 
     private static Control WarningIcon(Panel host)
@@ -1015,7 +1049,7 @@ public sealed partial class ComponentStyleTests
             Child = glyph,
         };
         Add(host, border);
-        return Assert.IsType<PathIcon>(Assert.Single(glyph.Children));
+        return Assert.IsType<PathIcon>(glyph.Child);
     }
 
     private static TextBlock Inside(Panel host, Border border)

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
@@ -23,8 +24,8 @@ public sealed class TooltipPlacementTests
 {
     private static readonly string[] Owners =
     [
-        "refresh", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
-        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading",
+        "refresh", "project name", "word form", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading", "word row",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme",
         "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
@@ -35,7 +36,6 @@ public sealed class TooltipPlacementTests
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
-        ["word strip"] = "the filter chips are above, the texts list to the left, and other word strips on every other side",
     };
 
     [Fact]
@@ -64,6 +64,16 @@ public sealed class TooltipPlacementTests
                             Application.Current!.RequestedThemeVariant = theme;
                             PageScreenshots.Settle(scenes.Window);
                             var where = $"{width} {theme} {owner.Key}";
+                            if (scene == TooltipScene.Matrix)
+                            {
+                                var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
+                                var rowArea = Area(row, scenes.Window);
+                                var shown = Shown(row, scenes.Window);
+                                Assert.True(row.IsEffectivelyVisible &&
+                                    new Rect(scenes.Window.ClientSize).Contains(rowArea) && shown.Contains(rowArea),
+                                    $"{where}: the word row '{row.Row?.Word}' is not fully visible after the Assessment finished: " +
+                                    $"{MatrixFailureDetails(scenes)}, visible part {shown}.");
+                            }
                             var control = scenes.RealizedOwners(failures, scene).Where(found => found.Owner == owner)
                                 .Select(found => found.Control).FirstOrDefault();
                             if (control is null)
@@ -79,7 +89,9 @@ public sealed class TooltipPlacementTests
                                 var underPointer = string.Join(", ", scenes.Window.GetVisualDescendants().OfType<Control>()
                                     .Where(candidate => candidate.IsPointerOver)
                                     .Select(candidate => $"{candidate.GetType().Name} '{NameOf(candidate)}'"));
+                                var matrixDetails = scene == TooltipScene.Matrix ? MatrixFailureDetails(scenes) + "; " : string.Empty;
                                 failures.Add($"{where}: the tooltip did not open under the pointer at {Area(control, scenes.Window)}; " +
+                                    matrixDetails +
                                     $"owner hit testing is {control.IsHitTestVisible}; pointer is over: {underPointer}; " +
                                     $"blocked ancestors: {blocked}; tip: {ToolTip.GetTip(control)}");
                                 continue;
@@ -94,7 +106,7 @@ public sealed class TooltipPlacementTests
                             control.ClearValue(ToolTip.ShowDelayProperty);
                         }
                         Application.Current!.RequestedThemeVariant = prior;
-                        scenes.Leave(scene);
+                        await scenes.Leave(scene);
                     }
                 }
             }
@@ -109,6 +121,48 @@ public sealed class TooltipPlacementTests
             .Select(gap => $"{gap.Key}: covers nothing now, so remove its reported gap ({gap.Value})"));
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures.Distinct()));
         Assert.Equal(2 * 2 * Owners.Length, placed);
+    }
+
+    [Fact]
+    public void ACompletedAssessmentLeavesTheFirstMatrixWordFormHitTestableAtBothWidths()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var scenes = await TooltipScenes.Open();
+            try
+            {
+                var wordForm = TooltipOwners.All.Single(owner => owner.Key == "word form");
+                foreach (var width in new[] { 1040, 1240 })
+                {
+                    scenes.Width = width;
+                    await scenes.Reach(TooltipScene.Matrix);
+
+                    var row = Assert.IsType<WordRow>(scenes.MatrixTargetRow);
+                    var owner = row.GetVisualDescendants().OfType<Control>().Single(wordForm.Is);
+                    PageScreenshots.Settle(scenes.Window);
+                    var ownerBounds = Area(owner, scenes.Window);
+                    var point = new Point(ownerBounds.X + Math.Min(1, ownerBounds.Width / 2),
+                        ownerBounds.Y + ownerBounds.Height / 2);
+                    var hit = scenes.Window.InputHitTest(point) as Control;
+                    var reachesRow = hit?.GetSelfAndVisualAncestors().Contains(row) == true;
+
+                    var band = scenes.ParseProgressBand;
+                    Assert.False(band.IsVisible, $"{width} px after the Assessment completed: the parse-progress band is visible.");
+                    Assert.False(band.IsHitTestVisible,
+                        $"{width} px after the Assessment completed: the hidden parse-progress band still accepts input.");
+                    Assert.Equal(0, band.Bounds.Height);
+
+                    Assert.True(reachesRow,
+                        $"{width} px after the Assessment completed: the first Matrix word form does not hit its row; " +
+                        $"row {Area(row, scenes.Window)}, word form {ownerBounds}, " +
+                        $"parse-progress band visible {scenes.ParseProgressBandIsVisible}; {DescribeHit(scenes.Window, point)}");
+                }
+            }
+            finally
+            {
+                scenes.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
     }
 
     private static async Task<ToolTip?> Hover(TooltipScenes scenes, Control owner)
@@ -127,14 +181,58 @@ public sealed class TooltipPlacementTests
                 new Point(subjects.Bounds.Width / 2, subjects.Bounds.Height / 2), window)!.Value);
             PageScreenshots.Settle(window);
         }
-        var point = owner.Classes.Contains("wordRowHeading")
-            ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
-            : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);
-        window.MouseMove(owner.TranslatePoint(point, window)!.Value);
+        window.MouseMove(CenterAfterLayout(owner, window));
         PageScreenshots.Settle(window);
         await Task.Yield();
         PageScreenshots.Settle(window);
         return ToolTip.GetIsOpen(owner) ? scenes.Visible<ToolTip>().SingleOrDefault() : null;
+    }
+
+    private static Point CenterAfterLayout(Control owner, Window window)
+    {
+        PageScreenshots.Settle(window);
+        var localPoint = owner.Classes.Contains("wordRowHeading")
+            ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
+            : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);
+        if (owner.FindAncestorOfType<WordRow>() is { } row && owner.TranslatePoint(default, row) is { } inRow)
+        {
+            var pointInRow = new Point(inRow.X + localPoint.X, inRow.Y + localPoint.Y);
+            return row.TranslatePoint(pointInRow, window) ?? default;
+        }
+
+        return owner.TranslatePoint(localPoint, window) ?? default;
+    }
+
+    private static string MatrixFailureDetails(TooltipScenes scenes)
+    {
+        var window = scenes.Window;
+        var row = scenes.MatrixTargetRow;
+        if (row is null) return $"window client size {window.ClientSize}; target row is missing";
+
+        var rowBounds = Area(row, window);
+        var rowCenter = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window) ?? default;
+        var hit = window.InputHitTest(rowCenter) as Visual;
+        var hitChain = hit is null
+            ? "<none>"
+            : string.Join(" -> ", hit.GetSelfAndVisualAncestors().OfType<Control>()
+                .Select(control => $"{control.GetType().Name} '{NameOf(control)}'"));
+        return $"window client size {window.ClientSize}; target row '{row.Row?.Word}' bounds in window coordinates " +
+            $"{rowBounds}; parse-progress band visible {scenes.ParseProgressBandIsVisible}; " +
+            $"hit-test chain at row centre {rowCenter}: {hitChain}";
+    }
+
+    private static string DescribeHit(Window window, Point point)
+    {
+        var hit = window.InputHitTest(point) as Control;
+        if (hit is null) return $"hit at {point}: <none>";
+
+        static string Describe(Control control, Window window) =>
+            $"{control.GetType().Name} '{NameOf(control)}' (IsVisible {control.IsVisible}, " +
+            $"IsHitTestVisible {control.IsHitTestVisible}, bounds {Area(control, window)})";
+
+        return $"hit at {point}: {Describe(hit, window)}; chain: " +
+            string.Join(" -> ", hit.GetSelfAndVisualAncestors().OfType<Control>()
+                .Select(control => Describe(control, window)));
     }
 
     // What a person could press or type in, shown and not hidden by a scroll or a zero opacity.

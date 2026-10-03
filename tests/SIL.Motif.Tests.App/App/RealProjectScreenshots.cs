@@ -372,6 +372,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             window.UpdateLayout();
             Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         }
+        LayoutAssertions.BeforeCapture(window);
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException($"No frame rendered for {path}.");
         frame.Save(path, PngBitmapEncoderOptions.Default);
     }

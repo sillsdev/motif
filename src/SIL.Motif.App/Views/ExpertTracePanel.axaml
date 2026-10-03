@@ -20,7 +20,7 @@
     </WrapPanel>
     <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
                IsVisible="{Binding ExpertScopeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-    <Grid ColumnDefinitions="2*,2*,*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+    <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Text="Event · source" />
       <TextBlock Grid.Column="1" Text="Input → output" />
       <TextBlock Grid.Column="2" Text="Outcome" />
@@ -32,7 +32,7 @@
           <Border Classes="hoverReveal" BorderBrush="{DynamicResource Intent.Border}" BorderThickness="{DynamicResource Intent.Stroke.DividerBottom}"
                   Padding="{DynamicResource Component.TryWord.SmallInset}" Background="{DynamicResource Intent.Clear}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-            <Grid ColumnDefinitions="2*,2*,*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+            <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
               <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}">
                 <TextBlock Text="{Binding KindText}" />
                 <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
@@ -113,7 +113,7 @@
       <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
         <TextBlock Text="Selected event" />
         <TextBlock Text="{Binding SelectedStep.RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+        <Grid ColumnDefinitions="1.05*,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <TextBlock Text="Readable" />
             <views:CopyableTextBlock Text="{Binding ExpertReadableText}" TextWrapping="Wrap" />

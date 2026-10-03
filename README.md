@@ -17,7 +17,7 @@ Install the .NET 10 SDK, then build and check the repository from its root:
 ./test.ps1
 ```
 
-`build.ps1` runs the comment and design-token checks before compiling. The default `test.ps1` run selects Unit and Integration tests for the developer loop; use `./test.ps1 -All` for every test level and the merge gate. See [AGENTS.md](AGENTS.md) for the levels and test setup. All Motif projects target `net10.0`.
+`build.ps1` runs the comment and design-token checks before compiling. The default `test.ps1` run selects Unit and Integration tests for the developer loop; use `./test.ps1 -All` for every test level, including System and the merge gate. CI and release validation use `-All`. See [AGENTS.md](AGENTS.md) for the levels and test setup. All Motif projects target `net10.0`.
 
 On Linux, stage the pinned SIL ICU packages with `bash tools/stage-sil-icu.sh` and export the folder it prints as `MOTIF_SIL_ICU_STAGE` before building. macOS builds also use a staged SIL ICU folder named by `MOTIF_SIL_ICU_STAGE`. Windows development uses the bundled SIL ICU dependencies. See [AGENTS.md](AGENTS.md#linux-and-macos-need-sil-icu-staged-once) and the [Linux](.github/workflows/linux-debug.yml) and [macOS](.github/workflows/mac-debug.yml) workflows.
 

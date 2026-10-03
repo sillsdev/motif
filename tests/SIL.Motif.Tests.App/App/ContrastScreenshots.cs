@@ -71,6 +71,7 @@ public sealed class ContrastScreenshots
                 {
                     matrix.Show();
                     PageScreenshots.Settle(matrix);
+                    LayoutAssertions.BeforeCapture(matrix);
                     using var frame = matrix.CaptureRenderedFrame()
                         ?? throw new InvalidOperationException("No frame rendered for the Matrix.");
                     frame.Save(Path.Combine(folder, $"15-matrix-every-cell-1100-{theme}.png"), PngBitmapEncoderOptions.Default);

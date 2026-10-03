@@ -634,7 +634,7 @@ public sealed class CompareViewModelTests
         Assert.Null(compare.ChosenCell);
         Assert.Equal("5 words · 9 places", compare.ListSummary);
         Assert.Equal("Choose a cell to list only its words; Ctrl-click adds cells.", compare.ListExplanation);
-        Assert.Equal("AI Handoff for 5 words", compare.HandOffLabel);
+        Assert.Equal(WindowCopy.AiHandoffForWordCount(5), compare.HandOffLabel);
 
         var lost = Cell(compare, WordProjectStatus.Approved, CompareColumnKind.NoParse);
         compare.Toggle(lost, additive: false);
@@ -643,11 +643,11 @@ public sealed class CompareViewModelTests
         Assert.Equal("Approved × No parse", compare.ListHeading);
         Assert.Equal("4 words · 7 places", compare.ListSummary);
         Assert.Equal(lost.Explanation, compare.ListExplanation);
-        Assert.Equal("AI Handoff for 4 words", compare.HandOffLabel);
+        Assert.Equal(WindowCopy.AiHandoffForWordCount(4), compare.HandOffLabel);
 
         compare.SearchText = "walikata";
         Assert.Equal("1 of 4 words · 2 places", compare.ListSummary);
-        Assert.Equal("AI Handoff for this word", compare.HandOffLabel);
+        Assert.Equal(WindowCopy.AiHandoffForThisWord, compare.HandOffLabel);
 
         compare.SearchText = string.Empty;
         compare.Toggle(Cell(compare, WordProjectStatus.Approved, CompareColumnKind.Match), additive: true);

@@ -21,7 +21,7 @@
     { "id": "refreshed", "kind": "capture", "durationMs": 1500, "callouts": [ { "automationId": "motif-freshness-detail" } ] },
     { "id": "wait-for-explicit-parse", "kind": "waitFor", "automationId": "motif-parse-all-words", "condition": "enabled", "timeoutMs": 30000 },
     { "id": "parse-all-words", "kind": "click", "automationId": "motif-parse-all-words" },
-    { "id": "wait-for-parse", "kind": "waitFor", "automationId": "motif-parse-all-words-progress", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "wait-for-parse", "kind": "waitFor", "automationId": "motif-parse-all-words-progress", "condition": "parseProgressVisibleOrCompleted", "timeoutMs": 30000 },
     { "id": "wait-for-results", "kind": "waitFor", "automationId": "motif-parse-all-words-progress", "condition": "hidden", "timeoutMs": 30000 },
     { "id": "show-published-results", "kind": "click", "automationId": "motif-page-overview" },
     { "id": "wait-for-published-results", "kind": "waitFor", "automationId": "motif-overview-text-coverage", "condition": "assessmentPublished", "timeoutMs": 30000 },

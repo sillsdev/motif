@@ -187,8 +187,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The sentence shared by every page when its measurements need a new parse.</summary>
     public string ParsePromptText => Assess.IsActive
-        ? "Parsing… see the top row."
-        : "Nothing parsed since the last Refresh.";
+        ? WindowCopy.ParsingSeeTopRow
+        : WindowCopy.NothingParsedSinceRefresh;
 
     /// <summary>The action offered by the shared parse prompt.</summary>
     public string ParsePromptActionText => Setup?.CanRunDefaultSelection == true

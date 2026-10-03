@@ -213,7 +213,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             {
                 var column = (CompareColumnViewModel)head.DataContext!;
                 var glyph = Assert.Single(head.GetVisualDescendants().OfType<MarkGlyph>());
-                var sign = Assert.Single(glyph.Children);
+                var sign = Assert.IsAssignableFrom<Control>(glyph.Child);
                 if (MarkGlyphs.IconDataFor(column.OutcomeMark) is not null)
                     Assert.IsType<PathIcon>(sign);
                 else

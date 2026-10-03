@@ -35,7 +35,7 @@ public sealed class MarkGlyphRenderingTests
             foreach (var mark in AllMarks().Where(mark => mark.Glyph.Length > 0))
             {
                 var rendered = new MarkGlyph { Mark = mark };
-                var glyph = Assert.Single(rendered.Children);
+                var glyph = Assert.IsAssignableFrom<Control>(rendered.Child);
                 if (glyph is PathIcon) continue;
 
                 Assert.IsType<TextBlock>(glyph);

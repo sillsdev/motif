@@ -161,12 +161,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     public string HandOffCheckedWordsLabel => CheckedWordCount switch
     {
-        0 => "AI Handoff",
-        1 => "AI Handoff for this word",
-        var count => $"AI Handoff for {count:N0} words",
+        0 => WindowCopy.AiHandoff,
+        1 => WindowCopy.AiHandoffForThisWord,
+        var count => WindowCopy.AiHandoffForWordCount(count),
     };
 
-    public string HandOffCheckedWordsHelpText => CheckedWordCount == 0 ? "Tick words first." : string.Empty;
+    public string HandOffCheckedWordsHelpText => CheckedWordCount == 0 ? WindowCopy.TickWordsFirst : string.Empty;
 
     /// <summary>The navigation action used when someone opens a word from the list.</summary>
     public Action<string>? OpenWord { get; set; }
