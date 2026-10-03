@@ -478,14 +478,50 @@ public sealed class TimingSharesTests
     }
 
     [Fact]
-    public void AStructuralRuleIdentityShowsAWarningMark()
+    public void AWarningMarkRequiresAnIdentityMatchWithAStoredFinding()
     {
-        var rule = new TimingRuleRow(new TimingShare("Rule", "morph_rule", 10, 0.5, 1,
-            new TimingAggregateRow("structural-key", "Rule", 10, 0.5, 1)
-            { Kind = "morph_rule", IdentityQuality = "structural" }), false);
+        var finding = SeededGrammarFindings.All().First(warning =>
+            warning.Code == "hc-stem-no-grammatical-category");
+        var namedEntry = Assert.Single(finding.Subject);
+        var matched = new TimingAggregateRow(namedEntry.FieldWorksGuid!, namedEntry.Title!, 10, 0.5, 1)
+        {
+            Kind = "lex_entry",
+            IdentityQuality = "authored",
+        };
+        var sameNameDifferentIdentity = matched with { Key = "99999999-9999-4999-8999-999999999999" };
+        var rootLookup = new TimingAggregateRow("roots", "Root lookup", 10, 0.5, 1)
+        {
+            Kind = "root_index",
+            IdentityQuality = "structural",
+        };
 
-        Assert.True(rule.HasIdentityWarning);
-        Assert.Contains("structural", rule.IdentityWarningText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(finding.Code, TimingPageModel.MatchingWarningCode(matched, [finding]));
+        Assert.Null(TimingPageModel.MatchingWarningCode(sameNameDifferentIdentity, [finding]));
+        Assert.Null(TimingPageModel.MatchingWarningCode(rootLookup, [finding]));
+        var mark = new TimingRuleRow(new TimingShare("Rule", "lex_entry", 10, 0.5, 1, matched), false,
+            finding.Code);
+        Assert.True(mark.HasGrammarWarning);
+        Assert.Equal("A grammar warning names this rule · Open the warning", TimingRuleRow.GrammarWarningTooltip);
+    }
+
+    [Fact]
+    public async Task OpeningTheTimingWarningActionShowsItsKindOnTheWarningsPage()
+    {
+        var finding = SeededGrammarFindings.All().First(warning =>
+            warning.Code == "hc-stem-no-grammatical-category");
+        var fake = new FakeCommandClient();
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([finding], HasBaseline: true));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var warnings = new WarningsPageModel(context);
+        var timing = new TimingPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+
+        timing.OpenGrammarWarningCommand.Execute(new TimingRuleRow(
+            new TimingShare("Stem", "lex_entry", 10, 0.5, 1, null), false, finding.Code));
+
+        var row = Assert.Single(warnings.Grammar.Warnings.Rows.Cast<GrammarWarningRowViewModel>());
+        Assert.Equal(WorkspacePage.Warnings, context.CurrentPage);
+        Assert.True(row.IsOpen);
     }
 
     [Fact]

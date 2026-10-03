@@ -116,6 +116,7 @@ public static class WarningWordsQuery
 
     /// <summary>
     /// The confirmed words <paramref name="findings"/> touch, each counted once, with attribution completeness.
+    /// Spelling and membership candidates stay separate from confirmed identity matches.
     /// Returns <see langword="null"/> when no finding has available word evidence; no findings gives complete zero.
     /// </summary>
     public static WarningWordsTouched? Touched(IReadOnlyList<GrammarWarning> findings)
@@ -155,6 +156,22 @@ public static class WarningWordsQuery
                 if (!rows.TryGetValue(word.Row.Word, out var seen) || seen.Strength < strength)
                     rows[word.Row.Word] = (word, strength);
         }
+    }
+
+    /// <summary>
+    /// Counts the words findings that name a project item touch, leaving unnamed findings out of the aggregate.
+    /// </summary>
+    /// <param name="findings">The findings whose named-item word evidence is counted.</param>
+    /// <returns>
+    /// The distinct word evidence, or <see langword="null"/> when there are no named findings or their word evidence
+    /// is unavailable.
+    /// </returns>
+    public static WarningWordsTouched? TouchedNamed(IReadOnlyList<GrammarWarning> findings)
+    {
+        ArgumentNullException.ThrowIfNull(findings);
+        var named = findings.Where(finding => finding.Subject.Any(part =>
+            part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)).ToArray();
+        return named.Length == 0 ? null : Touched(named);
     }
 
     private static IEnumerable<ObjectUseWord> ByIdentity(IReadOnlyList<AssessmentWordResult> words,

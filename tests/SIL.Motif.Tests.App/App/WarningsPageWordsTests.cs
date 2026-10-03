@@ -25,7 +25,7 @@ public sealed class WarningsPageWordsTests
     public WarningsPageWordsTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     [Fact]
-    public async Task ARowOpensPanGlossGuidanceAndHidesItsFieldWorksLinkUntilHoverOrFocus()
+    public async Task ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink()
     {
         var word = new ObjectUseWord(new WordRowFact("walikata", WordRowOutcome.NoParse, "Lost", WordRowTone.Problem)
         {
@@ -139,17 +139,17 @@ public sealed class WarningsPageWordsTests
                 Assert.False(rowBorder.IsKeyboardFocusWithin);
                 var link = Assert.Single(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
                     button => button.Classes.Contains("warningObjectLink"));
-                Assert.Contains("revealControl", link.Classes);
-                Assert.Contains("revealOnHover", link.Classes);
-                Assert.Contains("revealLink", link.Classes);
-                Assert.Equal(0, link.Opacity);
-                Assert.False(link.IsHitTestVisible);
+                Assert.True(link.IsEffectivelyVisible);
+                Assert.Equal(1, link.Opacity);
+                Assert.True(link.IsHitTestVisible);
 
                 var hoverTitle = Assert.Single(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.Classes.Contains("warningHoverTitle"));
                 Assert.False(hoverTitle.IsEffectivelyVisible);
-                var hoverPoint = rowBorder.TranslatePoint(
-                    new Avalonia.Point(rowBorder.Bounds.Width / 2, rowBorder.Bounds.Height / 2), window)!.Value;
+                var subjectRegion = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Classes.Contains("warningSubjects"));
+                var hoverPoint = subjectRegion.TranslatePoint(
+                    new Avalonia.Point(subjectRegion.Bounds.Width / 2, subjectRegion.Bounds.Height / 2), window)!.Value;
                 window.MouseMove(hoverPoint);
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
@@ -162,8 +162,8 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.Equal(0, link.Opacity);
-                Assert.False(link.IsHitTestVisible);
+                Assert.Equal(1, link.Opacity);
+                Assert.True(link.IsHitTestVisible);
                 Assert.False(hoverTitle.IsEffectivelyVisible);
                 link.Focus(NavigationMethod.Tab);
                 window.UpdateLayout();
@@ -227,14 +227,71 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
 
                 var fullDescription = Assert.Single(panel.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Classes.Contains("warningFullDescription"));
+                    text => text.Classes.Contains("warningRawMessage"));
                 Assert.True(fullDescription.IsEffectivelyVisible);
                 Assert.Equal(description, fullDescription.Text);
                 Assert.Equal(TextWrapping.Wrap, fullDescription.TextWrapping);
                 Assert.True(fullDescription.Bounds.Height > 30);
                 Assert.Contains(panel.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "PanGloss gives no advice for this kind yet");
+                Assert.Contains(panel.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Classes.Contains("warningPart") && text.Text == problem);
                 Assert.True(row.HasProblemParts);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public async Task ANamedEntryShowsItsLexiconEditLinkAndAnExplicitMissingAdviceLine()
+    {
+        const string guid = "88888888-8888-4888-8888-888888888888";
+        const string address = "silfw://localhost/link?database=Sample&tool=lexiconEdit&guid=" + guid;
+        var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Stem", [
+            new GrammarWarningPart("kata (cut)", GrammarWarningPartRole.Object, guid, "LexEntry", address)
+            {
+                Title = "kata",
+                Status = GrammarSubjectStatus.Object,
+                SubjectGuid = guid,
+                FieldWorksGuid = guid,
+                FieldWorksTool = "lexiconEdit",
+                LinkStatus = FieldWorksLinkStatus.Available,
+            }], [new GrammarWarningPart("category missing", GrammarWarningPartRole.Text)],
+            "warning: hc-stem-no-grammatical-category")
+        {
+            Code = "hc-stem-no-grammatical-category",
+            Title = "Stem has no category",
+            Description = "Lexical entry 'kata' has no grammatical category.",
+        };
+        var fake = new FakeCommandClient();
+        fake.OnCheckGrammar((_, _) => Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(
+            new GrammarCheckResponse([warning], HasBaseline: true))));
+        var grammar = new GrammarViewModel(fake);
+        await grammar.SetProjectAsync("/tmp/warnings-entry-link.fwdata");
+
+        _avalonia.Invoke(() =>
+        {
+            var panel = new GrammarPanel(grammar);
+            var window = new Window { Content = panel, Width = 1040, Height = 600 };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
+                row.ToggleOpenCommand.Execute(null);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var link = Assert.Single(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
+                    button => button.Classes.Contains("warningEntryAction"));
+                Assert.True(link.IsEffectivelyVisible);
+                Assert.Equal("Open kata in Lexicon Edit ↗", link.Content);
+                Assert.Equal(new Uri(address), link.NavigateUri);
+                Assert.Contains(panel.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == "PanGloss gives no advice for this kind yet");
             }
             finally
             {

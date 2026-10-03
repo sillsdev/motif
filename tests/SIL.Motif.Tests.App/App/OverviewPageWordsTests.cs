@@ -33,9 +33,9 @@ public sealed class OverviewPageWordsTests
     private static readonly string[] StepLimitedWords = ["mwalimu", "stopped-2", "stopped-3"];
 
     [Theory]
-    [InlineData(0, "No known word matches; some named connections could not be followed", "No known matches; incomplete")]
-    [InlineData(2, "At least 2 of your words use something a warning names; some named connections could not be followed", "At least 2 words")]
-    public async Task WarningTotalsQualifyIncompleteRoutes(int known, string total, string kind)
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task IncompleteWarningEvidenceDoesNotShowAWordCount(int known)
     {
         var (fake, context) = NewContext();
         var page = new OverviewPageModel(context);
@@ -48,8 +48,9 @@ public sealed class OverviewPageWordsTests
         };
         fake.OverviewCompletesWith(Populated() with { Warnings = warnings });
         await context.OpenProjectAsync(ProjectPath);
-        Assert.Equal(total, page.WarningsYourWordsText);
-        Assert.Equal(kind, Assert.Single(page.WarningKindRows).IdentityMatchedWords);
+        Assert.Equal(string.Empty, page.WarningsYourWordsText);
+        Assert.False(page.HasWarningsWordSummary);
+        Assert.Equal(string.Empty, Assert.Single(page.WarningKindRows).IdentityMatchedWords);
     }
 
     [Fact]
@@ -261,12 +262,12 @@ public sealed class OverviewPageWordsTests
         Assert.All(page.AccuracySegments, segment => Assert.Equal(MarkKind.Meaning, segment.Mark.Kind));
         Assert.Equal("1 disapproved analysis still built · PanGloss confirms 9 of 14 words marked Unknown",
             page.AccuracyBreakdown);
-        Assert.Equal("20 warnings · 0 errors · 4 information findings", page.WarningsCount);
-        Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
-        Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
+        Assert.Equal("20 warnings", page.WarningsCount);
+        Assert.Equal("14 of your words use what a warning names", page.WarningsYourWordsText);
+        Assert.Equal("3 spelling-only matches; not confirmed uses", page.WarningsSpellingCandidatesText);
         Assert.Equal("Grammar warning", Assert.Single(page.WarningKindRows).Name);
-        Assert.Equal("At least 4 words", Assert.Single(page.WarningKindRows).IdentityMatchedWords);
-        Assert.Equal("2 spelling candidates; not confirmed uses", Assert.Single(page.WarningKindRows).SpellingCandidates);
+        Assert.Equal(string.Empty, Assert.Single(page.WarningKindRows).IdentityMatchedWords);
+        Assert.Equal("2 spelling-only matches; not confirmed uses", Assert.Single(page.WarningKindRows).SpellingCandidates);
         foreach (var text in new[]
                  {
                      page.TextCoverageMain, page.TextCoverageWords, page.AccuracyMain,
@@ -293,7 +294,28 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("1 of your words uses something a warning names", page.WarningsYourWordsText);
+        Assert.Equal("1 of your words use what a warning names", page.WarningsYourWordsText);
+    }
+
+    [Fact]
+    public async Task BeforeAnAssessmentTheWarningsTileTellsYouToParse()
+    {
+        var (fake, context) = NewContext();
+        var page = new OverviewPageModel(context);
+        var overview = Populated() with { AssessmentId = null };
+        fake.OverviewCompletesWith(overview with
+        {
+            Warnings = overview.Warnings! with
+            {
+                YourWords = new WarningWordsTouched(0, 0, [])
+                    { IsComplete = false, AttributionLimits = [WarningAttributionReason.UnsupportedKind] },
+            },
+        });
+
+        await context.OpenProjectAsync(ProjectPath);
+
+        Assert.True(page.HasWarningsWordSummary);
+        Assert.Equal("Parse to see which of your words they touch", page.WarningsYourWordsText);
     }
 
     [Fact]
@@ -332,7 +354,7 @@ public sealed class OverviewPageWordsTests
         warningPage.Load(findings);
 
         Assert.Equal("Touch your words · 3 words", warningPage.TouchYourWordsText);
-        Assert.Equal("3 of your words use something a warning names", page.WarningsYourWordsText);
+        Assert.Equal("3 of your words use what a warning names", page.WarningsYourWordsText);
     }
 
     [Fact]
@@ -342,15 +364,26 @@ public sealed class OverviewPageWordsTests
         var page = new OverviewPageModel(context);
         var warnings = new WarningsPageModel(context);
         fake.StoredGrammarCheckIs(new GrammarCheckResponse(
-            [.. Enumerable.Range(0, 20).Select(_ => Finding(GrammarDiagnosticLevel.Warning)),
+            [.. Enumerable.Range(0, 19).Select(_ => Finding(GrammarDiagnosticLevel.Warning)),
+             Finding(GrammarDiagnosticLevel.Error),
              .. Enumerable.Range(0, 4).Select(_ => Finding(GrammarDiagnosticLevel.Information))],
             HasBaseline: true));
-        fake.OverviewCompletesWith(Populated());
+        var overview = Populated();
+        fake.OverviewCompletesWith(overview with
+        {
+            Warnings = overview.Warnings! with
+            {
+                Count = 24,
+                WarningCount = 19,
+                ErrorCount = 1,
+                InformationCount = 4,
+            },
+        });
 
         await context.OpenProjectAsync(ProjectPath);
 
         Assert.Equal("24", warnings.Badge);
-        Assert.Equal("20 warnings · 0 errors · 4 information findings", page.WarningsCount);
+        Assert.Equal("19 warnings · 1 error", page.WarningsCount);
     }
 
     [Fact]
@@ -364,8 +397,8 @@ public sealed class OverviewPageWordsTests
 
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal("14 of your words use something a warning names", page.WarningsYourWordsText);
-        Assert.Equal("3 spelling candidates; not confirmed uses", page.WarningsSpellingCandidatesText);
+        Assert.Equal("14 of your words use what a warning names", page.WarningsYourWordsText);
+        Assert.Equal("3 spelling-only matches; not confirmed uses", page.WarningsSpellingCandidatesText);
         Assert.Contains("14 of your words use something a finding names (7 don't parse)", cli,
             StringComparison.Ordinal);
         Assert.Contains("Not counted: 3 spelling candidates; not confirmed uses of the phoneme", cli,

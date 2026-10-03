@@ -9,6 +9,8 @@ The top card shows the project's counts: words you chose to measure, places in y
 - **Approved analyses kept**: the number of words with approved analyses that the grammar still builds.
 - **Grammar warnings**: what the grammar check found, with errors counted separately.
 
+The **Grammar warnings** card gives the warning count and any nonzero error count. Its word line counts how many different chosen words exactly use an item named by a warning. Before parsing, it says **Parse to see which of your words they touch**. The card lists the three largest warning kinds. Where the evidence is complete, each kind shows the word count; matches based only on spelling are labelled separately. Open **Warnings →** to see each kind's subjects.
+
 These are separate measures, not one overall score. The project's counts appear after you press **Refresh**, which also checks the grammar. **Speed**, **Text coverage**, and **Approved analyses kept** show parse results after you choose **Parse all words**.
 
 The top bar says whether these numbers are current. If you have saved in FieldWorks since the last Refresh, the top bar says when, and offers **Refresh**. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.

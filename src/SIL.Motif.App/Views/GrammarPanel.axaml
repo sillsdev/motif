@@ -110,34 +110,51 @@
                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
 
                     <StackPanel IsVisible="{Binding IsOpen}" Spacing="{DynamicResource Intent.Space.Related}">
-                      <Border Classes="card warningDetail">
-                        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                          <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}"
-                                                    IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
-                          <StackPanel IsVisible="{Binding HasMessage}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="warningFullDescription" Text="{Binding Message}"
-                                                      TextWrapping="Wrap" />
-                          </StackPanel>
-                          <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Text="{Binding PanGlossExplanation}" TextWrapping="Wrap" />
-                          </StackPanel>
-                          <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <Border Classes="hoverReveal warningProblem">
-                              <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
+                      <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}"
+                                                IsVisible="{Binding HasRefreshStatus}" TextWrapping="Wrap" />
+                      <views:CopyableTextBlock Classes="muted warningState" Text="{Binding ReachStateText}"
+                                                IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
+                      <ItemsControl ItemsSource="{Binding Details}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:GrammarWarningDetailViewModel">
+                            <Border Classes="card warningDetail">
+                              <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+                                <views:CopyableTextBlock Classes="muted" Text="{Binding SeenText}"
+                                                          IsVisible="{Binding HasSeenText}" />
+                                <StackPanel IsVisible="{Binding HasExplanation}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <views:CopyableTextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding HasProblemParts}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <Border Classes="hoverReveal warningProblem">
+                                    <views:GrammarWarningPartsBlock Parts="{Binding ProblemParts}" />
+                                  </Border>
+                                </StackPanel>
+                                <Border Classes="hoverReveal warningSubjects">
+                                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
+                                </Border>
+                                <ItemsControl ItemsSource="{Binding EntryLinks}" IsVisible="{Binding HasEntryLinks}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GrammarWarningEntryLink">
+                                      <HyperlinkButton Classes="warningEntryAction" Content="{Binding Label}"
+                                                       NavigateUri="{Binding Address}" />
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
+                                  <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="SemiBold" />
+                                  <views:CopyableTextBlock Text="{Binding Guidance}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <views:CopyableTextBlock Classes="muted" Text="PanGloss gives no advice for this kind yet"
+                                                          IsVisible="{Binding !HasGuidance}" TextWrapping="Wrap" />
+                                <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
+                                                 NavigateUri="{Binding HelpUrl}" IsVisible="{Binding HasHelp}" />
+                                <views:CopyableTextBlock Classes="muted warningRawMessage" Text="{Binding Description}"
+                                                          IsVisible="{Binding HasDescription}" TextWrapping="Wrap" />
+                              </StackPanel>
                             </Border>
-                          </StackPanel>
-                          <Border Classes="hoverReveal warningSubjects">
-                            <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
-                          </Border>
-                          <StackPanel IsVisible="{Binding HasGuidance}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                            <views:CopyableTextBlock Classes="muted" Text="What to do in FieldWorks" FontWeight="SemiBold" />
-                            <views:CopyableTextBlock Text="{Binding PanGlossGuidance}" TextWrapping="Wrap" />
-                          </StackPanel>
-                          <HyperlinkButton Classes="revealControl revealLink" Content="Learn more"
-                                           NavigateUri="{Binding PanGlossReference}"
-                                           IsVisible="{Binding HasPanGlossReference}" />
-                        </StackPanel>
-                      </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
 
                       <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="SemiBold"

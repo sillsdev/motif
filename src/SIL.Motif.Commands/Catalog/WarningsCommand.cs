@@ -28,7 +28,7 @@ public static class WarningsCommand
             .GroupBy(finding => (finding.Code, finding.Group, finding.Severity))
             .Select(group =>
             {
-                var touched = WarningWordsQuery.Touched(group.ToArray());
+                var touched = WarningWordsQuery.TouchedNamed(group.ToArray());
                 return new GrammarWarningSummary(group.Key.Code ?? string.Empty, group.Key.Group,
                     group.Key.Severity, group.Count())
                 {
@@ -47,7 +47,7 @@ public static class WarningsCommand
             findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Information))
         {
             ErrorCount = findings.Count(finding => finding.Severity == GrammarDiagnosticLevel.Error),
-            YourWords = check is null ? null : WarningWordsQuery.Touched(findings),
+            YourWords = check is null ? null : WarningWordsQuery.TouchedNamed(findings),
         };
     }
 }

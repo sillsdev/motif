@@ -624,7 +624,7 @@ public sealed class MainWindowSmokeTests
                     GrammarDiagnosticLevel.Warning, "Entry",
                     [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
                         ObjectId: "entry-1", FieldWorksKind: "LexEntry",
-                        FieldWorksLink: "silfw://motif.test/project/entry-1")],
+                        FieldWorksLink: "silfw://motif.test/project/entry-1") { FieldWorksTool = "lexiconEdit" }],
                     [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
                     "warning: lex entry: dropped")
                 {
@@ -661,20 +661,9 @@ public sealed class MainWindowSmokeTests
                 Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
                     block => block.Text == "Restore the missing item in FieldWorks." && block.IsEffectivelyVisible);
                 var link = Assert.Single(findings.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
-                    button.Classes.Contains("warningObjectLink"));
-                window.MouseMove(new Avalonia.Point(-100, -100));
-                window.UpdateLayout();
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                var warningRow = Assert.Single(findings.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("warningRow"));
-                Assert.False(warningRow.IsPointerOver);
-                Assert.False(warningRow.IsKeyboardFocusWithin);
-                Assert.Equal(0, link.Opacity);
-                link.Focus(NavigationMethod.Tab);
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                Assert.Equal(1, link.Opacity);
+                    button.Classes.Contains("warningEntryAction"));
+                Assert.True(link.IsEffectivelyVisible);
+                Assert.Equal(new Uri("silfw://motif.test/project/entry-1"), link.NavigateUri);
             }
             finally
             {

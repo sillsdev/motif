@@ -25,6 +25,7 @@ public sealed partial class TimingPageModel : PageModel
     private int _loadGeneration;
     private bool _isLoadingTiming;
     private IReadOnlyList<string>? _explicitWords;
+    private IReadOnlyList<GrammarWarning> _grammarWarnings = [];
     private TimingWordSet _wordSet = new TimingWordSet.All();
     private CancellationTokenSource? _rerunCancellation;
 
@@ -40,6 +41,10 @@ public sealed partial class TimingPageModel : PageModel
         UseCheckedWordsCommand = new AsyncRelayCommand(UseCheckedWordsAsync, CanUseCheckedWords);
         UseMatrixCellCommand = new AsyncRelayCommand(UseMatrixCellAsync, CanUseMatrixCell);
         ChooseRuleCommand = new AsyncRelayCommand<TimingAggregateRow>(ChooseRuleAsync);
+        OpenGrammarWarningCommand = new RelayCommand<TimingRuleRow>(row =>
+        {
+            if (row?.WarningCode is { } code) context.Open(new OpenGrammarWarningRequest(code));
+        });
         ToggleKindCallsCommand = new RelayCommand(() => ShowKindCalls = !ShowKindCalls);
         HandOffWordsCommand = new RelayCommand(() => context.HandOff(SelectedWords),
             () => SelectedWords.Count > 0);
@@ -309,7 +314,11 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>The by-rule table's rows, each saying whether it is the rule the side card describes.</summary>
     public IReadOnlyList<TimingRuleRow> RuleRows =>
         [.. RuleShares.OrderByDescending(share => share.Share ?? -1).Select(share =>
-            new TimingRuleRow(share, ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity)))];
+        {
+            var warningCode = MatchingWarningCode(share.Source, _grammarWarnings);
+            return new TimingRuleRow(share,
+                ObjectIdentity.Same(share.Source?.TimingKey.Identity, SelectedRule?.Identity), warningCode);
+        })];
     public IReadOnlyList<WordRuleTiming> CostliestRuleWords => RuleDetail?.CostliestWords.Take(5).ToArray() ?? [];
 
     /// <summary>
@@ -438,6 +447,7 @@ public sealed partial class TimingPageModel : PageModel
     public IAsyncRelayCommand UseCheckedWordsCommand { get; }
     public IAsyncRelayCommand UseMatrixCellCommand { get; }
     public IAsyncRelayCommand<TimingAggregateRow> ChooseRuleCommand { get; }
+    public IRelayCommand<TimingRuleRow> OpenGrammarWarningCommand { get; }
     public IRelayCommand ToggleKindCallsCommand { get; }
     public IRelayCommand HandOffWordsCommand { get; }
     public IRelayCommand HandOffRuleCommand { get; }
@@ -448,6 +458,7 @@ public sealed partial class TimingPageModel : PageModel
     {
         CancelRerun();
         _loadGeneration++;
+        _grammarWarnings = [];
         _isLoadingTiming = false;
         Focus = null;
         FocusedTiming = null;
@@ -472,6 +483,7 @@ public sealed partial class TimingPageModel : PageModel
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
         Statistics.ProjectPath = projectPath;
+        _grammarWarnings = Context.GrammarSummary?.Findings ?? [];
         LoadFocusedTimingCommand.NotifyCanExecuteChanged();
         NotifySourceAvailability();
         return Task.CompletedTask;
@@ -505,6 +517,35 @@ public sealed partial class TimingPageModel : PageModel
         // A run answers whatever the page is focused on; a stored read never replaces a focused view.
         if (evidence.Assessment is { IsStored: false } || Focus is null)
             await LoadScopeAsync(projectPath, assessmentId, cancellationToken).ConfigureAwait(true);
+    }
+
+    internal static string? MatchingWarningCode(TimingAggregateRow? row, IReadOnlyList<GrammarWarning> findings)
+    {
+        var identity = row?.TimingKey.Identity;
+        if (identity is null) return null;
+        return findings.FirstOrDefault(finding => WarningIdentities(finding)
+            .Any(candidate => ObjectIdentity.Same(identity, candidate)))?.Code;
+    }
+
+    private static IEnumerable<ObjectIdentity> WarningIdentities(GrammarWarning finding)
+    {
+        foreach (var key in finding.Subject.SelectMany(part => part.Reach?.TimingKeys ?? []))
+            if (key.Identity is { } identity) yield return identity;
+
+        foreach (var subject in finding.Subject.Where(part => part.Role == GrammarWarningPartRole.Object))
+        {
+            var kind = subject.FieldWorksKind switch
+            {
+                "LexEntry" => "lex_entry",
+                "PhRegularRule" or "PhMetathesisRule" => "phon_rule",
+                "MoCompoundRule" or "MoEndoCompound" or "MoExoCompound" => "morph_rule",
+                _ => null,
+            };
+            var key = subject.FieldWorksGuid ?? subject.SubjectGuid ?? subject.ObjectId;
+            if (kind is not null && Guid.TryParse(key, out var guid) &&
+                ObjectIdentity.Create(kind, guid.ToString("D")) is { } identity)
+                yield return identity;
+        }
     }
 
     protected override void OnRequested(PageRequest request)
@@ -827,6 +868,11 @@ public sealed partial class TimingPageModel : PageModel
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(WorkspaceContext.GrammarSummary))
+        {
+            _grammarWarnings = Context.GrammarSummary?.Findings ?? [];
+            OnPropertyChanged(nameof(RuleRows));
+        }
         if (e.PropertyName == nameof(WorkspaceContext.ProjectPath)) OnPropertyChanged(nameof(ShowNoTimingRecorded));
         if (e.PropertyName != nameof(WorkspaceContext.NeedsAssessment)) return;
         OnPropertyChanged(nameof(ShowNoTimingRecorded));
@@ -925,17 +971,17 @@ public sealed record TimingShare(string Label, string Kind, double? ElapsedMs, d
 /// <param name="IsChosen">Whether the side card describes this rule.</param>
 public sealed record TimingRuleRow(TimingShare Share, bool IsChosen)
 {
+    public TimingRuleRow(TimingShare share, bool isChosen, string? warningCode) : this(share, isChosen) =>
+        WarningCode = warningCode;
+
     /// <summary>The rule's timing, as the command reported it.</summary>
     public TimingAggregateRow Row => Share.Source!;
 
-    public bool HasIdentityWarning => Row.IdentityQuality != "authored";
+    public string? WarningCode { get; }
 
-    public string IdentityWarningText => Row.IdentityQuality switch
-    {
-        "structural" => "Structural identity; no FieldWorks GUID was recorded.",
-        "synthetic" => "Synthetic identity; no FieldWorks GUID was recorded.",
-        _ => "The rule's identity quality was not recorded.",
-    };
+    public bool HasGrammarWarning => WarningCode is not null;
+
+    public const string GrammarWarningTooltip = "A grammar warning names this rule · Open the warning";
 
     /// <summary>The rule as the inspector looks it up, by the kind and key the timings record it under.</summary>
     public InspectorSubject InspectSubject => InspectorSubject.Rule(Row.TimingKey, Row.Name,

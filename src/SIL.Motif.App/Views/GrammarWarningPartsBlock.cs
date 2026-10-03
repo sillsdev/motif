@@ -78,9 +78,6 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
             NavigateUri = new Uri(link),
         };
         button.Classes.Add("warningObjectLink");
-        button.Classes.Add("revealControl");
-        button.Classes.Add("revealOnHover");
-        button.Classes.Add("revealLink");
         var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link));
         ToolTip.SetTip(button, $"Open this item in {tool}");
         ClearTipPlacement.SetIsEnabled(button, true);

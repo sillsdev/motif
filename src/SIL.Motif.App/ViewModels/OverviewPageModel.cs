@@ -332,20 +332,20 @@ public sealed partial class OverviewPageModel : PageModel
     /// <summary>Whether the Overview response contains its stored grammar warning summary.</summary>
     public bool HasWarningSummary => Overview?.Warnings is not null;
 
-    public bool HasWarningsWordSummary => Overview?.Warnings?.YourWords is not null;
+    public bool HasWarningsWordSummary => Overview?.Warnings is { } warnings &&
+        (!HasAssessment || warnings.YourWords is { IsComplete: true });
 
     /// <summary>The Selection words reached by exact identity from a stored grammar warning.</summary>
-    public string WarningsYourWordsText => Overview?.Warnings?.YourWords is not { } touched ? string.Empty
-        : touched.IsComplete ? touched.Words == 0 ? "None of your words use something a warning names"
-            : touched.Words == 1 ? "1 of your words uses something a warning names"
-            : $"{touched.Words:N0} of your words use something a warning names"
-        : (touched.Words == 0 ? "No known word matches" : $"At least {touched.Words:N0} of your words use something a warning names") +
-          (touched.AttributionLimits.Count > 0 ? "; some named connections could not be followed"
-              : "; word evidence is unavailable for some findings");
+    public string WarningsYourWordsText => Overview?.Warnings is not { } warnings ? string.Empty
+        : !HasAssessment ? "Parse to see which of your words they touch"
+        : warnings.YourWords is null ? string.Empty
+        : !warnings.YourWords.IsComplete ? string.Empty
+        : warnings.YourWords.Words == 0 ? "None of your words use what a warning names"
+        : $"{warnings.YourWords.Words:N0} of your words use what a warning names";
 
     /// <summary>Spelling matches stay visible as candidates, separate from confirmed identity matches.</summary>
     public string WarningsSpellingCandidatesText => Overview?.Warnings?.YourWords is { BySpellingOnly: > 0 } touched
-        ? $"{SpeedText.Count(touched.BySpellingOnly, "spelling candidate", "spelling candidates")}; not confirmed uses"
+        ? $"{SpeedText.Count(touched.BySpellingOnly, "spelling-only match", "spelling-only matches")}; not confirmed uses"
         : string.Empty;
 
     /// <summary>The largest warning kinds, with exact identity matches and spelling candidates shown apart.</summary>
@@ -354,13 +354,13 @@ public sealed partial class OverviewPageModel : PageModel
             SpeedText.Count(row.Count, "warning", "warnings"),
             WarningKindWordText(row),
             row.BySpellingOnly is > 0 and var candidates
-                ? $"{SpeedText.Count(candidates, "spelling candidate", "spelling candidates")}; not confirmed uses"
+                ? $"{SpeedText.Count(candidates, "spelling-only match", "spelling-only matches")}; not confirmed uses"
                 : string.Empty))
         .ToArray() ?? [];
 
-    private static string WarningKindWordText(GrammarWarningSummary row) => row.YourWords is not { } known ? string.Empty
-        : row.WordAttributionComplete == true ? SpeedText.Count(known, "word", "words")
-        : known == 0 ? "No known matches; incomplete" : "At least " + SpeedText.Count(known, "word", "words");
+    private static string WarningKindWordText(GrammarWarningSummary row) =>
+        row.YourWords is { } known && row.WordAttributionComplete == true
+            ? SpeedText.Count(known, "word", "words") : string.Empty;
 
     /// <summary>The reported error, warning, and information totals for the grammar check.</summary>
     public string WarningsCount
@@ -368,15 +368,15 @@ public sealed partial class OverviewPageModel : PageModel
         get
         {
             if (Overview?.Warnings is not { } warnings) return "Not checked yet";
-            var levels = new List<string>();
-            if (warnings.WarningCount is { } warningCount)
-                levels.Add(SpeedText.Count(warningCount, "warning", "warnings"));
-            if (warnings.ErrorCount is { } errorCount)
-                levels.Add(SpeedText.Count(errorCount, "error", "errors"));
-            if (warnings.InformationCount is { } informationCount)
-                levels.Add(SpeedText.Count(informationCount, "information finding", "information findings"));
-            return levels.Count > 0 ? string.Join(" · ", levels)
-                : warnings.Count is { } count ? SpeedText.Count(count, "finding", "findings") : "Not checked yet";
+            var warningCount = warnings.WarningCount;
+            if (warningCount is null && warnings.Count == 0) warningCount = 0;
+            if (warningCount is null && warnings.Count is { } count && warnings.ErrorCount is { } errors &&
+                warnings.InformationCount is { } information)
+                warningCount = Math.Max(0, count - errors - information);
+            if (warningCount is null) return warnings.Count is not null ? "Warnings" : "Not checked yet";
+            var headline = SpeedText.Count(warningCount.Value, "warning", "warnings");
+            return warnings.ErrorCount is > 0 and var errorCount
+                ? $"{headline} · {SpeedText.Count(errorCount, "error", "errors")}" : headline;
         }
     }
 

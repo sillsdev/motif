@@ -54,7 +54,11 @@ public sealed record WorkspaceBaseline(
 /// <param name="SummaryText">The check's state or its count of findings.</param>
 /// <param name="ShowFindings">Whether the check found anything to break down.</param>
 /// <param name="BreakdownText">The findings by kind.</param>
-public sealed record GrammarSummary(string SummaryText, bool ShowFindings, string BreakdownText);
+public sealed record GrammarSummary(string SummaryText, bool ShowFindings, string BreakdownText)
+{
+    /// <summary>The stored warning findings, shared with pages that join them to project identities.</summary>
+    public IReadOnlyList<GrammarWarning> Findings { get; init; } = [];
+}
 
 /// <summary>
 /// A request to open a page, carrying whatever that page should show when it opens. Each page declares the

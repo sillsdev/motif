@@ -3,51 +3,75 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.ViewModels;
 
 internal static class WarningFindingIdentity
 {
-    /// <summary>Finds repeated subjectless rows only when the producer reported identical finding content.</summary>
+    /// <summary>Returns the stable kind key used to keep one row per reported kind.</summary>
     public static string? ForGrouping(GrammarWarning warning)
     {
-        var identity = Of(warning);
-        if (identity is not null) return identity;
-        if (warning.Subject.Count != 0 || string.IsNullOrWhiteSpace(warning.Code)) return null;
-
-        var fields = new[]
-            {
-                warning.Origin.ToString(), warning.Severity.ToString(), warning.Code, warning.Title ?? string.Empty,
-                warning.Group ?? string.Empty, warning.Description, warning.Text,
-            }
-            .Concat(warning.Problem.Select(part => $"{part.Role}:{part.Text}"));
-        return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
+        var code = First(warning.Code, warning.CodeLabel, warning.Title, warning.Group);
+        return code;
     }
 
-    public static string? Of(GrammarWarning warning)
+    private static string? First(params string?[] values) => values.FirstOrDefault(value =>
+        !string.IsNullOrWhiteSpace(value));
+}
+
+/// <summary>One distinct report detail inside a row that groups the same warning kind.</summary>
+public sealed class GrammarWarningDetailViewModel
+{
+    public GrammarWarningDetailViewModel(GrammarWarning warning, int repeatCount)
     {
-        if (string.IsNullOrWhiteSpace(warning.Code)) return null;
-        var subjects = warning.Subject
-            .Where(part => part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)
-            .Select(SubjectIdentityOf)
+        Warning = warning;
+        RepeatCount = repeatCount;
+        var text = PanGlossWarningText.From(warning);
+        Title = text.Title;
+        Explanation = text.Explanation;
+        Guidance = text.Guidance;
+        Description = text.Description;
+        HelpUrl = text.HelpUrl;
+        SubjectParts = warning.Subject.Where(part => part.Role != GrammarWarningPartRole.Object ||
+            part.FieldWorksKind != "LexEntry" || part.FieldWorksLink is not { Length: > 0 }).ToArray();
+        ProblemParts = warning.Problem;
+        HasProblemParts = ProblemParts.Count > 0 &&
+            (ProblemParts.Count != 1 || ProblemParts[0].Role != GrammarWarningPartRole.Text ||
+                !string.Equals(ProblemParts[0].Text, Description, StringComparison.Ordinal));
+        EntryLinks = warning.Subject
+            .Where(part => part.Role == GrammarWarningPartRole.Object && part.FieldWorksKind == "LexEntry" &&
+                part.FieldWorksLink is { Length: > 0 })
+            .Select(part => new GrammarWarningEntryLink(part.Title ?? part.Text,
+                FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(part.FieldWorksLink!)),
+                new Uri(part.FieldWorksLink!)))
             .ToArray();
-        if (subjects.Length == 0 || subjects.Any(subject => subject is null)) return null;
-
-        var fields = new[] { warning.Origin.ToString(), warning.Code }
-            .Concat(subjects.Cast<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
-        return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
     }
 
-    private static string? SubjectIdentityOf(GrammarWarningPart part)
-    {
-        if (string.IsNullOrWhiteSpace(part.FieldWorksKind)) return null;
-        var ids = new[] { part.SubjectGuid, part.FieldWorksGuid, part.ObjectId }
-            .Where(value => Guid.TryParse(value, out _))
-            .Select(value => Guid.Parse(value!).ToString("D"))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        return ids.Length == 1 ? $"{part.FieldWorksKind}:{ids[0]}" : null;
-    }
+    public GrammarWarning Warning { get; }
+    public int RepeatCount { get; }
+    public string Title { get; }
+    public string Explanation { get; }
+    public string Guidance { get; }
+    public string Description { get; }
+    public Uri? HelpUrl { get; }
+    public IReadOnlyList<GrammarWarningPart> SubjectParts { get; }
+    public IReadOnlyList<GrammarWarningPart> ProblemParts { get; }
+    public bool HasProblemParts { get; }
+    public IReadOnlyList<GrammarWarningEntryLink> EntryLinks { get; }
+    public bool HasEntryLinks => EntryLinks.Count > 0;
+    public bool HasExplanation => Explanation.Length > 0;
+    public bool HasGuidance => Guidance.Length > 0;
+    public bool HasDescription => Description.Length > 0;
+    public bool HasHelp => HelpUrl is not null;
+    public string SeenText => RepeatCount > 1 ? $"{RepeatCount:N0} findings" : string.Empty;
+    public bool HasSeenText => RepeatCount > 1;
+}
+
+/// <summary>A named FieldWorks entry link supplied by PanGloss.</summary>
+public sealed record GrammarWarningEntryLink(string Entry, string Tool, Uri Address)
+{
+    public string Label => $"Open {Entry} in {Tool} ↗";
 }
 
 /// <summary>Which grammar-health report levels the Warnings page displays.</summary>
@@ -199,7 +223,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
             foreach (var group in identified.GroupBy(item =>
                          (item.Identity, UnidentifiedIndex: item.Identity is null ? item.Index : -1)))
             {
-                next.Add(new GrammarWarningRowViewModel(group.First().Warning, group.Count(), _wordRoutes)
+                next.Add(new GrammarWarningRowViewModel(group.Select(item => item.Warning).ToArray(), _wordRoutes)
                 {
                     SourceOrder = next.Count,
                 });
@@ -208,8 +232,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         var resolved = new List<GrammarWarningRowViewModel>();
         if (preserveResolved)
         {
-            var current = next.Where(row => row.FindingIdentity is not null)
-                .Select(row => row.FindingIdentity!).ToHashSet(StringComparer.Ordinal);
+            var current = next.Select(row => row.FindingIdentity).ToHashSet(StringComparer.Ordinal);
             foreach (var row in previous.Where(row => !row.HasRefreshStatus))
             {
                 if (row.FindingIdentity is null) row.MarkNotMatched();
@@ -269,50 +292,75 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
 }
 
-/// <summary>One PanGloss finding with its own text, guidance, subjects, and word evidence.</summary>
+/// <summary>One PanGloss warning kind with its grouped details and combined word evidence.</summary>
 public sealed partial class GrammarWarningRowViewModel : ObservableObject
 {
     public GrammarWarningRowViewModel(GrammarWarning warning, int repeatCount = 1, WordRowRoutes? wordRoutes = null)
+        : this(Enumerable.Repeat(warning, repeatCount).ToArray(), wordRoutes)
     {
-        ArgumentNullException.ThrowIfNull(warning);
+    }
+
+    internal GrammarWarningRowViewModel(IReadOnlyList<GrammarWarning> warnings, WordRowRoutes? wordRoutes = null)
+    {
+        ArgumentNullException.ThrowIfNull(warnings);
+        if (warnings.Count == 0) throw new ArgumentException("A kind row needs at least one finding.", nameof(warnings));
+        var warning = warnings[0];
         var panGloss = PanGlossWarningText.From(warning);
+        Findings = warnings;
+        Details = DetailsFor(warnings);
         Warning = warning;
-        RepeatCount = repeatCount;
+        RepeatCount = warnings.Count;
         Level = warning.Severity;
         Severity = Level.ToWireValue();
-        SubjectParts = warning.Subject;
-        ProblemParts = warning.Problem;
-        Text = warning.Text;
-        Message = panGloss.Description;
+        SubjectParts = warnings.SelectMany(item => item.Subject).Distinct().ToArray();
+        ProblemParts = warnings.SelectMany(item => item.Problem).Distinct().ToArray();
+        Text = string.Join(Environment.NewLine, warnings.Select(item => item.Text).Distinct(StringComparer.Ordinal));
+        Message = string.Join(Environment.NewLine, Details.Select(detail => detail.Description)
+            .Where(description => description.Length > 0).Distinct(StringComparer.Ordinal));
         PanGlossTitle = panGloss.Title;
-        PanGlossExplanation = panGloss.Explanation;
-        PanGlossGuidance = panGloss.Guidance;
+        PanGlossExplanation = string.Join(Environment.NewLine, Details.Select(detail => detail.Explanation)
+            .Where(explanation => explanation.Length > 0).Distinct(StringComparer.Ordinal));
+        PanGlossGuidance = string.Join(Environment.NewLine, Details.Select(detail => detail.Guidance)
+            .Where(guidance => guidance.Length > 0).Distinct(StringComparer.Ordinal));
         PanGlossFieldWorksPlaces = panGloss.FieldWorksPlaces;
         PanGlossHelp = panGloss.HelpBody;
         PanGlossReference = panGloss.HelpUrl;
-        GroupCode = warning.Code ?? string.Empty;
+        GroupCode = warning.Code ?? warning.CodeLabel;
         GroupName = panGloss.Title;
-        FindingIdentity = WarningFindingIdentity.Of(warning);
+        FindingIdentity = WarningFindingIdentity.ForGrouping(warning);
         YourWords = warning.YourWords;
-        NamedItemText = warning.Subject
+        var namedFindings = warnings.Where(HasNamedItem).ToArray();
+        var touched = WarningWordsQuery.Touched(namedFindings);
+        var evidence = namedFindings.Select(item => item.YourWords).OfType<WarningWords>().ToArray();
+        var exactWords = evidence.Where(item => item.Match == WarningWordsMatch.Identity).SelectMany(item => item.Words);
+        var membershipWords = evidence.SelectMany(item =>
+            (item.Match == WarningWordsMatch.Membership ? item.Words : []).Concat(item.MembershipCandidates));
+        var spellingWords = evidence.SelectMany(item =>
+            (item.Match == WarningWordsMatch.Spelling ? item.Words : []).Concat(item.SpellingCandidates));
+        WordRows = [.. exactWords.DistinctBy(word => word.Row.Word, StringComparer.Ordinal)
+            .Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        MembershipCandidateRows = [.. membershipWords.DistinctBy(word => word.Row.Word, StringComparer.Ordinal)
+            .Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        SpellingCandidateRows = [.. spellingWords.DistinctBy(word => word.Row.Word, StringComparer.Ordinal)
+            .Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+        var namedParts = namedFindings.SelectMany(item => item.Subject)
             .Where(part => part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)
-            .Select(part => part.Text).Where(text => !string.IsNullOrWhiteSpace(text))
-            .Distinct(StringComparer.Ordinal).FirstOrDefault() ?? string.Empty;
-        AttributionState = WarningAttribution.From(warning);
-        IsPartialReach = WarningAttribution.HasUnfollowedConnections(warning);
-        var evidence = warning.YourWords;
-        var exactWords = evidence?.Match == WarningWordsMatch.Identity ? evidence.Words : [];
-        var membershipWords = (evidence?.Match == WarningWordsMatch.Membership ? evidence.Words : [])
-            .Concat(evidence?.MembershipCandidates ?? []);
-        var spellingWords = (evidence?.Match == WarningWordsMatch.Spelling ? evidence.Words : [])
-            .Concat(evidence?.SpellingCandidates ?? []);
-        WordRows = [.. exactWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
-        MembershipCandidateRows = [.. membershipWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
-        SpellingCandidateRows = [.. spellingWords.Select(word => new WordRowViewModel(word.Row, wordRoutes))];
+            .ToArray();
+        var linkedNames = namedParts.Where(part => part.FieldWorksLink is { Length: > 0 }).ToArray();
+        var routedNames = namedParts.Where(part => part.Reach is not null).ToArray();
+        var displayParts = linkedNames.Length > 0 ? linkedNames : routedNames.Length > 0 ? routedNames : namedParts;
+        var displayNames = displayParts.Select(part => part.Text)
+            .Where(text => !string.IsNullOrWhiteSpace(text)).Distinct(StringComparer.Ordinal).Take(2).ToArray();
+        NamedItemText = displayNames.Length == 1 ? displayNames[0] : string.Empty;
+        IsPartialReach = namedFindings.Any(WarningAttribution.HasUnfollowedConnections);
+        AttributionState = AggregateAttributionState(namedFindings, touched);
+        ReachSummaryText = SummaryFor(namedFindings, touched);
         ToggleOpenCommand = new RelayCommand(() => IsOpen = !IsOpen);
     }
 
     public GrammarWarning Warning { get; }
+    public IReadOnlyList<GrammarWarning> Findings { get; }
+    public IReadOnlyList<GrammarWarningDetailViewModel> Details { get; }
     public WarningWords? YourWords { get; }
     public IReadOnlyList<WordRowViewModel> WordRows { get; }
     public IReadOnlyList<WordRowViewModel> MembershipCandidateRows { get; }
@@ -323,15 +371,15 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public string ExactWordsHeading => NamedItemText.Length > 0 ? $"Your words that use {NamedItemText}" : "Your words";
     /// <summary>Whether the finding names an item with no exact word uses in the Selection.</summary>
     public bool HasNoExactUses => AttributionState == WarningDisplayState.NoneInSelection;
+    public string ReachSummaryText { get; }
     /// <summary>Whether a separate reach explanation is needed for this finding.</summary>
     public bool HasReachStateText => !HasNoExactUses || NamedItemText.Length == 0;
     /// <summary>The plain language shown when no Selection word uses the named item.</summary>
     public string NoExactUsesText => NamedItemText.Length > 0
-        ? $"None of your words use {NamedItemText}" : "None of your words";
+        ? $"None of your words use {NamedItemText}" : "None of your words use the named items";
     /// <summary>The quiet row title, with repeated identical findings counted once.</summary>
-    public string RowTitleText => RepeatCount > 1
-        ? $"{PanGlossTitle} · {RepeatCount:N0} findings" : PanGlossTitle;
-    public bool HasYourWords => AttributionState == WarningDisplayState.ExactUses && WordRows.Count > 0;
+    public string RowTitleText => $"{PanGlossTitle} · {RepeatCount:N0} {CountWord(RepeatCount, "finding", "findings")}";
+    public bool HasYourWords => WordRows.Count > 0;
     public bool HasExactRows => WordRows.Count > 0;
     public bool HasMembershipCandidates => MembershipCandidateRows.Count > 0;
     public bool HasSpellingCandidates => SpellingCandidateRows.Count > 0;
@@ -341,8 +389,8 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public string ReachStateText => AttributionState switch
     {
         WarningDisplayState.ExactUses => IsPartialReach
-            ? "Some of your words use the item PanGloss named; Motif could not follow every named connection"
-            : "Your words use the item PanGloss named",
+            ? "Some of your words use an item PanGloss named; Motif could not follow every named connection"
+            : "Your words use an item PanGloss named",
         WarningDisplayState.SpellingCandidates => IsPartialReach
             ? "These spellings match; Motif could not follow every named connection"
             : "Matched by spelling only; this does not confirm the phoneme was used",
@@ -365,23 +413,7 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
             "Word counts are unavailable; Motif could not follow every named connection",
         _ => "Word counts are unavailable for this finding",
     };
-    public string ReachSummaryText => AttributionState switch
-    {
-        WarningDisplayState.ExactUses => CountText(WordRows.Count, "of your words"),
-        WarningDisplayState.MembershipCandidates => MembershipCandidateRows.Count == 1
-            ? "1 word uses a member of the named resource"
-            : $"{MembershipCandidateRows.Count:N0} words use members of the named resource",
-        WarningDisplayState.SpellingCandidates => CandidateCountText(SpellingCandidateRows.Count, "spelling match"),
-        WarningDisplayState.NoneInSelection => "None of your words",
-        WarningDisplayState.NoFollowedRouteMatch => "Word count unavailable",
-        WarningDisplayState.NoSubject => "PanGloss names nothing here",
-        WarningDisplayState.NamedUnsupportedRoute => "Word count unavailable",
-        WarningDisplayState.ProjectWide => "Project-wide item",
-        WarningDisplayState.MissingObject => "Item missing from project",
-        WarningDisplayState.UnresolvedIdentity => "Word count unavailable",
-        _ => "Word count unavailable",
-    };
-    public string LineSummaryText => HasRefreshStatus ? StatusText : ReachSummaryText;
+    public string LineSummaryText => ReachSummaryText;
     public bool IsPartialReach { get; }
     public bool HasPartialCount => IsPartialReach && AttributionState is
         WarningDisplayState.ExactUses or WarningDisplayState.MembershipCandidates or
@@ -402,11 +434,44 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
     public bool HasMessage => Message.Length > 0;
     public string YourWordsText => ReachSummaryText;
 
-    private string CountText(int count, string noun) =>
-        $"{(HasPartialCount ? "At least " : string.Empty)}{count} {noun}";
+    private static IReadOnlyList<GrammarWarningDetailViewModel> DetailsFor(IReadOnlyList<GrammarWarning> warnings) =>
+        warnings.GroupBy(DetailIdentity, StringComparer.Ordinal)
+            .Select(group => new GrammarWarningDetailViewModel(group.First(), group.Count())).ToArray();
 
-    private string CandidateCountText(int count, string kind) =>
-        $"{(HasPartialCount ? "At least " : string.Empty)}{count} {kind}{(count == 1 ? string.Empty : "s")}";
+    private static string DetailIdentity(GrammarWarning warning)
+    {
+        var fields = new[]
+            {
+                warning.Title ?? string.Empty, warning.Description, warning.Explanation ?? string.Empty,
+                warning.Guidance ?? string.Empty, warning.HelpUrl ?? string.Empty,
+            }
+            .Concat(warning.Subject.Select(part => $"{part.Role}:{part.FieldWorksKind}:{part.ObjectId}:{part.Text}:{part.FieldWorksLink}"))
+            .Concat(warning.Problem.Select(part => $"{part.Role}:{part.Text}"));
+        return string.Concat(fields.Select(field => $"{field.Length}:{field}"));
+    }
+
+    private static bool HasNamedItem(GrammarWarning warning) => warning.Subject.Any(part =>
+        part.Role is GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing);
+
+    private static string SummaryFor(IReadOnlyList<GrammarWarning> namedFindings, WarningWordsTouched? touched)
+    {
+        if (namedFindings.Count == 0) return "Can't tell: PanGloss names nothing";
+        if (touched is not { IsComplete: true }) return string.Empty;
+        return touched.Words == 0 ? "None of your words" : $"{touched.Words:N0} of your words";
+    }
+
+    private static WarningDisplayState AggregateAttributionState(IReadOnlyList<GrammarWarning> namedFindings,
+        WarningWordsTouched? touched)
+    {
+        if (namedFindings.Count == 0) return WarningDisplayState.NoSubject;
+        if (touched is { Words: > 0 }) return WarningDisplayState.ExactUses;
+        if (touched is { ByMembershipOnly: > 0 }) return WarningDisplayState.MembershipCandidates;
+        if (touched is { BySpellingOnly: > 0 }) return WarningDisplayState.SpellingCandidates;
+        if (touched is { IsComplete: true }) return WarningDisplayState.NoneInSelection;
+        return WarningAttribution.From(namedFindings[0]);
+    }
+
+    private static string CountWord(int count, string singular, string plural) => count == 1 ? singular : plural;
 
     public string GroupName { get; }
     public string GroupCode { get; }

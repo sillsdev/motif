@@ -71,7 +71,7 @@ public sealed class WarningAttributionCompletenessTests
         var zeroRow = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(table.Rows));
 
         Assert.Equal(WarningDisplayState.NoFollowedRouteMatch, zeroRow.AttributionState);
-        Assert.Equal("Word count unavailable", zeroRow.ReachSummaryText);
+        Assert.Equal(string.Empty, zeroRow.ReachSummaryText);
         Assert.Contains("Motif could not follow every named connection", zeroRow.ReachStateText,
             StringComparison.Ordinal);
 
@@ -80,6 +80,6 @@ public sealed class WarningAttributionCompletenessTests
         Assert.Equal(WarningDisplayState.ExactUses, positiveRow.AttributionState);
         Assert.True(positiveRow.IsPartialReach);
         Assert.True(positiveRow.HasPartialCount);
-        Assert.Equal("At least 1 of your words", positiveRow.ReachSummaryText);
+        Assert.Equal(string.Empty, positiveRow.ReachSummaryText);
     }
 }

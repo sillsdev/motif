@@ -221,7 +221,7 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
         Assert.Equal((2, 2, 0), (warnings.YourWords!.Words, warnings.YourWords.NoParse, warnings.YourWords.BySpellingOnly));
         Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords);
         Assert.Equal(1, warnings.ByKind.Single(kind => kind.Code == "phoneme").BySpellingOnly);
-        Assert.Equal(0, warnings.ByKind.Single(kind => kind.Code == "nothing").YourWords);
+        Assert.Null(warnings.ByKind.Single(kind => kind.Code == "nothing").YourWords);
         Assert.Equal((0, 1, 0), (
             warnings.ByKind.Single(kind => kind.Code == "phoneme").YourWords,
             warnings.ByKind.Single(kind => kind.Code == "phoneme").BySpellingOnly,

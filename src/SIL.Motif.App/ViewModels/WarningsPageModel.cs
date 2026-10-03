@@ -8,6 +8,10 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
+/// <summary>Opens the Warnings page on one reported diagnostic kind.</summary>
+/// <param name="Code">The stable kind code supplied by the stored report.</param>
+public sealed record OpenGrammarWarningRequest(string Code) : PageRequest(WorkspacePage.Warnings);
+
 /// <summary>
 /// The Warnings page's model: the grammar's findings, counted beside the page's sidebar label, and the check a
 /// person starts when nothing has been checked for this Baseline yet. It owns the grammar check and publishes a
@@ -16,6 +20,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed class WarningsPageModel : PageModel
 {
     private int _readGeneration;
+    private string? _requestedWarningCode;
 
     public WarningsPageModel(WorkspaceContext context) : base(context)
     {
@@ -48,7 +53,15 @@ public sealed class WarningsPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _readGeneration++;
+        _requestedWarningCode = null;
         Grammar.Clear();
+    }
+
+    protected override void OnRequested(PageRequest request)
+    {
+        if (request is not OpenGrammarWarningRequest warning) return;
+        _requestedWarningCode = warning.Code;
+        TryOpenRequestedWarning();
     }
 
     // Opening shows the check stored for this Baseline, and never starts one of its own.
@@ -100,13 +113,29 @@ public sealed class WarningsPageModel : PageModel
 
     private void OnGrammarChanged(object? sender, PropertyChangedEventArgs e)
     {
+        TryOpenRequestedWarning();
         Badge = Grammar.ShowFindings ? Grammar.Warnings.TotalCount.ToString(CultureInfo.CurrentCulture) : string.Empty;
         PublishSummary();
         RaiseCheckState();
     }
 
+    private void TryOpenRequestedWarning()
+    {
+        if (_requestedWarningCode is not { } code) return;
+        Grammar.Warnings.Bucket = GrammarFindingBucket.All;
+        Grammar.Warnings.TouchYourWords = false;
+        var row = Grammar.Warnings.Rows.Cast<GrammarWarningRowViewModel>()
+            .FirstOrDefault(item => string.Equals(item.GroupCode, code, StringComparison.Ordinal));
+        if (row is null) return;
+        row.IsOpen = true;
+        _requestedWarningCode = null;
+    }
+
     private void PublishSummary() => Context.GrammarSummary =
-        new GrammarSummary(Grammar.SummaryText, Grammar.ShowFindings, Grammar.Warnings.BreakdownText);
+        new GrammarSummary(Grammar.SummaryText, Grammar.ShowFindings, Grammar.Warnings.BreakdownText)
+        {
+            Findings = Grammar.Warnings.Findings,
+        };
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -23,9 +23,10 @@ internal static class SeededGrammarFindings
             string? guidance = null)
         {
             var text = $"warning: {code}: " + (subject is null ? problem : $"{subject.Text}: {problem}");
-            var words = code == "conversion.unsegmentable-form"
-                ? new WarningWords(WarningWordsMatch.Identity, [], [])
-                    { Paths = [WarningWordsPath.ThroughAllomorphs] }
+            var words = subject?.Reach is { IsRoute: true } reach
+                ? new WarningWords(reach.Path == WarningWordsPath.Spelling ? WarningWordsMatch.Spelling
+                    : reach.Path == WarningWordsPath.Membership ? WarningWordsMatch.Membership
+                    : WarningWordsMatch.Identity, [], []) { Paths = [reach.Path] }
                 : null;
             for (var index = 0; index < count; index++)
             {
@@ -48,7 +49,8 @@ internal static class SeededGrammarFindings
         Add("grammar.environment.invalid", "Invalid phonological environment", null,
             "environment representation failed validation", 7);
         Add("grammar.environment.invalid", "Invalid phonological environment",
-            Named("e2 (/ _ [C])", "PhEnvironment", "EnvironmentEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d01"),
+            Named("e2 (/ _ [C])", "PhEnvironment", "EnvironmentEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d01",
+                new WarningReach(WarningWordsPath.ThroughAllomorphs)),
             "unknown natural class \"C\"; treated as absent", 5);
         Add("conversion.unsegmentable-form", "Allomorph form cannot be segmented",
             Named("kat", "MoForm", "lexiconEdit", UnsegmentableFormGuid,
@@ -58,7 +60,8 @@ internal static class SeededGrammarFindings
         Add("grammar.msa.no-rule-form-allomorphs", "Analysis has no usable affix form", null,
             "MSA has zero loadable allomorphs for this stratum bucket", 2);
         Add("grammar.phoneme.nfd-collision", "Phoneme representation collision",
-            Named("ng'", "PhPhoneme", "phonemeEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d03"),
+            Named("ng'", "PhPhoneme", "phonemeEdit", "5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d03",
+                new WarningReach(WarningWordsPath.Spelling) { Spellings = ["ng'"] }),
             "representation collides with an earlier phoneme/boundary; skipped", 1);
         Add("migration.inferred-segment-with-feature-rule", "Character is not listed as a phoneme", null,
             "inferred segment \"ŋ\" carries no authored feature values, so it satisfies every feature-based natural class", 2);
@@ -66,7 +69,8 @@ internal static class SeededGrammarFindings
         foreach (var name in new[] { "mbo - ADD", "di - EVID", "phwet - entrar", "botari - boa tarde" })
         {
             Add("hc-stem-no-grammatical-category", "Stem has no category",
-                Named(name, "LexEntry", "lexiconEdit", $"5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d{entry++}"),
+                Named(name, "LexEntry", "lexiconEdit", $"5f0a2e3c-1b1d-4c55-9c1e-6d2a3b4c5d{entry++}",
+                    new WarningReach(WarningWordsPath.ThroughAllomorphs)),
                 $"Lexical entry '{name}' has no grammatical category.", 1, GrammarFindingOrigin.Check,
                 explanation: "This stem is marked partial because its grammatical category is missing. " +
                     "Its category restrictions cannot be enforced as authored.",

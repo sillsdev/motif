@@ -229,6 +229,7 @@
                     <ColumnDefinition Width="0.9*" />
                     <ColumnDefinition Width="1.3*" />
                     <ColumnDefinition Width="0.7*" />
+                    <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
                   <views:CopyableTextBlock Grid.Column="0" Text="RULE" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Grid.Column="1" Text="KIND" TextWrapping="Wrap"
@@ -245,11 +246,20 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:TimingRuleRow">
                       <Border Classes="hoverReveal">
-                        <Button Classes="timingRuleRow" Classes.chosen="{Binding IsChosen}" HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Stretch"
-                                Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
-                                CommandParameter="{Binding Row}">
-                          <Grid Classes="timingColumns">
+                        <Grid Classes="timingColumns">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="{Binding $parent[views:TimingPage].Page.Context.Inspector, Converter={x:Static views:TimingPage.InspectorKindColumnWidth}}" />
+                            <ColumnDefinition Width="0.9*" />
+                            <ColumnDefinition Width="1.3*" />
+                            <ColumnDefinition Width="0.7*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+                          <Button Grid.ColumnSpan="5" Classes="timingRuleRow" Classes.chosen="{Binding IsChosen}"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  Command="{Binding $parent[views:TimingPage].Page.ChooseRuleCommand}"
+                                  CommandParameter="{Binding Row}">
+                            <Grid Classes="timingColumns">
                             <Grid.ColumnDefinitions>
                               <ColumnDefinition Width="2*" />
                               <ColumnDefinition Width="{Binding $parent[views:TimingPage].Page.Context.Inspector, Converter={x:Static views:TimingPage.InspectorKindColumnWidth}}" />
@@ -257,7 +267,7 @@
                               <ColumnDefinition Width="1.3*" />
                               <ColumnDefinition Width="0.7*" />
                             </Grid.ColumnDefinitions>
-                            <Grid Grid.Column="0" ColumnDefinitions="*,Auto,Auto"
+                            <Grid Grid.Column="0" ColumnDefinitions="*,Auto"
                                   ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                               <views:CopyableTextBlock Grid.Column="0" Text="{Binding Share.Label}" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis" />
@@ -266,11 +276,6 @@
                                                  VerticalAlignment="Center">
                                 <TextBlock Text="Inspect" />
                               </views:InspectLink>
-                              <TextBlock Grid.Column="2" Text="⚠" Foreground="{DynamicResource Intent.Severity.Warning}"
-                                         IsVisible="{Binding HasIdentityWarning}"
-                                         ToolTip.Tip="{Binding IdentityWarningText}"
-                                         AutomationProperties.Name="Rule identity warning"
-                                         AutomationProperties.HelpText="{Binding IdentityWarningText}" />
                             </Grid>
                             <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Share.KindLabel}"
                                                      TextTrimming="CharacterEllipsis"
@@ -281,8 +286,16 @@
                                                      TextTrimming="CharacterEllipsis" />
                             <views:CopyableTextBlock Grid.Column="4" Text="{Binding Share.WordsText}"
                                                      TextTrimming="CharacterEllipsis" />
-                          </Grid>
-                        </Button>
+                            </Grid>
+                          </Button>
+                          <Button Grid.Column="5" Classes="timingGrammarWarning" Content="⚠"
+                                  IsVisible="{Binding HasGrammarWarning}"
+                                  ToolTip.Tip="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
+                                  AutomationProperties.Name="Open the grammar warning"
+                                  AutomationProperties.HelpText="{x:Static vm:TimingRuleRow.GrammarWarningTooltip}"
+                                  Command="{Binding $parent[views:TimingPage].Page.OpenGrammarWarningCommand}"
+                                  CommandParameter="{Binding}" />
+                        </Grid>
                       </Border>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

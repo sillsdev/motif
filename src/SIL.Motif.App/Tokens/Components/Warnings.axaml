@@ -48,6 +48,10 @@
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
 
+  <Style Selector=":is(TextBlock).warningRawMessage">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+  </Style>
+
   <Style Selector=":is(TextBlock).warningReach">
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
@@ -81,6 +85,13 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
+  </Style>
+
+  <Style Selector="HyperlinkButton.warningEntryAction">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
   </Style>
 
   <Style Selector=":is(SelectableTextBlock).warningObject">

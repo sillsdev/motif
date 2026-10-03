@@ -73,8 +73,8 @@ internal static class InteractiveMarkupContracts
         {
             [InteractiveControlFamily.Action] = new(typeof(CommandAvailabilityContractTests),
                 nameof(CommandAvailabilityContractTests.EveryDiscoveredCommandHasAnAuthoredContract)),
-            [InteractiveControlFamily.Link] = new(typeof(InteractionCueTests),
-                nameof(InteractionCueTests.ALinkUnderlinesUnderThePointer)),
+            [InteractiveControlFamily.Link] = new(typeof(WarningsPageWordsTests),
+                nameof(WarningsPageWordsTests.ANamedEntryShowsItsLexiconEditLinkAndAnExplicitMissingAdviceLine)),
             [InteractiveControlFamily.Filter] = new(typeof(ResultsInTextViewModelTests),
                 nameof(ResultsInTextViewModelTests.NeedsALookFilterKeepsWordsWithAvailableMarkingActions)),
             [InteractiveControlFamily.TextEntry] = new(typeof(MainWindowSmokeTests),

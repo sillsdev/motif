@@ -177,12 +177,9 @@
                                Command="{Binding OpenWarningsCommand}"
                                AutomationProperties.Name="Open Grammar warnings in Warnings" />
             </DockPanel>
-            <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" TextWrapping="Wrap" />
+            <TextBlock Classes="overviewTileValue" Text="{Binding WarningsCount}" TextWrapping="NoWrap" />
             <TextBlock Classes="overviewMuted" Text="{Binding WarningsYourWordsText}"
                        IsVisible="{Binding HasWarningsWordSummary}" TextWrapping="Wrap" />
-            <TextBlock Classes="overviewTileDetail" Text="{Binding WarningsSpellingCandidatesText}"
-                       IsVisible="{Binding WarningsSpellingCandidatesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                       TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding WarningKindRows}" AutomationProperties.Name="Warning kinds and words">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OverviewWarningKindRow">

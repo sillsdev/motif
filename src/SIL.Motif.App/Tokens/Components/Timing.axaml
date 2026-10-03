@@ -45,6 +45,14 @@
     <Setter Property="Padding" Value="{DynamicResource Component.Timing.RowPadding}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
+  <Style Selector="Button.timingGrammarWarning">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
   <Style Selector="Button.timingRuleRow.chosen">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
