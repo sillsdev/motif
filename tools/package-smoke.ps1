@@ -10,7 +10,6 @@ param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
     [string] $ProductVersion,
 
-    [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
     [string] $NextProductVersion,
 
@@ -18,7 +17,9 @@ param(
     [string] $InitialPackagePath,
 
     [Parameter(Mandatory = $true)]
-    [string] $WorkDirectory
+    [string] $WorkDirectory,
+
+    [switch] $SkipUpdate
 )
 
 Set-StrictMode -Version Latest
@@ -267,24 +268,30 @@ function Format-InstallProcesses {
     }))
 }
 
-& $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
-if ($LASTEXITCODE -ne 0) {
-    throw "The installed update smoke exited with code $LASTEXITCODE."
-}
-$updated = $false
-for ($attempt = 0; $attempt -lt 120; $attempt++) {
-    $updatedVersion = (& $cliPath --version | Out-String).Trim()
-    if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
-        $updated = $true
-        break
+if (-not $SkipUpdate) {
+    if ([string]::IsNullOrWhiteSpace($NextProductVersion)) {
+        throw 'NextProductVersion is required unless SkipUpdate is selected.'
     }
-    Start-Sleep -Seconds 1
-}
-if (-not $updated) {
-    Write-VelopackLogs
-    $installProcesses = Format-InstallProcesses @(Get-InstallProcesses)
-    throw ("Motif did not update from $ProductVersion to $NextProductVersion; the CLI last reported " +
-        "'$updatedVersion'. Velopack logs are above; processes running from the install: $installProcesses")
+
+    & $cliPath --update-smoke $feed 'win-x64' $NextProductVersion
+    if ($LASTEXITCODE -ne 0) {
+        throw "The installed update smoke exited with code $LASTEXITCODE."
+    }
+    $updated = $false
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        $updatedVersion = (& $cliPath --version | Out-String).Trim()
+        if ($LASTEXITCODE -eq 0 -and $updatedVersion -eq $NextProductVersion) {
+            $updated = $true
+            break
+        }
+        Start-Sleep -Seconds 1
+    }
+    if (-not $updated) {
+        Write-VelopackLogs
+        $installProcesses = Format-InstallProcesses @(Get-InstallProcesses)
+        throw ("Motif did not update from $ProductVersion to $NextProductVersion; the CLI last reported " +
+            "'$updatedVersion'. Velopack logs are above; processes running from the install: $installProcesses")
+    }
 }
 
 $updateExecutable = Join-Path $install 'Update.exe'
@@ -373,4 +380,5 @@ if (-not (Test-Path -LiteralPath $userDataMarker -PathType Leaf)) {
 }
 Remove-Item -LiteralPath $userDataMarker -Force
 
-Write-Host "Windows package smoke passed for $ProductVersion to $NextProductVersion." -ForegroundColor Green
+$versionSummary = if ($SkipUpdate) { "at $ProductVersion" } else { "from $ProductVersion to $NextProductVersion" }
+Write-Host "Windows package smoke passed $versionSummary." -ForegroundColor Green

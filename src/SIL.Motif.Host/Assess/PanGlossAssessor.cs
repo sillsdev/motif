@@ -122,6 +122,10 @@ public sealed class PanGlossAssessor : IAssessor
                 row.Index != index || !string.Equals(row.Word, requestedWords[index], StringComparison.Ordinal)).Any())
                 throw new AssessorUnavailableException(AssessorName,
                     "The batch did not return exactly one ordered result for every requested word.");
+            var warnings = completed.StandardError.Split('\n').Select(line => line.Trim())
+                .Where(line => line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
+            var unavailableWarnings = warnings.Where(IsUnsupportedGrammarWarning).ToArray();
             if (completed.MorphologyOutput is null || evidence.AnalysesPath is null || evidence.AnalysesSha256 is null)
                 throw new AssessorUnavailableException(AssessorName, "The invocation returned no retained morphology evidence.");
             try
@@ -141,6 +145,19 @@ public sealed class PanGlossAssessor : IAssessor
                         throw new InvalidDataException("TSV and morphology evidence describe different search outcomes.");
                     return row with { Morphology = item };
                 }).ToArray();
+                if (unavailableWarnings.Length > 0)
+                {
+                    rows = rows.Select(row => row.Outcome == WordOutcome.NoAnalysis &&
+                        row.Morphology is { Analyses.Count: 0 } item
+                            ? row with
+                            {
+                                Morphology = item with
+                                {
+                                    Unavailable = item.Unavailable.Concat(unavailableWarnings).ToArray(),
+                                },
+                            }
+                            : row).ToArray();
+                }
                 if (wanted.Contains(AssessmentKind.Correctness))
                 {
                     IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> expected;
@@ -159,9 +176,6 @@ public sealed class PanGlossAssessor : IAssessor
             {
                 throw new AssessorUnavailableException(AssessorName, exception.Message);
             }
-            var warnings = completed.StandardError.Split('\n').Select(line => line.Trim())
-                .Where(line => line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase) ||
-                    line.StartsWith("capability:", StringComparison.OrdinalIgnoreCase)).ToArray();
             var analysis = new BatchAnalysis(rows, evidence.PerWordTimeoutMs, evidence.SourcePath, warnings)
             {
                 PerWordStepLimit = evidence.PerWordStepLimit,
@@ -191,4 +205,9 @@ public sealed class PanGlossAssessor : IAssessor
     private static ProducedAssessment Produced(
         AssessmentKind kind, AssessmentRaw raw, BatchInvocationEvidence evidence) =>
         new(kind, evidence.SourceBytesSha256, null, null, null, null, null, raw) { Invocation = evidence };
+
+    private static bool IsUnsupportedGrammarWarning(string warning) =>
+        warning.StartsWith("capability:", StringComparison.OrdinalIgnoreCase) ||
+        warning.Contains("cannot be loaded as an affix rule", StringComparison.OrdinalIgnoreCase) ||
+        warning.Contains("cannot be checked against the phoneme inventory", StringComparison.OrdinalIgnoreCase);
 }

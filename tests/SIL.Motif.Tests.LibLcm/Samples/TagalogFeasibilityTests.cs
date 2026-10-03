@@ -35,11 +35,35 @@ public sealed class TagalogFeasibilityTests
         AssertExpected(run, "bumasa");
     }
 
-    [RealParserFact(Skip = "PanGloss v0.5.0 reports this FieldWorks copy pattern as unsupported; see the findings note.")]
-    public void NaturalClassCopyFormParsesAsCVPartialReduplication()
+    [RealParserFact]
+    public void NaturalClassCopyFormReportsSupportedAnalysisOrUnavailableEvidence()
     {
         var run = RunAssessment(AuthorCopyPatternText, "sulatm");
-        AssertExpected(run, "susulat");
+        var row = Assert.Single(run.Response.Words, candidate => candidate.Word == "susulat");
+        if (HasExpectedReading(row, run.Authored.ExpectedMorphs["susulat"]))
+        {
+            AssertExpected(run, "susulat");
+            return;
+        }
+
+        var warnings = run.Response.GrammarWarnings ?? [];
+        Assert.Contains(
+            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be loaded as an affix rule.",
+            warnings);
+        Assert.Contains(
+            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be checked against the phoneme inventory.",
+            warnings);
+        Assert.Equal("no-analysis", row.Outcome);
+        Assert.Equal("Some morphology evidence is unavailable.", row.EvidenceStatus);
+        Assert.Equal("unavailable", row.Correctness!.Status);
+        Assert.Equal(1, row.Correctness.Expected);
+        Assert.Equal(0, row.Correctness.Matched);
+        Assert.Contains(
+            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be loaded as an affix rule.",
+            row.Morphology!.Unavailable);
+        Assert.Contains(
+            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be checked against the phoneme inventory.",
+            row.Morphology.Unavailable);
     }
 
     [RealParserFact]
@@ -253,7 +277,8 @@ public sealed class TagalogFeasibilityTests
     private static void AssertExpected(AssessmentRun run, string word)
     {
         var row = Assert.Single(run.Response.Words, candidate => candidate.Word == word);
-        Assert.Equal("covered", row.Correctness!.Status);
+        var details = DescribeParserResult(row, run.Response);
+        Assert.True(row.Correctness!.Status == "covered", details);
         Assert.Equal(1, row.Correctness.Expected);
         Assert.Equal(1, row.Correctness.Matched);
         Assert.False(row.Morphology!.InvalidShape);
@@ -261,7 +286,7 @@ public sealed class TagalogFeasibilityTests
         Assert.False(row.Morphology.TimedOut);
         Assert.Empty(row.Morphology.Unavailable);
         Assert.True(HasExpectedReading(row, run.Authored.ExpectedMorphs[word]),
-            DescribeParserResult(row, run.Response));
+            details);
     }
 
     private static bool HasExpectedReading(AssessmentWordResult row, IReadOnlyList<AuthoredMorph> expected)

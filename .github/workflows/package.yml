@@ -5,6 +5,16 @@ on:
     branches: ['**', '!mac-debug/**', '!linux-debug/**']
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Build, test, and publish a Windows release from a matching version tag.
+        required: false
+        default: false
+        type: boolean
+      release_version:
+        description: Stable version to release; set when publishing from its matching v<version> tag.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -61,6 +71,10 @@ jobs:
           files-folder-recurse: true
           description: Motif per-user Windows installer smoke build
 
+      - name: Refresh Windows payload N manifest after signing
+        shell: pwsh
+        run: ./tools/Refresh-ReleaseManifest.ps1 -StageDirectory $env:STAGE_DIRECTORY
+
       - name: Stage Windows payload N plus one
         shell: pwsh
         run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:NEXT_PRODUCT_VERSION -OutputDirectory $env:NEXT_STAGE_DIRECTORY
@@ -74,6 +88,10 @@ jobs:
           files-folder-filter: exe
           files-folder-recurse: true
           description: Motif per-user Windows installer smoke build
+
+      - name: Refresh Windows payload N plus one manifest after signing
+        shell: pwsh
+        run: ./tools/Refresh-ReleaseManifest.ps1 -StageDirectory $env:NEXT_STAGE_DIRECTORY
 
       - name: Pack Windows version N
         shell: pwsh
@@ -121,6 +139,151 @@ jobs:
       - name: Install, invoke, update, and uninstall the Windows package
         shell: pwsh
         run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION -NextProductVersion $env:NEXT_PRODUCT_VERSION -InitialPackagePath $env:INITIAL_PACKAGE_PATH -WorkDirectory $env:WORK_DIRECTORY
+
+      - name: Retain signed Windows feed and release manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.FEED_DIRECTORY }}
+            ${{ env.STAGE_DIRECTORY }}/release-manifest.json
+            ${{ env.NEXT_STAGE_DIRECTORY }}/release-manifest.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  release-windows:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release
+    needs: windows
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      MSBUILDDISABLENODEREUSE: '1'
+      UseSharedCompilation: 'false'
+      AVALONIA_TELEMETRY_OPTOUT: '1'
+      HAS_TRUSTED_SIGNING_CREDENTIALS: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS != '' }}
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      RUNTIME_IDENTIFIER: win-x64
+
+    steps:
+      - name: Set release package directories
+        shell: pwsh
+        run: |
+          $runSuffix = "$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          [string[]] $paths = @(
+            "RELEASE_STAGE_DIRECTORY=$env:RUNNER_TEMP\motif-release-stage-$runSuffix",
+            "RELEASE_FEED_DIRECTORY=$env:RUNNER_TEMP\motif-release-feed-$runSuffix",
+            "RELEASE_INSTALL_DIRECTORY=$env:RUNNER_TEMP\motif-release-install-$runSuffix",
+            "RELEASE_WORK_DIRECTORY=$env:RUNNER_TEMP\motif-release-work-$runSuffix",
+            "RELEASE_SETUP_PATH=$env:RUNNER_TEMP\Motif-win-x64-Setup.exe"
+          )
+          [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Validate selected release version and tag
+        shell: pwsh
+        run: |
+          if ($env:HAS_TRUSTED_SIGNING_CREDENTIALS -ne 'true') {
+            throw 'Trusted signing credentials are required for a Windows release.'
+          }
+          if ($env:RELEASE_VERSION -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+            throw 'release_version must be a stable three-part version such as 1.0.0.'
+          }
+          if ($env:RELEASE_VERSION -in @('0.1.0', '0.1.1')) {
+            throw 'The selected release version must differ from the package smoke versions.'
+          }
+          if ($env:GITHUB_REF -cne "refs/tags/v$env:RELEASE_VERSION") {
+            throw "Dispatch this workflow on tag v$($env:RELEASE_VERSION) to release that version."
+          }
+          $paths = @("RELEASE_TAG=v$env:RELEASE_VERSION",
+            "RELEASE_MANIFEST_PATH=$env:RELEASE_STAGE_DIRECTORY\release-manifest.json")
+          [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
+
+      - name: Install pinned Velopack CLI
+        shell: pwsh
+        run: dotnet tool install --global vpk --version 1.2.158
+
+      - name: Stage selected Windows release payload
+        shell: pwsh
+        run: ./tools/package-release.ps1 -RuntimeIdentifier $env:RUNTIME_IDENTIFIER -ProductVersion $env:RELEASE_VERSION -OutputDirectory $env:RELEASE_STAGE_DIRECTORY
+
+      - name: Sign selected Windows release payload when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.RELEASE_STAGE_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif Windows release
+
+      - name: Refresh selected release manifest after signing
+        shell: pwsh
+        run: ./tools/Refresh-ReleaseManifest.ps1 -StageDirectory $env:RELEASE_STAGE_DIRECTORY
+
+      - name: Pack selected Windows release
+        shell: pwsh
+        run: >-
+          vpk pack --packId SIL.Motif --packVersion $env:RELEASE_VERSION
+          --packDir $env:RELEASE_STAGE_DIRECTORY --outputDir $env:RELEASE_FEED_DIRECTORY
+          --channel $env:RUNTIME_IDENTIFIER --runtime $env:RUNTIME_IDENTIFIER
+          --mainExe SIL.Motif.App.exe --packTitle Motif --packAuthors SIL
+
+      - name: Sign Windows Setup when SIL credentials are available
+        if: env.HAS_TRUSTED_SIGNING_CREDENTIALS == 'true'
+        uses: sillsdev/codesign/trusted-signing-action@v3
+        with:
+          credentials: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS }}
+          files-folder: ${{ env.RELEASE_FEED_DIRECTORY }}
+          files-folder-filter: exe
+          files-folder-recurse: true
+          description: Motif Windows release installer
+
+      - name: Save tested Windows Setup and release manifest
+        shell: pwsh
+        run: |
+          $setups = @(Get-ChildItem -LiteralPath $env:RELEASE_FEED_DIRECTORY -File -Filter '*Setup.exe')
+          if ($setups.Count -ne 1) { throw "Expected one Setup.exe, found $($setups.Count)." }
+          Copy-Item -LiteralPath $setups[0].FullName -Destination $env:RELEASE_SETUP_PATH
+
+      - name: Install, invoke, and uninstall the selected release package
+        shell: pwsh
+        run: >-
+          ./tools/package-smoke.ps1
+          -FeedDirectory $env:RELEASE_FEED_DIRECTORY
+          -InstallDirectory $env:RELEASE_INSTALL_DIRECTORY
+          -ProductVersion $env:RELEASE_VERSION
+          -InitialPackagePath $env:RELEASE_SETUP_PATH
+          -WorkDirectory $env:RELEASE_WORK_DIRECTORY
+          -SkipUpdate
+
+      - name: Retain selected release feed and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ inputs.release_version }}-${{ github.run_id }}
+          path: |
+            ${{ env.RELEASE_FEED_DIRECTORY }}
+            ${{ env.RELEASE_MANIFEST_PATH }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Create GitHub release with tested Windows Setup
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create $env:RELEASE_TAG
+          $env:RELEASE_SETUP_PATH $env:RELEASE_MANIFEST_PATH
+          --title "Motif $env:RELEASE_VERSION"
+          --generate-notes
+          --verify-tag
 
   linux:
     runs-on: ubuntu-22.04
