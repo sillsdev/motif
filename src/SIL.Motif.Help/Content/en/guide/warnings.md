@@ -2,6 +2,8 @@
 
 **Warnings** shows findings from a check of the whole grammar and allomorph refusals recorded by **Parse all words** for the current [Baseline](term:baseline) and **Selection**. Findings from the parse are labelled **Parse all words** and retain the parser's refusal reason. The grammar check and the parse can report different findings. PanGloss may include an explanation or guidance with each finding.
 
+PanGloss reports an unreadable phonological environment as a warning. Roots ignore that restriction but keep valid ones; ordinary affixes add an unrestricted pass beside valid passes; an infix with no valid position is skipped.
+
 If the grammar has not been checked for this Baseline, choose **Check the grammar again**. PanGloss reads the whole grammar, so a check can take a minute for a large project. **Refresh** captures a new Baseline and checks the grammar again. Later visits show the stored findings; opening the page does not start a check.
 
 The filter chips count findings by report level. The list has one row per kind, with its finding count beside the title. When the findings name different items or some name no item, open the row to see each detail. The right column says **N of your words**, **None of your words**, or **Can't tell: PanGloss names nothing**; it counts only exact identity matches and leaves the count blank when named-item evidence is incomplete. **Touch your words** shows the distinct Selection words matched to named FieldWorks items, when available. Turn it on to show only kinds with those matches. The **Sort** menu orders the rows by that same count or by the order in the report.

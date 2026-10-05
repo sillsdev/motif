@@ -63,11 +63,11 @@
                            FormatString="0.#" AutomationProperties.Name="Time limit per word in seconds" />
           </StackPanel>
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Step limit per word" />
+            <views:CopyableTextBlock Text="Analysis attempt limit per word" />
             <NumericUpDown Value="{Binding Selection.PerWordStepLimit}" Minimum="1" Increment="100000"
                            FormatString="N0" IsEnabled="{Binding !Selection.PerWordStepLimitUnbounded}"
-                           AutomationProperties.Name="Step limit per word" />
-            <CheckBox Content="No step limit" IsChecked="{Binding Selection.PerWordStepLimitUnbounded}" />
+                           AutomationProperties.Name="Default analysis attempt limit per word" />
+            <CheckBox Content="No attempt limit" IsChecked="{Binding Selection.PerWordStepLimitUnbounded}" />
           </StackPanel>
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="Retry slower than (ms)" />

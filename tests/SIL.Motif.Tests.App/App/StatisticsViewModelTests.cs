@@ -277,9 +277,9 @@ public sealed class StatisticsViewModelTests
     }
 
     [Theory]
-    [InlineData(true, false, "step limit")]
+    [InlineData(true, false, "search limit")]
     [InlineData(false, true, "time limit")]
-    [InlineData(true, true, "step and time limits")]
+    [InlineData(true, true, "search and time limits")]
     public async Task PartialFindingsRemainIncompleteAndLaterWordsCanComplete(bool capped, bool timedOut, string reason)
     {
         var (fake, statistics) = NewViewModel();
@@ -293,9 +293,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "step limit" => "Stopped at the step limit · Raise it under More.",
+            "search limit" => "Stopped at a search limit · Raise the analysis attempt limit under More.",
             "time limit" => "Ran out of time · Increase Seconds per word.",
-            _ => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+            _ => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
                 "or increase Seconds per word.",
         }, statistics.IncompleteDetail);
     }
@@ -336,7 +336,7 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
-        Assert.Contains("Stopped at the step limit", statistics.IncompleteDetail, StringComparison.Ordinal);
+        Assert.Contains("Stopped at a search limit", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -399,7 +399,7 @@ public sealed class StatisticsViewModelTests
 
         await statistics.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal("Search steps", statistics.CountHeader);
+        Assert.Equal("Analysis attempts", statistics.CountHeader);
         Assert.Equal("Word time (ms)", statistics.TimeHeader);
         Assert.DoesNotContain("statistics pass", statistics.ShadingNote, StringComparison.Ordinal);
     }

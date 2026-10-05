@@ -107,7 +107,7 @@ public sealed class CorrectnessReportProducer : IReportProducer
         foreach (var (word, result) in rows)
         {
             var limits = string.Join(" and ", new[]
-                { word.Morphology!.Capped ? "step limit" : null, word.Morphology.TimedOut ? "time limit" : null }
+                { word.Morphology!.Capped ? "search limit" : null, word.Morphology.TimedOut ? "time limit" : null }
                 .OfType<string>());
             var completion = word.Morphology!.Capped || word.Morphology.TimedOut
                 ? $"INCOMPLETE — parsing did not finish ({limits})"

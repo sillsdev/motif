@@ -109,7 +109,7 @@ internal static class SetupWalkthroughActions
         SetSetupTextChecked(walkthrough, selectedText, true);
         if (addedWords is not null) walkthrough.Type("Words to add", addedWords);
         ClickSetupButton(walkthrough, "Next: limits");
-        TypeSetupLimit(walkthrough, "Parser step limit per word", stepLimit);
+        TypeSetupLimit(walkthrough, "Analysis attempt limit per word", stepLimit);
         ClickSetupButton(walkthrough, "Next: first run");
         Assert.Equal(3, setup.Step);
         var heartbeat = Path.Combine(walkthrough.ManagedRoot, "first-run-held-heartbeat");

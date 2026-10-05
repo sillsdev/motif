@@ -4,10 +4,10 @@ namespace SIL.Motif.Host.PanGloss;
 /// What <c>pangloss parse --trace-details</c> reports about one traced word besides the tree: how its search
 /// ended, how long the parser itself took, and where the effort went. Every number is the parser's own.
 /// </summary>
-/// <param name="Capped">The search stopped at PanGloss's step cap before exploring everything.</param>
+/// <param name="Capped">The search stopped at PanGloss's analysis-attempt or derived search-work cap.</param>
 /// <param name="TimedOut">The search stopped at PanGloss's own time limit.</param>
 /// <param name="InvalidShape">The word's shape could not be traced at all, so no search ran.</param>
-/// <param name="Steps">The parser's own step count, the counter its step cap measures.</param>
+/// <param name="Steps">The parser's count of analysis attempts for this word, independently of search work.</param>
 /// <param name="ElapsedNs">How long the parser's search took, excluding process start and grammar loading.</param>
 /// <param name="Guessed">Whether the parser's guesser, rather than the lexicon, supplied the result.</param>
 /// <param name="Categories">The parser's effort by kind of grammar object, in the parser's own order.</param>

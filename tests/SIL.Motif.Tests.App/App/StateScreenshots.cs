@@ -724,7 +724,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             Setup = async stage =>
             {
                 stage.Client.AssessRefusesWith(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
-                    "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.0)."));
+                    "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.2)."));
                 await stage.Workspace.Assess.RunCommand.ExecuteAsync(null);
             },
             Teardown = stage => stage.ParseAgain(),
@@ -736,7 +736,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             {
                 stage.Client.OnTraceWord((_, _) => Task.FromResult(CommandOutcome<WordTraceResponse>.Refused(
                     new Refusal(RefusalCodes.WordTraceParserUnavailable, FailureReason.Refused,
-                        "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.0)."))));
+                        "PanGloss exited with code 3: the grammar file could not be read (pangloss-win-x64.exe, v0.6.2)."))));
                 stage.Workspace.Context.TryWord("kitabu");
                 await stage.Workspace.Assess.Trace.TryCommand.ExecutionTask!;
             },
@@ -754,7 +754,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             var timing = stage.Workspace.PageModel<TimingPageModel>();
             await timing.SelectWordSetCommand.ExecuteAsync("step-limit");
             await stage.Until(() => timing.ShowEmptySelection, "Timing's empty selection");
-            return "Timing when no words stopped at the step limit.";
+            return "Timing when no words stopped at a search limit.";
         });
     }
 
@@ -1187,7 +1187,7 @@ public sealed class TryWordReviewScreenshots
             var unknown = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.CapturedRuleLabel
                 .Replace("RequiredSyntacticFeatureStruct", "UnknownFutureCode", StringComparison.Ordinal)).Value!;
             var interrupted = new WordTraceResponse("dogs", false, false,
-                "The parser stopped at its step cap after 1,000,000 steps, so this trace is not the whole search.",
+                "The parser stopped at a search limit after 1,000,000 analysis attempts, so this trace is not the whole search.",
                 1_000_000, null, 1, TraceReadingBuilder.Build("dogs",
                     new TraceStep("WordAnalysis", null, "dogs", null, null,
                     [new TraceStep("MorphologicalRuleAnalysis", "Plural", "dogs", "dog", null, [])

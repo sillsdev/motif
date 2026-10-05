@@ -221,7 +221,7 @@ public sealed class AssessWordRowViewModel
             "analysed" => "Parsed",
             "no-analysis" => "No parse",
             "timed-out" => "Time limit",
-            "capped" => "Step limit",
+            "capped" => "Search limit",
             "skipped" => ParserRefusals.Title,
             var other => other,
         };
@@ -307,7 +307,7 @@ public sealed class AssessWordRowViewModel
     public string NoReadingsText => Result switch
     {
         "Time limit" => "No analyses: the parser stopped at its time limit before it could finish.",
-        "Step limit" => "No analyses: the parser stopped at its step limit before it could finish.",
+        "Search limit" => "No analyses: the parser stopped at a search limit before it could finish.",
         ParserRefusals.Title => Comparison.Detail,
         _ => "No analyses: the parser found no way to build this word.",
     };

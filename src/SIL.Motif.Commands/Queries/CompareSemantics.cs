@@ -187,7 +187,7 @@ public static class CompareSemantics
             ? CompareColumnKind.Match : CompareColumnKind.NoMatch;
     }
 
-    /// <summary>Whether the search stopped at a time or step limit, including when it returned partial readings.</summary>
+    /// <summary>Whether the search stopped at a time or parser search limit, including when it returned partial readings.</summary>
     public static bool StoppedAtLimit(string outcome, bool isIncomplete, ParseWordEvidence? morphology) =>
         isIncomplete || outcome is "timed-out" or "capped" ||
         morphology is { Capped: true } or { TimedOut: true };

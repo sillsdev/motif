@@ -31,86 +31,8 @@
       "code": "grammar.allomorph.unsegmentable",
       "group_name": "Allomorph could not be segmented",
       "origin": "import",
-      "description": "Allomorph 'motifb' could not be segmented with this project's phonemes: allomorph \"c5dd51e9-4d06-4f26-af2e-d41fa5a8039d\": cannot segment \"motifb\": no character definition matches at position 0; skipped",
-      "guidance": "In Lexicon > Lexicon Edit, inspect the named form and its environments against the phoneme inventory. Use the diagnostic cause to identify the failing half, environment or character when supplied; correct an unintended spelling or report an accurate unsupported form.",
-      "title": "Allomorph could not be segmented",
-      "explanation": "The allomorph spelling cannot be divided into the parser's phoneme and boundary inventory.",
-      "help_path": "docs/diagnostics/grammar.allomorph.unsegmentable.md",
-      "help_body": "# Allomorphs and environments\n\nA morpheme can have more than one form. These forms are **allomorphs**. An **environment** describes where a form can occur by naming sounds or features around it.\n\nFor example, Turkish plural *-lar* follows a stem with a back last vowel, as in *okullar* (“schools”), and *-ler* follows a stem with a front last vowel, as in *evler* (“houses”). The two forms belong to the same plural pattern; the stem's vowel helps select the form.\n\nWhen a word fails, check that the needed allomorph exists and has a usable form. Then compare its environment with the sounds and features in the word. A missing form is different from an environment that is too narrow or too broad. An infix also needs a position environment.\n\nEnvironment findings describe different outcomes. Invalid environment syntax may be ignored as a restriction. A reference to a missing named environment is an import error. In a circumfix, an environment can prevent one combination of prefix and suffix halves from loading while other combinations remain available.\n\nAllomorph order matters when alternatives meet the parser's disjunctive-ordering conditions: an earlier form can block a later one. Environments, syntactic constraints, and free fluctuation also affect selection, so inspect the conditions and a parse trace before changing order.\n\nA natural class may be used in an environment. If an explicit segment-list class names a phoneme that cannot be resolved, the parser skips that class. A feature-defined class may remain available while individual unresolved or unsupported constraints are omitted. Check the class definition and the phoneme inventory before changing an otherwise valid form.\n\nThe Turkish example illustrates one common pattern; it is not a complete account of Turkish. Real alternations may depend on additional features and exceptions.\n",
-      "fieldworks_places": [
-        {
-          "tool": "lexiconEdit",
-          "field": "Allomorphs > Form"
-        }
-      ],
-      "scope": "object",
-      "subjects": [
-        {
-          "kind": "MoForm",
-          "status": "object",
-          "field": null,
-          "source_class": null,
-          "title": "motifb",
-          "subtitle": null,
-          "guid": "c5dd51e9-4d06-4f26-af2e-d41fa5a8039d",
-          "internal_id": null,
-          "fieldworks": {
-            "status": "available",
-            "guid": "c5dd51e9-4d06-4f26-af2e-d41fa5a8039d",
-            "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3Dc5dd51e9-4d06-4f26-af2e-d41fa5a8039d%26tag%3D"
-          }
-        }
-      ]
-    },
-    {
-      "level": "error",
-      "code": "grammar.msa.no-allomorphs",
-      "group_name": "No usable entry allomorphs",
-      "origin": "import",
-      "description": "Lexical entry 'motifb' has no usable allomorphs.",
-      "guidance": "In Lexicon > Lexicon Edit, inspect Lexeme Form, Allomorphs and Morph Type. Resolve the specific allomorph loading findings before adding a new form.",
-      "title": "No usable entry allomorphs",
-      "explanation": "The lexical entry has no allomorph available to this analysis.",
-      "help_path": "docs/diagnostics/grammar.msa.no-allomorphs.md",
-      "help_body": "# Stems and the lexicon\n\nThe lexicon stores words and the grammatical information the parser uses to build analyses. An entry can have a stem, a gloss, a grammatical category, and one or more allomorphs. These pieces serve different purposes.\n\nFor an illustrative English example, *walk* is a stem, “move on foot” is a gloss, and *verb* is its category. The gloss helps a person recognize the entry; it does not supply a missing stem or category. A form such as *walked* needs the stem and a usable past-tense affix with the required grammatical links.\n\nWhen a word fails, check that the expected stem exists in the relevant writing system. Then check its category and grammatical analysis. A stem without a category may not combine with affixes that require one. A category by itself cannot replace a missing stem.\n\nFor an affix, check that its analysis is classified as intended and that the needed allomorph has a usable form. Inflectional affixes are loaded through template slots. An inflectional affix outside every slot has no slot through which the template can load it, but a partial rule can still be retained; check the finding against the intended template restrictions. An unclassified affix, with neither inflectional nor derivational classification, is a different case and can attach too freely.\n\nIf the source analysis looks complete but the parser still cannot use it, read the diagnostic for the exact missing reference or unsupported construction. Preserve a valid analysis and report a parser limitation instead of guessing a replacement.\n\nThe examples are illustrative. Real entries and analyses depend on the language and the choices made in its FieldWorks project.\n",
-      "fieldworks_places": [
-        {
-          "tool": "lexiconEdit",
-          "field": "Lexeme Form"
-        },
-        {
-          "tool": "lexiconEdit",
-          "field": "Allomorphs"
-        }
-      ],
-      "scope": "object",
-      "subjects": [
-        {
-          "kind": "LexEntry",
-          "status": "object",
-          "field": null,
-          "source_class": null,
-          "title": "motifb",
-          "subtitle": null,
-          "guid": "40bfcb14-2eb0-4eb1-8ae4-950354073100",
-          "internal_id": null,
-          "fieldworks": {
-            "status": "available",
-            "guid": "40bfcb14-2eb0-4eb1-8ae4-950354073100",
-            "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D40bfcb14-2eb0-4eb1-8ae4-950354073100%26tag%3D"
-          }
-        }
-      ]
-    },
-    {
-      "level": "warning",
-      "code": "grammar.allomorph.unsegmentable",
-      "group_name": "Allomorph could not be segmented",
-      "origin": "import",
-      "description": "Allomorph 'motifa' could not be segmented with this project's phonemes: allomorph \"4f88aad9-18f7-4c71-b441-e3cb38ab3b64\": cannot segment \"motifa\": no character definition matches at position 0; skipped",
-      "guidance": "In Lexicon > Lexicon Edit, inspect the named form and its environments against the phoneme inventory. Use the diagnostic cause to identify the failing half, environment or character when supplied; correct an unintended spelling or report an accurate unsupported form.",
+      "description": "Allomorph 'motifa' could not be segmented with this project's phonemes: allomorph \"2dcadeb4-672c-497b-813a-10f7fe92af19\": cannot segment \"motifa\": no character definition matches at position 0; skipped",
+      "guidance": "In Lexicon > Lexicon Edit, check Lexeme Form or Allomorphs > Form and its Environments as named in the finding. Correct unintended spelling. If the spelling is intended, check Grammar > Phonemes > In Orthography as for every phoneme used in it; report a valid form or environment that still cannot be loaded.",
       "title": "Allomorph could not be segmented",
       "explanation": "The allomorph spelling cannot be divided into the parser's phoneme and boundary inventory.",
       "help_path": "docs/diagnostics/grammar.allomorph.unsegmentable.md",
@@ -130,13 +52,13 @@
           "source_class": null,
           "title": "motifa",
           "subtitle": null,
-          "guid": "4f88aad9-18f7-4c71-b441-e3cb38ab3b64",
+          "guid": "2dcadeb4-672c-497b-813a-10f7fe92af19",
           "internal_id": null,
           "fieldworks": {
             "status": "available",
-            "guid": "4f88aad9-18f7-4c71-b441-e3cb38ab3b64",
+            "guid": "2dcadeb4-672c-497b-813a-10f7fe92af19",
             "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D4f88aad9-18f7-4c71-b441-e3cb38ab3b64%26tag%3D"
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D2dcadeb4-672c-497b-813a-10f7fe92af19%26tag%3D"
           }
         }
       ]
@@ -171,36 +93,32 @@
           "source_class": null,
           "title": "motifa",
           "subtitle": null,
-          "guid": "49e9be2c-2088-4807-b109-8af98379dbb2",
+          "guid": "491450f4-028d-4d56-b3b2-f81c7290dac1",
           "internal_id": null,
           "fieldworks": {
             "status": "available",
-            "guid": "49e9be2c-2088-4807-b109-8af98379dbb2",
+            "guid": "491450f4-028d-4d56-b3b2-f81c7290dac1",
             "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D49e9be2c-2088-4807-b109-8af98379dbb2%26tag%3D"
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D491450f4-028d-4d56-b3b2-f81c7290dac1%26tag%3D"
           }
         }
       ]
     },
     {
       "level": "warning",
-      "code": "substrate.classification-ambiguous",
-      "group_name": "Allomorph character is ambiguous",
+      "code": "grammar.allomorph.unsegmentable",
+      "group_name": "Allomorph could not be segmented",
       "origin": "import",
-      "description": "Allomorph 'motifb' contains a character that cannot be classified as a phoneme or word boundary.",
-      "guidance": "In Lexicon > Lexicon Edit, inspect the form. Correct an unintended character; if it is a genuine phoneme, define it in Grammar > Phonemes > In Orthography as. If spelling and inventory are correct, inspect the vernacular writing system and report missing classification evidence.",
-      "title": "Allomorph character is ambiguous",
-      "explanation": "PanGloss lacks evidence to classify an allomorph character and skips the form instead of guessing.",
-      "help_path": "docs/diagnostics/substrate.classification-ambiguous.md",
-      "help_body": "# Modelling a grammar the parser can use\n\nA FieldWorks project can contain analyses that the parser cannot fully use. Check what the parser imported, then compare its behavior with words whose analyses you know. A clean project save does not show that every form, environment, feature, and rule made it into the grammar.\n\n## Start with a word and its analysis\n\nFor a word such as *walked*, check that the lexicon contains the expected stem *walk*, that its grammatical analysis has the category needed by the affix, and that the past-tense affix has a usable form. A gloss such as “move on foot” helps people recognize the entry, but the gloss does not make a missing stem or affix parse. If the entry or analysis is absent, adding a phonological rule will not supply it.\n\n## Sounds and spellings\n\nThe parser reads sounds from the first phoneme set. A phoneme or boundary marker without a usable spelling cannot be found in a word. If two spellings normalize to the same sequence, the parser keeps the earlier item, so check the diagnostic for both items before changing either one.\n\nNatural classes can fail in different ways. An explicit segment-list class is skipped when one listed phoneme cannot be resolved. A feature-defined class can remain available while unresolved or unsupported constraints are omitted. Check both the inventory and the named class before changing a well-formed analysis.\n\n## Allomorphs and environments\n\nAn allomorph needs a usable form for the role it plays. An empty prefix or suffix form cannot load as an affix rule, and an infix without a position environment cannot load through that path. A malformed environment expression may be ignored as a restriction; an unresolved named environment is an import error. In a circumfix, an environment can prevent one pairing of halves from loading without excluding every pairing.\n\nWhen alternatives meet the parser's disjunctive-ordering conditions, the first listed allomorph can block a later one. Environments, syntactic constraints, and free fluctuation also affect selection. Inspect a parse trace and the allomorph conditions before reordering forms.\n\n## Categories, slots, and features\n\nA stem without a grammatical category may not accept affixes that require one. An unclassified affix has neither inflectional nor derivational classification and can attach too freely. An inflectional affix that belongs to no template slot is not loaded through a slot. A template is available only when it has a slot containing a loaded affix rule; an empty slot or unusable affix can leave a template with nothing to build.\n\nIn Grammar > Category Edit, inspect the category's Affix Templates and Affix Slots; in Lexicon > Lexicon Edit, check the affix's Grammatical Info. and Slots. A partial affix can still be retained when it belongs to no slot.\n\nFeature values and inflection classes are linked by references, not by matching names. If a feature or class reference cannot be resolved, use the diagnostic to find the owner and field. Keep valid linguistic data when the parser lacks support for it, and report that limitation.\n\n## Constructions the parser skips or approximates\n\nSome FieldWorks constructions do not have the same behavior in the parser:\n\n- Reduplication patterns such as `[C^1][V^1]-` are not loaded as affix rules.\n- Metathesis rules are skipped; they are not run as approximations. Words that rely on a rule may fail or differ.\n- Custom strata are replaced by the parser's default strata.\n- Some imported metathesis rules are approximated during conversion. The snapshot compiler subsequently skips these rules too; it does not run the approximation. Read both findings to distinguish the conversion loss from the compiler omission.\n\nModel a construction when it is part of the analysis, then check affected words and report valid behavior the parser cannot preserve.\n\n## Measure one change\n\nAfter a source change, import the project again and check the words expected to change along with a few that should remain the same. A parse trace can show which stem, allomorph, environment, and rule steps were used. Change one cause at a time so the next result is useful evidence.\n",
+      "description": "Allomorph 'motifb' could not be segmented with this project's phonemes: allomorph \"7880646b-e28c-4314-b069-6634a04e5592\": cannot segment \"motifb\": no character definition matches at position 0; skipped",
+      "guidance": "In Lexicon > Lexicon Edit, check Lexeme Form or Allomorphs > Form and its Environments as named in the finding. Correct unintended spelling. If the spelling is intended, check Grammar > Phonemes > In Orthography as for every phoneme used in it; report a valid form or environment that still cannot be loaded.",
+      "title": "Allomorph could not be segmented",
+      "explanation": "The allomorph spelling cannot be divided into the parser's phoneme and boundary inventory.",
+      "help_path": "docs/diagnostics/grammar.allomorph.unsegmentable.md",
+      "help_body": "# Allomorphs and environments\n\nA morpheme can have more than one form. These forms are **allomorphs**. An **environment** describes where a form can occur by naming sounds or features around it.\n\nFor example, Turkish plural *-lar* follows a stem with a back last vowel, as in *okullar* (“schools”), and *-ler* follows a stem with a front last vowel, as in *evler* (“houses”). The two forms belong to the same plural pattern; the stem's vowel helps select the form.\n\nWhen a word fails, check that the needed allomorph exists and has a usable form. Then compare its environment with the sounds and features in the word. A missing form is different from an environment that is too narrow or too broad. An infix also needs a position environment.\n\nEnvironment findings describe different outcomes. Invalid environment syntax may be ignored as a restriction. A reference to a missing named environment is an import error. In a circumfix, an environment can prevent one combination of prefix and suffix halves from loading while other combinations remain available.\n\nAllomorph order matters when alternatives meet the parser's disjunctive-ordering conditions: an earlier form can block a later one. Environments, syntactic constraints, and free fluctuation also affect selection, so inspect the conditions and a parse trace before changing order.\n\nA natural class may be used in an environment. If an explicit segment-list class names a phoneme that cannot be resolved, the parser skips that class. A feature-defined class may remain available while individual unresolved or unsupported constraints are omitted. Check the class definition and the phoneme inventory before changing an otherwise valid form.\n\nThe Turkish example illustrates one common pattern; it is not a complete account of Turkish. Real alternations may depend on additional features and exceptions.\n",
       "fieldworks_places": [
         {
           "tool": "lexiconEdit",
           "field": "Allomorphs > Form"
-        },
-        {
-          "tool": "phonemeEdit",
-          "field": "In Orthography as"
         }
       ],
       "scope": "object",
@@ -212,13 +130,54 @@
           "source_class": null,
           "title": "motifb",
           "subtitle": null,
-          "guid": "c5dd51e9-4d06-4f26-af2e-d41fa5a8039d",
+          "guid": "7880646b-e28c-4314-b069-6634a04e5592",
           "internal_id": null,
           "fieldworks": {
             "status": "available",
-            "guid": "c5dd51e9-4d06-4f26-af2e-d41fa5a8039d",
+            "guid": "7880646b-e28c-4314-b069-6634a04e5592",
             "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3Dc5dd51e9-4d06-4f26-af2e-d41fa5a8039d%26tag%3D"
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D7880646b-e28c-4314-b069-6634a04e5592%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "error",
+      "code": "grammar.msa.no-allomorphs",
+      "group_name": "No usable entry allomorphs",
+      "origin": "import",
+      "description": "Lexical entry 'motifb' has no usable allomorphs.",
+      "guidance": "In Lexicon > Lexicon Edit, inspect Lexeme Form, Allomorphs and Morph Type. Resolve the specific allomorph loading findings before adding a new form.",
+      "title": "No usable entry allomorphs",
+      "explanation": "The lexical entry has no allomorph available to this analysis.",
+      "help_path": "docs/diagnostics/grammar.msa.no-allomorphs.md",
+      "help_body": "# Stems and the lexicon\n\nThe lexicon stores words and the grammatical information the parser uses to build analyses. An entry can have a stem, a gloss, a grammatical category, and one or more allomorphs. These pieces serve different purposes.\n\nFor an illustrative English example, *walk* is a stem, “move on foot” is a gloss, and *verb* is its category. The gloss helps a person recognize the entry; it does not supply a missing stem or category. A form such as *walked* needs the stem and a usable past-tense affix with the required grammatical links.\n\nWhen a word fails, check that the expected stem exists in the relevant writing system. Then check its category and grammatical analysis. A stem without a category may not combine with affixes that require one. A category by itself cannot replace a missing stem.\n\nFor an affix, check that its analysis is classified as intended and that the needed allomorph has a usable form. Inflectional affixes are loaded through template slots. An inflectional affix outside every slot has no slot through which the template can load it, but a partial rule can still be retained; check the finding against the intended template restrictions. An unclassified affix, with neither inflectional nor derivational classification, is a different case and can attach too freely.\n\nIf the source analysis looks complete but the parser still cannot use it, read the diagnostic for the exact missing reference or unsupported construction. Preserve a valid analysis and report a parser limitation instead of guessing a replacement.\n\nThe examples are illustrative. Real entries and analyses depend on the language and the choices made in its FieldWorks project.\n",
+      "fieldworks_places": [
+        {
+          "tool": "lexiconEdit",
+          "field": "Lexeme Form"
+        },
+        {
+          "tool": "lexiconEdit",
+          "field": "Allomorphs"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "LexEntry",
+          "status": "object",
+          "field": null,
+          "source_class": null,
+          "title": "motifb",
+          "subtitle": null,
+          "guid": "64029e1f-57a8-4a2e-9507-2c726adff5f7",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "64029e1f-57a8-4a2e-9507-2c726adff5f7",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D64029e1f-57a8-4a2e-9507-2c726adff5f7%26tag%3D"
           }
         }
       ]
@@ -253,13 +212,54 @@
           "source_class": null,
           "title": "motifa",
           "subtitle": null,
-          "guid": "4f88aad9-18f7-4c71-b441-e3cb38ab3b64",
+          "guid": "2dcadeb4-672c-497b-813a-10f7fe92af19",
           "internal_id": null,
           "fieldworks": {
             "status": "available",
-            "guid": "4f88aad9-18f7-4c71-b441-e3cb38ab3b64",
+            "guid": "2dcadeb4-672c-497b-813a-10f7fe92af19",
             "tool": "lexiconEdit",
-            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D4f88aad9-18f7-4c71-b441-e3cb38ab3b64%26tag%3D"
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D2dcadeb4-672c-497b-813a-10f7fe92af19%26tag%3D"
+          }
+        }
+      ]
+    },
+    {
+      "level": "warning",
+      "code": "substrate.classification-ambiguous",
+      "group_name": "Allomorph character is ambiguous",
+      "origin": "import",
+      "description": "Allomorph 'motifb' contains a character that cannot be classified as a phoneme or word boundary.",
+      "guidance": "In Lexicon > Lexicon Edit, inspect the form. Correct an unintended character; if it is a genuine phoneme, define it in Grammar > Phonemes > In Orthography as. If spelling and inventory are correct, inspect the vernacular writing system and report missing classification evidence.",
+      "title": "Allomorph character is ambiguous",
+      "explanation": "PanGloss lacks evidence to classify an allomorph character and skips the form instead of guessing.",
+      "help_path": "docs/diagnostics/substrate.classification-ambiguous.md",
+      "help_body": "# Modelling a grammar the parser can use\n\nA FieldWorks project can contain analyses that the parser cannot fully use. Check what the parser imported, then compare its behavior with words whose analyses you know. A clean project save does not show that every form, environment, feature, and rule made it into the grammar.\n\n## Start with a word and its analysis\n\nFor a word such as *walked*, check that the lexicon contains the expected stem *walk*, that its grammatical analysis has the category needed by the affix, and that the past-tense affix has a usable form. A gloss such as “move on foot” helps people recognize the entry, but the gloss does not make a missing stem or affix parse. If the entry or analysis is absent, adding a phonological rule will not supply it.\n\n## Sounds and spellings\n\nThe parser reads sounds from the first phoneme set. A phoneme or boundary marker without a usable spelling cannot be found in a word. If two spellings normalize to the same sequence, the parser keeps the earlier item, so check the diagnostic for both items before changing either one.\n\nNatural classes can fail in different ways. An explicit segment-list class is skipped when one listed phoneme cannot be resolved. A feature-defined class can remain available while unresolved or unsupported constraints are omitted. Check both the inventory and the named class before changing a well-formed analysis.\n\n## Allomorphs and environments\n\nAn allomorph needs a usable form for the role it plays. An empty prefix or suffix form cannot load as an affix rule, and an infix without a position environment cannot load through that path. A malformed environment expression may be ignored as a restriction; an unresolved named environment is an import error. In a circumfix, an environment can prevent one pairing of halves from loading without excluding every pairing.\n\nWhen alternatives meet the parser's disjunctive-ordering conditions, the first listed allomorph can block a later one. Environments, syntactic constraints, and free fluctuation also affect selection. Inspect a parse trace and the allomorph conditions before reordering forms.\n\n## Categories, slots, and features\n\nA stem without a grammatical category may not accept affixes that require one. An unclassified affix has neither inflectional nor derivational classification and can attach too freely. An inflectional affix that belongs to no template slot is not loaded through a slot. A template is available only when it has a slot containing a loaded affix rule; an empty slot or unusable affix can leave a template with nothing to build.\n\nIn Grammar > Category Edit, inspect the category's Affix Templates and Affix Slots; in Lexicon > Lexicon Edit, check the affix's Grammatical Info. and Slots. A partial affix can still be retained when it belongs to no slot.\n\nFeature values and inflection classes are linked by references, not by matching names. If a feature or class reference cannot be resolved, use the diagnostic to find the owner and field. Keep valid linguistic data when the parser lacks support for it, and report that limitation.\n\n## Constructions the parser skips or approximates\n\nSome FieldWorks constructions do not have the same behavior in the parser:\n\n- Reduplication patterns such as `[C^1][V^1]-` are not loaded as affix rules.\n- Metathesis rules are skipped; they are not run as approximations. Words that rely on a rule may fail or differ.\n- Custom strata are replaced by the parser's default strata.\n- Some imported metathesis rules are approximated during conversion. The snapshot compiler subsequently skips these rules too; it does not run the approximation. Read both findings to distinguish the conversion loss from the compiler omission.\n\nModel a construction when it is part of the analysis, then check affected words and report valid behavior the parser cannot preserve.\n\n## Measure one change\n\nAfter a source change, import the project again and check the words expected to change along with a few that should remain the same. A parse trace can show which stem, allomorph, environment, and rule steps were used. Change one cause at a time so the next result is useful evidence.\n",
+      "fieldworks_places": [
+        {
+          "tool": "lexiconEdit",
+          "field": "Allomorphs > Form"
+        },
+        {
+          "tool": "phonemeEdit",
+          "field": "In Orthography as"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "MoForm",
+          "status": "object",
+          "field": null,
+          "source_class": null,
+          "title": "motifb",
+          "subtitle": null,
+          "guid": "7880646b-e28c-4314-b069-6634a04e5592",
+          "internal_id": null,
+          "fieldworks": {
+            "status": "available",
+            "guid": "7880646b-e28c-4314-b069-6634a04e5592",
+            "tool": "lexiconEdit",
+            "url": "silfw://localhost/link?database%3DSeeded+advice%26tool%3DlexiconEdit%26guid%3D7880646b-e28c-4314-b069-6634a04e5592%26tag%3D"
           }
         }
       ]

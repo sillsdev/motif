@@ -18,7 +18,7 @@ public enum WordOutcome
     /// </summary>
     TimedOut,
 
-    /// <summary>The per-word step budget was exhausted; any findings remain partial evidence.</summary>
+    /// <summary>The analysis-attempt or derived search-work limit was reached; findings remain partial evidence.</summary>
     Capped,
 
     /// <summary>The parser declined to attempt the word — not an analysis result at all.</summary>
@@ -78,7 +78,7 @@ public sealed record BatchAnalysis(
     string ProjectPath,
     IReadOnlyList<string> Warnings)
 {
-    /// <summary>The recorded per-word step budget, or null when the supplied evidence does not name one.</summary>
+    /// <summary>The recorded per-word analysis-attempt limit, or null when the evidence does not name one.</summary>
     public StepCap? PerWordStepLimit { get; init; }
 
     public int Analysed => Words.Count(w => w.Outcome == WordOutcome.Analysed);
@@ -95,7 +95,7 @@ public sealed record BatchAnalysis(
     public int Adjudicated => Analysed + NoAnalysis;
 
     /// <summary>
-    /// Whether any attempted word's search stopped at a time or step limit.
+    /// Whether any attempted word's search stopped at a time or parser search limit.
     /// </summary>
     public bool IsIncomplete => Incomplete > 0;
 }

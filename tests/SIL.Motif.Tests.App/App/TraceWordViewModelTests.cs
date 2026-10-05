@@ -89,7 +89,7 @@ public sealed class TraceWordViewModelTests
     {
         var trace = new TraceWordViewModel { Result = MatinluTrace() };
 
-        Assert.Equal("Parsed · 2 analyses · 0.32 ms", trace.PageSummaryText);
+        Assert.Equal("Parsed · 2 analyses · 0.19 ms", trace.PageSummaryText);
     }
 
     [Theory]
@@ -240,7 +240,7 @@ public sealed class TraceWordViewModelTests
     {
         var fake = new FakeCommandClient();
         fake.TraceWordCompletesWith(new WordTraceResponse(
-            "kitabu", Parsed: false, Complete: false, StopReason: "The parser stopped at its step cap.", StepCount: 3,
+            "kitabu", Parsed: false, Complete: false, StopReason: "The parser stopped at a search limit.", StepCount: 3,
             DeepestRule: null, ElapsedMs: 1500,
             TraceReadingBuilder.Build("kitabu", Leaf("WordAnalysis"), [], []))
         {
@@ -256,9 +256,9 @@ public sealed class TraceWordViewModelTests
 
         Assert.True(trace.HasResult);
         Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("12,345 parser steps", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("12,345 analysis attempts", trace.SummaryText, StringComparison.Ordinal);
         Assert.Contains("0.29 ms in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Equal("The parser stopped at its step cap.", trace.StopReason);
+        Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);
         Assert.Equal("1 found no root", root.Missed);
         Assert.Equal("not timed", root.Time);
@@ -682,7 +682,7 @@ public sealed class TraceWordViewModelTests
     }
 
     [Theory]
-    [InlineData("The parser stopped at its step cap after 1,000,000 steps, so this trace is not the whole search.")]
+    [InlineData("The parser stopped at a search limit after 1,000,000 analysis attempts, so this trace is not the whole search.")]
     [InlineData("The parser stopped at its own time limit, so this trace is not the whole search.")]
     [InlineData("The search was cancelled.")]
     [InlineData(null)]

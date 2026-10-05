@@ -108,7 +108,7 @@ public sealed class StoredAssessmentRowsTests : IDisposable
                 new(0, SeededProject.AnalysedWordForm, 5, WordOutcome.Analysed, "sig")
                     { Morphology = unbuilt, Correctness = MorphologyCorrectness.Compare(unbuilt, approvedReadings) },
                 new(1, SeededProject.UnanalysedWordForm, 4, WordOutcome.NoAnalysis, "-"),
-                // Stopped by the step limit while the time limit also ran out inside the search.
+                // Stopped by a search limit while the time limit also ran out inside the search.
                 new(2, "motifa", 90, WordOutcome.Capped, "partial")
                     { Morphology = new(ParseMorphEvidence.Schema, 2, "motifa", 90, false, true, false, [], []) },
                 new(3, "motifb", 1000, WordOutcome.TimedOut, "-"),

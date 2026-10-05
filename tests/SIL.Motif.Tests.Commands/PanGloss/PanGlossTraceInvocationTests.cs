@@ -76,7 +76,7 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         Assert.NotNull(incomplete.Tree);
         Assert.False(incomplete.Summary!.Completed);
         Assert.True(incomplete.Details!.Capped);
-        Assert.Contains("step cap after 42 steps", incomplete.Reason, StringComparison.Ordinal);
+        Assert.Contains("search limit after 42 analysis attempts", incomplete.Reason, StringComparison.Ordinal);
     }
 
     [Fact]

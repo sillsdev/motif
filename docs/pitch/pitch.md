@@ -389,7 +389,7 @@ A grammar author cannot fix what they cannot see. Try a Word shows how one word 
 
 ### Timing
 
-Every word is timed. The slowest words are listed, and a runaway word is stopped at a fixed step limit and reported, instead of hanging the batch.
+Every word is timed. The slowest words are listed, and a runaway word is stopped at a fixed search limit and reported, instead of hanging the batch.
 
 ### Statistics
 

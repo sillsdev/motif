@@ -41,7 +41,7 @@ public sealed class PanGlossParser
     /// single hard word can take the process down.
     /// </param>
     /// <param name="label">Names this run in the machine queue's diagnostics.</param>
-    /// <param name="perWordStepLimit">The per-word search budget, independent of the time limit.</param>
+    /// <param name="perWordStepLimit">The per-word analysis-attempt limit; PanGloss derives a search-work limit from it.</param>
     public async Task<ParserRunResult> AnalyseBatchAsync(
         string projectFilePath, IReadOnlyList<string> words, TimeSpan perWordLimit,
         string label, CancellationToken cancellationToken,

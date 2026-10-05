@@ -199,8 +199,8 @@ public static class CliVerbCatalog
                 "assess <project> [--texts <guid,guid>] [--all-wordforms] [--words <file>] " +
                 "[--retry-failed] [--retry-slower-than <ms>] [--retry-source-assessment <id>] " +
                 "[--replaces <assessment-id>] " +
-                "[--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
-                "The default per-word step cap is 200,000 steps.",
+                "[--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--json]",
+                "The default per-word limit is 200,000 analysis attempts. PanGloss derives an inner search-work limit at 100 times that value.",
             }),
 
         new CliVerbDescriptor(
@@ -215,7 +215,7 @@ public static class CliVerbCatalog
             new[]
             {
                 "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
-                "[--add-words <word,word>] [--time-limit-ms <ms>] [--step-cap <steps|unbounded>] [--json]",
+                "[--add-words <word,word>] [--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "texts", "texts list",

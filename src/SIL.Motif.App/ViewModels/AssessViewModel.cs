@@ -63,7 +63,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     /// </summary>
     public Task RerunAsync(IReadOnlyList<string> words, int limitMs) => RerunAsync(words, limitMs, null);
 
-    /// <summary>Runs chosen words again with an optional step cap for this Selection.</summary>
+    /// <summary>Runs chosen words again with an optional analysis-attempt limit for this Selection.</summary>
     public Task RerunAsync(IReadOnlyList<string> words, int limitMs, StepCap? stepLimit)
     {
         ArgumentNullException.ThrowIfNull(words);

@@ -16,7 +16,7 @@ namespace SIL.Motif.Commands.Assess;
 /// </summary>
 internal static class AssessmentWordRows
 {
-    private const string StepLimited = "INCOMPLETE — parsing did not finish (step limit)";
+    private const string StepLimited = "INCOMPLETE — parsing did not finish (search limit)";
     private const string TimeLimited = "INCOMPLETE — parsing did not finish (time limit)";
 
     /// <summary>Whether a word's search stopped at a limit, including when it returned readings first.</summary>
@@ -31,7 +31,7 @@ internal static class AssessmentWordRows
     internal static string CompletionStatus(string outcome, ParseWordEvidence? morphology) => outcome switch
     {
         _ when morphology is { Capped: true, TimedOut: true } =>
-            "INCOMPLETE — parsing did not finish (step and time limits)",
+            "INCOMPLETE — parsing did not finish (search and time limits)",
         "capped" => StepLimited,
         "timed-out" => TimeLimited,
         _ when morphology is { Capped: true } => StepLimited,

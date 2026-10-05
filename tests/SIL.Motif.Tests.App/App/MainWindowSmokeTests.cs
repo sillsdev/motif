@@ -939,7 +939,7 @@ public sealed class MainWindowSmokeTests
                             TryWordLink = "silfw://localhost/link?database%3dp%26tool%3dAnalyses",
                         },
                         new AssessmentWordResult("motifb", "capped", true,
-                            "INCOMPLETE — parsing did not finish (step limit)", 700, "partial")
+                            "INCOMPLETE — parsing did not finish (search limit)", 700, "partial")
                         {
                             Morphology = new ParseWordEvidence(
                                 ParseMorphEvidence.Schema, 1, "motifb", 700, true, false, false,
@@ -968,7 +968,7 @@ public sealed class MainWindowSmokeTests
                 var rows = workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
                 Assert.Equal("motif- = first gloss", Assert.Single(rows[0].Readings).Text);
                 Assert.True(rows[0].HasTryWordLink);
-                Assert.Contains("INCOMPLETE — parsing did not finish (step limit)", rows[1].Detail);
+                Assert.Contains("INCOMPLETE — parsing did not finish (search limit)", rows[1].Detail);
                 Assert.Contains("Morphology evidence unavailable.", rows[2].Detail);
                 Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
 

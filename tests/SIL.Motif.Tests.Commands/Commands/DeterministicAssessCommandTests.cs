@@ -290,14 +290,14 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(2, Assert.Single(timing.Value.Aggregates).Calls);
         Assert.Single(timing.Value.CostliestWords);
         Assert.Contains(timing.Value.Words, word => word.Word == SeededProject.AnalysedWordForm &&
-            word.Completion == "Step limit");
+            word.Completion == "Search limit");
 
         var stepLimited = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "step-limit", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 5));
         Assert.True(stepLimited.Succeeded, stepLimited.Refusal?.Message);
         Assert.Equal(1, stepLimited.Value!.WordCount);
         Assert.Equal(SeededProject.AnalysedWordForm, Assert.Single(stepLimited.Value.SlowestWords).Word);
-        Assert.Equal("Step limit", Assert.Single(stepLimited.Value.Words).Completion);
+        Assert.Equal("Search limit", Assert.Single(stepLimited.Value.Words).Completion);
 
         var slowest = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             parseAssessment.AssessmentId, "slowest", "rule", new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, 1));

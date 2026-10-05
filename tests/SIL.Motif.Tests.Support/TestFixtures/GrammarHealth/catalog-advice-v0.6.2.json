@@ -1,0 +1,27 @@
+{
+  "conversion.unsegmentable-form": {
+    "explanation": "The substrate allomorph cannot be divided using the imported phoneme and boundary inventory.",
+    "guidance": "In Lexicon > Lexicon Edit, check the named Lexeme Form or Allomorphs > Form. Use the finding's character position to locate unintended spelling. If the spelling is intended, check Grammar > Phonemes > In Orthography as for its phonemes; report a valid form that still cannot be loaded.",
+    "title": "Allomorph form cannot be segmented"
+  },
+  "grammar.environment.invalid": {
+    "explanation": "The environment expression could not be parsed and is ignored as a restriction.",
+    "guidance": "In Grammar > Environments, check String Representation for phonological environment '{subject}'; in Lexicon > Lexicon Edit, Allomorphs > Environments shows where it is attached. An environment uses / and _ to separate the surrounding context from the allomorph position, square brackets for a natural-class abbreviation, and # for a word boundary. Correct unintended notation or names; check phonemes in Grammar > Phonemes and class abbreviations in Grammar > Natural Classes. Roots ignore invalid restrictions, ordinary affixes also get an unrestricted pass, and an infix still needs a valid position. Report valid syntax the parser rejects.",
+    "title": "Invalid phonological environment"
+  },
+  "grammar.msa.no-rule-form-allomorphs": {
+    "explanation": "This analysis has no usable affix-form allomorph.",
+    "guidance": "In Lexicon > Lexicon Edit, inspect Allomorphs, their forms, Morph Type and Environments. Review the specific finding for each rejected form.",
+    "title": "Analysis has no usable affix form"
+  },
+  "grammar.phoneme.nfd-collision": {
+    "explanation": "A phoneme spelling collides with an earlier phoneme or boundary after Unicode normalization.",
+    "guidance": "In Grammar > Phonemes, compare the named phoneme's In Orthography as values. Correct an unintended duplicate; retain a linguistically intentional distinction and report the limitation.",
+    "title": "Phoneme representation collision"
+  },
+  "migration.inferred-segment-with-feature-rule": {
+    "explanation": "A character inferred from an allomorph has no authored phonological features yet matches a feature-defined natural class.",
+    "guidance": "If the character is a language phoneme, define its In Orthography as and Phonological Features in Grammar > Phonemes. Otherwise correct the unintended allomorph spelling in Lexicon > Lexicon Edit.",
+    "title": "Unlisted character matches a feature class"
+  }
+}

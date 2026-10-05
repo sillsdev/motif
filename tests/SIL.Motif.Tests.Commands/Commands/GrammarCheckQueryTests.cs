@@ -186,7 +186,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "pangloss-v0.6.0-seeded.json"));
+            "pangloss-v0.6.2-seeded.json"));
         using var document = JsonDocument.Parse(raw);
         var diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
         Assert.True(diagnostics.Select(item => item.GetProperty("code").GetString()).Distinct().Count() >= 3);

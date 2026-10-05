@@ -14,7 +14,7 @@ public sealed record ParseWordEvidence(
     IReadOnlyList<ParseAnalysis> Analyses, IReadOnlyList<string> Unavailable)
 {
     public ParserRefusal? Refusal { get; init; }
-    /// <summary>The parser step-budget iterations attributed to this word by batch statistics.</summary>
+    /// <summary>The analysis attempts attributed to this word by batch statistics.</summary>
     public int? Attempts { get; init; }
 }
 

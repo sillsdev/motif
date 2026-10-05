@@ -2,7 +2,9 @@
 
 Warnings carry PanGloss's explanation and advice so someone can read the same finding in Motif, an exported report, or the parser's documentation. Motif preserves the reported subject's state rather than resolving a missing reference against a later project.
 
-Motif accepts only grammar-health `schema_version: 4`, produced by the pinned PanGloss v0.6.0 release. Earlier versions and unknown future versions are refused with an instruction to update PanGloss and Motif together.
+Motif accepts only grammar-health `schema_version: 4`, produced by the pinned PanGloss v0.6.2 release. Earlier versions and unknown future versions are refused with an instruction to update PanGloss and Motif together.
+
+PanGloss reports an unreadable phonological environment as a warning. Roots ignore that restriction but keep valid ones; ordinary affixes add an unrestricted pass beside valid passes; an infix with no valid position is skipped. Missing references and unrelated fatal conversion issues still refuse.
 
 Each finding retains its producer `title`, `description`, nullable `explanation` and `guidance`, report `locale`, `scope`, nullable `help_path` and CommonMark `help_body`, and structured `fieldworks_places` (`tool`, `field`). Motif displays these fields without deriving advice or destinations from prose. Its reference link uses the pinned release tag and producer help path.
 

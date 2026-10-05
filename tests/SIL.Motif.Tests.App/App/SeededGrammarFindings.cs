@@ -19,7 +19,7 @@ internal static class SeededGrammarFindings
     public static IReadOnlyList<GrammarWarning> All()
     {
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "catalog-advice-v0.6.0.json")));
+            "TestFixtures", "GrammarHealth", "catalog-advice-v0.6.2.json")));
         var findings = new List<GrammarWarning>();
         void Add(string code, string group, GrammarWarningPart? subject, string problem, int count,
             GrammarFindingOrigin origin = GrammarFindingOrigin.Import, string? explanation = null,

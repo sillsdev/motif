@@ -107,7 +107,7 @@ public sealed class OverviewPageWordsTests
 
         Assert.Equal("142 words · 38.0 s total word time", page.SpeedMain);
         Assert.Equal("median 6.4 ms a word · 95th percentile 48.2 ms", page.SpeedMedian);
-        Assert.Equal("3 stopped at the step limit", page.SpeedDetails);
+        Assert.Equal("3 stopped at a search limit", page.SpeedDetails);
         Assert.Equal([("mwalimu", "700 ms"), ("hawajafika", "48 ms")],
             page.SlowestWordRows.Select(row => (row.Word, row.TimeText)));
         Assert.Equal([("Morphological rules", "56%"), ("Phonological rules", "21%"),
@@ -186,7 +186,7 @@ public sealed class OverviewPageWordsTests
         await context.OpenProjectAsync(ProjectPath);
         Assert.False(page.SlowestWordRows[0].HasCard);
 
-        context.Assess.Words.Load([new AssessmentWordResult("mwalimu", "capped", true, "INCOMPLETE — step limit", 700, null)]);
+        context.Assess.Words.Load([new AssessmentWordResult("mwalimu", "capped", true, "INCOMPLETE — search limit", 700, null)]);
 
         var mwalimu = page.SlowestWordRows[0];
         Assert.True(mwalimu.HasCard);
@@ -690,7 +690,7 @@ public sealed class OverviewPageWordsTests
         Assert.Contains("6 approved words are Lost", rows[0].Summary);
         Assert.Contains("3 words use kat (named by a grammar warning)", rows[0].Detail);
         Assert.Equal("2", rows[1].Number);
-        Assert.Contains("3 words stopped at the step limit", rows[1].Summary);
+        Assert.Contains("3 words stopped at a search limit", rows[1].Summary);
         Assert.Equal("33.6 s of 38.0 s total word time", rows[1].Detail);
         Assert.Equal("3", rows[2].Number);
         Assert.Contains("3 Unknown words differ", rows[2].Summary);

@@ -268,7 +268,7 @@ public static class CommandTextRenderer
             $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
             $"  Time limit:  {(selection.PerWordLimitMs is { } timeLimit ? $"{timeLimit:N0} ms" : "none")}{Environment.NewLine}" +
-            $"  Step limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
+            $"  Analysis attempt limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
             $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
     }
 
@@ -721,7 +721,7 @@ public static class CommandTextRenderer
             ? $"Trace of {response.Word}: parsed, {analyses:N0} {(analyses == 1 ? "analysis" : "analyses")}"
             : $"Trace of {response.Word}: no parse");
         text.AppendLine(response.Complete
-            ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} parser steps"
+            ? $"  Search: complete, {response.ParserSteps?.ToString("N0") ?? "unknown"} analysis attempts"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);

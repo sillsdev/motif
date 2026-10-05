@@ -117,7 +117,7 @@ public sealed class WorkspaceContextTests
             new TimingResponse(request.AssessmentId!, request.WordSet, request.By, 1, ++calls, calls, [],
                 request.By == "rule" ? [new TimingAggregateRow("Fresh rule", "Fresh rule", 1, 1, 1) { Kind = "morph_rule" }] : [], [])
             {
-                Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : "Step limit")],
+                Words = [new TimingWordRow("dogs", 1, calls > 3 ? "Finished" : "Search limit")],
             })));
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -529,7 +529,7 @@ public sealed class WorkspaceContextTests
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
             Words = [new TimingWordRow("dogs", 5, "Finished"),
-                new TimingWordRow("cats", 8, "Step limit")],
+                new TimingWordRow("cats", 8, "Search limit")],
         });
         await context.OpenProjectAsync(ProjectPath);
         context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
@@ -626,7 +626,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, "Step limit"),
+            Words = [new TimingWordRow("dogs", 5, "Search limit"),
                 new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessCompletesWith(Assessment());
@@ -680,7 +680,7 @@ public sealed class WorkspaceContextTests
 
         await timing.RerunWordsCommand.ExecuteAsync(null);
 
-        Assert.Equal("Enter a positive per-word time and a positive whole-number step limit.", timing.RerunMessage);
+        Assert.Equal("Enter a positive per-word time and a positive whole-number analysis attempt limit.", timing.RerunMessage);
         Assert.Empty(fake.AssessRequests);
         var rerunEntry = Assert.Single(fake.UsageEntries.Skip(usageCountBeforeRerun));
         Assert.Equal("assess", rerunEntry.Command);
@@ -693,7 +693,7 @@ public sealed class WorkspaceContextTests
         var timing = new TimingPageModel(context);
         fake.TimingCompletesWith(new TimingResponse("assessment-1", "all", "kind", 2, 5, 8, [], [], [])
         {
-            Words = [new TimingWordRow("dogs", 5, "Step limit"),
+            Words = [new TimingWordRow("dogs", 5, "Search limit"),
                 new TimingWordRow("cats", 8, "Finished")],
         });
         fake.AssessBlocksUntilCancelled(new Refusal("assessment.cancelled", FailureReason.Cancelled, "Cancelled."));

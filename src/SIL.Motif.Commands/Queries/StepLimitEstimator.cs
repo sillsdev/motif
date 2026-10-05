@@ -5,10 +5,10 @@ using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
 
-/// <summary>The measured or fallback parser time for one search step.</summary>
+/// <summary>The measured or fallback parser time for one analysis attempt.</summary>
 public sealed record ParserStepRate(decimal MillisecondsPerStep, bool IsTypicalMachine);
 
-/// <summary>The estimated word duration and saved time cap for one finite step limit.</summary>
+/// <summary>The estimated word duration and saved time cap for one finite analysis-attempt limit.</summary>
 public sealed record StepLimitEstimate(
     decimal EstimatedMilliseconds,
     long? PerWordTimeLimitMs,
@@ -17,14 +17,14 @@ public sealed record StepLimitEstimate(
 /// <summary>Derives setup estimates from stored parser timing or a documented typical-machine rate.</summary>
 public static class StepLimitEstimator
 {
-    /// <summary>The fallback rate estimates 250,000 parser steps per second.</summary>
+    /// <summary>The fallback rate estimates 250,000 analysis attempts per second.</summary>
     public const decimal TypicalMachineMillisecondsPerStep = 0.004m;
 
     /// <summary>The fallback rate used before an Assessment has usable parser statistics.</summary>
     public static ParserStepRate TypicalMachineRate { get; } =
         new(TypicalMachineMillisecondsPerStep, IsTypicalMachine: true);
 
-    /// <summary>Uses a stored Assessment's per-word elapsed times and parser step counts when available.</summary>
+    /// <summary>Uses a stored Assessment's per-word elapsed times and analysis-attempt counts when available.</summary>
     public static ParserStepRate FromAssessment(AssessmentRecord? assessment)
     {
         if (assessment?.Words is null)
@@ -46,16 +46,16 @@ public static class StepLimitEstimator
     }
 
     /// <summary>Calculates the estimate and ten-times time cap, rounded up to a whole second.</summary>
-    /// <param name="stepLimit">The finite per-word step cap.</param>
+    /// <param name="stepLimit">The finite per-word analysis-attempt cap.</param>
     /// <param name="rate">The measured parser rate or the fallback rate.</param>
-    /// <returns><see langword="null"/> when the step limit is unbounded.</returns>
+    /// <returns><see langword="null"/> when the analysis-attempt limit is unbounded.</returns>
     public static StepLimitEstimate? Calculate(StepCap stepLimit, ParserStepRate rate)
     {
         ArgumentNullException.ThrowIfNull(stepLimit);
         ArgumentNullException.ThrowIfNull(rate);
         if (stepLimit.IsUnbounded) return null;
         if (rate.MillisecondsPerStep <= 0)
-            throw new ArgumentOutOfRangeException(nameof(rate), "The parser step rate must be positive.");
+            throw new ArgumentOutOfRangeException(nameof(rate), "The parser attempt rate must be positive.");
 
         decimal estimatedMilliseconds;
         try

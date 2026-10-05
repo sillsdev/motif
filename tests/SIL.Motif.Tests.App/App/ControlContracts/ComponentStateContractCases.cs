@@ -494,6 +494,7 @@ internal enum TooltipScene
     ExpertTrace,
     Timing,
     Statistics,
+    StatisticsObjects,
     Warnings,
     Handoff,
     ReaderStaged,
@@ -727,6 +728,15 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<TimingPage>() is not null),
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
+        new("statistics object name", "Views/StatisticsPanel.axaml", "{Binding Object}", TooltipScene.StatisticsObjects,
+            control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
+                text.Text == row.Object && control.FindAncestorOfType<StatisticsPanel>() is not null),
+        new("statistics word", "Views/StatisticsPanel.axaml", "{Binding Word}", TooltipScene.Statistics,
+            control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
+                text.Text == row.Word && control.FindAncestorOfType<StatisticsPanel>() is not null),
+        new("statistics heat value", "Views/HeatCell.cs", "TextToolTip", TooltipScene.Statistics,
+            control => control is CopyableTextBlock text && control.GetVisualAncestors().OfType<HeatCell>().Any(cell =>
+                cell.TextToolTip == text.Text && cell.FindAncestorOfType<StatisticsPanel>() is not null)),
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
             "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),

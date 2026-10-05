@@ -188,9 +188,9 @@ public sealed partial class OverviewPageModel : PageModel
           (timing.Percentile95Ms is { } p95 ? $" · 95th percentile {TimingShare.FormatDuration(p95)}" : string.Empty)
         : string.Empty;
 
-    /// <summary>How many words stopped at the step limit, or empty when none did.</summary>
+    /// <summary>How many words stopped at a parser search limit, or empty when none did.</summary>
     public string SpeedDetails => Overview?.Timing is { MeasuredWordCount: > 0, StepLimitedWordCount: > 0 and var stopped }
-        ? $"{stopped:N0} stopped at the step limit"
+        ? $"{stopped:N0} stopped at a search limit"
         : string.Empty;
 
     /// <summary>The slowest words as word rows, each with the parse time the Overview read for it.</summary>
@@ -278,7 +278,7 @@ public sealed partial class OverviewPageModel : PageModel
                     ? $"{TimingShare.FormatDuration(stopped)} of {TimingShare.FormatDuration(total * 1000)} total word time"
                     : string.Empty;
                 rows.Add(new OverviewLookFirstRow((rows.Count + 1).ToString(CultureInfo.CurrentCulture),
-                    $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at the step limit.",
+                    $"{SpeedText.Count(data.StepLimitedWords.Count, "word", "words")} stopped at a search limit.",
                     detail, $"See the {SpeedText.Count(data.StepLimitedWords.Count, "word", "words")}",
                     new RelayCommand(() => Context.OpenTiming(data.StepLimitedWords, null))));
             }

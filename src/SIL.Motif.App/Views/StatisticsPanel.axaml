@@ -60,6 +60,7 @@
                DockPanel.Dock="Top" />
 
     <DataGrid x:Name="Grid" ItemsSource="{Binding Statistics.Rows}" ColumnWidth="*"
+              RowHeight="{DynamicResource Component.Statistics.RowHeight}"
               IsReadOnly="True"
               CanUserSortColumns="True"
               ClipboardCopyMode="IncludeHeader"
@@ -78,14 +79,20 @@
         <DataGridTemplateColumn Header="Object" Tag="object" ClipboardContentBinding="{ReflectionBinding Object}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:CopyableTextBlock Text="{Binding Object}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:CopyableTextBlock Text="{Binding Object}" TextTrimming="CharacterEllipsis"
+                                      ToolTip.Tip="{Binding Object}" views:ClearTipPlacement.IsEnabled="True"
+                                      Background="{DynamicResource Intent.Clear}"
+                                      Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="Word" Tag="word" ClipboardContentBinding="{ReflectionBinding Word}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:CopyableTextBlock Text="{Binding Word}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:CopyableTextBlock Text="{Binding Word}" TextTrimming="CharacterEllipsis"
+                                      ToolTip.Tip="{Binding Word}" views:ClearTipPlacement.IsEnabled="True"
+                                      Background="{DynamicResource Intent.Clear}"
+                                      Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
@@ -98,24 +105,27 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Attempts" Tag="attempts" ClipboardContentBinding="{ReflectionBinding Attempts}">
+        <DataGridTemplateColumn Header="Attempts" Tag="attempts" Width="Auto" ClipboardContentBinding="{ReflectionBinding Attempts}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding AttemptsText}" Intensity="{Binding AttemptsHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:HeatCell Text="{Binding AttemptsText}" TextToolTip="{Binding AttemptsText}"
+                              Intensity="{Binding AttemptsHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Analyses" Tag="passes" ClipboardContentBinding="{ReflectionBinding Passes}">
+        <DataGridTemplateColumn Header="Analyses" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding PassesText}" Intensity="{Binding PassesHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:HeatCell Text="{Binding PassesText}" TextToolTip="{Binding PassesText}"
+                              Intensity="{Binding PassesHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
-        <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
+        <DataGridTemplateColumn Header="Elapsed (ms)" Tag="elapsedMs" Width="Auto" ClipboardContentBinding="{ReflectionBinding ElapsedMs}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding ElapsedText}" Intensity="{Binding ElapsedHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:HeatCell Text="{Binding ElapsedText}" TextToolTip="{Binding ElapsedText}"
+                              Intensity="{Binding ElapsedHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>

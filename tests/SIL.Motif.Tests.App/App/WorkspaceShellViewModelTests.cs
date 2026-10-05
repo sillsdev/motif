@@ -533,7 +533,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(StepCap.Unbounded, request.PerWordStepLimit);
         Assert.Null(request.PerWordLimitMs);
         Assert.Null(Assert.Single(fake.SetDefaultSelectionRequests).PerWordLimitMs);
-        Assert.Contains("No step limit", workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
+        Assert.Contains("No analysis attempt limit", workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -894,7 +894,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Equal([TextId], workspace.Selection.ChosenTextIds);
         Assert.Equal("kept", workspace.Selection.PastedWords);
-        Assert.Equal($"1 text, 1 pasted word, step limit {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
+        Assert.Equal($"1 text, 1 pasted word, analysis attempt limit {StepCap.DefaultSteps:N0}", workspace.Selection.SummaryText);
     }
 
     [Fact]

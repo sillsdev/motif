@@ -64,7 +64,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(selectedTextIds, setup.Selection.ChosenTextIds.Order());
 
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.SetFakeParserBehavior(new
             {
@@ -150,7 +150,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, true);
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, TwoTextWalkthroughProject.SecondTextTitle, false);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "3100");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
             var grammarCheck = walkthrough.Workspace.PageModel<WarningsPageModel>()
@@ -209,7 +209,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "Finish did not close setup and complete its first run");
 
             var selectedId = Assert.Single(walkthrough.Workspace.Selection.ChosenTextIds);
-            Assert.Equal($"1 text, step limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
+            Assert.Equal($"1 text, analysis attempt limit {3100:N0}", walkthrough.Workspace.Selection.SummaryText);
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
@@ -236,7 +236,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 .Single(text => text.Title == TwoTextWalkthroughProject.SecondTextTitle).IsChecked);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
             Assert.Contains("At this limit a word takes up to about", setup.StepLimitEstimateText, StringComparison.Ordinal);
-            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser step limit per word").Value);
+            Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Analysis attempt limit per word").Value);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.Click("Use this Selection");
             walkthrough.WaitUntil(

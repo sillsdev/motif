@@ -18,7 +18,7 @@ public abstract record StoredScope
     /// <summary>
     /// What a Trial told an Assessor to do, for any of the kinds a Trial run collects (<c>ParseTime</c>,
     /// <c>Correctness</c>, <c>ObjectTiming</c>, <c>EngineSize</c>): the declared query, the words it resolved
-    /// to, which kinds were collected, and the per-word time and step caps.
+    /// to, which kinds were collected, and the per-word time and analysis-attempt caps.
     /// </summary>
     public sealed record Trial(
         string Query,

@@ -489,7 +489,7 @@ public sealed class CatalogAggregationTests
             ProjectStanding = ProjectStanding.Approved,
             StoredAnalyses = [new ParserReading([distinctive, suffix]) { StoredAnalysisOpinion = ReadingGrade.Approved }],
         };
-        var limited = new AssessmentWordResult("limited", "capped", true, "Step limit", 400, null);
+        var limited = new AssessmentWordResult("limited", "capped", true, "Search limit", 400, null);
         var different = new AssessmentWordResult("different", "analysed", false, "Completed", 10, null)
         {
             ProjectStanding = ProjectStanding.Candidate,

@@ -124,7 +124,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 Assert.Single(walkthrough.Workspace.Context.Setup.Selection.Texts).Title);
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
             Assert.Equal(3100m, walkthrough.Find<Avalonia.Controls.NumericUpDown>(
-                "Parser step limit per word").Value);
+                "Analysis attempt limit per word").Value);
             Assert.Contains("At this limit a word takes up to about",
                 walkthrough.Workspace.Context.Setup!.StepLimitEstimateText, StringComparison.Ordinal);
 
@@ -132,7 +132,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             SetupWalkthroughActions.SetSetupTextChecked(walkthrough, SeededProject.TextTitle, false);
             walkthrough.Type("Words to add", "motifb");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: limits");
-            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser step limit per word", "6600");
+            SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Analysis attempt limit per word", "6600");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, "Next: first run");
             walkthrough.Click("Use this Selection");
             walkthrough.WaitUntil(

@@ -21,7 +21,7 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
 {
     private const string NothingSelectedYet = "Nothing selected yet.";
     private const string NegativeThresholdMessage = "The retry-slower-than threshold must not be negative.";
-    private const string InvalidStepLimitMessage = "The per-word step limit must be a positive whole number.";
+    private const string InvalidStepLimitMessage = "The per-word analysis attempt limit must be a positive whole number.";
 
     private readonly ICommandClient _commandClient;
     private readonly List<TextChoiceViewModel> _allTexts = [];
@@ -314,9 +314,9 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
         if (RetryFailed) parts.Add("retry failed");
         if (includeThreshold) parts.Add($"retry slower than {RetrySlowerThanMilliseconds} ms");
         if (PerWordStepLimitUnbounded)
-            parts.Add("no step limit");
+            parts.Add("no analysis attempt limit");
         else if (StepLimitValidationMessage is null && PerWordStepLimit is { } steps)
-            parts.Add($"step limit {steps:N0}");
+            parts.Add($"analysis attempt limit {steps:N0}");
         return string.Join(", ", parts);
     }
 

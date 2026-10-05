@@ -176,13 +176,13 @@ public abstract record PanGlossRequest
     /// <c>--trace</c> flag, and tracing runs unmerged deliberately, so this must stay a single-word request
     /// rather than growing a word list. Needs PanGloss 0.3.3 or later.
     /// </summary>
-    /// <remarks>PanGloss signals a search stopped at its step cap or time limit with a nonzero exit after writing its
+    /// <remarks>PanGloss signals a search stopped at its analysis-attempt cap, derived search-work cap, or time limit with a nonzero exit after writing its
     /// output, as an ordinary trace does from 0.5.2. A nonzero exit is accepted only when standard output holds a
     /// well-formed document reporting that stop, so the word shows as stopped; any other nonzero exit is refused.
     /// </remarks>
     public sealed record Trace(string GrammarPath, string Word) : PanGlossRequest
     {
-        /// <summary>The parser's step cap for this word; <see langword="null"/> passes none and keeps PanGloss's own
+        /// <summary>The parser's analysis-attempt cap for this word; <see langword="null"/> passes none and keeps PanGloss's own
         /// runaway guard.</summary>
         public StepCap? StepLimit { get; init; }
 

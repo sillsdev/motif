@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Assess;
 
-/// <summary>A finite per-word search bound or an explicit request for no step bound.</summary>
+/// <summary>A finite per-word analysis-attempt bound or an explicit request for no attempt bound.</summary>
 [JsonConverter(typeof(StepCapJsonConverter))]
 public sealed record StepCap
 {
@@ -13,7 +13,7 @@ public sealed record StepCap
     public StepCap(long? steps)
     {
         if (steps is <= 0)
-            throw new ArgumentOutOfRangeException(nameof(steps), "A finite step cap must be positive.");
+            throw new ArgumentOutOfRangeException(nameof(steps), "A finite analysis-attempt cap must be positive.");
         Steps = steps;
     }
 
@@ -36,12 +36,12 @@ public sealed record StepCap
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
         if (StringComparer.OrdinalIgnoreCase.Equals(value, "unbounded")) return Unbounded;
         if (!long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var steps) || steps <= 0)
-            throw new FormatException("A step cap must be a positive integer or 'unbounded'.");
+            throw new FormatException("An analysis-attempt cap must be a positive integer or 'unbounded'.");
         return new StepCap(steps);
     }
 }
 
-/// <summary>Reads and writes a step cap as a structured JSON value.</summary>
+/// <summary>Reads and writes an analysis-attempt cap as a structured JSON value.</summary>
 public sealed class StepCapJsonConverter : JsonConverter<StepCap>
 {
     public override StepCap Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -62,7 +62,7 @@ public sealed class StepCapJsonConverter : JsonConverter<StepCap>
                     else if (reader.TokenType == JsonTokenType.Number)
                     {
                         try { steps = reader.GetInt64(); }
-                        catch (FormatException exception) { throw new JsonException("Step cap is out of range.", exception); }
+                        catch (FormatException exception) { throw new JsonException("Analysis-attempt cap is out of range.", exception); }
                     }
                     else throw new JsonException();
                     hasSteps = true;
@@ -80,7 +80,7 @@ public sealed class StepCapJsonConverter : JsonConverter<StepCap>
         if (reader.TokenType != JsonTokenType.EndObject || !hasSteps || isUnbounded is null || isUnbounded != (steps is null))
             throw new JsonException();
         try { return new StepCap(steps); }
-        catch (ArgumentOutOfRangeException exception) { throw new JsonException("Step cap must be positive.", exception); }
+        catch (ArgumentOutOfRangeException exception) { throw new JsonException("Analysis-attempt cap must be positive.", exception); }
     }
 
     public override void Write(Utf8JsonWriter writer, StepCap value, JsonSerializerOptions options)

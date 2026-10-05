@@ -133,7 +133,7 @@ public sealed record PanGlossBatchStatistics(
     IReadOnlyList<PanGlossObjectTiming> ObjectTimings);
 
 /// <summary>PanGloss's whole-word counters and elapsed time for a batch result.</summary>
-/// <param name="Attempts">The search steps recorded for the word.</param>
+/// <param name="Attempts">The analysis attempts recorded for the word.</param>
 /// <param name="Passes">The analyses returned for the word.</param>
 /// <param name="ElapsedNs">The exact whole-word elapsed time recorded by PanGloss.</param>
 public sealed record PanGlossWordStatistics(int Attempts, int Passes, long ElapsedNs);

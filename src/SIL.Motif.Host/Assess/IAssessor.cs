@@ -89,10 +89,10 @@ public sealed record AssessmentScope
     /// </summary>
     public IReadOnlyList<AssessmentKind> Collect { get; }
 
-    /// <summary>The per-word time cap, or null for no time cap; the step cap remains independently applicable.</summary>
+    /// <summary>The per-word time cap, or null for no time cap; the analysis-attempt cap remains independently applicable.</summary>
     public TimeSpan? PerWordLimit { get; }
 
-    /// <summary>The per-word step cap, or an explicit request for no step cap.</summary>
+    /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
     public StepCap PerWordStepLimit { get; }
 }
 

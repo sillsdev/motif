@@ -26,7 +26,7 @@ public sealed class TimingHeadlineTests
 
     private static readonly (string Word, int Ms, string Completion)[] NineWords =
     [
-        ("mwalimu", 700, "Step limit"), ("hawajafika", 48, "Finished"), ("walikula", 12, "Finished"),
+        ("mwalimu", 700, "Search limit"), ("hawajafika", 48, "Finished"), ("walikula", 12, "Finished"),
         ("alikula", 9, "Finished"), ("ninakula", 9, "Finished"), ("tunakula", 8, "Finished"),
         ("wanakula", 7, "Finished"), ("unakula", 6, "Finished"), ("kula", 1, "Finished"),
     ];
@@ -46,11 +46,11 @@ public sealed class TimingHeadlineTests
         Assert.Equal("for all 9 words", timing.HeadlineTotalCaption);
         Assert.Equal("9 ms", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
-        Assert.Equal("stopped at the step limit", timing.HeadlineStoppedCaption);
+        Assert.Equal("stopped at a search limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
         Assert.Equal((decimal)StepCap.DefaultSteps, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
-        Assert.Equal("Stopped at the step limit · Raise it under More.",
+        Assert.Equal("Stopped at a search limit · Raise the analysis attempt limit under More.",
             timing.StoppedWordsAdviceText);
     }
 
@@ -238,7 +238,7 @@ public sealed class TimingHeadlineTests
                 Dispatcher.UIThread.RunJobs();
                 var text = string.Join(" ", window.GetLogicalDescendants().OfType<TextBlock>()
                     .Where(item => item.IsEffectivelyVisible).Select(item => item.Text));
-                Assert.Contains("No words stopped at the step limit.", text);
+                Assert.Contains("No words stopped at a search limit.", text);
                 var allWords = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
                     button => Equals(button.Content, "Show all words"));
                 Assert.True(allWords.IsEffectivelyVisible);

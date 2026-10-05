@@ -5,7 +5,7 @@ namespace SIL.Motif.Host.Config;
 
 /// <summary>
 /// One declared Assessment scope: which words, which Assessor, what to collect, and the
-/// per-word time and step limits (ADR 0042 decision 3).
+/// per-word time and analysis-attempt limits (ADR 0042 decision 3).
 /// </summary>
 /// <remarks>
 /// <c>Query</c> names which words a scope wants, in words a future query language will interpret; it is
@@ -56,7 +56,7 @@ public sealed record AssessmentScopeConfiguration
     /// <summary>The per-word time cap; differences annotate comparisons without blocking them.</summary>
     public TimeSpan PerWordLimit { get; }
 
-    /// <summary>The per-word step cap, or an explicit request for no step cap.</summary>
+    /// <summary>The per-word analysis-attempt cap, or an explicit request for no attempt cap.</summary>
     public StepCap PerWordStepLimit { get; }
 
     /// <summary>The scope declared when a project names none of its own.</summary>

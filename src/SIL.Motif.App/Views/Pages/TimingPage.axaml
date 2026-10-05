@@ -38,7 +38,7 @@
           <Button Classes="filterChip" Classes.active="{Binding IsStepLimitSelected}"
                   Content="{Binding StoppedWordsButtonText}" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="step-limit"
-                  AutomationProperties.HelpText="Words stopped at the step limit." />
+                  AutomationProperties.HelpText="Words stopped at a search limit." />
           <Button Classes="filterChip" Classes.active="{Binding IsSlowestSelected}"
                   Content="Slowest" Command="{Binding SelectWordSetCommand}"
                   CommandParameter="slowest" />
@@ -118,9 +118,9 @@
                                    AutomationProperties.Name="Seconds per word" />
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                    <views:CopyableTextBlock Text="Step limit" VerticalAlignment="Center" />
+                    <views:CopyableTextBlock Text="Analysis attempt limit" VerticalAlignment="Center" />
                     <NumericUpDown Value="{Binding RerunSteps}" Minimum="1" Increment="100000"
-                                   AutomationProperties.Name="Per-word step limit" />
+                                   AutomationProperties.Name="Per-word analysis attempt limit" />
                   </StackPanel>
                   <Button Content="Re-run chosen words" Command="{Binding RerunWordsCommand}"
                           AutomationProperties.Name="Re-run chosen words" />

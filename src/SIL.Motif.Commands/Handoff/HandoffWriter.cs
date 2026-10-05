@@ -46,7 +46,7 @@ public static class HandoffWriter
     /// was written in after PanGloss moves on. It must equal the tag in <c>pangloss-release.json</c>, whose
     /// runtime-specific asset the package bundles, so the documents describe the parser that wrote the files.
     /// </summary>
-    internal const string PanGlossRef = "v0.6.0";
+    internal const string PanGlossRef = "v0.6.2";
 
     private static readonly string[] AlwaysRequiredTopLevelFiles =
         [GrammarFileName, TextsFileName, PythonHelperFileName, HandoffMarkdownFileName];
@@ -287,7 +287,7 @@ public static class HandoffWriter
         var traceEvidenceDescription = selectedTrace
             ? "This is the exact diagnostic selected from Try a Word, kept unchanged with the Baseline it records. " +
               "No Assessment or replacement trace was run for this Handoff."
-            : "The matching `trace.summary` in `parse-results.json` gives recorded parser steps and failure reasons. " +
+            : "The matching `trace.summary` in `parse-results.json` gives recorded analysis attempts and failure reasons. " +
               "Completion is `complete` when the diagnostic records a finished search, `incomplete` when it records " +
               "a stopped trace, and `not-run` for invalid shape; `unknown` means no completion fact was recorded.";
         var traceSection = hasTrace

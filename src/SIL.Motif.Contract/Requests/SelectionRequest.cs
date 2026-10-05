@@ -24,7 +24,7 @@ namespace SIL.Motif.Contract.Requests;
 /// The exact Baseline ParseTime Assessment to use for retry. It is required when either retry option is set
 /// and must be omitted otherwise.
 /// </param>
-/// <param name="PerWordStepLimit">A per-run step cap; null keeps the project's configured cap.</param>
+/// <param name="PerWordStepLimit">A per-run analysis-attempt cap; null keeps the project's configured cap.</param>
 public sealed record SelectionRequest(
     bool AllWordforms,
     IReadOnlyList<Guid> TextIds,

@@ -8,6 +8,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -381,15 +382,79 @@ public sealed class ProgressiveDisplayTests
                 if (page.Page.Statistics.LoadCommand.ExecutionTask is { } loading) await loading;
                 PageScreenshots.Settle(window);
                 var grid = Assert.Single(page.GetVisualDescendants().OfType<DataGrid>());
-                var presenter = Assert.Single(grid.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.DataGridRowsPresenter>());
-                var word = Assert.Single(grid.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Text == "alikula");
-                Assert.True(word.TranslatePoint(default, presenter)!.Value.Y + word.Bounds.Height > presenter.Bounds.Height);
-                LayoutAssertions.AssertCurrent(grid);
-                grid.ScrollIntoView(word.DataContext, grid.Columns.Single(column => Equals(column.Tag, "word")));
+                Assert.Equal(40, grid.RowHeight);
+                var numericColumns = grid.Columns.Where(column => column.Tag is "attempts" or "passes" or "elapsedMs").ToArray();
+                Assert.Equal(3, numericColumns.Length);
+                var numericColumnWidths = numericColumns.ToDictionary(column => column, column => column.Width);
+                foreach (var column in numericColumns)
+                {
+                    Assert.Equal(DataGridLengthUnitType.Auto, column.Width.UnitType);
+                    Assert.True(column.ActualWidth > 0);
+                    column.Width = new DataGridLength(column.ActualWidth, DataGridLengthUnitType.Pixel);
+                }
                 PageScreenshots.Settle(window);
-                word = Assert.Single(grid.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Text == "alikula");
+                var heatCellTexts = grid.GetVisualDescendants().OfType<HeatCell>()
+                    .Where(cell => cell.IsEffectivelyVisible)
+                    .Select(cell => Assert.Single(cell.GetVisualDescendants().OfType<CopyableTextBlock>()))
+                    .Where(text => !string.IsNullOrEmpty(text.Text))
+                    .ToArray();
+                Assert.NotEmpty(heatCellTexts);
+                var heatCellFontSizes = heatCellTexts.ToDictionary(text => text, text => text.FontSize);
+                foreach (var text in heatCellTexts) text.FontSize *= 3;
+                PageScreenshots.Settle(window);
+                LayoutAssertions.AssertCurrent(grid);
+                Assert.All(heatCellTexts, text =>
+                {
+                    Assert.Equal(TextTrimming.CharacterEllipsis, text.TextTrimming);
+                    Assert.Equal(text.Text, ToolTip.GetTip(text));
+                });
+                foreach (var (text, fontSize) in heatCellFontSizes) text.FontSize = fontSize;
+                foreach (var (column, width) in numericColumnWidths) column.Width = width;
+                PageScreenshots.Settle(window);
+                grid.Height = 156;
+                var wordColumn = grid.Columns.Single(column => Equals(column.Tag, "word"));
+                wordColumn.Width = new DataGridLength(80, DataGridLengthUnitType.Pixel);
+                PageScreenshots.Settle(window);
+                var presenter = Assert.Single(grid.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.DataGridRowsPresenter>());
+                var rows = Assert.IsAssignableFrom<IEnumerable<StatsRowViewModel>>(grid.ItemsSource).ToArray();
+                var realizedRows = grid.GetVisualDescendants().OfType<DataGridRow>()
+                    .Where(row => row.DataContext is StatsRowViewModel)
+                    .ToArray();
+                var visibleWordRow = realizedRows.First(row => ((StatsRowViewModel)row.DataContext!).Word is not null);
+                var visibleWord = (StatsRowViewModel)visibleWordRow.DataContext!;
+                var wordCell = Assert.Single(visibleWordRow.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == visibleWord.Word);
+                Assert.Equal(TextTrimming.CharacterEllipsis, wordCell.TextTrimming);
+                Assert.Equal(visibleWord.Word, ToolTip.GetTip(wordCell));
+                var realizedIndexes = realizedRows
+                    .Select(row => Array.IndexOf(rows, (StatsRowViewModel)row.DataContext!))
+                    .Where(index => index >= 0)
+                    .ToArray();
+                Assert.Contains(0, realizedIndexes);
+                var targetRow = rows.Skip(realizedIndexes.Max() + 1).LastOrDefault(row => row.Word is not null);
+                Assert.NotNull(targetRow);
+                Assert.DoesNotContain(realizedRows, row => ReferenceEquals(row.DataContext, targetRow));
+                Assert.DoesNotContain(grid.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => ReferenceEquals(text.DataContext, targetRow));
+                LayoutAssertions.AssertCurrent(grid);
+                grid.ScrollIntoView(targetRow, grid.Columns.Single(column => Equals(column.Tag, "word")));
+                PageScreenshots.Settle(window);
+                var word = Assert.Single(grid.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => ReferenceEquals(text.DataContext, targetRow) &&
+                        text.Text == targetRow.Word);
+                Assert.Equal(targetRow.Word, word.Text);
+                Assert.Equal(TextTrimming.CharacterEllipsis, word.TextTrimming);
+                Assert.Equal(targetRow.Word, ToolTip.GetTip(word));
+                word.FontSize *= 2;
+                var wordDataRow = Assert.Single(word.GetVisualAncestors().OfType<DataGridRow>());
+                // Model a taller font's cell demand arriving after virtualized scroll estimation.
+                wordDataRow.MinHeight = Math.Ceiling(word.FontSize * 1.4);
+                PageScreenshots.Settle(window);
+                var wordOrigin = word.TranslatePoint(default, presenter)!.Value;
+                Assert.True(wordOrigin.Y >= -2);
+                Assert.True(wordOrigin.Y + word.Bounds.Height <= presenter.Bounds.Height + 2,
+                    $"The scrolled word ends at {wordOrigin.Y + word.Bounds.Height}px in a " +
+                    $"{presenter.Bounds.Height}px rows viewport (row height {grid.RowHeight}px).");
                 foreach (var ancestor in word.GetVisualAncestors().OfType<Control>().Where(control => control.ClipToBounds))
                 {
                     var origin = word.TranslatePoint(default, ancestor)!.Value;

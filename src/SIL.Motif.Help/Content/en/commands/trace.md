@@ -8,7 +8,7 @@
 motif trace --project "C:\FieldWorks\Projects\Koro\Koro.fwdata" --word mirusi
 ```
 
-Add `--json` to get the typed response, including the shared `reading` and the diagnostic's recorded provenance. A clean process exit does not establish that the parser's step cap was not reached; when the diagnostic cannot report that, completion is unknown.
+Add `--json` to get the typed response, including the shared `reading` and the diagnostic's recorded provenance. A clean process exit does not establish that the parser's search limit was not reached; when the diagnostic cannot report that, completion is unknown.
 
 ## Read a saved trace
 

@@ -27,7 +27,7 @@ public sealed class StatsRowViewModel
         SearchFinished = capped == false && timedOut == false ? true : IsIncomplete ? false : null;
         CompletionStatus = Word is null ? null : IsIncomplete
             ? "INCOMPLETE — parsing did not finish (" +
-                (capped == true && timedOut == true ? "step and time limits" : capped == true ? "step limit" : "time limit") + ")"
+                (capped == true && timedOut == true ? "search and time limits" : capped == true ? "search limit" : "time limit") + ")"
             : capped == false && timedOut == false ? "Search completed" : "Completion unavailable";
         Details = row.ValueKind == JsonValueKind.Object
             ? row.EnumerateObject()
@@ -51,8 +51,8 @@ public sealed class StatsRowViewModel
     /// <summary>The completion in a word or two for the table; <see cref="CompletionStatus"/> is its tooltip.</summary>
     public string CompletionShort => CompletionStatus is null ? string.Empty
         : !IsIncomplete ? (CompletionStatus == "Search completed" ? "Completed" : "No result")
-        : CompletionStatus.Contains("step and time", StringComparison.Ordinal) ? "Step and time limits"
-        : CompletionStatus.Contains("step", StringComparison.Ordinal) ? "Step limit" : "Time limit";
+        : CompletionStatus.Contains("search and time", StringComparison.Ordinal) ? "Search and time limits"
+        : CompletionStatus.Contains("search", StringComparison.Ordinal) ? "Search limit" : "Time limit";
 
     public bool HasCompletion => CompletionShort.Length > 0;
 

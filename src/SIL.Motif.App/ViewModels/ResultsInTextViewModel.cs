@@ -28,7 +28,7 @@ public enum OccurrenceVerdict
     /// <summary>Nothing is stored here, and the parser found no way to build the word.</summary>
     NoParse,
 
-    /// <summary>The parser stopped at a time or step limit before finishing this word.</summary>
+    /// <summary>The parser stopped at a time or search limit before finishing this word.</summary>
     Limit,
 
     /// <summary>This word was not part of the Assessment.</summary>

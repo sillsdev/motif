@@ -53,7 +53,7 @@ public sealed class WarningsPageWordsTests
             var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), managedRoot);
             Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
             var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-                "pangloss-v0.6.0-seeded.json"));
+                "pangloss-v0.6.2-seeded.json"));
             var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
             {
                 Respond = _ => new PanGlossOutcome.Completed(raw, string.Empty, TimeSpan.Zero),

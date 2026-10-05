@@ -195,7 +195,8 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         var parts = new List<string> { result.Parsed ? "Parsed" : result.InvalidShape ? ParserRefusals.Title : "No parse" };
         if (result.Guessed) parts.Add("guessed");
-        if (result.ParserSteps is { } steps) parts.Add($"{steps:N0} parser steps");
+        if (result.ParserSteps is { } steps)
+            parts.Add($"{steps:N0} analysis attempt{(steps == 1 ? string.Empty : "s")}");
         var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
             ? $"{FormatMs(capturedElapsed)} overall"
             : result.ElapsedMs > 0 ? $"{FormatMs(result.ElapsedMs)} overall" : "overall time not recorded";

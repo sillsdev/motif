@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Automation;
@@ -11,6 +12,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -235,6 +237,22 @@ internal sealed class TooltipScenes
             client = fake;
         });
         await workspace.Context.EvidencePublication;
+        var wordRows = PageScreenshots.Assessment().Words.Select(word => JsonSerializer.SerializeToElement(new
+        {
+            kind = "word", form = word.Word, attempts = word.Attempts, passes = word.Passes,
+            elapsed_ns = word.ElapsedMs * 1_000_000L, capped = word.Outcome == "capped", timed_out = false,
+        })).ToArray();
+        var objectRows = new[]
+        {
+            JsonSerializer.SerializeToElement(new
+            {
+                kind = "rule", label = "Sungura", attempts = 21, passes = 1, time_ns = 1_200_000L,
+                capped = false, timed_out = false,
+            }),
+        };
+        client!.OnStats((request, _) => Task.FromResult(CommandOutcome<StatsCommandResponse>.Success(
+            new StatsCommandResponse("assessment/one", "grammar.json", "cache.sqlite", null,
+                request.ForwardedArguments.Contains("object", StringComparer.Ordinal) ? objectRows : wordRows))));
         window.Width = 1240;
         window.Height = 780;
         PageScreenshots.Settle(window);
@@ -379,10 +397,10 @@ internal sealed class TooltipScenes
                     "a Timing rule named by a stored grammar warning");
                 break;
             case TooltipScene.Statistics:
-                Show(WorkspacePage.Timing);
-                var statistics = Visible<Expander>().First(expander => expander.Header as string == "Detailed statistics");
-                statistics.IsExpanded = true;
-                await Until(() => Visible<StatisticsPanel>().Any(), "Detailed statistics");
+                await ReachStatistics("word");
+                break;
+            case TooltipScene.StatisticsObjects:
+                await ReachStatistics("object");
                 break;
             case TooltipScene.Warnings:
                 Show(WorkspacePage.Warnings);
@@ -460,6 +478,23 @@ internal sealed class TooltipScenes
 
     public IEnumerable<T> Visible<T>() where T : Control =>
         Window.GetVisualDescendants().OfType<T>().Where(control => control.IsEffectivelyVisible);
+
+    private async Task ReachStatistics(string group)
+    {
+        Show(WorkspacePage.Timing);
+        var statistics = Workspace.PageModel<TimingPageModel>().Statistics;
+        var expander = Visible<Expander>().First(expander => expander.Header as string == "Detailed statistics");
+        expander.IsExpanded = true;
+        await Until(() => Visible<StatisticsPanel>().Any(), "Detailed statistics");
+        await Until(() => statistics.HasLoaded && statistics.Rows.Count > 0, "word statistics");
+        if (statistics.SelectedGroup != group)
+        {
+            statistics.SelectedGroup = group;
+            await Until(() => statistics.HasLoaded && statistics.Rows.Any(row =>
+                group == "object" ? row.Object is not null : row.Word is not null), $"{group} statistics");
+        }
+        PageScreenshots.Settle(Window);
+    }
 
     /// <summary>Opens <paramref name="owner"/>'s tooltip, settled and opaque, and returns every text block that shows its words.</summary>
     public static IReadOnlyList<TextBlock> OpenTipTexts(Control owner)

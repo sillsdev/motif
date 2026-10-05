@@ -2,7 +2,7 @@
 
 **Parse all words** asks PanGloss to parse the words you chose and keeps the result with the version of the project and the words it measured.
 
-While it runs, the progress panel stays visible at the top of the window. It shows how many words are done, the word currently being parsed, elapsed time and an estimate of the time left. It also shows the slowest word so far and lists words that stopped at a time or step limit. If no word finishes for a long time, the panel explains that the parser may have stalled and offers **Cancel** and **Report a problem**.
+While it runs, the progress panel stays visible at the top of the window. It shows how many words are done, the word currently being parsed, elapsed time and an estimate of the time left. It also shows the slowest word so far and lists words that stopped at a time or search limit. If no word finishes for a long time, the panel explains that the parser may have stalled and offers **Cancel** and **Report a problem**.
 
 The result tells you which words parsed, which approved analyses PanGloss built again, and how much time parsing took. A search that was interrupted or stopped at a limit is saved as not finished; it should not be read as a completed “no parse.” The **Overview** and **Texts** pages read the saved result. Opening either page does not run PanGloss.
 

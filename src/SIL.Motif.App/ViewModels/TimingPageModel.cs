@@ -144,7 +144,7 @@ public sealed partial class TimingPageModel : PageModel
         ? "No parse times were recorded for these selected words."
         : _wordSet switch
         {
-            TimingWordSet.StepLimited => "No words stopped at the step limit.",
+            TimingWordSet.StepLimited => "No words stopped at a search limit.",
             TimingWordSet.Slowest => "No words in this group have recorded parse time.",
             _ => "No words in this selection have recorded parse time.",
         };
@@ -170,13 +170,13 @@ public sealed partial class TimingPageModel : PageModel
     public string HeadlineMedian => HasHeadline && KindTiming?.MedianMs is { } median
         ? TimingShare.FormatDuration(median) : string.Empty;
 
-    /// <summary>How many of the chosen words stopped at the step limit.</summary>
+    /// <summary>How many of the chosen words stopped at a parser search limit.</summary>
     public string HeadlineStopped => KindTiming?.Words
         .Count(word => word.Completion == TimingCompletion.StepLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
         ?? string.Empty;
 
     /// <summary>The caption under the stopped-word count.</summary>
-    public string HeadlineStoppedCaption => "stopped at the step limit";
+    public string HeadlineStoppedCaption => "stopped at a search limit";
 
     /// <summary>The All filter's label, including the timing response's word count.</summary>
     public string AllWordsButtonText => $"All {KindTiming?.WordCount ?? 0:N0}";
@@ -187,9 +187,9 @@ public sealed partial class TimingPageModel : PageModel
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
     public string StoppedWordsAdviceText => (HasStepLimitedWords, HasTimeLimitedWords) switch
     {
-        (true, true) => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+        (true, true) => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
             "or increase Seconds per word.",
-        (true, false) => "Stopped at the step limit · Raise it under More.",
+        (true, false) => "Stopped at a search limit · Raise the analysis attempt limit under More.",
         (false, true) => "Ran out of time · Increase Seconds per word.",
         _ => string.Empty,
     };
@@ -200,7 +200,7 @@ public sealed partial class TimingPageModel : PageModel
     private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
         word.Completion == "Time limit") == true;
 
-    /// <summary>The stopped-words filter's label, including words stopped at the step limit.</summary>
+    /// <summary>The stopped-words filter's label, including words stopped at a parser search limit.</summary>
     public string StoppedWordsButtonText => $"Stopped {KindTiming?.Words.Count(word =>
         word.Completion == TimingCompletion.StepLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0"}";
 
@@ -337,7 +337,7 @@ public sealed partial class TimingPageModel : PageModel
         listed.TimeText = timeText;
         listed.Note = KindTiming?.Words.FirstOrDefault(row => row.Word == word)?.Completion switch
         {
-            TimingCompletion.StepLimit => "Stopped at the step limit",
+            TimingCompletion.StepLimit => "Stopped at a search limit",
             "Time limit" => "Stopped at the time limit",
             _ => null,
         };
@@ -779,7 +779,7 @@ public sealed partial class TimingPageModel : PageModel
             RerunSteps is <= 0 || RerunSteps is > long.MaxValue ||
             RerunSteps is { } steps && decimal.Truncate(steps) != steps)
         {
-            RerunMessage = "Enter a positive per-word time and a positive whole-number step limit.";
+            RerunMessage = "Enter a positive per-word time and a positive whole-number analysis attempt limit.";
             return;
         }
 

@@ -74,7 +74,7 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
         $"{group.Count():N0} word{(group.Count() == 1 ? string.Empty : "s")} " +
         (group.Key == "TIMEOUT"
             ? "timed out" + (_progress?.PerWordLimitMs is { } limit ? $" after {limit / 1000.0:0.#} s" : string.Empty)
-            : "stopped at the step limit") + $" ({group.Last().Word})"));
+            : "stopped at a search limit") + $" ({group.Last().Word})"));
     public string StalledText => IsStalled
         ? _progress?.PerWordLimitMs is null
             ? "No word has finished for 1 min. This search has no per-word time limit. You can cancel it or report a problem."
@@ -159,5 +159,5 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
 
 public sealed record StoppedParseWordViewModel(StoppedParseWord Word)
 {
-    public string Text => $"{Word.Word} · {(Word.Reason == "TIMEOUT" ? "Timed out" : "Stopped at the step limit")} · {Word.ElapsedMs / 1000.0:0.###} s";
+    public string Text => $"{Word.Word} · {(Word.Reason == "TIMEOUT" ? "Timed out" : "Stopped at a search limit")} · {Word.ElapsedMs / 1000.0:0.###} s";
 }

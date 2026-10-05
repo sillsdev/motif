@@ -81,15 +81,15 @@ public sealed partial class StatisticsViewModel : ObservableObject
 
     private bool IsWordGroup => SelectedGroup == "word";
 
-    /// <summary>What the count column counts: a word's search steps, or each grammar object's own attempts.</summary>
-    public string CountHeader => IsWordGroup ? "Search steps" : "Attempts";
+    /// <summary>What the count column counts: a word's analysis attempts, or each grammar object's own attempts.</summary>
+    public string CountHeader => IsWordGroup ? "Analysis attempts" : "Attempts";
 
     /// <summary>What the time column times: a word's whole parse, or the time spent in the object itself.</summary>
     public string TimeHeader => IsWordGroup ? "Word time (ms)" : "Own time (ms)";
 
     /// <summary>What the shading compares, and where each number comes from.</summary>
     public string ShadingNote => IsWordGroup
-        ? "Shading: darker is larger, against the largest in its column. Search steps and word time are the " +
+        ? "Shading: darker is larger, against the largest in its column. Analysis attempts and word time are the " +
             "parser's own record of the parse; whether a word finished comes from the last parse."
         : "Shading: darker is larger. An attempt is a different event for each kind (a rule tried, an entry " +
             "matched, a root looked up), so attempts are shaded only against rows of their own kind. Own time " +
@@ -134,14 +134,14 @@ public sealed partial class StatisticsViewModel : ObservableObject
         {
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
-                return "No word is recorded as stopped at a time or step limit.";
-            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("step", StringComparison.OrdinalIgnoreCase) == true);
+                return "No word is recorded as stopped at a time or search limit.";
+            var stepLimit = stopped.Any(row => row.CompletionStatus?.Contains("search", StringComparison.OrdinalIgnoreCase) == true);
             var timeLimit = stopped.Any(row => row.CompletionStatus?.Contains("time", StringComparison.OrdinalIgnoreCase) == true);
             return (stepLimit, timeLimit) switch
             {
-                (true, true) => "Stopped at the step limit and ran out of time · Raise the step limit under More " +
+                (true, true) => "Stopped at a search limit and ran out of time · Raise the analysis attempt limit under More " +
                     "or increase Seconds per word.",
-                (true, false) => "Stopped at the step limit · Raise it under More.",
+                (true, false) => "Stopped at a search limit · Raise the analysis attempt limit under More.",
                 (false, true) => "Ran out of time · Increase Seconds per word.",
                 _ => "Each search stopped at a limit. See the stop reason on its row.",
             };
@@ -210,7 +210,7 @@ public sealed partial class StatisticsViewModel : ObservableObject
     /// <summary>How many rows are in the applicable scope, before the row filter.</summary>
     public int RowCount => ScopeRows.Count();
 
-    /// <summary>How many fetched words stopped at a time or step limit.</summary>
+    /// <summary>How many fetched words stopped at a time or parser search limit.</summary>
     public int IncompleteCount => ScopeRows.Count(row => row.IsIncomplete);
 
     /// <summary>Whether the grid shows only the words that did not finish.</summary>

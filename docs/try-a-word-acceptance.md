@@ -52,6 +52,6 @@ The isolated Motif suite previously passed 1906 tests with 38 skipped and the tw
 Every consumer keeps the same recorded evidence. Source analyses remain one-for-one in original order; a separately named logical summary compacts records only with equal exact ordered authored morphology from available projections. Unknown or unavailable projections remain separate, without asserting distinct derivations.
 
 - A terminal attempt ends at a Successful or Failed event, with actual ancestors as its path. Earlier siblings are recorded tree context with unknown membership, never derivation steps or borrowed causes.
-- Blocked is an intermediate event, recording lexical-family replacement in PanGloss v0.6.0. Its output and continued search remain visible.
+- Blocked is an intermediate event, recording lexical-family replacement in PanGloss v0.6.2. Its output and continued search remain visible.
 - A trace returns the exact Baseline token, source-save time, publication time and capture description it selected. Page descriptions require exact token equality; same-save recapture and publication between request and execution are covered.
 - Interrupted search retains tree progress even with no terminal attempt. An analysis-only capture never acquires a fabricated building pass.

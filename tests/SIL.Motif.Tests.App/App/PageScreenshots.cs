@@ -936,7 +936,7 @@ public sealed class PageScreenshots
     internal static AssessCommandResponse Assessment()
     {
         AssessmentWordResult Word(string word, string outcome, string[] grades, int elapsed, params ParseAnalysis[] analyses) =>
-            new(word, outcome, outcome is "capped", outcome == "capped" ? "Stopped at the step limit" : "Search completed", elapsed, null)
+            new(word, outcome, outcome is "capped", outcome == "capped" ? "Stopped at a search limit" : "Search completed", elapsed, null)
             {
                 Morphology = new ParseWordEvidence("v1", 0, word, elapsed, outcome == "capped", false, false, analyses, []),
                 Readings = [.. analyses.Select(_ => Resolved(word))],

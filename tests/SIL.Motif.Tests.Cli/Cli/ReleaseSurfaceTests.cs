@@ -133,7 +133,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.Null(usageLine);
         }
         Assert.Contains("Configuration (the declared", result.Error, StringComparison.Ordinal);
-        Assert.Contains($"The default per-word step cap is {StepCap.DefaultSteps:N0} steps.", result.Error, StringComparison.Ordinal);
+        Assert.Contains($"The default per-word limit is {StepCap.DefaultSteps:N0} analysis attempts.", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

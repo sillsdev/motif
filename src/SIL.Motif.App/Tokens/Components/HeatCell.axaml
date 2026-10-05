@@ -15,6 +15,9 @@
     <Setter Property="Margin" Value="{DynamicResource Component.HeatCell.TextInset}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
+  <Style Selector=".cell > :is(TextBlock).heatCellTooltipOwner">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
   <Style Selector=":is(TextBlock).number">
     <Setter Property="HorizontalAlignment" Value="Right" />
   </Style>

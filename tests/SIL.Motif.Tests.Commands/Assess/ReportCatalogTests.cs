@@ -133,7 +133,7 @@ public sealed class ReportProducerTests
         };
         var rendered = new CorrectnessReportProducer().Produce(assessment, new ReportQuery(), NoAssessorRegistered);
         Assert.Contains("0 searches completed; 1 incomplete", rendered.Text);
-        Assert.Contains("INCOMPLETE — parsing did not finish (step limit and time limit)", rendered.Text);
+        Assert.Contains("INCOMPLETE — parsing did not finish (search limit and time limit)", rendered.Text);
         Assert.Contains("1/1 approved readings matched", rendered.Text);
         Assert.Equal(1, rendered.TotalSearches);
         Assert.Equal(0, rendered.CompletedSearches);

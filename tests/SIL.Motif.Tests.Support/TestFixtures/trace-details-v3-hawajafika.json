@@ -27,12 +27,16 @@
     "parser": {
       "name": "pangloss",
       "traceProfile": "pangloss.trace-details.v3",
-      "version": "0.6.0"
+      "version": "0.6.2"
     },
     "project": "Sample",
     "writingSystems": {
-      "analysis": ["en"],
-      "vernacular": ["sw"]
+      "analysis": [
+        "en"
+      ],
+      "vernacular": [
+        "sw"
+      ]
     }
   },
   "trace": {

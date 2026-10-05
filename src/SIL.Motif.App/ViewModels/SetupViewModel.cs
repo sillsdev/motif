@@ -100,9 +100,9 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     {
         get
         {
-            if (!IsStepLimitValid) return "Enter a positive whole number of steps, or choose no limit.";
+            if (!IsStepLimitValid) return "Enter a positive whole number of analysis attempts, or choose no attempt limit.";
             var estimate = CurrentStepLimitEstimate;
-            if (estimate is null) return "No step limit. Motif will not apply a per-word time limit.";
+            if (estimate is null) return "No analysis attempt limit. Motif will not apply a per-word time limit.";
             var source = estimate.IsTypicalMachine
                 ? " The estimate uses a typical machine."
                 : " The estimate uses the parser statistics from the last parse.";
@@ -136,7 +136,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
 
     public string? StepLimitValidationMessage => IsStepLimitUnbounded || IsStepLimitValid
         ? null
-        : "Enter a positive whole number of steps, or choose no limit.";
+        : "Enter a positive whole number of analysis attempts, or choose no attempt limit.";
 
     private bool IsStepLimitValid => IsStepLimitUnbounded ||
         StepLimitSteps is > 0 and var steps && decimal.Truncate(steps) == steps && steps <= long.MaxValue;

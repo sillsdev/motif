@@ -59,7 +59,7 @@ public sealed class DesktopFileAndClipboardSeamTests
         var copied = Assert.Single(_clipboard.Copied);
         Assert.Contains(ExpectedChatInstructions, copied, StringComparison.Ordinal);
         Assert.Contains("Summary:\nNo parse", copied, StringComparison.Ordinal);
-        Assert.Contains("1 parser steps", copied, StringComparison.Ordinal);
+        Assert.Contains("1 analysis attempt", copied, StringComparison.Ordinal);
         Assert.Contains("overall time not recorded", copied, StringComparison.Ordinal);
         Assert.Contains("Search completion: incomplete", copied, StringComparison.Ordinal);
         Assert.Contains("Trace diagnostic JSON:\n" + ValidDiagnosticJson, copied, StringComparison.Ordinal);

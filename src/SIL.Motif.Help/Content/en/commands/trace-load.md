@@ -8,7 +8,7 @@
 motif trace --load "C:\Temp\mirusi.trace.json"
 ```
 
-Add `--json` to get the typed response, including its shared `reading` and recorded provenance. Motif keeps the producer diagnostic unchanged; a clean process exit does not establish whether a trace reached its step cap, so completion can remain unknown.
+Add `--json` to get the typed response, including its shared `reading` and recorded provenance. Motif keeps the producer diagnostic unchanged; a clean process exit does not establish whether a trace reached its search limit, so completion can remain unknown.
 
 ## Related commands
 

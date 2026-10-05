@@ -57,8 +57,8 @@ public enum TimingEvidenceRelation
 /// <summary>The reasons a timed word's search ended, as <see cref="TimingWordRow.Completion"/> carries them.</summary>
 public static class TimingCompletion
 {
-    /// <summary>The search ran out of steps before it finished.</summary>
-    public const string StepLimit = "Step limit";
+    /// <summary>The parser stopped at its analysis-attempt or derived search-work limit.</summary>
+    public const string StepLimit = "Search limit";
 
     /// <summary>The recorded outcome is a parser refusal.</summary>
     public const string Refused = "Refused";
@@ -70,7 +70,7 @@ public static class TimingCompletion
 /// <summary>One selected word's stored time and the reason its search stopped.</summary>
 /// <param name="Word">The word form.</param>
 /// <param name="ElapsedMs">The stored whole-millisecond parse time, when present.</param>
-/// <param name="Completion">Why the search stopped: a step limit, a time limit, a refusal, or a finished search.</param>
+/// <param name="Completion">Why the search stopped: a search limit, a time limit, a refusal, or a finished search.</param>
 public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completion)
 {
     /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>

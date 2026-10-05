@@ -66,7 +66,7 @@ public sealed class PanGlossTracer : IPanGlossTracer
             };
 
         var reason = details.Capped
-            ? $"The parser stopped at its step cap after {details.Steps:N0} steps, so this trace is not the whole search."
+            ? $"The parser stopped at a search limit after {details.Steps:N0} analysis attempts, so this trace is not the whole search."
             : "The parser stopped at its own time limit, so this trace is not the whole search.";
         return new PanGlossTraceOutcome.Incomplete(word, document.Root, summary, reason)
         {

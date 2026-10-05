@@ -75,7 +75,7 @@ A PanGloss run varies along at least five axes:
 | **Which words** | all texts; one text; every word carrying a manual analysis | Coverage over different denominators is not a delta |
 | **Which engine** | `foma`, `default` (HermitCrab) | Different questions answered — see §4 |
 | **What is collected** | parse outcomes only; outcomes plus per-object counters | A report may be unanswerable from the run |
-| **Limits** | per-word timeout, step cap | A timeout is *we stopped waiting*, not *it does not parse* |
+| **Limits** | per-word timeout, analysis-attempt cap, derived search-work cap | A timeout is *we stopped waiting*, not *it does not parse* |
 | **Grammar** | the digest of the grammar actually parsed | The point of the comparison |
 
 Only the last should differ between a Baseline Assessment and a candidate's. **Everything else held equal is
@@ -212,9 +212,11 @@ architecture.
 ### Word limits have a default
 
 A scope carries a per-word limit, defaulting to about **one second, or an equivalent cap on attempts**.
-PanGloss already distinguishes the two mechanisms and their outcomes: `--word-timeout-ms` sets a wall-clock
-bound and marks a word `timed_out`; `--step-cap` bounds work and marks it `capped`. Both are distinct from a
-word that genuinely did not parse, and all three flags are stored per word.
+PanGloss distinguishes the two mechanisms and their outcomes: `--word-timeout-ms` sets a wall-clock
+bound and marks a word `timed_out`; `--step-cap` bounds analysis attempts and marks a word `capped`.
+PanGloss derives an inner search-work limit at 100 times the attempt limit. Both are distinct from a word
+that genuinely did not parse. The timeout and attempt limits are stored per word; PanGloss derives the
+work limit from the attempt limit.
 
 The limit is part of the scope rather than a run-time flag, because a coverage figure computed under a
 one-second cap is not comparable with one computed under ten.
