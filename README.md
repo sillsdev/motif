@@ -2,7 +2,7 @@
 
 Motif shows you how well a FieldWorks parser handles your language. It shows which of your words parse, which of your approved analyses the grammar still builds, which words are slow, and what the grammar check found. It reads your saved FieldWorks project and writes nothing to it until you review your changes and press **Apply to FieldWorks project**.
 
-**To use Motif:** download the Windows beta from the [latest release](https://github.com/sillsdev/motif/releases/latest) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is a tech demo: keep a FieldWorks backup and try it on a copy of your project first.
+**To use Motif:** download the Windows beta from the [Releases page](https://github.com/sillsdev/motif/releases) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is a tech demo: keep a FieldWorks backup and try it on a copy of your project first.
 
 New choices default to a limit of 200,000 parser steps per word. A project's saved limit remains in effect.
 
@@ -45,7 +45,7 @@ dotnet tool install --global vpk --version 1.2.158
 ./tools/package-release.ps1
 ```
 
-The product version is declared in `Directory.Build.props`; packaging uses it by default, and update smoke tests the next patch version. Publishing requires the matching `v<version>` tag and release notes.
+The product version is declared in `Directory.Build.props`; packaging uses it by default, and update smoke tests the next prerelease (beta001 to beta002) or the next stable patch. Publishing requires the matching `v<version>` tag and release notes. Windows publishing requires signing credentials except for versions with a `-beta` suffix.
 
 The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The release attaches Windows Setup plus Linux x64 and macOS arm64 preview downloads; Unix previews are retained only after their install/update/uninstall smoke succeeds. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) gives the Windows download, install and project-data steps; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
 

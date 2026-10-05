@@ -7,12 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: Publish signed Windows Setup and tested Unix previews from a matching version tag.
+        description: Publish Windows Setup and tested Unix previews; unsigned Windows publishing is beta-only.
         required: false
         default: false
         type: boolean
       release_version:
-        description: Stable version to release; set when publishing from its matching v<version> tag.
+        description: SemVer version to release; set when publishing from its matching v<version> tag.
         required: false
         type: string
 
@@ -49,7 +49,9 @@ jobs:
 
       - name: Read product and update-smoke versions
         shell: pwsh
-        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
+        run: |
+          ./tools/MotifReleaseVersion.Tests.ps1
+          ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -142,7 +144,7 @@ jobs:
         shell: pwsh
         run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION -NextProductVersion $env:NEXT_PRODUCT_VERSION -InitialPackagePath $env:INITIAL_PACKAGE_PATH -WorkDirectory $env:WORK_DIRECTORY
 
-      - name: Retain signed Windows feed and release manifests
+      - name: Retain Windows feed and release manifests
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -187,7 +189,9 @@ jobs:
 
       - name: Read product and update-smoke versions
         shell: pwsh
-        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
+        run: |
+          ./tools/MotifReleaseVersion.Tests.ps1
+          ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -196,18 +200,11 @@ jobs:
       - name: Validate selected release version and tag
         shell: pwsh
         run: |
-          if ($env:HAS_TRUSTED_SIGNING_CREDENTIALS -ne 'true') {
-            throw 'Trusted signing credentials are required for a Windows release.'
-          }
-          if ($env:RELEASE_VERSION -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
-            throw 'release_version must be a stable three-part version such as 1.0.0.'
-          }
-          if ($env:RELEASE_VERSION -cne $env:PRODUCT_VERSION) {
-            throw 'release_version must match VersionPrefix in Directory.Build.props.'
-          }
-          if ($env:GITHUB_REF -cne "refs/tags/v$env:RELEASE_VERSION") {
-            throw "Dispatch this workflow on tag v$($env:RELEASE_VERSION) to release that version."
-          }
+          ./tools/MotifReleasePublication.Tests.ps1
+          Import-Module ./tools/MotifReleasePublication.psm1 -Force
+          $publication = Confirm-MotifReleasePublication `
+            -Version $env:RELEASE_VERSION -ProductVersion $env:PRODUCT_VERSION `
+            -GitRef $env:GITHUB_REF -HasSigningCredentials ($env:HAS_TRUSTED_SIGNING_CREDENTIALS -eq 'true')
           if (-not (Test-Path -LiteralPath "docs/release-notes/$env:RELEASE_VERSION.md" -PathType Leaf)) {
             throw 'The selected release must have authored release notes.'
           }
@@ -215,7 +212,8 @@ jobs:
             throw 'The root LICENSE file is required before publishing.'
           }
           [string[]] $paths = @("RELEASE_TAG=v$env:RELEASE_VERSION",
-            "RELEASE_MANIFEST_PATH=$env:RELEASE_STAGE_DIRECTORY\release-manifest.json")
+            "RELEASE_MANIFEST_PATH=$env:RELEASE_STAGE_DIRECTORY\release-manifest.json",
+            "RELEASE_IS_PRERELEASE=$($publication.IsPrerelease.ToString().ToLowerInvariant())")
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
       - name: Install pinned Velopack CLI
@@ -313,7 +311,9 @@ jobs:
             }
             $assets += $asset
           }
-          gh release create $env:RELEASE_TAG @assets `
+          $releaseFlags = @()
+          if ($env:RELEASE_IS_PRERELEASE -eq 'true') { $releaseFlags += '--prerelease' }
+          gh release create $env:RELEASE_TAG @assets @releaseFlags `
             --title "Motif $env:RELEASE_VERSION" `
             --notes-file "docs/release-notes/$env:RELEASE_VERSION.md" --verify-tag
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }
@@ -344,7 +344,9 @@ jobs:
 
       - name: Read product and update-smoke versions
         shell: pwsh
-        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
+        run: |
+          ./tools/MotifReleaseVersion.Tests.ps1
+          ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -469,7 +471,9 @@ jobs:
 
       - name: Read product and update-smoke versions
         shell: pwsh
-        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
+        run: |
+          ./tools/MotifReleaseVersion.Tests.ps1
+          ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:

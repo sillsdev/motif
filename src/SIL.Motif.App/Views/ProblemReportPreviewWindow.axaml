@@ -21,7 +21,7 @@
       </StackPanel>
     </StackPanel>
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <TextBlock Text="Review this report before sharing it. Opening the issue form does not submit it."
+      <TextBlock Text="Review this report before sharing it through GitHub Issues. Opening the issue form does not submit it. If you cannot use GitHub, copy the reviewed report and email john_lambert@sil.org."
                  TextWrapping="Wrap" />
       <CheckBox Grid.Row="1" Content="Include local details (may contain project or language data)"
                 IsChecked="{Binding IncludeLocalDetails}"

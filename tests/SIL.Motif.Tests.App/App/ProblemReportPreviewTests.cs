@@ -34,8 +34,12 @@ public sealed class ProblemReportPreviewTests
             Assert.DoesNotContain("PRIVATEWORD", preview.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("/home/private", preview.Text, StringComparison.Ordinal);
             Assert.DoesNotContain("secret grammar", preview.Text, StringComparison.Ordinal);
-            Assert.Contains("does not submit", string.Join(" ", window.GetLogicalDescendants()
-                .OfType<TextBlock>().Select(text => text.Text).OfType<string>()), StringComparison.Ordinal);
+            var instructions = string.Join(" ", window.GetLogicalDescendants()
+                .OfType<TextBlock>().Select(text => text.Text).OfType<string>());
+            Assert.Contains("does not submit", instructions, StringComparison.Ordinal);
+            Assert.Contains("GitHub Issues", instructions, StringComparison.Ordinal);
+            Assert.Contains("copy the reviewed report and email john_lambert@sil.org", instructions,
+                StringComparison.Ordinal);
 
             include.IsChecked = true;
             Dispatcher.UIThread.RunJobs();

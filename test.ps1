@@ -162,6 +162,24 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+$phaseClocks['release version regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'release version regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleaseVersion.Tests.ps1')
+Write-PhaseDuration 'release version regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
+$phaseClocks['publication policy regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'publication policy regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/MotifReleasePublication.Tests.ps1')
+Write-PhaseDuration 'publication policy regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
 $solutionProjectPaths = @{}
 foreach ($line in Get-Content $solution) {
     if ($line -match '^Project\("[^"]+"\)\s*=\s*"[^"]+",\s*"([^"]+\.csproj)"') {

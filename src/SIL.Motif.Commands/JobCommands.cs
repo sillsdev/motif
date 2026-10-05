@@ -463,7 +463,7 @@ public static class JobCommands
     }
 
     private static Version ParseProductVersion(string productVersion) =>
-        Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
+        MotifProductVersion.CompatibilityVersion(productVersion);
 
     private static string NowStamp() => JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
 

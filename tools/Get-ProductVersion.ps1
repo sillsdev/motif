@@ -9,14 +9,11 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 [xml] $props = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw
 $versions = @($props.SelectNodes('/Project/PropertyGroup/VersionPrefix'))
-if ($versions.Count -ne 1 -or $versions[0].InnerText -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
-    throw 'Directory.Build.props must declare exactly one stable three-part VersionPrefix.'
+if ($versions.Count -ne 1) {
+    throw 'Directory.Build.props must declare exactly one VersionPrefix.'
 }
-$version = [Version]::Parse($versions[0].InnerText)
-$result = [pscustomobject]@{
-    ProductVersion = $version.ToString(3)
-    NextProductVersion = [Version]::new($version.Major, $version.Minor, $version.Build + 1).ToString(3)
-}
+Import-Module (Join-Path $PSScriptRoot 'MotifReleaseVersion.psm1') -Force
+$result = Get-MotifReleaseVersion -Version $versions[0].InnerText
 if ($GitHubEnvironment) {
     if ([string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
         throw 'GITHUB_ENV is required to export the package versions.'

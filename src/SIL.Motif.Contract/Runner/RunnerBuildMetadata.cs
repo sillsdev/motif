@@ -19,7 +19,7 @@ public sealed record RunnerBuildMetadata
     {
         if (string.IsNullOrWhiteSpace(productVersion))
             throw new ArgumentException("A product version is required.", nameof(productVersion));
-        if (!Version.TryParse(productVersion, out _))
+        if (!Version.TryParse(productVersion, out _) && !ProductVersionSyntax.TryParseCore(productVersion, out _))
             throw new ArgumentException("The product version is not a version.", nameof(productVersion));
         if (supportedSchema < 1)
             throw new ArgumentOutOfRangeException(nameof(supportedSchema),

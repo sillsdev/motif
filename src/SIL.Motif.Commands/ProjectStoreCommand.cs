@@ -184,7 +184,7 @@ public static class ProjectStoreCommand
 
     /// A malformed product version must not stop a verb; the compatibility floor it feeds is a lower bound.
     internal static Version ParseVersion(string productVersion) =>
-        Version.TryParse(productVersion, out var parsed) ? parsed : MotifProductVersion.Current;
+        MotifProductVersion.CompatibilityVersion(productVersion);
 
     /// The file must exist: an unresolvable path would key a second, empty workspace instead of the real one.
     internal static ProjectLocator Locate(string fwDataPath)
