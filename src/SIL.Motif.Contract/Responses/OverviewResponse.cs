@@ -26,6 +26,9 @@ public sealed record OverviewResponse(
 {
     public IReadOnlyList<WritingSystemDisplay> WritingSystems { get; init; } = [];
 
+    /// <summary>The most recent parser refusal for the current Baseline, until parsing succeeds.</summary>
+    public SIL.Motif.Contract.Commands.Refusal? LastParserRefusal { get; init; }
+
     /// <summary>The stored results worth opening first; empty when no Parse all words matches.</summary>
     public OverviewLookFirst LookFirst { get; init; } = OverviewLookFirst.Empty;
 

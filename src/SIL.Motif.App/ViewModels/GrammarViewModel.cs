@@ -128,9 +128,15 @@ public sealed partial class GrammarViewModel : ObservableObject
     public void Clear() => ResetProject(null);
 
     /// <summary>Shows a stored check and enables Reload grammar without running the parser.</summary>
-    public void LoadStored(string projectPath, GrammarCheckResponse? check)
+    public void LoadStored(string projectPath, GrammarCheckResponse? check, Refusal? refusal = null)
     {
         ResetProject(projectPath);
+        if (refusal is not null)
+        {
+            Refusal = refusal;
+            HasBaseline = true;
+            HasChecked = true;
+        }
         if (check is null) return;
         Warnings.Load(check.Findings);
         HasBaseline = check.HasBaseline;

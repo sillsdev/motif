@@ -35,7 +35,8 @@ public sealed class PanGlossTracer : IPanGlossTracer
             PanGlossOutcome.Completed completed => Interpret(word, completed),
             PanGlossOutcome.Cancelled => new PanGlossTraceOutcome.Cancelled(word),
             PanGlossOutcome.TimedOut timedOut => new PanGlossTraceOutcome.Incomplete(word, null, null, timedOut.Message),
-            PanGlossOutcome.Refused refused => new PanGlossTraceOutcome.Declined(word, refused.Message),
+            PanGlossOutcome.Refused refused => new PanGlossTraceOutcome.Declined(word, refused.Message)
+                { ParserRefusal = refused },
             PanGlossOutcome.Unavailable unavailable => new PanGlossTraceOutcome.Unavailable(word, unavailable.Message)
             {
                 ExecutableMissing = unavailable.ExecutableMissing,

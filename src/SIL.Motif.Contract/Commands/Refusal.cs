@@ -17,7 +17,7 @@ namespace SIL.Motif.Contract.Commands;
 public sealed record Refusal
 {
     public Refusal(string code, FailureReason reason, string message,
-        IReadOnlyDictionary<string, string>? facts = null)
+        IReadOnlyDictionary<string, string>? facts = null, ParserCompileDiagnostic? parserDiagnostic = null)
     {
         Code = string.IsNullOrWhiteSpace(code)
             ? throw new ArgumentException("A stable refusal code is required.", nameof(code))
@@ -29,6 +29,7 @@ public sealed record Refusal
         Facts = facts is null
             ? ImmutableDictionary<string, string>.Empty
             : facts.ToImmutableDictionary(StringComparer.Ordinal);
+        ParserDiagnostic = parserDiagnostic;
     }
 
     /// <summary>A lower-case, dot-separated identifier stable across releases, such as <c>proposal.not-found</c>.</summary>
@@ -41,4 +42,7 @@ public sealed record Refusal
 
     /// <summary>The dynamic values the refusal was computed from, keyed by a stable, ordinal-compared name.</summary>
     public IReadOnlyDictionary<string, string> Facts { get; }
+
+    /// <summary>Fatal grammar issues and original parser output, when the parser could not compile the grammar.</summary>
+    public ParserCompileDiagnostic? ParserDiagnostic { get; }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract.Commands;
 
 namespace SIL.Motif.Contract.Responses;
 
@@ -41,7 +42,8 @@ public sealed record FailureEnvelope
 {
     [JsonConstructor]
     public FailureEnvelope(FailureReason reason, string message,
-        IReadOnlyDictionary<string, string>? detail = null, string? code = null)
+        IReadOnlyDictionary<string, string>? detail = null, string? code = null,
+        ParserCompileDiagnostic? parserDiagnostic = null)
     {
         Reason = reason;
         Message = string.IsNullOrWhiteSpace(message)
@@ -49,6 +51,7 @@ public sealed record FailureEnvelope
             : message;
         Detail = detail;
         Code = code;
+        ParserDiagnostic = parserDiagnostic;
     }
 
     /// <summary>Always false, so a reader that captured both streams can tell them apart.</summary>
@@ -67,6 +70,10 @@ public sealed record FailureEnvelope
     [JsonPropertyOrder(4)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, string>? Detail { get; }
+
+    /// <summary>Fatal grammar issues and raw parser output, retained for humans and machine readers.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ParserCompileDiagnostic? ParserDiagnostic { get; }
 
     /// <summary>The process exit code this reason maps to.</summary>
     /// <remarks>

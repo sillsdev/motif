@@ -20,6 +20,7 @@ public sealed class AiHandoffPageModel : PageModel
         Handoff = new HandoffViewModel(context.Commands, context.Selection, context.FolderPicker, context.DragSource,
             context.Clock, context.Clipboard);
         Handoff.PropertyChanged += OnHandoffPropertyChanged;
+        context.Assess.PropertyChanged += (_, _) => UpdateAvailability();
     }
 
     /// <summary>The page's own AI Handoff run.</summary>
@@ -50,14 +51,24 @@ public sealed class AiHandoffPageModel : PageModel
 
     protected override Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
+        UpdateAvailability();
         if (Handoff.SelectedTrace is not null) return Task.CompletedTask;
-        if (evidence.Assessment is not { } shown) return Task.CompletedTask;
+        if (evidence.Assessment is not { } shown)
+        {
+            Handoff.InvocationId = null;
+            return Task.CompletedTask;
+        }
         Handoff.InvocationId = shown.Assessment.InvocationId;
         Handoff.LatestAssessmentAt = shown.CompletedAt;
         Handoff.CoverageText = CoverageOf(shown.CompletedAt, Context.Assess.Words.CountSummary,
             Context.Selection.ChosenTextIds.Count, Context.Selection.PastedWordEntries.Count);
         return Task.CompletedTask;
     }
+
+    private void UpdateAvailability() => Handoff.UnavailableReason = "No parse results yet: " +
+        (Context.Assess.ShownRefusal?.Sentence ??
+            (Context.Evidence.Stored?.LastParserRefusal is { } refusal ? WindowRefusal.From(refusal).Sentence :
+                "Parse all words first."));
 
     protected override void OnRequested(PageRequest request)
     {

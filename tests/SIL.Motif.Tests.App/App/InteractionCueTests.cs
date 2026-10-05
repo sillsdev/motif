@@ -232,6 +232,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 Dispatcher.UIThread.RunJobs();
                 Assert.True(link.IsPointerOver, $"the pointer at {linkCentre} did not reach the outcome link {link.Bounds}");
 
+                Assert.True(link.IsPointerOver, "The composite legend link must receive pointer hits across its face.");
                 Assert.Contains(label.TextDecorations ?? [], line => line.Location == TextDecorationLocation.Underline);
             }
             finally

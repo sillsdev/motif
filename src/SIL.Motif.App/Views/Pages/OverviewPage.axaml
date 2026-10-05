@@ -25,6 +25,15 @@
               <views:RefusalBlock DataContext="{Binding OverviewRefusal}" />
             </DockPanel>
           </Border>
+          <Border Classes="notice" IsVisible="{Binding HasLastParseRefusal}"
+                  AutomationProperties.Name="The latest parse was refused">
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Text="{Binding LastParseRefusal.Sentence}" TextWrapping="Wrap" />
+              <Expander Header="Parse failure details" AutomationProperties.Name="Latest parse failure details">
+                <views:RefusalBlock DataContext="{Binding LastParseRefusal}" />
+              </Expander>
+            </StackPanel>
+          </Border>
           <UniformGrid Classes="overviewCounts" Rows="1" Columns="5" IsVisible="{Binding ShowNumbers}">
             <StackPanel Classes="overviewCount">
               <views:CopyableTextBlock Classes="overviewCountValue" Text="{Binding SelectionWordCountText}"

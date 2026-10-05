@@ -48,6 +48,9 @@ public abstract record PanGlossTraceOutcome
     public sealed record Declined(string Word, string Detail) : PanGlossTraceOutcome
     {
         public override string Message => Detail;
+
+        /// <summary>The parser's complete failure streams and exit status, when execution reached it.</summary>
+        public PanGlossOutcome.Refused? ParserRefusal { get; init; }
     }
 
     /// <summary>No parser ran: the executable is absent or would not start.</summary>

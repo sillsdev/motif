@@ -198,6 +198,8 @@ internal static class InteractiveControlSweep
         MorphemeRow => InteractiveControlFamily.Morpheme,
         WordRow => InteractiveControlFamily.Morpheme,
         ScrollViewer { Name: "FieldWorksMorphemeScroll" } => InteractiveControlFamily.ScrollViewport,
+        ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
+            InteractiveControlFamily.ScrollViewport,
         TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
         ProgressBar => InteractiveControlFamily.Progress,
@@ -238,7 +240,7 @@ internal static class InteractiveControlSweep
     private static string SourceFor(InteractiveControlFamily family)
     {
         if (family == InteractiveControlFamily.ScrollViewport)
-            return "src/SIL.Motif.App/Views/WordRow.axaml";
+            return "src/SIL.Motif.App/Views/RefusalBlock.axaml, src/SIL.Motif.App/Views/WordRow.axaml";
 
         var sources = InteractiveMarkupContracts.TypesForFamily(family)
             .Concat(InteractiveControlManifest.GeneratedFamilies

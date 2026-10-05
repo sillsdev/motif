@@ -34,9 +34,15 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     /// document they happen to reach.
     /// </summary>
     public static string DataSensitivitySentence { get; } =
-        "This folder holds real grammar rules, lexicon entries, and corpus sentences from this project. " +
+        "Writing an AI Handoff includes real grammar rules, lexicon entries, and sentences from this project. " +
         "Dragging it into a chat model sends that data to whoever runs it (OpenAI, Anthropic, or another " +
         "provider) — check the project's own data-sensitivity policy first.";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsUnavailableReason))]
+    private string _unavailableReason = "No parse results yet: Parse all words first.";
+
+    public bool ShowsUnavailableReason => InvocationId is null && ChosenWords is null;
 
     private readonly ICommandClient _commandClient;
     private readonly IHandoffFolderPicker _folderPicker;
@@ -119,7 +125,11 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
 
     partial void OnProjectPathChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
 
-    partial void OnInvocationIdChanged(string? value) => RunCommand.NotifyCanExecuteChanged();
+    partial void OnInvocationIdChanged(string? value)
+    {
+        RunCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
+    }
 
     /// <summary>Copies the folder the files were written to, the keyboard's route to what a drag carries.</summary>
     public Task CopyFolderAsync() =>
@@ -185,6 +195,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public void UseWords(IReadOnlyList<string> words, WarningHandoffScope? warningScope = null)
     {
         SelectedTrace = null;
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
         _warningScope = warningScope;
         ChosenWords = warningScope is not null || words.Count > 0 ? words : null;
         OnPropertyChanged(nameof(ChosenWordsText));
@@ -195,6 +206,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     {
         ArgumentNullException.ThrowIfNull(trace);
         SelectedTrace = trace;
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
         _warningScope = null;
         ChosenWords = [trace.Word];
         InvocationId = null;
@@ -205,11 +217,16 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     public void UseWholeAssessment()
     {
         SelectedTrace = null;
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
         ChosenWords = null;
         _warningScope = null;
     }
 
-    partial void OnChosenWordsChanged(IReadOnlyList<string>? value) => RunCommand.NotifyCanExecuteChanged();
+    partial void OnChosenWordsChanged(IReadOnlyList<string>? value)
+    {
+        RunCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
+    }
 
     protected override async Task<bool> PrepareRunAsync()
     {
@@ -257,6 +274,7 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
         InvocationId = null;
         ChosenWords = null;
         SelectedTrace = null;
+        OnPropertyChanged(nameof(ShowsUnavailableReason));
         _warningScope = null;
         CoverageText = null;
         LatestAssessmentAt = null;

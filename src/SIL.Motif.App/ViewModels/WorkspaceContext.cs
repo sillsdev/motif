@@ -460,6 +460,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Evidence.ShowStored(evidence);
         if (Evidence.Assessment is { IsStored: true } restored && !ReferenceEquals(restored, shown))
             Assess.Restore(restored);
+        Assess.RestoreRefusal(evidence.LastParserRefusal);
         Changes.AssessmentId = Evidence.ParseTimeAssessmentId;
         return PublishToPagesAsync(cancellationToken);
     }
@@ -602,6 +603,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(AssessViewModel.State) && Assess.State == RunState.Refused)
+            _ = PublishToPagesAsync(CancellationToken.None);
         if (e.PropertyName != nameof(AssessViewModel.IsActive)) return;
         OnPropertyChanged(nameof(ProjectAndSelectionEnabled));
         OnPropertyChanged(nameof(ParsePromptText));

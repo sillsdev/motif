@@ -15,6 +15,9 @@
         <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
                    Text="Give a chat model the files it needs to help you read these results." />
 
+        <views:CopyableTextBlock Text="{Binding Handoff.UnavailableReason}" TextWrapping="Wrap"
+                                 IsVisible="{Binding Handoff.ShowsUnavailableReason}" />
+
         <Border Classes="notice" IsVisible="{Binding Handoff.HasChosenWords}" AutomationProperties.Name="Words chosen in Compare">
           <DockPanel>
             <Button DockPanel.Dock="Right" Content="Hand off every parsed word instead" Click="OnUseWholeAssessmentClick"

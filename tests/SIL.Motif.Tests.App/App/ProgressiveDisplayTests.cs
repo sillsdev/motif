@@ -13,6 +13,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using WordRow = SIL.Motif.App.Views.WordRow;
 using TraceStep = SIL.Motif.Contract.Responses.TraceStep;
@@ -31,7 +32,8 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "KeyboardShortcutsFlyoutView", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage", "ResultsInTextPanel",
+        "Inspector", "KeyboardShortcutsFlyoutView", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
+        "RefusalBlock", "ResultsInTextPanel",
         "ReviewPanel", "SelectionPanel", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordRow", "WordRowCard",
     ];
@@ -122,6 +124,35 @@ public sealed class ProgressiveDisplayTests
                 sampleWindow.Close();
             }
         }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void RefusalIssuesRealizeNearbyRowsAndKeepTheFinalIssueReachable()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var block = new RefusalBlock { DataContext = CompileRefusal(2000) };
+            var window = new Window { Width = 1240, Height = 780, Content = block };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var items = block.FindControl<ItemsControl>("RefusalBlockCompileIssuesItems")!;
+                var entry = Assert.Single(Inventory(), entry => entry.View == "RefusalBlock");
+                Assert.Equal(2000, items.ItemCount);
+                AssertBounded(items, entry);
+                items.ScrollIntoView(1999);
+                PageScreenshots.Settle(window);
+                AssertBounded(items, entry);
+                var last = Assert.IsAssignableFrom<Control>(items.ContainerFromIndex(1999));
+                var text = last.GetVisualDescendants().OfType<TextBlock>().Select(control => control.Text).ToArray();
+                Assert.Contains("Allomorph á-1999 has an invalid environment.", text);
+                Assert.Contains("Repair environment 1999 in FieldWorks.", text);
+                _output.WriteLine($"RefusalBlock: {items.ItemCount} issues, {items.GetRealizedContainers().Count()} final rows realized");
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -714,6 +745,7 @@ public sealed class ProgressiveDisplayTests
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
+            "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
             "ReviewPanel" => new ReviewPanel(workspace.PageModel<ReviewPageModel>()),
             "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
@@ -727,6 +759,17 @@ public sealed class ProgressiveDisplayTests
             "WordRowCard" => new WordRowCard { DataContext = workspace.Assess.Compare.Words[0] },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
         };
+    }
+
+    private static WindowRefusal CompileRefusal(int count)
+    {
+        var issues = Enumerable.Range(0, count).Select(index => new ParserCompileIssue(
+            "grammar.environment.invalid", "invalidSource", "11111111-1111-1111-1111-111111111111", "PhoneEnv",
+            $"Allomorph á-{index} has an invalid environment.", $"Repair environment {index} in FieldWorks.",
+            "MoForm")).ToArray();
+        return WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
+            "PanGloss can't use this grammar.", parserDiagnostic: new ParserCompileDiagnostic(
+                "PanGloss can't use this grammar.", issues, "Fatal grammar issues")));
     }
 
     private static IEnumerable<Control> Fragments(Control root, int depth = 0)

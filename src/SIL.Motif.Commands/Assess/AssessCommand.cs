@@ -11,6 +11,7 @@ using Microsoft.Data.Sqlite;
 using SIL.LCModel;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
@@ -130,9 +131,14 @@ public static class AssessCommand
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     "assess.invalid-limit", FailureReason.InvalidArgument, "A per-word time limit must be positive."));
             if (invoker.ExecutableMissing)
-                return CommandOutcome<AssessCommandResponse>.Refused(cancellationToken.IsCancellationRequested
-                    ? Cancelled(request.ProjectPath)
-                    : ParserUnavailable(request.ProjectPath, PanGlossExecutable.NotFoundMessage, executableMissing: true));
+            {
+                var refusal = cancellationToken.IsCancellationRequested ? Cancelled(request.ProjectPath)
+                    : ParserUnavailable(request.ProjectPath, PanGlossExecutable.NotFoundMessage, executableMissing: true);
+                var current = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+                if (current is not null && refusal.Reason != FailureReason.Cancelled)
+                    new ParserRefusalRepository(database).Save(current.Token, refusal);
+                return CommandOutcome<AssessCommandResponse>.Refused(refusal);
+            }
             AssessmentScopeConfiguration configured;
             try
             {
@@ -255,8 +261,11 @@ public static class AssessCommand
             }
             catch (AssessorUnavailableException ex)
             {
-                return CommandOutcome<AssessCommandResponse>.Refused(
-                    ParserUnavailable(request.ProjectPath, ex.Message, ex.ExecutableMissing));
+                var refusal = ex.ParserRefusal is { } failure
+                    ? ParserExecutionRefusal.From(RefusalCodes.AssessParserUnavailable, request.ProjectPath, failure)
+                    : ParserUnavailable(request.ProjectPath, ex.Message, ex.ExecutableMissing);
+                new ParserRefusalRepository(database).Save(baseline.Token, refusal);
+                return CommandOutcome<AssessCommandResponse>.Refused(refusal);
             }
             catch (AssessorRefusalException ex)
             {
@@ -529,6 +538,7 @@ public static class AssessCommand
                 {
                     return CommandOutcome<AssessCommandResponse>.Refused(Cancelled(request.ProjectPath));
                 }
+                new ParserRefusalRepository(database).Clear(baseline.Token);
                 foreach (var lease in artifactLeases) lease.Retain();
                 return CommandOutcome<AssessCommandResponse>.Success(response);
             }

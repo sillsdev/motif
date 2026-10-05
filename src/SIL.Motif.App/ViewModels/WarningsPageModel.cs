@@ -72,7 +72,7 @@ public sealed class WarningsPageModel : PageModel
         var stored = await Context.Commands
             .ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken).ConfigureAwait(true);
         if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
-        if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check);
+        if (stored.Succeeded) Grammar.LoadStored(projectPath, stored.Value?.Check, stored.Value?.LastParserRefusal);
     }
 
     protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ public sealed class WarningsPageModel : PageModel
         var stored = await Context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(path), cancellationToken)
             .ConfigureAwait(true);
         if (generation == _readGeneration && path == Context.ProjectPath && stored.Succeeded)
-            Grammar.LoadStored(path, stored.Value?.Check);
+            Grammar.LoadStored(path, stored.Value?.Check, stored.Value?.LastParserRefusal);
     }
 
     // A person asked for the new Baseline, so its grammar is checked rather than only read.

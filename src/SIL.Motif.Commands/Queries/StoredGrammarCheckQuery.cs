@@ -15,7 +15,7 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>
 /// The grammar check stored for the current Baseline, or null when nobody has requested one.
 /// </summary>
-public sealed record StoredGrammarCheckResponse(GrammarCheckResponse? Check);
+public sealed record StoredGrammarCheckResponse(GrammarCheckResponse? Check, Refusal? LastParserRefusal = null);
 
 /// <summary>
 /// Reads grammar findings from the Motif store without starting PanGloss, each with the Selection's words it
@@ -36,7 +36,8 @@ public static class StoredGrammarCheckQuery
             var token = JsonSerializer.Serialize(baseline.Token, MotifJson.CreateOptions());
             var check = new GrammarCheckRepository(database).GetLatest(token);
             return CommandOutcome<StoredGrammarCheckResponse>.Success(
-                new(check is null ? null : WarningWordsQuery.WithYourWords(database, project, check, baseline.Token)));
+                new(check is null ? null : WarningWordsQuery.WithYourWords(database, project, check, baseline.Token),
+                    new ParserRefusalRepository(database).Get(baseline.Token)));
         });
     }
 }

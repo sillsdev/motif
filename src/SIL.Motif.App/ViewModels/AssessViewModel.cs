@@ -104,6 +104,14 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
         State = RunState.Completed;
     }
 
+    internal void RestoreRefusal(Refusal? refusal)
+    {
+        if (IsActive) return;
+        Refusal = refusal;
+        if (refusal is not null) State = RunState.Refused;
+        else if (State == RunState.Refused) State = Result is null ? RunState.Idle : RunState.Completed;
+    }
+
     // The result is cleared as a run starts, so the one a re-run folds into is kept here first.
     protected override Task<bool> PrepareRunAsync()
     {

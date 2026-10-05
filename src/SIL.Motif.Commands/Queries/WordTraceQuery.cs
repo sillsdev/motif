@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
@@ -103,8 +104,11 @@ public static class WordTraceQuery
                     elapsedMs),
                 PanGlossTraceOutcome.Cancelled => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.cancelled", FailureReason.Cancelled, "The trace was cancelled.")),
-                PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
-                    "wordtrace.parser-refused", FailureReason.Refused, declined.Detail)),
+                PanGlossTraceOutcome.Declined declined => CommandOutcome<WordTraceResponse>.Refused(
+                    declined.ParserRefusal is { } failure
+                        ? ParserExecutionRefusal.From(RefusalCodes.WordTraceParserRefused, request.ProjectPath, failure)
+                        : new Refusal("wordtrace.parser-refused", FailureReason.Refused, declined.Detail,
+                            parserDiagnostic: ParserCompileDiagnosticReader.Read(declined.Detail))),
                 PanGlossTraceOutcome.Unavailable unavailable => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.parser-unavailable", FailureReason.Refused, unavailable.Detail,
                     ParserNotFoundFact.Mark(null, unavailable.ExecutableMissing))),
@@ -113,6 +117,9 @@ public static class WordTraceQuery
                 _ => CommandOutcome<WordTraceResponse>.Refused(new Refusal(
                     "wordtrace.parser-unavailable", FailureReason.Refused, outcome.Message)),
             };
+            var refusals = new ParserRefusalRepository(database);
+            if (result.Succeeded) refusals.Clear(baseline.Token);
+            else if (result.Refusal?.ParserDiagnostic is not null) refusals.Save(baseline.Token, result.Refusal);
             return result.Succeeded ? CommandOutcome<WordTraceResponse>.Success(
                 TraceDiagnosticCapture.Attach(result.Value!, baseline, project, elapsedMs)) : result;
         });

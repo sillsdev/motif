@@ -16,7 +16,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 40;
+    public const int CurrentSchema = 41;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -33,7 +33,7 @@ public static class MotifSchema
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + RetainedInvocationDdl + GrammarCheckDdl + PendingChangeFitDdl +
-                ReadOccurrenceDdl + ActiveParseDdl;
+                ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl;
             command.ExecuteNonQuery();
         }
 
@@ -62,7 +62,7 @@ public static class MotifSchema
             "Decisions", "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "GrammarChecks", "PendingChangeFits",
-            "ReadOccurrences", "ActiveParse"
+            "ReadOccurrences", "ActiveParse", "ParserRefusals"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -329,6 +329,7 @@ public static class MotifSchema
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
             C("PerWordLimitMs", "INTEGER"), C("PerWordStepLimit", "INTEGER")],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
+        "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
         [C("BaselineToken", "TEXT", false, 1), C("SelectionSha256", "TEXT", true),
             C("ParserStamp", "TEXT"), C("ResponseJson", "TEXT", true), C("CheckedUtc", "TEXT", true)],
@@ -459,6 +460,13 @@ public static class MotifSchema
         string OnUpdate,
         string OnDelete,
         string Match);
+
+    private const string ParserRefusalDdl = """
+        CREATE TABLE ParserRefusals (
+            BaselineToken TEXT PRIMARY KEY,
+            RefusalJson TEXT NOT NULL
+        );
+        """;
 
     private const string ActiveParseDdl = """
         CREATE TABLE ActiveParse (

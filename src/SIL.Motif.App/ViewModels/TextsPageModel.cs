@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -111,14 +112,15 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>Whether Analyze texts shows its text, which it does before the first parse too.</summary>
     public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts;
 
-    /// <summary>Whether the current tab asks for a parse: the Matrix and Analyze texts need one.</summary>
-    public bool ShowParsePrompt => Context.NeedsAssessment && (ShowMatrix || ShowAnalyzeTexts);
+    /// <summary>Whether the tab offers a parse before results exist, including a retry after cancellation.</summary>
+    public bool ShowParsePrompt => Context.NeedsAssessment &&
+        (Assess.Refusal is null or { Reason: FailureReason.Cancelled }) && (ShowMatrix || ShowAnalyzeTexts);
 
     /// <summary>Whether the prompt fills the Matrix, which has nothing to show without a parse.</summary>
-    public bool ShowCentredParsePrompt => Context.NeedsAssessment && ShowMatrix;
+    public bool ShowCentredParsePrompt => ShowParsePrompt && ShowMatrix;
 
     /// <summary>Whether the prompt sits above the text, which still shows the analyses FieldWorks holds.</summary>
-    public bool ShowAnalyzeParsePrompt => Context.NeedsAssessment && ShowAnalyzeTexts;
+    public bool ShowAnalyzeParsePrompt => ShowParsePrompt && ShowAnalyzeTexts;
 
     public bool ShowLists => Tab == TextsTab.Lists;
 

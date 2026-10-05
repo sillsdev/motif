@@ -4,6 +4,12 @@
 -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.Refusal.ContentMaxHeight" ResourceKey="Primitive.Size.240" />
+  </Styles.Resources>
+  <Style Selector="ScrollViewer.refusalViewport">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.ContentMaxHeight}" />
+  </Style>
   <Style Selector="StackPanel.refusal">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>

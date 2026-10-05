@@ -10,6 +10,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.App.Services;
 
@@ -26,6 +27,7 @@ public sealed record ProblemReport
         "MotifStoreVersionException", "SqliteException",
     };
     private readonly string? _localDetails;
+    private string? FailureSummary { get; init; }
 
     private ProblemReport(string motifVersion, string panGlossVersion, string operatingSystem, string operation,
         string refusalCode, string exitStatus, string sanitizedStack, IReadOnlyDictionary<string, string> safeFacts,
@@ -73,7 +75,7 @@ public sealed record ProblemReport
         ArgumentNullException.ThrowIfNull(refusal);
         return Create(refusal.Operation, refusal.Code, ExitStatusFor(refusal.Reason),
             refusal.FailureException is { } failure ? SanitizedStackFor(failure) : "Unavailable",
-            refusal.Facts, refusal.Details);
+            refusal.Facts, refusal.Details) with { FailureSummary = refusal.ParserDiagnostic?.Summary };
     }
 
     /// <summary>Builds a report for a parse that has stopped making progress while it is still running.</summary>
@@ -119,6 +121,7 @@ public sealed record ProblemReport
         AppendLine(text, "Operation: " + Operation);
         AppendLine(text, "Refusal code: " + RefusalCode);
         AppendLine(text, "Exit status: " + ExitStatus);
+        if (FailureSummary is not null) AppendLine(text, "Reason: " + FailureSummary);
         foreach (var fact in SafeFacts)
             AppendLine(text, "Failure fact " + fact.Key + ": " + fact.Value);
         AppendLine(text, "Sanitized stack:");
@@ -236,8 +239,8 @@ public sealed record ProblemReport
         /// <summary>Reads a bundled version or the checkout's declared release pin.</summary>
         public static string Read()
         {
-            if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PanGlossExecutable.PathVariable)))
-                return "unknown (custom executable)";
+            if (Environment.GetEnvironmentVariable(PanGlossExecutable.PathVariable) is { Length: > 0 } parser)
+                return ParserExecutableIdentity.Read(parser);
             for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null;
                  directory = directory.Parent)
             {

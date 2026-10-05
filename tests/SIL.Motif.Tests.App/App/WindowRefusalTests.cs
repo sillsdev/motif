@@ -203,12 +203,18 @@ public sealed class WindowRefusalTests
     {
         var root = RepoPaths.FindRepoRoot();
         var codePattern = new Regex(@"""([a-z][a-z]*(?:\.[a-z][a-z-]*)+)""");
+        var referencePattern = new Regex(@"RefusalCodes\.(\w+)");
         var declared = new HashSet<string>(StringComparer.Ordinal);
         foreach (var project in new[] { "SIL.Motif.Commands", "SIL.Motif.App" })
         foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "src", project), "*.cs",
                      SearchOption.AllDirectories))
-        foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
-            declared.Add(match.Groups[1].Value);
+        {
+            var source = File.ReadAllText(file);
+            foreach (Match match in codePattern.Matches(source)) declared.Add(match.Groups[1].Value);
+            foreach (Match match in referencePattern.Matches(source))
+                if (typeof(RefusalCodes).GetField(match.Groups[1].Value)?.GetRawConstantValue() is string code)
+                    declared.Add(code);
+        }
 
         Assert.DoesNotContain(AllCatalogueCodes(), code => !declared.Contains(code));
     }

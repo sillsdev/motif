@@ -93,6 +93,7 @@ public sealed class PanGlossAssessor : IAssessor
                     outcome is PanGlossOutcome.Completed ? "The invocation returned no retained evidence." : outcome.Message)
                 {
                     ExecutableMissing = outcome is PanGlossOutcome.Unavailable { ExecutableMissing: true },
+                    ParserRefusal = outcome as PanGlossOutcome.Refused,
                 };
             var matchingArtifacts = evidence.InvocationId == invocationId &&
                 Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");

@@ -55,6 +55,7 @@
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
   </Style>
   <Style Selector=":is(StackPanel).outcomeLegendLabel">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
   </Style>
   <Style Selector="StackPanel.outcomeLegendLabel > :is(TextBlock).outcomeLegendText">

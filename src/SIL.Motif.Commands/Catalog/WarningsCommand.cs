@@ -14,7 +14,8 @@ public static class WarningsCommand
         ArgumentNullException.ThrowIfNull(request);
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(request.ProjectPath));
         return stored.Succeeded
-            ? CommandOutcome<WarningsResponse>.Success(FromCheck(stored.Value!.Check, request.Kind, request.LeftOut))
+            ? CommandOutcome<WarningsResponse>.Success(FromCheck(stored.Value!.Check, request.Kind, request.LeftOut) with
+            { LastParserRefusal = stored.Value.LastParserRefusal })
             : CommandOutcome<WarningsResponse>.Refused(stored.Refusal!);
     }
 

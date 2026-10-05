@@ -59,6 +59,39 @@ public sealed class WindowRefusalDetailsTests
     }
 
     [Fact]
+    public void CompileFailureDetailsKeepTheExplanationWithoutTheDebugSerialization()
+    {
+        const string message = "pangloss batch exited 1: compile /tmp/assessments/source.fwdata: " +
+            "Conversion(ConversionError { issues: [ConversionIssue { code: EnvironmentInvalid, " +
+            "class: InvalidSource, source: None, fatal: true, message: \"environment string is invalid\" }] })";
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, message, new Dictionary<string, string> { ["projectPath"] = "one.fwdata" }));
+
+        Assert.Contains("environment string is invalid", shown.Details);
+        Assert.Contains("environment string is invalid", ProblemReport.FromRefusal(shown).ToText(true));
+        Assert.DoesNotContain("ConversionError", shown.Details);
+        Assert.DoesNotContain("ConversionIssue", ProblemReport.FromRefusal(shown).ToText(true));
+    }
+
+    [Theory]
+    [InlineData("Conversion(ConversionError { issues: [ConversionIssue { code:")]
+    [InlineData("pangloss batch: compile one.fwdata: semantic conversion failed")]
+    public void UnreadableCompileIssuesUseAPlainFallback(string output)
+    {
+        var shown = WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable,
+            FailureReason.Refused, output, new Dictionary<string, string>
+            {
+                ["standardError"] = output, ["parserMessage"] = output, ["exitCode"] = "1",
+            }));
+
+        Assert.Empty(shown.CompileIssues);
+        Assert.Contains("can't use this grammar", shown.Sentence);
+        Assert.Contains("exitCode: 1", shown.Details);
+        Assert.DoesNotContain(output, shown.Details);
+        Assert.DoesNotContain(output, ProblemReport.FromRefusal(shown).ToText(true));
+    }
+
+    [Fact]
     public void ExpandedDetailsOfAMissingCheckShowNoCliWords()
     {
         var refusal = new Refusal(RefusalCodes.ApplyDryRunMissing, FailureReason.Refused, DryRunMissingMessage,

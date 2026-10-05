@@ -385,6 +385,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "RefusalBlock",
+    "name": "RefusalBlockCompileIssuesItems",
+    "source": "CompileIssues",
+    "mode": "rows",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ResultsInTextPanel",
     "name": "ResultsInTextPanelTextsItems",
     "source": "InText.Texts",

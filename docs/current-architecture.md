@@ -51,6 +51,14 @@ Timing describes the selected measurement's Baseline relationship separately fro
 
 `open` and manual `analyses` inspect disposable copies of the saved project, preserving the original owner's lock. Assessment `analyses` reads the exact Baseline named by that measurement: the retained invocation's copy, or the current copy only when its token matches. Missing captured context is refused instead of substituting live facts. Its response records `projectContext` separately from caller-supplied current digests, so a later save never changes historical manual evidence. `log` and the semantic composers read disposable copies of the current saved project; the log includes Apply receipts saved after an older Baseline. Read-only `preflight` and pending-change fit checks use independent readers of the Baseline when its source save matches, otherwise a validated copy of the saved live file. They preserve later-edit detection while FieldWorks holds its own project. Apply checks original-project ownership separately before finalizing pending changes or queuing its Dry Run. Warning rollups likewise retain attribution completeness and limitations: exact known matches remain counted, candidates stay separate, and unfollowed routes qualify both aggregate and per-kind totals.
 
+A failed parser invocation remains visible after reopening the project, with a plain grammar summary,
+fatal issues and repair advice before the folded raw output. `ParserRefusals` keeps the latest refusal
+against its exact Baseline token; a successful parse clears that token's refusal, and a replacement
+Baseline selects no refusal from an earlier capture. Command refusals and CLI failure envelopes retain
+`parserDiagnostic` alongside the original parser message, exit status and streams in their facts.
+The diagnostic reader prefers PanGloss's `compile_error` JSON and also reads the PanGloss 0.6 Debug
+conversion format defensively, grouping duplicate fatal issues by authored identity.
+
 ## Live FieldWorks navigation
 
 Captured facts stay readable when FieldWorks has changed, but links open only destinations the saved project still holds. Replacing a project at the same filename never authorizes links into the replacement.

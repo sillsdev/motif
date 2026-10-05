@@ -64,6 +64,22 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        // Emulate a legacy console in a private fake copy so encoding regressions reproduce on every OS.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-legacy-console")))
+            Console.OutputEncoding = Encoding.ASCII;
+        // Match PanGloss's UTF-8 stdout and stderr even when Windows supplies a legacy console code page.
+        Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        if (args is ["--probe-stream-encoding", var text])
+        {
+            Console.Out.Write(text);
+            Console.Error.Write(text);
+            return 0;
+        }
+        if (args is ["--version"])
+        {
+            Console.WriteLine("pangloss 0.6.0");
+            return 0;
+        }
         if (args is ["--allocate-memory", var requestedBytes])
             return ProbeMemoryLimit(requestedBytes);
         if (args is ["--allocate-memory", var delayedRequestedBytes, var holdMilliseconds])
@@ -372,7 +388,7 @@ internal static class Program
         }
 
         var signature = behaviour.TraceSignature ?? word + "-sig";
-        // Raw UTF-8 bytes, as serde_json writes them: Console.Out would encode through the console code page.
+        // Emit the trace envelope as bytes, matching serde_json's unescaped UTF-8 output.
         var envelope = TraceEnvelope(word, signature, behaviour.TraceJson, behaviour.TraceCapped,
             behaviour.TraceTimedOut, behaviour.TraceAnalyses);
         using (var stdout = Console.OpenStandardOutput())

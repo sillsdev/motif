@@ -29,6 +29,9 @@ the rule was broken.
   .NET apphost child (the fake parser, the runner) finds its runtime only through them where .NET lives
   outside the default location, as on the macOS runners. Symptom: exit 131, "You must install .NET".
 - Every child environment drops `ICU_DATA` (see SIL ICU below).
+- PanGloss stdout and stderr use UTF-8 regardless of the console code page. Set both redirected stream
+  decoders explicitly. A .NET fake also sets `Console.OutputEncoding` before writing either stream;
+  correct decoding cannot recover characters its writer already replaced with `?`.
 - Interrupt a CLI child with Ctrl+Break on Windows and SIGINT (`kill(pid, 2)`) on Unix; both reach the
   CLI's `Console.CancelKeyPress`. `InterruptibleCli` does both.
 - Bound a wait on a child by the child's lifetime: poll `while (!child.HasExited)`. After

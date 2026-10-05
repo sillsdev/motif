@@ -85,7 +85,8 @@ public static class CommandTextRenderer
         if (asJson)
         {
             var envelope = new FailureEnvelope(
-                refusal.Reason, refusal.Message, refusal.Facts.Count > 0 ? refusal.Facts : null, refusal.Code);
+                refusal.Reason, refusal.Message, refusal.Facts.Count > 0 ? refusal.Facts : null, refusal.Code,
+                refusal.ParserDiagnostic);
             return new CommandResult(
                 FailureEnvelope.ExitCodeFor(refusal.Reason),
                 ProjectionJson.Serialize(envelope) + Environment.NewLine, refusal.Reason);

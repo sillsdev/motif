@@ -1402,11 +1402,13 @@ public sealed class MainWindowSmokeTests
                         ["parserPath"] = OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss",
                     });
                 window.Show();
+                Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var refusal = Assert.Single(window.GetLogicalDescendants().OfType<CopyableTextBlock>(),
-                    block => block.Text == workspace.Assess.ShownRefusal!.Sentence);
-                Assert.True(refusal.IsEffectivelyVisible);
+                var textsPage = Assert.Single(window.GetVisualDescendants().OfType<TextsPage>());
+                Assert.True(textsPage.IsEffectivelyVisible);
+                Assert.Single(textsPage.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    block => block.Text == workspace.Assess.ShownRefusal!.Sentence && block.IsEffectivelyVisible);
                 Assert.Contains(window.GetLogicalDescendants().OfType<Expander>(),
                     expander => Equals(expander.Header, "Details") && expander.IsEffectivelyVisible);
                 Assert.Contains("parserPath: " +

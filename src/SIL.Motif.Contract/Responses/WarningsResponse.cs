@@ -9,6 +9,9 @@ public sealed record WarningsResponse(
     int WarningCount,
     int InformationCount)
 {
+    /// <summary>The current Baseline's latest parser refusal, even before grammar findings exist.</summary>
+    public SIL.Motif.Contract.Commands.Refusal? LastParserRefusal { get; init; }
+
     /// <summary>The number of error-level findings after the requested filters.</summary>
     public int ErrorCount { get; init; }
 

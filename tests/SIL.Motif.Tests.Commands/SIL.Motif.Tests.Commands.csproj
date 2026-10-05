@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/compile-refusal.txt" />
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />

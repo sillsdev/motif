@@ -2,20 +2,21 @@ using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 using C = SIL.Motif.Contract.Commands.RefusalCodes;
 
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>
-/// A refusal as the window shows it: one sentence in the window's words, and the command's own account
-/// folded away under Details.
+/// A refusal as the window shows it: a plain summary, fatal grammar issues when available, and the command's
+/// readable account folded away under Details.
 /// </summary>
 /// <remarks>
 /// <para>
 /// A command writes its message for the CLI's reader, an agent, so it may name a Draft or suggest a
 /// <c>motif …</c> command line. The window's reader is a linguist, and ADR 0046 decision 3 keeps those words
-/// off the screen. So <see cref="Sentence"/> is looked up by <see cref="Refusal.Code"/>, never taken from
-/// the message.
+/// off the screen. <see cref="Sentence"/> uses the compile diagnostic's plain summary when available;
+/// otherwise it is looked up by <see cref="Refusal.Code"/>.
 /// </para>
 /// <para>
 /// <see cref="Details"/> holds the command's message and facts, folded away but still on screen once
@@ -23,7 +24,8 @@ namespace SIL.Motif.App.ViewModels;
 /// a Draft, a Preflight or a Dry Run, a sentence that names an Assessment or the Assessor (its facts stay, since
 /// a problem report needs an id such as <c>assessmentId</c>), and a sentence that tells the reader to run a
 /// command line, which a person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
-/// rest of its message in Details.
+/// rest of its message in Details. Compile diagnostics show the parser's issue text, source identity and
+/// advice without its serialization; original streams remain available in command and stored evidence.
 /// </para>
 /// </remarks>
 public sealed partial record WindowRefusal
@@ -209,12 +211,12 @@ public sealed partial record WindowRefusal
         [C.WordTraceMalformedDiagnostic] = "That file is not a diagnostic Motif can read. Choose a diagnostic Motif saved.",
         [C.WordTraceMalformedOutput] = ParserWrong,
         [C.WordTraceNoBaseline] = "Refresh the project before trying a word.",
-        [C.WordTraceParserRefused] = "PanGloss could not parse this word. The details say why.",
+        [C.WordTraceParserRefused] = "PanGloss could not try this word. The details say why.",
         [C.WordTraceParserUnavailable] = ParserUnusable,
     };
 
     private WindowRefusal(string code, string sentence, string? details, IReadOnlyDictionary<string, string> facts,
-        FailureReason? reason, Exception? failureException = null)
+        FailureReason? reason, Exception? failureException = null, ParserCompileDiagnostic? parserDiagnostic = null)
     {
         Code = code;
         Sentence = sentence;
@@ -222,6 +224,7 @@ public sealed partial record WindowRefusal
         Facts = facts;
         Reason = reason;
         FailureException = failureException;
+        ParserDiagnostic = parserDiagnostic;
     }
 
     /// <summary>The command's stable refusal code, for a control that acts on one kind of refusal.</summary>
@@ -236,13 +239,22 @@ public sealed partial record WindowRefusal
     /// <summary>The local exception used to make a path-free stack for the report preview.</summary>
     internal Exception? FailureException { get; }
 
-    /// <summary>The window's sentence for this refusal; the only part shown unfolded.</summary>
+    /// <summary>The window's plain summary, shown before any fatal issues and folded details.</summary>
     public string Sentence { get; }
 
     /// <summary>The command's own message and facts, or <see langword="null"/> when there is nothing to add.</summary>
     public string? Details { get; }
 
     public bool HasDetails => Details is not null;
+
+    /// <summary>The parser's fatal grammar issues, shown ahead of its folded details.</summary>
+    public ParserCompileDiagnostic? ParserDiagnostic { get; }
+
+    public IReadOnlyList<ParserCompileIssue> CompileIssues => ParserDiagnostic?.Issues ?? [];
+
+    public bool HasCompileIssues => CompileIssues.Count > 0;
+
+    public string DetailsTitle => ParserDiagnostic is null ? "Details" : "Details · grammar issues";
 
     /// <summary>The command's facts, such as the store path a delete button would need.</summary>
     public IReadOnlyDictionary<string, string> Facts { get; }
@@ -268,8 +280,10 @@ public sealed partial record WindowRefusal
     {
         ArgumentNullException.ThrowIfNull(refusal);
         ArgumentException.ThrowIfNullOrWhiteSpace(sentenceWhenUnmapped);
-        return new WindowRefusal(refusal.Code, SentenceFor(refusal, sentenceWhenUnmapped), DetailsOf(refusal),
-            refusal.Facts, refusal.Reason);
+        var diagnostic = refusal.ParserDiagnostic ?? ParserCompileDiagnosticReader.Read(refusal.Message);
+        return new WindowRefusal(refusal.Code, diagnostic?.Summary ?? SentenceFor(refusal, sentenceWhenUnmapped),
+            diagnostic is null ? DetailsOf(refusal) : CompileDetails(refusal, diagnostic),
+            refusal.Facts, refusal.Reason, parserDiagnostic: diagnostic);
     }
 
     /// <summary>A check the window made itself, already in the window's words and with nothing to fold away.</summary>
@@ -315,6 +329,23 @@ public sealed partial record WindowRefusal
             Sentences.TryGetValue(refusal.Code, out var mapped) && mapped == ParserUnusable)
             return ParserMissing;
         return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence : sentenceWhenUnmapped;
+    }
+
+    private static string CompileDetails(Refusal refusal, ParserCompileDiagnostic diagnostic)
+    {
+        var lines = new List<string> { diagnostic.Summary };
+        foreach (var issue in diagnostic.Issues)
+        {
+            lines.Add($"{issue.Code} ({issue.Kind}): {issue.Text}");
+            if (issue.ObjectKind is { } kind) lines.Add($"Object: {kind}");
+            if (issue.ObjectGuid is { } id) lines.Add($"Identity: {id}");
+            if (issue.Field is { } field) lines.Add($"Field: {field}");
+            lines.Add(issue.Advice);
+        }
+        lines.AddRange(refusal.Facts.Where(fact =>
+                fact.Key is not "standardError" and not "standardOutput" and not "parserMessage")
+            .OrderBy(fact => fact.Key, StringComparer.Ordinal).Select(fact => $"{fact.Key}: {fact.Value}"));
+        return string.Join(Environment.NewLine, lines);
     }
 
     private static string? DetailsOf(Refusal refusal)

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
@@ -35,6 +36,9 @@ public sealed record CurrentEvidenceSnapshot(
     ResolvedSelectionSnapshot? Selection,
     AssessmentRecord? MatchingAssessment)
 {
+    /// <summary>The latest parser refusal for this exact Baseline, retained until a run succeeds.</summary>
+    public Refusal? LastParserRefusal { get; init; }
+
     /// <summary>The query's saved-file navigation check; absent when word context was not requested.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public SavedProjectNavigation? Navigation { get; init; }
@@ -172,6 +176,7 @@ public static class CurrentEvidenceQuery
             Path.GetFileNameWithoutExtension(project.FullFwDataPath), storeCreated, lastSave, freshness,
             current?.Baseline, current?.Summary, saved, selection, assessment)
         {
+            LastParserRefusal = current is null ? null : new ParserRefusalRepository(database).Get(current.Baseline.Token),
             Navigation = navigation,
             RerunAssessments = reruns,
             EvidenceSet = evidenceSet,

@@ -20,6 +20,12 @@ public sealed partial class OverviewPageModel : PageModel
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
         History = new ProjectHistoryViewModel(context.Commands);
+        context.Assess.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(AssessViewModel.ShownRefusal)) return;
+            OnPropertyChanged(nameof(LastParseRefusal));
+            OnPropertyChanged(nameof(HasLastParseRefusal));
+        };
         OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, []));
         OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
             Enum.GetValues<CompareColumnKind>()
@@ -43,6 +49,11 @@ public sealed partial class OverviewPageModel : PageModel
 
     /// <summary>The project's Baselines and Assessments, newest first, which the page loads for itself.</summary>
     public ProjectHistoryViewModel History { get; }
+
+    public WindowRefusal? LastParseRefusal => Context.Assess.ShownRefusal ??
+        (Overview?.LastParserRefusal is { } refusal ? WindowRefusal.From(refusal) : null);
+
+    public bool HasLastParseRefusal => LastParseRefusal is not null;
 
     /// <summary>The stored Overview read for the open project.</summary>
     [ObservableProperty]
@@ -505,6 +516,8 @@ public sealed partial class OverviewPageModel : PageModel
 
     protected override async Task OnEvidencePublishedAsync(ProjectEvidence evidence, CancellationToken cancellationToken)
     {
+        OnPropertyChanged(nameof(LastParseRefusal));
+        OnPropertyChanged(nameof(HasLastParseRefusal));
         if (evidence.Assessment is null) return;
         await History.LoadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } path) await RefreshOverviewAsync(path, cancellationToken).ConfigureAwait(true);
@@ -521,6 +534,8 @@ public sealed partial class OverviewPageModel : PageModel
         if (generation != _readGeneration || !string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal))
             return;
         Overview = overview.Succeeded ? overview.Value : null;
+        OnPropertyChanged(nameof(LastParseRefusal));
+        OnPropertyChanged(nameof(HasLastParseRefusal));
         OverviewRefusal = overview.Succeeded || overview.Refusal is null ? null :
             WindowRefusal.From(overview.Refusal, "Motif could not read this project's numbers.");
     }

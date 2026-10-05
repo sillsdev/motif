@@ -195,6 +195,13 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 "the released grammar check did not finish");
             await grammarCheck;
 
+            Assert.True(walkthrough.Workspace.PageModel<TextsPageModel>().ShowCentredParsePrompt);
+            if (Environment.GetEnvironmentVariable("MOTIF_SCREENSHOTS") is { Length: > 0 } captureRoot)
+            {
+                Directory.CreateDirectory(captureRoot);
+                PageScreenshots.Settle(walkthrough.Window);
+                PageScreenshots.Save(walkthrough.Window, Path.Combine(captureRoot, "setup-cancelled-parse-retry.png"));
+            }
             walkthrough.SetFakeParserBehavior(new
             {
                 subcommands = new Dictionary<string, object>

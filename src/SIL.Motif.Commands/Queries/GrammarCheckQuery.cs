@@ -74,6 +74,13 @@ public static class GrammarCheckQuery
                 .GetAwaiter().GetResult();
             if (outcome is PanGlossOutcome.Cancelled)
                 return CommandOutcome<GrammarCheckResponse>.Refused(Cancelled(request.ProjectPath));
+            if (outcome is PanGlossOutcome.Refused compileFailure &&
+                ParserExecutionRefusal.From("grammarcheck.parser-refused", request.ProjectPath,
+                    compileFailure) is { ParserDiagnostic: not null } compileRefusal)
+            {
+                new ParserRefusalRepository(database).Save(baseline.Token, compileRefusal);
+                return CommandOutcome<GrammarCheckResponse>.Refused(compileRefusal);
+            }
             var parserExitedNonzero = outcome is PanGlossOutcome.Refused;
             var output = outcome switch
             {
@@ -83,7 +90,12 @@ public static class GrammarCheckQuery
                 _ => null,
             };
             if (output is null)
-                return CommandOutcome<GrammarCheckResponse>.Refused(ParserRefusal(outcome, request.ProjectPath));
+            {
+                var refusal = ParserRefusal(outcome, request.ProjectPath);
+                if (refusal.Reason != FailureReason.Cancelled)
+                    new ParserRefusalRepository(database).Save(baseline.Token, refusal);
+                return CommandOutcome<GrammarCheckResponse>.Refused(refusal);
+            }
 
             GrammarWarning[] findings;
             GrammarWarningSummary[] summary;
@@ -426,9 +438,8 @@ public static class GrammarCheckQuery
         PanGlossOutcome.TimedOut timedOut => new Refusal(
             "grammarcheck.timed-out", FailureReason.Refused, timedOut.Message,
             Fact(("projectPath", projectPath))),
-        PanGlossOutcome.Refused refused => new Refusal(
-            "grammarcheck.parser-refused", FailureReason.Refused, refused.Message,
-            Fact(("projectPath", projectPath), ("exitCode", refused.ExitCode.ToString(CultureInfo.InvariantCulture)))),
+        PanGlossOutcome.Refused refused => ParserExecutionRefusal.From(
+            "grammarcheck.parser-refused", projectPath, refused),
         _ => new Refusal(
             "grammarcheck.parser-unavailable", FailureReason.Refused, outcome.Message,
             Fact(("projectPath", projectPath))),

@@ -186,6 +186,9 @@ public sealed class AssessorUnavailableException : Exception
 
     /// <summary>Whether the cause is that no parser executable was found, rather than one that would not run.</summary>
     public bool ExecutableMissing { get; init; }
+
+    /// <summary>The original parser refusal, when execution reached the parser.</summary>
+    public SIL.Motif.Host.PanGloss.PanGlossOutcome.Refused? ParserRefusal { get; init; }
 }
 
 /// <summary>

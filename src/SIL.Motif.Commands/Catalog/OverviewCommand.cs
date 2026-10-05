@@ -89,6 +89,7 @@ public static class OverviewCommand
                 })
             {
                 WritingSystems = summary?.WritingSystems ?? [],
+                LastParserRefusal = evidence.LastParserRefusal,
                 WordOrigins = assessedWords.Where(word => word.Origin is not null).ToDictionary(
                     word => word.Word, word => word.Origin!, StringComparer.Ordinal),
                 SelectionResolved = selection is not null,

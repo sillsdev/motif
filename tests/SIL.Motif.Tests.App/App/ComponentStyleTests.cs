@@ -435,6 +435,9 @@ public sealed partial class ComponentStyleTests
             StackPanel.SpacingProperty, "Intent.Space.Related");
         yield return new("Refusal", "a refusal's details", host => Add(host, Text("refusalDetails")),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("Refusal", "scrollable refusal content", host => Add(host,
+                new ScrollViewer { Classes = { "refusalViewport" }, Content = Text("refusalDetails") }),
+            ScrollViewer.MaxHeightProperty, "Component.Refusal.ContentMaxHeight");
 
         yield return new("MarkChip", "a chip", host => Add(host, Box("markChip")), Border.PaddingProperty, "Component.MarkChip.Padding");
         yield return new("MarkChip", "a chip", host => Add(host, Box("markChip")), Border.CornerRadiusProperty, "Component.MarkChip.Radius");
@@ -469,6 +472,9 @@ public sealed partial class ComponentStyleTests
             yield return new("MarkChip", $"a {severity} chip's count", host => Within(host, Box("markChip", "severity", severity),
                 "markWord", "severity", "severityMark", severity), TextBlock.ForegroundProperty, $"Intent.Severity.{key}");
 
+        yield return new("OutcomeBar", "a legend link's composite content", host => Add(host,
+                new StackPanel { Classes = { "outcomeLegendLabel" } }),
+            Panel.BackgroundProperty, "Intent.Clear");
         yield return new("OutcomeBar", "an unknown segment", host => Add(host, Box("outcomeSegment")),
             Border.BackgroundProperty, "Intent.TextFaint");
         foreach (var (outcome, key) in new[]

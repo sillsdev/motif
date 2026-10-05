@@ -979,6 +979,10 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsParseAllWordsAction);
+        var texts = workspace.PageModel<TextsPageModel>();
+        Assert.True(texts.ShowCentredParsePrompt);
+        texts.Tab = TextsTab.AnalyzeTexts;
+        Assert.True(texts.ShowAnalyzeParsePrompt);
         Assert.Single(fake.AssessRequests);
     }
 
@@ -999,6 +1003,30 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(RunState.Refused, workspace.Assess.State);
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsParseAllWordsAction);
+        var texts = workspace.PageModel<TextsPageModel>();
+        Assert.True(texts.ShowAssessRefusal);
+        Assert.False(texts.ShowParsePrompt);
+        Assert.False(texts.ShowCentredParsePrompt);
+        texts.Tab = TextsTab.AnalyzeTexts;
+        Assert.False(texts.ShowAnalyzeParsePrompt);
+        Assert.True(texts.ShowAnalyzeTextsContent);
+
+        await workspace.RefreshCommand.ExecuteAsync(null);
+
+        Assert.True(texts.ShowAssessRefusal);
+        Assert.False(texts.ShowParsePrompt);
+        fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
+            NewToken("2026-09-07T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
+        await workspace.RefreshCommand.ExecuteAsync(null);
+        fake.ReadCurrentEvidenceCompletesWith(new CurrentEvidenceSnapshot("project", DateTimeOffset.UtcNow,
+            null, EvidenceFreshness.Current,
+            new("project-1", workspace.Baseline.Token!, "root", ProjectPath, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow),
+            null, null, null, null));
+        await workspace.Context.ReadStoredEvidenceAsync();
+
+        Assert.False(texts.ShowAssessRefusal);
+        Assert.True(texts.ShowParsePrompt);
+        Assert.True(texts.ShowAnalyzeParsePrompt);
     }
 
     [Fact]
