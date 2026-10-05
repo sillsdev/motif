@@ -41,6 +41,7 @@
   -->
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'SIL.Motif.Tests.Support'">
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessWritingSystemRepositoryInitializer.cs" Link="ProcessWritingSystemRepositoryInitializer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessMemoryDiagnostics.cs" Link="ProcessMemoryDiagnostics.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\ProcessSldrOfflineInitializer.cs" Link="ProcessSldrOfflineInitializer.cs" />
   </ItemGroup>
 

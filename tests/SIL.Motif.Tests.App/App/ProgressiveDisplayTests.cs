@@ -413,7 +413,9 @@ public sealed class ProgressiveDisplayTests
                 if (page.Page.Statistics.LoadCommand.ExecutionTask is { } loading) await loading;
                 PageScreenshots.Settle(window);
                 var grid = Assert.Single(page.GetVisualDescendants().OfType<DataGrid>());
-                Assert.Equal(40, grid.RowHeight);
+                var pageScroll = Assert.Single(grid.GetVisualAncestors().OfType<ScrollViewer>());
+                pageScroll.Offset = new Vector(0, Math.Max(0, pageScroll.Extent.Height - pageScroll.Viewport.Height));
+                PageScreenshots.Settle(window);
                 var numericColumns = grid.Columns.Where(column => column.Tag is "attempts" or "passes" or "elapsedMs").ToArray();
                 Assert.Equal(3, numericColumns.Length);
                 var numericColumnWidths = numericColumns.ToDictionary(column => column, column => column.Width);
@@ -442,12 +444,19 @@ public sealed class ProgressiveDisplayTests
                 foreach (var (text, fontSize) in heatCellFontSizes) text.FontSize = fontSize;
                 foreach (var (column, width) in numericColumnWidths) column.Width = width;
                 PageScreenshots.Settle(window);
-                grid.Height = 156;
+                grid.MinHeight = 0;
+                grid.MaxHeight = 200;
+                var existingRows = Assert.IsAssignableFrom<IEnumerable<StatsRowViewModel>>(grid.ItemsSource).ToArray();
+                var rows = existingRows.Concat(Enumerable.Range(0, 200).Select(index => new StatsRowViewModel(
+                    JsonSerializer.SerializeToElement(new
+                    {
+                        form = $"extra-word-{index}", elapsed_ns = 1000, attempts = 1, passes = 1,
+                    })))).ToArray();
+                grid.ItemsSource = rows;
                 var wordColumn = grid.Columns.Single(column => Equals(column.Tag, "word"));
                 wordColumn.Width = new DataGridLength(80, DataGridLengthUnitType.Pixel);
                 PageScreenshots.Settle(window);
                 var presenter = Assert.Single(grid.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.DataGridRowsPresenter>());
-                var rows = Assert.IsAssignableFrom<IEnumerable<StatsRowViewModel>>(grid.ItemsSource).ToArray();
                 var realizedRows = grid.GetVisualDescendants().OfType<DataGridRow>()
                     .Where(row => row.DataContext is StatsRowViewModel)
                     .ToArray();
@@ -476,16 +485,11 @@ public sealed class ProgressiveDisplayTests
                 Assert.Equal(targetRow.Word, word.Text);
                 Assert.Equal(TextTrimming.CharacterEllipsis, word.TextTrimming);
                 Assert.Equal(targetRow.Word, ToolTip.GetTip(word));
-                word.FontSize *= 2;
-                var wordDataRow = Assert.Single(word.GetVisualAncestors().OfType<DataGridRow>());
-                // Model a taller font's cell demand arriving after virtualized scroll estimation.
-                wordDataRow.MinHeight = Math.Ceiling(word.FontSize * 1.4);
-                PageScreenshots.Settle(window);
                 var wordOrigin = word.TranslatePoint(default, presenter)!.Value;
                 Assert.True(wordOrigin.Y >= -2);
                 Assert.True(wordOrigin.Y + word.Bounds.Height <= presenter.Bounds.Height + 2,
                     $"The scrolled word ends at {wordOrigin.Y + word.Bounds.Height}px in a " +
-                    $"{presenter.Bounds.Height}px rows viewport (row height {grid.RowHeight}px).");
+                    $"{presenter.Bounds.Height}px rows viewport.");
                 foreach (var ancestor in word.GetVisualAncestors().OfType<Control>().Where(control => control.ClipToBounds))
                 {
                     var origin = word.TranslatePoint(default, ancestor)!.Value;
@@ -495,21 +499,33 @@ public sealed class ProgressiveDisplayTests
                         $"The revealed word is clipped by {ancestor.GetType().Name}.");
                 }
                 LayoutAssertions.AssertCurrent(grid);
+
+                var completedRow = Assert.IsAssignableFrom<IEnumerable<StatsRowViewModel>>(grid.ItemsSource)
+                    .First(row => row.Word is not null);
+                grid.ScrollIntoView(completedRow, grid.Columns.Single(column => Equals(column.Tag, "completion")));
+                PageScreenshots.Settle(window);
+                var completedChip = grid.GetVisualDescendants().OfType<MarkChip>()
+                    .First(chip => chip.Text == "Completed");
+                LayoutAssertions.AssertCurrent(grid);
+                var completedText = Assert.Single(completedChip.GetVisualDescendants().OfType<CopyableTextBlock>());
+                LayoutAssertions.AssertTextFits(completedText);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Fact]
-    public void DetailedStatisticsUsesABoundedViewportOutsideThePageScroll()
+    [Theory]
+    [InlineData(1040, 780)]
+    [InlineData(1040, 1300)]
+    public void DetailedStatisticsShowsSeveralRowsWithinScrollablePage(int width, int height)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData();
             try
             {
-                window.Width = 1240;
-                window.Height = 780;
+                window.Width = width;
+                window.Height = height;
                 workspace.CurrentPage = WorkspacePage.Timing;
                 PageScreenshots.Settle(window);
                 var page = Assert.Single(window.GetVisualDescendants().OfType<TimingPage>());
@@ -523,8 +539,20 @@ public sealed class ProgressiveDisplayTests
                     .ToArray();
                 grid.ItemsSource = rows;
                 PageScreenshots.Settle(window);
-                Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 1, 40);
-                Assert.DoesNotContain(grid.GetVisualAncestors(), ancestor => ancestor is ScrollViewer);
+                var pageScroll = Assert.Single(grid.GetVisualAncestors().OfType<ScrollViewer>());
+                var rowsPresenter = Assert.Single(grid.GetVisualDescendants()
+                    .OfType<Avalonia.Controls.Primitives.DataGridRowsPresenter>());
+                var firstRow = grid.GetVisualDescendants().OfType<DataGridRow>().First();
+                Assert.True(grid.Bounds.Height >= grid.MinHeight - 1,
+                    $"The statistics table is only {grid.Bounds.Height}px tall at {width}×{height}.");
+                Assert.True(rowsPresenter.Bounds.Height >= firstRow.Bounds.Height * 8,
+                    $"The {rowsPresenter.Bounds.Height}px rows viewport shows fewer than eight " +
+                    $"{firstRow.Bounds.Height}px rows at {width}×{height}.");
+                Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 8, 64);
+                if (height <= 780)
+                    Assert.True(pageScroll.Extent.Height > pageScroll.Viewport.Height,
+                        "The Timing page should scroll to reach detailed statistics at this window height.");
+                Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 1, 64);
                 grid.ScrollIntoView(rows[^1], grid.Columns[0]);
                 PageScreenshots.Settle(window);
                 Assert.Contains(grid.GetVisualDescendants().OfType<DataGridRow>(), row => ReferenceEquals(row.DataContext, rows[^1]));

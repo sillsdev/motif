@@ -199,7 +199,7 @@ internal static class LayoutAssertions
         text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text) &&
         text.Bounds.Width > 0 && text.Bounds.Height > 0;
 
-    private static void AssertTextFits(TextBlock text)
+    internal static void AssertTextFits(TextBlock text)
     {
         var layout = text.TextLayout;
         var name = AutomationProperties.GetAutomationId(text) ??
@@ -220,14 +220,17 @@ internal static class LayoutAssertions
             // Wrapped text reflows to its arranged width, so it clips only when it can't fit vertically there.
             var wrapped = MeasureUntrimmed(text);
             Assert.True(wrapped.Height <= text.Bounds.Height + Tolerance || IsSeverityGlyph(text),
-                $"Text '{text.Text}' ({name}) needs {wrapped.Height:0.#} px vertically at its width but has {text.Bounds.Height:0.#} px. Path: {path}");
+                $"Text '{text.Text}' ({name}) needs {wrapped.Height:0.#} px vertically at its width but has {text.Bounds.Height:0.#} px. " +
+                $"{LayoutSizeDiagnostics(text, "vertical")} Path: {path}");
         }
         else
         {
             Assert.True(width <= text.Bounds.Width + Tolerance,
-                $"Text '{text.Text}' ({name}) needs {width:0.#} px but has {text.Bounds.Width:0.#} px. Path: {path}");
+                $"Text '{text.Text}' ({name}) needs {width:0.#} px but has {text.Bounds.Width:0.#} px. " +
+                $"{LayoutSizeDiagnostics(text, "horizontal")} Path: {path}");
             Assert.True(layout.Height <= text.Bounds.Height + Tolerance || IsSeverityGlyph(text),
-                $"Text '{text.Text}' ({name}) needs {layout.Height:0.#} px vertically but has {text.Bounds.Height:0.#} px. Path: {path}");
+                $"Text '{text.Text}' ({name}) needs {layout.Height:0.#} px vertically but has {text.Bounds.Height:0.#} px. " +
+                $"{LayoutSizeDiagnostics(text, "vertical")} Path: {path}");
         }
 
         Visual layoutRoot = TopLevel.GetTopLevel(text) is { } topLevel ? topLevel : text;
@@ -239,8 +242,39 @@ internal static class LayoutAssertions
                 .Any(scroll => IsWithinScrollExtent(text, scroll)) || DataGridCanRevealText(text, ancestor);
             Assert.True(scrollCanRevealText,
                 $"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
+                $"{ClipDiagnostics(text, textBounds, ancestor, BoundsIn(ancestor, layoutRoot))} " +
                 $"Path: {path}.{TooltipDetails(text, layoutRoot)}");
         }
+    }
+
+    private static string ClipDiagnostics(TextBlock text, Rect textBounds, Visual clipper, Rect clipBounds)
+    {
+        var horizontal = textBounds.Left < clipBounds.Left - Tolerance ||
+            textBounds.Right > clipBounds.Right + Tolerance;
+        var vertical = textBounds.Top < clipBounds.Top - Tolerance ||
+            textBounds.Bottom > clipBounds.Bottom + Tolerance;
+        var axis = (horizontal, vertical) switch
+        {
+            (true, true) => "horizontal and vertical",
+            (true, false) => "horizontal",
+            (false, true) => "vertical",
+            _ => "unknown",
+        };
+        var clipperName = clipper is Control control ? Describe(control) : clipper.GetType().Name;
+        return $"{LayoutSizeDiagnostics(text, axis)} Clipper {clipperName} bounds: " +
+            $"{clipBounds.Width:0.#} × {clipBounds.Height:0.#}.";
+    }
+
+    private static string LayoutSizeDiagnostics(TextBlock text, string axis)
+    {
+        var chip = text.GetVisualAncestors().OfType<MarkChip>().FirstOrDefault();
+        var cell = text.GetVisualAncestors().OfType<DataGridCell>().FirstOrDefault();
+        var column = cell is null ? null : DataGridColumn.GetColumnContainingElement(cell);
+        var chipSize = chip is null ? "n/a" : $"{chip.DesiredSize.Width:0.#} × {chip.DesiredSize.Height:0.#}";
+        var cellSize = cell is null ? "n/a" : $"{cell.Bounds.Width:0.#} × {cell.Bounds.Height:0.#}";
+        var columnWidth = column is null ? "n/a" : $"{column.ActualWidth:0.#}";
+        return $"Axis: {axis}; MarkChip DesiredSize: {chipSize}; " +
+            $"DataGridCell arranged size: {cellSize}; column ActualWidth: {columnWidth}.";
     }
 
     private static string TooltipDetails(TextBlock text, Visual layoutRoot)

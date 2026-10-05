@@ -1,2 +1,4 @@
-# Run each failing project in full so the macOS runner can prove the whole fix set.
-SIL.Motif.Tests.App |
+# Run the App project in full, with process-memory cases in clean test hosts.
+SIL.Motif.Tests.App | FullyQualifiedName!~LargeProjectScaleTests&FullyQualifiedName!~UnparsedLargeProjectScaleTests
+SIL.Motif.Tests.App | FullyQualifiedName~SIL.Motif.Tests.App.Walkthrough.LargeProjectScaleTests.
+SIL.Motif.Tests.App | FullyQualifiedName~SIL.Motif.Tests.App.Walkthrough.UnparsedLargeProjectScaleTests.

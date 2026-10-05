@@ -23,7 +23,9 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         var measurements = new ScaleMeasurements(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            measurements.Checkpoint("Unparsed: before fixture project/cache and ICU initialization");
             using var project = new LargeProjectFixture(representativeScale: true);
+            measurements.Checkpoint("Unparsed: after fixture project/cache and ICU initialization");
             output.WriteLine($"Representative master: {project.CreationTime.TotalSeconds:F3} s; " +
                 $"{new FileInfo(project.FwDataPath).Length / 1048576d:F1} MiB; " +
                 $"{project.Words.Count} wordforms, {project.TextIds.Count} Texts, {project.TotalOccurrenceCount} occurrences");
@@ -33,11 +35,13 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             Assert.Equal(76761, project.TotalOccurrenceCount);
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
             var client = RealCommandClient.Create(project.ManagedRoot, parser);
+            measurements.Checkpoint("Unparsed: before baseline cache open");
             await measurements.MeasureAsync("Unparsed: capture Baseline", 60, async () =>
             {
                 var result = await client.CaptureBaselineAsync(new BaselineCaptureRequest(project.FwDataPath), CancellationToken.None);
                 Assert.True(result.Succeeded, result.Refusal?.Message);
-            }, managedMiB: 768, workingSetMiB: 1024);
+            }, managedMiB: 768, processMemoryMiB: 1024);
+            measurements.Checkpoint("Unparsed: after baseline cache open and ICU use");
             var configured = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
                 project.FwDataPath, "Large Selection", project.TextIds, []), CancellationToken.None);
             Assert.True(configured.Succeeded, configured.Refusal?.Message);
@@ -46,7 +50,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             await OpenAndReadAsync(project, parser, measurements);
             using var reopened = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
             await measurements.MeasureAsync("Unparsed: reopen project", 45,
-                () => OpenAsync(reopened));
+                () => OpenAsync(reopened, measurements, "Unparsed reopened window"));
             Assert.Null(reopened.Workspace.Assess.Result);
             Capture(reopened, "reopened");
             Assert.DoesNotContain(FakeParser.Invocations(parser), command => command is "batch" or "parse" or "trace");
@@ -57,7 +61,8 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
     private async Task OpenAndReadAsync(LargeProjectFixture project, string parser, ScaleMeasurements measurements)
     {
         using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
-        await measurements.MeasureAsync("Unparsed: open configured Selection", 45, () => OpenAsync(window));
+        await measurements.MeasureAsync("Unparsed: open configured Selection", 45,
+            () => OpenAsync(window, measurements, "Unparsed first window"));
         Assert.Null(window.Workspace.Assess.Result);
         Capture(window, "opened");
         var texts = window.Workspace.PageModel<TextsPageModel>();
@@ -109,13 +114,17 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         Capture(window, "text-reader-end");
     }
 
-    private static async Task OpenAsync(WalkthroughWindow window)
+    private static async Task OpenAsync(
+        WalkthroughWindow window, ScaleMeasurements measurements, string checkpointPrefix)
     {
+        measurements.Checkpoint($"{checkpointPrefix}: before show");
         window.Window.Show();
+        measurements.Checkpoint($"{checkpointPrefix}: after show, before render");
         window.OpenRecentProjectByClick(window.ProjectPath);
         await window.Workspace.Context.EvidencePublication;
         window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(45), "the unparsed project did not finish opening");
         PageScreenshots.Settle(window.Window);
+        measurements.Checkpoint($"{checkpointPrefix}: after Skia render");
     }
 
     private static void Capture(WalkthroughWindow window, string state)

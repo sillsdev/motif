@@ -13,7 +13,13 @@ internal static class ProcessWritingSystemRepositoryInitializer
         ProcessWritingSystemRepository.Install();
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrOfflineVariable, "1");
         Environment.SetEnvironmentVariable(FwDataProjectLoader.SldrCachePathVariable, ProcessWritingSystemRepository.SldrCachePath);
+#if MOTIF_TESTS_SUPPORT
+        ProcessMemoryDiagnostics.WriteStartupCheckpoint("test host before bundled ICU initialization");
+#endif
         FwDataProjectLoader.Init();
+#if MOTIF_TESTS_SUPPORT
+        ProcessMemoryDiagnostics.WriteStartupCheckpoint("test host after bundled ICU initialization");
+#endif
     }
 #pragma warning restore CA2255
 }

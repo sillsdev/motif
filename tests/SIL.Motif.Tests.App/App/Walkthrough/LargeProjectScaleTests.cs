@@ -32,7 +32,9 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
         var measurements = new ScaleMeasurements(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
+            measurements.Checkpoint("Large: before fixture project/cache and ICU initialization");
             using var project = new LargeProjectFixture();
+            measurements.Checkpoint("Large: after fixture project/cache and ICU initialization");
             output.WriteLine($"Large master creation: {project.CreationTime.TotalSeconds:F3} s");
             var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
             FakeParser.BehaveBesideExecutable(parser, new
@@ -55,8 +57,10 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             var client = RealCommandClient.Create(project.ManagedRoot, parser);
             await measurements.MeasureAsync("Open and capture Baseline", 10, async () =>
             {
+                measurements.Checkpoint("Large: before explicit cache open");
                 using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
                 {
+                    measurements.Checkpoint("Large: after explicit cache open and ICU use");
                     Assert.Equal(LargeProjectFixture.EntryCount,
                         cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances().Count());
                     Assert.Equal(LargeProjectFixture.EntryCount,
@@ -110,13 +114,16 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
             await measurements.MeasureAsync("Open stored Overview", 20, async () =>
             {
+                measurements.Checkpoint("Large: before first window show");
                 window.Show();
+                measurements.Checkpoint("Large: after first window show, before render");
                 window.OpenRecentProjectByClick(project.FwDataPath);
                 await window.Workspace.Context.EvidencePublication;
                 window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(30), "large project did not finish opening");
                 window.ShowPage(WorkspacePage.Overview);
                 Assert.NotNull(window.Workspace.PageModel<OverviewPageModel>().Overview);
                 PageScreenshots.Settle(window.Window);
+                measurements.Checkpoint("Large: after first Skia render");
             });
             Capture(window, "overview");
             var texts = window.Workspace.PageModel<TextsPageModel>();

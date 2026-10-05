@@ -4,7 +4,7 @@
     <StaticResource x:Key="Component.Statistics.PageMargin" ResourceKey="Primitive.Inset.16_16_16_16" />
     <StaticResource x:Key="Component.Statistics.FilterWidth" ResourceKey="Primitive.Size.204" />
     <StaticResource x:Key="Component.Statistics.CellMargin" ResourceKey="Primitive.Inset.4_2_4_2" />
-    <StaticResource x:Key="Component.Statistics.ViewportHeight" ResourceKey="Primitive.Size.320" />
-    <StaticResource x:Key="Component.Statistics.RowHeight" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.Statistics.ViewportHeight" ResourceKey="Primitive.Size.480" />
+    <StaticResource x:Key="Component.Statistics.MinimumViewportHeight" ResourceKey="Primitive.Size.360" />
   </Styles.Resources>
 </Styles>

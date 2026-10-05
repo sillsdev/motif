@@ -493,6 +493,9 @@ internal sealed class TooltipScenes
             await Until(() => statistics.HasLoaded && statistics.Rows.Any(row =>
                 group == "object" ? row.Object is not null : row.Word is not null), $"{group} statistics");
         }
+        var panel = Visible<StatisticsPanel>().Single();
+        var pageScroll = Assert.Single(panel.GetVisualAncestors().OfType<ScrollViewer>());
+        pageScroll.Offset = new Vector(0, Math.Max(0, pageScroll.Extent.Height - pageScroll.Viewport.Height));
         PageScreenshots.Settle(Window);
     }
 

@@ -43,6 +43,74 @@ public sealed class WarningsPageWordsTests
         AssertAdviceVisible(SeededGrammarFindings.All());
 
     [Fact]
+    public void ScrollingAnOpenWarningReachesEveryGroupedDetail()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var findings = Enumerable.Range(0, 15).Select(index =>
+            {
+                var description = $"Allomorph item {index:D2}: " +
+                    string.Join(' ', Enumerable.Repeat("cannot be segmented with this project's phonemes", 4));
+                return new GrammarWarning(GrammarDiagnosticLevel.Warning, "Allomorph cannot be segmented", [], [], description)
+                {
+                    Code = "parse.allomorph-unsegmentable",
+                    Group = "Allomorph cannot be segmented",
+                    Title = "Allomorph cannot be segmented",
+                    Description = description,
+                };
+            }).ToArray();
+            var grammar = new GrammarViewModel(new FakeCommandClient());
+            grammar.LoadStored("/tmp/warnings-scroll.fwdata", new GrammarCheckResponse(findings, HasBaseline: true));
+            var panel = new GrammarPanel(grammar);
+            var window = new Window { Content = panel, Width = 700, Height = 780 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
+                row.ToggleOpenCommand.Execute(null);
+                PageScreenshots.Settle(window);
+
+                var items = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(),
+                    control => control.Name == "GrammarPanelRowsItems");
+                var scroll = items.GetVisualAncestors().OfType<ScrollViewer>().First();
+                var descriptions = findings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
+                var readable = new HashSet<string>(StringComparer.Ordinal);
+                var maxOffset = scroll.Extent.Height - scroll.Viewport.Height;
+                Assert.True(maxOffset > 0, "The opened details should extend beyond the page viewport.");
+                var step = Math.Max(1, scroll.Viewport.Height / 4);
+                for (var offset = 0d; offset < maxOffset; offset += step)
+                {
+                    scroll.Offset = scroll.Offset.WithY(offset);
+                    PageScreenshots.Settle(window);
+                    RecordReadableDescriptions();
+                }
+                scroll.Offset = scroll.Offset.WithY(maxOffset);
+                PageScreenshots.Settle(window);
+                RecordReadableDescriptions();
+
+                Assert.Equal(descriptions.Order(StringComparer.Ordinal), readable.Order(StringComparer.Ordinal));
+
+                void RecordReadableDescriptions()
+                {
+                    foreach (var text in items.GetVisualDescendants().OfType<TextBlock>()
+                                 .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("warningRawMessage") &&
+                                     text.Text is not null && descriptions.Contains(text.Text)))
+                    {
+                        var origin = text.TranslatePoint(default, scroll)!.Value;
+                        if (origin.Y < 0 || origin.Y + text.Bounds.Height > scroll.Viewport.Height) continue;
+                        readable.Add(text.Text!);
+                    }
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public async Task CapturedParserAdviceReachesTheStoredWarningsViewForEveryKind()
     {
         using var pristine = new PristineProjectFixture();

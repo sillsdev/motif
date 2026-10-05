@@ -60,7 +60,8 @@
                DockPanel.Dock="Top" />
 
     <DataGrid x:Name="Grid" ItemsSource="{Binding Statistics.Rows}" ColumnWidth="*"
-              RowHeight="{DynamicResource Component.Statistics.RowHeight}"
+              MinHeight="{DynamicResource Component.Statistics.MinimumViewportHeight}"
+              MaxHeight="{DynamicResource Component.Statistics.ViewportHeight}"
               IsReadOnly="True"
               CanUserSortColumns="True"
               ClipboardCopyMode="IncludeHeader"

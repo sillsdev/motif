@@ -25,6 +25,12 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture avalonia)
 {
+    private static ShortcutPlatform CurrentPlatform => OperatingSystem.IsMacOS()
+        ? ShortcutPlatform.MacOS
+        : OperatingSystem.IsWindows() ? ShortcutPlatform.Windows : ShortcutPlatform.Linux;
+    private static string PrimarySearchGesture => KeyboardShortcutCatalog.FormatGesture(
+        new ShortcutGesture(ShortcutKey.F, ShortcutModifiers.Primary), CurrentPlatform, CultureInfo.CurrentUICulture);
+
     [Fact]
     public void ShortcutCatalogMatchesRegisteredHandlersAndGeneratedHelp()
     {
@@ -92,6 +98,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Page Up", "Page Up", "Analyze texts"), ("Page Down", "Page Down", "Analyze texts"),
             ("Home", "Home", "Analyze texts"), ("End", "End", "Analyze texts"),
         };
+        var primarySearchGesture = PrimarySearchGesture;
         foreach (var scope in new[] { "Word list", "Lists" })
         {
             expectedSettingsKeys.AddRange(new[]
@@ -100,15 +107,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 ("↑", "↑", scope), ("↓", "↓", scope),
                 ("Page Up", "Page Up", scope), ("Page Down", "Page Down", scope),
                 ("Home", "Home", scope), ("End", "End", scope), ("Escape", "Esc", scope),
-                ("F", "Ctrl+F", scope), ("A", "A", scope), ("D", "D", scope), ("U", "U", scope),
+                ("F", primarySearchGesture, scope), ("A", "A", scope), ("D", "D", scope), ("U", "U", scope),
             });
         }
         expectedSettingsKeys.AddRange(new[]
         {
             ("↑", "↑", "Diagnostic tree"), ("↓", "↓", "Diagnostic tree"),
-            ("Escape", "Esc", "Analyze texts"), ("F", "Ctrl+F", "Analyze texts"),
+            ("Escape", "Esc", "Analyze texts"), ("F", primarySearchGesture, "Analyze texts"),
             ("A", "A", "Analyze texts"), ("D", "D", "Analyze texts"), ("U", "U", "Analyze texts"),
-            ("F", "Ctrl+F", "Matrix"), ("Enter or Space", "Enter or Space", "Matrix"),
+            ("F", primarySearchGesture, "Matrix"), ("Enter or Space", "Enter or Space", "Matrix"),
             ("Enter or Space", "Enter or Space", "Matrix"),
             ("↑", "↑", "Matrix"), ("↓", "↓", "Matrix"),
             ("Page Up", "Page Up", "Matrix"), ("Page Down", "Page Down", "Matrix"),
@@ -291,17 +298,20 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                     (TextsTab.Lists, AnalyzeTextsView.TextReader, "ListsWordSearch"),
                     (TextsTab.Matrix, AnalyzeTextsView.TextReader, "MatrixWordSearch"),
                 };
+                var primaryModifier = CurrentPlatform == ShortcutPlatform.MacOS
+                    ? RawInputModifiers.Meta
+                    : RawInputModifiers.Control;
                 foreach (var (tab, view, name) in targets)
                 {
                     page.Tab = tab;
                     page.AnalyzeView = view;
                     workspace.CurrentPage = WorkspacePage.Texts;
                     AnalyzeTextsLayoutTests.Settle(window);
-                    window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.None, null);
+                    window.KeyPress(Key.F, primaryModifier, PhysicalKey.None, null);
                     AnalyzeTextsLayoutTests.Settle(window);
                     var search = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == name);
-                    Assert.True(search.IsFocused, $"Ctrl+F focuses {name} on {tab}.");
-                    window.KeyRelease(Key.F, RawInputModifiers.Control, PhysicalKey.None, null);
+                    Assert.True(search.IsFocused, $"{PrimarySearchGesture} focuses {name} on {tab}.");
+                    window.KeyRelease(Key.F, primaryModifier, PhysicalKey.None, null);
                 }
             }
             finally

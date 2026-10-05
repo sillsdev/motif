@@ -163,16 +163,26 @@ jobs:
           $out = 'bin/Release/mac-debug'
           New-Item -ItemType Directory -Force $out | Out-Null
           $failed = $false
+          $runNumber = 0
           foreach ($line in Get-Content .github/mac-debug.txt) {
             if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith('#')) { continue }
+            $runNumber++
             $project, $filter = $line.Split('|', 2) | ForEach-Object { $_.Trim() }
+            $runName = "$project-$runNumber"
             $csproj = "tests/$project/$project.csproj"
-            $testArgs = @('test', $csproj, '-c', 'Release', '--no-build', '--logger', 'console;verbosity=normal',
-              '--logger', "trx;LogFileName=$project.trx", '--results-directory', "$out/$project",
+            if ($filter -match 'LargeProjectScaleTests|UnparsedLargeProjectScaleTests') {
+              $env:MOTIF_SCALE_DIAGNOSTICS = '1'
+              $consoleVerbosity = 'detailed'
+            } else {
+              Remove-Item Env:MOTIF_SCALE_DIAGNOSTICS -ErrorAction SilentlyContinue
+              $consoleVerbosity = 'normal'
+            }
+            $testArgs = @('test', $csproj, '-c', 'Release', '--no-build', '--logger', "console;verbosity=$consoleVerbosity",
+              '--logger', "trx;LogFileName=$runName.trx", '--results-directory', "$out/$runName",
               '--blame-hang-timeout', '5m', '--blame-hang-dump-type', 'none')
             if ($filter) { $testArgs += @('--filter', $filter) }
             Write-Host "==> $project $filter"
-            dotnet @testArgs 2>&1 | Tee-Object -FilePath "$out/$project.log"
+            dotnet @testArgs 2>&1 | Tee-Object -FilePath "$out/$runName.log"
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
           if ($failed) { exit 1 }
