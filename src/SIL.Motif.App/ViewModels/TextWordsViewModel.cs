@@ -614,7 +614,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
             WordProjectStatuses.StandingOf(_word),
             (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
-            _word.Occurrences.Count, _routes));
+            _word.Occurrences.Count, _routes, _word.FormWritingSystem));
 
     public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null,
         Func<AssessmentWordResult, ResultsTokenViewModel?>? wordCardTokenFactory = null)
@@ -631,6 +631,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             UpdateStagedText();
         }
         Form = word.Form;
+        FormWritingSystem = word.FormWritingSystem;
         WordformId = word.WordformGuid is { } id ? Guid.Parse(id) : null;
         OccurrenceCount = word.Occurrences.Count;
         HasApproved = word.Approved.Count > 0;
@@ -659,6 +660,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
         .Select(occurrence => occurrence.Analysis?.Key).OfType<string>().Distinct().Take(2).Count() > 1;
 
     public string Form { get; }
+    public string? FormWritingSystem { get; }
     public Guid? WordformId { get; }
     public int OccurrenceCount { get; }
     public bool HasApproved { get; }
@@ -719,6 +721,9 @@ public sealed class WordOccurrenceRowViewModel
         TextTitle = occurrence.TextTitle;
         Line = occurrence.Line;
         Sentence = occurrence.Sentence;
+        SentenceStyle = occurrence.SentenceStyle;
+        SentenceWritingSystem = occurrence.SentenceWritingSystem;
+        TextTitleWritingSystem = occurrence.TextTitleWritingSystem;
         Status = occurrence.Status;
         Analysis = occurrence.Analysis is { } analysis ? new ProjectAnalysisViewModel(analysis) : null;
         Location = $"{TextTitle}, line {Line}";
@@ -728,6 +733,9 @@ public sealed class WordOccurrenceRowViewModel
     public string TextTitle { get; }
     public int Line { get; }
     public string Sentence { get; }
+    public string SentenceStyle { get; }
+    public string? SentenceWritingSystem { get; }
+    public string? TextTitleWritingSystem { get; }
     public string Status { get; }
     public ProjectAnalysisViewModel? Analysis { get; }
     public string Location { get; }

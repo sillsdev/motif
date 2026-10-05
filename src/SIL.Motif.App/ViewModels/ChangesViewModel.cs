@@ -749,6 +749,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 /// <summary>One word in the before or after sentence shown for an uncertain change.</summary>
 public sealed record UncertaintyTokenViewModel(int Index, string WordformId, string Form, bool IsChanged)
 {
+    public string? FormWritingSystem { get; init; }
+
     public static IReadOnlyList<UncertaintyTokenViewModel> Create(
         IReadOnlyList<OccurrenceWordToken>? before, IReadOnlyList<OccurrenceWordToken>? after, bool beforeSide)
     {
@@ -761,7 +763,10 @@ public sealed record UncertaintyTokenViewModel(int Index, string WordformId, str
             : Enumerable.Range(0, right.Length).Where(index => !matches.Contains((index, false))).ToHashSet();
         var words = beforeSide ? before : after;
         return words.Select((token, index) => new UncertaintyTokenViewModel(
-            token.Index, token.WordformId, token.Form, changed.Contains(index))).ToArray();
+            token.Index, token.WordformId, token.Form, changed.Contains(index))
+        {
+            FormWritingSystem = token.FormWritingSystem,
+        }).ToArray();
     }
 
     private static (int, bool)[] LongestCommonSubsequence(string[] left, string[] right)

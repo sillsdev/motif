@@ -123,6 +123,13 @@ public sealed record TextLines(Guid TextId, string Title, IReadOnlyList<TextLine
 public sealed record TextLine(int Number, IReadOnlyList<TextToken> Tokens)
 {
 
+    /// <summary>The source paragraph's named style; Normal when none was authored.</summary>
+    public string SentenceStyle { get; init; } = "Normal";
+
+    /// <summary>The actual writing-system tag; null for composed, non-language or unresolved text.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.Never)]
+    public string? SentenceWritingSystem { get; init; }
+
     /// <summary>The GUID of the paragraph that contains this line.</summary>
     public Guid ParagraphId { get; init; }
 

@@ -50,6 +50,11 @@ internal static class TokenHygiene
         "RowDefinitions", "ColumnDefinitions",
     };
 
+    private static readonly HashSet<string> LanguageStyleProperties = new(StringComparer.Ordinal)
+    {
+        "FontFamily", "FontFeatures", "FlowDirection",
+    };
+
     /// <summary>
     /// The named exceptions: a file, a fragment of the offending source line, and why the value is not a design
     /// decision. Each entry must still match a violation, or the run fails.
@@ -88,6 +93,8 @@ internal static class TokenHygiene
     private static readonly Regex CodeSizeAssignment = new(
         @"\b(?:" + string.Join('|', SizeProperties.Where(name => !name.EndsWith("Definitions", StringComparison.Ordinal)))
         + @")\s*(?<![=!<>+\-*/])=(?![=>])");
+    private static readonly Regex CodeLanguageStyleAssignment = new(
+        @"\b(?:" + string.Join('|', LanguageStyleProperties) + @")\s*(?<![=!<>+\-*/])=(?![=>])");
     private static readonly Regex NumericLiteral = new(@"(?<![\w.])\d+(?:\.\d+)?[dfmDFM]?(?![\w.])");
     private static readonly Regex StringLiteral = new(@"""(?:[^""\\]|\\.)*""");
     private static readonly Regex CodePrimitiveKey = new("\"Primitive\\.");
@@ -326,6 +333,8 @@ internal static class TokenHygiene
             if (name == "Setter" && element.Attribute("Property") is { } property && element.Attribute("Value") is { } value)
             {
                 var propertyName = LastSegment(property.Value.Trim('(', ')'));
+                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName))
+                    found.Add(new(path, LineOf(value), "linguistic-style", $"{propertyName} is applied through WritingSystemTextStyleResolver"));
                 CheckValue(found, path, layer, propertyName, value.Value, LineOf(value));
             }
 
@@ -334,6 +343,9 @@ internal static class TokenHygiene
                 if (attribute.IsNamespaceDeclaration || attribute.Name.Namespace == Xaml) continue;
                 if (name == "Setter" && attribute.Name.LocalName is "Property" or "Value") continue;
                 var line = LineOf(attribute);
+                var propertyName = LastSegment(attribute.Name.LocalName);
+                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName))
+                    found.Add(new(path, line, "linguistic-style", $"{propertyName} is applied through WritingSystemTextStyleResolver"));
                 if (layer == Layer.Intent)
                 {
                     CheckIntentAttribute(found, path, attribute, line);
@@ -478,6 +490,8 @@ internal static class TokenHygiene
         {
             var code = lines[i];
             var line = i + 1;
+            foreach (Match m in CodeLanguageStyleAssignment.Matches(code))
+                found.Add(new(path, line, "linguistic-style", $"{m.Groups[0].Value.Trim()} is applied through WritingSystemTextStyleResolver"));
             foreach (Match m in CodeColour.Matches(code)) found.Add(new(path, line, "literal-colour", m.Value));
             var sizeLiteral = false;
             foreach (Match m in CodeSizeConstructor.Matches(code))

@@ -54,6 +54,21 @@ public sealed class TokenHygieneTests
     public void AHexColourOnAnyPropertyFails() =>
         Assert.Equal(["literal-colour"], Categories(View, Element("Tag=\"#12AB34\"")));
 
+    [Theory]
+    [InlineData("FontFamily=\"Andika\"")]
+    [InlineData("FontFeatures=\"smcp=1\"")]
+    [InlineData("FlowDirection=\"RightToLeft\"")]
+    public void AViewCannotAssignLanguageTextSettingsOutsideTheResolver(string attribute) =>
+        Assert.Equal(["linguistic-style"], Categories(View, Element(attribute)));
+
+    [Fact]
+    public void ViewCodeCannotAssignLanguageTextSettingsOutsideTheResolver() =>
+        Assert.Equal(["linguistic-style"], Categories(ViewCode, "text.FontFamily = family;"));
+
+    [Fact]
+    public void LinguisticTextCannotUseAHardCodedFontSize() =>
+        Assert.Equal(["literal-size"], Categories(View, Document("<TextBlock FontSize=\"20\" WritingSystemText.StyleName=\"Normal\" />")));
+
     [Fact]
     public void ABrushWrittenAsAPropertyElementFails()
     {

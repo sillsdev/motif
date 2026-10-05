@@ -43,6 +43,7 @@ public sealed class ScreenshotFactAttribute : FactAttribute
 public sealed class PageScreenshots
 {
     private const string ProjectPath = @"C:\Users\linguist\FieldWorks\Projects\Sample\Sample.fwdata";
+    internal static string SampleProjectPath => ProjectPath;
     private static readonly Guid Story = Guid.Parse("11111111-0000-0000-0000-000000000001");
     private static readonly Guid Letter = Guid.Parse("11111111-0000-0000-0000-000000000002");
     private static readonly TimeZoneInfo CaptureTimeZone = TimeZoneInfo.CreateCustomTimeZone(

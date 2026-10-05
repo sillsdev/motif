@@ -9,7 +9,8 @@ namespace SIL.Motif.Tests.TestFixtures;
 public sealed class WalkthroughProject : IDisposable
 {
     public WalkthroughProject(
-        PristineProjectFixture pristine, string? managedRoot = null, DateTime? sourceLastWriteUtc = null)
+        PristineProjectFixture pristine, string? managedRoot = null, DateTime? sourceLastWriteUtc = null,
+        Action<LcmCache, SeededProject, SeededText>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(pristine);
 
@@ -18,6 +19,7 @@ public sealed class WalkthroughProject : IDisposable
         {
             Seed = pristine.Seed;
             Text = SeededProject.SeedText(cache, Seed);
+            configure?.Invoke(cache, Seed, Text);
             TextId = Text.TextId;
             FirstMsaId = cache.ServiceLocator.GetInstance<ILexEntryRepository>()
                 .GetObject(Seed.FirstEntryId).MorphoSyntaxAnalysesOC.Single().Guid;

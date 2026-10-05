@@ -7,6 +7,7 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Notice.Padding" ResourceKey="Primitive.Inset.14_10_14_10" />
     <StaticResource x:Key="Component.Notice.Radius" ResourceKey="Primitive.Radius.8" />
+    <StaticResource x:Key="Component.Notice.QuietPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
   </Styles.Resources>
   <Style Selector="Border.notice">
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
@@ -15,6 +16,14 @@
   </Style>
   <!-- Semi's default button label is too light on the notice's tint; a solid primary button keeps its own. -->
   <Style Selector="Border.notice Button:not(.Primary)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+  </Style>
+  <Style Selector="Border.quietWritingSystemNotice">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Notice.QuietPadding}" />
+  </Style>
+  <Style Selector="Border.quietWritingSystemNotice Button">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
   </Style>
 </Styles>

@@ -41,6 +41,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         _projectWordFactory = projectWordFactory;
         Text = token.Text;
         Form = token.Form ?? token.Text;
+        TextWritingSystem = token.TextWritingSystem;
+        FormWritingSystem = token.FormWritingSystem;
+        WordGlossWritingSystem = token.WordGlossWritingSystem;
+        CategoryWritingSystem = token.CategoryWritingSystem;
         IsWord = token.Form is not null;
         Location = location ?? $"{title}, line {line}";
         Occurrence = occurrence;
@@ -113,12 +117,16 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     }
 
     public string Text { get; }
+    public string? TextWritingSystem { get; }
 
     /// <summary>The accessible name of the checkbox that includes this occurrence in bulk actions.</summary>
     public string SelectionAutomationName => $"Select {Form} for actions";
 
     /// <summary>The word's form as the Assessment names it, for finding it in the Words view.</summary>
     public string Form { get; }
+    public string? FormWritingSystem { get; }
+    public string? WordGlossWritingSystem { get; }
+    public string? CategoryWritingSystem { get; }
 
     public string WordAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "word");
 
@@ -619,8 +627,10 @@ public sealed record ResultsStripMorphViewModel(ParserReadingMorphViewModel Morp
 {
     /// <summary>The morpheme's displayed form.</summary>
     public string Form => Morph.Form;
+    public string? FormWritingSystem => Morph.FormWritingSystem;
     /// <summary>The morpheme's displayed gloss or placeholder.</summary>
     public string GlossOrPlaceholder => Morph.GlossOrPlaceholder;
+    public string? GlossWritingSystem => Morph.GlossWritingSystem;
 }
 
 /// <summary>The PanGloss message shown for an exact finding in a word card.</summary>

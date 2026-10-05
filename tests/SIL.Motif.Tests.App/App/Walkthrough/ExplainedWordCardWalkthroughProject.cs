@@ -4,6 +4,7 @@ using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.WritingSystems;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -63,6 +64,10 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
     {
         using var cache = new FwDataProjectLoader().LoadCache(FwDataPath);
         var services = cache.ServiceLocator;
+        services.WritingSystems.CurrentVernacularWritingSystems[0].DefaultFont =
+            new FontDefinition(WalkthroughFonts.DejaVuSansFamily);
+        services.WritingSystems.CurrentAnalysisWritingSystems[0].DefaultFont =
+            new FontDefinition(WalkthroughFonts.DejaVuSansFamily);
         var entries = services.GetInstance<ILexEntryRepository>().AllInstances().ToArray();
         var text = services.GetInstance<ITextRepository>().GetObject(TextId);
         var paragraphs = text.ContentsOA!.ParagraphsOS.OfType<IStTxtPara>()
@@ -89,6 +94,7 @@ internal sealed class ExplainedWordCardWalkthroughProject : IDisposable
             foreach (var paragraph in paragraphs.Values) paragraph.ParseIsCurrent = true;
         });
 
+        services.WritingSystemManager.Save();
         new FwDataProjectLoader().Save(cache);
         File.SetLastWriteTimeUtc(FwDataPath, new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc));
         return readings;

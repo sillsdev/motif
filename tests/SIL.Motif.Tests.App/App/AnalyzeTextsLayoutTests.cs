@@ -5,6 +5,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -609,13 +610,13 @@ public sealed class AnalyzeTextsLayoutTests
                         BoundsIn(row, panel).Top < BoundsIn(gutter, panel).Bottom,
                         $"{label} sits at {BoundsIn(gutter, panel).Top}, its row at {BoundsIn(row, panel).Top}.");
                 }
-                var lineBody = Assert.Single(line.GetVisualDescendants().OfType<Grid>(), grid =>
-                    grid.Classes.Contains("resultsLineBody"));
+                var lineBody = Assert.Single(line.GetVisualDescendants().OfType<SIL.Motif.App.Controls.RunningTextPanel>(),
+                    runningText => runningText.Classes.Contains("resultsLineBody"));
                 Assert.True(Math.Abs(lineBody.Bounds.Width - line.Bounds.Width) <= 1,
                     $"The line uses {lineBody.Bounds.Width:0.#} of its {line.Bounds.Width:0.#} px available width.");
                 Assert.Equal(11, Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Word").FontSize);
-                Assert.Equal(10.5, Assert.Single(Part(sungura, "pangloss").GetVisualDescendants().OfType<TextBlock>(), text =>
+                Assert.Equal(10d * 96 / 72, Assert.Single(Part(sungura, "pangloss").GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Classes.Contains("stripMorphGloss")).FontSize);
                 Assert.Contains(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Sungura alikula chakula." && text.IsEffectivelyVisible);
@@ -869,6 +870,76 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
+    public void RightToLeftParagraphUsesItsFieldWorksSizeAndGrowsItsWordRow()
+    {
+        Walkthrough.WalkthroughFonts.Register();
+        var words = WritingSystemTestData.ArabicText();
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(parse: false,
+                configure: (fake, _) => fake.ListTextWordsCompletesWith(words));
+            try
+            {
+                var resolver = workspace.Context.WritingSystemTextStyles;
+                resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
+                resolver.SetWritingSystems([WritingSystemTestData.Arabic]);
+                SIL.Motif.App.Controls.WritingSystemText.RefreshResolver(resolver);
+                await workspace.PageModel<TextsPageModel>().Words.SetProjectAsync(PageScreenshots.SampleProjectPath);
+                Settle(window);
+
+                var panel = Panel(window);
+                Assert.Contains(workspace.PageModel<TextsPageModel>().ResultsInText.VisibleLines
+                    .SelectMany(line => line.Tokens), token => token.Form == WritingSystemTestData.Form);
+                var strip = StripOf(panel, WritingSystemTestData.Form);
+                var form = Assert.Single(strip.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == WritingSystemTestData.Form && text.Classes.Contains("stripWord"));
+                var lineBody = Assert.Single(strip.GetVisualAncestors()
+                    .OfType<SIL.Motif.App.Controls.RunningTextPanel>(), candidate =>
+                    candidate.Classes.Contains("resultsLineBody"));
+                var gutter = Assert.Single(lineBody.GetVisualDescendants().OfType<StackPanel>(), candidate =>
+                    candidate.Classes.Contains("gutter"));
+                var gutterBounds = TransformedBoundsIn(gutter, panel);
+                Assert.All(gutter.Children.OfType<TextBlock>(), label =>
+                {
+                    Assert.Equal(HorizontalAlignment.Left, label.HorizontalAlignment);
+                    Assert.Equal(TextAlignment.Left, label.TextAlignment);
+                    var labelBounds = TransformedBoundsIn(label, panel);
+                    Assert.True(labelBounds.Left < gutterBounds.Left + gutterBounds.Width / 2,
+                        $"RTL gutter label {label.Text} starts at {labelBounds.Left:0.#} in {gutterBounds}.");
+                });
+                var row = Assert.Single(strip.GetVisualDescendants().OfType<StackPanel>(), candidate =>
+                    candidate.Classes.Contains("stripWordRow"));
+
+                Assert.Equal(24, form.FontSize);
+                Assert.Equal(FlowDirection.RightToLeft, form.FlowDirection);
+                var sentence = Assert.Single(lineBody.GetVisualAncestors().OfType<ContentPresenter>()
+                    .First(presenter => presenter.DataContext is ResultsLineViewModel)
+                    .GetVisualDescendants().OfType<TextBlock>(), text =>
+                    SIL.Motif.App.Controls.WritingSystemText.GetStyleName(text) == "Paragraph");
+                Assert.Equal(20 * 96d / 72d, sentence.FontSize);
+                var tokenLayout = lineBody.Children.OfType<ItemsControl>().Single();
+                Assert.Equal(FlowDirection.LeftToRight, tokenLayout.FlowDirection);
+                Assert.Equal(FlowDirection.LeftToRight, lineBody.FlowDirection);
+                Assert.Equal(FlowDirection.RightToLeft, lineBody.TextDirection);
+                Assert.Equal(FlowDirection.RightToLeft, Assert.Single(tokenLayout.GetVisualDescendants()
+                    .OfType<WrapPanel>()).FlowDirection);
+                Assert.True(row.Bounds.Height > 22, $"The 18-point word row is only {row.Bounds.Height:0.#} px high.");
+                var stripBounds = TransformedBoundsIn(strip, panel);
+                Assert.True(gutterBounds.Left >= stripBounds.Right,
+                    $"body={TransformedBoundsIn(lineBody, panel)}; items={TransformedBoundsIn(tokenLayout, panel)}; " +
+                    $"gutter={gutterBounds}; strip={stripBounds}; " +
+                    $"flow={lineBody.FlowDirection}; id={SIL.Motif.App.Controls.WritingSystemText.GetFlowId(lineBody)}");
+                LayoutAssertions.AssertCurrent(window);
+                Assert.Single(resolver.MissingFontNotices);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, Deadline);
+    }
+
+    [Fact]
     public void EachChipCountsTheStripsThatShowItsClass()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -977,5 +1048,20 @@ public sealed class AnalyzeTextsLayoutTests
         var origin = visual.TranslatePoint(new Point(0, 0), relativeTo) ??
             throw new InvalidOperationException("The visual is not under the panel.");
         return new Rect(origin, visual.Bounds.Size);
+    }
+
+    private static Rect TransformedBoundsIn(Visual visual, Visual relativeTo)
+    {
+        var corners = new[]
+        {
+            new Point(0, 0),
+            new Point(visual.Bounds.Width, 0),
+            new Point(0, visual.Bounds.Height),
+            new Point(visual.Bounds.Width, visual.Bounds.Height),
+        }.Select(point => visual.TranslatePoint(point, relativeTo) ??
+            throw new InvalidOperationException("The visual is not under the panel.")).ToArray();
+        var left = corners.Min(point => point.X);
+        var top = corners.Min(point => point.Y);
+        return new Rect(left, top, corners.Max(point => point.X) - left, corners.Max(point => point.Y) - top);
     }
 }

@@ -928,10 +928,6 @@ public sealed partial class ComponentStyleTests
             Border.BackgroundProperty, "Intent.Selected.Fill");
         yield return new("WordStrip", "an analysis row", host => Add(host, Box("stripRow", "analysisRow")),
             Control.MinHeightProperty, "Component.WordStrip.AnalysisRowHeight");
-        yield return new("WordStrip", "a morpheme form's font metric line", host => Add(host, Text("stripMorphForm")),
-            TextBlock.LineHeightProperty, "Component.WordStrip.LineHeight");
-        yield return new("WordStrip", "a morpheme gloss's font metric line", host => Add(host, Text("stripMorphGloss")),
-            TextBlock.LineHeightProperty, "Component.WordStrip.LineHeight");
         yield return new("WordStrip", "word and analysis rows have no extra gap",
             host => Add(host, new StackPanel { Classes = { "stripStack" } }),
             StackPanel.SpacingProperty, "Intent.Space.None");

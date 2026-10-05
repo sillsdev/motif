@@ -281,6 +281,13 @@
   },
   {
     "view": "MainWindow",
+    "name": "MainWindowWritingSystemNoticesItems",
+    "source": "Context.WritingSystemTextStyles.MissingFontNotices",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "MainWindow",
     "name": "PageList",
     "source": "Pages",
     "mode": "finite",

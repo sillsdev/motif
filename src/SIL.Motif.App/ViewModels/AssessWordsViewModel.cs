@@ -426,6 +426,10 @@ public sealed class ParserReadingMorphViewModel
         ArgumentNullException.ThrowIfNull(morph);
         Form = morph.Form;
         Gloss = morph.Gloss;
+        FormWritingSystem = morph.FormWritingSystem;
+        GlossWritingSystem = morph.GlossWritingSystem;
+        CategoryWritingSystem = morph.CategoryWritingSystem;
+        InflectionTypeWritingSystem = morph.InflectionTypeWritingSystem;
         Category = morph.InflectionType is { Length: > 0 } inflection
             ? $"{morph.Category} ({inflection})"
             : morph.Category;
@@ -456,6 +460,10 @@ public sealed class ParserReadingMorphViewModel
 
     public string Form { get; }
     public string Gloss { get; }
+    public string? FormWritingSystem { get; }
+    public string? GlossWritingSystem { get; }
+    public string? CategoryWritingSystem { get; }
+    public string? InflectionTypeWritingSystem { get; }
 
     /// <summary>The gloss, or a placeholder a reader can still see and click when the project gives none.</summary>
     public string GlossOrPlaceholder => Gloss.Length == 0 ? _glossPlaceholder : Gloss;

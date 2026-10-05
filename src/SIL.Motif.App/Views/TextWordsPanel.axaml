@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
+             xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextWordsPanel"
@@ -72,7 +73,9 @@
                       <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
                         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                           <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
-                          <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                          <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap"
+                                                   controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
+                                                   controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
                         </StackPanel>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>

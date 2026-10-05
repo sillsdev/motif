@@ -96,7 +96,8 @@ public sealed partial class WordRowViewModel : ObservableObject
     /// <param name="places">How many places in the chosen Texts the word occurs, or <see langword="null"/>.</param>
     /// <param name="routes">Where the next steps lead.</param>
     public static WordRowViewModel NotParsed(string word, string? opinion = null,
-        IReadOnlyList<ParserReadingMorph>? fieldWorks = null, int? places = null, WordRowRoutes? routes = null)
+        IReadOnlyList<ParserReadingMorph>? fieldWorks = null, int? places = null, WordRowRoutes? routes = null,
+        string? wordWritingSystem = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(word);
         var morphs = fieldWorks ?? [];
@@ -108,6 +109,7 @@ public sealed partial class WordRowViewModel : ObservableObject
             Opinion = opinion,
             FieldWorksMorphemes = morphs,
             Places = places,
+            WordWritingSystem = wordWritingSystem,
         };
         return new WordRowViewModel(row, routes, notParsedYet: true);
     }
@@ -140,6 +142,10 @@ public sealed partial class WordRowViewModel : ObservableObject
     }, _routes, _notParsedYet);
 
     public string Word => _row.Word;
+
+    public string? WordWritingSystem => _row.WordWritingSystem;
+
+    public string? GlossWritingSystem => _row.GlossWritingSystem;
 
     /// <summary>The FieldWorks analysis's glosses, morph by morph; empty when FieldWorks holds none.</summary>
     public string Gloss => _row.Gloss;

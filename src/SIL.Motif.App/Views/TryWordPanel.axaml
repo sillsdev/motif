@@ -2,10 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TryWordPanel"
-             x:DataType="vm:TryWordPageModel">
+             x:DataType="vm:TryWordPageModel"
+             controls:WritingSystemText.Resolver="{Binding Trace.WritingSystemTextStyles}">
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" views:InspectLink.Trace="{Binding Trace.InspectorTrace}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
       <!-- The whole row is the reveal region: an opacity-hidden button cannot take the pointer itself. -->
@@ -57,6 +59,7 @@
                   Theme="{DynamicResource SolidButton}" AutomationProperties.Name="Try the word"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
           <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..." MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
+                   controls:WritingSystemText.Id="{Binding Trace.WordWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                    AutomationProperties.Name="Word to try" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
         </DockPanel>
       </Border>

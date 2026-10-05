@@ -1,0 +1,13 @@
+{
+  "id": "right-to-left-text",
+  "title": "Read right-to-left text",
+  "description": "Read a Text in its FieldWorks writing direction.",
+  "steps": {
+    "rtl-text": "Analyze texts follows the paragraph's right-to-left direction and its FieldWorks style size."
+  },
+  "callouts": {
+    "rtl-text": {
+      "motif-analyze-texts-tab": "Read a Text in its writing direction"
+    }
+  }
+}

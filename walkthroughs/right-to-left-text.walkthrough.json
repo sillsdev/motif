@@ -1,0 +1,15 @@
+{
+  "id": "right-to-left-text",
+  "fixture": "right-to-left-text",
+  "steps": [
+    { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
+    { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-texts", "kind": "click", "automationId": "motif-page-texts" },
+    { "id": "wait-for-analyze-texts", "kind": "waitFor", "automationId": "motif-analyze-texts-tab", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "open-analyze-texts", "kind": "click", "automationId": "motif-analyze-texts-tab" },
+    { "id": "highlight-analyze-texts", "kind": "highlight", "automationId": "motif-analyze-texts-tab" },
+    { "id": "rtl-text", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-analyze-texts-tab" } ] },
+    { "id": "hold-text", "kind": "hold", "durationMs": 250 }
+  ]
+}

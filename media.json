@@ -165,6 +165,8 @@
     { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/review-apply-refresh-parse/timing-annotated.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/review-apply-refresh-parse/timing-annotated.png" },
     { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/review-apply-refresh-parse/timing.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/review-apply-refresh-parse/timing.png" },
     { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings-annotated.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings-annotated.png" },
-    { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings.png" }
+    { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/warnings-filter/findings.png" },
+    { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/right-to-left-text/rtl-text-annotated.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/right-to-left-text/rtl-text-annotated.png" },
+    { "path": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/right-to-left-text/rtl-text.png", "classification": "generated", "step": "walkthroughs", "outputPath": "tests/SIL.Motif.Tests.App/Assets/WalkthroughBaselines/right-to-left-text/rtl-text.png" }
   ]
 }

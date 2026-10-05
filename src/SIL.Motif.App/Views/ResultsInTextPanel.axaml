@@ -18,7 +18,8 @@
                   AutomationProperties.Name="Text to read">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsTextViewModel">
-              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}"
+                         controls:WritingSystemText.Id="{Binding TitleWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
@@ -182,19 +183,29 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">
-              <StackPanel Classes="lineHead" Orientation="Horizontal">
-                <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}" />
-                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}" />
-                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}" />
+              <StackPanel Classes="lineHead" Orientation="Horizontal"
+                          controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
+                          controls:WritingSystemText.FlowEnabled="True">
+                <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}"
+                                         controls:WritingSystemText.WindowText="True" />
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}"
+                                         controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
+                                         controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}"
+                                         controls:WritingSystemText.WindowText="True" />
               </StackPanel>
-              <Grid Classes="resultsLineBody" ColumnDefinitions="Auto,*" HorizontalAlignment="Stretch">
-                <StackPanel Classes="gutter stripRows">
+              <controls:RunningTextPanel Classes="resultsLineBody" HorizontalAlignment="Stretch"
+                                          controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
+                                          controls:WritingSystemText.FlowEnabled="True">
+                <StackPanel Classes="gutter stripRows"
+                            controls:WritingSystemText.WindowText="True">
                   <TextBlock Classes="gutterLabel wordRow" Text="Word" />
                   <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="FieldWorks" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
                 </StackPanel>
-                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" Grid.Column="1" FullItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" HorizontalAlignment="Stretch" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" HorizontalAlignment="Stretch"
+                                                                           controls:WritingSystemText.FlowEnabled="True" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                       <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
@@ -202,7 +213,7 @@
                               Classes.dimmed="{Binding IsDimmed}" Focusable="True" Tag="{Binding}"
                               AutomationProperties.AutomationId="{Binding StripAutomationId}"
                               KeyDown="OnTokenKeyDown" ToolTip.Tip="{Binding HoverSummary}" views:ClearTipPlacement.IsEnabled="True">
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                           <StackPanel Classes="stripStack stripRows" Tag="{Binding}" PointerPressed="OnTokenPressed">
                             <StackPanel Classes="stripWordRow wordRow" Orientation="Horizontal">
                               <CheckBox Classes="stripCheck" IsChecked="{Binding IsSelectedForActions}"
@@ -212,6 +223,7 @@
                                                    VerticalAlignment="Center"
                                                    AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
                               <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
+                                                       controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                                                        AutomationProperties.AutomationId="{Binding WordAutomationId}" />
                               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
                                           IsVisible="{Binding HasNamedWarning}"
@@ -235,9 +247,11 @@
                                     <DataTemplate x:DataType="vm:ResultsStripMorphViewModel">
                                       <StackPanel>
                                         <Border Classes="warningMorphUnderline" Classes.named="{Binding IsNamedInWarning}">
-                                          <TextBlock Classes="stripMorphForm" Text="{Binding Form}" />
+                                          <TextBlock Classes="stripMorphForm" Text="{Binding Form}"
+                                                     controls:WritingSystemText.Id="{Binding Morph.FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                         </Border>
-                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}" />
+                                          <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}"
+                                                     controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
@@ -258,8 +272,10 @@
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
                                       <StackPanel>
-                                        <TextBlock Classes="stripMorphForm f" Text="{Binding Form}" />
-                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}" />
+                                        <TextBlock Classes="stripMorphForm f" Text="{Binding Form}"
+                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}"
+                                                   controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                       </StackPanel>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>
@@ -347,7 +363,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </views:ProgressiveItemsControl>
-              </Grid>
+              </controls:RunningTextPanel>
               <ContentControl Content="{Binding OpenCard}" IsVisible="{Binding HasOpenCard}"
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>
@@ -358,7 +374,8 @@
                       <StackPanel>
                         <Border Classes="wordCardHead hoverReveal">
                           <DockPanel LastChildFill="False">
-                            <views:CopyableTextBlock Text="{Binding Text}" FontWeight="Bold" VerticalAlignment="Center" />
+                            <views:CopyableTextBlock Text="{Binding Text}" FontWeight="Bold" VerticalAlignment="Center"
+                                                     controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                             <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
                                                   Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                             <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" VerticalAlignment="Center" />

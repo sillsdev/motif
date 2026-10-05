@@ -40,9 +40,11 @@
 
               <StackPanel x:Name="WordCell" Classes="wordRowWord" VerticalAlignment="Center">
                 <views:CopyableTextBlock x:Name="WordForm" Classes="wordRowForm" Text="{Binding Word}"
-                           TextTrimming="CharacterEllipsis" Background="{DynamicResource Intent.Clear}"
-                           ToolTip.Tip="{Binding Summary}" views:ClearTipPlacement.IsEnabled="True" />
+                                         TextTrimming="CharacterEllipsis" Background="{DynamicResource Intent.Clear}"
+                                         controls:WritingSystemText.Id="{Binding WordWritingSystem}" controls:WritingSystemText.StyleName="Normal"
+                                         ToolTip.Tip="{Binding Summary}" views:ClearTipPlacement.IsEnabled="True" />
                 <views:CopyableTextBlock x:Name="WordGloss" Classes="wordRowGloss" Text="{Binding Gloss}" TextWrapping="Wrap"
+                                         controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                            IsVisible="{Binding Gloss, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <views:CopyableTextBlock Classes="wordRowStaged" Text="{Binding #Self.StagedText}" TextTrimming="CharacterEllipsis"
                            IsVisible="{Binding #Self.StagedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -67,8 +69,10 @@
                     <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
                       <Border Classes="wordRowMorph">
                         <StackPanel>
-                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Form}" />
-                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding GlossOrPlaceholder}" />
+                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Form}"
+                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding GlossOrPlaceholder}"
+                                                   controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </StackPanel>
                       </Border>
                     </DataTemplate>
@@ -99,8 +103,10 @@
                       <Border Classes="wordRowMorph" Classes.different="{Binding IsDifferent}"
                               ToolTip.Tip="{Binding EntryDifferenceTip}" views:ClearTipPlacement.IsEnabled="True">
                         <StackPanel>
-                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Morph.Form}" />
-                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding Morph.GlossOrPlaceholder}" />
+                          <views:CopyableTextBlock Classes="wordRowMorphForm" Text="{Binding Morph.Form}"
+                                                   controls:WritingSystemText.Id="{Binding Morph.FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                          <views:CopyableTextBlock Classes="wordRowMorphGloss" Text="{Binding Morph.GlossOrPlaceholder}"
+                                                   controls:WritingSystemText.Id="{Binding Morph.GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </StackPanel>
                       </Border>
                     </DataTemplate>

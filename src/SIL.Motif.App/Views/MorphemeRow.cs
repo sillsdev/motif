@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -102,12 +103,19 @@ public sealed class MorphemeRow : WrapPanel
     {
         var column = new StackPanel();
         var formIsLink = FormLinks && morph.HasLink;
-        column.Children.Add(formIsLink ? FormLink(morph) : new CopyableTextBlock
-            { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } });
-        column.Children.Add(new CopyableTextBlock
-            { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } });
+        Control form = formIsLink ? FormLink(morph) : new CopyableTextBlock
+            { Text = morph.Form, FontWeight = FontWeight.SemiBold, Classes = { "morphForm" } };
+        if (!formIsLink) SetLanguageText(form, morph.FormWritingSystem);
+        column.Children.Add(form);
+        var gloss = new CopyableTextBlock { Text = morph.GlossOrPlaceholder, Classes = { "morphGloss" } };
+        SetLanguageText(gloss, morph.GlossWritingSystem);
+        column.Children.Add(gloss);
         if (ShowCategory && morph.Category is { Length: > 0 })
-            column.Children.Add(new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } });
+        {
+            var category = new CopyableTextBlock { Text = morph.Category, Classes = { "morphCategory", "muted" } };
+            SetLanguageText(category, morph.CategoryWritingSystem);
+            column.Children.Add(category);
+        }
         if (morph.HasLink && !formIsLink) column.Children.Add(Link(morph, RevealLinks, CompactLinks));
 
         var block = new Border { Child = column, Classes = { "morph" }, Tag = morph };
@@ -148,7 +156,9 @@ public sealed class MorphemeRow : WrapPanel
     private static HyperlinkButton FormLink(ParserReadingMorphViewModel morph)
     {
         var words = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "morphFormLinkWords" } };
-        words.Children.Add(new TextBlock { Text = morph.Form, Classes = { "morphFormText" } });
+        var form = new TextBlock { Text = morph.Form, Classes = { "morphFormText" } };
+        SetLanguageText(form, morph.FormWritingSystem);
+        words.Children.Add(form);
         words.Children.Add(new TextBlock { Text = "↗", Classes = { "morphLinkMark" } });
         var button = new HyperlinkButton
         {
@@ -159,6 +169,12 @@ public sealed class MorphemeRow : WrapPanel
         AutomationProperties.SetName(button, morph.LinkName);
         ToolTip.SetTip(button, morph.FormLinkTip);
         return button;
+    }
+
+    private static void SetLanguageText(Control control, string? writingSystem)
+    {
+        WritingSystemText.SetId(control, writingSystem);
+        WritingSystemText.SetStyleName(control, "Normal");
     }
 
     private static HyperlinkButton Link(ParserReadingMorphViewModel morph, bool reveal, bool compact)

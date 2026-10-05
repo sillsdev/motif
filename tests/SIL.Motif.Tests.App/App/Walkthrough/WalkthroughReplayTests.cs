@@ -195,6 +195,17 @@ public sealed class ReviewApplyRefreshParseWalkthroughReplayTests(
 }
 
 [Collection(LcmCacheTestCollection.Name)]
+[Trait("MotifTestLevel", "System")]
+[AuthoredWalkthroughId("right-to-left-text")]
+public sealed class RightToLeftTextWalkthroughReplayTests(
+    PristineProjectFixture pristine, ITestOutputHelper output)
+{
+    [Fact]
+    public Task ReplaysAuthoredWalkthrough() =>
+        WalkthroughReplayTestRunner.RunAsync(GetType(), pristine, output);
+}
+
+[Collection(LcmCacheTestCollection.Name)]
 [AuthoredWalkthroughId("try-word-typing")]
 public sealed class TryWordTypingWalkthroughReplayTests(
     PristineProjectFixture pristine, ITestOutputHelper output)
@@ -276,6 +287,9 @@ internal static class WalkthroughReplayTestRunner
                     using var walkthrough = new WalkthroughWindow(
                         project.ManagedRoot, project.FwDataPath, Path.Combine(project.ManagedRoot, "handoff-output"),
                         parserPath: parserPath, timeProvider: clock);
+                    if (script.Id == "right-to-left-text")
+                        walkthrough.Workspace.Context.WritingSystemTextStyles.SetFallbackFamilies(
+                            ["fonts:MotifWalkthrough#DejaVu Sans"]);
                     walkthrough.Window.Width = WalkthroughArtifacts.Width;
                     walkthrough.Window.Height = script.Id == "explained-word-card"
                         ? 800
@@ -298,6 +312,7 @@ internal static class WalkthroughReplayTestRunner
                         AssertExplainedWordCard(walkthrough);
                         LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(walkthrough.Window);
                     }
+                    if (script.Id == "right-to-left-text") AssertRightToLeftText(walkthrough);
                     return Task.CompletedTask;
                 }
                 finally
@@ -342,10 +357,39 @@ internal static class WalkthroughReplayTestRunner
                 project.ManagedRoot, project.FwDataPath, project.TextId, project.ParserPath));
         }
 
+        if (fixture == "right-to-left-text")
+        {
+            var rightToLeft = new WalkthroughProject(pristine, managedRoot,
+                new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc), RightToLeftWalkthroughFixture.Configure);
+            return (rightToLeft, new WalkthroughProjectContext(
+                rightToLeft.ManagedRoot, rightToLeft.FwDataPath, rightToLeft.TextId, null));
+        }
+
         var ordinary = new WalkthroughProject(pristine, managedRoot,
             new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc));
         return (ordinary, new WalkthroughProjectContext(
             ordinary.ManagedRoot, ordinary.FwDataPath, ordinary.TextId, null));
+    }
+
+    private static void AssertRightToLeftText(WalkthroughWindow walkthrough)
+    {
+        var page = walkthrough.Workspace.PageModel<TextsPageModel>();
+        Assert.Contains(page.ResultsInText.Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens),
+            token => token.Form == WritingSystemTestData.Form &&
+                token.FormWritingSystem == SeededProject.RightToLeftTag);
+        var panel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
+        var word = Assert.Single(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
+            text.IsEffectivelyVisible && text.Text == WritingSystemTestData.Form &&
+            text.Classes.Contains("stripWord"));
+        Assert.Equal(walkthrough.Workspace.Context.WritingSystemTextStyles
+            .Resolve(SeededProject.RightToLeftTag, "Normal").FontSize, word.FontSize);
+        Assert.Equal(FlowDirection.RightToLeft, word.FlowDirection);
+        Assert.DoesNotContain("Andika", word.FontFamily!.Name, StringComparison.OrdinalIgnoreCase);
+        var lineBody = Assert.Single(word.GetVisualAncestors()
+            .OfType<SIL.Motif.App.Controls.RunningTextPanel>(), runningText =>
+            runningText.Classes.Contains("resultsLineBody"));
+        Assert.Equal(FlowDirection.RightToLeft, lineBody.TextDirection);
+        SIL.Motif.Tests.App.LayoutAssertions.AssertCurrent(walkthrough.Window);
     }
 
     private static void AssertExplainedWordCard(WalkthroughWindow walkthrough)
@@ -359,6 +403,10 @@ internal static class WalkthroughReplayTestRunner
         Assert.Equal(["geldi", "evler", "kediye", "adamlarında", "günler", "okullarında"], forms);
         var byForm = tokens.ToDictionary(token => token.Form.Normalize(NormalizationForm.FormC),
             StringComparer.Ordinal);
+        var bundledLanguageFont = walkthrough.Workspace.Context.WritingSystemTextStyles
+            .Resolve(byForm["geldi"].FormWritingSystem, "Normal");
+        Assert.Equal(WalkthroughFonts.DejaVuSansFamily, bundledLanguageFont.RequestedFontFamily);
+        Assert.True(bundledLanguageFont.RequestedFontInstalled);
         foreach (var form in new[] { "geldi", "evler", "kediye", "adamlarında", "okullarında" })
         {
             Assert.NotEmpty(byForm[form].Readings);
@@ -402,6 +450,7 @@ internal static class WalkthroughReplayTestRunner
 
 internal static class WalkthroughFonts
 {
+    public const string DejaVuSansFamily = "fonts:MotifWalkthrough#DejaVu Sans";
     private static bool _registered;
 
     public static void Register()
@@ -759,6 +808,7 @@ internal static class WalkthroughFixtureSeeder
             ["first-run-ready"] = SeedFirstRunReadyAsync,
             ["overview-ready"] = SeedOverviewReadyAsync,
             ["explained-word-card"] = SeedOverviewReadyAsync,
+            ["right-to-left-text"] = SeedOverviewReadyAsync,
             ["try-word-ready"] = SeedTryWordReadyAsync,
             ["apply-refresh-ready"] = SeedApplyRefreshReadyAsync,
             ["handoff-cancel-ready"] = SeedHandoffCancelReadyAsync,

@@ -32,7 +32,7 @@ public sealed class DiagnosticPanelBehaviorTests
             },
         };
         var display = Assert.Single(Assert.Single(model.Analyses).Morphs);
-        Assert.Equal(Avalonia.Media.FlowDirection.RightToLeft, display.FormDirection);
+        Assert.Equal("ar", display.FormWritingSystem);
         Assert.Contains("not recorded", display.MsaDetails);
     }
     private readonly AvaloniaHeadlessFixture _avalonia;

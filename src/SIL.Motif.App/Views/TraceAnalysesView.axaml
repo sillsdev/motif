@@ -1,10 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
              xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TraceAnalysesView"
-             x:DataType="vm:TraceWordViewModel">
+             x:DataType="vm:TraceWordViewModel"
+             controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
   <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
@@ -38,14 +40,16 @@
                   <DataTemplate x:DataType="vm:TraceMorphViewModel">
                     <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                        <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}"
-                                           FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}">
-                          <TextBlock Text="{Binding Form}" FontWeight="SemiBold" />
+                        <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
+                          <TextBlock Text="{Binding Form}" FontWeight="SemiBold"
+                                     controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </views:InspectLink>
-                        <views:CopyableTextBlock Text="{Binding Form}" FlowDirection="{Binding FormDirection}" FontFamily="{Binding FormFont}" FontWeight="SemiBold"
-                                                 IsVisible="{Binding CannotInspect}" />
-                        <views:CopyableTextBlock Text="{Binding Headword}" FlowDirection="{Binding HeadwordDirection}" FontFamily="{Binding HeadwordFont}" Classes="muted" />
-                        <views:CopyableTextBlock Text="{Binding Gloss}" FlowDirection="{Binding GlossDirection}" FontFamily="{Binding GlossFont}" />
+                        <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" IsVisible="{Binding CannotInspect}"
+                                                 controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                        <views:CopyableTextBlock Text="{Binding Headword}" Classes="muted"
+                                                 controls:WritingSystemText.Id="{Binding HeadwordWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                        <views:CopyableTextBlock Text="{Binding Gloss}"
+                                                 controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         <views:CopyableTextBlock Text="{Binding Category}" Classes="muted" />
                         <Expander Header="Full morph details" IsExpanded="False">
                           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">

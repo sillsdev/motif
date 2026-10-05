@@ -1107,11 +1107,13 @@ public sealed class ResultsTextViewModel
         ArgumentNullException.ThrowIfNull(results);
         TextId = text.TextId;
         Title = text.Title;
+        TitleWritingSystem = text.TitleWritingSystem;
         Lines = text.Lines.Select(line => new ResultsLineViewModel(
             text.Title, line, results, projectWords, text.TextId, projectWordsByIdentity, projectWordLookup)).ToArray();
     }
 
     public string Title { get; }
+    public string? TitleWritingSystem { get; }
 
     /// <summary>The FieldWorks Text identity used by Text-scoped marking commands.</summary>
     public Guid TextId { get; }
@@ -1128,6 +1130,7 @@ public sealed class ResultsLineViewModel : ObservableObject
         TextId = Guid.Empty;
         ParagraphId = Guid.Empty;
         SegmentId = Guid.Empty;
+        SentenceStyle = "Normal";
         Tokens = [selectedWord];
         IsStandalone = true;
         selectedWord.PropertyChanged += OnTokenPropertyChanged;
@@ -1144,6 +1147,8 @@ public sealed class ResultsLineViewModel : ObservableObject
         TextId = textId;
         ParagraphId = line.ParagraphId;
         SegmentId = line.SegmentId;
+        SentenceStyle = line.SentenceStyle;
+        SentenceWritingSystem = line.SentenceWritingSystem;
         Tokens = line.Tokens.Select(token => new ResultsTokenViewModel(title, line.Number, token,
             token.Form is { } form && results.TryGetValue(form, out var result) ? result : null,
             ProjectWord(token, projectWords, projectWordsByIdentity),
@@ -1176,6 +1181,8 @@ public sealed class ResultsLineViewModel : ObservableObject
     public Guid TextId { get; }
     public Guid ParagraphId { get; }
     public Guid SegmentId { get; }
+    public string SentenceStyle { get; }
+    public string? SentenceWritingSystem { get; }
     public IReadOnlyList<ResultsTokenViewModel> Tokens { get; }
 
     /// <summary>Places an opened word's card in the reader without inventing a Text occurrence.</summary>

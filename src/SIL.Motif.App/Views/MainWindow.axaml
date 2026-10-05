@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:SIL.Motif.App"
         xmlns:views="clr-namespace:SIL.Motif.App.Views"
+        xmlns:controls="using:SIL.Motif.App.Controls"
+        xmlns:services="clr-namespace:SIL.Motif.App.Services"
         xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
         x:Class="SIL.Motif.App.Views.MainWindow"
         x:DataType="vm:WorkspaceShellViewModel"
@@ -62,6 +64,13 @@
                     <TextBlock Classes="menuDetail" Text="{Binding ConfigureDetailText}" />
                   </StackPanel>
                 </Button>
+                <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}" Click="OnWritingSystemsGuideClick"
+                        AutomationProperties.Name="Writing system fonts and direction">
+                  <StackPanel>
+                    <TextBlock Classes="menuTitle" Text="Writing systems and fonts" />
+                    <TextBlock Classes="menuDetail" Text="How Motif displays project language text" />
+                  </StackPanel>
+                </Button>
               </StackPanel>
             </Flyout>
           </Button.Flyout>
@@ -114,7 +123,7 @@
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
       <Border x:Name="TechDemoNotice" Grid.Row="0" IsVisible="{Binding TechDemoNotice.IsVisible}" Classes="notice">
         <DockPanel LastChildFill="True">
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
@@ -163,6 +172,20 @@
       <TextBlock x:Name="KeyboardShortcutStatusLine" Grid.Row="4" Classes="muted noticeText"
                  IsVisible="False" AutomationProperties.LiveSetting="Polite"
                  AutomationProperties.Name="Keyboard shortcut status" />
+      <ItemsControl x:Name="MainWindowWritingSystemNoticesItems" Grid.Row="5"
+                    ItemsSource="{Binding Context.WritingSystemTextStyles.MissingFontNotices}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="services:WritingSystemFontNotice">
+            <Border Classes="quietWritingSystemNotice">
+              <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Classes="reviewLink" Content="See Writing systems"
+                        Click="OnWritingSystemsGuideClick" AutomationProperties.Name="See writing systems" />
+                <views:CopyableTextBlock Text="{Binding Message}" Classes="muted" TextWrapping="Wrap" />
+              </DockPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </Grid>
 
     <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,*">

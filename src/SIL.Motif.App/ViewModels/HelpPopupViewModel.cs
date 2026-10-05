@@ -61,6 +61,9 @@ public sealed partial class HelpPopupViewModel : ObservableObject
     /// <summary>Shows the short guide to PanGloss from Analyze texts.</summary>
     public void ShowPanGlossPage() => SetPage(_content.PanGlossPage());
 
+    /// <summary>Shows the guide to writing-system display in the window.</summary>
+    public void ShowWritingSystemsPage() => SetPage(_content.WritingSystemsPage());
+
     private async Task OpenOnlineAsync() =>
         await _uriLauncher.LaunchAsync(new Uri(OnlineUrl, UriKind.Absolute));
 
@@ -116,6 +119,13 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         {
             var entry = _catalog.Find(HelpEntryKind.Guide, "pangloss")
                 ?? throw new InvalidDataException("The PanGloss guide page is missing from the Help catalog.");
+            return EntryPage(entry);
+        }
+
+        public HelpPageContent WritingSystemsPage()
+        {
+            var entry = _catalog.Find(HelpEntryKind.Guide, "writing-systems")
+                ?? throw new InvalidDataException("The writing systems guide page is missing from the Help catalog.");
             return EntryPage(entry);
         }
 

@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using SIL.Motif.App.Controls;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
@@ -96,6 +98,20 @@ public sealed partial class OverviewPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(WarningsSpellingCandidatesText))]
     [NotifyPropertyChangedFor(nameof(WarningKindRows))]
     private OverviewResponse? _overview;
+
+    partial void OnOverviewChanged(OverviewResponse? value)
+    {
+        var resolver = Context.WritingSystemTextStyles;
+        void Refresh()
+        {
+            resolver.SetWritingSystems(value?.WritingSystems ?? []);
+            SIL.Motif.App.Controls.WritingSystemText.RefreshResolver(resolver);
+        }
+
+        // Overview queries can complete on a worker, but resolver refresh touches Avalonia controls.
+        if (Dispatcher.UIThread.CheckAccess()) Refresh();
+        else Dispatcher.UIThread.Post(Refresh);
+    }
 
     /// <summary>Why the stored Overview query was refused, in the window's words.</summary>
     [ObservableProperty]

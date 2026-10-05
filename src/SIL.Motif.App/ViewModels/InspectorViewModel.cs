@@ -492,6 +492,7 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
 public sealed class InspectorWordViewModel(WordRow row, string detail, Action<string> tryWord)
 {
     public string Word { get; } = row.Word;
+    public string? WordWritingSystem { get; } = row.WordWritingSystem;
 
     /// <summary>The word's meaning in the Matrix's words, such as Lost.</summary>
     public string Meaning { get; } = row.Meaning;
@@ -534,6 +535,8 @@ public sealed record InspectorWarningViewModel(string Title, string Text)
 /// </summary>
 public sealed record InspectorFactViewModel(string Label, string Value)
 {
+    public string? WritingSystem { get; init; }
+
     /// <summary>The tool link's text, naming the tool, such as "Lexicon Edit ↗"; empty when there is no link.</summary>
     public string LinkText { get; init; } = string.Empty;
 
@@ -557,34 +560,47 @@ public sealed record InspectorFactViewModel(string Label, string Value)
         var rows = new List<InspectorFactViewModel>();
         if (facts.Entry is { } entry)
             rows.Add(With(new InspectorFactViewModel("Entry",
-                entry.MorphType is { Length: > 0 } type ? $"{entry.Headword} · {type}" : entry.Headword), entry.FieldWorks, entry.Headword));
+                entry.MorphType is { Length: > 0 } type ? $"{entry.Headword} · {type}" : entry.Headword)
+            {
+                WritingSystem = entry.HeadwordWritingSystem,
+            }, entry.FieldWorks, entry.Headword));
         foreach (var sense in facts.Senses)
         {
             var hasSenseText = !string.IsNullOrWhiteSpace(sense.Gloss) || !string.IsNullOrWhiteSpace(sense.Definition);
             var row = !hasSenseText && sense.Number == "1" && !string.IsNullOrWhiteSpace(analysisGloss)
                 ? new InspectorFactViewModel("Sense", $"1 has no gloss; the analysis glosses it {analysisGloss}")
                 : new InspectorFactViewModel($"Sense {sense.Number}", sense.Gloss ?? sense.Definition ?? "No gloss");
+            row = row with
+            {
+                WritingSystem = sense.Gloss is not null ? sense.GlossWritingSystem : sense.DefinitionWritingSystem,
+            };
             rows.Add(With(row, sense.FieldWorks, $"sense {sense.Number}"));
         }
         if (facts.GrammaticalInfo is { } info)
         {
             var kind = InspectorViewModel.GrammaticalInfoKind(info.Kind);
             rows.Add(With(new InspectorFactViewModel("Grammatical info",
-                info.Category is { } category ? $"{kind} · {category.Name}" : kind), info.Category?.FieldWorks,
+                info.Category is { } category ? $"{kind} · {category.Name}" : kind)
+            {
+                WritingSystem = info.Category?.NameWritingSystem,
+            }, info.Category?.FieldWorks,
                 info.Category?.Name ?? kind));
             if (info.ResultCategory is { } result)
-                rows.Add(With(new InspectorFactViewModel("Makes", result.Name), result.FieldWorks, result.Name));
+                rows.Add(With(new InspectorFactViewModel("Makes", result.Name) { WritingSystem = result.NameWritingSystem }, result.FieldWorks, result.Name));
             foreach (var slot in info.Slots)
             {
                 var templates = slot.Templates.Count == 0 ? string.Empty
                     : " in " + string.Join(", ", slot.Templates.Select(template => template.Name));
                 rows.Add(With(new InspectorFactViewModel("Slot",
-                    $"{slot.Name}{(slot.Optional ? " (optional)" : string.Empty)}{templates}"), slot.FieldWorks, slot.Name));
+                    $"{slot.Name}{(slot.Optional ? " (optional)" : string.Empty)}{templates}")
+                {
+                    WritingSystem = slot.NameWritingSystem,
+                }, slot.FieldWorks, slot.Name));
             }
             if (info.RequiredFeatures is { } needs)
-                rows.Add(With(new InspectorFactViewModel("Needs", needs.Notation), needs.Values.FirstOrDefault()?.FieldWorks, needs.Notation));
+                rows.Add(With(new InspectorFactViewModel("Needs", needs.Notation) { WritingSystem = needs.NotationWritingSystem }, needs.Values.FirstOrDefault()?.FieldWorks, needs.Notation));
             if (info.AddedFeatures is { } gives)
-                rows.Add(With(new InspectorFactViewModel("Gives", gives.Notation), gives.Values.FirstOrDefault()?.FieldWorks, gives.Notation));
+                rows.Add(With(new InspectorFactViewModel("Gives", gives.Notation) { WritingSystem = gives.NotationWritingSystem }, gives.Values.FirstOrDefault()?.FieldWorks, gives.Notation));
         }
         foreach (var allomorph in facts.Allomorphs)
         {
@@ -594,11 +610,15 @@ public sealed record InspectorFactViewModel(string Label, string Value)
             rows.Add(With(new InspectorFactViewModel(allomorph.IsAsked ? "This allomorph" : "Allomorph",
                 $"{allomorph.Form} · {where}{needs}")
             {
+                WritingSystem = allomorph.FormWritingSystem,
                 InspectSubject = allomorph.IsAsked ? null : InspectorSubject.Morpheme(allomorph.Id, null, allomorph.Form, identityQuality: "authored"),
             }, allomorph.Environments.FirstOrDefault()?.FieldWorks, allomorph.Form));
         }
         if (facts.Rule is { } rule)
-            rows.Add(With(new InspectorFactViewModel(InspectorViewModel.RuleKind(rule.Kind), rule.Name), rule.FieldWorks, rule.Name));
+            rows.Add(With(new InspectorFactViewModel(InspectorViewModel.RuleKind(rule.Kind), rule.Name)
+            {
+                WritingSystem = rule.NameWritingSystem,
+            }, rule.FieldWorks, rule.Name));
         return rows;
     }
 

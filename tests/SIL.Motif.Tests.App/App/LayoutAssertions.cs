@@ -12,6 +12,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -69,8 +70,32 @@ internal static class LayoutAssertions
         {
             AssertScrolledMorphemesAreReachable(layoutRoot);
             AssertGridChildrenStayInTheirColumns(layoutRoot);
+            AssertStagedPanelsDoNotCoverText(layoutRoot);
             foreach (var text in Controls(layoutRoot).OfType<TextBlock>().Where(IsRenderedText))
                 AssertTextFits(text);
+        }
+    }
+
+    private static void AssertStagedPanelsDoNotCoverText(Visual root)
+    {
+        Visual layoutRoot = TopLevel.GetTopLevel(root) is { } topLevel ? topLevel : root;
+        foreach (var runningText in Controls(root).OfType<RunningTextPanel>())
+        {
+            var texts = Controls(runningText).OfType<TextBlock>().Where(IsRenderedText).ToArray();
+            foreach (var panel in Controls(runningText).OfType<Border>().Where(border =>
+                         border.Classes.Contains("stagedStrip") && border.IsEffectivelyVisible))
+            {
+                var panelBounds = BoundsIn(panel, layoutRoot);
+                foreach (var text in texts.Where(text => !text.GetVisualAncestors().Contains(panel)))
+                {
+                    var textBounds = BoundsIn(text, layoutRoot);
+                    var inkBounds = new Rect(textBounds.X - Tolerance, textBounds.Y,
+                        textBounds.Width + Tolerance * 2, textBounds.Height);
+                    Assert.False(panelBounds.Intersects(inkBounds),
+                        $"Staged panel {Describe(panel)} at {panelBounds} intersects the {Tolerance:0.#} px " +
+                        $"safety bounds around text '{text.Text}' at {textBounds} in {Describe(runningText)}.");
+                }
+            }
         }
     }
 

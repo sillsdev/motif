@@ -84,7 +84,8 @@
                                     <ItemsControl.ItemTemplate>
                                       <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
                                         <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                                          <views:CopyableTextBlock Text="{Binding Form}" />
+                                          <views:CopyableTextBlock Text="{Binding Form}"
+                                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                         </Border>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -127,8 +128,10 @@
                                       <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
                                           <StackPanel>
-                                            <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}" />
-                                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}" />
+                                            <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
+                                                                     controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}"
+                                                                     controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                           </StackPanel>
                                         </DataTemplate>
                                       </ItemsControl.ItemTemplate>
@@ -146,7 +149,8 @@
                                     <ItemsControl.ItemTemplate>
                                       <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
                                         <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                                          <views:CopyableTextBlock Text="{Binding Form}" />
+                                          <views:CopyableTextBlock Text="{Binding Form}"
+                                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                         </Border>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -163,7 +167,8 @@
                                   <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
                                       <Border Classes="reviewSentenceToken">
-                                        <views:CopyableTextBlock Text="{Binding Text}" />
+                                        <views:CopyableTextBlock Text="{Binding Text}"
+                                                                 controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                                       </Border>
                                     </DataTemplate>
                                   </ItemsControl.ItemTemplate>

@@ -152,6 +152,8 @@ public static class TextWordsQuery
                         ParagraphId = line.ParagraphId,
                         SegmentId = line.SegmentId,
                         ParseIsCurrent = line.ParseIsCurrent,
+                        SentenceStyle = line.SentenceStyle,
+                        SentenceWritingSystem = line.SentenceWritingSystem,
                     });
                 }
                 texts.Add(new TextLines(text.TextId, text.Title, lines) { TitleWritingSystem = text.TitleWritingSystem });

@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
@@ -124,6 +125,7 @@ public sealed partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
+        WritingSystemText.SetResolver(this, workspace.Context.WritingSystemTextStyles);
 
         var host = this.FindControl<Panel>("PageHost")
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
@@ -175,6 +177,14 @@ public sealed partial class MainWindow : Window
             HelpPopup?.DataContext is not HelpPopupViewModel help) return;
         button.Flyout?.ShowAt(button);
         help.ShowPanGlossPage();
+    }
+
+    private void OnWritingSystemsGuideClick(object? sender, RoutedEventArgs e)
+    {
+        if (this.FindControl<Button>("HelpButton") is not { } button ||
+            HelpPopup?.DataContext is not HelpPopupViewModel help) return;
+        button.Flyout?.ShowAt(button);
+        help.ShowWritingSystemsPage();
     }
 
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>

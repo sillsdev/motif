@@ -29,6 +29,8 @@ public enum TraceOutcomeFilter
 /// </summary>
 public sealed partial class TraceWordViewModel : ObservableObject
 {
+    private WritingSystemTextStyleResolver? _workspaceWritingSystemTextStyles;
+
     private readonly ICommandClient? _commandClient;
     private string? _projectPath;
     private int _generation;
@@ -93,6 +95,20 @@ public sealed partial class TraceWordViewModel : ObservableObject
     [ObservableProperty]
     private WordTraceResponse? _result;
 
+    /// <summary>The captured display settings for this trace, or the current project settings before it runs.</summary>
+    public WritingSystemTextStyleResolver? WritingSystemTextStyles { get; private set; }
+
+    /// <summary>The default vernacular used for a word typed into Try a Word.</summary>
+    public string? WordWritingSystem => WritingSystemTextStyles?.DefaultVernacularId;
+
+    /// <summary>Uses the open project's display settings for typed words and traces without captured settings.</summary>
+    public void SetWritingSystemTextStyles(WritingSystemTextStyleResolver resolver)
+    {
+        ArgumentNullException.ThrowIfNull(resolver);
+        _workspaceWritingSystemTextStyles = resolver;
+        UpdateWritingSystemTextStyles(Result);
+    }
+
     [ObservableProperty]
     private TraceView _view = TraceView.Candidates;
 
@@ -115,6 +131,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
+        UpdateWritingSystemTextStyles(value);
         _reading = value?.Reading;
         _labels = new TraceDisplayLabels(_reading?.Refs ?? []);
         _refs = (_reading?.Refs ?? []).ToDictionary(reference => reference.Id, StringComparer.Ordinal);
@@ -154,10 +171,23 @@ public sealed partial class TraceWordViewModel : ObservableObject
         OnPropertyChanged(nameof(ProvenanceWarning));
         OnPropertyChanged(nameof(HasProvenanceWarning));
         OnPropertyChanged(nameof(WritingSystemSummary));
+        OnPropertyChanged(nameof(WordWritingSystem));
         OnPropertyChanged(nameof(CaptureDetails));
         OnPropertyChanged(nameof(HasCaptureDetails));
         RebuildFilteredRoots();
         RebuildExpert();
+    }
+
+    private void UpdateWritingSystemTextStyles(WordTraceResponse? value)
+    {
+        var captured = value?.HostCapture?.WritingSystems;
+        var resolver = captured is { Count: > 0 }
+            ? WritingSystemTextStyleResolver.FromTrace(captured)
+            : _workspaceWritingSystemTextStyles;
+        if (ReferenceEquals(WritingSystemTextStyles, resolver)) return;
+        WritingSystemTextStyles = resolver;
+        OnPropertyChanged(nameof(WritingSystemTextStyles));
+        OnPropertyChanged(nameof(WordWritingSystem));
     }
 
     public ParseProgressViewModel ParseProgress { get; }
@@ -848,13 +878,9 @@ public sealed class TraceMorphViewModel
     public TraceMorphViewModel(TraceMorph morph, bool allowLiveLink, IReadOnlyDictionary<string, TraceWritingSystem>? directions = null)
     {
         ArgumentNullException.ThrowIfNull(morph);
-        var wsDirections = directions ?? new Dictionary<string, TraceWritingSystem>();
-        FormDirection = DirectionFor(morph.FormWritingSystem, wsDirections);
-        HeadwordDirection = DirectionFor(morph.HeadwordWritingSystem, wsDirections);
-        GlossDirection = DirectionFor(morph.GlossWritingSystem, wsDirections);
-        FormFont = FontFor(morph.FormWritingSystem, wsDirections);
-        HeadwordFont = FontFor(morph.HeadwordWritingSystem, wsDirections);
-        GlossFont = FontFor(morph.GlossWritingSystem, wsDirections);
+        FormWritingSystem = morph.FormWritingSystem;
+        HeadwordWritingSystem = morph.HeadwordWritingSystem;
+        GlossWritingSystem = morph.GlossWritingSystem;
         RawDetails = morph.RawJson ?? "Full raw morph details not recorded";
         MsaDetails = FormatMsaDetails(morph.RawJson);
         Form = ValueOrUnavailable(morph.Form, "Form");
@@ -951,29 +977,13 @@ public sealed class TraceMorphViewModel
         JsonValueKind.Object => string.Join("; ", value.EnumerateObject().Select(field => $"{field.Name}: {DisplayValue(field.Value)}")),
         _ => value.GetRawText(),
     };
-    private static Avalonia.Media.FlowDirection DirectionFor(string? writingSystem, IReadOnlyDictionary<string, TraceWritingSystem> directions) =>
-        writingSystem is { Length: > 0 } id && directions.TryGetValue(id, out var direction) &&
-        (string.Equals(direction.Direction, "rtl", StringComparison.OrdinalIgnoreCase) || string.Equals(direction.Direction, "right-to-left", StringComparison.OrdinalIgnoreCase))
-            ? Avalonia.Media.FlowDirection.RightToLeft
-            : Avalonia.Media.FlowDirection.LeftToRight;
-
-    private static Avalonia.Media.FontFamily FontFor(string? id, IReadOnlyDictionary<string, TraceWritingSystem> systems)
-    {
-        var fallback = "Noto Sans, Segoe UI, Arial";
-        return new Avalonia.Media.FontFamily(id is not null && systems.TryGetValue(id, out var system) &&
-            !string.IsNullOrWhiteSpace(system.Font) ? $"{system.Font}, {fallback}" : fallback);
-    }
-
-    public Avalonia.Media.FontFamily FormFont { get; }
-    public Avalonia.Media.FontFamily HeadwordFont { get; }
-    public Avalonia.Media.FontFamily GlossFont { get; }
+    public string? FormWritingSystem { get; }
+    public string? HeadwordWritingSystem { get; }
+    public string? GlossWritingSystem { get; }
 
     private static string? FormatWs(string role, string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : $"{role}={value}";
 
-    public Avalonia.Media.FlowDirection FormDirection { get; }
-    public Avalonia.Media.FlowDirection HeadwordDirection { get; }
-    public Avalonia.Media.FlowDirection GlossDirection { get; }
     public string RawDetails { get; }
     public string MsaDetails { get; }
     public string Form { get; }

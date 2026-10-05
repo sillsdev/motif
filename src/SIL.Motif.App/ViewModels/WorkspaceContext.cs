@@ -142,6 +142,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DiagnosticFiles = diagnosticFiles ?? NoDesktopServices.Instance;
         DiagnosticDialogs = diagnosticDialogs ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
+        WritingSystemTextStyles = new WritingSystemTextStyleResolver();
+        Assess.Trace.SetWritingSystemTextStyles(WritingSystemTextStyles);
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Selection.PropertyChanged += OnSelectionPropertyChanged;
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
@@ -228,6 +230,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The clock every page reads: when a run completed, a check's elapsed time, what "today" is.</summary>
     public TimeProvider Clock { get; }
+
+    /// <summary>Resolves the open project's saved settings for every language-text control in the window.</summary>
+    public WritingSystemTextStyleResolver WritingSystemTextStyles { get; }
 
     /// <summary>The evidence every page shows, and whether its numbers are still current.</summary>
     public ProjectEvidence Evidence { get; } = new();

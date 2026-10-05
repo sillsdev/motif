@@ -292,7 +292,7 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void TheProjectMenuOffersSelectNewOpenRecentAndConfigure()
+    public void TheProjectMenuIncludesGuidanceForWritingSystemSettingsSavedWithTheProject()
     {
         _avalonia.Invoke(() =>
         {
@@ -307,7 +307,8 @@ public sealed class WorkflowShellTests
                 var entries = Assert.IsAssignableFrom<Panel>(flyout.Content).Children.OfType<Button>().ToList();
 
                 Assert.Equal(
-                    ["Select a new project", "Open a recent project", "Configure the project"],
+                    ["Select a new project", "Open a recent project", "Configure the project",
+                        "Writing system fonts and direction"],
                     entries.Select(AutomationProperties.GetName));
                 Assert.Same(workspace.SelectNewProjectCommand, entries[0].Command);
                 Assert.Same(workspace.ConfigureCommand, entries[2].Command);
