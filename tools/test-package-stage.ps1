@@ -42,6 +42,14 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "Package manifest is missing: $manifestPath"
 }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+foreach ($notice in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'licenses/nuget-packages.json', 'licenses/Andika-OFL.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $stage $notice) -PathType Leaf)) {
+        throw "Package licence or notice file is missing: $notice"
+    }
+    if (@($manifest.files | Where-Object { $_.path -ceq $notice }).Count -ne 1) {
+        throw "Package manifest must record its licence and notice files: $notice"
+    }
+}
 if ($manifest.runtimeIdentifier -ne $RuntimeIdentifier) {
     throw "Package manifest RID '$($manifest.runtimeIdentifier)' does not match '$RuntimeIdentifier'."
 }

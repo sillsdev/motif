@@ -2,7 +2,7 @@
 
 Motif shows you how well a FieldWorks parser handles your language. It shows which of your words parse, which of your approved analyses the grammar still builds, which words are slow, and what the grammar check found. It reads your saved FieldWorks project and writes nothing to it until you review your changes and press **Apply to FieldWorks project**.
 
-**To use Motif:** download the Windows beta from the [latest release](https://github.com/sillsdev/motif/releases/latest) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is in beta, so try it on a copy of your project first.
+**To use Motif:** download the Windows beta from the [latest release](https://github.com/sillsdev/motif/releases/latest) and follow the [install guide](src/SIL.Motif.Help/Content/en/guide/install.md). Motif is a tech demo: keep a FieldWorks backup and try it on a copy of your project first.
 
 New choices default to a limit of 200,000 parser steps per word. A project's saved limit remains in effect.
 
@@ -42,10 +42,12 @@ To stage a self-contained release payload, install the pinned Velopack CLI and r
 
 ```powershell
 dotnet tool install --global vpk --version 1.2.158
-./tools/package-release.ps1 -ProductVersion 0.1.0
+./tools/package-release.ps1
 ```
 
-The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) gives the Windows download, install and project-data steps; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
+The product version is declared in `Directory.Build.props`; packaging uses it by default, and update smoke tests the next patch version. Publishing requires the matching `v<version>` tag and release notes.
+
+The [package workflow](.github/workflows/package.yml) creates Windows per-user Setup, Linux AppImage, and macOS portable ZIP artifacts. The release attaches Windows Setup plus Linux x64 and macOS arm64 preview downloads; Unix previews are retained only after their install/update/uninstall smoke succeeds. The [Install Guide](src/SIL.Motif.Help/Content/en/guide/install.md) gives the Windows download, install and project-data steps; Unix packaging and native ICU inputs are documented by the [workflow](.github/workflows/package.yml) and [pinned ICU payload manifest](tools/icu-payload.json).
 
 For builds against a local LibPalaso checkout, see [the opt-in NuGet override instructions](AGENTS.md#building-against-a-local-libpalaso-opt-in-off-by-default). The override is off by default; package-cache settings and the package source remain separate.
 

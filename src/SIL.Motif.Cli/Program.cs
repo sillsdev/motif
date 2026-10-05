@@ -1435,7 +1435,7 @@ static int RefuseUnavailableCommand(
     string commandName, bool asJson, TextWriter error, CommandSurfacePolicy commandPolicy)
 {
     const string code = "command.not-in-release";
-    var message = $"Command '{commandName}' is not part of Motif 0.1.0.";
+    var message = $"Command '{commandName}' is not part of Motif {MotifProductVersion.CurrentText}.";
     if (asJson)
     {
         error.WriteLine(ProjectionJson.Serialize(

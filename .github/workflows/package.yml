@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: Build, test, and publish a Windows release from a matching version tag.
+        description: Publish signed Windows Setup and tested Unix previews from a matching version tag.
         required: false
         default: false
         type: boolean
@@ -28,8 +28,6 @@ jobs:
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
       HAS_TRUSTED_SIGNING_CREDENTIALS: ${{ secrets.TRUSTED_SIGNING_CREDENTIALS != '' }}
-      PRODUCT_VERSION: '0.1.0'
-      NEXT_PRODUCT_VERSION: '0.1.1'
       RUNTIME_IDENTIFIER: win-x64
 
     steps:
@@ -48,6 +46,10 @@ jobs:
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
       - uses: actions/checkout@v4
+
+      - name: Read product and update-smoke versions
+        shell: pwsh
+        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -154,7 +156,7 @@ jobs:
 
   release-windows:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_release
-    needs: windows
+    needs: [windows, linux, macos]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -183,6 +185,10 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Read product and update-smoke versions
+        shell: pwsh
+        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -196,13 +202,19 @@ jobs:
           if ($env:RELEASE_VERSION -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
             throw 'release_version must be a stable three-part version such as 1.0.0.'
           }
-          if ($env:RELEASE_VERSION -in @('0.1.0', '0.1.1')) {
-            throw 'The selected release version must differ from the package smoke versions.'
+          if ($env:RELEASE_VERSION -cne $env:PRODUCT_VERSION) {
+            throw 'release_version must match VersionPrefix in Directory.Build.props.'
           }
           if ($env:GITHUB_REF -cne "refs/tags/v$env:RELEASE_VERSION") {
             throw "Dispatch this workflow on tag v$($env:RELEASE_VERSION) to release that version."
           }
-          $paths = @("RELEASE_TAG=v$env:RELEASE_VERSION",
+          if (-not (Test-Path -LiteralPath "docs/release-notes/$env:RELEASE_VERSION.md" -PathType Leaf)) {
+            throw 'The selected release must have authored release notes.'
+          }
+          if (-not (Test-Path -LiteralPath 'LICENSE' -PathType Leaf)) {
+            throw 'The root LICENSE file is required before publishing.'
+          }
+          [string[]] $paths = @("RELEASE_TAG=v$env:RELEASE_VERSION",
             "RELEASE_MANIFEST_PATH=$env:RELEASE_STAGE_DIRECTORY\release-manifest.json")
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
@@ -274,16 +286,37 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Create GitHub release with tested Windows Setup
+      - name: Download tested Unix previews
+        uses: actions/download-artifact@v4
+        with:
+          pattern: preview-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/motif-release-previews
+          merge-multiple: true
+
+      - name: Create GitHub release with tested Setup and Unix previews
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create $env:RELEASE_TAG
-          $env:RELEASE_SETUP_PATH $env:RELEASE_MANIFEST_PATH
-          --title "Motif $env:RELEASE_VERSION"
-          --generate-notes
-          --verify-tag
+        run: |
+          $previewRoot = Join-Path $env:RUNNER_TEMP 'motif-release-previews'
+          $previewNames = @(
+            "Motif-$env:RELEASE_VERSION-linux-x64-preview.AppImage",
+            "Motif-$env:RELEASE_VERSION-osx-arm64-preview.zip",
+            'release-manifest-linux-x64.json',
+            'release-manifest-osx-arm64.json'
+          )
+          $assets = @($env:RELEASE_SETUP_PATH, $env:RELEASE_MANIFEST_PATH)
+          foreach ($name in $previewNames) {
+            $asset = Join-Path $previewRoot $name
+            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+              throw "The tested preview asset is missing: $name"
+            }
+            $assets += $asset
+          }
+          gh release create $env:RELEASE_TAG @assets `
+            --title "Motif $env:RELEASE_VERSION" `
+            --notes-file "docs/release-notes/$env:RELEASE_VERSION.md" --verify-tag
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }
 
   linux:
     runs-on: ubuntu-22.04
@@ -291,8 +324,6 @@ jobs:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
-      PRODUCT_VERSION: '0.1.0'
-      NEXT_PRODUCT_VERSION: '0.1.1'
       RUNTIME_IDENTIFIER: linux-x64
 
     steps:
@@ -310,6 +341,10 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+
+      - name: Read product and update-smoke versions
+        shell: pwsh
+        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -393,14 +428,27 @@ jobs:
         shell: bash
         run: bash ./tools/package-smoke-unix.sh
 
+      - name: Retain tested Linux version N preview
+        shell: pwsh
+        run: |
+          $preview = Join-Path $env:RUNNER_TEMP 'motif-preview-linux-x64'
+          New-Item -ItemType Directory -Path $preview -Force | Out-Null
+          Copy-Item -LiteralPath $env:INITIAL_PACKAGE_PATH -Destination (Join-Path $preview "Motif-$env:PRODUCT_VERSION-linux-x64-preview.AppImage")
+          Copy-Item -LiteralPath (Join-Path $env:STAGE_DIRECTORY 'release-manifest.json') -Destination (Join-Path $preview 'release-manifest-linux-x64.json')
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-linux-x64-${{ github.run_id }}
+          path: ${{ runner.temp }}/motif-preview-linux-x64/
+          if-no-files-found: error
+          retention-days: 30
+
   macos:
     runs-on: macos-latest
     env:
       MSBUILDDISABLENODEREUSE: '1'
       UseSharedCompilation: 'false'
       AVALONIA_TELEMETRY_OPTOUT: '1'
-      PRODUCT_VERSION: '0.1.0'
-      NEXT_PRODUCT_VERSION: '0.1.1'
       RUNTIME_IDENTIFIER: osx-arm64
 
     steps:
@@ -418,6 +466,10 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+
+      - name: Read product and update-smoke versions
+        shell: pwsh
+        run: ./tools/Get-ProductVersion.ps1 -GitHubEnvironment
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -532,3 +584,18 @@ jobs:
       - name: Install, invoke, update, and uninstall the macOS package
         shell: bash
         run: bash ./tools/package-smoke-unix.sh
+
+      - name: Retain tested macOS version N preview
+        shell: pwsh
+        run: |
+          $preview = Join-Path $env:RUNNER_TEMP 'motif-preview-osx-arm64'
+          New-Item -ItemType Directory -Path $preview -Force | Out-Null
+          Copy-Item -LiteralPath $env:INITIAL_PACKAGE_PATH -Destination (Join-Path $preview "Motif-$env:PRODUCT_VERSION-osx-arm64-preview.zip")
+          Copy-Item -LiteralPath (Join-Path $env:STAGE_DIRECTORY 'release-manifest.json') -Destination (Join-Path $preview 'release-manifest-osx-arm64.json')
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-osx-arm64-${{ github.run_id }}
+          path: ${{ runner.temp }}/motif-preview-osx-arm64/
+          if-no-files-found: error
+          retention-days: 30

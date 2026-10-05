@@ -5,7 +5,6 @@ param(
 
     [string] $RuntimeIdentifier,
 
-    [Parameter(Mandatory = $true)]
     [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
     [string] $ProductVersion,
 
@@ -16,6 +15,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
+if ([string]::IsNullOrWhiteSpace($ProductVersion)) {
+    $ProductVersion = (& (Join-Path $PSScriptRoot 'Get-ProductVersion.ps1')).ProductVersion
+}
 Import-Module (Join-Path $PSScriptRoot 'PanGlossRelease.psm1') -Force
 if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
     $RuntimeIdentifier = Get-CurrentPanGlossRuntimeIdentifier
@@ -340,6 +342,11 @@ try {
     if ($stagedParserHash -ne $sourceParserHash) {
         throw 'PanGloss changed while it was being copied; no package was published.'
     }
+
+    $noticeAssets = @('SIL.Motif.App', 'SIL.Motif.Cli', 'SIL.Motif.Worker') | ForEach-Object {
+        Join-Path $intermediateRoot "$_/project.assets.json"
+    }
+    & (Join-Path $PSScriptRoot 'Copy-ThirdPartyNotices.ps1') -StageDirectory $stage -AssetsFiles $noticeAssets
 
     $payloadFiles = @(Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullName)
     $fileRecords = @($payloadFiles | ForEach-Object {

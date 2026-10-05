@@ -7,6 +7,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -147,7 +148,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
             Assert.True(text.ExitCode == expectedExitCode,
                 $"Expected exit code {expectedExitCode}; got {text.ExitCode}.{Environment.NewLine}{text.Error}");
             Assert.Contains(name, text.Error, StringComparison.Ordinal);
-            Assert.Contains("not part of Motif 0.1.0", text.Error, StringComparison.Ordinal);
+            Assert.Contains($"not part of Motif {MotifProductVersion.CurrentText}", text.Error, StringComparison.Ordinal);
 
             var json = Run(name + " --json", developerCommands: false);
             Assert.True(json.ExitCode == expectedExitCode,
@@ -174,7 +175,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
         Assert.Equal(FailureReason.Refused, envelope.Reason);
         Assert.Equal("command.not-in-release", envelope.Code);
         Assert.Contains("new", envelope.Message, StringComparison.Ordinal);
-        Assert.Contains("Motif 0.1.0", envelope.Message, StringComparison.Ordinal);
+        Assert.Contains($"Motif {MotifProductVersion.CurrentText}", envelope.Message, StringComparison.Ordinal);
 
         using var machine = MachineDatabase.Open(Path.Combine(_root, "machine"));
         Assert.Empty(new KnownProjectRegistry(machine).List());
@@ -186,7 +187,7 @@ public sealed class ReleaseSurfaceTests : IDisposable
         var result = Run("new", developerCommands: true);
 
         Assert.Equal(1, result.ExitCode);
-        Assert.DoesNotContain("not part of Motif 0.1.0", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain($"not part of Motif {MotifProductVersion.CurrentText}", result.Error, StringComparison.Ordinal);
         Assert.Contains("Usage: motif new", result.Error, StringComparison.Ordinal);
     }
 
