@@ -68,9 +68,13 @@ public static class ReadStateCommands
                 : Success([], hasBaseline: true);
         }
 
+        var saved = repository.GetForText(request.TextId);
+        // No saved Read marks means there are no fingerprints to validate against parser evidence.
+        if (request.IsRead is null && saved.Count == 0) return Success([], hasBaseline: true);
+
         var assessmentDigests = CurrentAssessmentDigests(database, current.Baseline.Token, text,
             request.AssessmentIds);
-        Revalidate(repository, current.Projection, text, assessmentDigests);
+        Revalidate(repository, current.Projection, text, assessmentDigests, saved);
 
         if (request.IsRead is null)
             return Success(repository.GetForText(request.TextId).Select(record => record.Occurrence).ToArray(),
@@ -106,11 +110,12 @@ public static class ReadStateCommands
     }
 
     private static void Revalidate(ReadStateRepository repository, TextWordsProjection projection,
-        TextWordsProjectedText text, IReadOnlyDictionary<string, string> assessmentDigests)
+        TextWordsProjectedText text, IReadOnlyDictionary<string, string> assessmentDigests,
+        IReadOnlyList<ReadOccurrenceRecord> saved)
     {
         var deletes = new List<OccurrenceAnchor>();
         var rekeys = new List<(OccurrenceAnchor Old, ReadOccurrenceRecord Current)>();
-        foreach (var record in repository.GetForText(text.TextId))
+        foreach (var record in saved)
         {
             try
             {

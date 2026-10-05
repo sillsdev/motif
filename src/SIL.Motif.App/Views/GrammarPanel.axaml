@@ -44,7 +44,7 @@
 
       <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
             IsVisible="{Binding Grammar.ShowFindings}">
-        <StackPanel Classes="warningControls" Orientation="Horizontal">
+        <WrapPanel Classes="warningControls" Orientation="Horizontal">
           <views:FilterChip Label="All" Count="{Binding Grammar.Warnings.TotalCount}"
                             IsActive="{Binding Grammar.Warnings.Bucket, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:GrammarFindingBucket.All}}"
                             Command="{Binding Grammar.Warnings.SetBucketCommand}" CommandParameter="{x:Static vm:GrammarFindingBucket.All}"
@@ -87,7 +87,7 @@
           </Button>
           <Button Content="Check the grammar again" Command="{Binding Grammar.CheckCommand}"
                   AutomationProperties.Name="Check the grammar again" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-        </StackPanel>
+        </WrapPanel>
 
         <ScrollViewer Grid.Row="1">
           <ItemsControl x:Name="GrammarPanelRowsItems" ItemsSource="{Binding Grammar.Warnings.Rows}" AutomationProperties.Name="Grammar findings">

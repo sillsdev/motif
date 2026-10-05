@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -91,7 +90,10 @@ public sealed partial class TextWordsViewModel : ObservableObject
 {
     private readonly ICommandClient _commandClient;
     private readonly SelectionViewModel _selection;
-    private readonly List<TextWordRowViewModel> _all = [];
+    private readonly List<TextWord> _all = [];
+    private Dictionary<TextWord, TextWordRowViewModel> _rowCache = new(ReferenceEqualityComparer.Instance);
+    private IReadOnlyList<TextWordRowViewModel> _projectRows = [];
+    private IReadOnlyList<TextWord> _shownWords = [];
     private readonly object _loadGate = new();
     private readonly HashSet<Task> _activeLoads = [];
     private string? _projectPath;
@@ -126,9 +128,39 @@ public sealed partial class TextWordsViewModel : ObservableObject
         });
     }
 
-    public ObservableCollection<TextWordRowViewModel> Rows { get; } = [];
+    public IReadOnlyList<TextWordRowViewModel> Rows { get; private set; } = [];
 
-    public IReadOnlyList<TextWordRowViewModel> ProjectWords => _all;
+    public IReadOnlyList<TextWordRowViewModel> ProjectWords => _projectRows;
+
+    internal int MaterializedRowCount => _rowCache.Count;
+
+    internal int? OccurrenceCountOf(string form) =>
+        _shownWords.FirstOrDefault(word => word.Form == form)?.Occurrences.Count;
+
+    internal Guid? WordformIdOf(string form) =>
+        _all.FirstOrDefault(word => word.Form == form)?.WordformGuid is { } id ? Guid.Parse(id) : null;
+
+    internal TextWordRowViewModel ProjectRow(TextWord word) => GetRow(word, _rowCache,
+        Path.GetFileNameWithoutExtension(_projectPath));
+
+    private IReadOnlyList<TextWordRowViewModel> ProjectRows(IReadOnlyList<TextWord> source)
+    {
+        var cache = _rowCache;
+        var projectName = Path.GetFileNameWithoutExtension(_projectPath);
+        return new LazyProjectionList<TextWord, TextWordRowViewModel>(source,
+            word => GetRow(word, cache, projectName), row => row.Source);
+    }
+
+    private TextWordRowViewModel GetRow(TextWord word, Dictionary<TextWord, TextWordRowViewModel> cache,
+        string? projectName)
+    {
+        if (cache.TryGetValue(word, out var row)) return row;
+        row = new TextWordRowViewModel(word, WordRowRoutes, projectName, WordCardTokenFactory);
+        row.ShowAssessment(_assessed?.Invoke(row.Form));
+        cache.Add(word, row);
+        if (ReferenceEquals(cache, _rowCache)) row.PropertyChanged += OnWordRowPropertyChanged;
+        return row;
+    }
 
     /// <summary>Whether the current Baseline contains any Texts to open from a word row.</summary>
     public bool HasAvailableTexts => _selection.HasTexts;
@@ -148,7 +180,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         set
         {
             _wordCardTokenFactory = value;
-            foreach (var row in _all) row.WordCardTokenFactory = value;
+            foreach (var row in _rowCache.Values.ToArray()) row.WordCardTokenFactory = value;
         }
     }
 
@@ -169,7 +201,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
         }
     }
 
-    public int CheckedWordCount => _all.Count(row => row.IsChecked);
+    public int CheckedWordCount => _rowCache.Values.Count(row => row.IsChecked);
 
     public string HandOffCheckedWordsLabel => CheckedWordCount switch
     {
@@ -239,12 +271,12 @@ public sealed partial class TextWordsViewModel : ObservableObject
         : $"{WordCount:N0} word{(WordCount == 1 ? string.Empty : "s")} · {OccurrenceCount:N0} place{(OccurrenceCount == 1 ? string.Empty : "s")}";
 
     public int AllCount => _all.Count;
-    public int ApprovedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Approved);
-    public int CandidateFilterCount => _all.Count(row => row.Status == WordProjectStatus.Candidate);
-    public int RejectedFilterCount => _all.Count(row => row.Status == WordProjectStatus.Rejected);
-    public int NotPresentFilterCount => _all.Count(row => row.Status == WordProjectStatus.NotPresent);
-    public int IncorrectSpellingFilterCount => _all.Count(row => row.Status == WordProjectStatus.IncorrectSpelling);
-    public int SeveralFilterCount => _all.Count(row => row.HasSeveralAnalyses);
+    public int ApprovedFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Approved);
+    public int CandidateFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Candidate);
+    public int RejectedFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.Rejected);
+    public int NotPresentFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.NotPresent);
+    public int IncorrectSpellingFilterCount => _all.Count(row => WordProjectStatuses.Of(row) == WordProjectStatus.IncorrectSpelling);
+    public int SeveralFilterCount => _all.Count(TextWordRowViewModel.HasSeveral);
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
     partial void OnStatusFilterChanged(WordProjectStatus? value) => ApplyFilter();
@@ -319,21 +351,24 @@ public sealed partial class TextWordsViewModel : ObservableObject
             }
 
             HasBaseline = outcome.Value!.HasBaseline;
-            Response = outcome.Value;
 
-            foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
-            foreach (var row in _all) row.DetachPendingChanges();
+            foreach (var row in _rowCache.Values)
+            {
+                row.PropertyChanged -= OnWordRowPropertyChanged;
+                row.DetachPendingChanges();
+            }
+            _rowCache = new(ReferenceEqualityComparer.Instance);
             _all.Clear();
-            _all.AddRange(outcome.Value.Words.Select(word => new TextWordRowViewModel(word, WordRowRoutes,
-                Path.GetFileNameWithoutExtension(path), WordCardTokenFactory)));
-            foreach (var row in _all) row.PropertyChanged += OnWordRowPropertyChanged;
+            _all.AddRange(outcome.Value.Words);
+            _projectRows = ProjectRows(_all.ToArray());
+            Response = outcome.Value;
             RaiseCheckedWords();
             HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(ProjectWords));
             if (_assessed is { } assessed)
-                foreach (var row in _all) row.ShowAssessment(assessed(row.Form));
+                foreach (var row in _rowCache.Values.ToArray()) row.ShowAssessment(assessed(row.Form));
             OccurrenceCount = outcome.Value.OccurrenceCount;
-            ApprovedCount = _all.Count(row => row.HasApproved);
+            ApprovedCount = _all.Count(row => row.Approved.Count > 0);
             RaiseCounts();
             ApplyFilter();
 
@@ -387,10 +422,17 @@ public sealed partial class TextWordsViewModel : ObservableObject
     // Empties the Words table and its counts, so no earlier selection's words outlive a reset or a failure.
     private void ClearWords()
     {
-        foreach (var row in _all) row.PropertyChanged -= OnWordRowPropertyChanged;
-        foreach (var row in _all) row.DetachPendingChanges();
+        foreach (var row in _rowCache.Values)
+        {
+            row.PropertyChanged -= OnWordRowPropertyChanged;
+            row.DetachPendingChanges();
+        }
+        _rowCache = new(ReferenceEqualityComparer.Instance);
         _all.Clear();
-        Rows.Clear();
+        _projectRows = [];
+        _shownWords = [];
+        Rows = [];
+        OnPropertyChanged(nameof(Rows));
         OccurrenceCount = 0;
         ApprovedCount = 0;
         Response = null;
@@ -416,14 +458,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        Rows.Clear();
         var matches = _all.AsEnumerable();
-        if (StatusFilter is { } status) matches = matches.Where(row => row.Status == status);
-        if (SeveralOnly) matches = matches.Where(row => row.HasSeveralAnalyses);
+        if (StatusFilter is { } status) matches = matches.Where(row => WordProjectStatuses.Of(row) == status);
+        if (SeveralOnly) matches = matches.Where(TextWordRowViewModel.HasSeveral);
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(row => row.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
         // The most frequent words first: a fix that helps them helps the most of the text.
-        foreach (var row in matches.OrderByDescending(row => row.OccurrenceCount)) Rows.Add(row);
+        _shownWords = matches.OrderByDescending(row => row.Occurrences.Count).ToArray();
+        Rows = ProjectRows(_shownWords);
+        OnPropertyChanged(nameof(Rows));
     }
 
     private Func<string, AssessWordRowViewModel?>? _assessed;
@@ -435,7 +478,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public void ShowAssessment(Func<string, AssessWordRowViewModel?>? assessed)
     {
         _assessed = assessed;
-        foreach (var row in _all) row.ShowAssessment(assessed?.Invoke(row.Form));
+        foreach (var row in _rowCache.Values.ToArray()) row.ShowAssessment(assessed?.Invoke(row.Form));
     }
 
     private void RaiseCounts()
@@ -461,7 +504,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 
     private void HandOffCheckedWords() =>
-        HandOff?.Invoke(_all.Where(row => row.IsChecked).Select(row => row.Form).ToArray());
+        HandOff?.Invoke(_all.Where(word => _rowCache.TryGetValue(word, out var row) && row.IsChecked)
+            .Select(word => word.Form).ToArray());
 
     private void OnWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -608,6 +652,11 @@ public sealed partial class TextWordRowViewModel : ObservableObject
                 _ => "Not analysed in the project",
             };
     }
+
+    internal TextWord Source => _word;
+
+    internal static bool HasSeveral(TextWord word) => word.Occurrences
+        .Select(occurrence => occurrence.Analysis?.Key).OfType<string>().Distinct().Take(2).Count() > 1;
 
     public string Form { get; }
     public Guid? WordformId { get; }

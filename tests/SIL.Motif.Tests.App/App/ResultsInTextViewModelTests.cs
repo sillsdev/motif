@@ -20,6 +20,41 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed class ResultsInTextViewModelTests
 {
+    [Fact]
+    public async Task ReaderInventoryKeepsUnseenWordListRowsUnmaterialized()
+    {
+        var client = new FakeCommandClient();
+        var selection = new SelectionViewModel(client);
+        var words = new TextWordsViewModel(client, selection);
+        var assess = new AssessViewModel(client, selection);
+        var reader = new ResultsInTextViewModel(words, assess, _ => { }, _ => { },
+            new ChangesViewModel(client), client);
+        await words.SetProjectAsync(ProjectPath);
+        var analysis = Stored(Book, "book");
+        var source = Enumerable.Range(0, 1000).Select(index => new TextWord($"word-{index}", Guid.NewGuid().ToString(),
+            [new WordOccurrence(TextId, "Story", index + 1, "sentence", "approved", analysis)], [analysis], [])
+            { Analyses = [analysis] }).ToArray();
+        var lines = source.Select((word, index) => new TextLine(index + 1,
+            [new TextToken(word.Form, word.Form, "book", "approved")
+                { Analysis = analysis, StoredAnalyses = [analysis], WordformId = Guid.Parse(word.WordformGuid!) }])).ToArray();
+        client.ListTextWordsCompletesWith(new TextWordsResponse(source, [new TextLines(TextId, "Story", lines)], true, 1000));
+
+        await words.ReloadAsync();
+
+        Assert.Equal(1000, reader.AllCount);
+        Assert.Equal(1000, words.Rows.Count);
+        Assert.Equal(0, words.MaterializedRowCount);
+        words.WordCardTokenFactory = reader.GetCardToken;
+        var card = reader.GetCardToken(Result(source[^1].Form));
+        Assert.Equal(Guid.Parse(source[^1].WordformGuid!), card.WordformId);
+        Assert.Equal(0, words.MaterializedRowCount);
+        var final = Assert.Single(reader.Texts).Lines[^1].Tokens[0];
+        Assert.Equal("book", final.ProjectSummary);
+        Assert.Equal(1, words.MaterializedRowCount);
+        Assert.Same(words.Rows[^1].ApprovedAnalyses, final.ProjectApprovedAnalyses);
+        Assert.Equal(1, words.MaterializedRowCount);
+    }
+
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private const string Digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private static readonly Guid TextId = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -174,6 +209,46 @@ public sealed class ResultsInTextViewModelTests
         if (waitForReadState) await inText.ReadStateRefresh;
         if (afterAssessment is not null) await afterAssessment(inText, changes, fake);
         return (inText, shown, fake);
+    }
+
+    [Fact]
+    public async Task LoadingWordsPublishesOneCompleteReader()
+    {
+        var fake = new FakeCommandClient();
+        var selection = new SelectionViewModel(fake) { AllWordforms = true };
+        var words = new TextWordsViewModel(fake, selection);
+        var assess = new AssessViewModel(fake, selection) { ProjectPath = ProjectPath };
+        var changes = new ChangesViewModel(fake);
+        var reader = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, changes, fake);
+        var analysis = Stored(Book, "book");
+        var token = Word("kitabu", analysis);
+        var text = new TextLines(TextId, "Alpha", [new TextLine(1, [token])
+        {
+            ParagraphId = ParagraphId, SegmentId = SegmentId,
+        }]);
+        var projectWord = new TextWord("kitabu", token.WordformId!.Value.ToString("D"),
+            [new WordOccurrence(TextId, "Alpha", 1, "kitabu", "approved", analysis)], [analysis], [], 0, false)
+        {
+            Analyses = [analysis],
+        };
+        fake.ListTextWordsCompletesWith(new TextWordsResponse([projectWord], [text], HasBaseline: true));
+        var observedSummaries = new List<string>();
+        reader.Texts.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is null) return;
+            foreach (ResultsTextViewModel added in e.NewItems)
+                observedSummaries.Add(added.Lines.Single().Tokens.Single().ProjectSummary);
+        };
+
+        await words.SetProjectAsync(ProjectPath);
+        await reader.ReadStateRefresh;
+
+        Assert.Equal("book", Assert.Single(observedSummaries));
+        Assert.Equal("book", reader.Texts.Single().Lines.Single().Tokens.Single().ProjectSummary);
+
+        observedSummaries.Clear();
+        await words.ReloadAsync();
+        Assert.Equal("book", Assert.Single(observedSummaries));
     }
 
     [Fact]

@@ -38,6 +38,32 @@ public static class InterlinearTextReader
         return new InterlinearTextProjection(text.Guid, title, paragraphs);
     }
 
+    /// <summary>
+    /// Enumerates wordforms in the full projection's occurrence order without naming morphology or translations.
+    /// The returned references belong to the caller's loaded cache; consume them before disposing that cache.
+    /// </summary>
+    public static IEnumerable<(IWfiWordform Wordform, bool IsAnalysed)> ReadWordforms(IText text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        foreach (var paragraph in text.ContentsOA?.ParagraphsOS.OfType<IStTxtPara>() ?? [])
+        {
+            var bySegment = SegmentServices.GetAnalysisOccurrences(paragraph).ToLookup(occurrence => occurrence.Segment);
+            foreach (var segment in paragraph.SegmentsOS)
+            foreach (var occurrence in bySegment[segment])
+            {
+                var wordform = occurrence.Analysis switch
+                {
+                    IWfiGloss gloss => (IWfiWordform)gloss.Owner.Owner,
+                    IWfiAnalysis analysis => (IWfiWordform)analysis.Owner,
+                    IWfiWordform word => word,
+                    IPunctuationForm => null,
+                    _ => throw new NotSupportedException($"Unrecognized analysis kind: {occurrence.Analysis.GetType()}"),
+                };
+                if (wordform is not null) yield return (wordform, occurrence.Analysis is not IWfiWordform);
+            }
+        }
+    }
+
     private static InterlinearParagraph ReadParagraph(LcmCache cache, IStTxtPara paragraph)
     {
         var occurrencesBySegment = SegmentServices.GetAnalysisOccurrences(paragraph).ToLookup(o => o.Segment);

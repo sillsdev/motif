@@ -34,6 +34,34 @@ public sealed class InterlinearTextReaderTests : IDisposable
     }
 
     [Fact]
+    public void WordformOccurrencesMatchTheFullProjectionWithAGlossAndAdditionalWritingSystems()
+    {
+        var text = _cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(_text.TextId);
+        var segment = _cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(_text.FirstSegmentId);
+        var analysis = Assert.IsAssignableFrom<IWfiAnalysis>(segment.AnalysesRS[0]);
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var gloss = _cache.ServiceLocator.GetInstance<IWfiGlossFactory>().Create();
+            analysis.MeaningsOC.Add(gloss);
+            segment.AnalysesRS[0] = gloss;
+            var wordform = (IWfiWordform)analysis.Owner;
+            wordform.Form.set_String(_cache.DefaultAnalWs,
+                SIL.LCModel.Core.Text.TsStringUtils.MakeString("café", _cache.DefaultAnalWs));
+        });
+        var expected = InterlinearTextReader.Read(_cache, text).Paragraphs.SelectMany(paragraph => paragraph.Phrases)
+            .SelectMany(phrase => phrase.Words).Where(word => word.WordformGuid is not null).ToArray();
+
+        var actual = InterlinearTextReader.ReadWordforms(text).ToArray();
+
+        Assert.Equal(expected.Select(word => word.WordformGuid), actual.Select(word => (Guid?)word.Wordform.Guid));
+        Assert.Equal(expected.Select(word => word.AnalysisStatus != InterlinearAnalysisStatus.Unanalysed),
+            actual.Select(word => word.IsAnalysed));
+        Assert.Equal(expected.SelectMany(word => word.Items.Where(item => item.Type == "txt").Select(item => item.Value)),
+            actual.SelectMany(word => word.Wordform.Form.AvailableWritingSystemIds.Order()
+                .Select(ws => word.Wordform.Form.get_String(ws).Text)));
+    }
+
+    [Fact]
     public void ReadsTheTextGuidAndOneTitleItemInTheAnalysisWritingSystem()
     {
         Assert.Equal(_text.TextId, _projection.Guid);

@@ -27,6 +27,7 @@ public static class TextWordsProjectionBuilder
     {
         ArgumentNullException.ThrowIfNull(cache);
         var wordforms = new Dictionary<Guid, TextWordsProjectedWordform>();
+        var formsByWordform = new Dictionary<Guid, WritingSystemText[]>();
         var texts = new List<TextWordsProjectedText>();
         // The query looks Texts up by id; a fixed order only keeps the stored bytes stable across captures.
         foreach (var text in cache.ServiceLocator.GetInstance<ITextRepository>().AllInstances()
@@ -34,14 +35,15 @@ public static class TextWordsProjectionBuilder
         {
             if (textIds is not null && !textIds.Contains(text.Guid)) continue;
             cancellationToken.ThrowIfCancellationRequested();
-            texts.Add(ReadText(cache, text, wordforms));
+            texts.Add(ReadText(cache, text, wordforms, formsByWordform));
         }
         return new TextWordsProjection(texts, wordforms.Values
             .OrderBy(wordform => wordform.WordformId.ToString("D"), StringComparer.Ordinal).ToArray());
     }
 
     private static TextWordsProjectedText ReadText(
-        LcmCache cache, IText text, Dictionary<Guid, TextWordsProjectedWordform> wordforms)
+        LcmCache cache, IText text, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
+        Dictionary<Guid, WritingSystemText[]> formsByWordform)
     {
         var lines = new List<TextWordsProjectedLine>();
         var analyses = new Dictionary<string, TextWordsProjectedAnalysis>(StringComparer.Ordinal);
@@ -55,7 +57,7 @@ public static class TextWordsProjectionBuilder
                 lineNumber++;
                 var sentence = segment.BaselineText?.Text ?? string.Empty;
                 var tokens = occurrencesBySegment[segment]
-                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses)).ToArray();
+                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses, formsByWordform)).ToArray();
                 lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens, paragraph.Guid,
                     segment.Guid, paragraph.ParseIsCurrent)
                 {
@@ -73,7 +75,7 @@ public static class TextWordsProjectionBuilder
 
     private static TextWordsProjectedToken ReadToken(
         LcmCache cache, AnalysisOccurrence occurrence, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
-        Dictionary<string, TextWordsProjectedAnalysis> analyses)
+        Dictionary<string, TextWordsProjectedAnalysis> analyses, Dictionary<Guid, WritingSystemText[]> formsByWordform)
     {
         var analysis = occurrence.Analysis;
         if (analysis is IPunctuationForm punctuation)
@@ -89,22 +91,23 @@ public static class TextWordsProjectionBuilder
             _ => throw new NotSupportedException($"Unrecognized analysis kind: {analysis.GetType()}"),
         };
 
-        if (!wordforms.ContainsKey(wordform.Guid))
-            wordforms.Add(wordform.Guid, ReadWordform(cache, wordform));
-
-        var forms = TxtForms(cache, wordform.Form).ToArray();
-        var status = wfiAnalysis is { } chosen
-            ? wordform.HumanApprovedAnalyses.Contains(chosen)
-                ? InterlinearAnalysisStatus.Approved
-                : InterlinearAnalysisStatus.Unapproved
-            : InterlinearAnalysisStatus.Unanalysed;
-        string? analysisKey = null;
-        if (wfiAnalysis is { } selected)
+        if (!wordforms.TryGetValue(wordform.Guid, out var projectedWordform))
         {
-            var projected = BuildProjectAnalysis(cache, wordform, selected, OpinionOf(wordform, selected));
-            analyses.TryAdd(projected.Key, projected);
-            analysisKey = projected.Key;
+            projectedWordform = ReadWordform(cache, wordform);
+            wordforms.Add(wordform.Guid, projectedWordform);
         }
+        if (!formsByWordform.TryGetValue(wordform.Guid, out var forms))
+        {
+            forms = TxtForms(cache, wordform.Form).ToArray();
+            formsByWordform.Add(wordform.Guid, forms);
+        }
+        var projected = wfiAnalysis is { } selected
+            ? projectedWordform.Analyses.First(item => item.AnalysisId == selected.Guid) : null;
+        var status = projected is not null
+            ? projected.Opinion == "approved" ? InterlinearAnalysisStatus.Approved : InterlinearAnalysisStatus.Unapproved
+            : InterlinearAnalysisStatus.Unanalysed;
+        if (projected is not null) analyses.TryAdd(projected.Key, projected);
+        var analysisKey = projected?.Key;
         var tokenText = forms.Length > 0 ? forms[0].Text : string.Empty;
         var chosenWordGloss = analysis is IWfiGloss chosenGloss ? WritingSystemTextReader.First(cache, chosenGloss.Form) : null;
         var category = wfiAnalysis?.CategoryRA is { } pos
@@ -168,9 +171,6 @@ public static class TextWordsProjectionBuilder
             Identity = identity,
         };
     }
-
-    private static string OpinionOf(IWfiWordform wordform, IWfiAnalysis analysis) =>
-        OpinionOf(wordform.HumanApprovedAnalyses, wordform.HumanDisapprovedParses, analysis);
 
     private static string OpinionOf(IEnumerable<IWfiAnalysis> approved, IEnumerable<IWfiAnalysis> disapproved,
         IWfiAnalysis analysis) => approved.Contains(analysis) ? "approved"

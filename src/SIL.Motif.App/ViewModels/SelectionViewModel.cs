@@ -203,7 +203,15 @@ public sealed partial class SelectionViewModel : ObservableObject, IProjectState
     public void ApplyDefaultSelection(NamedSelectionProjection? saved)
     {
         var selected = saved?.TextIds.ToHashSet() ?? [];
-        foreach (var text in _allTexts) text.IsChecked = selected.Contains(text.Id);
+        _settingTextChecks = true;
+        try
+        {
+            foreach (var text in _allTexts) text.IsChecked = selected.Contains(text.Id);
+        }
+        finally
+        {
+            _settingTextChecks = false;
+        }
         PastedWords = saved is null ? string.Empty : string.Join(Environment.NewLine, saved.AddedWords);
         AllWordforms = false;
         RetryFailed = false;

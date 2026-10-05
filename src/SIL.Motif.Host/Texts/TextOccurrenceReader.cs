@@ -22,22 +22,26 @@ public static class TextOccurrenceReader
         var interlinearized = new Dictionary<string, int>(StringComparer.Ordinal);
         var total = 0;
         var analyzed = 0;
+        var byWordform = new Dictionary<Guid, string[]>();
         foreach (var id in textIds.Distinct())
         {
             if (!repository.TryGetObject(id, out var text))
                 throw new KeyNotFoundException($"No Text with GUID '{id:D}' exists in the Baseline.");
-            var projection = InterlinearTextReader.Read(cache, text);
-            foreach (var word in projection.Paragraphs.SelectMany(paragraph => paragraph.Phrases).SelectMany(phrase => phrase.Words))
+            foreach (var (wordform, isAnalysed) in InterlinearTextReader.ReadWordforms(text))
             {
-                if (word.WordformGuid is null) continue;
-                var forms = word.Items.Where(item => item.Type == "txt" && item.Value.Length > 0)
-                    .Select(item => item.Value.Trim().Normalize(System.Text.NormalizationForm.FormD))
-                    .Where(value => value.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+                if (!byWordform.TryGetValue(wordform.Guid, out var forms))
+                {
+                    forms = wordform.Form.AvailableWritingSystemIds.Order()
+                        .Select(ws => wordform.Form.get_String(ws)?.Text).OfType<string>()
+                        .Select(form => form.Trim().Normalize(System.Text.NormalizationForm.FormD))
+                        .Where(form => form.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+                    byWordform.Add(wordform.Guid, forms);
+                }
                 foreach (var form in forms)
                 {
                     occurrences[form] = occurrences.GetValueOrDefault(form) + 1;
                     total++;
-                    if (word.AnalysisStatus == InterlinearAnalysisStatus.Unanalysed) continue;
+                    if (!isAnalysed) continue;
                     interlinearized[form] = interlinearized.GetValueOrDefault(form) + 1;
                     analyzed++;
                 }

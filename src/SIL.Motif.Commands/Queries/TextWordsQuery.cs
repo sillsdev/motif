@@ -45,14 +45,43 @@ public static class TextWordsQuery
         return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
-            var current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, request.TextIds);
+            CurrentBaselineTextWords? current;
+            try
+            {
+                current = new BaselineRepository(database).GetCurrentTextWords(workspaceKey, request.TextIds,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return Cancelled(); }
             if (current is null)
                 return CommandOutcome<TextWordsResponse>.Success(
                     new TextWordsResponse(Array.Empty<TextWord>(), Array.Empty<TextLines>(), HasBaseline: false));
 
+            if (cancellationToken.IsCancellationRequested) return Cancelled();
             var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, current.Baseline.Token.ProjectIdentity);
             var textsById = current.Projection.Texts.ToDictionary(text => text.TextId);
             var wordformsById = current.Projection.Wordforms.ToDictionary(wordform => wordform.WordformId);
+            var analysesByWordform = new Dictionary<Guid, ProjectAnalysis[]>();
+            var links = new Dictionary<FieldWorksLinkTarget, string?>();
+            string? LinkFor(FieldWorksLinkTarget? target)
+            {
+                if (target is null) return null;
+                if (!links.TryGetValue(target, out var link))
+                {
+                    link = navigation.LinkFor(target);
+                    links.Add(target, link);
+                }
+                return link;
+            }
+            Func<FieldWorksLinkTarget?, string?> liveLink = LinkFor;
+            ProjectAnalysis[] ReadStoredAnalyses(TextWordsProjectedWordform wordform)
+            {
+                if (!analysesByWordform.TryGetValue(wordform.WordformId, out var analyses))
+                {
+                    analyses = wordform.Analyses.Select(item => ReadAnalysis(item, string.Empty, liveLink)).ToArray();
+                    analysesByWordform.Add(wordform.WordformId, analyses);
+                }
+                return analyses;
+            }
             var order = new List<(string Form, Guid? WordformId, string? WritingSystem)>();
             var accumulators = new Dictionary<(string Form, Guid? WordformId, string? WritingSystem), WordAccumulator>();
             var texts = new List<TextLines>();
@@ -69,7 +98,7 @@ public static class TextWordsQuery
                     {
                         var storedAnalyses = token.WordformId is { } storedWordformId &&
                             wordformsById.TryGetValue(storedWordformId, out var storedWordform)
-                                ? storedWordform.Analyses.Select(item => ReadAnalysis(item, string.Empty, navigation.LinkFor)).ToArray()
+                                ? ReadStoredAnalyses(storedWordform)
                                 : Array.Empty<ProjectAnalysis>();
                         var storedAnalysisId = token.AnalysisId is { } analysisId
                             ? CanonicalId.FromGuid(analysisId).Value : null;
@@ -95,7 +124,7 @@ public static class TextWordsQuery
                                 wordformsById.TryGetValue(markedWordformId, out var markedWordform) &&
                                 markedWordform.IncorrectSpelling,
                             WordLink = token.Text.Length == 0
-                                ? null : navigation.LinkFor(token.WordLinkTarget),
+                                ? null : LinkFor(token.WordLinkTarget),
                         });
 
                         if (token.Status is null) continue;
@@ -133,12 +162,11 @@ public static class TextWordsQuery
                 var accumulator = accumulators[wordKey];
                 var wordform = accumulator.WordformId is { } id && wordformsById.TryGetValue(id, out var found)
                     ? found : null;
-                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
+                var approved = wordform?.Approved.Select(analysis => ReadAnalysis(analysis, string.Empty, liveLink)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
+                var disapproved = wordform?.Disapproved.Select(analysis => ReadAnalysis(analysis, string.Empty, liveLink)).ToArray()
                     ?? Array.Empty<ProjectAnalysis>();
-                var all = wordform?.Analyses.Select(analysis => ReadAnalysis(analysis, string.Empty, navigation.LinkFor)).ToArray()
-                    ?? Array.Empty<ProjectAnalysis>();
+                var all = wordform is not null ? ReadStoredAnalyses(wordform) : Array.Empty<ProjectAnalysis>();
                 return new TextWord(wordKey.Form, accumulator.WordformId?.ToString("D"), accumulator.Occurrences,
                     approved, disapproved, wordform?.CandidateCount ?? 0, wordform?.IncorrectSpelling ?? false)
                 {

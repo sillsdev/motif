@@ -161,6 +161,15 @@ public sealed class TextWordsQueryTests : IDisposable
         Assert.Equal(seededText.AnalysedWordformId, finalOccurrence.WordformId);
         Assert.Equal(7, finalOccurrence.OccurrenceIndex);
         Assert.Equal(CanonicalId.FromGuid(seededText.ApprovedAnalysisId).Value, finalOccurrence.StoredAnalysisId);
+
+        var firstOccurrence = text.Lines[0].Tokens[0];
+        var projectWord = Assert.Single(response.Words,
+            word => word.WordformGuid == seededText.AnalysedWordformId.ToString("D"));
+        Assert.Same(firstOccurrence.StoredAnalyses, finalOccurrence.StoredAnalyses);
+        Assert.Same(firstOccurrence.Analysis, finalOccurrence.Analysis);
+        Assert.Same(firstOccurrence.StoredAnalyses, projectWord.Analyses);
+        Assert.Same(firstOccurrence.WordLink, finalOccurrence.WordLink);
+        Assert.Same(firstOccurrence.Analysis!.Morphs[0].FieldWorksLink, projectWord.Approved[0].Morphs[0].FieldWorksLink);
     }
 
     [Fact]
@@ -201,6 +210,8 @@ public sealed class TextWordsQueryTests : IDisposable
 
         // Occurrences 1 and 2 chose analyses that differ only by sense: same key.
         Assert.Equal(word.Occurrences[0].Analysis!.Key, word.Occurrences[1].Analysis!.Key);
+        Assert.NotSame(word.Occurrences[0].Analysis, word.Occurrences[1].Analysis);
+        Assert.NotEqual(word.Occurrences[0].Analysis!.StoredAnalysisId, word.Occurrences[1].Analysis!.StoredAnalysisId);
         // Occurrence 3 chose a genuinely different morphology: a different key.
         Assert.NotEqual(word.Occurrences[0].Analysis!.Key, word.Occurrences[2].Analysis!.Key);
 

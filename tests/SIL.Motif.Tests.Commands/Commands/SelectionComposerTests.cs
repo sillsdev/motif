@@ -44,6 +44,36 @@ public sealed class SelectionComposerTests : IDisposable
     }
 
     [Fact]
+    public void SelectingARepeatedWordDoesNotBuildItsMorphologyAtEveryOccurrence()
+    {
+        var segment = _cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(_text.FirstSegmentId);
+        var analysis = segment.AnalysesRS[0];
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            segment.AnalysesRS.Clear();
+            for (var index = 0; index < 2000; index++) segment.AnalysesRS.Add(analysis);
+        });
+        var request = NoSources with { TextIds = [_text.TextId] };
+        var repository = NewRepository();
+        Assert.True(SelectionComposer.Compose(_cache, request, repository).Succeeded);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        var outcome = SelectionComposer.Compose(_cache, request, repository);
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(outcome.Succeeded);
+        Assert.Equal(SeededWordsOrdinal, outcome.Value!.Selection.Words);
+        Assert.Equal(2001, Assert.Single(outcome.Value.Projection.Provenance).Count);
+        Assert.True(allocated < 1048576, $"Selecting 2,001 occurrences allocated {allocated / 1048576d:F2} MiB");
+        before = GC.GetAllocatedBytesForCurrentThread();
+        var counts = SIL.Motif.Host.Texts.TextOccurrenceReader.Read(_cache, [_text.TextId]);
+        allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Equal(2001, counts.TotalOccurrences);
+        Assert.Equal(2000, counts.InterlinearizedOccurrences);
+        Assert.True(allocated < 1048576, $"Counting 2,001 occurrences allocated {allocated / 1048576d:F2} MiB");
+    }
+
+    [Fact]
     public void AllWordformsSourceContributesEveryProjectWordform()
     {
         var outcome = SelectionComposer.Compose(_cache, NoSources with { AllWordforms = true }, NewRepository());

@@ -30,12 +30,17 @@ internal static class StatsCache
                 """;
             create.ExecuteNonQuery();
         }
+        using var transaction = connection.BeginTransaction();
+        using var insert = connection.CreateCommand();
+        insert.Transaction = transaction;
+        insert.CommandText = "INSERT INTO word (form, elapsed_ns, attempts, passes) VALUES ($form, 0, 1, 1);";
+        var form = insert.Parameters.Add("$form", SqliteType.Text);
+        insert.Prepare();
         foreach (var word in words.Distinct(StringComparer.Ordinal))
         {
-            using var insert = connection.CreateCommand();
-            insert.CommandText = "INSERT INTO word (form, elapsed_ns, attempts, passes) VALUES ($form, 0, 1, 1);";
-            insert.Parameters.AddWithValue("$form", word);
+            form.Value = word;
             insert.ExecuteNonQuery();
         }
+        transaction.Commit();
     }
 }

@@ -101,6 +101,8 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
 
         var wordform = Assert.Single(projected.Wordforms, item => item.WordformId == text.AnalysedWordformId);
         var analysis = Assert.Single(wordform.Analyses);
+        Assert.Same(analysis, Assert.Single(Assert.Single(projected.Texts, item => item.TextId == text.TextId)
+            .Analyses, item => item.AnalysisId == analysis.AnalysisId));
         Assert.Equal(text.ApprovedAnalysisId, analysis.AnalysisId);
         Assert.Equal("approved", analysis.Opinion);
         var identity = analysis.Identity ?? throw new InvalidOperationException(

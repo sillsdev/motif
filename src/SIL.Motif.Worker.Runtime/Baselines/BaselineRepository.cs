@@ -73,10 +73,13 @@ public sealed class BaselineRepository
     /// A row read is malformed or belongs to another Baseline, or a token names a wordform or analysis that is not
     /// stored. Its message is written for the person using the window.
     /// </exception>
-    public CurrentBaselineTextWords? GetCurrentTextWords(string projectKey, IReadOnlyCollection<Guid> textIds)
+    /// <exception cref="OperationCanceledException">The read was canceled.</exception>
+    public CurrentBaselineTextWords? GetCurrentTextWords(string projectKey, IReadOnlyCollection<Guid> textIds,
+        CancellationToken cancellationToken = default)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(textIds);
+        cancellationToken.ThrowIfCancellationRequested();
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: true);
         BaselineRecord baseline;
@@ -94,7 +97,7 @@ public sealed class BaselineRepository
         var digest = baseline.Token.BundleDigest;
         var texts = ReadRows<TextWordsProjectedText>(connection, transaction,
             "SELECT TextId, BundleDigest, TextJson FROM BaselineTextWords",
-            "TextId", projectKey, requested, digest, IsValid, text => text.TextId);
+            "TextId", projectKey, requested, digest, IsValid, text => text.TextId, cancellationToken);
         using var summaryCommand = connection.CreateCommand();
         summaryCommand.Transaction = transaction;
         summaryCommand.CommandText = "SELECT SummaryJson FROM BaselineSummaries WHERE ProjectKey = $project;";
@@ -107,7 +110,7 @@ public sealed class BaselineRepository
             .Select(token => token.WordformId).OfType<Guid>().Distinct().ToArray();
         var wordforms = ReadRows<TextWordsProjectedWordform>(connection, transaction,
             "SELECT WordformId, BundleDigest, WordformJson FROM BaselineTextWordforms",
-            "WordformId", projectKey, wordformIds, digest, IsValid, wordform => wordform.WordformId);
+            "WordformId", projectKey, wordformIds, digest, IsValid, wordform => wordform.WordformId, cancellationToken);
         if (wordforms.Count != wordformIds.Length)
             throw DamagedTextWords("A token names a wordform with no stored row.");
         return new CurrentBaselineTextWords(baseline, new TextWordsProjection(ordered, wordforms.Values
@@ -145,7 +148,7 @@ public sealed class BaselineRepository
     // Filters by json_each so any number of ids binds as one parameter; each row must match its Baseline and key.
     private static Dictionary<Guid, T> ReadRows<T>(SqliteConnection connection, SqliteTransaction transaction,
         string select, string idColumn, string projectKey, IReadOnlyCollection<Guid> ids, string digest,
-        Func<T?, bool> isValid, Func<T, Guid> idOf) where T : class
+        Func<T?, bool> isValid, Func<T, Guid> idOf, CancellationToken cancellationToken) where T : class
     {
         var rows = new Dictionary<Guid, T>();
         if (ids.Count == 0) return rows;
@@ -158,6 +161,7 @@ public sealed class BaselineRepository
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!string.Equals(reader.GetString(1), digest, StringComparison.Ordinal))
                 throw DamagedTextWords("A stored row belongs to another Baseline.");
             T? row;

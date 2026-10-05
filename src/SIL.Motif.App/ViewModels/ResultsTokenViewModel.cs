@@ -17,7 +17,13 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 {
     private readonly TextToken _source;
     private readonly AssessmentWordResult? _assessment;
+    private TextWordRowViewModel? _projectWord;
+    private readonly Func<TextWordRowViewModel?>? _projectWordFactory;
     private readonly Guid _textId;
+    private Uri? _wordLink;
+    private WordComparison? _comparison;
+    private IReadOnlyList<ParserReadingMorphViewModel>? _stored;
+    private IReadOnlyList<FieldWorksAnalysisDisplayViewModel>? _fieldWorksAnalyses;
     private bool _isUnread = true;
     private IReadOnlyList<ObjectUseRef> _namedMorphemeRefs = [];
 
@@ -26,11 +32,13 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     public ResultsTokenViewModel(string title, int line, TextToken token, AssessmentWordResult? result,
         TextWordRowViewModel? projectWord = null, string? location = null, OccurrenceAnchor? occurrence = null,
-        Guid textId = default)
+        Guid textId = default, Func<TextWordRowViewModel?>? projectWordFactory = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         _source = token;
         _assessment = result;
+        _projectWord = projectWord;
+        _projectWordFactory = projectWordFactory;
         Text = token.Text;
         Form = token.Form ?? token.Text;
         IsWord = token.Form is not null;
@@ -39,32 +47,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         _textId = textId != Guid.Empty ? textId : occurrence?.TextId ?? Guid.Empty;
         WordformId = token.WordformId;
         OccurrenceIndex = token.OccurrenceIndex;
-        WordLink = token.WordLink is { } link ? new Uri(link) : null;
-        Stored = (token.Analysis?.Morphs ?? token.StoredAnalyses.FirstOrDefault()?.Morphs)
-            ?.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
-        ProjectSummary = projectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
-        ProjectStatusLabel = projectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
-        ProjectStatusMark = projectWord is null ? Mark.NotInFieldWorks : projectWord.StatusMark;
-        ProjectApprovedAnalyses = projectWord?.ApprovedAnalyses ?? [];
 
         Marking = AnalysisMarkingState.Create(token, result, _isUnread);
-        var contextAnalyses = token.StoredAnalyses.Select(analysis => new ParserReading(analysis.Morphs)
-        {
-            StoredAnalysisId = analysis.StoredAnalysisId,
-            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
-            Identity = analysis.Identity,
-        }).ToArray();
-        var standing = token.IncorrectSpelling ? ProjectStanding.IncorrectSpelling :
-            contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
-            contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
-                ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
-        var comparisonWord = result ?? new AssessmentWordResult(Form, "unassessed", false, "Not parsed", null, null)
-        {
-            ProjectStanding = standing,
-            StoredAnalyses = contextAnalyses,
-            StoredAnalysesAvailable = true,
-        };
-        Comparison = CompareSemantics.Compare(comparisonWord);
         var storedId = token.Analysis?.StoredAnalysisId;
         var analyses = result?.Morphology?.Analyses ?? [];
         var resolved = result?.Readings;
@@ -77,7 +61,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
                 resolved is not null && index < resolved.Count ? resolved[index] : null))
             .ToArray();
 
-        Verdict = Comparison.MeaningCode == "refused" ? OccurrenceVerdict.NotAssessed : Comparison.Outcome switch
+        Verdict = result is null || Comparison.MeaningCode == "refused" ? OccurrenceVerdict.NotAssessed : Comparison.Outcome switch
         {
             WordRowOutcome.Same when Comparison.Tone != WordRowTone.Problem => OccurrenceVerdict.Matches,
             WordRowOutcome.Stopped => OccurrenceVerdict.Limit,
@@ -104,8 +88,28 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
             _ when ParserRefusals.Of(result?.Morphology, result?.Outcome) is { } refused => refused.Reason,
             _ => "not in the last parse",
         };
-        FieldWorksAnalyses = Marking.FieldWorksAnalyses
-            .Select(analysis => new FieldWorksAnalysisDisplayViewModel(analysis)).ToArray();
+    }
+
+    private WordComparison BuildComparison()
+    {
+        if (_assessment is { } assessed) return CompareSemantics.Compare(assessed);
+        var contextAnalyses = _source.StoredAnalyses.Select(analysis => new ParserReading(analysis.Morphs)
+        {
+            StoredAnalysisId = analysis.StoredAnalysisId,
+            StoredAnalysisOpinion = analysis.StoredAnalysisOpinion,
+            Identity = analysis.Identity,
+        }).ToArray();
+        var standing = _source.IncorrectSpelling ? ProjectStanding.IncorrectSpelling :
+            contextAnalyses.Any(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved) ? ProjectStanding.Approved :
+            contextAnalyses.Any(analysis => (analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate) == ReadingGrade.Candidate)
+                ? ProjectStanding.Candidate : contextAnalyses.Length > 0 ? ProjectStanding.Rejected : ProjectStanding.NotPresent;
+        var comparisonWord = new AssessmentWordResult(Form, "unassessed", false, "Not parsed", null, null)
+        {
+            ProjectStanding = standing,
+            StoredAnalyses = contextAnalyses,
+            StoredAnalysesAvailable = true,
+        };
+        return CompareSemantics.Compare(comparisonWord);
     }
 
     public string Text { get; }
@@ -141,16 +145,17 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public AnalysisMarkingState Marking { get; private set; }
 
     /// <summary>The common word comparison, independent of this occurrence's action selection.</summary>
-    public WordComparison Comparison { get; }
+    public WordComparison Comparison => _comparison ??= BuildComparison();
     /// <summary>Every stored analysis with its opinion mark and interlinear morphemes.</summary>
-    public IReadOnlyList<FieldWorksAnalysisDisplayViewModel> FieldWorksAnalyses { get; }
+    public IReadOnlyList<FieldWorksAnalysisDisplayViewModel> FieldWorksAnalyses => _fieldWorksAnalyses ??=
+        Marking.FieldWorksAnalyses.Select(analysis => new FieldWorksAnalysisDisplayViewModel(analysis)).ToArray();
 
     /// <summary>The opinion mark used beside the word, or the dashed mark when nothing is stored.</summary>
     public OpinionMarkKind PrimaryOpinionMarkKind => FieldWorksAnalyses.Count == 0
         ? OpinionMarkKind.None : FieldWorksAnalyses[0].OpinionMarkKind;
 
     /// <summary>Whether FieldWorks stores at least one analysis for the word.</summary>
-    public bool HasFieldWorksAnalyses => FieldWorksAnalyses.Count > 0;
+    public bool HasFieldWorksAnalyses => Marking.FieldWorksAnalyses.Count > 0;
 
     /// <summary>Whether PanGloss agrees with every stored reading.</summary>
     public bool IsPanGlossSame => Comparison.Outcome == WordRowOutcome.Same && Comparison.Tone != WordRowTone.Problem;
@@ -448,7 +453,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         : string.Join(", ", FieldWorksAnalyses.Select(analysis =>
             ReadingGradeLabels.Of(analysis.Opinion) is { Length: > 0 } label ? label : analysis.Opinion));
     public string Location { get; }
-    public Uri? WordLink { get; }
+    public Uri? WordLink => _wordLink ??= _source.WordLink is { } link ? new Uri(link) : null;
     public OccurrenceAnchor? Occurrence { get; }
     public string? MarkUnreadDisabledReason => Occurrence is null
         ? "Choose a word occurrence in Analyze texts first."
@@ -472,20 +477,24 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public IAsyncRelayCommand<AnalysisMarkingChoice>? StageMarkingChoiceForTokenCommand { get; internal set; }
 
     /// <summary>The morphs of the analysis stored at this occurrence, each linked to its entry.</summary>
-    public IReadOnlyList<ParserReadingMorphViewModel> Stored { get; }
+    public IReadOnlyList<ParserReadingMorphViewModel> Stored => _stored ??=
+        (_source.Analysis?.Morphs ?? _source.StoredAnalyses.FirstOrDefault()?.Morphs)
+            ?.Select(morph => new ParserReadingMorphViewModel(morph)).ToArray() ?? [];
 
-    public string ProjectSummary { get; }
+    private TextWordRowViewModel? ProjectWord => _projectWord ??= _projectWordFactory?.Invoke();
 
-    public string ProjectStatusLabel { get; }
+    public string ProjectSummary => ProjectWord?.ProjectSummary ?? "No project entry is loaded for this word.";
+
+    public string ProjectStatusLabel => ProjectWord?.StatusLabel ?? ReadingGradeLabels.NotPresent;
 
     /// <summary>The opinion mark for what the project holds for this word; an incorrect spelling has none.</summary>
-    public Mark? ProjectStatusMark { get; }
+    public Mark? ProjectStatusMark => ProjectWord is { } word ? word.StatusMark : Mark.NotInFieldWorks;
 
-    public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses { get; }
+    public IReadOnlyList<ProjectAnalysisViewModel> ProjectApprovedAnalyses => ProjectWord?.ApprovedAnalyses ?? [];
 
-    public bool HasProjectApprovedAnalyses => ProjectApprovedAnalyses.Count > 0;
+    public bool HasProjectApprovedAnalyses => ProjectWord?.HasApproved == true;
 
-    public bool HasStored => Stored.Count > 0;
+    public bool HasStored => (_source.Analysis?.Morphs ?? _source.StoredAnalyses.FirstOrDefault()?.Morphs)?.Count > 0;
     public bool HasNothingStored => IsWord && !HasFieldWorksAnalyses;
 
     internal bool HasAssessmentResult(AssessmentWordResult result) => ReferenceEquals(_assessment, result);

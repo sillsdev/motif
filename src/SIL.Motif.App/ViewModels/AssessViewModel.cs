@@ -249,7 +249,7 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     }
 
     private static int? LookUpOccurrences(TextWordsViewModel textWords, string word) =>
-        textWords.Rows.FirstOrDefault(row => row.Form == word)?.OccurrenceCount;
+        textWords.OccurrenceCountOf(word);
 
     // Choosing a Results word primes Try a Word with it, without starting a trace the person did not ask for.
     private void OnWordsPropertyChanged(object? sender, PropertyChangedEventArgs e)

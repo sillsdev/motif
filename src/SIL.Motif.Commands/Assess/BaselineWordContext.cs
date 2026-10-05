@@ -16,9 +16,16 @@ internal sealed record BaselineWordContext(
     /// <summary>Projects all opinions and links before the caller disposes its Baseline cache.</summary>
     internal static BaselineWordContext Read(LcmCache cache, SavedProjectNavigation navigation, IReadOnlyList<string> words)
     {
-        var approved = ApprovedMorphologyReader.Read(cache);
-        var rejected = ApprovedMorphologyReader.ReadDisapproved(cache);
-        var candidates = ApprovedMorphologyReader.ReadCandidates(cache);
+        return Read(cache, navigation, words, ApprovedMorphologyReader.Read(cache),
+            ApprovedMorphologyReader.ReadDisapproved(cache), ApprovedMorphologyReader.ReadCandidates(cache));
+    }
+
+    /// <summary>Names already captured opinions from the same loaded cache without reading them again.</summary>
+    internal static BaselineWordContext Read(LcmCache cache, SavedProjectNavigation navigation, IReadOnlyList<string> words,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> approved,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> rejected,
+        IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> candidates)
+    {
         var analyses = words.ToDictionary(word => word, word => ReadAnalyses(cache, navigation,
             approved.GetValueOrDefault(word) ?? [], rejected.GetValueOrDefault(word) ?? [],
             candidates.GetValueOrDefault(word) ?? []), StringComparer.Ordinal);

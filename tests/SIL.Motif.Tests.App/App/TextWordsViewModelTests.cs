@@ -39,6 +39,34 @@ public sealed class TextWordsViewModelTests
         Assert.Equal("book", Assert.Single(rows[0].ApprovedAnalyses).Gloss);
     }
 
+    [Fact]
+    public async Task UnreadWordListRowsDoNotBuildTheirStoredMorphologySummaries()
+    {
+        var (fake, _, words) = NewViewModel();
+        await words.SetProjectAsync(ProjectPath);
+        var morphs = Enumerable.Range(0, 32).Select(index =>
+            new ParserReadingMorph($"morph-{index}", $"meaning-{index}", "n", null, false, null)).ToArray();
+        var analysis = new ProjectAnalysis("stored", morphs);
+        var occurrences = new[] { new WordOccurrence(TextId, "Story", 1, "word", "approved", analysis) };
+        var source = Enumerable.Range(0, 21604).Select(index => new TextWord($"word-{index}", null,
+            occurrences, [analysis], []) { Analyses = [analysis] }).ToArray();
+        fake.ListTextWordsCompletesWith(new TextWordsResponse(source, [], true, 21604));
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        await words.ReloadAsync();
+        _ = words.Rows.Count;
+        _ = words.ApprovedFilterCount;
+        words.SearchText = "word-21603";
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.True(allocated < 16 * 1048576L, $"The unread list allocated {allocated / 1048576d:F1} MiB");
+        Assert.Equal(0, words.MaterializedRowCount);
+        var final = Assert.Single(words.Rows);
+        Assert.Equal(1, words.MaterializedRowCount);
+        Assert.Equal("word-21603", final.Form);
+        Assert.Contains("meaning-31", final.ProjectSummary);
+    }
+
     private static (FakeCommandClient Fake, SelectionViewModel Selection, TextWordsViewModel Words) NewViewModel()
     {
         var fake = new FakeCommandClient();

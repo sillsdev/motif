@@ -349,7 +349,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             }).ToArray();
         var source = new TextToken(result.Word, result.Word, null, null)
         {
-            WordformId = _texts.ProjectWords.FirstOrDefault(row => row.Form == result.Word)?.WordformId,
+            WordformId = _texts.WordformIdOf(result.Word),
             IncorrectSpelling = result.ProjectStanding == ProjectStanding.IncorrectSpelling,
             StoredAnalyses = stored,
             WordLink = result.TryWordLink,
@@ -550,7 +550,8 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     private void OnSourceChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (ReferenceEquals(sender, _texts) && e.PropertyName is nameof(TextWordsViewModel.Response) or nameof(TextWordsViewModel.ProjectWords)) Rebuild();
+        // A reload can reuse its response; the row publication marks a complete load without building it twice.
+        if (ReferenceEquals(sender, _texts) && e.PropertyName == nameof(TextWordsViewModel.ProjectWords)) Rebuild();
         else if (ReferenceEquals(sender, _texts) && e.PropertyName == nameof(TextWordsViewModel.HasAvailableTexts)) RefreshLines();
         else if (ReferenceEquals(sender, _assess) && e.PropertyName == nameof(AssessViewModel.Result)) Rebuild();
         NotifyScopeCommands();
@@ -564,17 +565,21 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         var results = (_assess.Result?.Words ?? [])
             .GroupBy(word => word.Word, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-        var projectWords = _texts.ProjectWords.Where(row => row.WordformId is not null)
-            .ToDictionary(row => (row.WordformId!.Value, row.Form));
-        var projectWordsByIdentity = _texts.ProjectWords.Where(row => row.WordformId is not null)
-            .GroupBy(row => row.WordformId!.Value)
-            .ToDictionary(group => group.Key, group => (IReadOnlyList<TextWordRowViewModel>)group.ToArray());
+        var projectWords = (_texts.Response?.Words ?? []).Where(word => word.WordformGuid is not null)
+            .GroupBy(word => Guid.Parse(word.WordformGuid!)).ToDictionary(group => group.Key, group => group.ToArray());
+        TextWordRowViewModel? ProjectWord(TextToken token)
+        {
+            if (token.WordformId is not { } id || !projectWords.TryGetValue(id, out var words)) return null;
+            var word = words.FirstOrDefault(word => word.Form == token.Form && word.FormWritingSystem == token.FormWritingSystem)
+                ?? words.FirstOrDefault(word => word.Form == token.Form) ?? words.FirstOrDefault();
+            return word is null ? null : _texts.ProjectRow(word);
+        }
 
         Texts.Clear();
         if (_texts.Response is { } response)
         {
             foreach (var text in response.Texts)
-                Texts.Add(new ResultsTextViewModel(text, results, projectWords, projectWordsByIdentity));
+                Texts.Add(new ResultsTextViewModel(text, results, projectWordLookup: ProjectWord));
         }
         foreach (var token in _allWords) token.PropertyChanged -= OnTokenPropertyChanged;
         _allWords = Texts.SelectMany(text => text.Lines).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToArray();
@@ -1095,14 +1100,15 @@ public sealed class ResultsTextViewModel
 {
     public ResultsTextViewModel(TextLines text, IReadOnlyDictionary<string, AssessmentWordResult> results,
         IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null)
+        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null,
+        Func<TextToken, TextWordRowViewModel?>? projectWordLookup = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(results);
         TextId = text.TextId;
         Title = text.Title;
         Lines = text.Lines.Select(line => new ResultsLineViewModel(
-            text.Title, line, results, projectWords, text.TextId, projectWordsByIdentity)).ToArray();
+            text.Title, line, results, projectWords, text.TextId, projectWordsByIdentity, projectWordLookup)).ToArray();
     }
 
     public string Title { get; }
@@ -1130,7 +1136,8 @@ public sealed class ResultsLineViewModel : ObservableObject
     public ResultsLineViewModel(string title, TextLine line, IReadOnlyDictionary<string, AssessmentWordResult> results,
         IReadOnlyDictionary<(Guid WordformId, string Form), TextWordRowViewModel>? projectWords = null,
         Guid textId = default,
-        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null)
+        IReadOnlyDictionary<Guid, IReadOnlyList<TextWordRowViewModel>>? projectWordsByIdentity = null,
+        Func<TextToken, TextWordRowViewModel?>? projectWordLookup = null)
     {
         ArgumentNullException.ThrowIfNull(line);
         Number = line.Number;
@@ -1144,7 +1151,7 @@ public sealed class ResultsLineViewModel : ObservableObject
                 line.SegmentId != Guid.Empty && token.OccurrenceIndex >= 0
                     ? new OccurrenceAnchor(textId, line.ParagraphId, line.SegmentId, token.OccurrenceIndex)
                     : null,
-            textId: textId)).ToArray();
+            textId: textId, projectWordFactory: projectWordLookup is null ? null : () => projectWordLookup(token))).ToArray();
         foreach (var token in Tokens) token.PropertyChanged += OnTokenPropertyChanged;
     }
 

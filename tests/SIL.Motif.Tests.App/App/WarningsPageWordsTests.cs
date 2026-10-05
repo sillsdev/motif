@@ -177,7 +177,7 @@ public sealed class WarningsPageWordsTests
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
 
-                var controls = Assert.Single(panel.GetVisualDescendants().OfType<StackPanel>(),
+                var controls = Assert.Single(panel.GetVisualDescendants().OfType<WrapPanel>(),
                     item => item.Classes.Contains("warningControls"));
                 Assert.NotEmpty(controls.Children);
                 Assert.Equal(Avalonia.Layout.Orientation.Horizontal, controls.Orientation);

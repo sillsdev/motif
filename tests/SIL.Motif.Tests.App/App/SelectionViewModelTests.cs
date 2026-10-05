@@ -23,6 +23,27 @@ public sealed class SelectionViewModelTests
     private static readonly Guid AlphaId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid BetaId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
+    [Fact]
+    public async Task RestoringManyTextsPublishesOnlyTheCompleteSelection()
+    {
+        var fake = new FakeCommandClient();
+        var ids = Enumerable.Range(0, 129).Select(_ => Guid.NewGuid()).ToArray();
+        fake.ListTextsCompletesWith(new TextInventoryResponse(ids.Select((id, index) =>
+            new TextChoiceSummary(id, $"Text {index}")).ToArray(), true));
+        var selection = new SelectionViewModel(fake);
+        await selection.SetProjectAsync(ProjectPath);
+        var published = new List<IReadOnlyList<Guid>>();
+        selection.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SelectionViewModel.ChosenTextIds))
+                published.Add(selection.ChosenTextIds.ToArray());
+        };
+
+        selection.ApplyDefaultSelection(new NamedSelectionProjection("Saved", ids, [], "", ""));
+
+        Assert.Equal(ids, Assert.Single(published));
+    }
+
     // A project switch or Refresh while a load is in flight must not let the older answer land last.
     [Fact]
     public async Task AnOlderTextLoadCompletingAfterANewerOneIsDiscarded()

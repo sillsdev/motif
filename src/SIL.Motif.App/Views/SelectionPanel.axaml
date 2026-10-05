@@ -13,7 +13,7 @@
         <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.SummaryText}" TextWrapping="Wrap" />
       </StackPanel>
 
-      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+      <WrapPanel Orientation="Horizontal" ItemSpacing="{DynamicResource Intent.Space.Compact}"
                   IsVisible="{Binding Selection.HasTexts}">
         <Button Content="Select all texts" Command="{Binding Selection.SelectAllTextsCommand}"
                 Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
@@ -23,7 +23,7 @@
                 IsVisible="{Binding Selection.ShowClearTexts}"
                 Theme="{DynamicResource BorderlessButton}" Foreground="{DynamicResource Intent.Accent}"
                 AutomationProperties.Name="Clear" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClearTexts}" />
-      </StackPanel>
+      </WrapPanel>
 
       <TextBox PlaceholderText="Search texts..." Text="{Binding Selection.SearchText}"
                AutomationProperties.Name="Search texts" />
@@ -34,7 +34,7 @@
           <DataTemplate x:DataType="vm:TextChoiceViewModel">
             <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
               <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked}" />
-              <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}"
+              <views:CopyableTextBlock Classes="muted" Text="{Binding CountsText}" TextWrapping="Wrap"
                          Margin="{DynamicResource Component.TextsPage.CountIndent}"
                          TextTrimming="CharacterEllipsis"
                          IsVisible="{Binding CountsText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />

@@ -382,7 +382,8 @@ public static class AssessCommand
                 var wordContext = ReadProjectWordContext(namingCache, composition.Selection.Words,
                     composition.Descriptor.TextIds);
                 var navigation = SavedProjectNavigation.Read(project.FullFwDataPath, baseline.Token.ProjectIdentity);
-                var storedContext = BaselineWordContext.Read(namingCache, navigation, composition.Selection.Words);
+                var storedContext = BaselineWordContext.Read(namingCache, navigation, composition.Selection.Words,
+                    wordContext.Approved, wordContext.Rejected, wordContext.Candidates);
                 // Named once and recorded, so a later read of the stored words glosses them as this run does.
                 var namedMissed = new Dictionary<string, ParserReading[]?>(StringComparer.Ordinal);
                 ParserReading[]? NameMissed(string word, WordCorrectness? correctness)

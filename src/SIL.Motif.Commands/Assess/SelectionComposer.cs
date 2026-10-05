@@ -181,6 +181,7 @@ public static class SelectionComposer
     {
         var repository = cache.ServiceLocator.GetInstance<ITextRepository>();
         var forms = new List<string>();
+        var byWordform = new Dictionary<Guid, string[]>();
 
         foreach (var textId in textIds)
         {
@@ -190,14 +191,17 @@ public static class SelectionComposer
                 return forms;
             }
 
-            var projection = InterlinearTextReader.Read(cache, text);
-            forms.AddRange(
-                from paragraph in projection.Paragraphs
-                from phrase in paragraph.Phrases
-                from word in phrase.Words
-                from item in word.Items
-                where item.Type == "txt" && !string.IsNullOrEmpty(item.Value)
-                select item.Value);
+            foreach (var (wordform, _) in InterlinearTextReader.ReadWordforms(text))
+            {
+                if (!byWordform.TryGetValue(wordform.Guid, out var spellings))
+                {
+                    spellings = wordform.Form.AvailableWritingSystemIds.Order()
+                        .Select(ws => wordform.Form.get_String(ws)?.Text).OfType<string>()
+                        .Where(form => form.Length > 0).ToArray();
+                    byWordform.Add(wordform.Guid, spellings);
+                }
+                forms.AddRange(spellings);
+            }
         }
 
         missingTextId = null;
