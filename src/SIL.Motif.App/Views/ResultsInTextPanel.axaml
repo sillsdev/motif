@@ -181,20 +181,17 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">
-              <Grid Classes="lineHead" ColumnDefinitions="Auto,*"
-                    controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
-                    controls:WritingSystemText.FlowEnabled="True">
+              <StackPanel Classes="lineHead" Orientation="Horizontal"
+                          controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
+                          controls:WritingSystemText.FlowEnabled="True">
                 <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}"
                                          controls:WritingSystemText.WindowText="True" />
-                <StackPanel Grid.Column="1" Spacing="{DynamicResource Intent.Space.Related}"
-                            HorizontalAlignment="Stretch">
-                  <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}" TextWrapping="Wrap"
-                                           controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
-                                           controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
-                  <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}" TextWrapping="Wrap"
-                                           controls:WritingSystemText.WindowText="True" />
-                </StackPanel>
-              </Grid>
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}"
+                                         controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
+                                         controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
+                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}"
+                                         controls:WritingSystemText.WindowText="True" />
+              </StackPanel>
               <controls:RunningTextPanel Classes="resultsLineBody" HorizontalAlignment="Stretch"
                                           controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
                                           controls:WritingSystemText.FlowEnabled="True">
