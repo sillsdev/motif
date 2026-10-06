@@ -73,11 +73,12 @@
       <Border Classes="hoverReveal" Background="{DynamicResource Intent.Clear}" IsVisible="{Binding Trace.HasResult}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
           <DockPanel LastChildFill="True">
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+            <WrapPanel DockPanel.Dock="Right" ItemSpacing="{DynamicResource Intent.Space.Related}"
+                       LineSpacing="{DynamicResource Intent.Space.Related}">
               <Button Content="Analyze texts" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Open in Analyze texts" />
               <Button Content="Timing" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="Timing for this word" />
       <Button Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" Classes="revealControl revealOnHover" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
-            </StackPanel>
+            </WrapPanel>
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Text="{Binding Trace.Result.Word}" FontSize="{DynamicResource Intent.Type.Title}" FontWeight="SemiBold" AutomationProperties.Name="Try a Word result" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordResult}" />
               <views:MarkChip Mark="{Binding ResultOutcomeMark}" Text="{Binding ResultOutcomeText}" />

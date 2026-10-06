@@ -33,10 +33,11 @@ public static class SelectionCommands
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.invalid", FailureReason.InvalidArgument,
                 "A Selection name and non-null Text and word lists are required."));
-        if (request.PerWordLimitMs is <= 0)
+        var invalidLimits = request.Limits?.ValidationError();
+        if (request.Limits is null || invalidLimits is not null)
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
-                "selection.invalid-time-limit", FailureReason.InvalidArgument,
-                "The per-word time limit must be a positive number of milliseconds."));
+                "selection.invalid-limits", FailureReason.InvalidArgument,
+                invalidLimits ?? "A valid Selection limit policy is required."));
         if (request.TextIds.Count == 0 && request.AddedWords.All(string.IsNullOrWhiteSpace))
             return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
                 "selection.empty", FailureReason.InvalidArgument,
@@ -57,13 +58,49 @@ public static class SelectionCommands
                         "selection.text-not-found", FailureReason.InvalidArgument,
                         $"No Text with GUID '{missing:D}' exists in the current Baseline."));
             }
-            var saved = new NamedSelectionRepository(database).SetDefault(request.Name, request.TextIds,
-                request.AddedWords, request.PerWordLimitMs, request.PerWordStepLimit);
-            return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(Project(saved)));
+            try
+            {
+                var saved = new NamedSelectionRepository(database).SetDefault(request.Name, request.TextIds,
+                    request.AddedWords, request.Limits, request.ExpectedRevision);
+                return CommandOutcome<DefaultSelectionResponse>.Success(new DefaultSelectionResponse(Project(saved)));
+            }
+            catch (SelectionRevisionConflictException exception)
+            {
+                return CommandOutcome<DefaultSelectionResponse>.Refused(new Refusal(
+                    "selection.revision-conflict", FailureReason.Refused, exception.Message));
+            }
+        });
+    }
+
+    /// <summary>Changes only the current Default Selection's parsing limits at its expected revision.</summary>
+    public static CommandOutcome<NamedSelectionProjection> SetLimits(SetSelectionLimitsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var limits = request.Limits;
+        var error = limits?.ValidationError();
+        if (string.IsNullOrWhiteSpace(request.SelectionName) ||
+            string.IsNullOrWhiteSpace(request.ExpectedRevision) || limits is null || error is not null)
+            return CommandOutcome<NamedSelectionProjection>.Refused(new Refusal(
+                "selection.invalid-limits", FailureReason.InvalidArgument,
+                error ?? "A Selection name, expected revision, and valid limits are required."));
+
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            try
+            {
+                return CommandOutcome<NamedSelectionProjection>.Success(
+                    Project(new NamedSelectionRepository(database).SetLimits(
+                        request.SelectionName, request.ExpectedRevision!, limits)));
+            }
+            catch (SelectionRevisionConflictException exception)
+            {
+                return CommandOutcome<NamedSelectionProjection>.Refused(new Refusal(
+                    "selection.revision-conflict", FailureReason.Refused, exception.Message));
+            }
         });
     }
 
     private static NamedSelectionProjection Project(NamedSelectionRecord saved) => new(
         saved.Name, saved.TextIds, saved.AddedWords, saved.CreatedUtc, saved.UpdatedUtc,
-        saved.PerWordLimitMs, saved.PerWordStepLimit);
+        saved.Limits, saved.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture));
 }

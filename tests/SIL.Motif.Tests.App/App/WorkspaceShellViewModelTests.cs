@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -241,11 +242,7 @@ public sealed class WorkspaceShellViewModelTests
     public async Task ConfigureOpensSetupWithoutNavigatingAwayFromTheCurrentPage()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        fake.DefaultSelectionResponseIs(JsonSerializer.Deserialize<DefaultSelectionResponse>("""
-            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
-             "AddedWords":["one","two"],"CreatedUtc":"created","UpdatedUtc":"updated",
-             "PerWordLimitMs":1250,"PerWordStepLimit":{"steps":987,"isUnbounded":false}},"SetupSkipped":false}
-            """)!);
+        fake.DefaultSelectionResponseIs(SavedSelection(["one", "two"], 1250, 987));
         fake.ListTextsCompletesWith(new TextInventoryResponse(
             [new TextChoiceSummary(TextId, "Alpha", 10, 6)], HasBaseline: true));
         fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
@@ -350,9 +347,12 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal([TextId], saved.TextIds);
         Assert.Equal(["added word"], saved.AddedWords);
         using var savedJson = JsonDocument.Parse(JsonSerializer.Serialize(saved));
-        Assert.Equal(8_000, savedJson.RootElement.GetProperty("PerWordLimitMs").GetInt32());
+        var savedLimits = savedJson.RootElement.GetProperty("Limits");
+        Assert.Equal((int)SelectionTimeLimitMode.Estimated, savedLimits.GetProperty("TimeMode").GetInt32());
+        Assert.True(savedLimits.TryGetProperty("ExplicitPerWordLimitMs", out var explicitLimit));
+        Assert.Equal(JsonValueKind.Null, explicitLimit.ValueKind);
         Assert.Equal(SIL.Motif.Contract.Assess.StepCap.DefaultSteps,
-            savedJson.RootElement.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
+            savedLimits.GetProperty("PerWordStepLimit").GetProperty("steps").GetInt64());
         var assess = Assert.Single(fake.AssessRequests);
         Assert.Null(assess.Selection);
         Assert.Equal(8_000, assess.PerWordLimitMs);
@@ -799,7 +799,7 @@ public sealed class WorkspaceShellViewModelTests
     public async Task ConfigureAfterARefreshOpensWithTheSavedSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        fake.DefaultSelectionResponseIs(SavedSelection());
+        fake.DefaultSelectionResponseIs(SavedSelection(["one"], 1250, 987));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
@@ -817,7 +817,7 @@ public sealed class WorkspaceShellViewModelTests
     public async Task ConfigureAfterReopeningTheProjectShowsTheStoredSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        fake.DefaultSelectionResponseIs(SavedSelection());
+        fake.DefaultSelectionResponseIs(SavedSelection(["one"], 1250, 987));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
@@ -830,12 +830,10 @@ public sealed class WorkspaceShellViewModelTests
         AssertConfigureShows(workspace, "one", 1.25m, 987m);
     }
 
-    private static DefaultSelectionResponse SavedSelection() =>
-        JsonSerializer.Deserialize<DefaultSelectionResponse>("""
-            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
-             "AddedWords":["one"],"CreatedUtc":"created","UpdatedUtc":"updated",
-             "PerWordLimitMs":1250,"PerWordStepLimit":{"steps":987,"isUnbounded":false}},"SetupSkipped":false}
-            """)!;
+    private static DefaultSelectionResponse SavedSelection(
+        IReadOnlyList<string> addedWords, int timeLimitMs, long stepLimit) => new(
+        new NamedSelectionProjection("Default", [TextId], addedWords, "created", "updated",
+            new SelectionParsingLimits(new StepCap(stepLimit), SelectionTimeLimitMode.Explicit, timeLimitMs), "revision"));
 
     private static void AssertConfigureShows(
         WorkspaceShellViewModel workspace, string addedWords, decimal timeLimitSeconds, decimal stepLimit)
@@ -854,11 +852,7 @@ public sealed class WorkspaceShellViewModelTests
     public async Task LaterRunsUseLimitsSavedWithTheDefaultSelection()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        fake.DefaultSelectionResponseIs(JsonSerializer.Deserialize<DefaultSelectionResponse>("""
-            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
-             "AddedWords":[],"CreatedUtc":"created","UpdatedUtc":"updated",
-             "PerWordLimitMs":450,"PerWordStepLimit":{"steps":1234,"isUnbounded":false}},"SetupSkipped":false}
-            """)!);
+        fake.DefaultSelectionResponseIs(SavedSelection([], 450, 1234));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], true));
         fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Success(
             new ProjectConfigurationProjection(true, true,

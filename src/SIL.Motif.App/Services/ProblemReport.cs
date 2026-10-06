@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -70,18 +69,34 @@ public sealed record ProblemReport
 
     /// <summary>Builds a report from a refused window operation.</summary>
     /// <param name="refusal">The refusal shown in the window.</param>
-    public static ProblemReport FromRefusal(WindowRefusal refusal)
+    public static ProblemReport FromRefusal(WindowRefusal refusal, ApplicationFacts? facts = null)
     {
         ArgumentNullException.ThrowIfNull(refusal);
         return Create(refusal.Operation, refusal.Code, ExitStatusFor(refusal.Reason),
             refusal.FailureException is { } failure ? SanitizedStackFor(failure) : "Unavailable",
-            refusal.Facts, refusal.Details) with { FailureSummary = refusal.ParserDiagnostic?.Summary };
+            refusal.Facts, refusal.Details, facts ?? ApplicationFacts.Current) with
+        {
+            FailureSummary = refusal.ParserDiagnostic?.Summary,
+        };
     }
 
     /// <summary>Builds a report for a parse that has stopped making progress while it is still running.</summary>
-    public static ProblemReport ForStalledParse() =>
+    /// <param name="facts">The runtime facts displayed in the report.</param>
+    public static ProblemReport ForStalledParse(ApplicationFacts? facts = null) =>
         Create("measure words", "unavailable", "Unavailable (parse still running)", "Unavailable",
-            EmptyFacts, null);
+            EmptyFacts, null, facts ?? ApplicationFacts.Current);
+
+    /// <summary>Builds a general window-action report without creating a failure or stack trace.</summary>
+    /// <param name="facts">The runtime facts displayed in the report.</param>
+    public static ProblemReport ForWindowAction(ApplicationFacts? facts = null) =>
+        Create("window action", "unavailable", "Unavailable (in-process window action)", "Unavailable",
+            EmptyFacts, null, facts ?? ApplicationFacts.Current);
+
+    /// <summary>Formats the three version lines shared by the About group and a problem report.</summary>
+    public string ToVersionText() => string.Join(Environment.NewLine,
+        "Motif version: " + MotifVersion,
+        "PanGloss version: " + PanGlossVersion,
+        "Operating system: " + OperatingSystem);
 
     /// <summary>Builds a report for a machine store that prevented the Known-project list from loading.</summary>
     /// <param name="exception">The local error, retained only for the optional details section.</param>
@@ -93,7 +108,8 @@ public sealed record ProblemReport
             ["exceptionType"] = SafeExceptionName(exception.GetType()),
         };
         return Create("read Known projects", "machine-store.inconsistent",
-            "Unavailable (in-process window action)", SanitizedStackFor(exception), facts, exception.Message);
+            "Unavailable (in-process window action)", SanitizedStackFor(exception), facts, exception.Message,
+            ApplicationFacts.Current);
     }
 
     /// <summary>Builds a report from an error that escaped the App's UI thread.</summary>
@@ -101,8 +117,9 @@ public sealed record ProblemReport
     public static ProblemReport FromCrash(CrashReport report)
     {
         ArgumentNullException.ThrowIfNull(report);
-        return new ProblemReport(SafeVersionText(report.MotifVersion), ReportPanGlossVersion.Read(),
-            SafeOperatingSystem(report.OperatingSystem), "window action", "unhandled-ui-error",
+        return new ProblemReport(SafeVersionText(report.MotifVersion), report.Facts.PanGlossVersion,
+            string.Join(' ', report.OperatingSystem.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)),
+            "window action", "unhandled-ui-error",
             "1", SanitizedStackFor(report.Exception),
             new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(StringComparer.Ordinal)
             {
@@ -148,8 +165,8 @@ public sealed record ProblemReport
     }
 
     private static ProblemReport Create(string operation, string code, string exitStatus, string stack,
-        IReadOnlyDictionary<string, string> facts, string? localDetails) =>
-        new(MotifProductVersion.CurrentText, ReportPanGlossVersion.Read(), SafeOperatingSystem(RuntimeInformation.OSDescription),
+        IReadOnlyDictionary<string, string> facts, string? localDetails, ApplicationFacts appFacts) =>
+        new(appFacts.MotifVersion, appFacts.PanGlossVersion, appFacts.OperatingSystem,
             operation, SafeCode.IsMatch(code) ? code : "unavailable", exitStatus, stack,
             SafeFactsFrom(facts), localDetails);
 
@@ -225,9 +242,6 @@ public sealed record ProblemReport
     }
 
     private static string SafeVersionText(string value) => SafeVersion.IsMatch(value) ? value : "unknown";
-
-    private static string SafeOperatingSystem(string value) =>
-        string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static void AppendLine(StringBuilder text, string line) => text.Append(line).Append("\r\n");
 

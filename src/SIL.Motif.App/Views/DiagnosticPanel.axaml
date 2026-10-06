@@ -130,7 +130,7 @@
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding ShowsClosestAttempts}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
           <views:CopyableTextBlock Text="{Binding ClosestAttemptsHeading}" FontSize="{DynamicResource Intent.Type.Section}" FontWeight="SemiBold" />
-          <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." />
+          <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="Sorted by how many morphemes they built before the attempt ended." TextWrapping="Wrap" />
         </StackPanel>
         <ItemsControl x:Name="DiagnosticPanelClosestAttemptsItems" ItemsSource="{Binding ClosestAttempts}" AutomationProperties.Name="Attempts that got furthest">
           <ItemsControl.ItemsPanel>
@@ -145,7 +145,8 @@
                   </StackPanel>
                   <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" Separators="True" />
                   <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
-                             IsVisible="{Binding !HasMorphs}" FontSize="{DynamicResource Intent.Type.Small}" />
+                             IsVisible="{Binding !HasMorphs}" FontSize="{DynamicResource Intent.Type.Small}"
+                             TextWrapping="Wrap" />
                   <views:CopyableTextBlock Text="{Binding StopHeadline}" Classes="failed" FontWeight="SemiBold"
                              TextWrapping="Wrap" AutomationProperties.Name="What stopped the attempt" />
                   <views:CopyableTextBlock Text="{Binding StopReason}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Small}"

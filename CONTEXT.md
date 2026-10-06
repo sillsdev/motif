@@ -235,10 +235,16 @@ _Avoid_: query, sample, filter, scope, subset, test set, corpus descriptor
 
 **Default Selection**:
 The Selection a project measures when nobody names another: chosen Texts plus any added words, stored in
-the Motif store with the project and resolved to an exact word list and digest on every run. Chosen in the
-setup dialog once the project's first Baseline exists, and changed from Configure. Each Assessment keeps the list it
-resolved, so changing the Default Selection never rewrites what an earlier run measured.
+the Motif store with the project and resolved to an exact word list and digest on every run. It also records
+the per-word step cap and its time-limit policy. Chosen in the setup dialog once the project's first Baseline
+exists, and changed from Configure. Each Assessment keeps the list and resolved limits it used, so changing
+the Default Selection never rewrites what an earlier run measured.
 _Avoid_: default corpus, word set, profile, preset
+
+**Selection time-limit policy**:
+Whether a Selection's per-word time limit follows Motif's estimate for its step cap or uses an explicit value
+chosen by the person. An unbounded step cap has no time limit and no explicit override.
+_Avoid_: inferred preference, hidden override
 
 **Overview**:
 Where a project stands, read from what the last run stored: the project's counts, Text Coverage, accuracy

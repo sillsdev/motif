@@ -14,6 +14,9 @@ public partial interface ICommandClient
     Task<CommandOutcome<DefaultSelectionResponse>> SetDefaultSelectionAsync(
         SetDefaultSelectionRequest request, CancellationToken cancellationToken);
 
+    Task<CommandOutcome<NamedSelectionProjection>> SetSelectionLimitsAsync(
+        SetSelectionLimitsRequest request, CancellationToken cancellationToken);
+
     /// <summary>Records that first-time setup was skipped for a project.</summary>
     Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
         SkipSetupRequest request, CancellationToken cancellationToken);

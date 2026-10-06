@@ -119,6 +119,25 @@ public static class ClearTipPlacement
         control.GetVisualAncestors().OfType<Visual>().Where(visual => visual.ClipToBounds && visual != window)
             .Aggregate(AreaOf(control, window), (shown, ancestor) => shown.Intersect(AreaOf(ancestor, window)));
 
-    private static Rect AreaOf(Visual visual, TopLevel window) =>
-        new(visual.TranslatePoint(default, window) ?? default, visual.Bounds.Size);
+    internal static Rect AreaOf(Visual visual, TopLevel window)
+    {
+        var transform = visual.TransformToVisual(window);
+        return transform is { } matrix ? TransformBounds(new Rect(visual.Bounds.Size), matrix) : default;
+    }
+
+    internal static Rect TransformBounds(Rect bounds, Matrix transform)
+    {
+        var corners = new[]
+        {
+            transform.Transform(bounds.TopLeft),
+            transform.Transform(bounds.TopRight),
+            transform.Transform(bounds.BottomLeft),
+            transform.Transform(bounds.BottomRight),
+        };
+        var left = corners.Min(point => point.X);
+        var top = corners.Min(point => point.Y);
+        var right = corners.Max(point => point.X);
+        var bottom = corners.Max(point => point.Y);
+        return new Rect(left, top, right - left, bottom - top);
+    }
 }

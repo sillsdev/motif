@@ -2,6 +2,8 @@
 
 If a command or action is refused, first read the message in Motif. It often explains what needs to change, such as saving in FieldWorks, refreshing the Baseline, or removing a change that no longer fits.
 
+You can open the same report preview from [Settings](guide:settings). It is also available from a refusal or a stalled parse.
+
 For a problem report, choose **Report a problem** and review the preview. By default it includes Motif and PanGloss versions, your operating system, the window action, the refusal code, the command's exit status when available, and a stack without file locations. It leaves out project paths and names, words, grammar, and raw parser output. You can choose **Include local details** to add the error text and facts shown under Details; those may contain project or language data. Copying the report or opening the issue form happens only after you review the preview, and the issue form is not submitted automatically.
 
 Send feedback through [GitHub Issues](https://github.com/sillsdev/motif/issues). If you cannot use GitHub, copy the reviewed report and email it to [john_lambert@sil.org](mailto:john_lambert@sil.org). Review any local details before sharing them.

@@ -41,16 +41,16 @@
     <Setter Property="MinHeight" Value="{DynamicResource Component.FilterChip.CompactHeight}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
   </Style>
-  <Style Selector="Button.filterChip.compact StackPanel.filterChipRow">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  <Style Selector="Button.filterChip.compact Grid.filterChipRow">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
   <Style Selector="Button.filterChip.active">
     <Setter Property="Background" Value="{DynamicResource Intent.Primary.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Primary}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Primary}" />
   </Style>
-  <Style Selector="StackPanel.filterChipRow">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Snug}" />
+  <Style Selector="Grid.filterChipRow">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Snug}" />
   </Style>
   <Style Selector="Button.filterChip TextBlock.chipCount">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />

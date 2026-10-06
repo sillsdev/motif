@@ -38,7 +38,6 @@ public sealed class TooltipPlacementTests
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
-        ["Parse stopped words again"] = "the Matrix fills every side of the rerun control, so its tip covers one nearby cell or action",
     };
 
     [Fact]

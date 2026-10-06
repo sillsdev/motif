@@ -21,6 +21,7 @@ Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) keep
 For details about individual steps, see the [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review changes](guide:review-changes) guides.
 
 For keyboard navigation and shortcuts, see [Keyboard shortcuts](guide:keyboard-shortcuts).
+For window zoom, theme, project parsing limits and Help, see [Settings](guide:settings).
 
 You can also make an **AI Handoff** folder with project context and a question for a chat model. Review the data-sensitivity notice before sharing it: the folder can contain real grammar, lexicon, and text data.
 

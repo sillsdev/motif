@@ -35,6 +35,9 @@ public sealed class WritingSystemText
     public static readonly AttachedProperty<bool> WindowTextProperty =
         AvaloniaProperty.RegisterAttached<WritingSystemText, Control, bool>("WindowText");
 
+    public static readonly AttachedProperty<bool> SuppressMissingFontNoticeProperty =
+        AvaloniaProperty.RegisterAttached<WritingSystemText, Control, bool>("SuppressMissingFontNotice");
+
     static WritingSystemText()
     {
         ResolverProperty.Changed.AddClassHandler<Control>((control, _) => Apply(control));
@@ -43,6 +46,7 @@ public sealed class WritingSystemText
         FlowIdProperty.Changed.AddClassHandler<Control>((control, _) => Apply(control));
         FlowEnabledProperty.Changed.AddClassHandler<Control>((control, _) => Apply(control));
         WindowTextProperty.Changed.AddClassHandler<Control>((control, _) => Apply(control));
+        SuppressMissingFontNoticeProperty.Changed.AddClassHandler<Control>((control, _) => Apply(control));
         TextBlock.TextProperty.Changed.AddClassHandler<TextBlock>((control, _) => CheckMissingFontNotice(control));
         TextBox.TextProperty.Changed.AddClassHandler<TextBox>((control, _) => CheckMissingFontNotice(control));
         Visual.IsVisibleProperty.Changed.AddClassHandler<Control>((control, _) => RefreshVisibleControls(control));
@@ -75,6 +79,8 @@ public sealed class WritingSystemText
     public static void SetFlowId(Control control, string? value) => control.SetValue(FlowIdProperty, value);
     public static void SetFlowEnabled(Control control, bool value) => control.SetValue(FlowEnabledProperty, value);
     public static void SetWindowText(Control control, bool value) => control.SetValue(WindowTextProperty, value);
+    public static void SetSuppressMissingFontNotice(Control control, bool value) =>
+        control.SetValue(SuppressMissingFontNoticeProperty, value);
 
     public static WritingSystemTextStyleResolver? GetResolver(Control control) => control.GetValue(ResolverProperty);
     public static string? GetId(Control control) => control.GetValue(IdProperty);
@@ -82,6 +88,8 @@ public sealed class WritingSystemText
     public static string? GetFlowId(Control control) => control.GetValue(FlowIdProperty);
     public static bool GetFlowEnabled(Control control) => control.GetValue(FlowEnabledProperty);
     public static bool GetWindowText(Control control) => control.GetValue(WindowTextProperty);
+    public static bool GetSuppressMissingFontNotice(Control control) =>
+        control.GetValue(SuppressMissingFontNoticeProperty);
 
     private static void Apply(Control control)
     {
@@ -102,7 +110,7 @@ public sealed class WritingSystemText
         }
 
         if (GetStyleName(control) is { } styleName)
-            resolver.Apply(control, GetId(control), styleName);
+            resolver.Apply(control, GetId(control), styleName, !GetSuppressMissingFontNotice(control));
         else
         {
             control.ClearValue(TextElement.FontFamilyProperty);
@@ -123,7 +131,8 @@ public sealed class WritingSystemText
 
     private static void CheckMissingFontNotice(Control control)
     {
-        if (GetStyleName(control) is { } styleName && GetResolver(control) is { } resolver)
+        if (!GetSuppressMissingFontNotice(control) &&
+            GetStyleName(control) is { } styleName && GetResolver(control) is { } resolver)
             resolver.RegisterMissingFontNotice(control, GetId(control), styleName, control switch
             {
                 TextBlock textBlock => textBlock.Text,

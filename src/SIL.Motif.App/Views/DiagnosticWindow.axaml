@@ -7,6 +7,8 @@
         MinWidth="{DynamicResource Component.Shell.DiagnosticMinWidth}"
         MinHeight="{DynamicResource Component.Shell.DiagnosticMinHeight}">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <ContentControl x:Name="PanelHost" />
+    <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
+      <ContentControl x:Name="PanelHost" />
+    </LayoutTransformControl>
   </ScrollViewer>
 </Window>

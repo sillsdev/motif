@@ -82,7 +82,10 @@ public static class ExpanderChevronAlignment
                 .FirstOrDefault(icon => icon.Name == "PART_PathIcon");
             if (chevron is not null)
             {
+                if (chevron.Parent is Grid headerGrid && headerGrid.ColumnDefinitions.Count > 1)
+                    Grid.SetColumn(chevron, headerGrid.ColumnDefinitions.Count - 1);
                 chevron.SetCurrentValue(Layoutable.MarginProperty, margin);
+                chevron.SetCurrentValue(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Left);
                 StopWaitingForLayout(expander);
                 return;
             }

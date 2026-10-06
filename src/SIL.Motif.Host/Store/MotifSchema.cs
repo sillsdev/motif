@@ -327,7 +327,8 @@ public static class MotifSchema
         "NamedSelections" =>
         [C("SelectionName", "TEXT", false, 1), C("TextIdsJson", "TEXT", true), C("AddedWordsJson", "TEXT", true),
             C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true),
-            C("PerWordLimitMs", "INTEGER"), C("PerWordStepLimit", "INTEGER")],
+            C("TimeLimitMode", "TEXT", true), C("ExplicitPerWordLimitMs", "INTEGER"),
+            C("PerWordStepLimit", "INTEGER"), C("Revision", "INTEGER", true)],
         "DefaultSelection" => [C("Id", "INTEGER", false, 1), C("SelectionName", "TEXT", true)],
         "ParserRefusals" => [C("BaselineToken", "TEXT", false, 1), C("RefusalJson", "TEXT", true)],
         "GrammarChecks" =>
@@ -571,8 +572,10 @@ public static class MotifSchema
             AddedWordsJson TEXT NOT NULL,
             CreatedUtc TEXT NOT NULL,
             UpdatedUtc TEXT NOT NULL,
-            PerWordLimitMs INTEGER NULL CHECK (PerWordLimitMs IS NULL OR PerWordLimitMs > 0),
-            PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0)
+            TimeLimitMode TEXT NOT NULL CHECK (TimeLimitMode IN ('Estimated', 'Explicit')),
+            ExplicitPerWordLimitMs INTEGER NULL CHECK (ExplicitPerWordLimitMs IS NULL OR ExplicitPerWordLimitMs > 0),
+            PerWordStepLimit INTEGER NULL CHECK (PerWordStepLimit IS NULL OR PerWordStepLimit > 0),
+            Revision INTEGER NOT NULL CHECK (Revision > 0)
         );
 
         CREATE TABLE DefaultSelection (

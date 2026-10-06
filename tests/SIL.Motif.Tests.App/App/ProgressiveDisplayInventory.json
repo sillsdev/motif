@@ -266,9 +266,32 @@
     "control": "ItemsControl"
   },
   {
-    "view": "KeyboardShortcutsFlyoutView",
-    "name": "KeyboardShortcutsFlyoutViewShortcutsItems",
-    "source": "app:KeyboardShortcutRegistry.Entries",
+    "view": "SettingsPopupView",
+    "name": "SettingsAnalysisWritingSystemsItems",
+    "source": "AnalysisWritingSystems",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "This is a configured project writing-system list, not an unbounded result feed."
+  },
+  {
+    "view": "SettingsPopupView",
+    "name": "SettingsVernacularWritingSystemsItems",
+    "source": "VernacularWritingSystems",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "This is a configured project writing-system list, not an unbounded result feed."
+  },
+  {
+    "view": "SettingsPopupView",
+    "name": "SettingsGroups",
+    "source": "GroupOptions",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "SettingsPopupView",
+    "name": "SettingsPopupViewShortcutsItems",
+    "source": "ShortcutEntries",
     "mode": "inline",
     "control": "ItemsControl"
   },

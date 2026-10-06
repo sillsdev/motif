@@ -50,27 +50,23 @@
                     Classes.uncertain="{Binding IsUncertain}">
               <StackPanel>
                 <Border Classes="reviewGroupHeader">
-                  <DockPanel LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
-                      <HyperlinkButton Classes="reviewLink" Content="Check again"
-                                       Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
-                                       IsVisible="{Binding IsNoLongerFits}"
-                                       AutomationProperties.Name="Check all changes again against the refreshed project" />
-                      <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
-                              IsVisible="{Binding IsNoLongerFits}"
-                              AutomationProperties.Name="{Binding UndoAllAutomationName}" />
-                      <HyperlinkButton Classes="reviewLink" Content="{Binding UndoAllText}"
-                                       Command="{Binding UndoAllCommand}" IsVisible="{Binding !IsNoLongerFits}"
-                                       AutomationProperties.Name="{Binding UndoAllAutomationName}" />
-                    </StackPanel>
-                    <WrapPanel VerticalAlignment="Center">
-                      <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" />
-                      <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding WordCountText}" />
-                      <views:CopyableTextBlock Classes="reviewGroupNote reviewGap" Text="{Binding Note}"
-                                               IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
-                    </WrapPanel>
-                  </DockPanel>
+                  <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                             LineSpacing="{DynamicResource Intent.Space.Compact}" VerticalAlignment="Center">
+                    <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding WordCountText}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="reviewGroupNote reviewGap" Text="{Binding Note}"
+                                             IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                    <HyperlinkButton Classes="reviewLink" Content="Check again"
+                                     Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
+                                     IsVisible="{Binding IsNoLongerFits}"
+                                     AutomationProperties.Name="Check all changes again against the refreshed project" />
+                    <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
+                            IsVisible="{Binding IsNoLongerFits}"
+                            AutomationProperties.Name="{Binding UndoAllAutomationName}" />
+                    <HyperlinkButton Classes="reviewLink" Content="{Binding UndoAllText}"
+                                     Command="{Binding UndoAllCommand}" IsVisible="{Binding !IsNoLongerFits}"
+                                     AutomationProperties.Name="{Binding UndoAllAutomationName}" />
+                  </WrapPanel>
                 </Border>
                 <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Review}" />
               </StackPanel>

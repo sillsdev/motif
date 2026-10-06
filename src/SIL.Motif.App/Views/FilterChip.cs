@@ -73,12 +73,23 @@ public sealed class FilterChip : Button
     private void Rebuild()
     {
         Classes.Set("active", IsActive);
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "filterChipRow" } };
-        if (Mark is { } mark && MarkChip.GlyphOf(mark) is { } glyph) row.Children.Add(glyph);
-        row.Children.Add(new TextBlock { Text = Label });
+        var row = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            Classes = { "filterChipRow" },
+        };
+        if (Mark is { } mark && MarkChip.GlyphOf(mark) is { } glyph)
+        {
+            row.Children.Add(glyph);
+            Grid.SetColumn(glyph, 0);
+        }
+        var label = new TextBlock { Text = Label, TextTrimming = TextTrimming.CharacterEllipsis };
+        row.Children.Add(label);
+        Grid.SetColumn(label, 1);
         var count = new TextBlock { Text = Count.ToString("N0"), FontWeight = FontWeight.SemiBold };
         count.Classes.Add("chipCount");
         row.Children.Add(count);
+        Grid.SetColumn(count, 2);
         Content = row;
         AutomationProperties.SetName(this, $"Show {Label}");
     }

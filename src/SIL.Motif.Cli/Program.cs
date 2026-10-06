@@ -922,7 +922,8 @@ try
 
         case "selection":
             if (positionals.Count != 1 || !flags.TryGetValue("project", out var selectionProject))
-                return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
+                return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
+                    " OR " + UsageLineFor("selection set-limits"), asJson);
             switch (positionals[0])
             {
                 case "show":
@@ -936,22 +937,23 @@ try
                     var addedWords = flags.TryGetValue("add-words", out var addedWordsRaw)
                         ? addedWordsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         : Array.Empty<string>();
-                    var timeLimitMs = 1000;
-                    if (flags.TryGetValue("time-limit-ms", out var selectionTimeLimitRaw) &&
-                        (!int.TryParse(selectionTimeLimitRaw, NumberStyles.None, CultureInfo.InvariantCulture,
-                            out timeLimitMs) || timeLimitMs <= 0))
+                    if (!TryReadSelectionLimits(flags, out var limits))
                         return Usage(UsageLineFor("selection set-default"), asJson);
-                    StepCap? stepLimit = null;
-                    if (flags.TryGetValue("step-cap", out var selectionStepLimitRaw))
-                    {
-                        try { stepLimit = StepCap.Parse(selectionStepLimitRaw); }
-                        catch (FormatException) { return Usage(UsageLineFor("selection set-default"), asJson); }
-                    }
                     result = RenderCommand(SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
-                        selectionProject, selectionName, selectionTexts, addedWords, timeLimitMs, stepLimit)));
+                        selectionProject, selectionName, selectionTexts, addedWords, limits,
+                        flags.GetValueOrDefault("expected-revision"))));
+                    break;
+                case "set-limits":
+                    if (!flags.TryGetValue("name", out var limitSelectionName) ||
+                        !flags.TryGetValue("expected-revision", out var expectedRevision) ||
+                        !TryReadSelectionLimits(flags, out var limitsForSelection))
+                        return Usage(UsageLineFor("selection set-limits"), asJson);
+                    result = RenderCommand(SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
+                        selectionProject, limitSelectionName, expectedRevision, limitsForSelection)));
                     break;
                 default:
-                    return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default"), asJson);
+                    return Usage(UsageLineFor("selection show") + " OR " + UsageLineFor("selection set-default") +
+                        " OR " + UsageLineFor("selection set-limits"), asJson);
             }
             break;
 
@@ -1232,6 +1234,42 @@ static bool TryParseGuidList(string? raw, out List<Guid> guids)
         guids.Add(guid);
     }
     return true;
+}
+
+static bool TryReadSelectionLimits(IReadOnlyDictionary<string, string> flags, out SelectionParsingLimits limits)
+{
+    limits = new SelectionParsingLimits(StepCap.Default, SelectionTimeLimitMode.Estimated, null);
+    var timeMode = SelectionTimeLimitMode.Estimated;
+    if (flags.TryGetValue("time-mode", out var mode))
+    {
+        if (StringComparer.OrdinalIgnoreCase.Equals(mode, "estimated")) timeMode = SelectionTimeLimitMode.Estimated;
+        else if (StringComparer.OrdinalIgnoreCase.Equals(mode, "explicit")) timeMode = SelectionTimeLimitMode.Explicit;
+        else return false;
+    }
+
+    int? explicitTime = null;
+    if (flags.TryGetValue("time-limit-ms", out var timeText))
+    {
+        if (!int.TryParse(timeText, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
+            return false;
+        explicitTime = parsed;
+    }
+    if ((timeMode == SelectionTimeLimitMode.Explicit) != (explicitTime is not null)) return false;
+
+    var stepLimit = StepCap.Default;
+    if (flags.TryGetValue("step-cap", out var stepText))
+    {
+        if (StringComparer.OrdinalIgnoreCase.Equals(stepText, "none")) stepLimit = StepCap.Unbounded;
+        else
+        {
+            try { stepLimit = StepCap.Parse(stepText); }
+            catch (FormatException) { return false; }
+        }
+    }
+
+    if (stepLimit.IsUnbounded && timeMode != SelectionTimeLimitMode.Estimated) return false;
+    limits = new SelectionParsingLimits(stepLimit, timeMode, explicitTime);
+    return limits.ValidationError() is null;
 }
 
 static string JobsUsage() =>

@@ -9,7 +9,7 @@
   <Grid ColumnDefinitions="*"
         Margin="{DynamicResource Component.TextsPage.ReaderInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+      <Grid x:Name="ReaderToolbar" ColumnDefinitions="Auto,*,*,Auto,Auto" RowDefinitions="Auto,Auto">
         <ComboBox x:Name="ResultsInTextPanelTextsItems" Grid.Column="0" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                   IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
                   MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
@@ -24,7 +24,7 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <TextBox x:Name="ReaderWordSearch" Grid.Column="1" Text="{Binding InText.SearchText}"
-                 PlaceholderText="Search words..." Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
+                 PlaceholderText="Search words..." MaxWidth="{DynamicResource Component.TextsPage.ReaderSearchWidth}"
                  IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="Search words in Analyze texts" />
         <Button Grid.Column="4" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
@@ -384,6 +384,7 @@
                                     AutomationProperties.Name="Close the word card" />
                             <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" VerticalAlignment="Center"
                                                      Text="Esc closes · ← → next word"
+                                                     TextWrapping="Wrap"
                                                      Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
                             <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
                                              NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"

@@ -12,13 +12,17 @@ namespace SIL.Motif.App.Services;
 public sealed record CrashReport(
     Exception Exception, DateTimeOffset OccurredAt, string MotifVersion, string OperatingSystem, string Runtime)
 {
+    /// <summary>The installation facts captured with this report.</summary>
+    public ApplicationFacts Facts { get; init; } = ApplicationFacts.Current;
+
     /// <summary>A report of <paramref name="exception"/> from this process, timed by <paramref name="clock"/>.</summary>
     public static CrashReport For(Exception exception, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(clock);
-        return new CrashReport(exception, clock.GetUtcNow(), MotifProductVersion.CurrentText,
-            RuntimeInformation.OSDescription, RuntimeInformation.FrameworkDescription);
+        var facts = ApplicationFacts.Current;
+        return new CrashReport(exception, clock.GetUtcNow(), facts.MotifVersion,
+            facts.OperatingSystem, RuntimeInformation.FrameworkDescription) { Facts = facts };
     }
 
     /// <summary>The error message shown locally in the error window.</summary>

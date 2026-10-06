@@ -20,6 +20,11 @@ async function htmlPages(directory = outputRoot) {
 	return pages;
 }
 
+function escapeHtmlText(value) {
+	return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
 test('built pages render the beta banner above every Starlight header', async () => {
 	await execFileAsync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'build'], {
 		cwd: siteRoot,
@@ -100,7 +105,7 @@ test('the home page renders the approved beta hero, audience situations, FAQ, an
 	assert.notEqual(featureGrid, '', 'the home page renders its exported Guide features');
 	for (const feature of guideFeatures) {
 		assert.ok(featureGrid.includes(feature.title), `the home feature grid includes ${feature.title}`);
-		assert.ok(featureGrid.includes(feature.description), `the ${feature.title} card uses its exported description`);
+		assert.ok(featureGrid.includes(escapeHtmlText(feature.description)), `the ${feature.title} card uses its exported description`);
 	}
 });
 

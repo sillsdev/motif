@@ -9,6 +9,7 @@
         Height="{DynamicResource Component.Shell.CrashHeight}"
         MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
         MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
   <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Classes="muted" Text="{x:Static vm:CrashReportViewModel.ThankYou}" TextWrapping="Wrap" />
@@ -36,4 +37,5 @@
       </StackPanel>
     </ScrollViewer>
   </DockPanel>
+  </LayoutTransformControl>
 </Window>

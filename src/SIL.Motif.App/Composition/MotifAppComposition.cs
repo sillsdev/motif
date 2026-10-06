@@ -29,8 +29,7 @@ namespace SIL.Motif.App.Composition;
 /// Whether the window restores and saves its size and place in the person's settings; off unless installed,
 /// so a composed test window never writes the person's settings.
 /// </param>
-/// <param name="TraceViewPreferences">Where the person’s Plain or Expert trace choice is remembered.</param>
-/// <param name="TechDemoNoticePreferences">Where the installed window remembers acknowledgment of the tech demo notice.</param>
+/// <param name="UserPreferencesStore">The shared per-user App preferences, or process-local defaults when omitted.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -43,8 +42,7 @@ public sealed record MotifAppOptions(
     IDiagnosticWindowDialogs? DiagnosticDialogs = null,
     CrashWindowServices? CrashWindow = null,
     bool RememberBounds = false,
-    ITechDemoNoticePreferences? TechDemoNoticePreferences = null,
-    ITraceViewPreferences? TraceViewPreferences = null)
+    IUserPreferencesStore? UserPreferencesStore = null)
 {
     /// <summary>
     /// The installed window's inputs: the root, parser and runner the command line would use
@@ -55,8 +53,7 @@ public sealed record MotifAppOptions(
         var commands = CommandClientOptions.ForInstallation();
         return new MotifAppOptions(commands.ManagedRoot, commands.ParserPath, commands.RunnerLauncher,
             TimeProvider.System, RememberBounds: true,
-            TechDemoNoticePreferences: FileTechDemoNoticePreferences.ForInstallation(),
-            TraceViewPreferences: FileTraceViewPreferences.ForInstallation());
+            UserPreferencesStore: new FileUserPreferencesStore(FileUserPreferencesStore.DefaultPath));
     }
 }
 
@@ -77,16 +74,19 @@ public static class MotifAppComposition
         ArgumentNullException.ThrowIfNull(options.RunnerLauncher);
         ArgumentNullException.ThrowIfNull(options.TimeProvider);
 
-        var window = new MainWindow(options.RememberBounds);
+        var preferences = options.UserPreferencesStore ?? new MemoryUserPreferencesStore();
+        var applicationFacts = ApplicationFacts.ForApp(options.ManagedRoot, options.ParserPath);
+        var window = new MainWindow(options.RememberBounds, uriLauncher: null,
+            preferencesStore: preferences, applicationFacts: applicationFacts);
         var nativePickers = new AvaloniaStoragePickers(window);
         var diagnosticDialogs = options.DiagnosticDialogs ?? nativePickers;
-        var techDemoNotice = options.TechDemoNoticePreferences is { } preferences
-            ? new TechDemoNoticeViewModel(preferences, new AvaloniaLauncher(window))
-            : null;
+        var techDemoNotice = new TechDemoNoticeViewModel(
+            new TechDemoNoticePreferencesAdapter(preferences), new AvaloniaLauncher(window));
         var commandClient = new CommandClient(new CommandClientOptions(
             options.ManagedRoot, options.ParserPath, options.RunnerLauncher, startGate, options.TimeProvider));
         var selection = new SelectionViewModel(commandClient);
-        var assess = new AssessViewModel(commandClient, selection, options.TimeProvider, options.TraceViewPreferences);
+        var assess = new AssessViewModel(commandClient, selection, options.TimeProvider,
+            new TraceViewPreferencesAdapter(preferences));
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(commandClient, options.ProjectPicker ?? nativePickers, options.ManagedRoot),
             new BaselineViewModel(commandClient, options.TimeProvider),

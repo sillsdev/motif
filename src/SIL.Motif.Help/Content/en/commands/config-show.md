@@ -1,10 +1,10 @@
 # Show project settings
 
-`config show` reads the Assessment scopes and related settings stored beside one FieldWorks project.
+`config show` reads the named Assessment scopes and related settings stored beside one FieldWorks project.
 
 ## When to use it
 
-Use it before measuring when you want to confirm which Assessor, Assessment kinds, or resource limits a named scope selects. A scope provides context for an Assessment; it does not gate whether two measurements can be compared.
+Use it before measuring when you want to confirm which Assessor, Assessment kinds, or resource limits a named scope selects. A scope provides context for an Assessment; it does not gate whether two measurements can be compared. The Default Selection's parsing limits are saved separately; use [selection show](cmd:selection%20show) to read them.
 
 ## Example
 
@@ -20,3 +20,4 @@ The command prints the saved project settings, or their structured form when `--
 
 - [Measure a Selection](cmd:assess) uses the configured scope when one is named.
 - [Show the Default Selection](cmd:selection%20show) reads the project's usual word list.
+- [Set Selection limits](cmd:selection%20set-limits) changes its step cap or time policy.

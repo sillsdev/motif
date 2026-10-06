@@ -8,6 +8,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Tests.TestFixtures;
@@ -229,7 +230,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 new ReadDefaultSelectionRequest(project.FwDataPath), CancellationToken.None);
             Assert.True(stored.Succeeded, stored.Refusal?.Message);
             Assert.Equal(selectedId, Assert.Single(stored.Value!.Selection!.TextIds));
-            Assert.Equal(1000, stored.Value.Selection.PerWordLimitMs);
+            AssertEstimatedLimit(stored.Value.Selection, 3100);
             Assert.Equal(3100, stored.Value.Selection.PerWordStepLimit!.Steps);
 
             SetupWalkthroughActions.OpenConfigure(walkthrough);
@@ -251,6 +252,16 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 WalkthroughSteps.Remaining(deadline), "using the saved Selection did not close setup");
             return;
         }, WalkthroughSteps.Remaining(deadline));
+    }
+
+    private static void AssertEstimatedLimit(NamedSelectionProjection selection, long steps)
+    {
+        Assert.Equal(SelectionTimeLimitMode.Estimated, selection.Limits.TimeMode);
+        Assert.Null(selection.Limits.ExplicitPerWordLimitMs);
+        Assert.Null(selection.PerWordLimitMs);
+        Assert.Equal(steps, selection.PerWordStepLimit.Steps);
+        Assert.Equal(1000L, StepLimitEstimator.Calculate(selection.PerWordStepLimit,
+            StepLimitEstimator.TypicalMachineRate)!.PerWordTimeLimitMs);
     }
 
     [Fact]

@@ -10,6 +10,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using ShapePath = Avalonia.Controls.Shapes.Path;
 
 namespace SIL.Motif.Tests.App.ControlContracts;
 
@@ -32,6 +33,7 @@ internal enum StatePart
     Face,
     Ring,
     Text,
+    Glyph,
 }
 
 /// <summary>
@@ -337,6 +339,36 @@ internal static class ComponentStateContractCases
             () => NextStep("open"), StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
         yield return new("StackPanel.wordRowNext HyperlinkButton:disabled", "a next step that cannot open, on an opened row",
             () => NextStep("open"), StateStimulus.Disabled, StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextFaint");
+
+        foreach (var item in SettingsStates()) yield return item;
+    }
+
+    private static IEnumerable<ComponentStateCase> SettingsStates()
+    {
+        const string gearHover = "Button.settingsGear:pointerover";
+        yield return new(gearHover, "hover", () => SettingsGear(), StateStimulus.Pointer, StatePart.Self,
+            Button.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new(gearHover + " Path.settingsGearGlyph", "hover", () => SettingsGear(targetGlyph: true),
+            StateStimulus.Pointer, StatePart.Glyph, Shape.StrokeProperty, "Intent.Text");
+        yield return new("Button.settingsGear.open", "open", () => SettingsGear(open: true), StateStimulus.None,
+            StatePart.Self, Button.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("Button.settingsGear.open Path.settingsGearGlyph", "open", () => SettingsGear(open: true),
+            StateStimulus.None, StatePart.Glyph, Shape.StrokeProperty, "Intent.Accent");
+        yield return new("Button.settingsSegment.selected", "selected",
+            () => Alone(new Button { Content = "Dark", Classes = { "settingsSegment", "selected" } }),
+            StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("ListBox.settingsRailList ListBoxItem:pointerover", "hover",
+            () => SettingsRail(), StateStimulus.Pointer, StatePart.Self, ListBoxItem.BackgroundProperty,
+            "Intent.Surface.Hover");
+        yield return new("ListBox.settingsRailList ListBoxItem:selected", "selected",
+            () => SettingsRail(selected: true), StateStimulus.None, StatePart.Self, ListBoxItem.BackgroundProperty,
+            "Intent.Selected.Fill");
+        yield return new("ListBox.settingsRailList ListBoxItem:focus-visible", "keyboard focus",
+            () => SettingsRail(), StateStimulus.KeyboardFocus, StatePart.Self, ListBoxItem.BorderBrushProperty,
+            "Intent.Focus");
+        yield return new("ListBox.settingsRailList ListBoxItem:focus-visible", "keyboard focus",
+            () => SettingsRail(), StateStimulus.KeyboardFocus, StatePart.Self, ListBoxItem.BorderThicknessProperty,
+            "Intent.Stroke.Focus");
     }
 
     // A press lands under the pointer, so each face style is reached once by hovering and once by pressing.
@@ -350,6 +382,8 @@ internal static class ComponentStateContractCases
         StatePart.Face => target.GetVisualDescendants().OfType<ContentPresenter>().FirstOrDefault(face => face.Name == "PART_ContentPresenter"),
         StatePart.Ring => RingAround(target),
         StatePart.Text => target is TextBlock ? target : target.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(),
+        StatePart.Glyph => target is ShapePath ? target : target.GetVisualDescendants().OfType<ShapePath>()
+            .FirstOrDefault(path => path.Classes.Contains("settingsGearGlyph")),
         _ => null,
     };
 
@@ -409,6 +443,26 @@ internal static class ComponentStateContractCases
         var button = new Button { Content = "Go" };
         button.Classes.AddRange(classes);
         return button;
+    }
+
+    private static (Control, Control) SettingsGear(bool open = false, bool targetGlyph = false)
+    {
+        var glyph = new ShapePath
+        {
+            Classes = { "settingsGearGlyph" },
+            Data = Geometry.Parse("M0,0 L20,0 L20,20 L0,20 Z"),
+        };
+        var button = new Button { Classes = { "settingsGear" }, Content = glyph };
+        if (open) button.Classes.Add("open");
+        return (button, targetGlyph ? glyph : button);
+    }
+
+    private static (Control, Control) SettingsRail(bool selected = false)
+    {
+        var list = new ListBox { Classes = { "settingsRailList" }, Width = 180, Height = 80 };
+        list.Items.Add(new ListBoxItem { Content = "Display" });
+        if (selected) list.SelectedIndex = 0;
+        return (list, (ListBoxItem)list.Items[0]!);
     }
 
     private static Border Morpheme() =>
@@ -540,7 +594,10 @@ internal static class TooltipOwners
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
             control => control is MenuItem),
         new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
-            control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is null),
+            control => MatrixCellOrTipText(control, compact: false)),
+        new("Matrix column heading", "Views/ComparePanel.axaml", "{Binding Label}", TooltipScene.Matrix,
+            control => control is TextBlock { DataContext: CompareColumnViewModel } &&
+                control.FindAncestorOfType<ComparePanel>() is not null),
         new("Parse stopped words again", "Views/ComparePanel.axaml", "Parse the stopped and unparsed words again",
             TooltipScene.Matrix,
             control => control is SplitButton && Name(control) == "Parse the stopped and unparsed words again"),
@@ -585,7 +642,7 @@ internal static class TooltipOwners
             control => control is HyperlinkButton && control.FindAncestorOfType<WordRow>() is not null &&
                 control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Classes.Contains("wordRowNext"))),
         new("compact Matrix cell", "Views/MiniMatrix.axaml", "{Binding AccessibleName}", TooltipScene.Matrix,
-            control => control is MatrixCell && control.FindAncestorOfType<MiniMatrix>() is not null)
+            control => MatrixCellOrTipText(control, compact: true))
         {
             Pending = "the sample has one parse, so What changed draws no before-and-after Matrix",
         },
@@ -745,6 +802,14 @@ internal static class TooltipOwners
         new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,
             control => control is Button && control.Classes.Contains("handoffQuestion")),
     ];
+
+    private static bool MatrixCellOrTipText(Control control, bool compact)
+    {
+        if (control is not MatrixCell && control is not TextBlock) return false;
+        var cell = control as MatrixCell ?? control.FindAncestorOfType<MatrixCell>();
+        if (cell is null || (cell.FindAncestorOfType<MiniMatrix>() is not null) != compact) return false;
+        return control is MatrixCell || ToolTip.GetTip(control) is not null;
+    }
 
     private static string? Name(Control control) => Avalonia.Automation.AutomationProperties.GetName(control);
 }

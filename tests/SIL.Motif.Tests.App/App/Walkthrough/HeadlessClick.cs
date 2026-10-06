@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -24,6 +25,8 @@ internal static class HeadlessClick
         var aimed = Aim(window, control, accessibleName);
         var pressed = false;
         var clicked = false;
+        var toggle = control as ToggleButton;
+        var initialToggleState = toggle?.IsChecked;
         Visual? pressedSource = null;
         void OnPressed(object? sender, PointerPressedEventArgs e) => pressed = true;
         void OnWindowPressed(object? sender, PointerPressedEventArgs e) => pressedSource = e.Source as Visual;
@@ -45,7 +48,8 @@ internal static class HeadlessClick
         }
         Dispatcher.UIThread.RunJobs();
 
-        if (pressed && (clicked || control is not Button)) return;
+        var toggled = toggle is not null && toggle.IsChecked != initialToggleState;
+        if (pressed && (clicked || toggled || control is not Button && toggle is null)) return;
         var now = CentreOf(window, control);
         var why = pressed ? "the press reached it, but it moved or changed before the release clicked it."
             : now == aimed ? "something covered it, such as an open popup, and took the press."
@@ -57,10 +61,23 @@ internal static class HeadlessClick
                 new Rect(origin, item.Control.Bounds.Size).Contains(aimed))
             .Select(item => $"{item.Control.GetType().Name} name='{item.Control.Name}' " +
                 $"automation='{Avalonia.Automation.AutomationProperties.GetName(item.Control)}' " +
-                $"content='{(item.Control as Button)?.Content}'")
+                $"content='{(item.Control as Button)?.Content}' " +
+                $"bounds={new Rect(item.Origin!.Value, item.Control.Bounds.Size)} " +
+                $"topLevel={TopLevel.GetTopLevel(item.Control)?.GetType().Name}")
             .TakeLast(12);
+        var presenter = control.FindAncestorOfType<FlyoutPresenter>();
+        var presenterOrigin = presenter?.TranslatePoint(new Point(), window);
+        var settingsButton = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(button =>
+            Avalonia.Automation.AutomationProperties.GetName(button) == "Settings");
+        var settingsOrigin = settingsButton?.TranslatePoint(new Point(), window);
         Assert.Fail($"The click aimed at {aimed} missed '{accessibleName}', which is now at " +
             $"{now?.ToString() ?? "nowhere in the window"}: {why} " +
+            $"Target bounds: {control.Bounds}; input root: {window.GetType().Name}; " +
+            $"target top level: {TopLevel.GetTopLevel(control)?.GetType().Name ?? "none"}; " +
+            $"window position: {(window is Window owner ? owner.Position.ToString() : "unavailable")}; " +
+            $"window size: {window.ClientSize}. " +
+            $"flyout presenter: {(presenterOrigin is { } presenterPoint ? new Rect(presenterPoint, presenter!.Bounds.Size).ToString() : "none")}; " +
+            $"Settings button origin: {settingsOrigin?.ToString() ?? "none"}. " +
             $"Pointer press source: {pressedSource?.GetType().Name ?? "none"}. " +
             $"Controls over the point: {string.Join("; ", overlays)}. Wait for whatever is still loading before clicking.");
     }

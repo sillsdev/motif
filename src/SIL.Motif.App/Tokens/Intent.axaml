@@ -75,6 +75,7 @@
     Intent.Change.Text            readable text for staged analysis work
     Intent.Change.Fill            the background of staged analysis work
     Intent.Tooltip.Text           a tooltip's words, whatever control owns the tooltip, on Semi's tooltip fill
+    Intent.Tooltip.Background     the tooltip surface behind its words
 
   Marks: each kind answers one question, and only a meaning fills or edges a box.
   Parser outcome, what PanGloss built, shown as a sign and a word in coloured text:
@@ -252,6 +253,7 @@
       <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="AdornerLayerBorderBrush" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey0}" />
+      <SolidColorBrush x:Key="Intent.Tooltip.Background" Color="{StaticResource Primitive.Color.Grey900}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue700}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue50}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue500}" />
@@ -342,6 +344,7 @@
       <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="AdornerLayerBorderBrush" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Tooltip.Text" Color="{StaticResource Primitive.Color.Grey900}" />
+      <SolidColorBrush x:Key="Intent.Tooltip.Background" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Accent" Color="{StaticResource Primitive.Color.Blue200}" />
       <SolidColorBrush x:Key="Intent.Selected.Fill" Color="{StaticResource Primitive.Color.Blue900}" />
       <SolidColorBrush x:Key="Intent.Emphasis.Fill" Color="{StaticResource Primitive.Color.Blue600}" />

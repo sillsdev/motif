@@ -215,7 +215,15 @@ public static class CliVerbCatalog
             new[]
             {
                 "selection set-default --project <fwdata> --name <name> [--texts <guid,guid>] " +
-                "[--add-words <word,word>] [--time-limit-ms <ms>] [--step-cap <attempts|unbounded>] [--json]",
+                "[--add-words <word,word>] [--time-mode estimated|explicit] [--time-limit-ms <ms>] " +
+                "[--step-cap <steps|none>] [--expected-revision <revision>] [--json]",
+            }),
+        new CliVerbDescriptor(
+            "Project", "selection", "selection set-limits",
+            new[]
+            {
+                "selection set-limits --project <fwdata> --name <name> --expected-revision <revision> " +
+                "[--time-mode estimated|explicit] [--time-limit-ms <ms>] [--step-cap <steps|none>] [--json]",
             }),
         new CliVerbDescriptor(
             "Project", "texts", "texts list",

@@ -116,6 +116,7 @@ public static class CommandCatalog
         // Saved default Selection
         new CommandDescriptor("selection show", typeof(ReadDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
         new CommandDescriptor("selection set-default", typeof(SetDefaultSelectionRequest), typeof(DefaultSelectionResponse), CommandSurface.Released),
+        new CommandDescriptor("selection set-limits", typeof(SetSelectionLimitsRequest), typeof(NamedSelectionProjection), CommandSurface.Released),
         new CommandDescriptor("setup skip", typeof(SkipSetupRequest), typeof(ProjectSetupResponse), CommandSurface.Released),
         new CommandDescriptor("store delete-refused", typeof(ProjectStoreResetRequest), typeof(ProjectStoreResetResponse), CommandSurface.Developer),
         new CommandDescriptor("texts list", typeof(TextInventoryRequest), typeof(TextInventoryResponse), CommandSurface.Released),

@@ -17,11 +17,15 @@ internal static class FakeComposedWindow
         window.GetLogicalDescendants().OfType<Button>().Single(button =>
             string.Equals(AutomationProperties.GetName(button), name, StringComparison.Ordinal));
 
-    public static (WorkspaceShellViewModel Workspace, MainWindow Window) Create(FakeCommandClient? fake = null)
+    public static (WorkspaceShellViewModel Workspace, MainWindow Window) Create(FakeCommandClient? fake = null,
+        string? settingsFilePath = null, IUriLauncher? uriLauncher = null)
     {
         fake ??= new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
-        var window = new MainWindow();
+        IUserPreferencesStore preferences = settingsFilePath is null
+            ? new MemoryUserPreferencesStore()
+            : new FileUserPreferencesStore(settingsFilePath);
+        var window = new MainWindow(rememberBounds: false, uriLauncher: uriLauncher, preferencesStore: preferences);
         var workspace = new WorkspaceShellViewModel(
             new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake),

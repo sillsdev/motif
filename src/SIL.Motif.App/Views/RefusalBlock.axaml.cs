@@ -64,7 +64,9 @@ public sealed partial class RefusalBlock : UserControl
         if (DataContext is not WindowRefusal { OffersProblemReport: true } refusal ||
             TopLevel.GetTopLevel(this) is not Window owner) return;
 
-        var report = ProblemReport.FromRefusal(refusal);
+        var report = owner is MainWindow mainWindow
+            ? ProblemReport.FromRefusal(refusal, mainWindow.ApplicationFacts)
+            : ProblemReport.FromRefusal(refusal);
         if (owner is MainWindow main)
             await main.ShowProblemReportAsync(report).ConfigureAwait(true);
         else

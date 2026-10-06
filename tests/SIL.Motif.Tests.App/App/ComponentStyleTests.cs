@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Input;
@@ -187,6 +188,9 @@ public sealed partial class ComponentStyleTests
                     Assert.True(ExpanderChevronAlignment.GetIsEnabled(expander));
                     var chevron = expander.GetVisualDescendants().OfType<PathIcon>()
                         .Single(icon => icon.Name == "PART_PathIcon");
+                    var headerGrid = Assert.IsType<Grid>(chevron.Parent);
+                    Assert.Equal(headerGrid.ColumnDefinitions.Count - 1, Grid.GetColumn(chevron));
+                    Assert.Equal(HorizontalAlignment.Left, chevron.HorizontalAlignment);
                     Assert.True(Application.Current!.TryGetResource(
                         "Component.Interaction.ExpanderChevronMargin", variant, out var expected));
                     Assert.Equal(expected, chevron.Margin);
@@ -438,6 +442,9 @@ public sealed partial class ComponentStyleTests
         yield return new("Refusal", "scrollable refusal content", host => Add(host,
                 new ScrollViewer { Classes = { "refusalViewport" }, Content = Text("refusalDetails") }),
             ScrollViewer.MaxHeightProperty, "Component.Refusal.ContentMaxHeight");
+
+        yield return new("ToolTip", "a tooltip's maximum width", host => Add(host, new ToolTip()),
+            Control.MaxWidthProperty, "Component.ToolTip.MaxWidth");
 
         yield return new("MarkChip", "a chip", host => Add(host, Box("markChip")), Border.PaddingProperty, "Component.MarkChip.Padding");
         yield return new("MarkChip", "a chip", host => Add(host, Box("markChip")), Border.CornerRadiusProperty, "Component.MarkChip.Radius");
@@ -996,6 +1003,12 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Marking.Link");
         yield return new("HoverReveal", "the FieldWorks link padding", host => Add(host, Press("revealControl", "revealLink")),
             Button.PaddingProperty, "Intent.Inset.None");
+        yield return new("Settings", "the popup corner radius", host => Add(host, Box("settingsSurface")),
+            Border.CornerRadiusProperty, "Component.Settings.Radius");
+        yield return new("Settings", "the gear width", host => Add(host, Press("settingsGear")),
+            Button.WidthProperty, "Component.Menu.ButtonHeight");
+        yield return new("Settings", "a shortcut key cap radius", host => Add(host, Box("settingsKeyCap")),
+            Border.CornerRadiusProperty, "Component.Settings.KeyRadius");
     }
 
     private static Button RevealControl(Panel host)

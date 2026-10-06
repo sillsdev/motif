@@ -42,7 +42,7 @@
     <Setter Property="Margin" Value="{DynamicResource Component.Review.PageHeaderGap}" />
   </Style>
   <Style Selector="StackPanel.reviewRight">
-    <Setter Property="Width" Value="{DynamicResource Component.Review.RightWidth}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Review.RightWidth}" />
   </Style>
 
   <!-- A group of changes: a titled box; the ones that no longer fit in red, the Uncertain ones in amber. -->

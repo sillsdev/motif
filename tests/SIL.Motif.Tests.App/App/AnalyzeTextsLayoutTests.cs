@@ -471,21 +471,24 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void FilterChipsStayClearOfReaderMenusAtWindowWidthsAndScaling()
+    public void FilterChipsStayClearOfReaderMenusAtWindowWidthsAndZoom()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts();
+            var settings = Assert.IsType<SettingsViewModel>(Assert.IsType<SettingsPopupView>(
+                Assert.IsType<Flyout>(window.FindControl<Button>("SettingsButton")!.Flyout).Content).DataContext);
+            var originalZoom = settings.ZoomPercent;
             try
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
-                foreach (var (width, scaling) in new[]
+                foreach (var (width, zoom) in new[]
                 {
-                    (1040, 1d), (1240, 1d), (1040, 1.5d), (1240, 1.5d),
+                    (1040, 100), (1240, 100), (1040, 125), (1240, 125), (1040, 150), (1240, 150),
                 })
                 {
+                    settings.ZoomPercent = zoom;
                     window.Width = width;
-                    window.SetRenderScaling(scaling);
                     Settle(window);
                     var panel = Panel(window);
                     var picker = Named<ComboBox>(panel, "Text to read");
@@ -501,13 +504,13 @@ public sealed class AnalyzeTextsLayoutTests
                     var chipRow = panel.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
                     var rowBounds = BoundsIn(chipRow, panel);
                     Assert.All(dropdowns, dropdown => Assert.False(rowBounds.Intersects(BoundsIn(dropdown, panel)),
-                        $"The filter row intersects '{AutomationProperties.GetName(dropdown)}' at {width}px/{scaling:P0}: " +
+                        $"The filter row intersects '{AutomationProperties.GetName(dropdown)}' at {width}px/{zoom}% zoom: " +
                         $"{rowBounds} and {BoundsIn(dropdown, panel)}."));
                     foreach (var chip in chips)
                     foreach (var dropdown in dropdowns)
                         Assert.False(BoundsIn(chip, panel).Intersects(BoundsIn(dropdown, panel)),
                             $"Filter chip '{chip.Label}' intersects '{AutomationProperties.GetName(dropdown)}' " +
-                            $"at {width}px/{scaling:P0}: {BoundsIn(chip, panel)} and {BoundsIn(dropdown, panel)}.");
+                            $"at {width}px/{zoom}% zoom: {BoundsIn(chip, panel)} and {BoundsIn(dropdown, panel)}.");
 
                     var picked = Assert.Single(picker.GetVisualDescendants().OfType<TextBlock>(), text =>
                         text.Text == "Hadithi ya sungura");
@@ -519,18 +522,25 @@ public sealed class AnalyzeTextsLayoutTests
                     var rowBottom = bounds.Max(rect => rect.Bottom);
                     Assert.All(bounds, rect => Assert.InRange(rect.Left, 0, panel.Bounds.Width));
                     Assert.All(bounds, rect => Assert.True(rect.Right <= panel.Bounds.Width,
-                        $"A control extends beyond the text panel at {width}px/{scaling:P0}: {rect}."));
+                        $"A control extends beyond the text panel at {width}px/{zoom}% zoom: {rect}."));
                     Assert.True(rowBottom - rowTop <= 96,
-                        $"The control area is {rowBottom - rowTop} px deep at {width}px/{scaling:P0}.");
+                        $"The control area is {rowBottom - rowTop} px deep at {width}px/{zoom}% zoom. " +
+                        $"Toolbar {panel.FindControl<Grid>("ReaderToolbar")!.Bounds}; chip column " +
+                        $"{panel.FindControl<Grid>("ReaderToolbar")!.ColumnDefinitions[2].ActualWidth:0.#} px; " +
+                        $"chip row {Grid.GetRow(chipRow)}; controls: {string.Join("; ", bounds)}.");
+                    var selectLabel = Assert.Single(dropdowns[1].GetVisualDescendants().OfType<AccessText>(),
+                        text => text.Text == "Select ▾");
+                    Assert.DoesNotContain(selectLabel.TextLayout.TextLines, line => line.HasCollapsed);
                     var firstWord = Strips(panel).Min(strip => BoundsIn(strip, panel).Top);
                     Assert.True(firstWord - rowBottom <= 48,
-                        $"The text starts {firstWord - rowBottom} px below the controls at {width}px/{scaling:P0}.");
+                        $"The text starts {firstWord - rowBottom} px below the controls at {width}px/{zoom}% zoom.");
                     Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Expander>(), expander =>
                         expander.IsEffectivelyVisible && Equals(expander.Header, "Actions by scope"));
                 }
             }
             finally
             {
+                settings.ZoomPercent = originalZoom;
                 window.Close();
             }
         }, Deadline);

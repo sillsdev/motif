@@ -8,6 +8,7 @@
   "shortcut-group-diagnostic-tree": {"title":"Diagnostic tree","description":"Keyboard shortcuts for navigating the diagnostic tree.","source":"Motif interface text"},
   "shortcut-group-morpheme": {"title":"Morpheme","description":"Keyboard shortcuts for a morpheme row.","source":"Motif interface text"},
   "shortcut-group-window": {"title":"Window","description":"Keyboard shortcuts available throughout the window.","source":"Motif interface text"},
+  "shortcut-group-settings": {"title":"Settings","description":"Keyboard shortcuts available in Settings.","source":"Motif interface text"},
   "shortcut-scope-window": {"title":"Window","description":"Available throughout the window.","source":"Motif interface text"},
   "shortcut-scope-analyze-texts": {"title":"Analyze texts","description":"Available in the Analyze texts reader.","source":"Motif interface text"},
   "shortcut-scope-word-list": {"title":"Word list","description":"Available in the Word list.","source":"Motif interface text"},
@@ -17,6 +18,7 @@
   "shortcut-scope-diagnostic-tree": {"title":"Diagnostic tree","description":"Available when the diagnostic tree has keyboard focus.","source":"Motif interface text"},
   "shortcut-scope-matrix-preview": {"title":"Matrix preview","description":"Available in a Matrix preview.","source":"Motif interface text"},
   "shortcut-scope-morpheme": {"title":"Morpheme","description":"Available on a morpheme row.","source":"Motif interface text"},
+  "shortcut-scope-settings": {"title":"Settings","description":"Available in the Settings popup.","source":"Motif interface text"},
   "shortcut-move-between-words": {"title":"Move between words","description":"Focus the previous or next word in the Text.","source":"Motif interface text"},
   "shortcut-previous-line": {"title":"Move focus to the first word on the previous line","description":"Focus the first word on the previous line of the Text.","source":"Motif interface text"},
   "shortcut-next-line": {"title":"Move focus to the first word on the next line","description":"Focus the first word on the next line of the Text.","source":"Motif interface text"},
@@ -43,5 +45,15 @@
   "shortcut-open-inspector": {"title":"Open the Inspector","description":"Open the focused morpheme in the Inspector.","source":"Motif interface text"},
   "shortcut-open-help": {"title":"Open Help for this page","description":"Show Help for the current page.","source":"Motif interface text"},
   "shortcut-step-back": {"title":"Step back in the Inspector","description":"Return to the preceding Inspector level.","source":"Motif interface text"},
-  "shortcut-show-shortcuts": {"title":"Show keyboard shortcuts","description":"Open the keyboard shortcut list.","source":"Motif interface text"}
+  "shortcut-show-shortcuts": {"title":"Show keyboard shortcuts","description":"Open the keyboard shortcut list.","source":"Motif interface text"},
+  "shortcut-open-settings": {"title":"Open Settings","description":"Open Settings at its last group.","source":"Motif interface text"},
+  "shortcut-zoom-in": {"title":"Zoom in","description":"Increase the App's display zoom.","source":"Motif interface text"},
+  "shortcut-zoom-out": {"title":"Zoom out","description":"Decrease the App's display zoom.","source":"Motif interface text"},
+  "shortcut-reset-zoom": {"title":"Reset zoom","description":"Return display zoom to its default.","source":"Motif interface text"},
+  "shortcut-close-settings": {"title":"Close Settings","description":"Close Settings when no field is handling Escape.","source":"Motif interface text"},
+  "shortcut-save-parsing-limits": {"title":"Save parsing limits","description":"Apply the parsing limits you entered.","source":"Motif interface text"},
+  "shortcut-cancel-parsing-limit-edit": {"title":"Cancel parsing limit edits","description":"Restore the saved parsing limits while editing them.","source":"Motif interface text"},
+  "shortcut-move-between-theme-choices": {"title":"Move between theme choices","description":"Move focus among Light, Dark and System.","source":"Motif interface text"},
+  "shortcut-focus-close-settings": {"title":"Move focus to Close","description":"Move focus from the Settings groups to Close.","source":"Motif interface text"},
+  "shortcut-focus-settings-groups": {"title":"Move focus to Settings groups","description":"Move focus from Close to the Settings groups.","source":"Motif interface text"}
 }

@@ -9,6 +9,7 @@
         Height="{DynamicResource Component.Shell.CrashHeight}"
         MinWidth="{DynamicResource Component.Shell.CrashMinWidth}"
         MinHeight="{DynamicResource Component.Shell.CrashMinHeight}">
+  <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
   <DockPanel Margin="{DynamicResource Component.Shell.CrashInset}">
     <StackPanel DockPanel.Dock="Bottom" Spacing="{DynamicResource Intent.Space.Related}">
       <TextBlock Classes="muted" Text="{Binding Status}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap"
@@ -31,4 +32,5 @@
                AutomationProperties.Name="Problem report preview" />
     </Grid>
   </DockPanel>
+  </LayoutTransformControl>
 </Window>

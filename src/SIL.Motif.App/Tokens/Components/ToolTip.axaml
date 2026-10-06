@@ -8,11 +8,29 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
-    <StaticResource x:Key="Component.ToolTip.MaxWidth" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.ToolTip.MaxWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.ToolTip.ApplyReasonWidth" ResourceKey="Primitive.Size.280" />
+    <StaticResource x:Key="Component.ToolTip.Padding" ResourceKey="Primitive.Inset.10_7_10_7" />
+    <StaticResource x:Key="Component.ToolTip.Radius" ResourceKey="Primitive.Radius.6" />
   </Styles.Resources>
   <Style Selector="ToolTip">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.ToolTip.MaxWidth}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">
+          <Border Background="{DynamicResource Intent.Tooltip.Background}"
+                  CornerRadius="{DynamicResource Component.ToolTip.Radius}"
+                  Padding="{DynamicResource Component.ToolTip.Padding}"
+                  BoxShadow="{DynamicResource Intent.Shadow.Raised}">
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </LayoutTransformControl>
+      </ControlTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.reviewApplyTooltip ToolTip">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.ToolTip.ApplyReasonWidth}" />
@@ -21,5 +39,6 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Tooltip.Text}" />
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 </Styles>

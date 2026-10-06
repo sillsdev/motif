@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -6,6 +6,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
@@ -21,19 +22,19 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
-    private static readonly string PreferencesFilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Motif", "window-bounds.json");
     private readonly IUriLauncher _uriLauncher;
     private readonly ProblemReportWindowServices _problemReportServices;
+    private readonly IUserPreferencesStore _preferences;
+    private readonly ApplicationFacts _applicationFacts;
     private ProblemReportPreviewWindow? _currentProblemReportPreview;
     private string? _helpAutomationId;
-    private readonly Flyout _keyboardShortcutsFlyout;
     private readonly DispatcherTimer _keyboardStatusTimer;
     private Control? _inspectedFrom;
+    private SettingsViewModel? _settings;
     private HelpPopupView? HelpPopup =>
         this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
-
-    internal Flyout KeyboardShortcutsFlyout => _keyboardShortcutsFlyout;
+    private SettingsPopupView? SettingsPopup =>
+        this.FindControl<Button>("SettingsButton")?.Flyout is Flyout flyout ? flyout.Content as SettingsPopupView : null;
 
     /// <summary>A window at the XAML's own size that neither reads nor writes the remembered bounds, as tests need.</summary>
     public MainWindow() : this(rememberBounds: false)
@@ -53,13 +54,20 @@ public sealed partial class MainWindow : Window
     /// <param name="rememberBounds">Whether to restore and save the window's size and place.</param>
     /// <param name="uriLauncher">The adapter that opens online links, or the window's launcher when omitted.</param>
     public MainWindow(bool rememberBounds, IUriLauncher? uriLauncher)
+        : this(rememberBounds, uriLauncher, preferencesStore: null)
     {
+    }
+
+    /// <summary>Builds the window with optional adapters and a shared preference store.</summary>
+    /// <param name="rememberBounds">Whether to restore and save the window's size and place.</param>
+    /// <param name="uriLauncher">The adapter that opens online links, or the window's launcher when omitted.</param>
+    /// <param name="preferencesStore">The shared preferences store, or a process-local store when omitted.</param>
+    public MainWindow(bool rememberBounds, IUriLauncher? uriLauncher, IUserPreferencesStore? preferencesStore,
+        ApplicationFacts? applicationFacts = null)
+    {
+        _preferences = preferencesStore ?? new MemoryUserPreferencesStore();
+        _applicationFacts = applicationFacts ?? ApplicationFacts.Current;
         AvaloniaXamlLoader.Load(this);
-        _keyboardShortcutsFlyout = new Flyout
-        {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
-            Content = new KeyboardShortcutsFlyoutView(),
-        };
         _keyboardStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _keyboardStatusTimer.Tick += (_, _) =>
         {
@@ -67,7 +75,7 @@ public sealed partial class MainWindow : Window
             ShowKeyboardStatus(null);
         };
         _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
-        _problemReportServices = new ProblemReportWindowServices(new AvaloniaClipboard(this), _uriLauncher);
+        _problemReportServices = ProblemReportWindowServices.ForWindow(this, _uriLauncher);
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -76,11 +84,12 @@ public sealed partial class MainWindow : Window
                 action.AddHandler(ToolTip.ToolTipOpeningEvent, (_, _) => PlaceBesideTopBarActions(actions, action));
         if (!rememberBounds) return;
         RestoreBounds();
+        Opened += (_, _) => ConstrainRestoredBounds();
         Closing += (_, _) => SaveBounds();
     }
 
     private async void OnParseReportProblemClick(object? sender, RoutedEventArgs e) =>
-        await ShowProblemReportAsync(ProblemReport.ForStalledParse()).ConfigureAwait(true);
+        await ShowProblemReportAsync(ProblemReport.ForStalledParse(_applicationFacts)).ConfigureAwait(true);
 
     private async void OnMachineStoreReportProblemClick(object? sender, RoutedEventArgs e)
     {
@@ -98,6 +107,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>The report preview currently owned by this window, if one is open.</summary>
     internal ProblemReportPreviewWindow? CurrentProblemReportPreview => _currentProblemReportPreview;
+    internal ApplicationFacts ApplicationFacts => _applicationFacts;
 
     private async Task ShowProblemReportPreviewAsync(ProblemReport report)
     {
@@ -126,13 +136,16 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
         WritingSystemText.SetResolver(this, workspace.Context.WritingSystemTextStyles);
+        ConfigureSettings(workspace);
 
         var host = this.FindControl<Panel>("PageHost")
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");
         workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuide = OpenPanGlossGuide;
         foreach (var entry in workspace.Pages)
         {
-            var view = PageRegistry.For(entry.Page).CreateView(entry.Model);
+            var view = entry.Model is TextsPageModel texts
+                ? new TextsPage(texts, _settings)
+                : PageRegistry.For(entry.Page).CreateView(entry.Model);
             view.Name = $"{entry.Page}Page";
             view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
             host.Children.Add(view);
@@ -141,14 +154,21 @@ public sealed partial class MainWindow : Window
         AddHandler(InspectLink.RequestedEvent, (_, e) => OnInspectRequested(workspace, e));
         workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();
 
-        workspace.UpdateWindowWidth(Width);
-        SizeChanged += (_, e) => workspace.UpdateWindowWidth(e.NewSize.Width);
+        workspace.UpdateWindowWidth(Width / (_settings?.ZoomScale ?? 1));
+        SizeChanged += (_, e) =>
+        {
+            workspace.UpdateWindowWidth(e.NewSize.Width / (_settings?.ZoomScale ?? 1));
+            UpdateSettingsFlyoutZoom();
+            UpdateSetupDialogZoom();
+            RepositionSettingsFlyout();
+        };
         if (this.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout projectMenu)
             projectMenu.Opened += (_, _) => _ = workspace.RefreshKnownProjectsAsync();
         // Coming back from FieldWorks is when a save it made is news; this reads, it never reruns.
         Activated += (_, _) => _ = workspace.CheckFreshnessAsync();
         workspace.RecentProjects.CollectionChanged += (_, _) => RebuildRecentProjects(workspace);
         RebuildRecentProjects(workspace);
+        WindowZoomPolicy.EnablePopupTransforms(this);
     }
 
     // A name inside the inspector adds a crumb; one on a page opens the inspector afresh beside that page.
@@ -185,6 +205,14 @@ public sealed partial class MainWindow : Window
             HelpPopup?.DataContext is not HelpPopupViewModel help) return;
         button.Flyout?.ShowAt(button);
         help.ShowWritingSystemsPage();
+    }
+
+    private void OnWritingSystemsSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: WritingSystemFontNotice notice } ||
+            this.FindControl<Button>("SettingsButton") is not { } button) return;
+        _settings?.OpenWritingSystem(notice.WritingSystemId);
+        button.Flyout?.ShowAt(button);
     }
 
     /// <summary>The project menu's Open recent entries, one per recent project, as the menu shows them.</summary>
@@ -245,7 +273,8 @@ public sealed partial class MainWindow : Window
     }
 
     [KeyboardShortcutHandler(
-        "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts",
+        "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings",
+        "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom",
         "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch", "Matrix:FocusWordSearch")]
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
@@ -261,7 +290,16 @@ public sealed partial class MainWindow : Window
         {
             e.Handled = true;
             this.FindControl<Button>("HelpButton")?.Flyout?.Hide();
-            if (this.FindControl<Button>("HelpButton") is { } shortcutButton) _keyboardShortcutsFlyout.ShowAt(shortcutButton);
+            _settings?.OpenGroup(ViewModels.SettingsGroup.KeyboardShortcuts);
+            if (this.FindControl<Button>("SettingsButton") is { } settingsButton)
+                settingsButton.Flyout?.ShowAt(settingsButton);
+            return;
+        }
+        if (entry?.Behavior == KeyboardShortcutBehavior.OpenSettings)
+        {
+            e.Handled = true;
+            if (this.FindControl<Button>("SettingsButton") is { } settingsButton)
+                settingsButton.Flyout?.ShowAt(settingsButton);
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.FocusWordSearch)
@@ -269,6 +307,30 @@ public sealed partial class MainWindow : Window
             if (FindWordSearch(scope) is { } search) search.Focus();
             e.Handled = true;
             return;
+        }
+        if (_settings is { } settings)
+        {
+            var zoomEntry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, modifiers,
+                targetBehaviors: [KeyboardShortcutBehavior.ZoomIn, KeyboardShortcutBehavior.ZoomOut,
+                    KeyboardShortcutBehavior.ResetZoom]);
+            if (zoomEntry?.Behavior == KeyboardShortcutBehavior.ZoomIn)
+            {
+                e.Handled = true;
+                settings.ZoomIn();
+                return;
+            }
+            if (zoomEntry?.Behavior == KeyboardShortcutBehavior.ZoomOut)
+            {
+                e.Handled = true;
+                settings.ZoomOut();
+                return;
+            }
+            if (zoomEntry?.Behavior == KeyboardShortcutBehavior.ResetZoom)
+            {
+                e.Handled = true;
+                settings.ResetZoomCommand.Execute(null);
+                return;
+            }
         }
         // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
         if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
@@ -328,6 +390,122 @@ public sealed partial class MainWindow : Window
         _helpAutomationId = null;
     }
 
+    private void ConfigureSettings(WorkspaceShellViewModel workspace)
+    {
+        _settings = new SettingsViewModel(workspace, _preferences, _applicationFacts);
+        if (SettingsPopup is { } settingsPopup)
+        {
+            settingsPopup.DataContext = _settings;
+            settingsPopup.CloseRequested += (_, _) => HideSettingsFlyout();
+            settingsPopup.OpenHelpRequested += (_, _) => OpenHelpFromSettings();
+            settingsPopup.ReportProblemRequested += async (_, _) =>
+            {
+                HideSettingsFlyout();
+                await ShowProblemReportAsync(ProblemReport.ForWindowAction(_applicationFacts)).ConfigureAwait(true);
+            };
+            settingsPopup.OpenSiteRequested += async (_, _) =>
+            {
+                HideSettingsFlyout();
+                await _uriLauncher.LaunchAsync(new Uri(AppLinks.Documentation)).ConfigureAwait(true);
+            };
+            settingsPopup.ConfigureRequested += (_, _) =>
+            {
+                HideSettingsFlyout();
+                workspace.ConfigureCommand.Execute(null);
+            };
+            settingsPopup.OpenDataFolderRequested += async (_, _) =>
+            {
+                HideSettingsFlyout();
+                var path = Path.GetFullPath(_settings.DataRoot);
+                await _uriLauncher.LaunchAsync(new Uri(path)).ConfigureAwait(true);
+            };
+            settingsPopup.CopyVersionsRequested += async (_, _) =>
+            {
+                await _problemReportServices.CopyTextAsync(
+                    ProblemReport.ForWindowAction(_applicationFacts).ToVersionText(), this)
+                    .ConfigureAwait(true);
+                _settings.MarkVersionsCopied();
+            };
+        }
+
+        if (this.FindControl<LayoutTransformControl>("RootLayoutTransform") is { } transformRoot)
+        {
+            WindowZoomPolicy.Apply(Application.Current!, _settings.ZoomPercent);
+            transformRoot.LayoutTransform = WindowZoomPolicy.Transform;
+            _settings.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName != nameof(SettingsViewModel.ZoomScale)) return;
+                WindowZoomPolicy.Apply(Application.Current!, _settings.ZoomPercent);
+                workspace.UpdateWindowWidth(Width / _settings.ZoomScale);
+                UpdateSettingsFlyoutZoom();
+                UpdateSetupDialogZoom();
+            };
+        }
+        UpdateSettingsFlyoutZoom();
+        UpdateSetupDialogZoom();
+    }
+
+    private void OpenHelpFromSettings()
+    {
+        HideSettingsFlyout();
+        RefreshHelpContent();
+        if (this.FindControl<Button>("HelpButton") is { } button) button.Flyout?.ShowAt(button);
+    }
+
+    private void OnSettingsFlyoutOpened(object? sender, EventArgs e)
+    {
+        UpdateSettingsFlyoutZoom();
+        if (this.FindControl<Button>("SettingsButton") is { } button) button.Classes.Add("open");
+        if (_settings?.TakeWritingSystemTargetId() is { } writingSystemId)
+            SettingsPopup?.FocusWritingSystem(writingSystemId);
+        else if (_settings?.IsKeyboardShortcutsSelected == true) SettingsPopup?.FocusShortcutSearch();
+        else SettingsPopup?.FocusSelectedGroup();
+    }
+
+    private void RepositionSettingsFlyout()
+    {
+        if (this.FindControl<Button>("SettingsButton") is not { Flyout: { IsOpen: true } flyout } button) return;
+        flyout.Hide();
+        flyout.ShowAt(button);
+    }
+
+    private void UpdateSettingsFlyoutZoom()
+    {
+        if (_settings is not { } settings || SettingsPopup is not { } popup ||
+            this.FindControl<Button>("SettingsButton")?.Flyout is not { IsOpen: true } ||
+            Application.Current?.TryGetResource("Intent.Space.Section", ActualThemeVariant, out var insetValue) != true ||
+            insetValue is not double inset || !double.IsFinite(Width) || !double.IsFinite(Height))
+            return;
+        var zoom = settings.ZoomScale;
+        var topBarHeight = this.FindControl<Border>("TopBar")?.Bounds.Height ?? 0;
+        var maxLogicalWidth = Math.Max(0, Width / zoom - inset * 2);
+        var maxLogicalHeight = Math.Max(0, Height / zoom - topBarHeight - inset);
+        popup.FitToAvailableArea(maxLogicalWidth, maxLogicalHeight);
+    }
+
+    private void UpdateSetupDialogZoom()
+    {
+        if (_settings is not { } settings || this.FindControl<SetupDialog>("SetupDialogView") is not { } dialog ||
+            Application.Current?.TryGetResource("Intent.Space.Section", ActualThemeVariant, out var insetValue) != true ||
+            insetValue is not double inset || !double.IsFinite(Width) || !double.IsFinite(Height))
+            return;
+        var zoom = settings.ZoomScale;
+        var maxLogicalWidth = Math.Max(0, Width / zoom - inset * 2);
+        var maxLogicalHeight = Math.Max(0, Height / zoom - inset * 2);
+        dialog.FitToAvailableArea(maxLogicalWidth, maxLogicalHeight);
+    }
+
+    private void OnSettingsFlyoutClosed(object? sender, EventArgs e)
+    {
+        if (this.FindControl<Button>("SettingsButton") is { } button)
+        {
+            button.Classes.Remove("open");
+            button.Focus(NavigationMethod.Tab);
+        }
+    }
+
+    private void HideSettingsFlyout() => this.FindControl<Button>("SettingsButton")?.Flyout?.Hide();
+
     private void RefreshHelpContent()
     {
         if (HelpPopup?.DataContext is not HelpPopupViewModel help) return;
@@ -340,40 +518,29 @@ public sealed partial class MainWindow : Window
 
     private void HideProjectMenu() => this.FindControl<Button>("ProjectMenuButton")?.Flyout?.Hide();
 
-    // A preferences read failure must not block startup; an unreadable or absent file just keeps defaults.
     private void RestoreBounds()
     {
-        try
-        {
-            if (!File.Exists(PreferencesFilePath)) return;
-            var bounds = JsonSerializer.Deserialize<WindowBounds>(File.ReadAllText(PreferencesFilePath));
-            if (bounds is null) return;
-
-            Width = Math.Max(bounds.Width, MinWidth);
-            Height = Math.Max(bounds.Height, MinHeight);
-            if (bounds.X is { } x && bounds.Y is { } y) Position = new PixelPoint((int)x, (int)y);
-        }
-        catch (Exception exception) when (exception is IOException or JsonException or UnauthorizedAccessException)
-        {
-            // Falling back to the XAML-declared default bounds is preferable to a startup crash.
-        }
+        var bounds = _preferences.Current.Window;
+        if (bounds is null) return;
+        Width = Math.Max(bounds.Width, MinWidth);
+        Height = Math.Max(bounds.Height, MinHeight);
+        if (bounds.X is { } x && bounds.Y is { } y) Position = new PixelPoint(x, y);
     }
 
-    // A preferences write failure must not block shutdown.
     private void SaveBounds()
     {
-        try
+        _preferences.Update(preferences => preferences with
         {
-            var directory = Path.GetDirectoryName(PreferencesFilePath);
-            if (directory is not null) Directory.CreateDirectory(directory);
-            var bounds = new WindowBounds(Width, Height, Position.X, Position.Y);
-            File.WriteAllText(PreferencesFilePath, JsonSerializer.Serialize(bounds));
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Losing the remembered window position is preferable to a crash on close.
-        }
+            Window = new WindowPlacement(Width, Height, Position.X, Position.Y),
+        });
     }
 
-    private sealed record WindowBounds(double Width, double Height, double? X, double? Y);
+    private void ConstrainRestoredBounds()
+    {
+        if (_preferences.Current.Window is not { X: not null, Y: not null }) return;
+        var screen = Screens.ScreenFromPoint(Position) ?? Screens.Primary;
+        if (screen is null) return;
+        Position = WindowPlacementPolicy.Constrain(Position, screen.WorkingArea,
+            new Size(Width, Height), screen.Scaling);
+    }
 }

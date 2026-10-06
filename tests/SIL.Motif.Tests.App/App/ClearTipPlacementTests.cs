@@ -66,4 +66,13 @@ public sealed class ClearTipPlacementTests
 
         Assert.Equal((PopupAnchor.Top, PopupGravity.Top), ClearTipPlacement.Choose(Owner, Tip, Window, below));
     }
+
+    [Fact]
+    public void ObstacleBoundsIncludeTheFullScaleAndTranslation()
+    {
+        var transformed = ClearTipPlacement.TransformBounds(new Rect(0, 0, 100, 20),
+            new Matrix(1.5, 0, 0, 1.5, 10, 20));
+
+        Assert.Equal(new Rect(10, 20, 150, 30), transformed);
+    }
 }

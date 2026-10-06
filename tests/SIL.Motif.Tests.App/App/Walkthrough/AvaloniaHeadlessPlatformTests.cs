@@ -75,7 +75,8 @@ public sealed class AvaloniaHeadlessPlatformTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata");
-            var root = Assert.IsType<Grid>(walkthrough.Window.Content);
+            var transformRoot = Assert.IsType<LayoutTransformControl>(walkthrough.Window.Content);
+            var root = Assert.IsType<Grid>(transformRoot.Child);
             var probe = new Button
             {
                 Content = "Count probe",

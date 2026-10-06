@@ -133,7 +133,12 @@ public sealed class WritingSystemTextStyleResolver
     }
 
     /// <summary>Applies a resolved style to one language-text control.</summary>
-    public void Apply(Control control, string? writingSystemId, string? styleName)
+    /// <param name="control">The language-text control to style.</param>
+    /// <param name="writingSystemId">The writing system whose saved settings apply.</param>
+    /// <param name="styleName">The FieldWorks style name to resolve.</param>
+    /// <param name="createMissingFontNotice">Whether this control may add a missing-font notice.</param>
+    public void Apply(Control control, string? writingSystemId, string? styleName,
+        bool createMissingFontNotice = true)
     {
         ArgumentNullException.ThrowIfNull(control);
         var style = Resolve(writingSystemId, styleName);
@@ -141,7 +146,7 @@ public sealed class WritingSystemTextStyleResolver
         control.SetValue(TextElement.FontFeaturesProperty, style.FontFeatures);
         control.SetValue(TextElement.FontSizeProperty, style.FontSize);
         control.SetValue(Visual.FlowDirectionProperty, style.FlowDirection);
-        RegisterMissingFontNotice(control, style, styleName, TextOf(control));
+        if (createMissingFontNotice) RegisterMissingFontNotice(control, style, styleName, TextOf(control));
     }
 
     /// <summary>Sets the direction of a running-text layout from its language's saved settings.</summary>

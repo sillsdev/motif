@@ -590,7 +590,8 @@ public sealed class PageScreenshots
     /// and with <paramref name="leaveSetupOpen"/> it stops with first-run setup still showing.
     /// </summary>
     internal static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window)> OpenOverSampleData(
-        bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false)
+        bool parse = true, Action<FakeCommandClient, AssessCommandResponse>? configure = null, bool leaveSetupOpen = false,
+        string? settingsFilePath = null)
     {
         var fake = new FakeCommandClient();
         var clock = NewCaptureClock();
@@ -651,7 +652,10 @@ public sealed class PageScreenshots
             selection, new AssessViewModel(fake, selection),
             new Folder(), new Drag(),
             fake, clock, techDemoNotice: FirstRunNotice());
-        var window = new MainWindow();
+        IUserPreferencesStore preferences = settingsFilePath is null
+            ? new MemoryUserPreferencesStore()
+            : new FileUserPreferencesStore(settingsFilePath);
+        var window = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: preferences);
         window.Compose(workspace);
         window.Show();
 

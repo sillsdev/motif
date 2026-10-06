@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media;
@@ -13,6 +14,7 @@ using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -22,13 +24,38 @@ internal static class LayoutAssertions
 {
     private const double Tolerance = 2;
     private static readonly int[] Widths = [1040, 1240];
+    private static readonly int[] Zooms = [100, 125, 150];
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
+    internal const string WalkthroughWordRowExclusionReason =
+        "ADR 0053 assigns word-presentation line metrics to the word-row module; " +
+        "remove this exclusion when that module lands.";
+    private static readonly LayoutSubtreeExclusion WalkthroughWordRowExclusion = new(
+        "WordCard, MorphemeRow, ProgressiveItemsControl#ResultsInTextPanelFieldWorksAnalysesItems, " +
+        "WordRow, WordRowHeader, and WordStrip subtrees",
+        WalkthroughWordRowExclusionReason,
+        control => control.GetSelfAndVisualAncestors().OfType<Control>()
+            .Any(ancestor => ancestor is WordRow or WordRowHeader or MorphemeRow ||
+                ancestor is ProgressiveItemsControl { Name: "ResultsInTextPanelFieldWorksAnalysesItems" } ||
+                ancestor is Border { Name: "WordStrip" } ||
+                ancestor is Border wordCard && wordCard.Classes.Contains("wordCard")));
 
-    internal static void BeforeCapture(Window window)
+    internal static void BeforeCapture(Window window) => BeforeCapture(window, WalkthroughWordRowExclusion);
+
+    internal static void BeforeWalkthroughCapture(Window window) =>
+        BeforeCapture(window, WalkthroughWordRowExclusion);
+
+    private static void BeforeCapture(Window window, LayoutSubtreeExclusion? exclusion)
     {
         var originalWidth = window.Width;
         var originalHeight = window.Height;
         var originalTheme = window.RequestedThemeVariant;
+        var application = Application.Current ?? throw new InvalidOperationException("The App is not initialized.");
+        var originalApplicationTheme = application.RequestedThemeVariant;
+        var settingsButton = window.GetVisualDescendants().OfType<Button>()
+            .FirstOrDefault(button => button.Name == "SettingsButton");
+        var settings = settingsButton?.Flyout is Flyout flyout &&
+            flyout.Content is SettingsPopupView popup ? popup.DataContext as SettingsViewModel : null;
+        var originalZoom = settings?.ZoomPercent ?? ZoomPolicy.DefaultPercent;
         var scrollOffsets = window.GetVisualDescendants().OfType<ScrollViewer>()
             .ToDictionary(scroll => scroll, scroll => scroll.Offset);
 
@@ -36,18 +63,35 @@ internal static class LayoutAssertions
         {
             foreach (var theme in Themes)
             foreach (var width in Widths)
+            foreach (var zoom in Zooms)
             {
-                window.RequestedThemeVariant = theme;
+                application.RequestedThemeVariant = theme;
+                if (settings is not null) settings.ZoomPercent = zoom;
+                else WindowZoomPolicy.Apply(application, zoom);
                 window.Width = width;
-                PageScreenshots.Settle(window);
+                window.Height = 780;
                 try
                 {
-                    AssertCurrent(window);
+                    PageScreenshots.Settle(window);
                 }
                 catch (Exception failure)
                 {
-                    SaveFailureFrame(window, width, theme, failure.Message);
-                    throw;
+                    throw new InvalidOperationException(
+                        $"Layout did not settle at {width}×780, {zoom}% zoom, {theme} theme.", failure);
+                }
+                try
+                {
+                    AssertCurrent(window, exclusion);
+                }
+                catch (Exception failure)
+                {
+                    SaveFailureFrame(window, width, theme, zoom, failure.Message);
+                    var exclusionDetails = exclusion is null
+                        ? string.Empty
+                        : $" Excluded {exclusion.Name}: {exclusion.Reason}";
+                    throw new Xunit.Sdk.XunitException(
+                        $"Layout does not fit at {width}×780, {zoom}% zoom, {theme} theme.{exclusionDetails} " +
+                        failure.Message);
                 }
             }
         }
@@ -56,6 +100,9 @@ internal static class LayoutAssertions
             window.Width = double.IsNaN(originalWidth) ? window.Bounds.Width : originalWidth;
             window.Height = double.IsNaN(originalHeight) ? window.Bounds.Height : originalHeight;
             window.RequestedThemeVariant = originalTheme;
+            application.RequestedThemeVariant = originalApplicationTheme;
+            if (settings is not null) settings.ZoomPercent = originalZoom;
+            else WindowZoomPolicy.Apply(application, originalZoom);
             PageScreenshots.Settle(window);
             foreach (var (scroll, offset) in scrollOffsets)
                 if (scroll.IsAttachedToVisualTree()) scroll.Offset = offset;
@@ -63,26 +110,31 @@ internal static class LayoutAssertions
         }
     }
 
-    internal static void AssertCurrent(Visual root)
+    internal static void AssertCurrent(Visual root) => AssertCurrent(root, null);
+
+    internal static void AssertWalkthroughCurrent(Visual root) =>
+        AssertCurrent(root, WalkthroughWordRowExclusion);
+
+    private static void AssertCurrent(Visual root, LayoutSubtreeExclusion? exclusion)
     {
-        var roots = LayoutRoots(root).Distinct().ToArray();
+        var roots = LayoutRoots(root, exclusion).Distinct().ToArray();
         foreach (var layoutRoot in roots)
         {
-            AssertScrolledMorphemesAreReachable(layoutRoot);
-            AssertGridChildrenStayInTheirColumns(layoutRoot);
-            AssertStagedPanelsDoNotCoverText(layoutRoot);
-            foreach (var text in Controls(layoutRoot).OfType<TextBlock>().Where(IsRenderedText))
-                AssertTextFits(text);
+            AssertScrolledMorphemesAreReachable(layoutRoot, exclusion);
+            AssertGridChildrenStayInTheirColumns(layoutRoot, exclusion);
+            AssertStagedPanelsDoNotCoverText(layoutRoot, exclusion);
+            foreach (var text in Controls(layoutRoot, exclusion).OfType<TextBlock>().Where(IsRenderedText))
+                AssertTextFits(text, exclusion);
         }
     }
 
-    private static void AssertStagedPanelsDoNotCoverText(Visual root)
+    private static void AssertStagedPanelsDoNotCoverText(Visual root, LayoutSubtreeExclusion? exclusion)
     {
         Visual layoutRoot = TopLevel.GetTopLevel(root) is { } topLevel ? topLevel : root;
-        foreach (var runningText in Controls(root).OfType<RunningTextPanel>())
+        foreach (var runningText in Controls(root, exclusion).OfType<RunningTextPanel>())
         {
-            var texts = Controls(runningText).OfType<TextBlock>().Where(IsRenderedText).ToArray();
-            foreach (var panel in Controls(runningText).OfType<Border>().Where(border =>
+            var texts = Controls(runningText, exclusion).OfType<TextBlock>().Where(IsRenderedText).ToArray();
+            foreach (var panel in Controls(runningText, exclusion).OfType<Border>().Where(border =>
                          border.Classes.Contains("stagedStrip") && border.IsEffectivelyVisible))
             {
                 var panelBounds = BoundsIn(panel, layoutRoot);
@@ -178,28 +230,44 @@ internal static class LayoutAssertions
         }
     }
 
-    private static IEnumerable<Visual> LayoutRoots(Visual root)
+    private static IEnumerable<Visual> LayoutRoots(Visual root, LayoutSubtreeExclusion? exclusion)
     {
         yield return root;
-        foreach (var control in Controls(root).OfType<Control>())
+        foreach (var control in Controls(root, exclusion).OfType<Control>())
         {
             if (ToolTip.GetIsOpen(control) && ToolTip.GetTip(control) is Control tip)
                 yield return TopLevel.GetTopLevel(tip) is { } tipRoot ? tipRoot : tip;
 
-            if (control is Button { Flyout: { IsOpen: true } flyout } &&
-                flyout is Flyout { Content: Control content })
-                yield return TopLevel.GetTopLevel(content) is { } menuRoot ? menuRoot : content;
+            if (control is Button { Flyout: PopupFlyoutBase { IsOpen: true } flyout } &&
+                flyout.Popup.Child is { } flyoutContent)
+                yield return TopLevel.GetTopLevel(flyoutContent) is { } flyoutRoot ? flyoutRoot : flyoutContent;
+
+            if (control.ContextFlyout is PopupFlyoutBase { IsOpen: true } contextFlyout &&
+                contextFlyout.Popup.Child is { } contextContent)
+                yield return TopLevel.GetTopLevel(contextContent) is { } contextRoot ? contextRoot : contextContent;
+
+            foreach (var popup in control.GetVisualDescendants().OfType<Popup>().Where(popup => popup.IsOpen))
+                if (popup.Child is { } popupContent)
+                    yield return TopLevel.GetTopLevel(popupContent) is { } popupRoot ? popupRoot : popupContent;
         }
+
+        if (root is Window mainWindow && Application.Current?.ApplicationLifetime is
+            IClassicDesktopStyleApplicationLifetime desktop)
+            foreach (var otherWindow in desktop.Windows.Where(window => window != mainWindow && window.IsVisible))
+                yield return otherWindow;
     }
 
-    private static IEnumerable<Visual> Controls(Visual root) =>
-        root.GetSelfAndVisualDescendants();
+    private static IEnumerable<Visual> Controls(Visual root, LayoutSubtreeExclusion? exclusion = null) =>
+        root.GetSelfAndVisualDescendants().Where(item =>
+            item is not Control control || exclusion?.Excludes(control) != true);
 
     private static bool IsRenderedText(TextBlock text) =>
         text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text) &&
         text.Bounds.Width > 0 && text.Bounds.Height > 0;
 
-    internal static void AssertTextFits(TextBlock text)
+    internal static void AssertTextFits(TextBlock text) => AssertTextFits(text, null);
+
+    private static void AssertTextFits(TextBlock text, LayoutSubtreeExclusion? exclusion)
     {
         var layout = text.TextLayout;
         var name = AutomationProperties.GetAutomationId(text) ??
@@ -237,13 +305,14 @@ internal static class LayoutAssertions
         var textBounds = BoundsIn(text, layoutRoot);
         foreach (var ancestor in text.GetVisualAncestors().OfType<Visual>().Where(item => item.ClipToBounds))
         {
-            if (Contains(BoundsIn(ancestor, layoutRoot), textBounds)) continue;
+            var clipBounds = BoundsIn(ancestor, layoutRoot);
+            if (Contains(clipBounds, textBounds)) continue;
             var scrollCanRevealText = text.GetSelfAndVisualAncestors().OfType<ScrollViewer>()
                 .Any(scroll => IsWithinScrollExtent(text, scroll)) || DataGridCanRevealText(text, ancestor);
             Assert.True(scrollCanRevealText,
                 $"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
                 $"{ClipDiagnostics(text, textBounds, ancestor, BoundsIn(ancestor, layoutRoot))} " +
-                $"Path: {path}.{TooltipDetails(text, layoutRoot)}");
+                $"Path: {path}.{TooltipDetails(text, layoutRoot, exclusion)}");
         }
     }
 
@@ -277,10 +346,10 @@ internal static class LayoutAssertions
             $"DataGridCell arranged size: {cellSize}; column ActualWidth: {columnWidth}.";
     }
 
-    private static string TooltipDetails(TextBlock text, Visual layoutRoot)
+    private static string TooltipDetails(TextBlock text, Visual layoutRoot, LayoutSubtreeExclusion? exclusion)
     {
         var tooltip = text.GetVisualAncestors().OfType<ToolTip>().FirstOrDefault();
-        var owner = Controls(layoutRoot).OfType<Control>().FirstOrDefault(control =>
+        var owner = Controls(layoutRoot, exclusion).OfType<Control>().FirstOrDefault(control =>
             ToolTip.GetIsOpen(control) && ToolTip.GetTip(control) is string tip &&
             string.Equals(tip, text.Text, StringComparison.Ordinal));
         if (tooltip is null || owner is null) return string.Empty;
@@ -323,16 +392,17 @@ internal static class LayoutAssertions
         return measure.DesiredSize;
     }
 
-    private static void AssertGridChildrenStayInTheirColumns(Visual root)
+    private static void AssertGridChildrenStayInTheirColumns(Visual root, LayoutSubtreeExclusion? exclusion)
     {
-        foreach (var grid in Controls(root).OfType<Grid>().Where(grid => grid.ColumnDefinitions.Count > 1))
+        foreach (var grid in Controls(root, exclusion).OfType<Grid>().Where(grid => grid.ColumnDefinitions.Count > 1))
         {
             var origin = grid.TranslatePoint(default, grid);
             if (origin is null) continue;
             var widths = grid.ColumnDefinitions.Select(column => column.ActualWidth).ToArray();
             var spacing = grid.ColumnSpacing;
             foreach (var child in grid.Children.OfType<Control>().Where(child =>
-                         child.IsEffectivelyVisible && child.Bounds.Width > 0 && child.Bounds.Height > 0))
+                         exclusion?.Excludes(child) != true && child.IsEffectivelyVisible &&
+                         child.Bounds.Width > 0 && child.Bounds.Height > 0))
             {
                 var firstColumn = Math.Clamp(Grid.GetColumn(child), 0, widths.Length - 1);
                 var span = Math.Clamp(Grid.GetColumnSpan(child), 1, widths.Length - firstColumn);
@@ -351,9 +421,9 @@ internal static class LayoutAssertions
         }
     }
 
-    private static void AssertScrolledMorphemesAreReachable(Visual root)
+    private static void AssertScrolledMorphemesAreReachable(Visual root, LayoutSubtreeExclusion? exclusion)
     {
-        foreach (var scroll in Controls(root).OfType<ScrollViewer>().Where(viewer =>
+        foreach (var scroll in Controls(root, exclusion).OfType<ScrollViewer>().Where(viewer =>
                      viewer.Name == "FieldWorksMorphemeScroll" ||
                      AutomationProperties.GetAutomationId(viewer) == AutomationIds.FieldWorksMorphemeScroll))
         {
@@ -362,7 +432,7 @@ internal static class LayoutAssertions
                 "The FieldWorks morpheme strip must allow horizontal scrolling.");
             var content = scroll.Content as Visual;
             if (content is null) continue;
-            foreach (var morpheme in Controls(scroll).OfType<Border>().Where(border =>
+            foreach (var morpheme in Controls(scroll, exclusion).OfType<Border>().Where(border =>
                          border.Classes.Contains("wordRowMorph") && border.IsEffectivelyVisible))
             {
                 var bounds = BoundsIn(morpheme, content);
@@ -409,8 +479,21 @@ internal static class LayoutAssertions
 
     private static Rect BoundsIn(Visual visual, Visual root)
     {
-        var origin = visual.TranslatePoint(default, root);
-        return origin is null ? default : new Rect(origin.Value, visual.Bounds.Size);
+        var bounds = visual.Bounds;
+        var corners = new[]
+        {
+            new Point(0, 0),
+            new Point(bounds.Width, 0),
+            new Point(0, bounds.Height),
+            new Point(bounds.Width, bounds.Height),
+        }.Select(point => visual.TranslatePoint(point, root)).Where(point => point is not null)
+            .Select(point => point!.Value).ToArray();
+        if (corners.Length == 0) return default;
+        var left = corners.Min(point => point.X);
+        var top = corners.Min(point => point.Y);
+        var right = corners.Max(point => point.X);
+        var bottom = corners.Max(point => point.Y);
+        return new Rect(left, top, right - left, bottom - top);
     }
 
     private static bool Contains(Rect container, Rect content) =>
@@ -423,14 +506,16 @@ internal static class LayoutAssertions
         return $"{control.GetType().Name}#{control.Name}" + (classes.Length == 0 ? "" : $".{classes}");
     }
 
-    private static void SaveFailureFrame(Window window, int width, ThemeVariant theme, string failure)
+    private static void SaveFailureFrame(Window window, int width, ThemeVariant theme, int zoom, string failure)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable);
         if (string.IsNullOrWhiteSpace(folder)) return;
         Directory.CreateDirectory(folder);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(failure)))[..8].ToLowerInvariant();
-        var path = Path.Combine(folder, $"layout-failure-{width}-{theme}-{hash}.png");
+        var path = Path.Combine(folder, $"layout-failure-{width}-{zoom}-{theme}-{hash}.png");
         using var frame = window.CaptureRenderedFrame();
         frame?.Save(path, PngBitmapEncoderOptions.Default);
     }
+
+    private sealed record LayoutSubtreeExclusion(string Name, string Reason, Func<Control, bool> Excludes);
 }

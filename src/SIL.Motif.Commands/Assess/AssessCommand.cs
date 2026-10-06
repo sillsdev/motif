@@ -168,7 +168,7 @@ public static class AssessCommand
 
             SelectionRequest selectionRequest;
             string? namedSelection = null;
-            int? defaultPerWordLimitMs = null;
+            SelectionParsingLimits? defaultLimits = null;
             var usesDefaultSelection = request.Selection is null;
             if (request.Selection is null)
             {
@@ -178,9 +178,9 @@ public static class AssessCommand
                         "selection.default-missing", FailureReason.Refused,
                         "No default Selection is saved for this project. Save one with `motif selection set-default` first."));
                 namedSelection = saved.Name;
-                defaultPerWordLimitMs = saved.PerWordLimitMs;
+                defaultLimits = saved.Limits;
                 selectionRequest = new SelectionRequest(false, saved.TextIds, saved.AddedWords, false, null,
-                    PerWordStepLimit: saved.PerWordStepLimit);
+                    PerWordStepLimit: saved.Limits.PerWordStepLimit);
             }
             else
             {
@@ -235,8 +235,9 @@ public static class AssessCommand
                 TimeSpan? timeLimit = request.PerWordLimitMs is { } ms
                     ? TimeSpan.FromMilliseconds(ms)
                     : stepLimit.IsUnbounded ? null
-                    : usesDefaultSelection
-                        ? defaultPerWordLimitMs is { } savedMs ? TimeSpan.FromMilliseconds(savedMs) : null
+                    : usesDefaultSelection && defaultLimits?.TimeMode == SelectionTimeLimitMode.Explicit
+                        ? TimeSpan.FromMilliseconds(SelectionLimitPolicy.Resolve(defaultLimits,
+                            ReadParserStepRate(assessments)).PerWordTimeLimitMs!.Value)
                         : EstimatePerWordTimeLimit(assessments, stepLimit);
                 scope = new AssessmentScope(composition.Selection.Words, collected, timeLimit, stepLimit);
                 onProgress?.Invoke(new AssessmentProgress(
@@ -569,13 +570,15 @@ public static class AssessCommand
 
     private static TimeSpan? EstimatePerWordTimeLimit(AssessmentRepository assessments, StepCap stepLimit)
     {
+        var limits = SelectionLimitPolicy.Resolve(SelectionLimitPolicy.Estimated(stepLimit),
+            ReadParserStepRate(assessments));
+        return limits.PerWordTimeLimitMs is { } milliseconds ? TimeSpan.FromMilliseconds(milliseconds) : null;
+    }
+
+    private static ParserStepRate ReadParserStepRate(AssessmentRepository assessments)
+    {
         var latest = assessments.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();
-        var rate = StepLimitEstimator.FromAssessment(
-            latest is null ? null : assessments.Get(latest.AssessmentId));
-        var estimate = StepLimitEstimator.Calculate(stepLimit, rate);
-        return estimate?.PerWordTimeLimitMs is { } milliseconds && milliseconds <= int.MaxValue
-            ? TimeSpan.FromMilliseconds(milliseconds)
-            : null;
+        return StepLimitEstimator.FromAssessment(latest is null ? null : assessments.Get(latest.AssessmentId));
     }
 
     private static Refusal Cancelled(string projectPath) => new(

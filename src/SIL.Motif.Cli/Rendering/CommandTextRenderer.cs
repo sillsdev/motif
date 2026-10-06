@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Catalog;
@@ -60,6 +61,7 @@ public static class CommandTextRenderer
             AssessCommandResponse r => RenderAssessed(r),
             StatsCommandResponse r => RenderStats(r),
             DefaultSelectionResponse r => RenderDefaultSelection(r),
+            NamedSelectionProjection p => RenderDefaultSelection(new DefaultSelectionResponse(p)),
             ProjectSetupResponse r => r.SetupSkipped
                 ? "Setup skipped for this project." + Environment.NewLine
                 : "Setup remains open." + Environment.NewLine,
@@ -265,11 +267,17 @@ public static class CommandTextRenderer
             return "No default Selection is saved." + Environment.NewLine +
                 (response.SetupSkipped ? "Setup skipped for this project." + Environment.NewLine : string.Empty);
         var selection = response.Selection;
+        var timeLimit = selection.Limits.TimeMode switch
+        {
+            SelectionTimeLimitMode.Explicit => $"{selection.Limits.ExplicitPerWordLimitMs!.Value:N0} ms",
+            SelectionTimeLimitMode.Estimated when !selection.Limits.PerWordStepLimit.IsUnbounded => "estimated",
+            _ => "none",
+        };
         return $"Default Selection: {selection.Name}{Environment.NewLine}" +
             $"  Texts:       {selection.TextIds.Count:N0}{Environment.NewLine}" +
             $"  Added words: {selection.AddedWords.Count:N0}{Environment.NewLine}" +
-            $"  Time limit:  {(selection.PerWordLimitMs is { } timeLimit ? $"{timeLimit:N0} ms" : "none")}{Environment.NewLine}" +
-            $"  Analysis attempt limit:  {selection.PerWordStepLimit?.ToArgument() ?? "project default"}{Environment.NewLine}" +
+            $"  Time limit:  {timeLimit}{Environment.NewLine}" +
+            $"  Step limit:  {selection.Limits.PerWordStepLimit.ToArgument()}{Environment.NewLine}" +
             $"  Updated:     {selection.UpdatedUtc}{Environment.NewLine}";
     }
 

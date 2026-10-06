@@ -35,13 +35,19 @@
     <Style Selector=":is(UserControl).shortMatrix StackPanel.matrixPanel">
       <Setter Property="Spacing" Value="{DynamicResource Component.TextsPage.ShortRowSpacing}" />
     </Style>
+    <Style Selector=":is(UserControl) Grid.matrixChosenLayout">
+      <Setter Property="RowSpacing" Value="{DynamicResource Intent.Space.Compact}" />
+    </Style>
     <Style Selector=":is(UserControl).shortMatrix Grid.matrixLayout">
       <Setter Property="Margin" Value="{DynamicResource Component.TextsPage.ShortPageInset}" />
       <Setter Property="RowSpacing" Value="{DynamicResource Component.TextsPage.ShortRowSpacing}" />
     </Style>
+    <Style Selector=":is(UserControl).shortMatrix Grid.matrixChosenLayout">
+      <Setter Property="RowSpacing" Value="{DynamicResource Component.TextsPage.ShortRowSpacing}" />
+    </Style>
   </UserControl.Styles>
 
-  <Grid Classes="matrixLayout" RowDefinitions="Auto,Auto,Auto,*" IsVisible="{Binding Compare.HasWords}">
+  <Grid Classes="matrixLayout" RowDefinitions="Auto,*,Auto,*" IsVisible="{Binding Compare.HasWords}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <Border Classes="notice" IsVisible="{Binding Compare.ShowsNoStandingsNotice}">
         <views:CopyableTextBlock TextWrapping="Wrap"
@@ -66,7 +72,8 @@
       </DockPanel>
     </StackPanel>
 
-    <StackPanel Grid.Row="1" Classes="matrixPanel" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Classes="matrixPanel" Spacing="{DynamicResource Component.MatrixCell.MatrixSpacing}"
                 AutomationProperties.Name="Compare matrix">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="columnHeader matrixRowLabel" Text="FieldWorks ↓  PanGloss →"
@@ -83,11 +90,13 @@
               <Button Classes="header" Theme="{DynamicResource BorderlessButton}"
                       Command="{Binding $parent[views:ComparePanel].Compare.SelectColumnCommand}" CommandParameter="{Binding}"
                       AutomationProperties.Name="{Binding AccessibleName}">
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
                   <views:MarkGlyph Classes="inline" Mark="{Binding OutcomeMark}" />
-                  <TextBlock Classes="outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}" Text="{Binding Label}" />
-                  <TextBlock Classes="muted" Text="{Binding CountText}" />
-                </StackPanel>
+                  <TextBlock Grid.Column="1" Classes="outcomeMark" views:MarkClasses.Mark="{Binding OutcomeMark}"
+                             Text="{Binding Label}" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Label}" views:ClearTipPlacement.IsEnabled="True" />
+                  <TextBlock Grid.Column="2" Classes="muted" Text="{Binding CountText}" />
+                </Grid>
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -132,6 +141,7 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </StackPanel>
+    </ScrollViewer>
 
     <Border Grid.Row="2" Classes="card" IsVisible="{Binding Compare.HasFixFirst}">
       <Expander IsExpanded="True">
@@ -170,7 +180,7 @@
     <ScrollViewer x:Name="MatrixDetailsScroll" Grid.Row="3" VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
       <Border Classes="card matrixChosen">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
+        <Grid Classes="matrixChosenLayout" RowDefinitions="Auto,Auto,Auto,Auto,*">
           <DockPanel Classes="matrixChosenHeading" AutomationProperties.Name="{Binding Compare.SelectionText}">
             <StackPanel DockPanel.Dock="Left" Classes="matrixChosenMarks" Orientation="Horizontal"
                         Margin="{DynamicResource Intent.Gap.AfterGroup}">
@@ -247,19 +257,6 @@
                      Text="{Binding Compare.SearchText}" PlaceholderText="Search words…"
                      AutomationProperties.Name="Search the listed words" />
             <WrapPanel HorizontalAlignment="Right">
-              <Button Content="AI Handoff" Command="{Binding Compare.HandOffCommand}"
-                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                      AutomationProperties.Name="AI Handoff for the listed words" />
-              <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
-                      IsVisible="{Binding Compare.HasCheckedWords}"
-                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
-                      AutomationProperties.Name="Add checked words as Unknown" />
-              <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
-                      IsVisible="{Binding Compare.HasCheckedWords}"
-                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
-                      AutomationProperties.Name="Mark checked words as incorrect spelling" />
               <SplitButton Content="Parse again" Command="{Binding Compare.RerunCommand}"
                            IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                            ToolTip.Tip="Parse the stopped and unparsed words again"
@@ -276,6 +273,19 @@
                   </Flyout>
                 </SplitButton.Flyout>
               </SplitButton>
+              <Button Content="AI Handoff" Command="{Binding Compare.HandOffCommand}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      AutomationProperties.Name="AI Handoff for the listed words" />
+              <Button Content="Add as Unknown" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
+                      IsVisible="{Binding Compare.HasCheckedWords}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      AutomationProperties.Name="Add checked words as Unknown" />
+              <Button Content="Incorrect spelling" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
+                      IsVisible="{Binding Compare.HasCheckedWords}"
+                      Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
+                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      AutomationProperties.Name="Mark checked words as incorrect spelling" />
             </WrapPanel>
           </DockPanel>
 

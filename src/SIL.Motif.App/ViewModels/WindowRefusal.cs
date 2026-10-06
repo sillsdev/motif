@@ -178,7 +178,6 @@ public sealed partial record WindowRefusal
             "Motif does not know which words to measure yet. Choose texts or words in the setup first.",
         [C.SelectionEmpty] = "The chosen texts have no words to measure. Choose other texts or add words.",
         [C.SelectionInvalid] = "Choose at least one text or add a word before continuing.",
-        [C.SelectionInvalidTimeLimit] = "Enter a per-word time limit greater than zero.",
         [C.SelectionTextNotFound] = "A chosen text is no longer in the project. Choose the texts again.",
 
         [C.StatsCancelled] = "Reading the statistics was cancelled.",

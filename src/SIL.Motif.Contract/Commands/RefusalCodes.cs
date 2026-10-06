@@ -113,7 +113,6 @@ public static class RefusalCodes
     public const string SelectionDefaultMissing = "selection.default-missing";
     public const string SelectionEmpty = "selection.empty";
     public const string SelectionInvalid = "selection.invalid";
-    public const string SelectionInvalidTimeLimit = "selection.invalid-time-limit";
     public const string SelectionTextNotFound = "selection.text-not-found";
 
     public const string StatsCancelled = "stats.cancelled";

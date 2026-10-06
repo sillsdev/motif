@@ -42,9 +42,9 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "KeyboardShortcutsFlyoutView", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
+        "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel",
-        "ReviewPanel", "SelectionPanel", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
+        "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordPanel", "WordRow", "WordRowCard",
     ];
 
@@ -80,6 +80,9 @@ public sealed class ProgressiveDisplayTests
                     if (entry.Mode is "finite" or "inline")
                     {
                         Assert.InRange(items.ItemCount, 0, entry.Mode == "finite" ? 32 : 128);
+                        if (entry.View == "SettingsPopupView" && entry.Mode == "finite")
+                            Assert.False(string.IsNullOrWhiteSpace(entry.Reason),
+                                $"{entry.View}/{entry.Source}: a finite collection needs a bound reason.");
                         _output.WriteLine($"{entry.View}/{entry.Source}: fixed collection, {items.ItemCount} items");
                         continue;
                     }
@@ -953,7 +956,7 @@ public sealed class ProgressiveDisplayTests
             "GrammarPanel" => new GrammarPanel(workspace.PageModel<WarningsPageModel>().Grammar),
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<AiHandoffPageModel>().Handoff),
             "Inspector" => new Inspector { DataContext = workspace.Inspector },
-            "KeyboardShortcutsFlyoutView" => new KeyboardShortcutsFlyoutView(),
+            "SettingsPopupView" => BuildSettingsPopup(workspace),
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
@@ -982,6 +985,13 @@ public sealed class ProgressiveDisplayTests
         return WindowRefusal.From(new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
             "PanGloss can't use this grammar.", parserDiagnostic: new ParserCompileDiagnostic(
                 "PanGloss can't use this grammar.", issues, "Fatal grammar issues")));
+    }
+
+    private static Control BuildSettingsPopup(WorkspaceShellViewModel workspace)
+    {
+        var viewModel = new SettingsViewModel(workspace);
+        viewModel.OpenGroup(SettingsGroup.KeyboardShortcuts);
+        return new SettingsPopupView { DataContext = viewModel };
     }
 
     private static IEnumerable<Control> Fragments(Control root, int depth = 0)
@@ -1020,5 +1030,6 @@ public sealed class ProgressiveDisplayTests
         return Path.Combine(root.FullName, "src", "SIL.Motif.App");
     }
 
-    private sealed record InventoryEntry(string View, string Name, string Source, string Mode, string Control);
+    private sealed record InventoryEntry(string View, string Name, string Source, string Mode, string Control,
+        string? Reason = null);
 }

@@ -195,11 +195,9 @@ public sealed class ProjectSwitchTests
     public async Task ARefreshInFlightDoesNotLandInTheNextProject()
     {
         var parts = NewWorkspace();
-        parts.Fake.DefaultSelectionResponseIs(System.Text.Json.JsonSerializer.Deserialize<DefaultSelectionResponse>("""
-            {"Selection":{"Name":"Default","TextIds":["11111111-1111-1111-1111-111111111111"],
-             "AddedWords":[],"CreatedUtc":"created","UpdatedUtc":"updated",
-             "PerWordLimitMs":1000,"PerWordStepLimit":{"steps":50000000,"isUnbounded":false}},"SetupSkipped":false}
-            """)!);
+        parts.Fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(
+            new NamedSelectionProjection("Default", [TextGuid], [], "created", "updated",
+                new SelectionParsingLimits(new StepCap(50_000_000), SelectionTimeLimitMode.Explicit, 1000), "revision")));
         var tokenA = NewToken("2026-09-05T00:00:00Z");
         var tokenB = NewToken("2026-09-06T00:00:00Z");
         parts.Fake.OnGetCurrentBaseline((request, _) => Task.FromResult(

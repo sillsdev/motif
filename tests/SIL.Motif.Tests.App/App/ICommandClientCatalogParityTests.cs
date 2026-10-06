@@ -22,6 +22,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.CheckGrammarAsync)] = "grammar check",
             [nameof(ICommandClient.ReadDefaultSelectionAsync)] = "selection show",
             [nameof(ICommandClient.SetDefaultSelectionAsync)] = "selection set-default",
+            [nameof(ICommandClient.SetSelectionLimitsAsync)] = "selection set-limits",
             [nameof(ICommandClient.SkipSetupAsync)] = "setup skip",
             [nameof(ICommandClient.ShowConfigAsync)] = "config show",
             [nameof(ICommandClient.MeasurePendingAsync)] = "trial --pending",

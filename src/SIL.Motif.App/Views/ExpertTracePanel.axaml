@@ -21,10 +21,10 @@
     <TextBlock Text="{Binding ExpertScopeText}" Classes="muted" TextWrapping="Wrap"
                IsVisible="{Binding ExpertScopeText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
     <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-      <TextBlock Text="Event · source" />
-      <TextBlock Grid.Column="1" Text="Input → output" />
-      <TextBlock Grid.Column="2" Text="Outcome" />
-      <TextBlock Grid.Column="3" Text="Notation" />
+      <TextBlock Text="Event · source" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="1" Text="Input → output" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="2" Text="Outcome" TextWrapping="Wrap" />
+      <TextBlock Grid.Column="3" Text="Notation" TextWrapping="Wrap" />
     </Grid>
     <ItemsControl x:Name="ExpertTracePanelExpertEventsItems" ItemsSource="{Binding ExpertEvents}" AutomationProperties.Name="Expert trace events">
       <ItemsControl.ItemsPanel>
@@ -37,7 +37,7 @@
             <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <Grid ColumnDefinitions="2*,2*,1.25*,2*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
               <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}">
-                <TextBlock Text="{Binding KindText}" />
+                <TextBlock Text="{Binding KindText}" TextWrapping="Wrap" />
                 <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
                   <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
                 </views:InspectLink>
@@ -79,7 +79,10 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <Expander Header="Phonological rules applied" IsExpanded="False" AutomationProperties.Name="Expert phonological rules">
+    <Expander IsExpanded="False" AutomationProperties.Name="Expert phonological rules">
+      <Expander.Header>
+        <TextBlock Text="Phonological rules applied" TextWrapping="Wrap" />
+      </Expander.Header>
       <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
         <TextBlock Text="Recorded phonological events in this view; each row retains its own outcome." Classes="muted" TextWrapping="Wrap" />
         <TextBlock Text="No phonological events recorded in this view" IsVisible="{Binding !HasExpertPhonologicalEvents}"
@@ -123,15 +126,24 @@
           <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
             <TextBlock Text="Readable" />
             <views:CopyableTextBlock Text="{Binding ExpertReadableText}" TextWrapping="Wrap" />
-            <Expander Header="Recorded rejection details" IsExpanded="False">
+            <Expander IsExpanded="False">
+              <Expander.Header>
+                <TextBlock Text="Recorded rejection details" TextWrapping="Wrap" />
+              </Expander.Header>
               <views:CopyableTextBlock Text="{Binding SelectedStep.RecordedRejectionText}" TextWrapping="Wrap" />
             </Expander>
           </StackPanel>
-          <Expander Grid.Column="1" Header="Parser record" IsExpanded="False">
+          <Expander Grid.Column="1" IsExpanded="False">
+            <Expander.Header>
+              <TextBlock Text="Parser record" TextWrapping="Wrap" />
+            </Expander.Header>
             <views:CopyableTextBlock Text="{Binding ExpertRawRecord}" Classes="traceNotation" TextWrapping="Wrap" />
           </Expander>
         </Grid>
-        <Expander Header="Environment notation" IsExpanded="False" AutomationProperties.Name="Expert environment notation">
+        <Expander IsExpanded="False" AutomationProperties.Name="Expert environment notation">
+          <Expander.Header>
+            <TextBlock Text="Environment notation" TextWrapping="Wrap" />
+          </Expander.Header>
           <StackPanel>
           <TextBlock Text="Environment not recorded" IsVisible="{Binding !HasExpertEnvironment}" Classes="muted" />
           <ItemsControl x:Name="ExpertTracePanelExpertEnvironmentTokensItems" ItemsSource="{Binding ExpertEnvironmentTokens}">
@@ -141,7 +153,8 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:EnvironmentToken">
                 <Grid ColumnDefinitions="*,3*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                  <views:TraceNotationToken Theme="{DynamicResource BorderlessButton}" Classes="traceToken" ToolTip.Tip="{Binding Explanation}">
+                  <views:TraceNotationToken Theme="{DynamicResource BorderlessButton}" Classes="traceToken"
+                                            ToolTip.Tip="{Binding Explanation}">
                     <TextBlock Text="{Binding Raw}" TextWrapping="Wrap" />
                   </views:TraceNotationToken>
                   <TextBlock Grid.Column="1" Text="{Binding Explanation}" TextWrapping="Wrap" />

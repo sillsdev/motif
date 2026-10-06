@@ -29,6 +29,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Shell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TopBar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Menu.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Settings.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Freshness.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Sidebar.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Badge.axaml" />

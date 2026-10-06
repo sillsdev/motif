@@ -414,7 +414,7 @@ internal static class WalkthroughReplayTestRunner
             .OfType<SIL.Motif.App.Controls.RunningTextPanel>(), runningText =>
             runningText.Classes.Contains("resultsLineBody"));
         Assert.Equal(FlowDirection.RightToLeft, lineBody.TextDirection);
-        SIL.Motif.Tests.App.LayoutAssertions.AssertCurrent(walkthrough.Window);
+        SIL.Motif.Tests.App.LayoutAssertions.AssertWalkthroughCurrent(walkthrough.Window);
     }
 
     private static void AssertExplainedWordCard(WalkthroughWindow walkthrough)
@@ -707,6 +707,11 @@ internal static class WalkthroughReplay
         if (script.Id != "explained-word-card" || step.Id != "unknown-staged") return null;
         var stagedStrip = Assert.Single(window.Window.GetLogicalDescendants().OfType<Border>(),
             border => border.Classes.Contains("stagedStrip"));
+        var wordStrip = Assert.Single(stagedStrip.GetVisualAncestors().OfType<Border>(), border =>
+            Avalonia.Automation.AutomationProperties.GetAutomationId(border)?.EndsWith("-strip",
+                StringComparison.Ordinal) == true);
+        var stagedOrigin = stagedStrip.TranslatePoint(default, wordStrip);
+        Assert.True(stagedOrigin is { X: > 0 }, "The staged note should sit beside the word strip.");
         Assert.Equal("Still fits the project.", ToolTip.GetTip(stagedStrip));
         var center = stagedStrip.TranslatePoint(
             new Point(stagedStrip.Bounds.Width / 2, stagedStrip.Bounds.Height / 2), window.Window);

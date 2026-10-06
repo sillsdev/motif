@@ -97,6 +97,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Enter or Space", "Enter or Space", "Analyze texts"),
             ("Page Up", "Page Up", "Analyze texts"), ("Page Down", "Page Down", "Analyze texts"),
             ("Home", "Home", "Analyze texts"), ("End", "End", "Analyze texts"),
+            ("Enter", "Enter", "Analyze texts"), ("Escape", "Esc", "Analyze texts"),
         };
         var primarySearchGesture = PrimarySearchGesture;
         foreach (var scope in new[] { "Word list", "Lists" })
@@ -128,6 +129,14 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Enter or Space", "Enter or Space", "Matrix preview"),
             ("Enter or Space", "Enter or Space", "Morpheme"),
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),
+            (",", "Ctrl+,", "Window"),
+            ("= or Keypad +", "Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad +", "Window"),
+            ("- or Keypad -", "Ctrl+- or Ctrl+Keypad -", "Window"),
+            ("0 or Keypad 0", "Ctrl+0 or Ctrl+Keypad 0", "Window"),
+            ("Escape", "Esc", "Settings"),
+            ("Enter", "Enter", "Settings"), ("Escape", "Esc", "Settings"),
+            ("← or →", "← or →", "Settings"),
+            ("Tab", "Tab", "Settings"), ("Tab", "Shift+Tab", "Settings"),
         });
         Assert.Equal(expectedSettingsKeys.OrderBy(row => (row.Scope, row.Key, row.Gesture)),
             KeyboardShortcutRegistry.Entries.Select(row => (row.Key, row.Gesture, row.Scope))
@@ -171,6 +180,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         Assert.Equal("⌘+F", KeyboardShortcutCatalog.FormatGesture(
             new ShortcutGesture(ShortcutKey.F, ShortcutModifiers.Primary), ShortcutPlatform.MacOS,
             CultureInfo.GetCultureInfo("en")));
+        Assert.Equal("= or Keypad +", KeyboardShortcutCatalog.FormatKeyLabels(
+            [ShortcutKey.OemPlus, ShortcutKey.OemPlus, ShortcutKey.Add], CultureInfo.GetCultureInfo("en")));
     }
 
     [Fact]
@@ -348,7 +359,13 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
 
                 window.KeyPress(Key.OemQuestion, RawInputModifiers.Shift, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);
-                Assert.True(window.KeyboardShortcutsFlyout.IsOpen);
+                var settingsButton = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
+                var settingsFlyout = Assert.IsType<Flyout>(settingsButton.Flyout);
+                Assert.True(settingsFlyout.IsOpen);
+                var settingsPopup = Assert.IsType<SettingsPopupView>(settingsFlyout.Content);
+                var settings = Assert.IsType<SettingsViewModel>(settingsPopup.DataContext);
+                Assert.True(settings.IsKeyboardShortcutsSelected);
+                Assert.True(settingsPopup.FindControl<TextBox>("ShortcutSearchBox")!.IsFocused);
             }
             finally
             {

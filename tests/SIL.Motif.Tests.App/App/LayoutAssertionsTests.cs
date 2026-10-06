@@ -21,6 +21,71 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
 {
+    [Fact]
+    public void WalkthroughZoomFitExcludesWordPresentationSubtrees()
+    {
+        avalonia.Invoke(() =>
+        {
+            var row = new WordRow
+            {
+                Content = new TextBlock { Text = new string('r', 80), TextWrapping = TextWrapping.NoWrap },
+            };
+            var header = new WordRowHeader
+            {
+                Content = new TextBlock { Text = new string('h', 80), TextWrapping = TextWrapping.NoWrap },
+            };
+            var wordStrip = new Border
+            {
+                Name = "WordStrip",
+                Classes = { "wordStrip" },
+                Child = new TextBlock { Text = new string('s', 80), TextWrapping = TextWrapping.NoWrap },
+            };
+            var wordCard = new Border
+            {
+                Classes = { "card", "wordCard" },
+                Child = new TextBlock { Text = new string('c', 80), TextWrapping = TextWrapping.NoWrap },
+            };
+            var morphemeRow = new MorphemeRow
+            {
+                Children = { new TextBlock { Text = new string('m', 80), TextWrapping = TextWrapping.NoWrap } },
+            };
+            var analyses = new ProgressiveItemsControl
+            {
+                Name = "ResultsInTextPanelFieldWorksAnalysesItems",
+                FullItemsSource = new[]
+                {
+                    new TextBlock { Text = new string('a', 80), TextWrapping = TextWrapping.NoWrap },
+                },
+            };
+            var root = new StackPanel { Children = { row, header, wordStrip, wordCard, morphemeRow, analyses } };
+            var window = new Window { Content = root, Width = 180, Height = 120 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                LayoutAssertions.AssertWalkthroughCurrent(window);
+
+                var outsideText = new TextBlock
+                {
+                    Text = new string('x', 80),
+                    Width = 20,
+                    TextWrapping = TextWrapping.NoWrap,
+                };
+                root.Children.Add(outsideText);
+                PageScreenshots.Settle(window);
+                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+                    () => LayoutAssertions.AssertWalkthroughCurrent(window));
+                Assert.Contains(outsideText.Text, error.Message, StringComparison.Ordinal);
+                Assert.Contains("ADR 0053", LayoutAssertions.WalkthroughWordRowExclusionReason,
+                    StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     [Theory]
     [InlineData(1040)]
     [InlineData(1240)]

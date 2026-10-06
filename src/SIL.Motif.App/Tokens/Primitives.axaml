@@ -10,7 +10,8 @@
   two values, and a primitive has one.
 
   Key shapes: Primitive.Color.<Hue><Step>, Primitive.Space.<px>, Primitive.Inset.<left>_<top>_<right>_<bottom>,
-  Primitive.Radius.<px>, Primitive.Type.<px>, Primitive.Size.<px>, Primitive.Stroke.<px>, Primitive.Dash.<on>_<off>, Primitive.Opacity.<percent>, Primitive.Font.<family>.
+  Primitive.Radius.<px>, Primitive.Type.<px>, Primitive.Size.<px>, Primitive.GridLength.<px>, Primitive.Stroke.<px>,
+  Primitive.Dash.<on>_<off>, Primitive.Opacity.<percent>, Primitive.Font.<family>.
   A decimal point in a value is written as p (13p5 is 13.5).
 -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
@@ -161,6 +162,7 @@
   <Thickness x:Key="Primitive.Inset.26_0_0_4">26,0,0,4</Thickness>
   <Thickness x:Key="Primitive.Inset.8_4_8_4">8,4</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_10_0">0,0,10,0</Thickness>
+  <Thickness x:Key="Primitive.Inset.4_0_10_0">4,0,10,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_4_0">0,0,4,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_6_0">0,0,6,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_18_0">0,0,18,0</Thickness>
@@ -231,6 +233,8 @@
   <x:Double x:Key="Primitive.Size.156">156</x:Double>
   <x:Double x:Key="Primitive.Size.170">170</x:Double>
   <x:Double x:Key="Primitive.Size.176">176</x:Double>
+  <GridLength x:Key="Primitive.GridLength.140">140</GridLength>
+  <GridLength x:Key="Primitive.GridLength.176">176</GridLength>
   <x:Double x:Key="Primitive.Size.190">190</x:Double>
   <x:Double x:Key="Primitive.Size.204">204</x:Double>
   <x:Double x:Key="Primitive.Size.220">220</x:Double>

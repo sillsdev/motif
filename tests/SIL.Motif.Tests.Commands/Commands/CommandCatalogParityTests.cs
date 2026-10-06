@@ -121,7 +121,7 @@ public sealed class CommandCatalogParityTests
         "proposal.not-found",
         "proposal.split-duplicate-operation",
         "report.assessment-not-found", "report.invalid-kind", "report.refused",
-        "selection.empty", "selection.invalid-time-limit", "selection.text-not-found",
+        "selection.empty", "selection.invalid-limits", "selection.revision-conflict", "selection.text-not-found",
         "stats.invalid-evidence", "stats.no-evidence", "stats.wrong-kind",
         "stats.cancelled", "stats.format-conflict", "stats.no-assessment",
         "stats.no-cache", "stats.parser-refused", "stats.parser-unavailable",

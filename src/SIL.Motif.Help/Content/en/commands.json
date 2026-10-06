@@ -59,6 +59,11 @@
     "description": "Saves which project Texts and words Motif should measure by default. Use it to focus repeated Assessments on material a linguist has chosen.",
     "source": "Hand-written from docs/cli-api.md and command behavior."
   },
+  "selection set-limits": {
+    "title": "Set Selection limits",
+    "description": "Changes only the saved Default Selection's parsing limits when its expected revision still matches. Use it to update the step cap or estimated-versus-explicit time policy without replacing the chosen Texts and added words.",
+    "source": "Hand-written from docs/cli-api.md and command behavior."
+  },
   "setup skip": {
     "title": "Skip project setup",
     "description": "Marks first-time Selection setup as skipped for this project. Use it when the project can be opened but a Default Selection should not be chosen yet.",

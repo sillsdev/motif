@@ -65,6 +65,8 @@ public enum ShortcutKey
     Space,
     /// <summary>Escape.</summary>
     Escape,
+    /// <summary>Tab.</summary>
+    Tab,
     /// <summary>F1.</summary>
     F1,
     /// <summary>The A key.</summary>
@@ -222,7 +224,8 @@ public static class KeyboardShortcutCatalog
         ArgumentNullException.ThrowIfNull(keys);
         ArgumentNullException.ThrowIfNull(culture);
         var resources = ReadShortcutHelp(culture.TwoLetterISOLanguageName);
-        return string.Join(resources.AlternativeSeparator ?? " or ", keys.Select(key => FormatKeyLabel(key, culture)));
+        return string.Join(resources.AlternativeSeparator ?? " or ", keys
+            .Select(key => FormatKeyLabel(key, culture)).Distinct(StringComparer.Ordinal));
     }
 
     /// <summary>Formats alternative gestures as one localized row value.</summary>
@@ -280,8 +283,7 @@ public static class KeyboardShortcutCatalog
             lines.Add("| --- | --- | --- | --- | --- |");
             foreach (var definition in Catalog.Where(definition => definition.Scopes.Contains(scope)))
             {
-                var key = string.Join(resources.AlternativeSeparator ?? " or ",
-                    definition.Bindings.Select(binding => FormatKeyLabel(binding.Gesture.Key, selectedCulture)));
+                var key = FormatKeyLabels(definition.Bindings.Select(binding => binding.Gesture.Key), selectedCulture);
                 var winGesture = FormatAlternatives(definition.Bindings.Select(binding => binding.Gesture),
                     ShortcutPlatform.Windows, selectedCulture);
                 var macGesture = FormatAlternatives(definition.Bindings.Select(binding => binding.Gesture),

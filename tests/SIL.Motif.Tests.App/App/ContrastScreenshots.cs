@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
@@ -67,9 +68,17 @@ public sealed class ContrastScreenshots
                 {
                     Content = new ComparePanel(compare), RequestedThemeVariant = variant, Width = 1100, Height = 700,
                 };
+                MatrixCell? explanationCell = null;
                 try
                 {
                     matrix.Show();
+                    PageScreenshots.Settle(matrix);
+                    explanationCell = matrix.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
+                        cell.DataContext is CompareCellViewModel viewModel &&
+                        viewModel.Explanation == "You approved these in FieldWorks; PanGloss builds a different analysis.");
+                    Assert.Equal("You approved these in FieldWorks; PanGloss builds a different analysis.",
+                        ToolTip.GetTip(explanationCell));
+                    ToolTip.SetIsOpen(explanationCell, true);
                     PageScreenshots.Settle(matrix);
                     LayoutAssertions.BeforeCapture(matrix);
                     using var frame = matrix.CaptureRenderedFrame()
@@ -78,6 +87,7 @@ public sealed class ContrastScreenshots
                 }
                 finally
                 {
+                    if (explanationCell is not null) ToolTip.SetIsOpen(explanationCell, false);
                     matrix.Close();
                 }
             }

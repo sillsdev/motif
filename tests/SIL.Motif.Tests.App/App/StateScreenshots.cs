@@ -136,6 +136,9 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                     PageScreenshots.Save(window, Path.Combine(folder, $"state-try-a-word-environment-{width}-{theme}.png"));
                     var token = panel.GetVisualDescendants().OfType<TraceNotationToken>().Single(control =>
                         control.IsEffectivelyVisible && control.DataContext is EnvironmentToken { Raw: var raw } && raw == environment);
+                    window.Height = 780;
+                    token.BringIntoView();
+                    PageScreenshots.Settle(window);
                     token.Focus(NavigationMethod.Tab);
                     PageScreenshots.Settle(window);
                     Assert.True(ToolTip.GetIsOpen(token));

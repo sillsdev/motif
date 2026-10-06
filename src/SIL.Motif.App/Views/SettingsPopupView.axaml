@@ -1,0 +1,450 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             x:Class="SIL.Motif.App.Views.SettingsPopupView"
+             x:DataType="vm:SettingsViewModel"
+             controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+  <Border x:Name="SettingsSurface" Classes="settingsSurface" Width="{DynamicResource Component.Settings.Width}"
+          Height="{DynamicResource Component.Settings.MaxHeight}"
+          MaxHeight="{DynamicResource Component.Settings.MaxHeight}">
+    <Grid RowDefinitions="Auto,*">
+      <Border Classes="settingsHeader">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Classes="settingsHeaderTitle" Text="Settings" VerticalAlignment="Center" />
+          <Button x:Name="SettingsClose" Grid.Column="1" Content="×" Classes="settingsClose"
+                  TabIndex="100" Click="OnCloseRequested"
+                  AutomationProperties.Name="Close Settings" />
+        </Grid>
+      </Border>
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{DynamicResource Component.Settings.RailWidth}" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Border Classes="settingsRail">
+          <ListBox x:Name="SettingsGroups" Classes="settingsRailList" ItemsSource="{Binding GroupOptions}"
+                   Focusable="True" IsTabStop="True"
+                   SelectedItem="{Binding SelectedNavigationEntry}"
+                   AutomationProperties.Name="Settings groups">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SettingsGroupOption">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                  <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                  <views:MarkGlyph Grid.Column="1" Classes="inline" Mark="{x:Static vm:Mark.Warning}"
+                                   IsVisible="{Binding HasWarning}"
+                                   AutomationProperties.Name="A font is missing" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+        <Grid Grid.Column="1" RowDefinitions="*,Auto">
+          <Grid>
+            <ScrollViewer Classes="settingsContentScroll" IsVisible="{Binding !IsKeyboardShortcutsSelected}"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid>
+            <StackPanel IsVisible="{Binding IsDisplaySelected}" Classes="settingsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="Display" />
+              <TextBlock Classes="settingsPersistenceRefusal" Text="{Binding PreferenceProblemText}"
+                         IsVisible="{Binding HasPreferenceProblem}" TextWrapping="Wrap" />
+              <Button Classes="settingsAction" Content="Reset saved preferences"
+                      Command="{Binding ResetPreferencesCommand}" IsVisible="{Binding ShowResetPreferences}"
+                      AutomationProperties.Name="Reset saved preferences" />
+              <Border Classes="settingsRow">
+              <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                <StackPanel Classes="settingsLabel">
+                  <TextBlock Classes="settingsLabelText" Text="Zoom" />
+                  <TextBlock Classes="settingsCaption" Text="{Binding ZoomShortcutHint}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Classes="settingsDisplayControls">
+                  <StackPanel Orientation="Horizontal" Classes="settingsStepper">
+                    <Button Content="−" Theme="{DynamicResource BorderlessButton}" Classes="settingsStepButton"
+                            Command="{Binding ZoomOutCommand}" AutomationProperties.Name="Zoom out"
+                            />
+                    <TextBlock Classes="settingsZoomValue" Text="{Binding ZoomLabel}" VerticalAlignment="Center" />
+                    <Button Content="+" Theme="{DynamicResource BorderlessButton}" Classes="settingsStepButton"
+                            Command="{Binding ZoomInCommand}" AutomationProperties.Name="Zoom in"
+                            />
+                  </StackPanel>
+                  <Button Classes="settingsLink" Content="Reset to 100%" Command="{Binding ResetZoomCommand}"
+                          IsVisible="{Binding ShowZoomReset}" AutomationProperties.Name="Reset zoom to 100%" />
+                </StackPanel>
+              </Grid>
+              </Border>
+              <Border Classes="settingsRow">
+              <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                <StackPanel Classes="settingsLabel">
+                  <TextBlock Classes="settingsLabelText" Text="Theme" />
+                  <TextBlock Classes="settingsCaption" Text="Remembered for this computer, like zoom." TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Classes="settingsSegments">
+                  <Button x:Name="ThemeLightButton" Content="Light" Classes="settingsSegment" Classes.selected="{Binding IsLightThemeSelected}"
+                          Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static vm:WindowThemeChoice.Light}"
+                          TabIndex="{Binding LightThemeTabIndex}" KeyDown="OnThemeSegmentKeyDown"
+                          AutomationProperties.Name="Light theme" />
+                  <Button x:Name="ThemeDarkButton" Content="Dark" Classes="settingsSegment" Classes.selected="{Binding IsDarkThemeSelected}"
+                          Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static vm:WindowThemeChoice.Dark}"
+                          TabIndex="{Binding DarkThemeTabIndex}" KeyDown="OnThemeSegmentKeyDown"
+                          AutomationProperties.Name="Dark theme" />
+                  <Button x:Name="ThemeSystemButton" Content="{Binding ThemeSystemLabel}" Classes="settingsSegment" Classes.selected="{Binding IsSystemThemeSelected}"
+                          Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static vm:WindowThemeChoice.System}"
+                          TabIndex="{Binding SystemThemeTabIndex}" KeyDown="OnThemeSegmentKeyDown"
+                          AutomationProperties.Name="Match the operating system theme" />
+                </StackPanel>
+              </Grid>
+              </Border>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsParsingSelected}" Classes="settingsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="{Binding GroupParsingLabel}" />
+              <TextBlock Classes="settingsLead" Text="{Binding ParsingLead}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasProject}" />
+              <TextBlock Classes="settingsPlaceholder" Text="Open a project to set its parsing limits."
+                         IsVisible="{Binding !HasProject}" TextWrapping="Wrap" />
+              <TextBlock Classes="settingsPlaceholder" Text="Choose what to parse before setting its parsing limits."
+                         IsVisible="{Binding HasProjectWithoutSelection}"
+                         TextWrapping="Wrap" />
+              <Button Classes="settingsAction" Content="Choose what to parse"
+                      IsVisible="{Binding HasProjectWithoutSelection}" Click="OnConfigureRequested"
+                      AutomationProperties.Name="Choose what to parse" />
+              <StackPanel IsVisible="{Binding HasSavedSelection}" Classes="settingsPage">
+                <Border Classes="settingsRow">
+                <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Step limit per word" />
+                    <TextBlock Classes="settingsCaption" Text="200,000 steps is the default. A word that reaches it is marked ◐ Stopped."
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                  <NumericUpDown Grid.Column="1" Classes="settingsNumber" Classes.refused="{Binding HasStepLimitRefusal}"
+                                 Value="{Binding StepLimit}"
+                                 Minimum="1" Increment="100000" FormatString="N0"
+                                 IsEnabled="{Binding !IsNoStepLimit}" LostFocus="OnParsingLimitLostFocus"
+                                 KeyDown="OnParsingLimitKeyDown" AutomationProperties.Name="Step limit per word" />
+                </Grid>
+                </Border>
+                <TextBlock Classes="settingsRefusal" Text="{Binding StepLimitRefusal}"
+                           IsVisible="{Binding HasStepLimitRefusal}" TextWrapping="Wrap" />
+                <CheckBox Classes="settingsCheck" Content="No step limit" IsChecked="{Binding IsNoStepLimit}"
+                          Click="OnNoStepLimitClick"
+                          AutomationProperties.Name="No step limit" />
+                <Border Classes="settingsRow">
+                <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Time limit per word" TextWrapping="Wrap" />
+                    <TextBlock Classes="settingsCaption" Text="Follows the step limit until you type your own value."
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto"
+                        ColumnSpacing="{DynamicResource Intent.Space.Compact}" HorizontalAlignment="Right">
+                    <NumericUpDown Classes="settingsNumber" Classes.refused="{Binding HasTimeLimitRefusal}"
+                                   Value="{Binding TimeLimitSeconds}"
+                                   Minimum="0.001" Maximum="2147483.647" Increment="0.1" FormatString="0.###"
+                                   IsEnabled="{Binding IsTimeLimitEnabled}" LostFocus="OnParsingLimitLostFocus"
+                                   KeyDown="OnParsingLimitKeyDown" AutomationProperties.Name="Time limit per word in seconds" />
+                    <Button Grid.Column="1" Classes="settingsLink" Content="Use Motif's estimate"
+                            IsVisible="{Binding ShowUseEstimate}" Click="OnUseEstimateClick"
+                            AutomationProperties.Name="Use Motif's estimate" />
+                  </Grid>
+                </Grid>
+                </Border>
+                <TextBlock Classes="settingsCaption" Text="{Binding StepLimitEstimateText}" TextWrapping="Wrap" />
+                <TextBlock Classes="settingsRefusal" Text="{Binding TimeLimitRefusal}"
+                           IsVisible="{Binding HasTimeLimitRefusal}" TextWrapping="Wrap" />
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsWritingSystemsSelected}" Classes="settingsPage settingsWritingSystemsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="{Binding WritingSystemsHeading}" />
+              <TextBlock Classes="settingsLead" Text="{Binding WritingSystemsLead}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasProject}" />
+              <TextBlock Classes="settingsPlaceholder" Text="Open a project to see its writing systems."
+                         IsVisible="{Binding !HasProject}" TextWrapping="Wrap" />
+              <TextBlock Classes="settingsPlaceholder" Text="{Binding WritingSystemsEmptyText}"
+                         IsVisible="{Binding ShowWritingSystemsEmptyState}" TextWrapping="Wrap" />
+              <StackPanel IsVisible="{Binding HasWritingSystems}" Classes="settingsWritingSystemList">
+                <TextBlock Classes="settingsWritingSystemSection" Text="VERNACULAR"
+                           IsVisible="{Binding HasVernacularWritingSystems}" />
+                <ItemsControl x:Name="SettingsVernacularWritingSystemsItems"
+                              ItemsSource="{Binding VernacularWritingSystems}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WritingSystemSettingsRow">
+                      <Border Classes="settingsWritingSystemRow">
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}">
+                          <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                            <TextBlock Classes="settingsWritingSystemName" Text="{Binding Name}" TextWrapping="Wrap" />
+                            <Border Grid.Column="1" Classes="settingsWritingSystemAbbreviation"
+                                    IsVisible="{Binding HasAbbreviation}">
+                              <TextBlock Text="{Binding Abbreviation}" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Classes="settingsWritingSystemTag" Text="{Binding Id}"
+                                       IsVisible="{Binding HasTag}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="3" Classes="settingsWritingSystemDefault" Text="Default"
+                                       IsVisible="{Binding ShowDefault}" />
+                          </Grid>
+                          <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
+                                ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                            <Border Classes="settingsWritingSystemSampleBox"
+                                    IsVisible="{Binding !IsAlsoInVernacular}">
+                              <StackPanel>
+                                <TextBlock Classes="settingsWritingSystemSample" Text="Aa"
+                                           controls:WritingSystemText.Id="{Binding Id}"
+                                           controls:WritingSystemText.StyleName="Normal"
+                                           controls:WritingSystemText.SuppressMissingFontNotice="True"
+                                           TextAlignment="{Binding PreviewTextAlignment}" />
+                                <TextBlock Classes="settingsWritingSystemSampleCaption" Text="Font preview" />
+                              </StackPanel>
+                            </Border>
+                            <TextBlock Grid.Column="1" Classes="settingsWritingSystemDuplicate"
+                                       Text="{Binding AlsoInVernacularText}"
+                                       IsVisible="{Binding IsAlsoInVernacular}" TextWrapping="Wrap" />
+                            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*"
+                                  RowSpacing="{DynamicResource Intent.Space.Compact}"
+                                  IsVisible="{Binding !IsAlsoInVernacular}">
+                              <TextBlock Classes="settingsWritingSystemFactLabel" Text="Font" />
+                              <StackPanel Grid.Column="1">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                                  <TextBlock Classes="settingsWritingSystemFactValue" Text="{Binding FontLabel}"
+                                             TextWrapping="Wrap" />
+                                  <views:MarkGlyph Grid.Column="1" Classes="inline"
+                                                   Mark="{x:Static vm:Mark.Warning}"
+                                                   IsVisible="{Binding IsFontMissing}"
+                                                   AutomationProperties.Name="A font is missing" />
+                                </Grid>
+                                <TextBlock Classes="settingsWritingSystemFactCaption"
+                                           Text="{Binding MissingFontCaption}"
+                                           IsVisible="{Binding IsFontMissing}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <TextBlock Grid.Row="1" Classes="settingsWritingSystemFactLabel" Text="Features" />
+                              <TextBlock Grid.Row="1" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding Features}" TextWrapping="Wrap" />
+                              <TextBlock Grid.Row="2" Classes="settingsWritingSystemFactLabel" Text="Direction" />
+                              <TextBlock Grid.Row="2" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding Direction}" TextWrapping="Wrap" />
+                              <TextBlock Grid.Row="3" Classes="settingsWritingSystemFactLabel" Text="Size" />
+                              <TextBlock Grid.Row="3" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding StyleSizes}" IsVisible="{Binding HasStyleSizes}"
+                                         TextWrapping="Wrap" />
+                            </Grid>
+                          </Grid>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="settingsWritingSystemSection" Text="ANALYSIS"
+                           IsVisible="{Binding HasAnalysisWritingSystems}" />
+                <ItemsControl x:Name="SettingsAnalysisWritingSystemsItems"
+                              ItemsSource="{Binding AnalysisWritingSystems}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WritingSystemSettingsRow">
+                      <Border Classes="settingsWritingSystemRow">
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}">
+                          <Grid ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                            <TextBlock Classes="settingsWritingSystemName" Text="{Binding Name}" TextWrapping="Wrap" />
+                            <Border Grid.Column="1" Classes="settingsWritingSystemAbbreviation"
+                                    IsVisible="{Binding HasAbbreviation}">
+                              <TextBlock Text="{Binding Abbreviation}" />
+                            </Border>
+                            <TextBlock Grid.Column="2" Classes="settingsWritingSystemTag" Text="{Binding Id}"
+                                       IsVisible="{Binding HasTag}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="3" Classes="settingsWritingSystemDefault" Text="Default"
+                                       IsVisible="{Binding ShowDefault}" />
+                          </Grid>
+                          <Grid Grid.Row="1" ColumnDefinitions="Auto,*"
+                                ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                            <Border Classes="settingsWritingSystemSampleBox"
+                                    IsVisible="{Binding !IsAlsoInVernacular}">
+                              <StackPanel>
+                                <TextBlock Classes="settingsWritingSystemSample" Text="Aa"
+                                           controls:WritingSystemText.Id="{Binding Id}"
+                                           controls:WritingSystemText.StyleName="Normal"
+                                           controls:WritingSystemText.SuppressMissingFontNotice="True"
+                                           TextAlignment="{Binding PreviewTextAlignment}" />
+                                <TextBlock Classes="settingsWritingSystemSampleCaption" Text="Font preview" />
+                              </StackPanel>
+                            </Border>
+                            <TextBlock Grid.Column="1" Classes="settingsWritingSystemDuplicate"
+                                       Text="{Binding AlsoInVernacularText}"
+                                       IsVisible="{Binding IsAlsoInVernacular}" TextWrapping="Wrap" />
+                            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*"
+                                  RowSpacing="{DynamicResource Intent.Space.Compact}"
+                                  IsVisible="{Binding !IsAlsoInVernacular}">
+                              <TextBlock Classes="settingsWritingSystemFactLabel" Text="Font" />
+                              <StackPanel Grid.Column="1">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                                  <TextBlock Classes="settingsWritingSystemFactValue" Text="{Binding FontLabel}"
+                                             TextWrapping="Wrap" />
+                                  <views:MarkGlyph Grid.Column="1" Classes="inline"
+                                                   Mark="{x:Static vm:Mark.Warning}"
+                                                   IsVisible="{Binding IsFontMissing}"
+                                                   AutomationProperties.Name="A font is missing" />
+                                </Grid>
+                                <TextBlock Classes="settingsWritingSystemFactCaption"
+                                           Text="{Binding MissingFontCaption}"
+                                           IsVisible="{Binding IsFontMissing}" TextWrapping="Wrap" />
+                              </StackPanel>
+                              <TextBlock Grid.Row="1" Classes="settingsWritingSystemFactLabel" Text="Features" />
+                              <TextBlock Grid.Row="1" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding Features}" TextWrapping="Wrap" />
+                              <TextBlock Grid.Row="2" Classes="settingsWritingSystemFactLabel" Text="Direction" />
+                              <TextBlock Grid.Row="2" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding Direction}" TextWrapping="Wrap" />
+                              <TextBlock Grid.Row="3" Classes="settingsWritingSystemFactLabel" Text="Size" />
+                              <TextBlock Grid.Row="3" Grid.Column="1" Classes="settingsWritingSystemFactValue"
+                                         Text="{Binding StyleSizes}" IsVisible="{Binding HasStyleSizes}"
+                                         TextWrapping="Wrap" />
+                            </Grid>
+                          </Grid>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="settingsWritingSystemFootnote"
+                           Text="Motif doesn't switch keyboards or check spelling, and it sorts word lists by Unicode value, not by these sort orders."
+                           TextWrapping="Wrap" />
+              </StackPanel>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsHelpAndReportsSelected}" Classes="settingsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="Help and problem reports" />
+              <Border Classes="settingsRow">
+              <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                <StackPanel Classes="settingsLabel">
+                  <TextBlock Classes="settingsLabelText" Text="Help" />
+                  <TextBlock Classes="settingsCaption" Text="{Binding HelpCaption}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Open Help" Classes="settingsAction" Click="OnOpenHelpRequested"
+                        AutomationProperties.Name="Open Help" />
+              </Grid>
+              </Border>
+              <Border Classes="settingsRow">
+              <Grid Classes="settingsRow" ColumnDefinitions="*,Auto">
+                <TextBlock Classes="settingsLabelText" Text="Guide and command pages online" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Classes="settingsLink" Content="Open the Motif site ↗"
+                        Click="OnOpenSiteRequested" AutomationProperties.Name="Open the Motif site" />
+              </Grid>
+              </Border>
+              <Border Classes="settingsRow">
+              <StackPanel Classes="settingsRow">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Classes="settingsLabel">
+                    <TextBlock Classes="settingsLabelText" Text="Report a problem" />
+                    <TextBlock Classes="settingsCaption" Text="{Binding ReportCaption}" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Content="Report a problem" Classes="settingsAction"
+                          Click="OnReportProblemRequested" AutomationProperties.Name="Report a problem" />
+                </Grid>
+                <Expander Header="What a report includes ▸" IsExpanded="{Binding ReportIncludesExpanded}"
+                          Classes="settingsReportDetails" AutomationProperties.Name="What a report includes">
+                  <TextBlock Classes="settingsReportList" TextWrapping="Wrap"
+                             Text="Motif version · PanGloss version · Operating system · Safe failure facts · The operation that failed · Its refusal code and exit status · Method names from the stack, with no messages or file paths.&#10;Never included unless you tick it in the preview: local details, which may contain project or language data." />
+                </Expander>
+              </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsAboutSelected}" Classes="settingsPage">
+              <TextBlock Classes="settingsGroupHeading" Text="About Motif" />
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="settingsAboutLabel" Text="Motif" />
+                <TextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding MotifVersion}" />
+              </Grid></Border>
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="settingsAboutLabel" Text="PanGloss" />
+                <StackPanel Grid.Column="1">
+                  <TextBlock Classes="settingsAboutValue" Classes.warning="{Binding PanGlossNotFound}"
+                             Text="{Binding PanGlossVersion}" TextWrapping="Wrap" />
+                  <TextBlock Classes="settingsCaption" Text="Motif can't parse until it finds PanGloss."
+                             IsVisible="{Binding PanGlossNotFound}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid></Border>
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="settingsAboutLabel" Text="Operating system" />
+                <TextBlock Grid.Column="1" Classes="settingsAboutValue" Text="{Binding OperatingSystemText}" />
+              </Grid></Border>
+              <Border Classes="settingsAboutRow"><Grid Classes="settingsAboutRow" ColumnDefinitions="Auto,*">
+                <TextBlock Classes="settingsAboutLabel" Text="Where Motif keeps its data" />
+                <Grid Grid.Column="1" ColumnDefinitions="*,Auto"
+                      ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                  <TextBlock Classes="settingsAboutValue" Text="{Binding DataRoot}" TextWrapping="Wrap" />
+                  <Button Grid.Column="1" Classes="settingsLink" Content="{Binding DataFolderActionText}"
+                          Click="OnOpenDataFolderRequested" AutomationProperties.Name="Open Motif data folder" />
+                </Grid>
+              </Grid></Border>
+              <TextBlock Classes="settingsCaption" Text="This folder holds Motif's managed project data and parser artifacts. FieldWorks projects stay in their own folders; App preferences are kept separately."
+                         TextWrapping="Wrap" />
+              <Button Classes="settingsAction" Content="{Binding CopyVersionsText}" Click="OnCopyVersionsRequested"
+                      AutomationProperties.Name="Copy versions" />
+              <TextBlock Classes="settingsCaption" Text="Motif reads your project and writes nothing until you press Apply."
+                         TextWrapping="Wrap" />
+            </StackPanel>
+
+            </Grid>
+            </ScrollViewer>
+            <Grid IsVisible="{Binding IsKeyboardShortcutsSelected}" RowDefinitions="Auto,*">
+              <Border Classes="settingsKeyboardHeader">
+                <StackPanel Classes="settingsKeyboardHeaderContent">
+                  <TextBlock Classes="settingsGroupHeading" Text="Keyboard shortcuts" />
+                  <TextBlock Classes="settingsLead" Text="Shortcuts work when no text box has the cursor."
+                             TextWrapping="Wrap" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+                    <TextBox x:Name="ShortcutSearchBox" Classes="settingsSearch" PlaceholderText="Search shortcuts"
+                             Text="{Binding ShortcutSearch}" AutomationProperties.Name="Search shortcuts" />
+                    <Button Grid.Column="1" Content="×" Classes="settingsClearSearch"
+                            Command="{Binding ClearShortcutSearchCommand}" IsVisible="{Binding ShortcutSearchHasText}"
+                            AutomationProperties.Name="Clear shortcut search" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <ScrollViewer Grid.Row="1" Classes="settingsShortcutScroll" VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Classes="settingsShortcutList">
+                  <TextBlock Classes="settingsNoMatch" Text="{Binding NoShortcutMatchesText}"
+                             IsVisible="{Binding ShowNoShortcutMatches}" TextWrapping="Wrap" />
+                  <ItemsControl x:Name="SettingsPopupViewShortcutsItems" ItemsSource="{Binding ShortcutEntries}"
+                                IsVisible="{Binding ShortcutRegistryAvailable}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Classes="settingsShortcutRow">
+                          <Grid Classes="settingsShortcutRow">
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="{DynamicResource Component.Settings.KeyColumnWidth}" />
+                              <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Classes="settingsKeyCap"><TextBlock Text="{Binding Keys}" TextWrapping="Wrap" /></Border>
+                            <TextBlock Grid.Column="1" Text="{Binding Action}" Classes="settingsShortcutAction"
+                                       TextWrapping="Wrap" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+          <Border Grid.Row="1" Classes="settingsFooter" Classes.writingSystems="{Binding IsWritingSystemsSelected}"
+                  IsVisible="{Binding ShowSettingsFooter}">
+            <Grid ColumnDefinitions="Auto,*" Classes="settingsFooterContent">
+              <TextBlock Classes="settingsFooterMark" Text="ⓘ" />
+              <TextBlock Grid.Column="1" Classes="settingsFooterText" Text="{Binding ParsingFooter}"
+                         IsVisible="{Binding IsParsingSelected}" TextWrapping="Wrap" />
+              <StackPanel Grid.Column="1" IsVisible="{Binding IsWritingSystemsSelected}">
+                <TextBlock Classes="settingsFooterText" Text="Change these in FieldWorks." />
+                <TextBlock Classes="settingsFooterText" Text="Font, features, direction, keyboard, spelling and sort: Format › Set up Vernacular Writing Systems… or Format › Set up Analysis Writing Systems…"
+                           TextWrapping="Wrap" />
+                <TextBlock Classes="settingsFooterText" Text="Size: Format › Styles…, then the Normal style, or a writing system’s override in it."
+                           TextWrapping="Wrap" />
+                <TextBlock Classes="settingsFooterText" Text="After FieldWorks saves, press Refresh to see a change here."
+                           TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

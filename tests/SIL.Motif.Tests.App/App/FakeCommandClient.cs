@@ -22,7 +22,12 @@ public sealed partial class FakeCommandClient : ICommandClient
     private readonly List<UsageLogEntry> _usageEntries = [];
     private readonly UsageRecorder _usageRecorder;
 
-    public FakeCommandClient() => _usageRecorder = new UsageRecorder(new TestUsageLogSink(_usageEntries));
+    public FakeCommandClient()
+    {
+        _usageRecorder = new UsageRecorder(new TestUsageLogSink(_usageEntries));
+        _setDefaultSelection = SaveDefaultSelection;
+        _setSelectionLimits = SaveSelectionLimits;
+    }
 
     public IReadOnlyList<UsageLogEntry> UsageEntries => _usageEntries;
 
@@ -57,10 +62,11 @@ public sealed partial class FakeCommandClient : ICommandClient
         (_, _) => Completed(new DefaultSelectionResponse(null));
 
     private Func<SetDefaultSelectionRequest, CancellationToken,
-        Task<CommandOutcome<DefaultSelectionResponse>>> _setDefaultSelection =
-        (request, _) => Completed(new DefaultSelectionResponse(new NamedSelectionProjection(
-            request.Name, request.TextIds, request.AddedWords, string.Empty, string.Empty,
-            request.PerWordLimitMs, request.PerWordStepLimit ?? SIL.Motif.Contract.Assess.StepCap.Default)));
+        Task<CommandOutcome<DefaultSelectionResponse>>> _setDefaultSelection = null!;
+
+    private Func<SetSelectionLimitsRequest, CancellationToken,
+        Task<CommandOutcome<NamedSelectionProjection>>> _setSelectionLimits = null!;
+    private NamedSelectionProjection? _currentSelection;
 
     private Func<SkipSetupRequest, CancellationToken, Task<CommandOutcome<ProjectSetupResponse>>> _skipSetup =
         (_, _) => Completed(new ProjectSetupResponse(true));
@@ -82,14 +88,22 @@ public sealed partial class FakeCommandClient : ICommandClient
     public List<TextInventoryRequest> ListTextsRequests { get; } = [];
     public List<ReadDefaultSelectionRequest> DefaultSelectionRequests { get; } = [];
     public List<SetDefaultSelectionRequest> SetDefaultSelectionRequests { get; } = [];
+    public List<SetSelectionLimitsRequest> SetSelectionLimitsRequests { get; } = [];
     public List<SkipSetupRequest> SkipSetupRequests { get; } = [];
     public List<ShowConfigRequest> ShowConfigRequests { get; } = [];
     public List<string> ParserStepRateRequests { get; } = [];
     public Func<ReadDefaultSelectionRequest, CancellationToken,
         Task<CommandOutcome<DefaultSelectionResponse>>>? DefaultSelectionHandler { get; set; }
 
-    public void DefaultSelectionCompletesWith(NamedSelectionProjection selection) =>
+    public void DefaultSelectionCompletesWith(NamedSelectionProjection selection)
+    {
+        _currentSelection = selection;
         _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(selection));
+    }
+
+    public void OnSetSelectionLimits(
+        Func<SetSelectionLimitsRequest, CancellationToken, Task<CommandOutcome<NamedSelectionProjection>>> behavior) =>
+        _setSelectionLimits = behavior;
 
     public void OnCaptureBaseline(
         Func<BaselineCaptureRequest, CancellationToken, Task<CommandOutcome<BaselineCaptureResponse>>> behavior) =>
@@ -184,11 +198,21 @@ public sealed partial class FakeCommandClient : ICommandClient
     public void ListTextsRefusesWith(Refusal refusal) =>
         OnListTexts((_, _) => Refused<TextInventoryResponse>(refusal));
 
-    public void DefaultSelectionIs(NamedSelectionProjection? selection) =>
+    public void DefaultSelectionIs(NamedSelectionProjection? selection)
+    {
+        _currentSelection = selection;
         _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(selection));
+        _setDefaultSelection = SaveDefaultSelection;
+        _setSelectionLimits = SaveSelectionLimits;
+    }
 
-    public void DefaultSelectionResponseIs(DefaultSelectionResponse response) =>
+    public void DefaultSelectionResponseIs(DefaultSelectionResponse response)
+    {
+        _currentSelection = response.Selection;
         _readDefaultSelection = (_, _) => Completed(response);
+        _setDefaultSelection = SaveDefaultSelection;
+        _setSelectionLimits = SaveSelectionLimits;
+    }
 
     public void OnSetDefaultSelection(
         Func<SetDefaultSelectionRequest, CancellationToken,
@@ -250,6 +274,13 @@ public sealed partial class FakeCommandClient : ICommandClient
         return _setDefaultSelection(request, cancellationToken);
     }
 
+    public Task<CommandOutcome<NamedSelectionProjection>> SetSelectionLimitsAsync(
+        SetSelectionLimitsRequest request, CancellationToken cancellationToken)
+    {
+        SetSelectionLimitsRequests.Add(request);
+        return _setSelectionLimits(request, cancellationToken);
+    }
+
     public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
         SkipSetupRequest request, CancellationToken cancellationToken)
     {
@@ -295,6 +326,49 @@ public sealed partial class FakeCommandClient : ICommandClient
     private static void Report(IProgress<AssessmentProgress> progress, IReadOnlyList<AssessmentProgress> steps)
     {
         foreach (var step in steps) progress.Report(step);
+    }
+
+    private Task<CommandOutcome<DefaultSelectionResponse>> SaveDefaultSelection(
+        SetDefaultSelectionRequest request, CancellationToken cancellationToken)
+    {
+        if (_currentSelection is { } current &&
+            (StringComparer.Ordinal.Equals(current.Name, request.Name)
+                ? !StringComparer.Ordinal.Equals(current.Revision, request.ExpectedRevision)
+                : request.ExpectedRevision is not null))
+            return Refused<DefaultSelectionResponse>(new Refusal("selection.revision-conflict",
+                FailureReason.Refused, "The Selection changed before these inputs could be saved."));
+
+        var nextRevision = _currentSelection is { } previous &&
+            StringComparer.Ordinal.Equals(previous.Name, request.Name) &&
+            long.TryParse(previous.Revision, out var revision)
+                ? checked(revision + 1L) : 1L;
+        var saved = new NamedSelectionProjection(request.Name, request.TextIds, request.AddedWords,
+            _currentSelection?.CreatedUtc ?? string.Empty, string.Empty, request.Limits,
+            nextRevision.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _currentSelection = saved;
+        _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(saved));
+        return Completed(new DefaultSelectionResponse(saved));
+    }
+
+    private Task<CommandOutcome<NamedSelectionProjection>> SaveSelectionLimits(
+        SetSelectionLimitsRequest request, CancellationToken cancellationToken)
+    {
+        if (_currentSelection is not { } current ||
+            !StringComparer.Ordinal.Equals(current.Name, request.SelectionName) ||
+            !StringComparer.Ordinal.Equals(current.Revision, request.ExpectedRevision))
+            return Refused<NamedSelectionProjection>(new Refusal("selection.revision-conflict",
+                FailureReason.Refused, "The Selection changed before its limits could be saved."));
+
+        var revision = long.TryParse(current.Revision, out var value) ? checked(value + 1L) : 1L;
+        var saved = current with
+        {
+            Limits = request.Limits,
+            UpdatedUtc = string.Empty,
+            Revision = revision.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        _currentSelection = saved;
+        _readDefaultSelection = (_, _) => Completed(new DefaultSelectionResponse(saved));
+        return Completed(saved);
     }
 
     private sealed class TestUsageLogSink(List<UsageLogEntry> entries) : IUsageLogSink

@@ -23,6 +23,7 @@ public sealed partial class App : Application
     {
         UiFontFamilies.RegisterEmbeddedFontCollection(Avalonia.Media.FontManager.Current);
         AvaloniaXamlLoader.Load(this);
+        WindowZoomPolicy.Apply(this, ZoomPolicy.DefaultPercent);
         var family = new Avalonia.Media.FontFamily(UiFontFamilies.CurrentFamilyName);
         Resources["Primitive.Font.UI"] = family;
         Resources["DefaultFontFamily"] = family;

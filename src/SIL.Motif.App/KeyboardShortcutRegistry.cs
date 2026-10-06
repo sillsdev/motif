@@ -9,6 +9,7 @@ namespace SIL.Motif.App;
 internal enum KeyboardShortcutScope
 {
     Window,
+    Settings,
     TextReader,
     WordList,
     Lists,
@@ -40,6 +41,16 @@ internal enum KeyboardShortcutBehavior
     Unknown,
     FocusWordSearch,
     ShowShortcuts,
+    OpenSettings,
+    ZoomIn,
+    ZoomOut,
+    ResetZoom,
+    CommitParsingLimits,
+    CancelParsingLimits,
+    PreviousThemeChoice,
+    NextThemeChoice,
+    FocusCloseButton,
+    FocusSettingsGroups,
     ShowHelp,
     Back,
     ToggleMatrixCell,
@@ -86,6 +97,7 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.Enter] = Key.Enter,
         [ShortcutKey.Space] = Key.Space,
         [ShortcutKey.Escape] = Key.Escape,
+        [ShortcutKey.Tab] = Key.Tab,
         [ShortcutKey.F1] = Key.F1,
         [ShortcutKey.A] = Key.A,
         [ShortcutKey.D] = Key.D,
@@ -189,6 +201,7 @@ public static class KeyboardShortcutRegistry
     private static KeyboardShortcutScope ToAppScope(ShortcutScope scope) => scope switch
     {
         ShortcutScope.Window => KeyboardShortcutScope.Window,
+        ShortcutScope.Settings => KeyboardShortcutScope.Settings,
         ShortcutScope.TextReader => KeyboardShortcutScope.TextReader,
         ShortcutScope.WordList => KeyboardShortcutScope.WordList,
         ShortcutScope.Lists => KeyboardShortcutScope.Lists,

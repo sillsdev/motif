@@ -26,6 +26,10 @@ public sealed partial class ResultsInTextPanel : UserControl
         AvaloniaXamlLoader.Load(this);
         _lineItems = this.FindControl<ItemsControl>("TextLineItems")!;
         _textScrollViewer = this.FindControl<ScrollViewer>("TextScrollViewer")!;
+        var readerToolbar = this.FindControl<Grid>("ReaderToolbar")!;
+        var filterChips = this.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
+        readerToolbar.LayoutUpdated += (_, _) => SetFilterChipRow(readerToolbar, filterChips);
+        SetFilterChipRow(readerToolbar, filterChips);
         InText.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ResultsInTextViewModel.SelectedToken) && InText.SelectedToken is { } token)
@@ -42,6 +46,21 @@ public sealed partial class ResultsInTextPanel : UserControl
     }
 
     public ResultsInTextViewModel InText { get; }
+
+    private static void SetFilterChipRow(Grid toolbar, WrapPanel filterChips)
+    {
+        var inlineWidth = toolbar.ColumnDefinitions[2].ActualWidth;
+        var requiredWidth = filterChips.Children.OfType<Control>().Where(chip => chip.IsVisible)
+            .Sum(chip => chip.DesiredSize.Width);
+        var row = inlineWidth > 0 && requiredWidth <= inlineWidth ? 0 : 1;
+        var column = row == 1 ? 0 : 2;
+        var columnSpan = row == 1 ? 5 : 1;
+        if (Grid.GetRow(filterChips) == row && Grid.GetColumn(filterChips) == column &&
+            Grid.GetColumnSpan(filterChips) == columnSpan) return;
+        Grid.SetRow(filterChips, row);
+        Grid.SetColumn(filterChips, column);
+        Grid.SetColumnSpan(filterChips, columnSpan);
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -80,14 +99,16 @@ public sealed partial class ResultsInTextPanel : UserControl
     }
 
     [KeyboardShortcutHandler(
-        "TextReader:PreviousWord", "TextReader:NextWord", "TextReader:PreviousLine", "TextReader:NextLine",
+        "TextReader:CloseWordCard", "TextReader:PreviousWord", "TextReader:NextWord", "TextReader:PreviousLine", "TextReader:NextLine",
         "TextReader:OpenWordCard", "TextReader:PreviousScreen", "TextReader:NextScreen", "TextReader:FirstItem",
         "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown")]
     private async void OnTokenKeyDown(object? sender, KeyEventArgs e)
     {
         if (sender is not Control { Tag: ResultsTokenViewModel token } strip) return;
         if (KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard]) ??
+            KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
         if (entry is null || !KeyboardShortcutRegistry.Allows(entry, isTextInput: false, hasFocusedItem: true)) return;
         switch (entry.Behavior)
         {
@@ -136,9 +157,11 @@ public sealed partial class ResultsInTextPanel : UserControl
         "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown")]
     private async void OnTokenCardKeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is not Control card || e.Source is Control source && !ReferenceEquals(source, card)) return;
+        if (sender is not Control card) return;
         if (KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
+        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers,
+            targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard]) ??
+            KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
         if (entry is null || !KeyboardShortcutRegistry.Allows(entry, isTextInput: false, hasFocusedItem: true)) return;
         if (entry.Behavior == KeyboardShortcutBehavior.CloseWordCard)
         {
@@ -146,6 +169,7 @@ public sealed partial class ResultsInTextPanel : UserControl
             e.Handled = true;
             return;
         }
+        if (e.Source is Control source && !ReferenceEquals(source, card)) return;
         var token = card.DataContext as ResultsTokenViewModel ?? InText.SelectedToken;
         switch (entry.Behavior)
         {

@@ -310,6 +310,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     internal void AttachSetup(SetupViewModel setup)
     {
         Setup = setup;
+        OnPropertyChanged(nameof(Setup));
         _projectParticipants.Add(setup);
         setup.PropertyChanged += (_, e) =>
         {

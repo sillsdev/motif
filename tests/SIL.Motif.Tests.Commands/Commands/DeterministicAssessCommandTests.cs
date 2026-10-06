@@ -177,6 +177,40 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void SetLimitsPreservesSelectionInputsAndRefusesAStaleRevision()
+    {
+        using var seeded = NewSeededScratch();
+        var created = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
+            seeded.FwDataPath, "Default", [seeded.Seeded.TextId], ["motifa"],
+            SelectionLimitPolicy.Explicit(new StepCap(321), 750)));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        var original = created.Value!.Selection!;
+
+        var changed = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
+            seeded.FwDataPath, original.Name, original.Revision,
+            SelectionLimitPolicy.Estimated(new StepCap(654))));
+
+        Assert.True(changed.Succeeded, changed.Refusal?.Message);
+        Assert.Equal(original.TextIds, changed.Value!.TextIds);
+        Assert.Equal(original.AddedWords, changed.Value.AddedWords);
+        Assert.Equal(original.Name, changed.Value.Name);
+        Assert.Equal(SelectionTimeLimitMode.Estimated, changed.Value.Limits.TimeMode);
+        Assert.Null(changed.Value.Limits.ExplicitPerWordLimitMs);
+        Assert.Equal(new StepCap(654), changed.Value.Limits.PerWordStepLimit);
+        Assert.Equal("2", changed.Value.Revision);
+
+        var stale = SelectionCommands.SetLimits(new SetSelectionLimitsRequest(
+            seeded.FwDataPath, original.Name, original.Revision,
+            SelectionLimitPolicy.Explicit(new StepCap(777), 900)));
+
+        Assert.False(stale.Succeeded);
+        Assert.Equal("selection.revision-conflict", stale.Refusal!.Code);
+        var read = SelectionCommands.ReadDefault(new ReadDefaultSelectionRequest(seeded.FwDataPath));
+        Assert.Equal("2", read.Value!.Selection!.Revision);
+        Assert.Equal(new StepCap(654), read.Value.Selection.Limits.PerWordStepLimit);
+    }
+
+    [Fact]
     public void OverviewReportsSavedSelectionCountsBeforeTheFirstBaseline()
     {
         using var seeded = NewSeededScratch();
@@ -328,7 +362,8 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.Equal(FailureReason.InvalidArgument, invalidCell.Refusal!.Reason);
 
         using (var database = OpenDatabase(seeded.FwDataPath))
-            new NamedSelectionRepository(database).SetDefault("Deleted Text", [Guid.NewGuid()], []);
+            new NamedSelectionRepository(database).SetDefault("Deleted Text", [Guid.NewGuid()], [],
+                SelectionLimitPolicy.Estimated(StepCap.Default), null);
         var missingText = TimingCommand.Timing(new TimingRequest(seeded.FwDataPath,
             By: "rule", Rule: new TraceTimingKey("morph_rule", "mrule#0:Verb template") { IdentityQuality = "structural" }, Top: 5));
         Assert.False(missingText.Succeeded);

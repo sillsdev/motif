@@ -255,7 +255,7 @@ public sealed class ViewTokenTests
     [Fact]
     public void AFilterChipSpacesItsGlyphFromATokenLabel() =>
         AssertStyled(() => new FilterChip { Label = "Same", Count = 3, Mark = Mark.Same },
-            [new("the chip's row", chip => Nth<StackPanel>(chip, 0), StackPanel.SpacingProperty, "Intent.Space.Snug")]);
+            [new("the chip's row", chip => Nth<Grid>(chip, 0), Grid.ColumnSpacingProperty, "Intent.Space.Snug")]);
 
     [Fact]
     public void AMarkChipSpacesItsGlyphFromAToken() =>

@@ -18,6 +18,10 @@ public sealed partial class CommandClient
         SetDefaultSelectionRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => SelectionCommands.SetDefault(request), cancellationToken);
 
+    public Task<CommandOutcome<NamedSelectionProjection>> SetSelectionLimitsAsync(
+        SetSelectionLimitsRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => SelectionCommands.SetLimits(request), cancellationToken);
+
     public Task<CommandOutcome<ProjectSetupResponse>> SkipSetupAsync(
         SkipSetupRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProjectSetupCommands.Skip(request), cancellationToken);

@@ -24,6 +24,7 @@
     <StaticResource x:Key="Component.TextsPage.SelectionPanelWidth" ResourceKey="Primitive.Size.230" />
     <StaticResource x:Key="Component.TextsPage.TextPickerWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.TextsPage.TextPickerMaxWidth" ResourceKey="Primitive.Size.210" />
+    <StaticResource x:Key="Component.TextsPage.ReaderSearchWidth" ResourceKey="Primitive.Size.90" />
     <StaticResource x:Key="Component.TextsPage.TextPickerGap" ResourceKey="Primitive.Inset.0_0_4_0" />
     <StaticResource x:Key="Component.TextsPage.ReaderActionPadding" ResourceKey="Primitive.Inset.4_2_4_2" />
     <StaticResource x:Key="Component.TextsPage.ReaderActionGap" ResourceKey="Primitive.Inset.0_0_4_0" />

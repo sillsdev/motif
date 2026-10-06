@@ -26,7 +26,7 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
 
         var saved = await client.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
             project.FwDataPath, Path.GetFileNameWithoutExtension(project.FwDataPath), [project.Text.TextId], [],
-            PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(3_100)), CancellationToken.None);
+            SelectionLimitPolicy.Estimated(new SIL.Motif.Contract.Assess.StepCap(3_100)), null), CancellationToken.None);
         Assert.True(saved.Succeeded, saved.Refusal?.Message);
 
         var reopened = RealCommandClient.Create(project.ManagedRoot);
@@ -38,7 +38,7 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
 
         var changed = await reopened.SetDefaultSelectionAsync(new SetDefaultSelectionRequest(
             project.FwDataPath, "Configured", [], ["motifb"],
-            PerWordStepLimit: new SIL.Motif.Contract.Assess.StepCap(6_600)), CancellationToken.None);
+            SelectionLimitPolicy.Estimated(new SIL.Motif.Contract.Assess.StepCap(6_600)), null), CancellationToken.None);
         Assert.True(changed.Succeeded, changed.Refusal?.Message);
         var changedReadBack = await client.ReadDefaultSelectionAsync(new(project.FwDataPath), CancellationToken.None);
         Assert.True(changedReadBack.Succeeded, changedReadBack.Refusal?.Message);

@@ -28,17 +28,17 @@ public sealed class TechDemoNoticeViewModelTests
     public void FilePreferencesRoundTripAndTreatCorruptJsonAsUnseen()
     {
         var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.TechDemoNotice", Guid.NewGuid().ToString("N"));
-        var preferencesPath = Path.Combine(root, "preferences.json");
+        var preferencesPath = Path.Combine(root, "user-preferences.json");
         try
         {
-            var preferences = new FileTechDemoNoticePreferences(preferencesPath);
+            var preferences = new TechDemoNoticePreferencesAdapter(new FileUserPreferencesStore(preferencesPath));
             Assert.False(preferences.HasSeenTechDemoNotice);
 
             preferences.MarkTechDemoNoticeSeen();
-            Assert.True(new FileTechDemoNoticePreferences(preferencesPath).HasSeenTechDemoNotice);
+            Assert.True(new TechDemoNoticePreferencesAdapter(new FileUserPreferencesStore(preferencesPath)).HasSeenTechDemoNotice);
 
             File.WriteAllText(preferencesPath, "{");
-            Assert.False(new FileTechDemoNoticePreferences(preferencesPath).HasSeenTechDemoNotice);
+            Assert.False(new TechDemoNoticePreferencesAdapter(new FileUserPreferencesStore(preferencesPath)).HasSeenTechDemoNotice);
         }
         finally
         {

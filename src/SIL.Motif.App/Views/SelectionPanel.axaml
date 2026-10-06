@@ -57,18 +57,40 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
           <CheckBox Content="All wordforms" IsChecked="{Binding Selection.AllWordforms}" />
           <CheckBox Content="Retry failed" IsChecked="{Binding Selection.RetryFailed}" />
-          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Time limit per word (seconds)" />
-            <NumericUpDown Value="{Binding Selection.PerWordTimeLimitSeconds}" Minimum="0.1" Increment="1"
-                           FormatString="0.#" AutomationProperties.Name="Time limit per word in seconds" />
+          <StackPanel IsVisible="{Binding Settings.HasSavedSelection}"
+                      Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="Default Selection parsing limits" />
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Text="Step limit per word" />
+              <NumericUpDown Classes="settingsNumber" Value="{Binding Settings.StepLimit}" Minimum="1"
+                             Increment="100000" FormatString="N0" IsEnabled="{Binding !Settings.IsNoStepLimit}"
+                             LostFocus="OnLimitLostFocus" KeyDown="OnLimitKeyDown"
+                             AutomationProperties.Name="Selection step limit per word" />
+              <CheckBox Content="No step limit" IsChecked="{Binding Settings.IsNoStepLimit}"
+                        Click="OnNoStepLimitClick" AutomationProperties.Name="Selection has no step limit" />
+              <TextBlock Classes="settingsRefusal" Text="{Binding Settings.StepLimitRefusal}"
+                         IsVisible="{Binding Settings.HasStepLimitRefusal}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+              <views:CopyableTextBlock Text="Time limit per word (seconds)" />
+              <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Compact}"
+                    HorizontalAlignment="Left">
+                <NumericUpDown Classes="settingsNumber" Classes.refused="{Binding Settings.HasTimeLimitRefusal}"
+                               Value="{Binding Settings.TimeLimitSeconds}" Minimum="0.001" Maximum="2147483.647"
+                               Increment="0.1" FormatString="0.###" IsEnabled="{Binding Settings.IsTimeLimitEnabled}"
+                               LostFocus="OnLimitLostFocus" KeyDown="OnLimitKeyDown"
+                               AutomationProperties.Name="Selection time limit per word in seconds" />
+                <Button Grid.Row="1" Classes="settingsLink" Content="Use Motif's estimate"
+                        IsVisible="{Binding Settings.ShowUseEstimate}" Click="OnUseEstimateClick"
+                        AutomationProperties.Name="Use Motif's estimated time limit" />
+              </Grid>
+              <TextBlock Classes="settingsCaption" Text="{Binding Settings.StepLimitEstimateText}" TextWrapping="Wrap" />
+              <TextBlock Classes="settingsRefusal" Text="{Binding Settings.TimeLimitRefusal}"
+                         IsVisible="{Binding Settings.HasTimeLimitRefusal}" TextWrapping="Wrap" />
+            </StackPanel>
           </StackPanel>
-          <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-            <views:CopyableTextBlock Text="Analysis attempt limit per word" />
-            <NumericUpDown Value="{Binding Selection.PerWordStepLimit}" Minimum="1" Increment="100000"
-                           FormatString="N0" IsEnabled="{Binding !Selection.PerWordStepLimitUnbounded}"
-                           AutomationProperties.Name="Default analysis attempt limit per word" />
-            <CheckBox Content="No attempt limit" IsChecked="{Binding Selection.PerWordStepLimitUnbounded}" />
-          </StackPanel>
+          <TextBlock Classes="muted" Text="Save a Default Selection to edit its shared parsing limits."
+                     IsVisible="{Binding Settings.HasProjectWithoutSelection}" TextWrapping="Wrap" />
           <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
             <views:CopyableTextBlock Text="Retry slower than (ms)" />
             <NumericUpDown Value="{Binding Selection.RetrySlowerThanMilliseconds}" Minimum="0"
