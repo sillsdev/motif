@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.App.Walkthroughs;
 using Velopack;
 
 namespace SIL.Motif.App;
@@ -18,6 +19,8 @@ internal static class Program
         // Motif's own error window reports an escaped error; Windows' dialog must not appear beside it.
         CrashDialogs.Suppress();
         MotifInstallLifecycle.CompleteStartup();
+        if (ShouldRunReleasePathways(args, Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")))
+            return ReleasePathwayReplay.Run(Environment.GetEnvironmentVariable("MOTIF_RELEASE_PATHWAYS")!);
         if (args.Length > 0 && args[0] == "--smoke")
             return Smoke();
         if (args.Length > 0 && args[0] == "--cli")
@@ -28,6 +31,10 @@ internal static class Program
     private static bool IsVelopackFastExitHook(string[] args) =>
         args.Length > 0 && args[0] is
             "--veloapp-install" or "--veloapp-updated" or "--veloapp-obsolete" or "--veloapp-uninstall";
+
+    internal static bool ShouldRunReleasePathways(IReadOnlyList<string> args, string? scriptFolder) =>
+        args.Contains("--release-pathways", StringComparer.Ordinal) &&
+        !string.IsNullOrWhiteSpace(scriptFolder);
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()

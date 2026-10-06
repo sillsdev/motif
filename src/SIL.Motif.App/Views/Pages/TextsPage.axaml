@@ -72,11 +72,13 @@
             <Button Content="Read text" Classes="tab" Classes.active="{Binding ShowTextReader}"
                     Command="{Binding ShowAnalyzeViewCommand}"
                     CommandParameter="{x:Static vm:AnalyzeTextsView.TextReader}"
-                    AutomationProperties.Name="Show the text reader" />
+                    AutomationProperties.Name="Show the text reader"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeTextReaderView}" />
             <Button Content="Word list" Classes="tab" Classes.active="{Binding ShowWordList}"
                     Command="{Binding ShowAnalyzeViewCommand}"
                     CommandParameter="{x:Static vm:AnalyzeTextsView.WordList}"
-                    AutomationProperties.Name="Show the word list" />
+                    AutomationProperties.Name="Show the word list"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeWordListView}" />
           </StackPanel>
           <ContentControl x:Name="AnalyzeParsePromptHost" Grid.Row="1" IsVisible="{Binding ShowAnalyzeParsePrompt}"
                           HorizontalAlignment="Left" />

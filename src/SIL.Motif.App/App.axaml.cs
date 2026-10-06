@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using System.Text.Json;
 using SIL.Motif.App.Composition;
 using SIL.Motif.App.ViewModels;
 
@@ -34,9 +35,41 @@ public sealed partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
             StartDesktop(desktop, _options ?? MotifAppOptions.ForInstallation());
+            if (desktop.Args.Contains("--release-launch-check", StringComparer.Ordinal))
+                CompleteReleaseLaunchCheck(desktop);
+        }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void CompleteReleaseLaunchCheck(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var resultPath = Environment.GetEnvironmentVariable("MOTIF_RELEASE_LAUNCH_RESULT");
+        if (string.IsNullOrWhiteSpace(resultPath))
+            throw new InvalidOperationException("MOTIF_RELEASE_LAUNCH_RESULT is required for the launch check.");
+        var window = desktop.MainWindow ?? throw new InvalidOperationException("The App did not create its window.");
+        window.Opened += (_, _) =>
+        {
+            try
+            {
+                var fullPath = Path.GetFullPath(resultPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+                File.WriteAllText(fullPath, JsonSerializer.Serialize(new
+                {
+                    opened = true,
+                    title = window.Title,
+                    width = window.Bounds.Width,
+                    height = window.Bounds.Height,
+                }));
+                Dispatcher.UIThread.Post(() => desktop.Shutdown(0), DispatcherPriority.Background);
+            }
+            catch (Exception)
+            {
+                Dispatcher.UIThread.Post(() => desktop.Shutdown(CrashExitCode), DispatcherPriority.Background);
+            }
+        };
     }
 
     /// <summary>The exit code Motif ends with when an error that escaped the UI thread closed it.</summary>

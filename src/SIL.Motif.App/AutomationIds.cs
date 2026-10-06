@@ -9,6 +9,8 @@ public static class AutomationIds
     public const string SelectNewProject = "motif-select-new-project";
     public const string RefreshProject = "motif-refresh-project";
     public const string AnalyzeTextsTab = "motif-analyze-texts-tab";
+    public const string AnalyzeTextReaderView = "motif-analyze-text-reader-view";
+    public const string AnalyzeWordListView = "motif-analyze-word-list-view";
     public const string RunAssessment = "motif-run-assessment";
     public const string EarlierResultsNote = "motif-earlier-results-note";
     public const string SkipSetup = "motif-skip-setup";

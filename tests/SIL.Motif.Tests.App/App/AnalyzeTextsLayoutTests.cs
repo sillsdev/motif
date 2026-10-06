@@ -121,6 +121,12 @@ public sealed class AnalyzeTextsLayoutTests
                 var page = workspace.PageModel<TextsPageModel>();
                 page.AnalyzeView = AnalyzeTextsView.WordList;
                 Settle(window);
+                var wordList = window.GetVisualDescendants().OfType<ListBox>()
+                    .Single(list => list.Name == "TextWordsPanelRowsItems");
+                var mwalimuIndex = page.Words.Rows.Select((row, index) => (row, index))
+                    .Single(item => item.row.Listed.Row.Word == "mwalimu").index;
+                wordList.ScrollIntoView(mwalimuIndex);
+                Settle(window);
                 var unknownWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(), row =>
                     row.List == "word-list" && row.Row?.Word == "mwalimu");
                 unknownWord.FocusRow();

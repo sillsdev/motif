@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Avalonia;
 using Avalonia.Styling;
+using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;

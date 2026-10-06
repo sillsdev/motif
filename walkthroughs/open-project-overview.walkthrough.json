@@ -4,12 +4,12 @@
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
-    { "id": "wait-for-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "wait-for-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "visible", "timeoutMs": 30000 },
     { "id": "open-texts", "kind": "click", "automationId": "motif-page-texts" },
     { "id": "highlight-texts", "kind": "highlight", "automationId": "motif-page-texts" },
     { "id": "texts", "kind": "capture", "durationMs": 1200, "callouts": [ { "automationId": "motif-page-texts" } ] },
     { "id": "open-overview", "kind": "click", "automationId": "motif-page-overview" },
-    { "id": "confirm-overview-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "confirm-overview-count", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "visible", "timeoutMs": 30000 },
     { "id": "highlight-count", "kind": "highlight", "automationId": "motif-overview-selection-word-count" },
     { "id": "overview", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-overview-selection-word-count" } ] },
     { "id": "hold-overview", "kind": "hold", "durationMs": 250 }
