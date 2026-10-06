@@ -1064,6 +1064,10 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(texts.ShowAnalyzeParsePrompt);
         Assert.False(texts.ShowCentredParsePrompt);
         Assert.True(texts.ShowAnalyzeTextsContent);
+        texts.AnalyzeView = AnalyzeTextsView.WordList;
+        Assert.False(texts.ShowAnalyzeParsePrompt);
+        texts.AnalyzeView = AnalyzeTextsView.TextReader;
+        Assert.True(texts.ShowAnalyzeParsePrompt);
         texts.Tab = TextsTab.Lists;
         Assert.True(texts.ShowLists);
         Assert.False(texts.ShowParsePrompt);

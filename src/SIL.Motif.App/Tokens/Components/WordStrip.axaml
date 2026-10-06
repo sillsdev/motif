@@ -148,8 +148,8 @@
   <Style Selector="TextBlock.gutterLabel.wordRow">
     <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.GutterWordPadding}" />
   </Style>
-  <Style Selector="StackPanel.lineHead">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  <Style Selector="Grid.lineHead">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector=":is(TextBlock).lineNumber">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />

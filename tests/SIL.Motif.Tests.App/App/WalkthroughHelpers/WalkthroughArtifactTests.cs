@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Avalonia;
 using SIL.Motif.Help;
+using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.Tests.TestFixtures;
 using SkiaSharp;
 using Xunit;

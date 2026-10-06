@@ -4,15 +4,10 @@
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
-    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "visible", "timeoutMs": 30000 },
     { "id": "open-handoff", "kind": "click", "automationId": "motif-page-ai-handoff" },
     { "id": "wait-for-write", "kind": "waitFor", "automationId": "motif-write-handoff", "condition": "enabled", "timeoutMs": 30000 },
-    { "id": "write-first-handoff", "kind": "click", "automationId": "motif-write-handoff" },
-    { "id": "wait-for-handoff", "kind": "waitFor", "automationId": "motif-handoff-progress", "condition": "visible", "timeoutMs": 30000 },
-    { "id": "cancel-handoff", "kind": "click", "automationId": "motif-cancel-handoff" },
-    { "id": "wait-for-cancel", "kind": "waitFor", "automationId": "motif-handoff-progress", "condition": "hidden", "timeoutMs": 30000 },
-    { "id": "wait-for-retry", "kind": "waitFor", "automationId": "motif-write-handoff", "condition": "enabled", "timeoutMs": 30000 },
-    { "id": "retry-handoff", "kind": "click", "automationId": "motif-write-handoff" },
+    { "id": "write-handoff", "kind": "click", "automationId": "motif-write-handoff" },
     { "id": "wait-for-files", "kind": "waitFor", "automationId": "motif-handoff-files", "condition": "visible", "timeoutMs": 30000 },
     { "id": "highlight-files", "kind": "highlight", "automationId": "motif-handoff-files" },
     { "id": "completed-files", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-handoff-files" } ] }

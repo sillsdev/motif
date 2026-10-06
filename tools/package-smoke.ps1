@@ -132,6 +132,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $appExecutable = Join-Path $installedRoot 'SIL.Motif.App.exe'
+& (Join-Path $repoRoot 'tools/release-pathways.ps1') `
+    -AppExecutable $appExecutable `
+    -CliExecutable $cliPath `
+    -SampleBuilder $sampleBuilder `
+    -SampleSpec $sampleSpec `
+    -WalkthroughDirectory (Join-Path $repoRoot 'walkthroughs') `
+    -WorkDirectory (Join-Path $work 'release-pathway-evidence')
+if ($LASTEXITCODE -ne 0) {
+    throw "The installed Windows release pathways failed with exit code $LASTEXITCODE."
+}
 & $appExecutable --smoke
 if ($LASTEXITCODE -ne 0) {
     throw "The installed App smoke exited with code $LASTEXITCODE."
@@ -378,6 +388,19 @@ if (Test-Path -LiteralPath $install) {
 if (-not (Test-Path -LiteralPath $userDataMarker -PathType Leaf)) {
     throw 'Motif user data did not survive uninstall.'
 }
+$releaseRoot = (Get-Content -LiteralPath (Join-Path $work 'release-pathway-evidence/release-pathways-root.txt') -Raw).Trim()
+$releaseManifest = Get-Content -LiteralPath (Join-Path $releaseRoot 'seed-manifest.json') -Raw | ConvertFrom-Json
+if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
+    throw 'The synthetic FieldWorks project did not survive uninstall.'
+}
+foreach ($project in @($releaseManifest.projects.PSObject.Properties.Value) +
+    @($releaseManifest.cliProjects.PSObject.Properties.Value) +
+    @($releaseManifest.extraProjects.PSObject.Properties.Value)) {
+    if (-not (Test-Path -LiteralPath ([string] $project) -PathType Leaf)) {
+        throw "A seeded FieldWorks project did not survive uninstall: $project"
+    }
+}
+Remove-Item -LiteralPath $releaseRoot -Recurse -Force
 Remove-Item -LiteralPath $userDataMarker -Force
 
 $versionSummary = if ($SkipUpdate) { "at $ProductVersion" } else { "from $ProductVersion to $NextProductVersion" }

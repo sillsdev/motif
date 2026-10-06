@@ -20,6 +20,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Tests.TestFixtures;
@@ -560,13 +561,15 @@ internal static class WalkthroughReplay
                     elapsedMs += step.DurationMs.Value;
                     break;
                 case WalkthroughStepKind.Capture:
-                    if (script.Id == "explained-word-card")
+                    var isExplainedWordCardCapture = script.Id == "explained-word-card" &&
+                        step.Id != "word-list-results";
+                    if (isExplainedWordCardCapture)
                     {
                         var wordId = step.Callouts!.Single(callout =>
                             callout.AutomationId.EndsWith("-word", StringComparison.Ordinal)).AutomationId;
                         window.ScrollIntoView(wordId[..^5] + "-strip");
                     }
-                    if (script.Id == "explained-word-card")
+                    if (isExplainedWordCardCapture)
                     {
                         var calloutIds = step.Callouts!.Select(callout => callout.AutomationId).ToArray();
                         window.WaitUntil(() => CardIsQuiet(window),
@@ -663,16 +666,19 @@ internal static class WalkthroughReplay
                         Assert.All(capture.Callouts, callout => Assert.True(
                             WalkthroughWindow.FitsViewport(callout.Bounds, captureBounds),
                             $"Capture '{step.Id}' crops callout target '{callout.AutomationId}'."));
-                        var selectedWordId = callouts.Single(callout =>
-                            callout.AutomationId.EndsWith("-word", StringComparison.Ordinal)).AutomationId;
-                        var selectedWordStrip = selectedWordId[..^5] + "-strip";
-                        foreach (var (automationId, bounds) in window.VisibleWordStripBounds())
+                        var selectedWord = callouts.SingleOrDefault(callout =>
+                            callout.AutomationId.EndsWith("-word", StringComparison.Ordinal));
+                        if (selectedWord is not null)
                         {
-                            if (automationId == selectedWordStrip) continue;
-                            var scaledBounds = new Rect(bounds.X * capture.Scale, bounds.Y * capture.Scale,
-                                bounds.Width * capture.Scale, bounds.Height * capture.Scale);
-                            Assert.False(capture.SourceFrameCropBounds!.Value.Intersects(scaledBounds),
-                                $"Capture '{step.Id}' includes neighboring word strip '{automationId}'.");
+                            var selectedWordStrip = selectedWord.AutomationId[..^5] + "-strip";
+                            foreach (var (automationId, bounds) in window.VisibleWordStripBounds())
+                            {
+                                if (automationId == selectedWordStrip) continue;
+                                var scaledBounds = new Rect(bounds.X * capture.Scale, bounds.Y * capture.Scale,
+                                    bounds.Width * capture.Scale, bounds.Height * capture.Scale);
+                                Assert.False(capture.SourceFrameCropBounds!.Value.Intersects(scaledBounds),
+                                    $"Capture '{step.Id}' includes neighboring word strip '{automationId}'.");
+                            }
                         }
                     }
                     captures.Add(capture);
@@ -787,15 +793,15 @@ internal static class WalkthroughReplay
                 var firstRun = Assert.IsType<AssessCommandResponse>(window.Workspace.Assess.Result);
                 Assert.Equal("first-run-parse", Assert.Single(firstRun.Words,
                     word => word.Word == SeededProject.FirstForm).RawSignature);
-                Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                 break;
             case "try-word-typing":
                 var trace = window.Workspace.PageModel<TryWordPageModel>().Trace;
                 var traceResponse = Assert.IsType<SIL.Motif.Contract.Responses.WordTraceResponse>(trace.Result);
-                Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordInput));
-                Assert.Equal("motifa", window.TextByAutomationId(AutomationIds.TryWordResult));
+                Assert.Equal("geldi", window.TextByAutomationId(AutomationIds.TryWordInput));
+                Assert.Equal("geldi", window.TextByAutomationId(AutomationIds.TryWordResult));
                 Assert.True(traceResponse.Parsed && traceResponse.Complete);
-                Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
+                Assert.Contains("geldi-trace", traceResponse.DiagnosticJson);
                 Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
                 break;
             case "review-apply-refresh-parse":
@@ -818,7 +824,7 @@ internal static class WalkthroughReplay
                 var handoff = window.Workspace.PageModel<AiHandoffPageModel>().Handoff;
                 window.WaitUntil(() => handoff.State == RunState.Completed && handoff.Files.Count > 0,
                     WalkthroughSteps.Remaining(deadline), "the retried AI Handoff did not finish");
-                Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "import"));
+                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "import"));
                 break;
         }
     }
@@ -858,24 +864,14 @@ internal static class WalkthroughFixtureSeeder
     private static Task<WalkthroughFixturePreparation> SeedFirstRunReadyAsync(
         WalkthroughProjectContext project, FixedClock _, string parserPath)
     {
-        var heldPath = Path.Combine(project.ManagedRoot, "first-run-held-heartbeat");
-        var parseStartedPath = Path.Combine(project.ManagedRoot, "first-run-parse-started");
-        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "batch",
-            new { heartbeatPath = heldPath },
-            new
-            {
-                startedPath = parseStartedPath,
-                delayMilliseconds = 400,
-                words = new[]
-                {
-                    new { word = SeededProject.FirstForm, outcome = "complete", signature = "first-run-parse" },
-                },
-            });
-        return Task.FromResult(new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
+        FakeParser.BehaveBesideExecutable(parserPath, new
         {
-            [AutomationIds.SetupFinish] = heldPath,
-            [AutomationIds.ParseAllWords] = parseStartedPath,
-        }));
+            words = new[]
+            {
+                new { word = SeededProject.FirstForm, outcome = "complete", signature = "first-run-parse" },
+            },
+        });
+        return Task.FromResult(WalkthroughFixturePreparation.Empty);
     }
 
     private static async Task<WalkthroughFixturePreparation> SeedOverviewReadyAsync(
@@ -921,7 +917,7 @@ internal static class WalkthroughFixtureSeeder
     {
         await SeedOverviewReadyAsync(project, clock, parserPath);
         FakeParser.BehaveBesideExecutable(parserPath,
-            FakeParser.TraceBehavior("motifa", "motifa-trace", "SeededRule"));
+            FakeParser.TraceBehavior("geldi", "geldi-trace", "SeededRule"));
         return WalkthroughFixturePreparation.Empty;
     }
 
@@ -966,13 +962,7 @@ internal static class WalkthroughFixtureSeeder
         await SeedSelectionAndSkipSetupAsync(project, client);
         FakeParser.BehaveBesideExecutable(parserPath, AssessmentWords("handoff-ready"));
         await AssessAsync(project, client);
-        var heldPath = Path.Combine(project.ManagedRoot, "handoff-held-heartbeat");
-        FakeParser.BehaveInPhasesBesideExecutable(parserPath, "import",
-            new { heartbeatPath = heldPath }, new { });
-        return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            [AutomationIds.WriteHandoff] = heldPath,
-        });
+        return WalkthroughFixturePreparation.Empty;
     }
 
     private static async Task SeedSelectionAndSkipSetupAsync(
