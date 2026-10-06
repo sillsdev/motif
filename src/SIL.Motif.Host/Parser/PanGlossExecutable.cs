@@ -69,7 +69,7 @@ public static class PanGlossExecutable
         var sibling = Path.GetFullPath(Path.Combine(repositoryRoot, "..", "PanGloss"));
         return
         [
-            Path.Combine(sibling, "dist", "v<pinned version>", fileName),
+            Path.Combine(sibling, "dist", "<version>", fileName),
             Path.Combine(sibling, "rust", "target", "release", fileName),
             besideMotif,
         ];
@@ -79,9 +79,9 @@ public static class PanGlossExecutable
     private static string? NewestSiblingBuild(string panGlossRoot, string fileName, string? pinnedVersion)
     {
         var dist = Path.Combine(panGlossRoot, "dist");
-        var releaseCopies = Directory.Exists(dist) && pinnedVersion is not null
+        var releaseCopies = Directory.Exists(dist)
             ? Directory.EnumerateDirectories(dist)
-                .Where(version => Path.GetFileName(version) == "v" + pinnedVersion)
+                .Where(version => pinnedVersion is null || Path.GetFileName(version) == "v" + pinnedVersion)
                 .Select(version => Path.Combine(version, fileName))
             : [];
         return releaseCopies.Append(Path.Combine(panGlossRoot, "rust", "target", "release", fileName))
