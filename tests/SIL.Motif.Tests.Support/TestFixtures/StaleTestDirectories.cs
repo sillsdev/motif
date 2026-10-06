@@ -20,7 +20,8 @@ public static class StaleTestDirectories
     /// <summary>The per-process roots under the temporary directory that <see cref="SweepTemporaryRoots"/> clears.</summary>
     public static readonly string[] TemporaryRoots =
         ["SIL.Motif.Tests.Pristine", "SIL.Motif.Tests.Large", "SIL.Motif.Tests.WritingSystems", WorkerRootsFolder,
-            Path.Combine("SIL.Motif.Walkthrough", "engine"), "SIL.Motif.WalkthroughDiffs"];
+            "SIL.Motif.Tests.WorkerLockRegistries", Path.Combine("SIL.Motif.Walkthrough", "engine"),
+            "SIL.Motif.WalkthroughDiffs"];
 
     /// <summary>Sweeps each of <see cref="TemporaryRoots"/>; never throws.</summary>
     public static void SweepTemporaryRoots()

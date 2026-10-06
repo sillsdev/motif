@@ -109,19 +109,16 @@ internal static partial class UnixNative
 internal sealed class UnixFileLock : IDisposable
 {
     private const int AccessDenied = 13;
-    private readonly int _fileDescriptor;
+    private const int Interrupted = 4;
+    private readonly string _lockPath;
+    private readonly string _registryPath;
+    private readonly bool _machineWide;
     private readonly WorkerLockAccess _access;
+    private int _fileDescriptor = -1;
     private bool _held;
     private bool _disposed;
 
-    internal static string GetLockPath(string name, bool machineWide)
-    {
-        var identity = machineWide ? "machine:" + name :
-            "user:" + UnixNative.GetEffectiveUserId() + ":" + name;
-        var digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(identity)))
-            .ToLowerInvariant();
-        return Path.Combine("/tmp", "motif-lock-" + digest);
-    }
+    internal static string GetLockPath(string name, bool machineWide) => WorkerLockPaths.GetLockPath(name, machineWide);
 
     internal UnixFileLock(string name, bool machineWide) : this(name, machineWide, WorkerLockAccess.Exclusive)
     {
@@ -129,53 +126,82 @@ internal sealed class UnixFileLock : IDisposable
 
     internal UnixFileLock(string name, bool machineWide, WorkerLockAccess access)
     {
+        if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+        _machineWide = machineWide;
         _access = access;
-        var lockPath = GetLockPath(name, machineWide);
-        var path = UnixNative.Utf8(lockPath);
-        try
-        {
-            if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
-            CreateIfMissing(lockPath, machineWide ? (UnixFileMode)0x1b6 : (UnixFileMode)0x180);
-            _fileDescriptor = OpenRetryingInterrupts(path, 2 | CloseOnExec | NoFollow);
-
-            if (_fileDescriptor < 0)
-            {
-                var error = UnixNative.LastError;
-                var errorName = error == AccessDenied ? " (EACCES)" : string.Empty;
-                var recovery = error == AccessDenied
-                    ? " Check the file's owner and read/write permissions; remove it only if it is stale."
-                    : string.Empty;
-                throw new IOException(
-                    $"Could not open worker lock file '{lockPath}' (errno {error}{errorName}).{recovery}", error);
-            }
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(path);
-        }
+        _lockPath = GetLockPath(name, machineWide);
+        _registryPath = WorkerLockPaths.GetRegistryPath(machineWide);
     }
 
     internal bool TryAcquire()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_held) return true;
-        var access = _access == WorkerLockAccess.Shared ? UnixNative.LockShared : UnixNative.LockExclusive;
-        if (UnixNative.Flock(_fileDescriptor, access | UnixNative.LockNonBlocking) == 0)
+
+        var registryDescriptor = OpenFile(_registryPath, _machineWide, "worker lock registry");
+        var lockDescriptor = -1;
+        try
         {
+            AcquireRegistry(registryDescriptor);
+            lockDescriptor = OpenFile(_lockPath, _machineWide, "worker lock file");
+            var access = _access == WorkerLockAccess.Shared ? UnixNative.LockShared : UnixNative.LockExclusive;
+            if (UnixNative.Flock(lockDescriptor, access | UnixNative.LockNonBlocking) != 0)
+            {
+                var error = UnixNative.LastError;
+                if (error is 11 or 35) return false;
+                throw new IOException("Could not acquire the worker lock.", error);
+            }
+
+            _fileDescriptor = lockDescriptor;
+            lockDescriptor = -1;
             _held = true;
             return true;
         }
-        var error = UnixNative.LastError;
-        if (error is 11 or 35) return false;
-        throw new IOException("Could not acquire the worker lock.", error);
+        finally
+        {
+            if (lockDescriptor >= 0) _ = UnixNative.Close(lockDescriptor);
+            _ = UnixNative.Close(registryDescriptor);
+        }
     }
 
     internal void Release()
     {
         if (!_held) return;
-        if (UnixNative.Flock(_fileDescriptor, UnixNative.LockUnlock) != 0)
-            throw new IOException("Could not release the worker lock.", UnixNative.LastError);
-        _held = false;
+
+        Exception? failure = null;
+        var registryDescriptor = -1;
+        try
+        {
+            registryDescriptor = OpenFile(_registryPath, _machineWide, "worker lock registry");
+            AcquireRegistry(registryDescriptor);
+            if (_access == WorkerLockAccess.Shared)
+            {
+                if (UnixNative.Flock(_fileDescriptor, UnixNative.LockExclusive | UnixNative.LockNonBlocking) == 0)
+                    File.Delete(_lockPath);
+                else
+                {
+                    var error = UnixNative.LastError;
+                    if (error is not (11 or 35))
+                        throw new IOException("Could not release the shared worker lock.", error);
+                }
+            }
+            else File.Delete(_lockPath);
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+        finally
+        {
+            if (UnixNative.Flock(_fileDescriptor, UnixNative.LockUnlock) != 0 && failure is null)
+                failure = new IOException("Could not release the worker lock.", UnixNative.LastError);
+            _held = false;
+            _ = UnixNative.Close(_fileDescriptor);
+            _fileDescriptor = -1;
+            if (registryDescriptor >= 0) _ = UnixNative.Close(registryDescriptor);
+        }
+
+        if (failure is not null) throw failure;
     }
 
     public void Dispose()
@@ -183,7 +209,6 @@ internal sealed class UnixFileLock : IDisposable
         if (_disposed) return;
         Release();
         _disposed = true;
-        _ = UnixNative.Close(_fileDescriptor);
     }
 
     // .NET's own open passes the mode correctly on every ABI; the umask is overridden once the file exists.
@@ -211,12 +236,48 @@ internal sealed class UnixFileLock : IDisposable
         }
     }
 
+    private static int OpenFile(string path, bool machineWide, string description)
+    {
+        if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var mode = machineWide ? (UnixFileMode)0x1b6 : (UnixFileMode)0x180;
+        CreateIfMissing(path, mode);
+        var nativePath = UnixNative.Utf8(path);
+        try
+        {
+            var descriptor = OpenRetryingInterrupts(nativePath, 2 | CloseOnExec | NoFollow);
+            if (descriptor >= 0) return descriptor;
+
+            var error = UnixNative.LastError;
+            var errorName = error == AccessDenied ? " (EACCES)" : string.Empty;
+            var recovery = error == AccessDenied
+                ? " Check the file's owner and read/write permissions; remove it only if it is stale."
+                : string.Empty;
+            throw new IOException(
+                $"Could not open {description} '{path}' (errno {error}{errorName}).{recovery}", error);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(nativePath);
+        }
+    }
+
+    // The registry keeps every opener out while a released lock file is unlinked.
+    private static void AcquireRegistry(int fileDescriptor)
+    {
+        while (UnixNative.Flock(fileDescriptor, UnixNative.LockExclusive) != 0)
+        {
+            var error = UnixNative.LastError;
+            if (error == Interrupted) continue;
+            throw new IOException("Could not coordinate worker lock file access.", error);
+        }
+    }
+
     private static int OpenRetryingInterrupts(IntPtr path, int flags)
     {
-        const int interrupted = 4;
         int descriptor;
         do descriptor = UnixNative.Open(path, flags);
-        while (descriptor < 0 && UnixNative.LastError == interrupted);
+        while (descriptor < 0 && UnixNative.LastError == Interrupted);
         return descriptor;
     }
 

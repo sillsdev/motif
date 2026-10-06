@@ -146,6 +146,38 @@ internal enum WorkerLockAccess
     Exclusive,
 }
 
+internal static class WorkerLockPaths
+{
+    internal const string TestRegistryNamespaceVariable = "MOTIF_TEST_WORKER_LOCK_REGISTRY_NAMESPACE";
+
+    internal static string GetLockPath(string name, bool machineWide)
+    {
+        var identity = machineWide ? "machine:" + name :
+            OperatingSystem.IsWindows() ? "user:" + Environment.UserName + ":" + name :
+                "user:" + UnixNative.GetEffectiveUserId() + ":" + name;
+        var directory = machineWide && !OperatingSystem.IsWindows() ? "/tmp" : Path.GetTempPath();
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
+        return Path.Combine(directory, "motif-lock-" + digest);
+    }
+
+    internal static string GetRegistryPath(bool machineWide)
+    {
+        var testNamespace = Environment.GetEnvironmentVariable(TestRegistryNamespaceVariable);
+        if (!string.IsNullOrWhiteSpace(testNamespace))
+        {
+            var scope = machineWide ? "machine:" : "user:";
+            var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(scope + testNamespace)))
+                .ToLowerInvariant();
+            return Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.WorkerLockRegistries", digest, "registry");
+        }
+
+        var directory = machineWide && !OperatingSystem.IsWindows() ? "/tmp" : Path.GetTempPath();
+        var name = machineWide ? "motif-lock-registry-machine" :
+            "motif-lock-registry-user-" + UnixNative.GetEffectiveUserId();
+        return Path.Combine(directory, name);
+    }
+}
+
 internal sealed class WindowsFileLock : IDisposable
 {
     private readonly string _path;
@@ -155,10 +187,7 @@ internal sealed class WindowsFileLock : IDisposable
 
     internal WindowsFileLock(string name, bool machineWide, WorkerLockAccess access)
     {
-        var identity = machineWide ? "machine:" + name :
-            "user:" + Environment.UserName + ":" + name;
-        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
-        _path = Path.Combine(Path.GetTempPath(), "motif-lock-" + digest);
+        _path = WorkerLockPaths.GetLockPath(name, machineWide);
         _access = access;
     }
 
