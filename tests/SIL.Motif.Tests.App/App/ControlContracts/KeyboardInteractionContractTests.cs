@@ -242,26 +242,27 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         {
             var window = new MainWindow { Content = new TextBox() };
             var input = Assert.IsType<TextBox>(window.Content);
-            var primary = CurrentPlatform == ShortcutPlatform.MacOS
-                ? RawInputModifiers.Meta
-                : RawInputModifiers.Control;
             window.Show();
+            // The TextBox honours the platform's own editing gestures, which the headless platform keeps as Ctrl.
+            var hotkeys = Application.Current!.PlatformSettings!.HotkeyConfiguration;
+            void Press(List<KeyGesture> gestures) =>
+                window.KeyPress(gestures[0].Key, (RawInputModifiers)gestures[0].KeyModifiers, PhysicalKey.None, null);
             try
             {
                 Assert.True(input.Focus());
                 window.KeyTextInput("word");
                 Assert.Equal("word", input.Text);
 
-                window.KeyPress(Key.Z, primary, PhysicalKey.None, null);
+                Press(hotkeys.Undo);
                 Assert.Equal(string.Empty, input.Text ?? string.Empty);
-                window.KeyPress(Key.Y, primary, PhysicalKey.None, null);
+                Press(hotkeys.Redo);
                 Assert.Equal("word", input.Text);
 
-                window.KeyPress(Key.A, primary, PhysicalKey.None, null);
-                window.KeyPress(Key.C, primary, PhysicalKey.None, null);
-                window.KeyPress(Key.X, primary, PhysicalKey.None, null);
+                Press(hotkeys.SelectAll);
+                Press(hotkeys.Copy);
+                Press(hotkeys.Cut);
                 Assert.Equal(string.Empty, input.Text ?? string.Empty);
-                window.KeyPress(Key.V, primary, PhysicalKey.None, null);
+                Press(hotkeys.Paste);
                 Assert.Equal("word", input.Text);
 
                 clipboardText = await window.Clipboard!.TryGetTextAsync();
