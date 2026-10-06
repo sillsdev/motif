@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.Threading;
@@ -16,6 +17,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Help;
 using Xunit;
@@ -133,11 +135,21 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("= or Keypad +", "Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad +", "Window"),
             ("- or Keypad -", "Ctrl+- or Ctrl+Keypad -", "Window"),
             ("0 or Keypad 0", "Ctrl+0 or Ctrl+Keypad 0", "Window"),
+            ("C", "Ctrl+C", "Window"),
+            ("Z", "Ctrl+Z", "Window"),
+            ("Y or Z", "Ctrl+Y or Ctrl+Shift+Z", "Window"),
             ("Escape", "Esc", "Settings"),
             ("Enter", "Enter", "Settings"), ("Escape", "Esc", "Settings"),
             ("← or →", "← or →", "Settings"),
             ("Tab", "Tab", "Settings"), ("Tab", "Shift+Tab", "Settings"),
         });
+        if (CurrentPlatform == ShortcutPlatform.MacOS)
+        {
+            // Every Primary gesture shows ⌘ on macOS, zoom and Settings as well as editing.
+            expectedSettingsKeys = expectedSettingsKeys
+                .Select(row => (row.Key, row.Gesture.Replace("Ctrl+", "⌘+", StringComparison.Ordinal), row.Scope))
+                .ToList();
+        }
         Assert.Equal(expectedSettingsKeys.OrderBy(row => (row.Scope, row.Key, row.Gesture)),
             KeyboardShortcutRegistry.Entries.Select(row => (row.Key, row.Gesture, row.Scope))
                 .OrderBy(row => (row.Scope, row.Key, row.Gesture)));
@@ -182,6 +194,180 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             CultureInfo.GetCultureInfo("en")));
         Assert.Equal("= or Keypad +", KeyboardShortcutCatalog.FormatKeyLabels(
             [ShortcutKey.OemPlus, ShortcutKey.OemPlus, ShortcutKey.Add], CultureInfo.GetCultureInfo("en")));
+    }
+
+    [Fact]
+    public void EditingShortcutsAreRegisteredOutsideTextEntry()
+    {
+        var expected = new[]
+        {
+            (Id: "window-copy", Key: "C", Modifiers: ShortcutModifiers.Primary),
+            (Id: "window-undo", Key: "Z", Modifiers: ShortcutModifiers.Primary),
+            (Id: "window-redo", Key: "Y", Modifiers: ShortcutModifiers.Primary),
+            (Id: "window-redo", Key: "Z", Modifiers: ShortcutModifiers.Primary | ShortcutModifiers.Shift),
+        };
+
+        foreach (var item in expected)
+        {
+            Assert.True(Enum.TryParse<ShortcutKey>(item.Key, out var key), $"ShortcutKey.{item.Key} is missing.");
+            var definition = Assert.Single(KeyboardShortcutCatalog.Entries, entry => entry.Id == item.Id);
+            Assert.Contains(ShortcutScope.Window, definition.Scopes);
+            var binding = Assert.Single(definition.Bindings, candidate =>
+                candidate.Gesture.Key == key && candidate.Gesture.Modifiers == item.Modifiers);
+            Assert.Equal(ShortcutFocusRule.OutsideTextInput, binding.FocusRule);
+        }
+
+        foreach (var platform in new[] { ShortcutPlatform.Windows, ShortcutPlatform.Linux, ShortcutPlatform.MacOS })
+        {
+            var modifiers = platform == ShortcutPlatform.MacOS ? KeyModifiers.Meta : KeyModifiers.Control;
+            Assert.Equal(KeyboardShortcutBehavior.Copy,
+                KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.C, modifiers, platform)?.Behavior);
+            Assert.Equal(KeyboardShortcutBehavior.Undo,
+                KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.Z, modifiers, platform)?.Behavior);
+            Assert.Equal(KeyboardShortcutBehavior.Redo,
+                KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.Y, modifiers, platform)?.Behavior);
+            Assert.Equal(KeyboardShortcutBehavior.Redo,
+                KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.Z,
+                    modifiers | KeyModifiers.Shift, platform)?.Behavior);
+        }
+        Assert.Null(KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, Key.V, KeyModifiers.Control,
+            ShortcutPlatform.Windows));
+    }
+
+    [Fact]
+    public void NativeTextEditingShortcutsWorkInsideTheWindow()
+    {
+        string? clipboardText = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var window = new MainWindow { Content = new TextBox() };
+            var input = Assert.IsType<TextBox>(window.Content);
+            var primary = CurrentPlatform == ShortcutPlatform.MacOS
+                ? RawInputModifiers.Meta
+                : RawInputModifiers.Control;
+            window.Show();
+            try
+            {
+                Assert.True(input.Focus());
+                window.KeyTextInput("word");
+                Assert.Equal("word", input.Text);
+
+                window.KeyPress(Key.Z, primary, PhysicalKey.None, null);
+                Assert.Equal(string.Empty, input.Text ?? string.Empty);
+                window.KeyPress(Key.Y, primary, PhysicalKey.None, null);
+                Assert.Equal("word", input.Text);
+
+                window.KeyPress(Key.A, primary, PhysicalKey.None, null);
+                window.KeyPress(Key.C, primary, PhysicalKey.None, null);
+                window.KeyPress(Key.X, primary, PhysicalKey.None, null);
+                Assert.Equal(string.Empty, input.Text ?? string.Empty);
+                window.KeyPress(Key.V, primary, PhysicalKey.None, null);
+                Assert.Equal("word", input.Text);
+
+                clipboardText = await window.Clipboard!.TryGetTextAsync();
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
+
+        Assert.Equal("word", clipboardText);
+    }
+
+    [Fact]
+    public void CopyShortcutCopiesSelectionsAndFocusedWordsAcrossTheWindow()
+    {
+        var copied = new List<string?>();
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var window = new MainWindow();
+            var primary = CurrentPlatform == ShortcutPlatform.MacOS
+                ? RawInputModifiers.Meta
+                : RawInputModifiers.Control;
+            window.Show();
+            try
+            {
+                async Task CopyFromAsync(Control content, Control focus)
+                {
+                    window.Content = content;
+                    focus.Focusable = true;
+                    Assert.True(focus.Focus());
+                    window.KeyPress(Key.C, primary, PhysicalKey.None, null);
+                    copied.Add(await window.Clipboard!.TryGetTextAsync());
+                }
+
+                var selected = new CopyableTextBlock { Text = "copy selected phrase", SelectionStart = 5, SelectionEnd = 13 };
+                Assert.Equal("selected", KeyboardShortcutRegistry.CopyTextFor(selected));
+                var selectedButton = new Button { Content = "Copy" };
+                var selectedPanel = new StackPanel { Children = { selected, selectedButton } };
+                await CopyFromAsync(selectedPanel, selectedButton);
+
+                var readerWord = new ResultsTokenViewModel("Text", 1,
+                    new TextToken("reader form", "reader form", null, null), null);
+                var readerButton = new Button { DataContext = readerWord, Content = "reader form" };
+                await CopyFromAsync(readerButton, readerButton);
+
+                var rowViewModel = WordRowViewModel.NotParsed("row form");
+                var wordRow = new SIL.Motif.App.Views.WordRow
+                    { DataContext = rowViewModel, Row = rowViewModel };
+                var rowButton = new Button { DataContext = rowViewModel, Content = wordRow };
+                await CopyFromAsync(rowButton, rowButton);
+                var matrixRowModel = WordRowViewModel.NotParsed("row form");
+                var matrixRow = new SIL.Motif.App.Views.WordRow
+                    { DataContext = matrixRowModel, Row = matrixRowModel };
+                var matrixButton = new Button { DataContext = matrixRowModel, Content = matrixRow };
+                await CopyFromAsync(matrixButton, matrixButton);
+
+                var changes = new ChangesViewModel(new FakeCommandClient());
+                var reviewChange = new ChangeViewModel("approve", "review form", "reading", "change/one");
+                var reviewGroup = new ReviewChangeGroupViewModel("Approve", [reviewChange], changes);
+                var reviewButton = new Button
+                {
+                    DataContext = new ReviewListEntryViewModel(reviewGroup, reviewChange, isLastChange: true),
+                    Content = "review form",
+                };
+                await CopyFromAsync(reviewButton, reviewButton);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
+
+        Assert.Equal(["selected", "reader form", "row form", "row form", "review form"], copied);
+    }
+
+    [Fact]
+    public void UndoShortcutUsesTheStagingCommandAndShowsItsStatus()
+    {
+        var fake = new FakeCommandClient();
+        string? status = null;
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create(fake);
+            await workspace.Context.Changes.OpenProjectAsync("project.fwdata");
+            await workspace.Context.Changes.PutAsync(new ChangeIntent(
+                "change/one", ChangeKinds.Approve, "wordform/one", "word"));
+            var primary = CurrentPlatform == ShortcutPlatform.MacOS
+                ? RawInputModifiers.Meta
+                : RawInputModifiers.Control;
+            window.Show();
+            try
+            {
+                Assert.True(window.FindControl<Button>("HelpButton")!.Focus());
+                window.KeyPress(Key.Z, primary, PhysicalKey.None, null);
+                Assert.Empty(workspace.Context.Changes.Items);
+                status = window.FindControl<TextBlock>("KeyboardShortcutStatusLine")?.Text;
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TimeSpan.FromSeconds(5));
+
+        Assert.Equal("Undid the change for word.", status);
+        Assert.Equal("change/one", Assert.Single(fake.PendingRemoveRequests).ChangeId);
     }
 
     [Fact]

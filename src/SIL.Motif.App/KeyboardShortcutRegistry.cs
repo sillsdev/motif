@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using SIL.Motif.Help;
+using SIL.Motif.App.Views;
+using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App;
 
@@ -39,6 +41,9 @@ internal enum KeyboardShortcutBehavior
     Approve,
     Disapprove,
     Unknown,
+    Copy,
+    Undo,
+    Redo,
     FocusWordSearch,
     ShowShortcuts,
     OpenSettings,
@@ -102,6 +107,9 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.A] = Key.A,
         [ShortcutKey.D] = Key.D,
         [ShortcutKey.U] = Key.U,
+        [ShortcutKey.C] = Key.C,
+        [ShortcutKey.Y] = Key.Y,
+        [ShortcutKey.Z] = Key.Z,
         [ShortcutKey.F] = Key.F,
         [ShortcutKey.OemQuestion] = Key.OemQuestion,
         [ShortcutKey.OemComma] = Key.OemComma,
@@ -162,6 +170,32 @@ public static class KeyboardShortcutRegistry
     internal static bool IsTextInput(object? source) => source is Control control &&
         control.GetSelfAndVisualAncestors().Any(ancestor => ancestor is TextBox or NumericUpDown
             || ancestor is ComboBox { IsEditable: true });
+
+    internal static string? CopyTextFor(object? source)
+    {
+        if (source is not Control control) return null;
+        var ancestors = control.GetSelfAndVisualAncestors().OfType<Control>().ToArray();
+        var root = TopLevel.GetTopLevel(control);
+        var selectedBlocks = ancestors.OfType<SelectableTextBlock>().Concat(
+            root?.GetVisualDescendants().OfType<SelectableTextBlock>() ?? []);
+        var selected = selectedBlocks
+            .Select(block => block.SelectedText).FirstOrDefault(text => !string.IsNullOrEmpty(text));
+        if (selected is not null) return selected;
+        foreach (var ancestor in ancestors)
+        {
+            if (ancestor is WordRow { Row: { } row }) return row.Word;
+            var word = ancestor.DataContext switch
+            {
+                ResultsTokenViewModel token when token.IsWord => token.Form,
+                WordRowViewModel wordRow => wordRow.Word,
+                ReviewListEntryViewModel entry => entry.Change?.Word,
+                ChangeViewModel change => change.Word,
+                _ => null,
+            };
+            if (!string.IsNullOrEmpty(word)) return word;
+        }
+        return null;
+    }
 
     private static IReadOnlyList<KeyboardShortcutBinding> CreateBindings()
     {

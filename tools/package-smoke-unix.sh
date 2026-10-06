@@ -113,6 +113,18 @@ assert_version "$PRODUCT_VERSION"
 
 sample_builder="$GITHUB_WORKSPACE/bin/Release/SIL.Motif.SampleProjects"
 sample_spec="$GITHUB_WORKSPACE/samples/synthetic-turkic/sample.json"
+if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then
+    export MOTIF_RELEASE_APP_PREFIX_ARGUMENTS='["--appimage-extract-and-run"]'
+    export MOTIF_RELEASE_APP_WRAPPER="$(command -v xvfb-run)"
+    export MOTIF_RELEASE_APP_WRAPPER_ARGUMENTS='["-a"]'
+fi
+pwsh ./tools/release-pathways.ps1 \
+    -AppExecutable "$app_executable" \
+    -CliExecutable "$cli_shim" \
+    -SampleBuilder "$sample_builder" \
+    -SampleSpec "$sample_spec" \
+    -WalkthroughDirectory "$GITHUB_WORKSPACE/walkthroughs" \
+    -WorkDirectory "$work_directory/release-pathway-evidence"
 sample_output_root="$work_directory/sample-projects"
 sample_build_stderr="$work_directory/sample-project-builder.stderr"
 if sample_build_json=$("$sample_builder" build "$sample_spec" "$sample_output_root" 2>"$sample_build_stderr"); then
@@ -196,6 +208,22 @@ if [[ ! -f "$user_data_marker" ]]; then
     printf 'Motif user data did not survive uninstall.\n' >&2
     exit 1
 fi
+release_root=$(cat "$work_directory/release-pathway-evidence/release-pathways-root.txt")
+python3 - "$release_root/seed-manifest.json" "$project_path" <<'PY'
+import json
+import os
+import sys
+
+with open(sys.argv[1], encoding="utf-8-sig") as manifest_file:
+    manifest = json.load(manifest_file)
+for group in ("projects", "cliProjects", "extraProjects"):
+    for name, project in manifest.get(group, {}).items():
+        if not os.path.isfile(project):
+            raise SystemExit(f"Seeded FieldWorks project did not survive uninstall: {name} at {project}")
+if not os.path.isfile(sys.argv[2]):
+    raise SystemExit(f"The package smoke FieldWorks project did not survive uninstall: {sys.argv[2]}")
+PY
+rm -rf -- "$release_root"
 rm -f "$user_data_marker"
 
 if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then

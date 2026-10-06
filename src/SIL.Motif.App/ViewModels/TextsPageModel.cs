@@ -101,6 +101,7 @@ public sealed partial class TextsPageModel : PageModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowTextReader))]
     [NotifyPropertyChangedFor(nameof(ShowWordList))]
+    [NotifyPropertyChangedFor(nameof(ShowAnalyzeParsePrompt))]
     private AnalyzeTextsView _analyzeView = AnalyzeTextsView.TextReader;
 
     public bool ShowMatrix => Tab == TextsTab.Matrix;
@@ -119,8 +120,8 @@ public sealed partial class TextsPageModel : PageModel
     /// <summary>Whether the prompt fills the Matrix, which has nothing to show without a parse.</summary>
     public bool ShowCentredParsePrompt => ShowParsePrompt && ShowMatrix;
 
-    /// <summary>Whether the prompt sits above the text, which still shows the analyses FieldWorks holds.</summary>
-    public bool ShowAnalyzeParsePrompt => ShowParsePrompt && ShowAnalyzeTexts;
+    /// <summary>Whether the prompt sits above the text reader, which still shows FieldWorks' analyses.</summary>
+    public bool ShowAnalyzeParsePrompt => ShowParsePrompt && ShowAnalyzeTexts && ShowTextReader;
 
     public bool ShowLists => Tab == TextsTab.Lists;
 

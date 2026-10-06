@@ -94,6 +94,7 @@ public sealed partial class ResultsInTextViewModel
 
     private async Task AcceptNewSetAsync(AnalysisOperationScope scope)
     {
+        using var historyAction = _changes.BeginStagingAction();
         if (_changes.AssessmentId is not { } assessmentId) return;
         using var usageAction = _commands.BeginUsageAction("accept-new-set",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("assessmentId"),
@@ -121,6 +122,7 @@ public sealed partial class ResultsInTextViewModel
 
     private async Task AddParserReadingsAsync(AnalysisOperationScope scope)
     {
+        using var historyAction = _changes.BeginStagingAction();
         var tokens = TokensFor(scope).ToArray();
         using var usageAction = _commands.BeginUsageAction("put-pending-change",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"),
@@ -158,6 +160,7 @@ public sealed partial class ResultsInTextViewModel
 
     private async Task MarkSpellingsIncorrectAsync(AnalysisOperationScope scope)
     {
+        using var historyAction = _changes.BeginStagingAction();
         var tokens = TokensFor(scope).ToArray();
         using var usageAction = _commands.BeginUsageAction("put-pending-change",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"),
@@ -208,6 +211,7 @@ public sealed partial class ResultsInTextViewModel
 
     private async Task UndoChangesAsync(AnalysisOperationScope scope)
     {
+        using var historyAction = _changes.BeginStagingAction();
         var changes = ChangesFor(TokensFor(scope));
         if (changes.Length == 0) return;
         using var usageAction = _commands.BeginUsageAction("remove-pending-change",

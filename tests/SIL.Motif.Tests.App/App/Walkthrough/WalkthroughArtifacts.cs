@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using SIL.Motif.App.Walkthroughs;
 using SkiaSharp;
 using Xunit;
 

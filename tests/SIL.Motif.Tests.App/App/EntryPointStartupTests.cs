@@ -85,6 +85,19 @@ public sealed class EntryPointStartupTests
     }
 
     [Fact]
+    public void ReleasePathwayReplayNeedsItsEnvironmentAndCommandLineSwitch()
+    {
+        var program = LoadAppAssembly().GetType("SIL.Motif.App.Program", throwOnError: true)!;
+        var method = program.GetMethod("ShouldRunReleasePathways", BindingFlags.Static | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+        Assert.Equal(false, method!.Invoke(null, [new[] { "--release-pathways" }, null]));
+        Assert.Equal(false, method.Invoke(null, [Array.Empty<string>(), "/tmp/walkthroughs"]));
+        Assert.Equal(false, method.Invoke(null, [new[] { "--release-pathways" }, " "]));
+        Assert.Equal(true, method.Invoke(null, [new[] { "--release-pathways" }, "/tmp/walkthroughs"]));
+    }
+
+    [Fact]
     public async Task TheBuiltAppsSmokeRunRendersAWindowAndExitsCleanly()
     {
         var app = Path.Combine(BuildOutput.ProductDirectory,

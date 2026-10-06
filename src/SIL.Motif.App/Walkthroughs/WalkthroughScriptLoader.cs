@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SIL.Motif.Tests.App.Walkthrough;
+namespace SIL.Motif.App.Walkthroughs;
 
 internal enum WalkthroughStepKind { Click, Type, WaitFor, Highlight, Hold, Capture }
 

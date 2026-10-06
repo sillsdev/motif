@@ -4,6 +4,8 @@ on:
   push:
     branches: ['**', '!mac-debug/**', '!linux-debug/**']
   pull_request:
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       publish_release:
@@ -19,9 +21,54 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 jobs:
-  windows:
+  nightly-change:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName !== 'schedule') {
+              core.setOutput('changed', 'true');
+              return;
+            }
+            if (context.ref !== 'refs/heads/main') {
+              core.setOutput('changed', 'false');
+              return;
+            }
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'package.yml',
+              branch: 'main',
+              status: 'success',
+              per_page: 100,
+            });
+            const previous = runs.data.workflow_runs.find(run => run.id !== context.runId);
+            if (!previous) {
+              core.setOutput('changed', 'true');
+              return;
+            }
+            if (previous.head_sha === context.sha) {
+              core.setOutput('changed', 'false');
+              return;
+            }
+            const comparison = await github.rest.repos.compareCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: previous.head_sha,
+              head: context.sha,
+            });
+            core.setOutput('changed', comparison.data.total_commits > 0 ? 'true' : 'false');
+
+  release-check-windows:
+    needs: [nightly-change]
+    if: needs.nightly-change.outputs.changed == 'true'
     runs-on: windows-latest
     env:
       MSBUILDDISABLENODEREUSE: '1'
@@ -158,7 +205,7 @@ jobs:
 
   release-windows:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_release
-    needs: [windows, linux, macos]
+    needs: [release-check-windows, release-check-linux, release-check-macos]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -318,7 +365,9 @@ jobs:
             --notes-file "docs/release-notes/$env:RELEASE_VERSION.md" --verify-tag
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }
 
-  linux:
+  release-check-linux:
+    needs: [nightly-change]
+    if: needs.nightly-change.outputs.changed == 'true'
     runs-on: ubuntu-22.04
     env:
       MSBUILDDISABLENODEREUSE: '1'
@@ -445,7 +494,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  macos:
+  release-check-macos:
+    needs: [nightly-change]
+    if: needs.nightly-change.outputs.changed == 'true'
     runs-on: macos-latest
     env:
       MSBUILDDISABLENODEREUSE: '1'

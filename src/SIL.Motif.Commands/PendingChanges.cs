@@ -617,7 +617,7 @@ public static class PendingChanges
             {
                 composer = "AnalysisChange", change.ChangeId, change.Kind, change.WordformId,
                 change.Word, change.AssessmentId, change.DisplayReading, change.StoredAnalysisId, change.ReadingIndex,
-                change.OriginPage,
+                change.OriginPage, groupId = change.GroupId,
                 displayAnalyses = DisplayAnalyses(database, cache, Path.GetFileNameWithoutExtension(
                     baseline.FwDataPath), wordform, change, reading),
                 operationIds = operations.Select(operation => operation.OperationId.Value).ToArray(),
@@ -855,18 +855,33 @@ public static class PendingChanges
                 .Where(extensions => extensions is { ValueKind: JsonValueKind.Object })
                 .Select(extensions => extensions!.Value.TryGetProperty("changeFit", out var fit) ? fit : default)
                 .FirstOrDefault(fit => fit.ValueKind == JsonValueKind.Object);
+            var fitEvidence = FingerprintOf(fingerprint);
             var wordformId = Property(entry, "wordformId") ?? Property(fingerprint, "wordformId") ?? "";
-            return new PendingChange(id, wordformId, Property(entry, "word") ??
-                Property(fingerprint, "wordformForm") ?? "", Property(entry, "kind") ??
-                operations.FirstOrDefault()?.Kind ?? "", Property(entry, "assessmentId"),
-                Property(entry, "displayReading"), operationIds)
+            var word = Property(entry, "word") ?? Property(fingerprint, "wordformForm") ?? "";
+            var kind = Property(entry, "kind") ?? operations.FirstOrDefault()?.Kind ?? "";
+            var assessmentId = Property(entry, "assessmentId");
+            var displayReading = Property(entry, "displayReading");
+            var storedAnalysisId = Property(entry, "storedAnalysisId");
+            var readingIndex = IntegerProperty(entry, "readingIndex");
+            var originPage = Property(entry, "originPage");
+            var groupId = Property(entry, "groupId");
+            var stagingIntent = string.IsNullOrWhiteSpace(word) || string.IsNullOrWhiteSpace(kind) ||
+                CarriesReading(kind) && fitEvidence?.Reading is null
+                ? null
+                : new ChangeIntent(id, kind, wordformId, word, assessmentId, fitEvidence?.Reading,
+                    storedAnalysisId, displayReading, readingIndex, originPage, OccurrenceOf(fingerprint))
+                {
+                    GroupId = groupId,
+                };
+            return new PendingChange(id, wordformId, word, kind, assessmentId, displayReading, operationIds)
             {
-                OriginPage = Property(entry, "originPage"),
+                OriginPage = originPage,
                 Analyses = DisplayAnalysesOf(entry),
                 Occurrence = OccurrenceOf(fingerprint),
-                StoredAnalysisId = Property(entry, "storedAnalysisId"),
-                ReadingIndex = IntegerProperty(entry, "readingIndex"),
-                GroupId = Property(entry, "groupId"),
+                StoredAnalysisId = storedAnalysisId,
+                ReadingIndex = readingIndex,
+                GroupId = groupId,
+                StagingIntent = stagingIntent,
             };
         }).ToArray();
         if (changes.Length == 0)
@@ -1037,11 +1052,15 @@ public static class PendingChanges
 
     private static OccurrenceAnchor? OccurrenceOf(JsonElement fingerprint)
     {
+        return FingerprintOf(fingerprint)?.Occurrence?.Anchor;
+    }
+
+    private static ChangeFitFingerprint? FingerprintOf(JsonElement fingerprint)
+    {
         if (fingerprint.ValueKind != JsonValueKind.Object) return null;
         try
         {
-            return JsonSerializer.Deserialize<ChangeFitFingerprint>(fingerprint.GetRawText(), JsonOptions)
-                ?.Occurrence?.Anchor;
+            return JsonSerializer.Deserialize<ChangeFitFingerprint>(fingerprint.GetRawText(), JsonOptions);
         }
         catch (JsonException)
         {

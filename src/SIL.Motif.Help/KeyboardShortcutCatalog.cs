@@ -75,6 +75,12 @@ public enum ShortcutKey
     D,
     /// <summary>The U key.</summary>
     U,
+    /// <summary>The C key.</summary>
+    C,
+    /// <summary>The Y key.</summary>
+    Y,
+    /// <summary>The Z key.</summary>
+    Z,
     /// <summary>The F key.</summary>
     F,
     /// <summary>The key that produces a question mark with Shift on the current layout.</summary>

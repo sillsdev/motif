@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SIL.Motif.App.Walkthroughs;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -85,7 +86,8 @@ public sealed class WalkthroughScriptLoaderTests
 
         Assert.Equal("explained-word-card", script.Id);
         Assert.Equal("explained-word-card", script.Fixture);
-        Assert.Equal(7, captures.Length);
+        Assert.Equal(8, captures.Length);
+        Assert.Contains(captures, step => step.Id == "word-list-results");
         Assert.All(captures, step => Assert.True(step.Scale >= 2));
         Assert.Contains(captures.Single(step => step.Id == "approved-agrees").Callouts!, callout =>
             callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal));

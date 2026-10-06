@@ -8,6 +8,10 @@ public sealed record PendingChange(
     string ChangeId, string WordformId, string Word, string Kind, string? AssessmentId,
     string? DisplayReading, IReadOnlyList<string> OperationIds)
 {
+    /// <summary>The exact authoring request the window can replay through its staging commands.</summary>
+    [JsonIgnore]
+    public ChangeIntent? StagingIntent { get; init; }
+
     /// <summary>Null means this word's spelling has no known single writing system.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public string? WordWritingSystem { get; init; }

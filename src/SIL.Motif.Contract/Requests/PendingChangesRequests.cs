@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using System.Text.Json.Serialization;
 
 namespace SIL.Motif.Contract.Requests;
 
@@ -10,7 +11,12 @@ public sealed record ChangeIntent(
     string ChangeId, string Kind, string WordformId, string Word,
     string? AssessmentId = null, ParseAnalysis? Reading = null, string? StoredAnalysisId = null,
     string? DisplayReading = null, int? ReadingIndex = null, string? OriginPage = null,
-    OccurrenceAnchor? Occurrence = null);
+    OccurrenceAnchor? Occurrence = null)
+{
+    /// <summary>The staging group kept when this request restores a grouped set of changes.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GroupId { get; init; }
+}
 
 /// <summary>The Text occurrence whose sentence provided context for a collected decision.</summary>
 /// <param name="TextId">The GUID of the Text containing the occurrence.</param>

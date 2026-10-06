@@ -74,6 +74,7 @@ public sealed class ReviewChangeGroupViewModel
 
     private async Task UndoAllAsync()
     {
+        using var historyAction = _changes.BeginStagingAction();
         var removals = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in Items)
         {

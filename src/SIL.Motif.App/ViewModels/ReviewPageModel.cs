@@ -459,6 +459,7 @@ public sealed class ReviewPageModel : PageModel
             await Changes.ReloadAsync().ConfigureAwait(true);
             return;
         }
+        Changes.ClearStagingHistory();
         Receipt = result.Value!.Receipt;
         ApplyRefusal = null;
         if (result.Value.Applied) Context.RecordApplied();
@@ -471,6 +472,7 @@ public sealed class ReviewPageModel : PageModel
 
     private async Task RemoveNonFittingAsync()
     {
+        using var historyAction = Changes.BeginStagingAction();
         var changes = Changes.Items.Where(item => item.IsNoLongerFits).ToArray();
         using var usageAction = Context.Commands.BeginUsageAction("remove-pending-change",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", changes.Length));
