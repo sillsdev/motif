@@ -125,6 +125,7 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 PageScreenshots.Settle(window.Window);
                 measurements.Checkpoint("Large: after first Skia render");
             });
+            measurements.AssertReadCounts("Open stored Overview", 1, 267, 3000, 162189);
             Capture(window, "overview");
             var texts = window.Workspace.PageModel<TextsPageModel>();
             await measurements.MeasureAsync("Open Matrix", 15, () =>
@@ -153,22 +154,32 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 var readerModel = texts.ResultsInText;
                 await readerModel.ReadStateRefresh;
                 Assert.Equal(LargeProjectFixture.OccurrenceCount, readerModel.AllCount);
-                var longest = readerModel.Texts.MaxBy(text => text.Lines.Sum(line => line.Tokens.Count))!;
+                var longest = readerModel.Texts.Single(text => text.TextId == project.TextIds[0]);
+                var lineModels = ScaleCountHarness.ObserveViewModels(longest.Lines, typeof(ResultsLineViewModel));
+                var tokenModels = ScaleCountHarness.ObserveViewModels(
+                    longest.Lines.SelectMany(line => line.Tokens), typeof(ResultsTokenViewModel));
                 readerModel.SelectedText = longest;
-                Assert.Equal(LargeProjectFixture.LongestTextWordCount, longest.Lines.Sum(line => line.Tokens.Count));
                 PageScreenshots.Settle(window.Window);
+                Assert.Equal(50, ScaleCountHarness.CountLiveViewModels(lineModels, typeof(ResultsLineViewModel)));
+                Assert.Equal(LargeProjectFixture.LongestTextWordCount,
+                    ScaleCountHarness.CountLiveViewModels(tokenModels, typeof(ResultsTokenViewModel)));
                 var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
                 var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
                     viewer => viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
                 reader.Offset = new Vector(0, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
                 PageScreenshots.Settle(window.Window);
-                var token = longest.Lines[^1].Tokens[^1];
-                var strip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token));
+                var lineItems = panel.FindControl<ItemsControl>("TextLineItems")!;
+                var finalLine = Assert.IsAssignableFrom<Control>(lineItems.ContainerFromIndex(lineItems.ItemCount - 1));
+                var tokenItems = Assert.Single(finalLine.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                    items => items.Name == "ResultsInTextPanelTokensItems");
+                var finalToken = Assert.IsAssignableFrom<Control>(tokenItems.ContainerFromIndex(tokenItems.ItemCount - 1));
+                var strip = new[] { finalToken }.Concat(finalToken.GetVisualDescendants().OfType<Border>())
+                    .Single(border => border.Name == "WordStrip");
                 var origin = strip.TranslatePoint(new Point(), reader);
                 Assert.NotNull(origin);
                 Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)));
             });
+            measurements.AssertReadCounts("Analyze longest Text and scroll to end", 0, 0, 0, 0);
             Capture(window, "analyze-end");
             await measurements.MeasureAsync("Open Timing", 5, () =>
             {

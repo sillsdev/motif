@@ -282,6 +282,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var command = connection.CreateCommand();
         command.CommandText = HeaderSelectSql + " WHERE ProposalId = $proposalId ORDER BY SavedUtc, AssessmentId;";
         command.Parameters.AddWithValue("$proposalId", proposalId.Value);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         var records = new List<AssessmentRecord>();
         while (reader.Read()) records.Add(ReadHeader(reader));
@@ -296,6 +297,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using var command = connection.CreateCommand();
         command.CommandText = HeaderSelectSql + " WHERE Kind = $kind ORDER BY SavedUtc, AssessmentId;";
         command.Parameters.AddWithValue("$kind", kind);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         var records = new List<AssessmentRecord>();
         while (reader.Read()) records.Add(ReadHeader(reader));
@@ -314,6 +316,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             command.CommandText =
                 HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL ORDER BY SavedUtc, AssessmentId;";
             command.Parameters.AddWithValue("$kind", kind);
+            RepositoryReadCounters.QueryExecuted();
             using var reader = command.ExecuteReader();
             while (reader.Read()) headers.Add(ReadHeader(reader));
         }
@@ -347,6 +350,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             command.Parameters.AddWithValue("$baseline", baselineToken);
             command.Parameters.AddWithValue("$selectionSha", selectionSha256);
             command.Parameters.AddWithValue("$selectionWords", JsonSerializer.Serialize(selectionWords));
+            RepositoryReadCounters.QueryExecuted();
             using var reader = command.ExecuteReader();
             header = reader.Read() ? ReadHeader(reader) : null;
         }
@@ -380,6 +384,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
             command.Parameters.AddWithValue("$baseline", baselineToken);
             if (assessmentIds is not null)
                 command.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(assessmentIds));
+            RepositoryReadCounters.QueryExecuted();
             using var reader = command.ExecuteReader();
             while (reader.Read()) headers.Add(ReadHeader(reader));
         }
@@ -422,6 +427,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         using (var command = connection.CreateCommand())
         {
             command.CommandText = "SELECT CurrentAssessmentId FROM MotifMetadata WHERE Id = 1;";
+            RepositoryReadCounters.QueryExecuted();
             currentId = command.ExecuteScalar() as string;
         }
         if (currentId is null) return null;
@@ -690,13 +696,17 @@ public sealed class AssessmentRepository : IAssessmentRepository
             FROM AssessmentObjectTimings WHERE AssessmentId = $id ORDER BY OrdinalIndex;
             """;
         command.Parameters.AddWithValue("$id", assessmentId);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         var rows = new List<AssessmentObjectTiming>();
         while (reader.Read())
+        {
+            RepositoryReadCounters.RecordDeserialized();
             rows.Add(new AssessmentObjectTiming(reader.GetString(0), reader.GetString(1), reader.GetString(2),
                 reader.GetString(3), reader.GetString(4), reader.GetString(5),
                 reader.IsDBNull(6) ? null : reader.GetInt32(6), reader.IsDBNull(7) ? null : reader.GetInt32(7),
                 reader.IsDBNull(8) ? null : reader.GetInt64(8)));
+        }
         return rows;
     }
 
@@ -716,6 +726,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         command.Transaction = transaction;
         command.CommandText = HeaderSelectSql + " WHERE AssessmentId = $id;";
         command.Parameters.AddWithValue("$id", assessmentId);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         return reader.Read() ? ReadHeader(reader) : null;
     }
@@ -725,6 +736,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
     private static AssessmentRecord ReadHeader(SqliteDataReader reader)
     {
+        RepositoryReadCounters.RecordDeserialized();
         var selection = new Selection(
             reader.GetString(10),
             JsonSerializer.Deserialize<List<string>>(reader.GetString(11))!,
@@ -812,6 +824,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
         int? currentPasses = null;
         List<ParsedAnalysis> currentAnalyses = [];
 
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -819,12 +832,15 @@ public sealed class AssessmentRepository : IAssessmentRepository
             if (wordId != currentWordId)
             {
                 if (currentWordId is not null)
+                {
+                    RepositoryReadCounters.RecordDeserialized();
                     words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
                     { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                         ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                         ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                         MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
                         Attempts = currentAttempts, Passes = currentPasses });
+                }
                 if (wordForms is null && reader.GetInt32(12) != words.Count)
                     throw new InvalidDataException("Assessment case ordinals must be contiguous and begin at zero.");
                 currentWordId = wordId;
@@ -853,6 +869,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
 
             if (!reader.IsDBNull(8)) // NULL here means no analysis row; the column itself is NOT NULL.
             {
+                RepositoryReadCounters.RecordDeserialized();
                 currentAnalyses.Add(new ParsedAnalysis(
                     CategoryGuid: reader.IsDBNull(5) ? null : reader.GetString(5),
                     MorphemeGuids: JsonSerializer.Deserialize<List<string>>(reader.GetString(6))!,
@@ -862,12 +879,15 @@ public sealed class AssessmentRepository : IAssessmentRepository
         }
 
         if (currentWordId is not null)
+        {
+            RepositoryReadCounters.RecordDeserialized();
             words.Add(new AssessedWord(currentWord, currentOutcome, currentAnalyses, currentElapsedMs, currentSignature)
             { Morphology = currentMorphology, ElapsedNs = currentElapsedNs, Correctness = currentCorrectness,
                 ProjectStanding = currentStanding, OccurrenceCount = currentOccurrenceCount,
                 ReadingGrades = currentReadingGrades, AnalysisComparison = currentComparison, MissedApprovedCount = currentMissedApprovedCount,
                 MissedApproved = currentMissedApproved, IsIncomplete = currentIncomplete,
                         Attempts = currentAttempts, Passes = currentPasses });
+        }
         return words;
     }
 }

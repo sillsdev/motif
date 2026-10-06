@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -53,6 +54,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 () => OpenAsync(reopened, measurements, "Unparsed reopened window"));
             Assert.Null(reopened.Workspace.Assess.Result);
             Capture(reopened, "reopened");
+            measurements.AssertReadCounts("Unparsed: reopen project", 0, 64, 0, 24000);
             Assert.DoesNotContain(FakeParser.Invocations(parser), command => command is "batch" or "parse" or "trace");
         }, TimeSpan.FromMinutes(10));
         measurements.AssertBudgets();
@@ -61,16 +63,20 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
     private async Task OpenAndReadAsync(LargeProjectFixture project, string parser, ScaleMeasurements measurements)
     {
         using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
+        var texts = window.Workspace.PageModel<TextsPageModel>();
+        var createdRows = new ConcurrentBag<WeakReference<object>>();
+        using var rowCreationObservation = texts.Words.ObserveRowCreation(createdRows.Add);
         await measurements.MeasureAsync("Unparsed: open configured Selection", 45,
             () => OpenAsync(window, measurements, "Unparsed first window"));
         Assert.Null(window.Workspace.Assess.Result);
+        measurements.AssertReadCounts("Unparsed: open configured Selection", 1, 45, 1, 42);
         Capture(window, "opened");
-        var texts = window.Workspace.PageModel<TextsPageModel>();
-        await measurements.MeasureAsync("Unparsed: show all 21604 Word list rows", 30, () =>
+        await measurements.MeasureAsync("Unparsed: show all 21604 Word list rows", 30, async () =>
         {
             window.ShowPage(WorkspacePage.Texts);
             window.ShowTextsTab(TextsTab.AnalyzeTexts);
             texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+            await texts.Words.ReloadAsync();
             window.WaitUntil(() => !texts.Words.IsLoading && texts.Words.Rows.Count == project.SelectedWordCount,
                 TimeSpan.FromSeconds(30), "the large Word list did not load");
             PageScreenshots.Settle(window.Window);
@@ -78,12 +84,20 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 control => control.IsEffectivelyVisible && ReferenceEquals(control.ItemsSource, texts.Words.Rows));
             list.ScrollIntoView(texts.Words.Rows.Count - 1);
             PageScreenshots.Settle(window.Window);
-            var rows = window.Window.GetVisualDescendants().OfType<WordRow>().ToArray();
-            Assert.InRange(rows.Length, 1, 64);
-            Assert.InRange(texts.Words.MaterializedRowCount, 1, 128);
-            output.WriteLine($"Word list retained {texts.Words.MaterializedRowCount} projected rows out of {project.SelectedWordCount}");
-            Assert.Contains(rows, row => row.Row?.Word == texts.Words.Rows[^1].Form);
+            var finalContainer = Assert.IsAssignableFrom<Control>(list.ContainerFromIndex(list.ItemCount - 1));
+            var finalRow = new[] { finalContainer }.Concat(finalContainer.GetVisualDescendants())
+                .OfType<WordRow>().Single();
+            Assert.Equal(texts.Words.Rows[^1].Form, finalRow.Row?.Word);
+            var tree = AvaloniaScaleCounts.CaptureRealizedControls(window.Window);
+            var rows = tree.MotifControl(typeof(WordRow).FullName!);
+            Assert.InRange(rows.Count, 1, 64);
+            var rowModels = ScaleCountHarness.AssertLiveViewModelBudget(
+                createdRows, typeof(TextWordRowViewModel), 1, 128);
+            output.WriteLine($"Word list realized {rows.Count} rows at depth {rows.MaximumDepth}; " +
+                $"{rowModels} row models survive collection from {createdRows.Count} creation observations");
         });
+        measurements.AssertReadCounts("Unparsed: show all 21604 Word list rows", 0, 9,
+            project.SelectedWordCount, project.SelectedWordCount * 3L);
         Capture(window, "word-list-end");
         await measurements.MeasureAsync("Unparsed: read and scroll 224-line Text", 30, async () =>
         {
@@ -93,25 +107,43 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 TimeSpan.FromSeconds(30), "the large Text inventory did not load");
             await model.ReadStateRefresh;
             Assert.Equal(project.TotalOccurrenceCount, model.AllCount);
-            var longest = model.Texts.MaxBy(text => text.Lines.Sum(line => line.Tokens.Count))!;
-            Assert.Equal(224, longest.Lines.Count);
-            Assert.Equal(project.LongestTextLength, longest.Lines.Sum(line => line.Tokens.Count));
+            var longest = model.Texts.Single(text => text.TextId == project.TextIds[0]);
+            var lineModels = ScaleCountHarness.ObserveViewModels(longest.Lines, typeof(ResultsLineViewModel));
+            var tokenModels = ScaleCountHarness.ObserveViewModels(
+                longest.Lines.SelectMany(line => line.Tokens), typeof(ResultsTokenViewModel));
             model.SelectedText = longest;
             PageScreenshots.Settle(window.Window);
+            Assert.Equal(224, ScaleCountHarness.CountLiveViewModels(lineModels, typeof(ResultsLineViewModel)));
+            Assert.Equal(project.LongestTextLength,
+                ScaleCountHarness.CountLiveViewModels(tokenModels, typeof(ResultsTokenViewModel)));
             var panel = window.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
             var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
                 viewer => viewer.IsEffectivelyVisible && viewer.Content is ItemsControl);
             reader.Offset = new Vector(0, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
             PageScreenshots.Settle(window.Window);
-            var final = longest.Lines[^1].Tokens[^1];
-            var strip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, final));
+            var lineItems = panel.FindControl<ItemsControl>("TextLineItems")!;
+            var finalLine = Assert.IsAssignableFrom<Control>(lineItems.ContainerFromIndex(lineItems.ItemCount - 1));
+            var tokenItems = Assert.Single(finalLine.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                items => items.Name == "ResultsInTextPanelTokensItems");
+            var finalToken = Assert.IsAssignableFrom<Control>(tokenItems.ContainerFromIndex(tokenItems.ItemCount - 1));
+            var strip = new[] { finalToken }.Concat(finalToken.GetVisualDescendants().OfType<Border>())
+                .Single(border => border.Name == "WordStrip");
             var origin = strip.TranslatePoint(new Point(), reader);
             Assert.NotNull(origin);
             Assert.True(new Rect(reader.Viewport).Intersects(new Rect(origin!.Value, strip.Bounds.Size)));
         });
+        measurements.AssertReadCounts("Unparsed: read and scroll 224-line Text", 0, 0, 0, 0);
         Assert.Null(window.Workspace.Assess.Result);
         Capture(window, "text-reader-end");
+        var allWords = texts.Words.Response?.Words ??
+            throw new InvalidOperationException("The selected Texts did not retain their source words.");
+        foreach (var word in allWords) _ = texts.Words.ProjectRow(word);
+        Assert.Equal(project.SelectedWordCount, createdRows.Count);
+        var retentionFailure = Assert.Throws<InvalidOperationException>(() =>
+            ScaleCountHarness.AssertLiveViewModelBudget(createdRows, typeof(TextWordRowViewModel), 1, 128));
+        Assert.Contains(project.SelectedWordCount.ToString(), retentionFailure.Message);
+        output.WriteLine($"Intentional row-cache retention probe: {project.SelectedWordCount} live models; " +
+            "the 128-model budget rejected it.");
     }
 
     private static async Task OpenAsync(

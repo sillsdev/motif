@@ -101,6 +101,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     private bool _acceptLoads = true;
     private CancellationTokenSource? _reloadCancellation;
     private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
+    private event Action<WeakReference<object>>? RowCreatedForDiagnostics;
 
     public TextWordsViewModel(ICommandClient commandClient, SelectionViewModel selection)
     {
@@ -134,6 +135,13 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     internal int MaterializedRowCount => _rowCache.Count;
 
+    internal IDisposable ObserveRowCreation(Action<WeakReference<object>> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+        RowCreatedForDiagnostics += observer;
+        return new RowCreationObservation(this, observer);
+    }
+
     internal int? OccurrenceCountOf(string form) =>
         _shownWords.FirstOrDefault(word => word.Form == form)?.Occurrences.Count;
 
@@ -156,10 +164,22 @@ public sealed partial class TextWordsViewModel : ObservableObject
     {
         if (cache.TryGetValue(word, out var row)) return row;
         row = new TextWordRowViewModel(word, WordRowRoutes, projectName, WordCardTokenFactory);
+        RowCreatedForDiagnostics?.Invoke(new WeakReference<object>(row));
         row.ShowAssessment(_assessed?.Invoke(row.Form));
         cache.Add(word, row);
         if (ReferenceEquals(cache, _rowCache)) row.PropertyChanged += OnWordRowPropertyChanged;
         return row;
+    }
+
+    private sealed class RowCreationObservation(TextWordsViewModel owner, Action<WeakReference<object>> observer) : IDisposable
+    {
+        private TextWordsViewModel? _owner = owner;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _owner, null) is { } current)
+                current.RowCreatedForDiagnostics -= observer;
+        }
     }
 
     /// <summary>Whether the current Baseline contains any Texts to open from a word row.</summary>

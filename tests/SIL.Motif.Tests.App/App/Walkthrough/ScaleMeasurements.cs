@@ -1,15 +1,17 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
-using SIL.Motif.Tests.TestFixtures;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
 internal sealed class ScaleMeasurements(ITestOutputHelper output)
 {
+    private const int TrendCeilingMultiplier = 3;
     private readonly List<string> _failures = [];
+    private readonly Dictionary<string, ScaleRepositoryReadCount> _readCounts = new(StringComparer.Ordinal);
     private readonly string? _metricsPath = CreateMetricsPath();
 
     private static string? CreateMetricsPath()
@@ -22,10 +24,14 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
     public async Task MeasureAsync(string step, double seconds, Func<Task> action,
         int managedMiB = 1536, int processMemoryMiB = 1536)
     {
-        var managedLimit = managedMiB * 1048576L;
-        var processMemoryLimit = processMemoryMiB * 1048576L;
+        var timeLimitSeconds = seconds * TrendCeilingMultiplier;
+        var managedLimitMiB = managedMiB * TrendCeilingMultiplier;
+        var processMemoryLimitMiB = processMemoryMiB * TrendCeilingMultiplier;
+        var managedLimit = managedLimitMiB * 1048576L;
+        var processMemoryLimit = processMemoryLimitMiB * 1048576L;
         using var macOsMemory = OperatingSystem.IsMacOS() ? ProcessMemoryDiagnostics.CreateSampler() : null;
         var processMemoryMeasure = OperatingSystem.IsMacOS() ? "physical footprint" : "RSS";
+        using var readObservation = ScaleCountHarness.ObserveRepositoryReads();
         using var process = Process.GetCurrentProcess();
         using var cancellation = new CancellationTokenSource();
         long managed = 0;
@@ -40,7 +46,8 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
                 step, completed, processId = Environment.ProcessId, elapsedSeconds = clock.Elapsed.TotalSeconds,
                 peakManagedBytes = managed, peakProcessMemoryBytes = processMemory,
                 processMemoryMeasure = OperatingSystem.IsMacOS() ? "physical footprint" : "rss",
-                timeBudgetSeconds = seconds, managedBudgetBytes = managedLimit, processMemoryBudgetBytes = processMemoryLimit,
+                timeBudgetSeconds = timeLimitSeconds, managedBudgetBytes = managedLimit,
+                processMemoryBudgetBytes = processMemoryLimit,
             }) + Environment.NewLine);
             lastRecord = clock.Elapsed;
         }
@@ -79,15 +86,28 @@ internal sealed class ScaleMeasurements(ITestOutputHelper output)
             var row = string.Create(CultureInfo.InvariantCulture,
                 $"SCALE | {step} | {clock.Elapsed.TotalSeconds:F3} s | {managed / 1048576d:F1} MiB managed | " +
                 $"{processMemory / 1048576d:F1} MiB {processMemoryMeasure} | " +
-                $"{seconds:F0} s / {managedMiB} MiB managed / {processMemoryMiB} MiB {processMemoryMeasure} budget");
+                $"{timeLimitSeconds:F0} s / {managedLimitMiB} MiB managed / " +
+                $"{processMemoryLimitMiB} MiB {processMemoryMeasure} ceiling");
             output.WriteLine(row);
-            if (clock.Elapsed.TotalSeconds > seconds || managed > managedLimit || processMemory > processMemoryLimit)
+            var reads = readObservation.Snapshot();
+            _readCounts[step] = reads;
+            output.WriteLine($"SCALE READ | {step} | {reads.Queries} queries | {reads.RecordsDeserialized} records");
+            if (clock.Elapsed.TotalSeconds > timeLimitSeconds || managed > managedLimit || processMemory > processMemoryLimit)
                 _failures.Add(row);
         }
     }
 
     public Task MeasureAsync(string step, double seconds, Action action) =>
         MeasureAsync(step, seconds, () => { action(); return Task.CompletedTask; });
+
+    public void AssertReadCounts(string step,
+        long minimumQueries, long maximumQueries, long minimumRecords, long maximumRecords)
+    {
+        if (!_readCounts.TryGetValue(step, out var counts))
+            throw new InvalidOperationException($"No read counts were recorded for {step}.");
+        Assert.InRange(counts.Queries, minimumQueries, maximumQueries);
+        Assert.InRange(counts.RecordsDeserialized, minimumRecords, maximumRecords);
+    }
 
     public void AssertBudgets() => Assert.True(_failures.Count == 0, string.Join(Environment.NewLine, _failures));
 

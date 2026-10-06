@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Texts;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Baselines;
 
@@ -44,8 +45,11 @@ public sealed class BaselineRepository
         using var command = connection.CreateCommand();
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         command.Parameters.AddWithValue("$project", projectKey);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
-        return reader.Read() ? Read(reader) : null;
+        if (!reader.Read()) return null;
+        RepositoryReadCounters.RecordDeserialized();
+        return Read(reader);
     }
 
     /// <summary>Reads the current Baseline and its saved project summary in one SQLite read.</summary>
@@ -56,8 +60,10 @@ public sealed class BaselineRepository
         using var command = connection.CreateCommand();
         command.CommandText = EvidenceSelectSql + " WHERE b.ProjectKey = $project;";
         command.Parameters.AddWithValue("$project", projectKey);
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         if (!reader.Read()) return null;
+        RepositoryReadCounters.RecordDeserialized();
         var baseline = Read(reader);
         if (reader.IsDBNull(12))
             throw new InvalidDataException("The current Baseline has no stored project summary.");
@@ -88,8 +94,10 @@ public sealed class BaselineRepository
             command.Transaction = transaction;
             command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
             command.Parameters.AddWithValue("$project", projectKey);
+            RepositoryReadCounters.QueryExecuted();
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return null;
+            RepositoryReadCounters.RecordDeserialized();
             baseline = Read(reader);
         }
 
@@ -102,6 +110,7 @@ public sealed class BaselineRepository
         summaryCommand.Transaction = transaction;
         summaryCommand.CommandText = "SELECT SummaryJson FROM BaselineSummaries WHERE ProjectKey = $project;";
         summaryCommand.Parameters.AddWithValue("$project", projectKey);
+        RepositoryReadCounters.QueryExecuted();
         var summaryJson = summaryCommand.ExecuteScalar() as string
             ?? throw DamagedTextWords("The project summary is missing.");
         var summary = ReadSummary(summaryJson);
@@ -136,6 +145,7 @@ public sealed class BaselineRepository
                     SIL.Motif.Host.WritingSystems.WritingSystemDisplayReader.Styles.Any(style =>
                         !ws.StyleSizes.TryGetValue(style, out var size) || !double.IsFinite(size) || size <= 0)))
                 throw new JsonException("The stored project summary has invalid counts or display settings.");
+            RepositoryReadCounters.RecordDeserialized();
             return summary;
         }
         catch (JsonException exception)
@@ -158,6 +168,7 @@ public sealed class BaselineRepository
             $" WHERE ProjectKey = $project AND {idColumn} IN (SELECT value FROM json_each($ids));";
         command.Parameters.AddWithValue("$project", projectKey);
         command.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(ids.Select(id => id.ToString("D"))));
+        RepositoryReadCounters.QueryExecuted();
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -173,6 +184,7 @@ public sealed class BaselineRepository
             {
                 throw DamagedTextWords("A stored row is not valid JSON.", exception);
             }
+            RepositoryReadCounters.RecordDeserialized();
             if (!isValid(row) || !Guid.TryParse(reader.GetString(0), out var key) || idOf(row!) != key)
                 throw DamagedTextWords("A stored row has an invalid shape.");
             rows.Add(key, row!);

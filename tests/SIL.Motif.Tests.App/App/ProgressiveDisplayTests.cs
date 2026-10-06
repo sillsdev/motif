@@ -15,6 +15,8 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.App.Walkthrough;
 using WordRow = SIL.Motif.App.Views.WordRow;
 using TraceStep = SIL.Motif.Contract.Responses.TraceStep;
 using Xunit;
@@ -25,6 +27,14 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ProgressiveDisplayTests
 {
+    private const int WordRowControlCeiling = 111;
+    private const int WordRowDepthCeiling = 22;
+    private const int WordRowCardControlCeiling = 122;
+    private const int WordRowCardDepthCeiling = 20;
+    private const int WordStripControlCeiling = 76;
+    private const int WordStripDepthCeiling = 12;
+    private const int MarkChipControlCeiling = 4;
+    private const int MarkChipDepthCeiling = 3;
     private readonly ITestOutputHelper _output;
 
     public ProgressiveDisplayTests(ITestOutputHelper output) => _output = output;
@@ -179,6 +189,156 @@ public sealed class ProgressiveDisplayTests
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
         Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "ListWordCard", "MainWindow", "MarkChip", "MorphemeRow", "OutcomeBar", "ProgressivePanel" }, codeBuilt);
+    }
+
+    [Fact]
+    public void WordVisualRootsStayWithinControlAndDepthBudgets()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData();
+            var texts = workspace.PageModel<TextsPageModel>();
+            texts.Tab = TextsTab.AnalyzeTexts;
+            workspace.CurrentPage = WorkspacePage.Texts;
+            texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+            var reader = texts.ResultsInText;
+            var selectedText = Assert.IsType<ResultsTextViewModel>(reader.SelectedText);
+            Assert.Equal("Hadithi ya sungura", selectedText.Title);
+            var token = Assert.Single(reader.VisibleLines.SelectMany(line => line.Tokens), item => item.Form == "hawajafika");
+            reader.SelectToken(token);
+            token.IsCardOpen = false;
+            Assert.Same(token, reader.SelectedToken);
+            Assert.False(token.IsCardOpen);
+            PageScreenshots.Settle(sampleWindow);
+
+            var row = FixedWordRow(workspace);
+            var card = new WordRowCard { CardToken = token, IsOpen = true };
+            Assert.Equal("hawajafika", card.CardToken?.Form);
+            Assert.True(card.IsOpen);
+            var window = new Window
+            {
+                Width = 1240,
+                Height = 1200,
+                Content = new StackPanel { Children = { row, card } },
+            };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var rowTree = AvaloniaScaleCounts.CaptureSubtree(row);
+                var cardTree = AvaloniaScaleCounts.CaptureSubtree(card);
+                var chip = row.FindControl<MarkChip>("OutcomeBesideMorphemes")!;
+                var chipTree = AvaloniaScaleCounts.CaptureSubtree(chip);
+                var panel = Assert.Single(sampleWindow.GetVisualDescendants().OfType<ResultsInTextPanel>());
+                var strip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
+                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token));
+                var stripTree = AvaloniaScaleCounts.CaptureSubtree(strip);
+
+                WriteSubtree("WordRow", rowTree);
+                WriteSubtree("WordRowCard", cardTree);
+                WriteSubtree("WordStrip", stripTree);
+                WriteSubtree("MarkChip", chipTree);
+                AssertSubtreeBudget("WordRow", rowTree, WordRowControlCeiling, WordRowDepthCeiling);
+                AssertSubtreeBudget("WordRowCard", cardTree, WordRowCardControlCeiling, WordRowCardDepthCeiling);
+                AssertSubtreeBudget("WordStrip", stripTree, WordStripControlCeiling, WordStripDepthCeiling);
+                AssertSubtreeBudget("MarkChip", chipTree, MarkChipControlCeiling, MarkChipDepthCeiling);
+                Assert.Contains("Avalonia.Controls.Grid", rowTree.ControlTypes.Select(type => type.Key));
+                Assert.Contains("Avalonia.Controls.Border", rowTree.ControlTypes.Select(type => type.Key));
+                Assert.Contains("Avalonia.Controls.StackPanel", rowTree.ControlTypes.Select(type => type.Key));
+                Assert.Contains(rowTree.ControlTypes, type => type.Key.EndsWith("TextBlock", StringComparison.Ordinal));
+                Assert.NotEmpty(rowTree.TemplateParts);
+                Assert.NotEmpty(cardTree.TemplateParts);
+                Assert.Equal(rowTree.ControlCount, rowTree.ControlTypes.Sum(type => type.Count));
+                Assert.Equal(cardTree.ControlCount, cardTree.ControlTypes.Sum(type => type.Count));
+                Assert.Equal(stripTree.ControlCount, stripTree.ControlTypes.Sum(type => type.Count));
+                Assert.Equal(chipTree.ControlCount, chipTree.ControlTypes.Sum(type => type.Count));
+                Assert.Equal(row.Row?.OutcomeMark, chip.Mark);
+                Assert.Equal(row.Row?.OutcomeLabel, chip.Text);
+                Assert.True(chip.Compact);
+            }
+            finally
+            {
+                window.Close();
+                sampleWindow.Close();
+            }
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public void WordRowSubtreeBudgetRejectsAddedSiblingBorders()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData();
+            var row = FixedWordRow(workspace);
+            var window = new Window { Width = 1240, Height = 780, Content = row };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var baseline = AvaloniaScaleCounts.CaptureSubtree(row);
+                AvaloniaScaleCounts.AssertSubtreeBudget(
+                    baseline, "WordRow", WordRowControlCeiling, WordRowDepthCeiling);
+                var cells = row.FindControl<Grid>("Cells")!;
+                var bordersToAdd = Math.Max(1, WordRowControlCeiling + 1 - baseline.ControlCount);
+                for (var index = 0; index < bordersToAdd; index++) cells.Children.Add(new Border());
+                var mutated = AvaloniaScaleCounts.CaptureSubtree(row);
+                Assert.Equal(baseline.ControlCount + bordersToAdd, mutated.ControlCount);
+                var rejection = Assert.Throws<InvalidOperationException>(() =>
+                    AvaloniaScaleCounts.AssertSubtreeBudget(
+                        mutated, "WordRow", WordRowControlCeiling, WordRowDepthCeiling));
+                Assert.Contains($"exceeded {WordRowControlCeiling} controls/depth {WordRowDepthCeiling}", rejection.Message);
+                _output.WriteLine($"Sibling Border probe: {baseline.ControlCount} became {mutated.ControlCount}; budget rejected it.");
+            }
+            finally
+            {
+                window.Close();
+                sampleWindow.Close();
+            }
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    private static WordRow FixedWordRow(WorkspaceShellViewModel workspace)
+    {
+        var model = Assert.Single(workspace.Assess.Words.Rows, row => row.Word == "Sungura");
+        var control = new WordRow
+        {
+            Row = model.WordRow,
+            Columns = WordRowColumns.All,
+            ShowsTick = true,
+            ShowsMeaning = true,
+            IsChecked = false,
+            IsOpen = false,
+            Card = null,
+            StagedText = null,
+            Note = null,
+            Actions = null,
+            TimeText = null,
+        };
+        Assert.Equal("Sungura", control.Row?.Word);
+        Assert.Equal(WordRowColumns.All, control.Columns);
+        Assert.True(control.ShowsTick);
+        Assert.True(control.ShowsMeaning);
+        Assert.False(control.IsOpen);
+        Assert.False(control.IsChecked);
+        return control;
+    }
+
+    private void AssertSubtreeBudget(string rootName, ControlSubtreeSnapshot tree, int maximumControls, int maximumDepth)
+    {
+        _output.WriteLine($"Visual subtree | {rootName} | {tree.ControlCount} Controls | depth {tree.MaximumDepth} | " +
+            $"budget {maximumControls}/{maximumDepth}");
+        Assert.InRange(tree.ControlCount, 1, maximumControls);
+        Assert.InRange(tree.MaximumDepth, 0, maximumDepth);
+    }
+
+    private void WriteSubtree(string rootName, ControlSubtreeSnapshot tree)
+    {
+        var types = string.Join(", ", tree.ControlTypes.Select(type => $"{type.Key}={type.Count}"));
+        var owners = tree.TemplateParts.Count == 0 ? "none" : string.Join(", ", tree.TemplateParts.Select(part =>
+            $"{part.Owner}={part.Count}@{part.MaximumDepth}"));
+        _output.WriteLine($"Visual subtree types | {rootName} | {types}");
+        _output.WriteLine($"Template-owned parts | {rootName} | {owners}");
     }
 
     [Fact]
@@ -741,11 +901,16 @@ public sealed class ProgressiveDisplayTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    private static void AssertBounded(ItemsControl items, InventoryEntry entry)
+    private void AssertBounded(ItemsControl items, InventoryEntry entry)
     {
         var realized = items.GetRealizedContainers().Count();
         Assert.True(realized is > 0 and <= 64,
             $"{entry.View}/{entry.Source}: realized {realized} of {items.ItemCount} rows");
+        var tree = AvaloniaScaleCounts.CaptureRealizedControls(items);
+        var wordRows = tree.MotifControl(typeof(WordRow).FullName!);
+        Assert.InRange(wordRows.Count, 0, 64);
+        _output.WriteLine($"{entry.View}/{entry.Source}: {realized} realized rows; " +
+            $"{wordRows.Count} realized Motif WordRows at depth {wordRows.MaximumDepth}");
     }
 
     private static Control Build(string name, WorkspaceShellViewModel workspace, MainWindow sample)
