@@ -12,67 +12,83 @@
     </Style>
   </UserControl.Styles>
   <Grid Classes="reviewLayout" ColumnDefinitions="*,Auto">
-    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
-      <StackPanel Classes="reviewStack">
-        <StackPanel Classes="reviewCompact">
-          <views:CopyableTextBlock Classes="section-title" Text="{Binding CountText}" TextWrapping="Wrap" />
-          <views:CopyableTextBlock x:Name="ReviewHeaderNote" Classes="muted" IsVisible="{Binding ShowsHeaderNote}"
-                                   TextWrapping="Wrap"
-                                   Text="Grouped by what they do. Nothing reaches FieldWorks until you apply." />
-          <views:CopyableTextBlock x:Name="ApplyBlockedTitle" Classes="reviewBlockedTitle"
-                                   Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
-        </StackPanel>
-        <StackPanel Classes="reviewCompact" IsVisible="{Binding ShowsEmptyState}">
-          <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
-                                   Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
-          <HyperlinkButton Classes="reviewLink" Content="Go to Analyze texts" Command="{Binding OpenAnalyzeTextsCommand}" />
-        </StackPanel>
-        <ItemsControl x:Name="ReviewGroups" ItemsSource="{Binding ReviewGroups}"
-                      AutomationProperties.Name="Changes grouped for review">
-          <ItemsControl.ItemsPanel>
-            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-          </ItemsControl.ItemsPanel>
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ReviewChangeGroupViewModel">
-              <Border Classes="reviewGroup" Classes.noLongerFits="{Binding IsNoLongerFits}"
-                      Classes.uncertain="{Binding IsUncertain}">
-                <StackPanel>
-                  <Border Classes="reviewGroupHeader">
-                    <DockPanel LastChildFill="True">
-                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                  Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
-                        <HyperlinkButton Classes="reviewLink" Content="Check again"
-                                         Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
-                                         IsVisible="{Binding IsNoLongerFits}"
-                                         AutomationProperties.Name="Check all changes again against the refreshed project" />
-                        <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
-                                IsVisible="{Binding IsNoLongerFits}"
-                                AutomationProperties.Name="{Binding UndoAllAutomationName}" />
-                        <HyperlinkButton Classes="reviewLink" Content="{Binding UndoAllText}"
-                                         Command="{Binding UndoAllCommand}" IsVisible="{Binding !IsNoLongerFits}"
-                                         AutomationProperties.Name="{Binding UndoAllAutomationName}" />
-                      </StackPanel>
-                      <WrapPanel VerticalAlignment="Center">
-                        <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" />
-                        <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding WordCountText}" />
-                        <views:CopyableTextBlock Classes="reviewGroupNote reviewGap" Text="{Binding Note}"
-                                                 IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
-                      </WrapPanel>
-                    </DockPanel>
-                  </Border>
-                  <StackPanel Grid.IsSharedSizeScope="True">
-                    <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Review}" />
-                    <ItemsControl x:Name="ReviewPanelItemsItems" ItemsSource="{Binding Items}" KeyboardNavigation.TabNavigation="Continue"
-                                  AutomationProperties.Name="{Binding Title, StringFormat='Changes in {0}'}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ChangeViewModel">
-                          <views:WordRow Row="{Binding Listed.Row}" List="review" IsOpen="{Binding Listed.IsOpen}"
-                                         Columns="{x:Static views:WordRowColumnSets.Review}"
-                                         OpenedCommand="{Binding $parent[views:ReviewPanel].Page.ShowContextCommand}"
-                                         OpenedCommandParameter="{Binding}">
+    <ListBox x:Name="ReviewItems" Grid.Column="0" Classes="wordRows" ItemsSource="{Binding ReviewEntries}"
+             VerticalAlignment="Stretch" AutomationProperties.Name="Changes grouped for review"
+             KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True">
+      <ListBox.ItemsPanel>
+        <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+      </ListBox.ItemsPanel>
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
+          <Grid>
+            <ContentControl Content="{Binding Page}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ReviewPageModel">
+            <StackPanel Classes="reviewStack reviewPageHeader">
+              <StackPanel Classes="reviewCompact">
+                <views:CopyableTextBlock Classes="section-title" Text="{Binding CountText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock x:Name="ReviewHeaderNote" Classes="muted" IsVisible="{Binding ShowsHeaderNote}"
+                                         TextWrapping="Wrap"
+                                         Text="Grouped by what they do. Nothing reaches FieldWorks until you apply." />
+                <views:CopyableTextBlock x:Name="ApplyBlockedTitle" Classes="reviewBlockedTitle"
+                                         Text="{Binding ApplyBlockedTitle}" IsVisible="{Binding IsApplyBlocked}" />
+              </StackPanel>
+              <StackPanel Classes="reviewCompact" IsVisible="{Binding ShowsEmptyState}">
+                <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap"
+                                         Text="Choose a word in Analyze texts, then choose what should happen to its analysis." />
+                <HyperlinkButton Classes="reviewLink" Content="Go to Analyze texts" Command="{Binding OpenAnalyzeTextsCommand}" />
+              </StackPanel>
+            </StackPanel>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <ContentControl Content="{Binding GroupHeader}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ReviewChangeGroupViewModel">
+            <Border Classes="reviewGroup reviewEntry header"
+                    Classes.noLongerFits="{Binding IsNoLongerFits}"
+                    Classes.uncertain="{Binding IsUncertain}">
+              <StackPanel>
+                <Border Classes="reviewGroupHeader">
+                  <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                Spacing="{DynamicResource Intent.Space.Related}" VerticalAlignment="Center">
+                      <HyperlinkButton Classes="reviewLink" Content="Check again"
+                                       Command="{Binding $parent[views:ReviewPanel].Page.CheckAgainCommand}"
+                                       IsVisible="{Binding IsNoLongerFits}"
+                                       AutomationProperties.Name="Check all changes again against the refreshed project" />
+                      <Button Classes="reviewAction" Content="{Binding UndoAllText}" Command="{Binding UndoAllCommand}"
+                              IsVisible="{Binding IsNoLongerFits}"
+                              AutomationProperties.Name="{Binding UndoAllAutomationName}" />
+                      <HyperlinkButton Classes="reviewLink" Content="{Binding UndoAllText}"
+                                       Command="{Binding UndoAllCommand}" IsVisible="{Binding !IsNoLongerFits}"
+                                       AutomationProperties.Name="{Binding UndoAllAutomationName}" />
+                    </StackPanel>
+                    <WrapPanel VerticalAlignment="Center">
+                      <views:CopyableTextBlock Classes="reviewGroupTitle" Text="{Binding Title}" />
+                      <views:CopyableTextBlock Classes="reviewSmall reviewGap" Text="{Binding WordCountText}" />
+                      <views:CopyableTextBlock Classes="reviewGroupNote reviewGap" Text="{Binding Note}"
+                                               IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+                    </WrapPanel>
+                  </DockPanel>
+                </Border>
+                <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Review}" />
+              </StackPanel>
+            </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+            <ContentControl Content="{Binding ChangeEntry}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ReviewListEntryViewModel">
+            <Border Classes="reviewGroup reviewEntry"
+                    Classes.last="{Binding IsLastChange}"
+                    Classes.noLongerFits="{Binding Group.IsNoLongerFits}"
+                    Classes.uncertain="{Binding Group.IsUncertain}">
+              <views:WordRow DataContext="{Binding Change}" Row="{Binding Listed.Row}" List="review" IsOpen="{Binding Listed.IsOpen}"
+                             Columns="{x:Static views:WordRowColumnSets.Review}"
+                             OpenedCommand="{Binding $parent[views:ReviewPanel].Page.ShowContextCommand}"
+                             OpenedCommandParameter="{Binding}">
                             <views:WordRow.Actions>
                               <StackPanel Classes="reviewCompact">
                                 <WrapPanel IsVisible="{Binding HasUncertainty}">
@@ -176,18 +192,15 @@
                                 <views:ListedWordCard DataContext="{Binding Listed}" />
                               </StackPanel>
                             </views:WordRow.Card>
-                          </views:WordRow>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-    </ScrollViewer>
+              </views:WordRow>
+            </Border>
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ShowsSideCards}">
     <StackPanel Classes="reviewStack reviewRight">
       <Border Classes="card">
@@ -225,6 +238,7 @@
           <Button Content="{Binding ApplyButtonText}" Command="{Binding ApplyCommand}"
                   IsEnabled="{Binding CanApply}" AutomationProperties.Name="Apply to FieldWorks project"
                   ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
+                  Classes="reviewApplyTooltip"
                   views:ClearTipPlacement.IsEnabled="True"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
           <Button Content="Keep editing" Command="{Binding KeepEditingCommand}" IsVisible="{Binding Changes.HasItems}" />

@@ -20,23 +20,22 @@ public sealed partial class ReviewPanel : UserControl
         Page = page;
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        _groups = this.FindControl<ItemsControl>("ReviewGroups")!;
-        _groups.AddHandler(KeyDownEvent, OnReviewKeyDown, RoutingStrategies.Tunnel);
-        _groups.GotFocus += OnReviewGotFocus;
+        _items = this.FindControl<ListBox>("ReviewItems")!;
+        _items.AddHandler(KeyDownEvent, OnReviewKeyDown, RoutingStrategies.Tunnel);
+        _items.GotFocus += OnReviewGotFocus;
     }
 
     public ReviewPageModel Page { get; }
 
-    private readonly ItemsControl _groups;
+    private readonly ListBox _items;
     private int _navigationVersion;
 
     private void OnReviewGotFocus(object? sender, FocusChangedEventArgs e)
     {
         if (e.Source is not Control source) return;
-        // The focused action links need their row and group to survive the next layout.
+        // Keep the focused action's list entry active for keyboard navigation.
         var ancestors = source.GetVisualAncestors().OfType<Control>().ToArray();
-        foreach (var list in ancestors.OfType<ItemsControl>()
-            .Where(control => ReferenceEquals(control, _groups) || control.Name == "ReviewPanelItemsItems"))
+        foreach (var list in ancestors.OfType<ItemsControl>().Where(control => ReferenceEquals(control, _items)))
         {
             var container = ancestors.FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
             if (container is not null) KeyboardNavigation.SetTabOnceActiveElement(list, container);
@@ -51,77 +50,57 @@ public sealed partial class ReviewPanel : UserControl
             targetBehaviors: [KeyboardShortcutBehavior.PreviousRow, KeyboardShortcutBehavior.NextRow,
                 KeyboardShortcutBehavior.FirstItem, KeyboardShortcutBehavior.LastItem]);
         if (entry is null || e.Source is not Control source) return;
-        var groups = _groups;
         var row = source.GetVisualAncestors().OfType<WordRow>().FirstOrDefault();
         if (row is null || !ReferenceEquals(source, row.FindControl<Border>("Body")) ||
-            row.FindAncestorOfType<ItemsControl>() is not { Name: "ReviewPanelItemsItems" } list ||
+            row.FindAncestorOfType<ListBox>() is not { } list || !ReferenceEquals(list, _items) ||
             !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(source),
                 hasFocusedItem: true)) return;
-        var rowContainer = row.GetVisualAncestors().OfType<Control>()
+        var container = row.GetVisualAncestors().OfType<Control>()
             .FirstOrDefault(control => list.IndexFromContainer(control) >= 0);
-        var groupContainer = list.GetVisualAncestors().OfType<Control>()
-            .FirstOrDefault(control => groups.IndexFromContainer(control) >= 0);
-        if (rowContainer is null || groupContainer is null) return;
-        var groupIndex = groups.IndexFromContainer(groupContainer);
-        var currentGroupIndex = groupIndex;
-        var rowIndex = list.IndexFromContainer(rowContainer);
-        if (groupIndex < 0 || rowIndex < 0) return;
-
-        var movePrevious = entry.Behavior is KeyboardShortcutBehavior.PreviousRow or KeyboardShortcutBehavior.FirstItem;
-        var moveToBoundary = entry.Behavior is KeyboardShortcutBehavior.FirstItem or KeyboardShortcutBehavior.LastItem;
-        var step = movePrevious ? -1 : 1;
-        if (moveToBoundary)
+        if (container is null) return;
+        var entries = Page.ReviewEntries;
+        var changeIndices = entries.Select((item, index) => (item, index))
+            .Where(pair => pair.item.IsChangeRow).Select(pair => pair.index).ToArray();
+        var currentPosition = Array.IndexOf(changeIndices, list.IndexFromContainer(container));
+        if (currentPosition < 0 || changeIndices.Length == 0) return;
+        var targetPosition = entry.Behavior switch
         {
-            groupIndex = entry.Behavior == KeyboardShortcutBehavior.FirstItem ? 0 : groups.ItemCount - 1;
-            rowIndex = entry.Behavior == KeyboardShortcutBehavior.FirstItem
-                ? 0
-                : ((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items.Count - 1;
-        }
-        else rowIndex += step;
-        while (groupIndex >= 0 && groupIndex < groups.ItemCount)
-        {
-            var count = ((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items.Count;
-            if (rowIndex >= 0 && rowIndex < count) break;
-            groupIndex += step;
-            if (groupIndex < 0 || groupIndex >= groups.ItemCount) return;
-            rowIndex = step < 0 ? ((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items.Count - 1 : 0;
-        }
+            KeyboardShortcutBehavior.FirstItem => 0,
+            KeyboardShortcutBehavior.LastItem => changeIndices.Length - 1,
+            KeyboardShortcutBehavior.PreviousRow => currentPosition - 1,
+            _ => currentPosition + 1,
+        };
+        if (targetPosition < 0 || targetPosition >= changeIndices.Length) return;
+        var targetIndex = changeIndices[targetPosition];
+        var targetEntry = entries[targetIndex];
 
         e.Handled = true;
         var version = ++_navigationVersion;
-        var targetGroup = groups.Items[groupIndex];
-        if (groups.ContainerFromIndex(groupIndex) is null || groupIndex != currentGroupIndex)
-        {
-            groups.ScrollIntoView(groupIndex);
-            groups.UpdateLayout();
-        }
+        list.ScrollIntoView(targetIndex);
+        list.UpdateLayout();
         Dispatcher.UIThread.Post(RealizeRow, DispatcherPriority.Loaded);
 
-        bool IsCurrent() => version == _navigationVersion && TopLevel.GetTopLevel(groups) is not null &&
-            groupIndex < groups.ItemCount && ReferenceEquals(groups.Items[groupIndex], targetGroup);
-
-        ItemsControl? ChangeList() => groups.ContainerFromIndex(groupIndex)?.GetVisualDescendants().OfType<ItemsControl>()
-            .FirstOrDefault(control => control.Name == "ReviewPanelItemsItems");
+        bool IsCurrent() => version == _navigationVersion && TopLevel.GetTopLevel(list) is not null &&
+            targetIndex < Page.ReviewEntries.Count && ReferenceEquals(Page.ReviewEntries[targetIndex], targetEntry);
 
         void RealizeRow()
         {
-            if (!IsCurrent() || ChangeList() is not { } targetList) return;
-            targetList.ScrollIntoView(rowIndex);
-            groups.UpdateLayout();
+            if (!IsCurrent()) return;
+            list.ScrollIntoView(targetIndex);
+            list.UpdateLayout();
             Dispatcher.UIThread.Post(FocusTarget, DispatcherPriority.Loaded);
         }
 
         void FocusTarget()
         {
-            if (!IsCurrent() || ChangeList() is not { } targetList ||
-                targetList.ContainerFromIndex(rowIndex) is not { } container) return;
+            if (!IsCurrent() || list.ContainerFromIndex(targetIndex) is not { } container) return;
             var target = container.GetVisualDescendants().OfType<WordRow>().FirstOrDefault();
             if (target is null) return;
             target.FocusRow();
-            groups.UpdateLayout();
-            ChangeList()?.ScrollIntoView(rowIndex);
-            groups.UpdateLayout();
-            ChangeList()?.ContainerFromIndex(rowIndex)?.GetVisualDescendants().OfType<WordRow>().FirstOrDefault()?.FocusRow();
+            list.UpdateLayout();
+            list.ScrollIntoView(targetIndex);
+            list.UpdateLayout();
+            list.ContainerFromIndex(targetIndex)?.GetVisualDescendants().OfType<WordRow>().FirstOrDefault()?.FocusRow();
         }
     }
 }

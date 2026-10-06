@@ -361,20 +361,21 @@ public sealed class ProgressiveDisplayTests
                 fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", changes,
                     changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
             });
-            var panel = new ReviewPanel(workspace.PageModel<ReviewPageModel>());
-            var window = new Window { Width = 1240, Height = 780, Content = panel };
+                var page = workspace.PageModel<ReviewPageModel>();
+                var panel = new ReviewPanel(page);
+                var window = new Window { Width = 1240, Height = 780, Content = panel };
             try
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                var groups = panel.FindControl<ItemsControl>("ReviewGroups")!;
-                Assert.Equal(2, groups.ItemCount);
-                Assert.All(groups.Items.Cast<ReviewChangeGroupViewModel>(), group => Assert.Equal(100, group.Items.Count));
+                var items = panel.FindControl<ListBox>("ReviewItems")!;
+                var groups = page.ReviewGroups;
+                Assert.Equal(2, groups.Count);
+                Assert.All(groups, group => Assert.Equal(100, group.Items.Count));
                 AssertBoundedRows("first");
-                var firstList = ChangeList(0);
-                firstList.ScrollIntoView(0);
+                items.ScrollIntoView(EntryIndex(groups[0].Items[0]));
                 PageScreenshots.Settle(window);
-                var first = ChangeRow(firstList, 0);
+                var first = ChangeRow(groups[0].Items[0]);
                 first.FocusRow();
                 AssertFocus(0, 0);
                 for (var index = 1; index <= 12; index++)
@@ -392,10 +393,9 @@ public sealed class ProgressiveDisplayTests
                 Press(Key.Home);
                 AssertFocus(0, 0);
 
-                firstList = ChangeList(0);
-                firstList.ScrollIntoView(99);
+                items.ScrollIntoView(EntryIndex(groups[0].Items[99]));
                 PageScreenshots.Settle(window);
-                ChangeRow(firstList, 99).FocusRow();
+                ChangeRow(groups[0].Items[99]).FocusRow();
                 Press(Key.Down);
                 AssertFocus(1, 0);
                 Press(Key.Up);
@@ -403,15 +403,15 @@ public sealed class ProgressiveDisplayTests
                 AssertBoundedRows("group boundary");
 
                 Press(Key.Home);
-                first = ChangeRow(ChangeList(0), 0);
+                first = ChangeRow(groups[0].Items[0]);
                 first.IsOpen = true;
                 PageScreenshots.Settle(window);
-                Assert.True(((ReviewChangeGroupViewModel)groups.Items[0]!).Items[0].Listed!.IsOpen);
+                Assert.True(groups[0].Items[0].Listed!.IsOpen);
                 Press(Key.End);
                 AssertFocus(1, 99);
                 Press(Key.Home);
                 AssertFocus(0, 0);
-                Assert.True(ChangeRow(ChangeList(0), 0).IsOpen);
+                Assert.True(ChangeRow(groups[0].Items[0]).IsOpen);
                 AssertBoundedRows("expanded return");
 
                 void Press(Key key)
@@ -421,10 +421,11 @@ public sealed class ProgressiveDisplayTests
                     PageScreenshots.Settle(window);
                 }
 
-                ItemsControl ChangeList(int index) => Assert.Single(groups.ContainerFromIndex(index)!
-                    .GetVisualDescendants().OfType<ItemsControl>(), control => control.Name == "ReviewPanelItemsItems");
+                int EntryIndex(ChangeViewModel change) => page.ReviewEntries
+                    .Select((item, index) => (item, index))
+                    .Single(pair => ReferenceEquals(pair.item.Change, change)).index;
 
-                static WordRow ChangeRow(ItemsControl list, int index) => Assert.Single(list.ContainerFromIndex(index)!
+                WordRow ChangeRow(ChangeViewModel change) => Assert.Single(items.ContainerFromIndex(EntryIndex(change))!
                     .GetVisualDescendants().OfType<WordRow>());
 
                 void AssertFocus(int groupIndex, int rowIndex)
@@ -434,7 +435,7 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(focusedRows.Length == 1,
                         $"Expected focus on {groupIndex}/{rowIndex}; realized {string.Join(',', rows.Select(row => ((ChangeViewModel)row.DataContext!).ChangeId))}");
                     var focused = focusedRows[0];
-                    Assert.Same(((ReviewChangeGroupViewModel)groups.Items[groupIndex]!).Items[rowIndex], focused.DataContext);
+                    Assert.Same(groups[groupIndex].Items[rowIndex], focused.DataContext);
                     var body = focused.FindControl<Border>("Body")!;
                     var top = body.TranslatePoint(default, window)!.Value.Y;
                     Assert.InRange(top, 0, window.Bounds.Height - body.Bounds.Height);
@@ -444,7 +445,7 @@ public sealed class ProgressiveDisplayTests
                 {
                     var count = panel.GetVisualDescendants().OfType<WordRow>().Count();
                     Assert.InRange(count, 1, 16);
-                    Assert.InRange(groups.GetRealizedContainers().Count(), 1, 2);
+                    Assert.InRange(items.GetRealizedContainers().Count(), 1, 18);
                     _output.WriteLine($"Review {position}: {count} real WordRows for 200 changes");
                 }
             }

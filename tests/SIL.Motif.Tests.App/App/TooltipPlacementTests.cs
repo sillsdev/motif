@@ -105,6 +105,9 @@ public sealed class TooltipPlacementTests
                                 continue;
                             }
                             placed++;
+                            if (owner.Key == "Apply to FieldWorks project")
+                                Assert.True(tip.MaxWidth <= 280,
+                                    $"{where}: the Apply tooltip must stay within the Review side rail.");
                             var covered = Covered(scenes.Window, control, tip).ToList();
                             if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
                             else failures.AddRange(covered.Select(name =>

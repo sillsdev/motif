@@ -19,6 +19,7 @@ public sealed class ReviewPageModel : PageModel
     private const string NumbersPrompt = "Check how many changed words keep their approved analyses.";
     private CancellationTokenSource? _measurementCancellation;
     private CancellationTokenSource? _applyCancellation;
+    private IReadOnlyList<ReviewListEntryViewModel>? _reviewEntries;
 
     public ReviewPageModel(WorkspaceContext context) : base(context)
     {
@@ -29,7 +30,7 @@ public sealed class ReviewPageModel : PageModel
         // A change's row comes from the parse on screen, so a new parse rebuilds the rows.
         context.Assess.Words.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(AssessWordsViewModel.AllRows)) OnPropertyChanged(nameof(ReviewGroups));
+            if (e.PropertyName == nameof(AssessWordsViewModel.AllRows)) RefreshReviewEntries();
         };
         RemoveNonFittingCommand = new AsyncRelayCommand(RemoveNonFittingAsync,
             () => Changes.Items.Any(item => item.IsNoLongerFits));
@@ -123,6 +124,29 @@ public sealed class ReviewPageModel : PageModel
                 .ThenBy(item => item.Change.ChangeId, StringComparer.Ordinal)
                 .Select(item => item.Change).ToArray(), Changes, group.Key.Kind))
         .ToArray();
+
+    /// <summary>The page heading, group headings and change rows shown on the Review page.</summary>
+    public IReadOnlyList<ReviewListEntryViewModel> ReviewEntries => _reviewEntries ??= BuildReviewEntries();
+
+    private IReadOnlyList<ReviewListEntryViewModel> BuildReviewEntries()
+    {
+        var entries = new List<ReviewListEntryViewModel> { new(this) };
+        foreach (var group in ReviewGroups)
+        {
+            entries.Add(new ReviewListEntryViewModel(group, null, isLastChange: false));
+            for (var index = 0; index < group.Items.Count; index++)
+                entries.Add(new ReviewListEntryViewModel(group, group.Items[index], index == group.Items.Count - 1));
+        }
+
+        return entries;
+    }
+
+    private void RefreshReviewEntries()
+    {
+        _reviewEntries = null;
+        OnPropertyChanged(nameof(ReviewGroups));
+        OnPropertyChanged(nameof(ReviewEntries));
+    }
 
     public bool HasUncertainChanges => UncertainChanges.Count > 0;
 
@@ -478,7 +502,7 @@ public sealed class ReviewPageModel : PageModel
             OnPropertyChanged(nameof(HasNonFittingChanges));
             OnPropertyChanged(nameof(UncertainChanges));
             OnPropertyChanged(nameof(HasUncertainChanges));
-            OnPropertyChanged(nameof(ReviewGroups));
+            RefreshReviewEntries();
             ReconfirmChangeCommand.NotifyCanExecuteChanged();
             RemoveNonFittingCommand.NotifyCanExecuteChanged();
             CheckAgainCommand.NotifyCanExecuteChanged();

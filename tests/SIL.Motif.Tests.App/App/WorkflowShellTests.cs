@@ -590,14 +590,17 @@ public sealed class WorkflowShellTests
                 Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
                 var page = workspace.PageModel<ReviewPageModel>();
                 workspace.Context.Changes.Items.Add(new ChangeViewModel(
+                    ChangeKinds.RemoveAnalysis, "kalamu", "old reading", changeId: "remove-kalamu",
+                    storedAnalysisId: "stored-reading"));
+                workspace.Context.Changes.Items.Add(new ChangeViewModel(
                     ChangeKinds.AddCandidate, "kitabu", "reading", changeId: "add-kitabu"));
                 window.UpdateLayout();
 
-                var group = Assert.Single(page.ReviewGroups);
-                Assert.Equal("Added", group.Title);
+                var groups = page.ReviewGroups;
+                Assert.Equal(["Added", "Removed"], groups.Select(item => item.Title));
+                Assert.Same(page.ReviewEntries, list.ItemsSource);
                 Assert.Equal(page.ReviewGroups.Select(item => item.Title),
-                    Assert.IsAssignableFrom<IEnumerable<ReviewChangeGroupViewModel>>(list.ItemsSource)
-                        .Select(item => item.Title));
+                    page.ReviewEntries.Where(entry => entry.IsGroupHeader).Select(entry => entry.Group!.Title));
                 Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Added");
                 // With no parse in the window, the row claims no opinion; the staged arrow says what changes.

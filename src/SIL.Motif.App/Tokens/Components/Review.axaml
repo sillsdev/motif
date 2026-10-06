@@ -5,6 +5,13 @@
     <StaticResource x:Key="Component.Review.PageMargin" ResourceKey="Primitive.Inset.16_12_16_0" />
     <StaticResource x:Key="Component.Review.GroupMargin" ResourceKey="Primitive.Inset.0_0_8_8" />
     <StaticResource x:Key="Component.Review.GroupRadius" ResourceKey="Primitive.Radius.6" />
+    <StaticResource x:Key="Component.Review.EntryMargin" ResourceKey="Primitive.Inset.0_0_8_0" />
+    <StaticResource x:Key="Component.Review.PageHeaderGap" ResourceKey="Primitive.Inset.0_0_0_8" />
+    <StaticResource x:Key="Component.Review.EntryHeaderRule" ResourceKey="Primitive.Inset.1_1_1_0" />
+    <StaticResource x:Key="Component.Review.EntryRule" ResourceKey="Primitive.Inset.1_0_1_0" />
+    <StaticResource x:Key="Component.Review.EntryLastRule" ResourceKey="Primitive.Inset.1_0_1_1" />
+    <StaticResource x:Key="Component.Review.EntryHeaderRadius" ResourceKey="Primitive.Radius.6_6_0_0" />
+    <StaticResource x:Key="Component.Review.EntryLastRadius" ResourceKey="Primitive.Radius.0_0_6_6" />
     <StaticResource x:Key="Component.Review.HeaderPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Review.RowPadding" ResourceKey="Primitive.Inset.8_4_8_4" />
     <StaticResource x:Key="Component.Review.RowRule" ResourceKey="Primitive.Inset.0_1_0_0" />
@@ -31,6 +38,9 @@
   <Style Selector="StackPanel.reviewCompact">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>
+  <Style Selector="StackPanel.reviewPageHeader">
+    <Setter Property="Margin" Value="{DynamicResource Component.Review.PageHeaderGap}" />
+  </Style>
   <Style Selector="StackPanel.reviewRight">
     <Setter Property="Width" Value="{DynamicResource Component.Review.RightWidth}" />
   </Style>
@@ -42,6 +52,20 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.GroupRadius}" />
     <Setter Property="Margin" Value="{DynamicResource Component.Review.GroupMargin}" />
     <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.reviewGroup.reviewEntry">
+    <Setter Property="Margin" Value="{DynamicResource Component.Review.EntryMargin}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryRule}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+  </Style>
+  <Style Selector="Border.reviewGroup.reviewEntry.header">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryHeaderRule}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.EntryHeaderRadius}" />
+  </Style>
+  <Style Selector="Border.reviewGroup.reviewEntry.last">
+    <Setter Property="Margin" Value="{DynamicResource Component.Review.GroupMargin}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.Review.EntryLastRule}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.Review.EntryLastRadius}" />
   </Style>
   <Style Selector="Border.reviewGroup.noLongerFits">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Danger}" />

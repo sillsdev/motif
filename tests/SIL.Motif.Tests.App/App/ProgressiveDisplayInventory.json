@@ -498,17 +498,10 @@
   },
   {
     "view": "ReviewPanel",
-    "name": "ReviewGroups",
-    "source": "ReviewGroups",
+    "name": "ReviewItems",
+    "source": "ReviewEntries",
     "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ReviewPanel",
-    "name": "ReviewPanelItemsItems",
-    "source": "Items",
-    "mode": "rows",
-    "control": "ItemsControl"
+    "control": "ListBox"
   },
   {
     "view": "ReviewPanel",
