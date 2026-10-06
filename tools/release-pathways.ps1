@@ -73,10 +73,16 @@ function Seed-Selection {
 
 function Seed-IncorrectSpelling {
     param([Parameter(Mandatory = $true)] [string] $Project)
-    $pending = Invoke-CliJson @('pending-changes', '--project', $Project)
-    [void] (Invoke-CliJson @('put-pending-change', '--project', $Project,
-        '--expected-revision', [string] $pending.revision,
-        '--change-id', 'release-check-review', '--kind', 'incorrect-spelling', '--word', 'geldi'))
+    # Staging has no Released verb (testers stage in the window), so only this fixture setup may use one.
+    $previous = $env:MOTIF_DEVELOPER_COMMANDS
+    $env:MOTIF_DEVELOPER_COMMANDS = '1'
+    try {
+        $pending = Invoke-CliJson @('pending-changes', '--project', $Project)
+        [void] (Invoke-CliJson @('put-pending-change', '--project', $Project,
+            '--expected-revision', [string] $pending.revision,
+            '--change-id', 'release-check-review', '--kind', 'incorrect-spelling', '--word', 'geldi'))
+    }
+    finally { $env:MOTIF_DEVELOPER_COMMANDS = $previous }
 }
 
 function Invoke-InstalledApp {
@@ -245,8 +251,8 @@ $review = $cliProjects['apply-refresh-ready']
 Seed-Selection $review.ProjectPath $review.TextId
 [void] (Invoke-Cli @('assess', $review.ProjectPath, '--texts', $review.TextId))
 Seed-IncorrectSpelling $review.ProjectPath
-[void] (Invoke-CliJson @('pending-changes', '--project', $review.ProjectPath))
-[void] (Invoke-CliJson @('apply', '--all-pending', '--project', $review.ProjectPath))
+$applied = Invoke-CliJson @('apply', '--all-pending', '--project', $review.ProjectPath)
+if (-not $applied.ok -or -not $applied.applied) { throw 'The installed CLI did not apply the staged change.' }
 [void] (Invoke-CliJson @('baseline', 'capture', $review.ProjectPath))
 [void] (Invoke-Cli @('assess', $review.ProjectPath, '--texts', $review.TextId))
 [void] (Invoke-CliJson @('overview', '--project', $review.ProjectPath))

@@ -1,4 +1,4 @@
-# ADR 0052 — Check release pathways in the installed App
+# ADR 0054 — Check release pathways in the installed App
 
 Before a release reaches testers, CI installs Motif on Windows, Ubuntu 22.04 and Apple Silicon macOS, then proves that the installed App and CLI can complete the main tasks. Publishing waits for all three systems to pass, so a download that starts but cannot do useful work is caught before users receive it.
 

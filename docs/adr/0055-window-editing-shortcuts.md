@@ -1,4 +1,4 @@
-# ADR 0052: Editing shortcuts act on focused text or staged changes
+# ADR 0055: Editing shortcuts act on focused text or staged changes
 
 Motif's standard editing keys work in text fields and on words, while undo and redo take back changes staged in the current window session. The window uses its existing staging commands for those reversals, so Apply remains the only action that writes the reviewed changes to FieldWorks.
 
