@@ -273,9 +273,15 @@ internal static class ReleasePathwayReplay
 
     private static void WaitFor(MainWindow window, WorkspaceShellViewModel workspace, WalkthroughStep step)
     {
-        var target = Find(window, step.AutomationId!);
         var timeout = TimeSpan.FromMilliseconds(step.TimeoutMs!.Value);
         var deadline = DateTime.UtcNow + timeout;
+        // Words and results arrive after the page opens, so the step waits for its control to exist too.
+        while (FindOptional(window, step.AutomationId!) is null && DateTime.UtcNow < deadline)
+        {
+            Pump();
+            Thread.Sleep(15);
+        }
+        var target = Find(window, step.AutomationId!);
         while (!Satisfies(target, workspace, step) && DateTime.UtcNow < deadline)
         {
             Pump();
@@ -316,6 +322,10 @@ internal static class ReleasePathwayReplay
     {
         if (!IsVisible(control)) throw new InvalidOperationException($"'{automationId}' is not visible.");
     }
+
+    private static Control? FindOptional(Window window, string automationId) =>
+        Controls(window).SingleOrDefault(control =>
+            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
 
     private static Control Find(Window window, string automationId)
     {

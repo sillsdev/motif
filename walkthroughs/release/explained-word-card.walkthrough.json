@@ -25,7 +25,7 @@
     {
       "id": "wait-for-first-word",
       "kind": "waitFor",
-      "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-67656c6469-word",
+      "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-6164616d6c6172-word",
       "condition": "visible",
       "timeoutMs": 60000
     },
@@ -35,7 +35,7 @@
       "durationMs": 400,
       "callouts": [
         {
-          "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-67656c6469-word"
+          "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-6164616d6c6172-word"
         }
       ]
     },
