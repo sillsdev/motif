@@ -107,7 +107,7 @@ internal static class ReleasePathwayReplay
     }
 
     private static bool IsFixture(string fixture) => fixture is
-        "first-run-ready" or "explained-card-ready" or "try-word-ready" or "apply-refresh-ready" or
+        "first-run-ready" or "explained-word-card" or "try-word-ready" or "apply-refresh-ready" or
         "handoff-cancel-ready";
 
     private static WalkthroughScript ReadScript(string scriptFolder, string id)
