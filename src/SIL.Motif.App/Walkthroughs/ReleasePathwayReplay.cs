@@ -114,7 +114,11 @@ internal static class ReleasePathwayReplay
     {
         var root = Path.GetFullPath(scriptFolder);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"Walkthrough folder not found: {root}");
-        var path = Path.GetFullPath(Path.Combine(root, id + ".walkthrough.json"));
+        // A walkthrough written for the tests' scripted parser has a release twin under release/ (ADR 0054).
+        var releasePath = Path.GetFullPath(Path.Combine(root, "release", id + ".walkthrough.json"));
+        var path = File.Exists(releasePath)
+            ? releasePath
+            : Path.GetFullPath(Path.Combine(root, id + ".walkthrough.json"));
         EnsureUnder(root, path, "walkthrough script");
         var script = WalkthroughScriptLoader.Load(path);
         if (!string.Equals(script.Id, id, StringComparison.Ordinal) || !IsFixture(script.Fixture))
@@ -320,15 +324,32 @@ internal static class ReleasePathwayReplay
         return controls.Length switch
         {
             1 => controls[0],
-            0 => throw new InvalidOperationException($"AutomationId '{automationId}' was not found."),
+            0 => throw new InvalidOperationException($"AutomationId '{automationId}' was not found. " +
+                $"Similar ones on screen: {string.Join(", ", Similar(window, automationId))}."),
             _ => throw new InvalidOperationException($"AutomationId '{automationId}' is ambiguous."),
         };
     }
 
-    private static IEnumerable<Control> Controls(Window window)
+    // Names a few on-screen ids with the same prefix, so a script author can see which one to use.
+    private static IEnumerable<string> Similar(Window window, string automationId)
+    {
+        var second = automationId.IndexOf('-', automationId.IndexOf('-') + 1);
+        var prefix = second > 0 ? automationId[..(second + 1)] : automationId;
+        var ids = Controls(window).Select(AutomationProperties.GetAutomationId).OfType<string>()
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var similar = ids.Where(id => id.StartsWith(prefix, StringComparison.Ordinal)).Take(8).ToArray();
+        return similar.Length > 0 ? similar : ids.Where(id => id.Contains("word", StringComparison.Ordinal)).Take(20);
+    }
+
+    private static IEnumerable<Control> Controls(Window window) => AllControls(window).Distinct();
+
+    private static IEnumerable<Control> AllControls(Window window)
     {
         yield return window;
-        foreach (var control in window.GetLogicalDescendants().OfType<Control>()) yield return control;
+        // Rows a virtualizing list realizes from a template are visual children only, not logical ones.
+        foreach (var control in window.GetLogicalDescendants().OfType<Control>()
+                     .Concat(window.GetVisualDescendants().OfType<Control>()))
+            yield return control;
         if (window.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout flyout &&
             flyout.Content is Control content)
         {

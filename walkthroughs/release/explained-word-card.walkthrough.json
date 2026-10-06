@@ -1,0 +1,70 @@
+{
+  "id": "explained-word-card",
+  "fixture": "explained-word-card",
+  "steps": [
+    {
+      "id": "open-project-menu",
+      "kind": "click",
+      "automationId": "motif-project-menu"
+    },
+    {
+      "id": "select-project",
+      "kind": "click",
+      "automationId": "motif-select-new-project"
+    },
+    {
+      "id": "open-texts",
+      "kind": "click",
+      "automationId": "motif-page-texts"
+    },
+    {
+      "id": "open-analyze-texts",
+      "kind": "click",
+      "automationId": "motif-analyze-texts-tab"
+    },
+    {
+      "id": "wait-for-first-word",
+      "kind": "waitFor",
+      "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-67656c6469-word",
+      "condition": "visible",
+      "timeoutMs": 60000
+    },
+    {
+      "id": "reader-words",
+      "kind": "capture",
+      "durationMs": 400,
+      "callouts": [
+        {
+          "automationId": "motif-word-5832de139ea05d7a829792e127861e28-0-67656c6469-word"
+        }
+      ]
+    },
+    {
+      "id": "open-word-list",
+      "kind": "click",
+      "automationId": "motif-analyze-word-list-view"
+    },
+    {
+      "id": "wait-for-word-list-result",
+      "kind": "waitFor",
+      "automationId": "motif-word-row-word-list-geldi-row",
+      "condition": "visible",
+      "timeoutMs": 60000
+    },
+    {
+      "id": "word-list-results",
+      "kind": "capture",
+      "durationMs": 400,
+      "callouts": [
+        {
+          "automationId": "motif-word-row-word-list-geldi-row"
+        }
+      ]
+    },
+    {
+      "id": "restore-text-reader",
+      "kind": "click",
+      "automationId": "motif-analyze-text-reader-view"
+    }
+  ]
+}
