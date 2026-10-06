@@ -128,7 +128,7 @@ $cliProjectPaths = [ordered]@{}
 $extraProjectPaths = [ordered]@{}
 $fixtureMap = [ordered]@{
     'first-run-ready' = 'first-run-setup-parse'
-    'explained-card-ready' = 'explained-word-card'
+    'explained-word-card' = 'explained-word-card'
     'try-word-ready' = 'try-word-typing'
     'apply-refresh-ready' = 'review-apply-refresh-parse'
     'handoff-cancel-ready' = 'handoff-cancel-retry'
@@ -146,7 +146,7 @@ foreach ($fixture in $fixtureMap.Keys) {
     if ($fixture -eq 'first-run-ready') { continue }
     $build = $sampleBuilds[$fixture]
     Seed-Selection $build.ProjectPath $build.TextId
-    if ($fixture -in @('explained-card-ready', 'apply-refresh-ready', 'handoff-cancel-ready')) {
+    if ($fixture -in @('explained-word-card', 'apply-refresh-ready', 'handoff-cancel-ready')) {
         [void] (Invoke-Cli @('assess', $build.ProjectPath, '--texts', $build.TextId))
     }
     if ($fixture -eq 'apply-refresh-ready') { Seed-IncorrectSpelling $build.ProjectPath }
@@ -180,8 +180,17 @@ $seedManifestPath = Join-Path $releaseRoot 'seed-manifest.json'
     ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $seedManifestPath -Encoding utf8
 Set-Content -LiteralPath (Join-Path $work 'release-pathways-root.txt') -Value $releaseRoot -Encoding utf8
 
-$pathEntries = @($env:PATH -split [System.IO.Path]::PathSeparator | Where-Object {
-    $_ -and $_ -notmatch '(?i)(^|[\\/])dotnet([\\/]|$)|(^|[\\/])\.dotnet([\\/]|$)'
+# Hosted Unix runners also link dotnet from /usr/bin or /usr/local/bin, which can't leave PATH whole.
+$shadowRoot = Join-Path $releaseRoot 'path-without-dotnet'
+$pathEntries = @(foreach ($entry in @($env:PATH -split [System.IO.Path]::PathSeparator)) {
+    if (-not $entry -or $entry -match '(?i)(^|[\\/])dotnet([\\/]|$)|(^|[\\/])\.dotnet([\\/]|$)') { continue }
+    if ([OperatingSystem]::IsWindows() -or -not (Test-Path -LiteralPath (Join-Path $entry 'dotnet'))) { $entry; continue }
+    $shadow = Join-Path $shadowRoot ([guid]::NewGuid().ToString('n'))
+    New-Item -ItemType Directory -Path $shadow -Force | Out-Null
+    foreach ($item in @(Get-ChildItem -LiteralPath $entry -Force | Where-Object Name -ne 'dotnet')) {
+        New-Item -ItemType SymbolicLink -Path (Join-Path $shadow $item.Name) -Target $item.FullName | Out-Null
+    }
+    $shadow
 })
 $env:PATH = [string]::Join([System.IO.Path]::PathSeparator, $pathEntries)
 $env:DOTNET_ROOT = Join-Path $releaseRoot 'sdk-hidden'
@@ -232,7 +241,7 @@ Seed-Selection $first.ProjectPath $first.TextId
 [void] (Invoke-Cli @('assess', $first.ProjectPath, '--texts', $first.TextId))
 [void] (Invoke-CliJson @('overview', '--project', $first.ProjectPath))
 
-$reading = $cliProjects['explained-card-ready']
+$reading = $cliProjects['explained-word-card']
 Seed-Selection $reading.ProjectPath $reading.TextId
 $readingAssessment = Invoke-CliJson @('assess', $reading.ProjectPath, '--texts', $reading.TextId)
 if ($readingAssessment.words.Count -eq 0) { throw 'The installed CLI Assessment returned no Text results.' }
