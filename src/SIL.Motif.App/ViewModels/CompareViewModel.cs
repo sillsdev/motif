@@ -86,6 +86,7 @@ public sealed partial class CompareViewModel : ObservableObject
             if (kind is null || !CanPropose(kind)) return;
             var chosen = Words.Where(word => word.IsChecked).ToList();
             using var usageAction = Changes.BeginMatrixStagingAction(kind, chosen);
+            using var historyAction = Changes.BeginStagingAction();
             Changes.BeginCollection();
             foreach (var word in chosen)
             {

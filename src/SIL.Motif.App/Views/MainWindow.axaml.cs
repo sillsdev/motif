@@ -274,9 +274,9 @@ public sealed partial class MainWindow : Window
 
     [KeyboardShortcutHandler(
         "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings",
-        "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom",
+        "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom", "Window:Copy", "Window:Undo", "Window:Redo",
         "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch", "Matrix:FocusWordSearch")]
-    private void OnKeyDown(object? sender, KeyEventArgs e)
+    private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var modifiers = e.KeyModifiers;
         var scope = SearchScope();
@@ -285,6 +285,28 @@ public sealed partial class MainWindow : Window
         var entry = inspectorIsOpen && windowEntry?.Behavior == KeyboardShortcutBehavior.Back
             ? windowEntry
             : KeyboardShortcutRegistry.Find(scope, e.Key, modifiers) ?? windowEntry;
+        if (entry is not null && (entry.Behavior is KeyboardShortcutBehavior.Copy or KeyboardShortcutBehavior.Undo or
+            KeyboardShortcutBehavior.Redo) && KeyboardShortcutRegistry.Allows(entry,
+                KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
+        {
+            e.Handled = true;
+            switch (entry.Behavior)
+            {
+                case KeyboardShortcutBehavior.Copy:
+                    if (KeyboardShortcutRegistry.CopyTextFor(e.Source) is { } text)
+                        await _problemReportServices.CopyTextAsync(text, this).ConfigureAwait(true);
+                    break;
+                case KeyboardShortcutBehavior.Undo when DataContext is WorkspaceShellViewModel workspace:
+                    ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                        .UndoStagingActionAsync().ConfigureAwait(true));
+                    break;
+                case KeyboardShortcutBehavior.Redo when DataContext is WorkspaceShellViewModel workspace:
+                    ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                        .RedoStagingActionAsync().ConfigureAwait(true));
+                    break;
+            }
+            return;
+        }
         if (entry?.Behavior == KeyboardShortcutBehavior.ShowShortcuts
             && KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
         {

@@ -935,6 +935,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private async Task AddChangeForTokenAsync(ResultsTokenViewModel token, string? kind)
     {
         if (kind is null || !CanAddChangeForToken(token, kind)) return;
+        using var historyAction = _changes.BeginStagingAction();
         using var usageAction = _commands.BeginUsageAction("put-pending-change",
             UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.Text("kind"));
         var readings = kind == ChangeKinds.AddCandidate ? token.Readings :

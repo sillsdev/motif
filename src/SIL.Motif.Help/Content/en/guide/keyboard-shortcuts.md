@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
+Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
 
 ## Analyze texts
 
@@ -114,6 +114,9 @@ Letter shortcuts work when focus is outside text entry. A, D and U stage an opin
 | = or Keypad + | Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad + | ⌘+= or ⌘+Shift+= or ⌘+Keypad + | Window | Zoom in |
 | - or Keypad - | Ctrl+- or Ctrl+Keypad - | ⌘+- or ⌘+Keypad - | Window | Zoom out |
 | 0 or Keypad 0 | Ctrl+0 or Ctrl+Keypad 0 | ⌘+0 or ⌘+Keypad 0 | Window | Reset zoom |
+| C | Ctrl+C | ⌘+C | Window | Copy |
+| Z | Ctrl+Z | ⌘+Z | Window | Undo |
+| Y or Z | Ctrl+Y or Ctrl+Shift+Z | ⌘+Y or ⌘+Shift+Z | Window | Redo |
 
 ## Settings
 

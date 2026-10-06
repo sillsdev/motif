@@ -50,6 +50,118 @@ public sealed class PendingChangesViewModelTests
         Assert.Equal("Skipped one word because a choice is already pending.", changes.CollectionNotice);
     }
 
+    [Theory]
+    [InlineData(ChangeKinds.Approve)]
+    [InlineData(ChangeKinds.Reject)]
+    [InlineData(ChangeKinds.Candidate)]
+    [InlineData(ChangeKinds.AddCandidate)]
+    [InlineData(ChangeKinds.IncorrectSpelling)]
+    [InlineData(ChangeKinds.RemoveAnalysis)]
+    public async Task UndoAndRedoUseTheStagingCommandsForEveryChangeKind(string kind)
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        var intent = new ChangeIntent("change/one", kind, "wordform/one", "word");
+
+        await changes.PutAsync(intent);
+
+        Assert.Equal("Undid the change for word.", await changes.UndoStagingActionAsync());
+        Assert.Equal("change/one", Assert.Single(fake.PendingRemoveRequests).ChangeId);
+        Assert.Empty(changes.Items);
+
+        Assert.Equal("Redid the change for word.", await changes.RedoStagingActionAsync());
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.Equal(intent, fake.PendingPutRequests.Last().Change);
+        Assert.Equal(kind, Assert.Single(changes.Items).Kind);
+    }
+
+    [Fact]
+    public async Task OneStagingActionCanUndoAndRedoSeveralChangesTogether()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        using (changes.BeginStagingAction())
+        {
+            await changes.PutAsync(new ChangeIntent("change/one", ChangeKinds.Approve, "wordform/one", "one"));
+            await changes.PutAsync(new ChangeIntent("change/two", ChangeKinds.IncorrectSpelling, "wordform/two", "two"));
+        }
+
+        Assert.Equal("Undid changes to 2 words.", await changes.UndoStagingActionAsync());
+        Assert.Equal(2, fake.PendingRemoveRequests.Count);
+        Assert.Empty(changes.Items);
+        Assert.Equal("Redid changes to 2 words.", await changes.RedoStagingActionAsync());
+        Assert.Equal(4, fake.PendingPutRequests.Count);
+        Assert.Equal(2, changes.Count);
+    }
+
+    [Fact]
+    public async Task UndoRefusesWhenAnotherWriterChangedThePendingChange()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        await changes.PutAsync(new ChangeIntent("change/one", ChangeKinds.Approve, "wordform/one", "word"));
+        var current = Assert.Single(changes.Snapshot.Changes);
+        fake.PendingChangesIs(changes.Snapshot with { Changes = [current with { Word = "changed elsewhere" }] });
+
+        var status = await changes.UndoStagingActionAsync();
+
+        Assert.Contains("changed outside this window", status, StringComparison.Ordinal);
+        Assert.Empty(fake.PendingRemoveRequests);
+        Assert.Equal("changed elsewhere", Assert.Single(changes.Items).Word);
+    }
+
+    [Fact]
+    public async Task RemovingAChangeCanBeUndoneThroughThePutCommand()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        await changes.PutAsync(new ChangeIntent("change/one", ChangeKinds.Approve, "wordform/one", "word"));
+        await changes.RemoveCommand.ExecuteAsync(Assert.Single(changes.Items));
+
+        Assert.Equal("Undid the change for word.", await changes.UndoStagingActionAsync());
+        Assert.Equal(2, fake.PendingPutRequests.Count);
+        Assert.Equal("change/one", Assert.Single(changes.Items).ChangeId);
+    }
+
+    [Fact]
+    public async Task NewStagingActionClearsRedoHistory()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        await changes.PutAsync(new ChangeIntent("change/one", ChangeKinds.Approve, "wordform/one", "one"));
+        await changes.UndoStagingActionAsync();
+        await changes.PutAsync(new ChangeIntent("change/two", ChangeKinds.Reject, "wordform/two", "two"));
+
+        Assert.Equal("There is nothing to redo.", await changes.RedoStagingActionAsync());
+        Assert.Equal("change/two", Assert.Single(changes.Items).ChangeId);
+    }
+
+    [Fact]
+    public async Task UndoAllIsOneUndoableAndRedoableStagingAction()
+    {
+        var fake = new FakeCommandClient();
+        var changes = new ChangesViewModel(fake);
+        await changes.OpenProjectAsync("project.fwdata");
+        await changes.PutAsync(new ChangeIntent("change/one", ChangeKinds.Approve, "wordform/one", "one"));
+        await changes.PutAsync(new ChangeIntent("change/two", ChangeKinds.Reject, "wordform/two", "two"));
+        var group = new ReviewChangeGroupViewModel("Opinions", changes.Items.ToArray(), changes);
+
+        await group.UndoAllCommand.ExecuteAsync(null);
+
+        Assert.Empty(changes.Items);
+        Assert.Equal("Undid changes to 2 words.", await changes.UndoStagingActionAsync());
+        Assert.Equal(2, changes.Count);
+        Assert.Equal("Redid changes to 2 words.", await changes.RedoStagingActionAsync());
+        Assert.Empty(changes.Items);
+        Assert.Equal(4, fake.PendingRemoveRequests.Count);
+        Assert.Equal(4, fake.PendingPutRequests.Count);
+    }
+
     [Fact]
     public async Task BulkCandidatesSendEveryParserReadingWithItsAssessmentIndex()
     {

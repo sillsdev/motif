@@ -918,6 +918,8 @@ public sealed class WorkspaceShellViewModelTests
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         fake.AssessCompletesWith(NewAssessResponse("(first)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
+        await workspace.Context.Changes.PutAsync(new ChangeIntent(
+            "history/refresh", ChangeKinds.Approve, "wordform/refresh", "refreshed"));
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectPath, DateTimeOffset.UtcNow, false, false));
@@ -1038,6 +1040,8 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.Single(fake.AssessRequests);
         Assert.True(workspace.Context.NeedsAssessment);
+        Assert.Equal("There is nothing to undo.", await workspace.Context.Changes.UndoStagingActionAsync());
+        Assert.Equal("There is nothing to redo.", await workspace.Context.Changes.RedoStagingActionAsync());
     }
 
     [Fact]

@@ -11,6 +11,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
@@ -927,6 +928,31 @@ public sealed class TryWordPageTests
             Assert.Equal(["approved", "disapproved", "candidate"], page.WordContext!.Analyses.Select(analysis =>
                 analysis.StoredAnalysisOpinion));
             Assert.Null(context.Evidence.Assessment);
+        });
+    }
+
+    [Fact]
+    public void PastedWordUsesPlainTextNormalizationBeforeFieldWorksReads()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = ProjectPath;
+            context.Assess.ProjectPath = ProjectPath;
+            var requestSeen = new TaskCompletionSource<WordContextRequest>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            fake.WordContextHandler = (request, _) =>
+            {
+                requestSeen.TrySetResult(request);
+                return Task.FromResult(SIL.Motif.Contract.Commands.CommandOutcome<WordContextResponse>.Success(
+                    new(request.Word, true)));
+            };
+            var page = new TryWordPageModel(context);
+
+            page.Trace.WordToTry = "\u00e9";
+
+            var request = await requestSeen.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal("e\u0301", request.Word);
         });
     }
 

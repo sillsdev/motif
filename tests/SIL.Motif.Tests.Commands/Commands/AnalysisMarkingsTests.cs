@@ -58,6 +58,37 @@ public sealed class AnalysisMarkingsTests(PristineProjectFixture pristine)
         Assert.Empty(undone.Value!.Changes);
     }
 
+    [Fact]
+    public void PendingChangeSnapshotCanDriveRedoThroughThePutCommand()
+    {
+        var scenario = NewScenario("redo-spelling");
+        var initial = PendingChanges.Load(new PendingChangesRequest(scenario.Path, ProductVersion)).Value!;
+        var intent = new ChangeIntent("redo-spelling", "incorrect-spelling", scenario.WordformId,
+            scenario.Word);
+
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(scenario.Path, ProductVersion,
+            initial.Revision, intent));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var reloaded = PendingChanges.Load(new PendingChangesRequest(scenario.Path, ProductVersion));
+        Assert.True(reloaded.Succeeded, reloaded.Refusal?.Message);
+        var recordedIntent = Assert.Single(reloaded.Value!.Changes).StagingIntent;
+        Assert.Equal(intent, recordedIntent);
+        var removed = PendingChanges.Remove(new RemovePendingChangeRequest(scenario.Path, ProductVersion,
+            reloaded.Value.Revision, intent.ChangeId));
+        Assert.True(removed.Succeeded, removed.Refusal?.Message);
+
+        var redone = PendingChanges.Put(new PutPendingChangeRequest(scenario.Path, ProductVersion,
+            removed.Value!.Revision, recordedIntent!));
+
+        Assert.True(redone.Succeeded, redone.Refusal?.Message);
+        var restored = Assert.Single(redone.Value!.Changes);
+        Assert.Equal(intent.ChangeId, restored.ChangeId);
+        Assert.Equal(intent.Kind, restored.Kind);
+        Assert.Equal(intent.WordformId, restored.WordformId);
+        Assert.Equal(intent.Word, restored.Word);
+    }
+
     [Theory]
     [InlineData("capped", true, false)]
     [InlineData("skipped", false, false)]

@@ -615,6 +615,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private void OnBaselineRefreshed(object? sender, EventArgs e)
     {
+        Context.Changes.ClearStagingHistory();
         Context.ClearAssessmentForNewBaseline();
         _reloadAfterRefresh = ReloadAfterRefreshAsync();
     }

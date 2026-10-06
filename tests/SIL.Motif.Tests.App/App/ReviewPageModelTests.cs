@@ -3,6 +3,7 @@ using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -454,23 +455,28 @@ public sealed class ReviewPageModelTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
-            "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
         var context = NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
+        await context.Changes.PutAsync(new ChangeIntent("added", ChangeKinds.Approve, "wordform/added", "second"));
+        var stagedRevision = context.Changes.Snapshot.Revision;
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult(
+            "job/one", stagedRevision, FakeCommandClient.CompleteNumbers));
         await page.MeasureCommand.ExecuteAsync(null);
 
         await page.ApplyCommand.ExecuteAsync(null);
 
         Assert.Empty(context.Changes.Items);
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
-        Assert.Equal("revision/one", Assert.Single(fake.ApplyPendingRequests).Revision);
+        Assert.Equal(stagedRevision, Assert.Single(fake.ApplyPendingRequests).Revision);
         Assert.True(context.Evidence.AppliedSinceRefresh);
+        Assert.Equal("There is nothing to undo.", await context.Changes.UndoStagingActionAsync());
+        Assert.Equal("There is nothing to redo.", await context.Changes.RedoStagingActionAsync());
         Assert.Collection(fake.UsageEntries,
+            entry => Assert.Equal("put-pending-change", entry.Command),
             entry => Assert.Equal("trial --pending", entry.Command),
             entry => Assert.Equal("apply --all-pending", entry.Command));
     }

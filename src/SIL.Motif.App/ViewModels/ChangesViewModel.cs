@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
@@ -59,6 +60,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     private readonly List<string> _collectionNotices = [];
     private int _projectGeneration;
     private bool _isReplacingItems;
+    private readonly Stack<StagingHistoryEntry> _undoHistory = new();
+    private readonly Stack<StagingHistoryEntry> _redoHistory = new();
+    private PendingChangesSnapshot? _stagingActionBefore;
+    private int _stagingActionDepth;
+    private bool _isReplayingStagingHistory;
     public ChangesViewModel(ICommandClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
@@ -144,6 +150,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     private async Task<bool> PutAsync(
         ChangeIntent change, string path, int generation, CancellationToken cancellationToken)
     {
+        var before = Snapshot;
         var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision, change),
             cancellationToken).ConfigureAwait(true);
@@ -151,6 +158,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken);
+        if (outcome.Succeeded) RecordStagingAction(before);
         return outcome.Succeeded;
     }
 
@@ -241,9 +249,11 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         string path, int generation, CancellationToken cancellationToken)
     {
         if (!IsCurrentProject(path, generation)) return false;
+        var before = Snapshot;
         Accept(outcome, path, generation);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, cancellationToken).ConfigureAwait(true);
+        if (outcome.Succeeded) RecordStagingAction(before);
         return outcome.Succeeded;
     }
 
@@ -265,6 +275,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         WorkspacePage originPage = WorkspacePage.Texts)
     {
         ArgumentNullException.ThrowIfNull(word);
+        using var historyAction = BeginStagingAction();
         if (kind is not (ChangeKinds.AddCandidate or ChangeKinds.IncorrectSpelling))
             throw new InvalidOperationException("Opinions change one analysis at a time, in the text.");
         if (ProjectPath is not { } path) throw new InvalidOperationException("Open a project before collecting changes.");
@@ -391,14 +402,192 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
         using var usageAction = _client.BeginUsageAction("remove-pending-change", UsageArgumentShape.Text("fwDataPath"),
             UsageArgumentShape.Text("changeId"));
         var generation = _projectGeneration;
+        var before = Snapshot;
         var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
             path, MotifProductVersion.CurrentText, Snapshot.Revision,
             wholeGroup ? change.GroupId ?? change.ChangeId : change.ChangeId),
             CancellationToken.None).ConfigureAwait(true);
         if (!IsCurrentProject(path, generation)) return;
         Accept(outcome, path, generation);
+        if (outcome.Succeeded) RecordStagingAction(before);
         if (outcome.Refusal?.Code == RefusalCodes.ChangeRevisionConflict)
             await ReloadAfterConflictAsync(outcome.Refusal, path, generation, CancellationToken.None);
+    }
+
+    internal IDisposable BeginStagingAction()
+    {
+        if (_stagingActionDepth++ == 0) _stagingActionBefore = Snapshot;
+        return new StagingAction(this);
+    }
+
+    internal void ClearStagingHistory()
+    {
+        _undoHistory.Clear();
+        _redoHistory.Clear();
+        _stagingActionBefore = null;
+        _stagingActionDepth = 0;
+    }
+
+    internal Task<string> UndoStagingActionAsync() => MoveStagingHistoryAsync(redo: false);
+
+    internal Task<string> RedoStagingActionAsync() => MoveStagingHistoryAsync(redo: true);
+
+    private void EndStagingAction()
+    {
+        if (_stagingActionDepth == 0) return;
+        if (--_stagingActionDepth != 0) return;
+        var before = _stagingActionBefore;
+        _stagingActionBefore = null;
+        if (before is not null) RecordStagingAction(before);
+    }
+
+    private void RecordStagingAction(PendingChangesSnapshot before)
+    {
+        if (_isReplayingStagingHistory || _stagingActionDepth > 0 ||
+            HistorySignature(before) == HistorySignature(Snapshot)) return;
+        _undoHistory.Push(new StagingHistoryEntry(before, Snapshot));
+        _redoHistory.Clear();
+    }
+
+    private async Task<string> MoveStagingHistoryAsync(bool redo)
+    {
+        var source = redo ? _redoHistory : _undoHistory;
+        var destination = redo ? _undoHistory : _redoHistory;
+        if (source.Count == 0) return redo ? "There is nothing to redo." : "There is nothing to undo.";
+        if (ProjectPath is not { } path) return "Open a project before undoing changes.";
+
+        var generation = _projectGeneration;
+        var history = source.Peek();
+        var expected = redo ? history.Before : history.After;
+        var target = redo ? history.After : history.Before;
+        _isReplayingStagingHistory = true;
+        try
+        {
+            var loaded = await _client.LoadPendingChangesAsync(
+                new PendingChangesRequest(path, MotifProductVersion.CurrentText), CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
+            if (!loaded.Succeeded || loaded.Value is not { } current)
+            {
+                source.Clear();
+                destination.Clear();
+                return "Motif couldn't check the pending changes. Refresh and try again.";
+            }
+            Accept(loaded, path, generation);
+            if (HistorySignature(current) != HistorySignature(expected))
+            {
+                source.Clear();
+                destination.Clear();
+                return "The pending changes changed outside this window. Refresh before undoing.";
+            }
+
+            var currentById = current.Changes.ToDictionary(change => change.ChangeId, StringComparer.Ordinal);
+            var targetById = target.Changes.ToDictionary(change => change.ChangeId, StringComparer.Ordinal);
+            var removals = current.Changes.Where(change => !targetById.TryGetValue(change.ChangeId, out var wanted) ||
+                ChangeSignature(change) != ChangeSignature(wanted)).ToArray();
+            var additions = target.Changes.Where(change => !currentById.TryGetValue(change.ChangeId, out var existing) ||
+                ChangeSignature(change) != ChangeSignature(existing)).ToArray();
+            if (additions.Any(change => change.StagingIntent is null))
+            {
+                source.Clear();
+                destination.Clear();
+                return "Motif can't restore one of these changes. Refresh pending changes before continuing.";
+            }
+
+            foreach (var change in removals)
+            {
+                var outcome = await _client.RemovePendingChangeAsync(new RemovePendingChangeRequest(
+                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.ChangeId), CancellationToken.None)
+                    .ConfigureAwait(true);
+                if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
+                if (!outcome.Succeeded)
+                {
+                    Accept(outcome, path, generation);
+                    source.Clear();
+                    destination.Clear();
+                    return "Motif couldn't undo that staging action. Refresh and try again.";
+                }
+                Accept(outcome, path, generation);
+            }
+
+            foreach (var change in additions)
+            {
+                using var usageAction = _client.BeginUsageAction("put-pending-change",
+                    UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", 1));
+                var outcome = await _client.PutPendingChangeAsync(new PutPendingChangeRequest(
+                    path, MotifProductVersion.CurrentText, Snapshot.Revision, change.StagingIntent!),
+                    CancellationToken.None).ConfigureAwait(true);
+                if (!IsCurrentProject(path, generation)) return "The open project changed before the action could be undone.";
+                if (!outcome.Succeeded)
+                {
+                    Accept(outcome, path, generation);
+                    source.Clear();
+                    destination.Clear();
+                    return "Motif couldn't restore that staging action. Refresh and try again.";
+                }
+                Accept(outcome, path, generation);
+            }
+
+            if (HistorySignature(Snapshot) != HistorySignature(target))
+            {
+                source.Clear();
+                destination.Clear();
+                return "The pending changes didn't return to their earlier state. Refresh before continuing.";
+            }
+            source.Pop();
+            destination.Push(history);
+            return HistoryStatus(history, redo);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or JsonException)
+        {
+            source.Clear();
+            destination.Clear();
+            return "Motif couldn't undo that staging action. Refresh and try again.";
+        }
+        finally
+        {
+            _isReplayingStagingHistory = false;
+        }
+    }
+
+    private static string HistoryStatus(StagingHistoryEntry history, bool redo)
+    {
+        var before = history.Before.Changes.ToDictionary(change => change.ChangeId, StringComparer.Ordinal);
+        var after = history.After.Changes.ToDictionary(change => change.ChangeId, StringComparer.Ordinal);
+        var affected = before.Keys.Concat(after.Keys).Distinct(StringComparer.Ordinal)
+            .Where(id => !before.TryGetValue(id, out var oldChange) || !after.TryGetValue(id, out var newChange) ||
+                ChangeSignature(oldChange) != ChangeSignature(newChange))
+            .Select(id => after.GetValueOrDefault(id)?.Word ?? before[id].Word)
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var verb = redo ? "Redid" : "Undid";
+        return affected.Length switch
+        {
+            1 => $"{verb} the change for {affected[0]}.",
+            _ => $"{verb} changes to {affected.Length:N0} words.",
+        };
+    }
+
+    private static string HistorySignature(PendingChangesSnapshot snapshot) => JsonSerializer.Serialize(new
+    {
+        Changes = snapshot.Changes.OrderBy(change => change.ChangeId, StringComparer.Ordinal)
+            .Select(change => ChangeSignature(change)),
+        Fits = snapshot.FitSummary.OrderBy(fit => fit.ChangeId, StringComparer.Ordinal),
+    });
+
+    private static string ChangeSignature(PendingChange change) => JsonSerializer.Serialize(new
+    {
+        change.ChangeId, change.WordformId, change.Word, change.Kind, change.AssessmentId,
+        change.DisplayReading, change.OperationIds, change.OriginPage, change.Occurrence,
+        change.StoredAnalysisId, change.ReadingIndex, change.GroupId, change.StagingIntent,
+    });
+
+    private sealed record StagingHistoryEntry(PendingChangesSnapshot Before, PendingChangesSnapshot After);
+
+    private sealed class StagingAction(ChangesViewModel owner) : IDisposable
+    {
+        private ChangesViewModel? _owner = owner;
+
+        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.EndStagingAction();
     }
 
     private async Task ReloadAfterConflictAsync(
@@ -415,6 +604,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
 
     public void Reset()
     {
+        ClearStagingHistory();
         _projectGeneration++;
         ReplaceItems([]);
         Snapshot = new PendingChangesSnapshot(null, "none", [], []);
