@@ -109,6 +109,7 @@ One directory per configuration at the repository root, not a `bin` tree under e
 bin/Debug/motif                     the CLI apphost (.exe on Windows)
 bin/Debug/SIL.Motif.App             the window apphost (.exe on Windows)
 bin/Debug/SIL.Motif.Worker          the job runner apphost (.exe on Windows)
+bin/Debug/pangloss                  the pinned PanGloss, staged by build.ps1 (.exe on Windows)
 bin/Debug/tests/SIL.Motif.Tests.Support.dll
 bin/Debug/tests/SIL.Motif.Tests.Contract.dll
 bin/Debug/tests/SIL.Motif.Tests.LibLcm.dll

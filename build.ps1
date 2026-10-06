@@ -129,6 +129,21 @@ if (-not $IsWindows) {
     elseif (-not $env:MOTIF_SIL_ICU_STAGE) { [void](Copy-MotifStagedIcu -RepoRoot $repoRoot -Configuration $Configuration) }
 }
 
+# A development build finds its parser beside itself, as a shipped one does, so it runs the pinned PanGloss.
+Write-Step 'Pinned PanGloss beside the product'
+try {
+    Import-Module (Join-Path $repoRoot 'tools/PanGlossRelease.psm1') -Force
+    $pinnedParser = Get-PinnedPanGlossArtifact -RepositoryRoot $repoRoot
+    $parserTarget = Join-Path $repoRoot "bin/$Configuration/$(if ($IsWindows) { 'pangloss.exe' } else { 'pangloss' })"
+    Copy-Item -LiteralPath $pinnedParser.Path -Destination $parserTarget -Force
+    if (-not $IsWindows) { & chmod +x $parserTarget }
+    Write-Host "PanGloss $($pinnedParser.Version) at $parserTarget"
+}
+catch {
+    Write-Host "PanGloss was not staged beside the product: $($_.Exception.Message)" -ForegroundColor Yellow
+    Write-Host 'The window and CLI from this build need MOTIF_PANGLOSS_EXE until it is.' -ForegroundColor Yellow
+}
+
 Write-Host ''
 Write-Host 'Build OK: comments clean, solution compiles.' -ForegroundColor Green
 exit 0

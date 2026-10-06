@@ -14,8 +14,11 @@ public static class PanGlossExecutable
     /// <summary>
     /// Returns the executable's path, or <c>null</c> when it cannot be found. A configured override is
     /// authoritative: when it is set but missing, discovery stops instead of silently selecting another
-    /// parser. Inside a Motif checkout the sibling PanGloss build wins, so local work always runs the parser
-    /// beside it rather than a pinned copy; a shipped Motif has no checkout, so it uses the bundled one.
+    /// parser. Inside a Motif checkout a sibling PanGloss build wins, so local PanGloss work runs against Motif:
+    /// its live <c>rust/target/release</c> build, or a <c>dist/v&lt;version&gt;</c> copy of exactly the version
+    /// <c>pangloss-release.json</c> pins. Older copies are skipped because their output shapes no longer match.
+    /// Otherwise the parser beside Motif is used: the bundled one in a shipped Motif, and in a development build
+    /// the pinned copy <c>build.ps1</c> stages there.
     /// </summary>
     public static string? TryLocate()
     {
@@ -33,8 +36,8 @@ public static class PanGlossExecutable
         if (!string.IsNullOrWhiteSpace(configuredPath))
             return ExistingFile(configuredPath);
 
-        if (repositoryRoot is not null && NewestSiblingBuild(Path.Combine(repositoryRoot, "..", "PanGloss"), fileName)
-                is { } beside)
+        if (repositoryRoot is not null && NewestSiblingBuild(Path.Combine(repositoryRoot, "..", "PanGloss"), fileName,
+                PinnedVersion(repositoryRoot)) is { } beside)
             return beside;
 
         return ExistingFile(Path.Combine(applicationDirectory, fileName));
@@ -66,24 +69,42 @@ public static class PanGlossExecutable
         var sibling = Path.GetFullPath(Path.Combine(repositoryRoot, "..", "PanGloss"));
         return
         [
-            Path.Combine(sibling, "dist", "<version>", fileName),
+            Path.Combine(sibling, "dist", "v<pinned version>", fileName),
             Path.Combine(sibling, "rust", "target", "release", fileName),
             besideMotif,
         ];
     }
 
     // PanGloss's managed release build copies to dist/v<version>; a plain cargo build leaves rust/target/release.
-    private static string? NewestSiblingBuild(string panGlossRoot, string fileName)
+    private static string? NewestSiblingBuild(string panGlossRoot, string fileName, string? pinnedVersion)
     {
         var dist = Path.Combine(panGlossRoot, "dist");
-        var releaseCopies = Directory.Exists(dist)
-            ? Directory.EnumerateDirectories(dist).Select(version => Path.Combine(version, fileName))
+        var releaseCopies = Directory.Exists(dist) && pinnedVersion is not null
+            ? Directory.EnumerateDirectories(dist)
+                .Where(version => Path.GetFileName(version) == "v" + pinnedVersion)
+                .Select(version => Path.Combine(version, fileName))
             : [];
         return releaseCopies.Append(Path.Combine(panGlossRoot, "rust", "target", "release", fileName))
             .Where(File.Exists)
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .Select(Path.GetFullPath)
             .FirstOrDefault();
+    }
+
+    // The checkout's pin names the PanGloss whose output shapes this Motif reads.
+    private static string? PinnedVersion(string repositoryRoot)
+    {
+        var pin = Path.Combine(repositoryRoot, "pangloss-release.json");
+        if (!File.Exists(pin)) return null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(pin));
+            return document.RootElement.TryGetProperty("version", out var version) ? version.GetString() : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ExistingFile(string path) =>
