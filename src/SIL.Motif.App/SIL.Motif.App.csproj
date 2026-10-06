@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\motif.ico;Assets\motif-icon.png" />
+    <AvaloniaResource Include="Assets\motif.ico;Assets\motif-icon.png;Assets\Fonts\*.ttf;Assets\Fonts\OFL.txt;Assets\Fonts\NOTICE.txt" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,6 +4,8 @@ Motif tells you how well the FieldWorks parser handles your words: which ones pa
 
 Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
 
+The window uses Andika for its interface text; linguistic text uses the fonts selected in the FieldWorks project's writing systems.
+
 To start, [install Motif](guide:install), then [open your project](guide:open-a-project).
 
 Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) keeps the results of each run. The [Overview](term:overview) shows stored results such as Text Coverage, **Approved analyses kept**, timing, and grammar warnings. Opening the window shows the last results; it doesn't parse again.

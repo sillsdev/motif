@@ -10,7 +10,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
-using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -18,7 +17,6 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class MarkGlyphRenderingTests
 {
-    private const string AndikaFont = "fonts:MotifWalkthrough#Andika";
     private readonly AvaloniaHeadlessFixture _avalonia;
 
     public MarkGlyphRenderingTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
@@ -28,8 +26,7 @@ public sealed class MarkGlyphRenderingTests
     {
         _avalonia.Invoke(() =>
         {
-            WalkthroughFonts.Register();
-            var family = new FontFamily(AndikaFont);
+            var family = Assert.IsType<FontFamily>(Application.Current!.FindResource("Primitive.Font.UI"));
             Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family), out var andika));
 
             foreach (var mark in AllMarks().Where(mark => mark.Glyph.Length > 0))
@@ -51,7 +48,6 @@ public sealed class MarkGlyphRenderingTests
     {
         _avalonia.Invoke(() =>
         {
-            WalkthroughFonts.Register();
             foreach (var mark in AllMarks())
             {
                 var first = RenderInFreshWindow(mark);
@@ -72,7 +68,6 @@ public sealed class MarkGlyphRenderingTests
     {
         var chip = new MarkChip { Mark = mark, Text = mark.Word };
         var window = new Window { Content = chip, Width = 300, Height = 60 };
-        window.SetValue(TextElement.FontFamilyProperty, new FontFamily(AndikaFont));
         try
         {
             window.Show();

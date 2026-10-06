@@ -59,7 +59,11 @@ public sealed class WritingSystemTextStyleTests
             resolver.SetWritingSystems([system]);
             var style = resolver.Resolve(system.Id);
 
-            Assert.True(style.RequestedFontInstalled);
+            var requestedFamily = new FontFamily(family);
+            var matched = FontManager.Current.TryGetGlyphTypeface(new Typeface(requestedFamily), out var glyphTypeface);
+            Assert.True(style.RequestedFontInstalled,
+                $"Requested '{family}' resolved as '{requestedFamily.Name}'; glyph match={matched}, " +
+                $"matched family='{glyphTypeface?.FamilyName ?? "none"}'.");
             Assert.Equal("DejaVu Sans", new FontFamily(family).Name);
             Assert.Same(style, resolver.Resolve(system.Id));
             return Task.CompletedTask;

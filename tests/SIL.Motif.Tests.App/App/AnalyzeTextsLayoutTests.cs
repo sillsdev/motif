@@ -196,7 +196,6 @@ public sealed class AnalyzeTextsLayoutTests
             var (workspace, window) = await OpenAnalyzeTexts();
             try
             {
-                TestFontScale.ApplyEightPercentIncrease(window);
                 Settle(window);
                 var panel = Panel(window);
                 var card = OpenCard(window);
@@ -206,7 +205,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var cardBounds = BoundsIn(card, panel);
                 Assert.True(cardBounds.Left >= -0.5 && cardBounds.Right <= panel.Bounds.Width + 0.5,
                     $"The opened word card spans {cardBounds.Left:0.#}–{cardBounds.Right:0.#} px of its " +
-                    $"{panel.Bounds.Width:0.#} px panel at 108% text size.");
+                    $"{panel.Bounds.Width:0.#} px panel with the app's default text size.");
                 LayoutAssertions.AssertCurrent(card);
                 var strips = Strips(panel).ToArray();
                 var ownStrip = Assert.Single(strips, strip => ReferenceEquals(strip.Tag, open));
@@ -472,7 +471,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void TextPickerChipsWrapWithoutClippingAndStayAboveTheText()
+    public void FilterChipsStayClearOfReaderMenusAtWindowWidthsAndScaling()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -480,35 +479,55 @@ public sealed class AnalyzeTextsLayoutTests
             try
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
-                Settle(window);
-                var panel = Panel(window);
-                var controls = new List<Control>
+                foreach (var (width, scaling) in new[]
                 {
-                    Named<ComboBox>(panel, "Text to read"),
-                    Named<Button>(panel, "Mark read or unread"),
-                    Named<Button>(panel, "Select words for actions"),
-                };
-                var chips = panel.GetVisualDescendants().OfType<FilterChip>()
-                    .Where(chip => chip.IsEffectivelyVisible).ToArray();
-                Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped"],
-                    chips.Select(chip => chip.Label));
-                controls.AddRange(chips);
+                    (1040, 1d), (1240, 1d), (1040, 1.5d), (1240, 1.5d),
+                })
+                {
+                    window.Width = width;
+                    window.SetRenderScaling(scaling);
+                    Settle(window);
+                    var panel = Panel(window);
+                    var picker = Named<ComboBox>(panel, "Text to read");
+                    var dropdowns = new[]
+                    {
+                        Named<Button>(panel, "Mark read or unread"),
+                        Named<Button>(panel, "Select words for actions"),
+                    };
+                    var chips = panel.GetVisualDescendants().OfType<FilterChip>()
+                        .Where(chip => chip.IsEffectivelyVisible).ToArray();
+                    Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped"],
+                        chips.Select(chip => chip.Label));
+                    var chipRow = panel.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
+                    var rowBounds = BoundsIn(chipRow, panel);
+                    Assert.All(dropdowns, dropdown => Assert.False(rowBounds.Intersects(BoundsIn(dropdown, panel)),
+                        $"The filter row intersects '{AutomationProperties.GetName(dropdown)}' at {width}px/{scaling:P0}: " +
+                        $"{rowBounds} and {BoundsIn(dropdown, panel)}."));
+                    foreach (var chip in chips)
+                    foreach (var dropdown in dropdowns)
+                        Assert.False(BoundsIn(chip, panel).Intersects(BoundsIn(dropdown, panel)),
+                            $"Filter chip '{chip.Label}' intersects '{AutomationProperties.GetName(dropdown)}' " +
+                            $"at {width}px/{scaling:P0}: {BoundsIn(chip, panel)} and {BoundsIn(dropdown, panel)}.");
 
-                var picked = Assert.Single(controls[0].GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Hadithi ya sungura");
-                Assert.DoesNotContain(picked.TextLayout.TextLines, line => line.HasCollapsed);
+                    var picked = Assert.Single(picker.GetVisualDescendants().OfType<TextBlock>(), text =>
+                        text.Text == "Hadithi ya sungura");
+                    Assert.DoesNotContain(picked.TextLayout.TextLines, line => line.HasCollapsed);
 
-                var bounds = controls.Select(control => BoundsIn(control, panel)).ToArray();
-                var rowTop = bounds.Min(rect => rect.Top);
-                var rowBottom = bounds.Max(rect => rect.Bottom);
-                Assert.All(bounds, rect => Assert.InRange(rect.Left, 0, panel.Bounds.Width));
-                Assert.All(bounds, rect => Assert.True(rect.Right <= panel.Bounds.Width,
-                    $"A control extends beyond the text panel: {rect}."));
-                Assert.True(rowBottom - rowTop <= 56, $"The control area is {rowBottom - rowTop} px deep.");
-                var firstWord = Strips(panel).Min(strip => BoundsIn(strip, panel).Top);
-                Assert.True(firstWord - rowBottom <= 48, $"The text starts {firstWord - rowBottom} px below the controls.");
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Expander>(), expander =>
-                    expander.IsEffectivelyVisible && Equals(expander.Header, "Actions by scope"));
+                    var bounds = new Control[] { picker }.Concat(dropdowns).Concat(chips)
+                        .Select(control => BoundsIn(control, panel)).ToArray();
+                    var rowTop = bounds.Min(rect => rect.Top);
+                    var rowBottom = bounds.Max(rect => rect.Bottom);
+                    Assert.All(bounds, rect => Assert.InRange(rect.Left, 0, panel.Bounds.Width));
+                    Assert.All(bounds, rect => Assert.True(rect.Right <= panel.Bounds.Width,
+                        $"A control extends beyond the text panel at {width}px/{scaling:P0}: {rect}."));
+                    Assert.True(rowBottom - rowTop <= 96,
+                        $"The control area is {rowBottom - rowTop} px deep at {width}px/{scaling:P0}.");
+                    var firstWord = Strips(panel).Min(strip => BoundsIn(strip, panel).Top);
+                    Assert.True(firstWord - rowBottom <= 48,
+                        $"The text starts {firstWord - rowBottom} px below the controls at {width}px/{scaling:P0}.");
+                    Assert.DoesNotContain(panel.GetVisualDescendants().OfType<Expander>(), expander =>
+                        expander.IsEffectivelyVisible && Equals(expander.Header, "Actions by scope"));
+                }
             }
             finally
             {

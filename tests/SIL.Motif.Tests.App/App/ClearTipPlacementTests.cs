@@ -58,4 +58,12 @@ public sealed class ClearTipPlacementTests
     {
         Assert.Equal(ClearTipPlacement.Sides[0], ClearTipPlacement.Choose(Owner, new Size(2000, 2000), Window, []));
     }
+
+    [Fact]
+    public void ATipMayTouchAControlWithoutCoveringIt()
+    {
+        Rect[] below = [new(350, 400, 200, 40)];
+
+        Assert.Equal((PopupAnchor.Top, PopupGravity.Top), ClearTipPlacement.Choose(Owner, Tip, Window, below));
+    }
 }

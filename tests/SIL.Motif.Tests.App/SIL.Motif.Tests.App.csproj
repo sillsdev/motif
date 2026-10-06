@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
     <Compile Include="..\..\tools\TokenHygiene\token-hygiene.cs" Link="TokenHygiene\token-hygiene.cs" />
   </ItemGroup>
 
@@ -29,5 +30,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <AvaloniaResource Include="..\..\src\SIL.Motif.App\Assets\Fonts\Andika-*.ttf"
+                      Link="Assets\Fonts\%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

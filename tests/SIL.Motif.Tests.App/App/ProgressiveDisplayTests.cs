@@ -585,6 +585,7 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(column.ActualWidth > 0);
                     column.Width = new DataGridLength(column.ActualWidth, DataGridLengthUnitType.Pixel);
                 }
+                grid.ScrollIntoView(grid.ItemsSource!.Cast<StatsRowViewModel>().First(), numericColumns[0]);
                 PageScreenshots.Settle(window);
                 var heatCellTexts = grid.GetVisualDescendants().OfType<HeatCell>()
                     .Where(cell => cell.IsEffectivelyVisible)
@@ -656,6 +657,23 @@ public sealed class ProgressiveDisplayTests
                     Assert.True(origin.X >= -2 && origin.Y >= -2 &&
                         origin.X + word.Bounds.Width <= ancestor.Bounds.Width + 2 &&
                         origin.Y + word.Bounds.Height <= ancestor.Bounds.Height + 2,
+                        $"The revealed word at {origin} with size {word.Bounds.Size} is clipped by " +
+                        $"{ancestor.GetType().Name} with bounds {ancestor.Bounds}.");
+                }
+                LayoutAssertions.AssertCurrent(grid);
+
+                var knownRow = Assert.Single(grid.ItemsSource!.Cast<StatsRowViewModel>(), item => item.Word == "alikula");
+                grid.ScrollIntoView(knownRow, wordColumn);
+                PageScreenshots.Settle(window);
+                var knownWord = Assert.Single(grid.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == knownRow.Word);
+                LayoutAssertions.AssertCurrent(grid);
+                foreach (var ancestor in knownWord.GetVisualAncestors().OfType<Control>().Where(control => control.ClipToBounds))
+                {
+                    var origin = knownWord.TranslatePoint(default, ancestor)!.Value;
+                    Assert.True(origin.X >= -2 && origin.Y >= -2 &&
+                        origin.X + knownWord.Bounds.Width <= ancestor.Bounds.Width + 2 &&
+                        origin.Y + knownWord.Bounds.Height <= ancestor.Bounds.Height + 2,
                         $"The revealed word is clipped by {ancestor.GetType().Name}.");
                 }
                 LayoutAssertions.AssertCurrent(grid);

@@ -13,6 +13,7 @@
     <StaticResource x:Key="Component.MatrixCell.Radius" ResourceKey="Primitive.Radius.8" />
     <StaticResource x:Key="Component.MatrixCell.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.MatrixCell.ShortHeight" ResourceKey="Primitive.Size.30" />
+    <StaticResource x:Key="Component.MatrixCell.ShortChosenPadding" ResourceKey="Primitive.Inset.8_2_8_2" />
     <StaticResource x:Key="Component.MatrixCell.ShortSpacing" ResourceKey="Primitive.Space.1" />
     <StaticResource x:Key="Component.MatrixCell.HiddenPlacesSize" ResourceKey="Primitive.Space.0" />
     <StaticResource x:Key="Component.MatrixCell.MarkerSize" ResourceKey="Primitive.Size.8" />
@@ -135,6 +136,9 @@
   <!-- The chosen cells' list keeps a thin inset, so its word rows keep the width every column head needs. -->
   <Style Selector="Border.card.matrixChosen">
     <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.Padding}" />
+  </Style>
+  <Style Selector=":is(UserControl).shortMatrix Border.card.matrixChosen">
+    <Setter Property="Padding" Value="{DynamicResource Component.MatrixCell.ShortChosenPadding}" />
   </Style>
   <Style Selector="StackPanel.matrixChosenMarks">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />

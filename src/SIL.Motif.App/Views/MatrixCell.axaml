@@ -18,7 +18,7 @@
                ToolTip.Tip="{Binding PendingChangeStatus}" views:ClearTipPlacement.IsEnabled="True" />
       <StackPanel VerticalAlignment="Center">
         <TextBlock Classes="matrixCellCount" Text="{Binding CountText}" TextWrapping="Wrap" />
-        <StackPanel Classes="matrixCellDetails">
+        <StackPanel x:Name="CellDetails" Classes="matrixCellDetails">
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <TextBlock Classes="matrixCellPlaces" Text="{Binding PlacesText}" IsVisible="{Binding ShowsPlaces}" />
             <TextBlock Grid.Column="1" Classes="matrixCellLabel" Text="{Binding Label}"

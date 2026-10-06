@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Headless;
@@ -132,11 +133,20 @@ internal static class AvaloniaHeadlessPlatform
                 if (!Dispatcher.UIThread.CheckAccess())
                     throw new InvalidOperationException("Avalonia's UI dispatcher belongs to another thread.");
 
-                // The app's own renderer and system fonts, so text measures as it does on screen, not as a stub guesses.
-                AppBuilder.Configure<SIL.Motif.App.App>()
-                    .UseSkia()
-                    .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
-                    .SetupWithoutStarting();
+                var previousUiCulture = CultureInfo.CurrentUICulture;
+                try
+                {
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
+                    AppBuilder.Configure<SIL.Motif.App.App>()
+                        .With(SIL.Motif.App.UiFontFamilies.OptionsForLanguage("en"))
+                        .UseSkia()
+                        .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+                        .SetupWithoutStarting();
+                }
+                finally
+                {
+                    CultureInfo.CurrentUICulture = previousUiCulture;
+                }
                 ready.SetResult();
             }
             catch (Exception exception)

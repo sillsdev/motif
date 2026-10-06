@@ -41,7 +41,6 @@ public sealed class ExplainedWordCardCaptureTests
             {
                 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
                 Application.Current.RequestedThemeVariant = ThemeVariant.Light;
-                WalkthroughFonts.Register();
                 using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
                     startGate: gate, timeProvider: clock, parserPath: project.ParserPath);
                 walkthrough.Window.Width = WalkthroughArtifacts.Width;

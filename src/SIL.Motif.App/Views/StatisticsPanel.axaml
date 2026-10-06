@@ -101,6 +101,7 @@
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
               <views:MarkChip Mark="{Binding CompletionMark}" Text="{Binding CompletionShort}" Compact="True"
+                                 TextTrimming="CharacterEllipsis"
                                  Margin="{DynamicResource Component.Statistics.CellMargin}" HorizontalAlignment="Left" IsVisible="{Binding HasCompletion}"
                                  ToolTip.Tip="{Binding CompletionStatus}" />
             </DataTemplate>

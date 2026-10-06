@@ -50,6 +50,11 @@ internal static class TokenHygiene
         "RowDefinitions", "ColumnDefinitions",
     };
 
+    internal static readonly HashSet<string> FontFamilyProperties = new(StringComparer.Ordinal)
+    {
+        "FontFamily",
+    };
+
     private static readonly HashSet<string> LanguageStyleProperties = new(StringComparer.Ordinal)
     {
         "FontFamily", "FontFeatures", "FlowDirection",
@@ -71,7 +76,7 @@ internal static class TokenHygiene
     // Elements whose text content is a value: a raw one is allowed only in the primitive file.
     private static readonly HashSet<string> ValueElements = new(StringComparer.Ordinal)
     {
-        "Thickness", "CornerRadius", "Double", "Single", "Int32", "GridLength", "Color", "SolidColorBrush",
+        "Thickness", "CornerRadius", "Double", "Single", "Int32", "GridLength", "Color", "SolidColorBrush", "FontFamily",
     };
 
     private static readonly HashSet<string> BindingExtensions = new(StringComparer.Ordinal)
@@ -95,6 +100,8 @@ internal static class TokenHygiene
         + @")\s*(?<![=!<>+\-*/])=(?![=>])");
     private static readonly Regex CodeLanguageStyleAssignment = new(
         @"\b(?:" + string.Join('|', LanguageStyleProperties) + @")\s*(?<![=!<>+\-*/])=(?![=>])");
+    private static readonly Regex CodeFontFamilyLiteral = new(
+        @"\b(?:FontFamily\s*=\s*|new\s+(?:Avalonia\.Media\.)?FontFamily\s*\(\s*)""[^""]+""");
     private static readonly Regex NumericLiteral = new(@"(?<![\w.])\d+(?:\.\d+)?[dfmDFM]?(?![\w.])");
     private static readonly Regex StringLiteral = new(@"""(?:[^""\\]|\\.)*""");
     private static readonly Regex CodePrimitiveKey = new("\"Primitive\\.");
@@ -333,7 +340,8 @@ internal static class TokenHygiene
             if (name == "Setter" && element.Attribute("Property") is { } property && element.Attribute("Value") is { } value)
             {
                 var propertyName = LastSegment(property.Value.Trim('(', ')'));
-                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName))
+                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName)
+                    && !IsBoundProjectFont(propertyName, value.Value))
                     found.Add(new(path, LineOf(value), "linguistic-style", $"{propertyName} is applied through WritingSystemTextStyleResolver"));
                 CheckValue(found, path, layer, propertyName, value.Value, LineOf(value));
             }
@@ -344,7 +352,8 @@ internal static class TokenHygiene
                 if (name == "Setter" && attribute.Name.LocalName is "Property" or "Value") continue;
                 var line = LineOf(attribute);
                 var propertyName = LastSegment(attribute.Name.LocalName);
-                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName))
+                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName)
+                    && !IsBoundProjectFont(propertyName, attribute.Value))
                     found.Add(new(path, line, "linguistic-style", $"{propertyName} is applied through WritingSystemTextStyleResolver"));
                 if (layer == Layer.Intent)
                 {
@@ -368,10 +377,26 @@ internal static class TokenHygiene
                 continue;
             }
             var shown = $"<{name}>{text}</{name}>";
-            if (ValueElements.Contains(name)) CheckValue(found, path, layer, name is "Color" or "SolidColorBrush" ? "Color" : "Width", text, elementLine, shown);
-            else if (name.Contains('.')) CheckValue(found, path, layer, LastSegment(name), text, elementLine, shown);
+            if (ValueElements.Contains(name))
+                CheckValue(found, path, layer,
+                    name is "Color" or "SolidColorBrush" ? "Color" : name == "FontFamily" ? name : "Width",
+                    text, elementLine, shown);
+            else if (name.Contains('.'))
+            {
+                var propertyName = LastSegment(name);
+                if (layer == Layer.View && LanguageStyleProperties.Contains(propertyName)
+                    && !IsBoundProjectFont(propertyName, text))
+                    found.Add(new(path, elementLine, "linguistic-style", $"{propertyName} is applied through WritingSystemTextStyleResolver"));
+                CheckValue(found, path, layer, propertyName, text, elementLine, shown);
+            }
         }
         return found;
+    }
+
+    private static bool IsBoundProjectFont(string property, string value)
+    {
+        var markup = Markup.Match(value.Trim());
+        return property == "FontFamily" && markup.Success && BindingExtensions.Contains(markup.Groups[1].Value);
     }
 
     private static void CheckIntentAttribute(List<Violation> found, string path, XAttribute attribute, int line)
@@ -407,7 +432,15 @@ internal static class TokenHygiene
         var literal = shown ?? $"{property}=\"{value}\"";
         var colour = ColourProperties.Contains(property);
         var size = SizeProperties.Contains(property);
+        var fontFamily = FontFamilyProperties.Contains(property);
         var markup = Markup.Match(value);
+
+        if (layer == Layer.View && fontFamily)
+        {
+            if (markup.Success && BindingExtensions.Contains(markup.Groups[1].Value)) return;
+            found.Add(new(path, line, "ui-font-in-view", $"{literal}: views use the application font or a bound project font"));
+            return;
+        }
 
         if (markup.Success)
         {
@@ -415,12 +448,12 @@ internal static class TokenHygiene
             if (extension is "DynamicResource" or "StaticResource")
             {
                 var key = KeyOf(markup.Groups[2].Value);
-                if (colour || size) CheckReference(found, path, layer, colour, property, extension, key, line);
+                if (colour || size || fontFamily) CheckReference(found, path, layer, colour, property, extension, key, line);
                 else if (layer == Layer.View && key.StartsWith("Primitive.", StringComparison.Ordinal))
                     found.Add(new(path, line, "primitive-in-view", $"{property} names '{key}'; a view names Intent or Component keys"));
                 return;
             }
-            if ((colour || size) && !BindingExtensions.Contains(extension))
+            if ((colour || size || fontFamily) && !BindingExtensions.Contains(extension))
                 found.Add(new(path, line, "not-a-token", $"{property}=\"{value}\": name an Intent or Component key"));
             else if (layer == Layer.View && AnyPrimitiveReference.IsMatch(value))
                 found.Add(new(path, line, "primitive-in-view", $"{property}=\"{value}\": a view names Intent or Component keys"));
@@ -435,6 +468,11 @@ internal static class TokenHygiene
         if (size)
         {
             if (!IsNeutralSize(value)) found.Add(new(path, line, "literal-size", literal));
+            return;
+        }
+        if (fontFamily)
+        {
+            if (value.Length > 0) found.Add(new(path, line, "literal-font-family", literal));
             return;
         }
         if (HexColour.IsMatch(value)) found.Add(new(path, line, "literal-colour", $"{property}=\"{value}\""));
@@ -493,6 +531,8 @@ internal static class TokenHygiene
             foreach (Match m in CodeLanguageStyleAssignment.Matches(code))
                 found.Add(new(path, line, "linguistic-style", $"{m.Groups[0].Value.Trim()} is applied through WritingSystemTextStyleResolver"));
             foreach (Match m in CodeColour.Matches(code)) found.Add(new(path, line, "literal-colour", m.Value));
+            foreach (Match m in CodeFontFamilyLiteral.Matches(code))
+                found.Add(new(path, line, "literal-font-family", m.Value));
             var sizeLiteral = false;
             foreach (Match m in CodeSizeConstructor.Matches(code))
             {

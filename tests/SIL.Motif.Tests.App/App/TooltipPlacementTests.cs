@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Styling;
@@ -37,6 +38,7 @@ public sealed class TooltipPlacementTests
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
+        ["Parse stopped words again"] = "the Matrix fills every side of the rerun control, so its tip covers one nearby cell or action",
     };
 
     [Fact]
@@ -105,7 +107,8 @@ public sealed class TooltipPlacementTests
                             placed++;
                             var covered = Covered(scenes.Window, control, tip).ToList();
                             if (covered.Count > 0 && Gaps.ContainsKey(owner.Key)) gapsSeen.Add(owner.Key);
-                            else failures.AddRange(covered.Select(name => $"{where}: covers {name}"));
+                            else failures.AddRange(covered.Select(name =>
+                                $"{where}: covers {name}; {PlacementDetails(scenes.Window, control, tip)}"));
                             if (!new Rect(scenes.Window.Bounds.Size).Contains(Area(tip, scenes.Window)))
                                 failures.Add($"{where}: leaves the window at {Area(tip, scenes.Window)}");
                             ToolTip.SetIsOpen(control, false);
@@ -255,10 +258,29 @@ public sealed class TooltipPlacementTests
                 owner.GetVisualAncestors().Contains(other) || other.GetVisualAncestors().Contains(tip)) continue;
             if (other.GetSelfAndVisualAncestors().OfType<Visual>().Any(visual => visual.Opacity == 0)) continue;
             var shown = Shown(other, window);
-            if (shown.Width > 0 && shown.Height > 0 && shown.Intersects(area))
-                yield return NameOf(other);
+            if (shown.Width > 0 && shown.Height > 0 && Overlaps(shown, area))
+                yield return $"{NameOf(other)} ({other.GetType().Name}) at {shown} overlaps tooltip at {area}";
         }
     }
+
+    private static string PlacementDetails(Window window, Control owner, ToolTip tip)
+    {
+        var ownerArea = Area(owner, window);
+        var obstacles = window.GetVisualDescendants().OfType<Control>()
+            .Where(other => other != owner && IsInteractive(other) && other.IsEffectivelyVisible &&
+                !other.GetVisualAncestors().Contains(owner) && !owner.GetVisualAncestors().Contains(other) &&
+                !other.GetSelfAndVisualAncestors().OfType<Visual>().Any(visual => visual is ToolTip || visual.Opacity == 0))
+            .Select(other => Shown(other, window))
+            .Where(shown => shown.Width > 0 && shown.Height > 0)
+            .ToList();
+        var placement = ClearTipPlacement.Choose(ownerArea, tip.Bounds.Size, new Rect(window.Bounds.Size), obstacles);
+        var planned = ClearTipPlacement.Area(ownerArea, tip.Bounds.Size, placement.Anchor, placement.Gravity);
+        return $"owner at {ownerArea}; planned {placement} at {planned}; popup {tip.Bounds.Size}";
+    }
+
+    private static bool Overlaps(Rect first, Rect second) =>
+        first.Left < second.Right && first.Right > second.Left &&
+        first.Top < second.Bottom && first.Bottom > second.Top;
 
     private static string NameOf(Control control) =>
         AutomationProperties.GetName(control) is { Length: > 0 } name ? name
@@ -267,8 +289,9 @@ public sealed class TooltipPlacementTests
             is { } words ? $"{control.GetType().Name} '{words}'"
         : control.GetType().Name;
 
-    private static bool IsInteractive(Control control) => control is Button or TextBox or ComboBox or NumericUpDown or
-        ListBoxItem or TreeViewItem or MenuItem or Slider or MatrixCell || control is Border { Focusable: true };
+    private static bool IsInteractive(Control control) => control is Button or SplitButton or TextBox or ComboBox or
+        NumericUpDown or ListBoxItem or TreeViewItem or MenuItem or Slider or ScrollBar or MatrixCell ||
+        control is Border { Focusable: true };
 
     // The part of a control left after every clipping ancestor, such as a scrolled list, has cut it.
     private static Rect Shown(Control control, Window window)

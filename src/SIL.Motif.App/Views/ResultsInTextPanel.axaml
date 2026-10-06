@@ -9,8 +9,8 @@
   <Grid ColumnDefinitions="*"
         Margin="{DynamicResource Component.TextsPage.ReaderInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-      <DockPanel LastChildFill="True">
-        <ComboBox x:Name="ResultsInTextPanelTextsItems" DockPanel.Dock="Left" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+        <ComboBox x:Name="ResultsInTextPanelTextsItems" Grid.Column="0" ItemsSource="{Binding InText.Texts}" SelectedItem="{Binding InText.SelectedText}"
                   IsVisible="{Binding InText.HasTexts}" VerticalAlignment="Center"
                   MinWidth="{DynamicResource Component.TextsPage.TextPickerWidth}"
                   MaxWidth="{DynamicResource Component.TextsPage.TextPickerMaxWidth}"
@@ -23,10 +23,10 @@
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
-        <TextBox x:Name="ReaderWordSearch" DockPanel.Dock="Left" Text="{Binding InText.SearchText}"
+        <TextBox x:Name="ReaderWordSearch" Grid.Column="1" Text="{Binding InText.SearchText}"
                  PlaceholderText="Search words..." Width="{DynamicResource Component.TextsPage.CompareSearchWidth}"
                  IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="Search words in Analyze texts" />
-        <Button DockPanel.Dock="Right" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
+        <Button Grid.Column="4" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Select words for actions">
           <Button.Flyout>
@@ -104,7 +104,7 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button DockPanel.Dock="Right" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center"
+        <Button Grid.Column="3" Classes="menuButton" Content="Read ▾" VerticalAlignment="Center"
                 Margin="{DynamicResource Component.TextsPage.ReaderActionGap}"
                 Padding="{DynamicResource Component.TextsPage.ReaderActionPadding}"
                 IsVisible="{Binding InText.HasResults}" AutomationProperties.Name="Mark read or unread">
@@ -128,9 +128,8 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <ScrollViewer VerticalAlignment="Center" HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Disabled" IsVisible="{Binding InText.HasResults}">
-          <StackPanel Orientation="Horizontal">
+        <WrapPanel x:Name="ResultsInTextFilterChips" Grid.Column="2" VerticalAlignment="Center"
+                   IsVisible="{Binding InText.HasResults}">
           <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
@@ -157,9 +156,8 @@
                             IsVisible="{Binding InText.HasWarningEvidence}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NamedInWarning}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NamedInWarning}" />
-          </StackPanel>
-        </ScrollViewer>
-      </DockPanel>
+        </WrapPanel>
+      </Grid>
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
         <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />

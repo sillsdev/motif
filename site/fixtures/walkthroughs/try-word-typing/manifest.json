@@ -23,7 +23,7 @@
         {
           "x": 220,
           "y": 166,
-          "width": 70,
+          "width": 69,
           "height": 36,
           "label": "1",
           "caption": "Word sent to PanGloss and its trace result"

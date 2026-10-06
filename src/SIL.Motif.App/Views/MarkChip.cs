@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
@@ -27,12 +28,16 @@ public sealed class MarkChip : Border
     public static readonly StyledProperty<bool> WrapTextProperty =
         AvaloniaProperty.Register<MarkChip, bool>(nameof(WrapText));
 
+    public static readonly StyledProperty<TextTrimming> TextTrimmingProperty =
+        AvaloniaProperty.Register<MarkChip, TextTrimming>(nameof(TextTrimming));
+
     static MarkChip()
     {
         MarkProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
         TextProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
         CompactProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
         WrapTextProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
+        TextTrimmingProperty.Changed.AddClassHandler<MarkChip>((chip, _) => chip.Rebuild());
     }
 
     public MarkChip()
@@ -72,6 +77,13 @@ public sealed class MarkChip : Border
         set => SetValue(WrapTextProperty, value);
     }
 
+    /// <summary>Whether the words stop at the chip's edge when a containing cell is narrow.</summary>
+    public TextTrimming TextTrimming
+    {
+        get => GetValue(TextTrimmingProperty);
+        set => SetValue(TextTrimmingProperty, value);
+    }
+
     // Inside a button the button owns the pointer, so the chip's words are plain there and selectable elsewhere.
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -107,6 +119,7 @@ public sealed class MarkChip : Border
         if (Text is { Length: > 0 } text)
         {
             var words = Words(text, _insideButton);
+            words.TextTrimming = TextTrimming;
             words.Classes.Add("markWord");
             if (Mark is { } owner) words.Classes.AddRange([owner.KindClass, owner.KindClass + "Mark", owner.Value]);
             if (row is Grid gridRow) Grid.SetColumn(words, glyph is null ? 0 : 1);

@@ -63,6 +63,9 @@
         <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Primitives.axaml" />
         <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Intent.axaml" />
       </ResourceDictionary.MergedDictionaries>
+      <StaticResource x:Key="DefaultFontFamily" ResourceKey="Primitive.Font.UI" />
+      <StaticResource x:Key="ContentControlThemeFontFamily" ResourceKey="Primitive.Font.UI" />
+      <StaticResource x:Key="SemiFontFamilyRegular" ResourceKey="Primitive.Font.UI" />
     </ResourceDictionary>
   </Application.Resources>
 </Application>

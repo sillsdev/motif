@@ -10,8 +10,8 @@ using SIL.Motif.Tests.App.Walkthrough;
 
 namespace SIL.Motif.Tests.App.WalkthroughHelpers;
 
-[Collection(LcmCacheTestCollection.Name)]
-public sealed class WalkthroughArtifactTests
+[Collection(AvaloniaHeadlessCollection.Name)]
+public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
     public void BaselineDiagnosticsStayUnderTheTestResultsArtifactRoot()
@@ -35,10 +35,6 @@ public sealed class WalkthroughArtifactTests
         try
         {
             var repositoryRoot = FindRepositoryRoot();
-            var fontDirectory = Path.Combine(root, "tests", "SIL.Motif.Tests.App", "Assets", "Fonts");
-            Directory.CreateDirectory(fontDirectory);
-            File.Copy(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App", "Assets", "Fonts", "Andika-Bold.ttf"),
-                Path.Combine(fontDirectory, "Andika-Bold.ttf"));
             var helpPath = Path.Combine(root, "src", "SIL.Motif.Help", "Content", "en", "walkthroughs", "example.json");
             Directory.CreateDirectory(Path.GetDirectoryName(helpPath)!);
             File.WriteAllText(helpPath,
@@ -52,7 +48,8 @@ public sealed class WalkthroughArtifactTests
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS", "1");
             Environment.SetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS", "1");
 
-            WithScreenshotOnlyWalkthroughOutput(() => WalkthroughArtifacts.Write(root, script, help, [capture]));
+            avalonia.Invoke(() => WithScreenshotOnlyWalkthroughOutput(
+                () => WalkthroughArtifacts.Write(root, script, help, [capture])));
             Assert.Equal("1", Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_CLIPS"));
             Assert.Equal("1", Environment.GetEnvironmentVariable("MOTIF_WALKTHROUGH_REQUIRE_CLIPS"));
 

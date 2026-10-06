@@ -21,9 +21,9 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 1016,
+          "x": 997,
           "y": 305,
-          "width": 216,
+          "width": 213,
           "height": 32,
           "label": "1",
           "caption": "Apply is available after measuring the change"
@@ -44,10 +44,10 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 1001,
-          "y": 435,
-          "width": 246,
-          "height": 68,
+          "x": 961,
+          "y": 415,
+          "width": 286,
+          "height": 46,
           "label": "1",
           "caption": "Receipt for the applied change"
         }
@@ -67,9 +67,9 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 370,
+          "x": 367,
           "y": 16,
-          "width": 696,
+          "width": 701,
           "height": 21,
           "label": "1",
           "caption": "Refresh captured a Baseline; Parse all words is a separate action"

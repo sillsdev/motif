@@ -59,7 +59,7 @@ public sealed class TokenHygieneTests
     [InlineData("FontFeatures=\"smcp=1\"")]
     [InlineData("FlowDirection=\"RightToLeft\"")]
     public void AViewCannotAssignLanguageTextSettingsOutsideTheResolver(string attribute) =>
-        Assert.Equal(["linguistic-style"], Categories(View, Element(attribute)));
+        Assert.Contains("linguistic-style", Categories(View, Element(attribute)));
 
     [Fact]
     public void ViewCodeCannotAssignLanguageTextSettingsOutsideTheResolver() =>
@@ -68,6 +68,22 @@ public sealed class TokenHygieneTests
     [Fact]
     public void LinguisticTextCannotUseAHardCodedFontSize() =>
         Assert.Equal(["literal-size"], Categories(View, Document("<TextBlock FontSize=\"20\" WritingSystemText.StyleName=\"Normal\" />")));
+
+    [Fact]
+    public void AViewCannotNameTheInterfaceFont()
+    {
+        var categories = Categories(View, Element("FontFamily=\"Andika\""));
+        Assert.Contains("ui-font-in-view", categories);
+        Assert.Contains("linguistic-style", categories);
+    }
+
+    [Fact]
+    public void AViewCannotChooseTheInterfaceFontToken()
+    {
+        var categories = Categories(View, Element("FontFamily=\"{DynamicResource Primitive.Font.UI}\""));
+        Assert.Contains("ui-font-in-view", categories);
+        Assert.Contains("linguistic-style", categories);
+    }
 
     [Fact]
     public void ABrushWrittenAsAPropertyElementFails()
@@ -120,6 +136,7 @@ public sealed class TokenHygieneTests
     [InlineData("Background=\"{DynamicResource Intent.Surface}\"")]
     [InlineData("Margin=\"{DynamicResource Component.Card.Padding}\"")]
     [InlineData("FontSize=\"{StaticResource Intent.Type.Body}\"")]
+    [InlineData("FontFamily=\"{Binding FormFont}\"")]
     [InlineData("Width=\"{Binding ColumnWidth}\"")]
     [InlineData("Foreground=\"{TemplateBinding Foreground}\"")]
     [InlineData("Background=\"{x:Null}\"")]
@@ -153,6 +170,7 @@ public sealed class TokenHygieneTests
     [InlineData("Width = 12 + 8;", "literal-size")]
     [InlineData("var bar = new Grid { Height = baseline * 2, ClipToBounds = true };", "literal-size")]
     [InlineData("FontSize = SizeFor(12),", "literal-size")]
+    [InlineData("var label = new TextBlock { FontFamily = new FontFamily(\"Andika\") };", "literal-font-family")]
     [InlineData("Margin = new Thickness(Math.Max(4, inset));", "literal-size")]
     [InlineData("var radius = new CornerRadius(Math.Min(radius, 3));", "literal-size")]
     [InlineData("var stop = new GradientStop { Color = new Color(255, 255, 0, 0) };", "literal-colour")]

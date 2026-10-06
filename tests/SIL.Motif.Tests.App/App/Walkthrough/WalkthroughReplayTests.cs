@@ -33,6 +33,31 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public void WalkthroughFontCollectionContainsAndikaTextFaces()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            WalkthroughFonts.Register();
+            var collection = WalkthroughFonts.CreateCollection();
+            foreach (var (weight, style) in new[]
+                     {
+                         (FontWeight.Normal, FontStyle.Normal),
+                         (FontWeight.Bold, FontStyle.Normal),
+                         (FontWeight.SemiBold, FontStyle.Normal),
+                         (FontWeight.Normal, FontStyle.Italic),
+                     })
+            {
+                var found = collection.TryGetGlyphTypeface("Andika", style, weight,
+                    FontStretch.Normal, out var glyphTypeface);
+                Assert.True(found, $"Andika {style} {weight} was not available in {collection.Key}.");
+                Assert.StartsWith("Andika", glyphTypeface!.FamilyName, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public void LookingUpAProjectMenuItemDoesNotOpenItsFlyout()
     {
         var managedRoot = Path.Combine(Path.GetTempPath(), "SIL.Motif.Walkthrough", "lookup",
@@ -451,14 +476,17 @@ internal static class WalkthroughReplayTestRunner
 internal static class WalkthroughFonts
 {
     public const string DejaVuSansFamily = "fonts:MotifWalkthrough#DejaVu Sans";
+    private const string CollectionKey = "fonts:MotifWalkthrough";
+    private const string Assets = "avares://SIL.Motif.Tests.App/Assets/Fonts";
     private static bool _registered;
+
+    public static EmbeddedFontCollection CreateCollection() =>
+        new(new Uri(CollectionKey), new Uri(Assets));
 
     public static void Register()
     {
         if (_registered) return;
-        FontManager.Current.AddFontCollection(new EmbeddedFontCollection(
-            new Uri("fonts:MotifWalkthrough"),
-            new Uri("avares://SIL.Motif.Tests.App/Assets/Fonts")));
+        FontManager.Current.AddFontCollection(CreateCollection());
         _registered = true;
     }
 }

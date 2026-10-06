@@ -112,7 +112,8 @@
   <Thickness x:Key="Primitive.Inset.2_2_2_2">2</Thickness>
   <Thickness x:Key="Primitive.Inset.1p2_1p2_1p2_1p2">1.2</Thickness>
   <Thickness x:Key="Primitive.Inset.16_16_16_16">16</Thickness>
-  <Thickness x:Key="Primitive.Inset.16_8_16_8">16,8,16,8</Thickness>
+  <Thickness x:Key="Primitive.Inset.16_4_16_4">16,4,16,4</Thickness>
+  <Thickness x:Key="Primitive.Inset.8_2_8_2">8,2,8,2</Thickness>
   <Thickness x:Key="Primitive.Inset.14_10_14_10">14,10</Thickness>
   <Thickness x:Key="Primitive.Inset.5_1_5_1">5,1,5,1</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_2_0">0,0,2,0</Thickness>
@@ -187,6 +188,7 @@
 
   <x:Double x:Key="Primitive.Type.10p5">10.5</x:Double>
   <x:Double x:Key="Primitive.Type.11">11</x:Double>
+  <FontFamily x:Key="Primitive.Font.UI">fonts:Motif#Andika</FontFamily>
   <StaticResource x:Key="Primitive.Type.12" ResourceKey="SemiFontSizeSmall" />
   <x:Double x:Key="Primitive.Type.12p5">12.5</x:Double>
   <FontFamily x:Key="Primitive.Font.Mono">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>

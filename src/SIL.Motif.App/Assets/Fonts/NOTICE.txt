@@ -1,0 +1,4 @@
+Andika 7.000
+Copyright (c) 2004-2025 SIL Global
+Source: https://software.sil.org/andika/download/
+License: SIL Open Font License 1.1, included as OFL.txt.

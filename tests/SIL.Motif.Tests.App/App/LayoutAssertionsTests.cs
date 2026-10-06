@@ -227,7 +227,6 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            Walkthrough.WalkthroughFonts.Register();
             var glyph = new Border
             {
                 Width = 14,
@@ -238,7 +237,6 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             var window = new Window { Content = glyph, Width = 120, Height = 80 };
             try
             {
-                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
                 window.Show();
                 PageScreenshots.Settle(window);
                 LayoutAssertions.AssertCurrent(window);
@@ -255,7 +253,6 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            Walkthrough.WalkthroughFonts.Register();
             var row = new Border
             {
                 Classes = { "stripRow", "analysisRow" },
@@ -288,7 +285,8 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             var window = new Window { Content = row, Width = 260, Height = 80 };
             try
             {
-                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                window.SetValue(TextElement.FontFamilyProperty,
+                    new FontFamily("fonts:Motif#Andika"));
                 window.Show();
                 PageScreenshots.Settle(window);
                 var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
@@ -309,7 +307,6 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            Walkthrough.WalkthroughFonts.Register();
             var row = new Border
             {
                 Classes = { "stripRow", "analysisRow" },
@@ -342,7 +339,8 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             var window = new Window { Content = row, Width = 260, Height = 80 };
             try
             {
-                window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
+                window.SetValue(TextElement.FontFamilyProperty,
+                    new FontFamily("fonts:Motif#Andika"));
                 window.Show();
                 PageScreenshots.Settle(window);
                 LayoutAssertions.AssertMorphemeGlyphsFitAnalysisRows(window);

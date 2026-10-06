@@ -19,7 +19,16 @@ public sealed partial class App : Application
     /// <summary>The session of the desktop lifetime most recently started, or <see langword="null"/>.</summary>
     public MotifDesktopSession? Session { get; private set; }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        UiFontFamilies.RegisterEmbeddedFontCollection(Avalonia.Media.FontManager.Current);
+        AvaloniaXamlLoader.Load(this);
+        var family = new Avalonia.Media.FontFamily(UiFontFamilies.CurrentFamilyName);
+        Resources["Primitive.Font.UI"] = family;
+        Resources["DefaultFontFamily"] = family;
+        Resources["ContentControlThemeFontFamily"] = family;
+        Resources["SemiFontFamilyRegular"] = family;
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {

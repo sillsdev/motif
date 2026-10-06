@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using SkiaSharp;
 using Xunit;
 
@@ -240,8 +241,7 @@ internal static class WalkthroughArtifacts
         using var canvas = new SKCanvas(bitmap);
         using var stroke = new SKPaint { Color = new SKColor(198, 55, 49), IsAntialias = true, StrokeWidth = 3, Style = SKPaintStyle.Stroke };
         using var fill = new SKPaint { Color = new SKColor(198, 55, 49), IsAntialias = true, Style = SKPaintStyle.Fill };
-        using var typeface = SKTypeface.FromFile(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
-            "Assets", "Fonts", "Andika-Bold.ttf"));
+        using var typeface = LoadBundledFont("Andika-Bold.ttf");
         using var number = new SKPaint { Color = SKColors.White, IsAntialias = true };
         using var font = new SKFont(typeface, 20);
         using var captionFont = new SKFont(typeface, 16);
@@ -277,8 +277,7 @@ internal static class WalkthroughArtifacts
     {
         using var strip = SKBitmap.Decode(png)
             ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
-        using var typeface = SKTypeface.FromFile(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
-            "Assets", "Fonts", "Andika-Bold.ttf"));
+        using var typeface = LoadBundledFont("Andika-Bold.ttf");
         using var numberPaint = new SKPaint { Color = SKColors.White, IsAntialias = true };
         using var captionPaint = new SKPaint { Color = new SKColor(55, 45, 42), IsAntialias = true };
         using var leaderPaint = new SKPaint
@@ -362,8 +361,7 @@ internal static class WalkthroughArtifacts
     {
         using var strip = SKBitmap.Decode(capture.Png)
             ?? throw new InvalidDataException("Could not read rendered walkthrough PNG.");
-        using var typeface = SKTypeface.FromFile(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
-            "Assets", "Fonts", "Andika-Bold.ttf"));
+        using var typeface = LoadBundledFont("Andika-Bold.ttf");
         using var captionFont = new SKFont(typeface, (float)(16 * capture.Scale));
         var layout = ArrangeCaptionColumnLayout(capture.Callouts, strip.Width, strip.Height, captionFont, capture.Scale);
         var repeatedCaption = layout.Callouts.GroupBy(callout => callout.Caption, StringComparer.Ordinal)
@@ -921,6 +919,13 @@ internal static class WalkthroughArtifacts
             Png = data.ToArray(),
             SourceFrameCropBounds = new Rect(left, top, cropWidth, cropHeight),
         };
+    }
+
+    private static SKTypeface LoadBundledFont(string fileName)
+    {
+        using var stream = AssetLoader.Open(new Uri($"avares://SIL.Motif.App/Assets/Fonts/{fileName}"));
+        return SKTypeface.FromStream(stream)
+            ?? throw new InvalidDataException($"Bundled font '{fileName}' could not be loaded.");
     }
 }
 

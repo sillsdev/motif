@@ -200,8 +200,11 @@
                                                       IsVisible="{Binding ProducerSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                               <views:CopyableTextBlock Text="{Binding CapturedSourceText}" Classes="traceNotation" TextWrapping="Wrap"
                                                       IsVisible="{Binding CapturedSourceText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                              <views:CopyableTextBlock Text="{Binding RecordedEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
-                              <views:CopyableTextBlock Text="{Binding RecordedProducerEventAddress}" Classes="traceNotation" TextWrapping="Wrap" />
+                              <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                                         LineSpacing="{DynamicResource Intent.Space.Minimal}">
+                                <views:CopyableTextBlock Text="{Binding RecordedEventAddress}" Classes="traceNotation" />
+                                <views:CopyableTextBlock Text="{Binding RecordedProducerEventAddress}" Classes="traceNotation" />
+                              </WrapPanel>
                               <views:CopyableTextBlock Text="{Binding Notation}" Classes="traceNotation"
                                                        TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Notation}" />
                             </StackPanel>

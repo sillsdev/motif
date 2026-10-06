@@ -10,8 +10,8 @@
     {
       "id": "selection",
       "caption": "Select all texts and add a word to the Default Selection before saving it.",
-      "startMs": 1250,
-      "endMs": 2650,
+      "startMs": 1000,
+      "endMs": 2400,
       "screenshot": "steps/01-selection.png",
       "annotated": "steps/01-selection-annotated.png",
       "width": 1280,
@@ -23,15 +23,15 @@
         {
           "x": 267,
           "y": 318,
-          "width": 127,
+          "width": 126,
           "height": 32,
           "label": "1",
           "caption": "Select every Text in the project"
         },
         {
-          "x": 353,
+          "x": 351,
           "y": 408,
-          "width": 660,
+          "width": 662,
           "height": 52,
           "label": "2",
           "caption": "Words included in the Default Selection"
@@ -41,8 +41,8 @@
     {
       "id": "cancelling",
       "caption": "The progress panel shows the current run and lets you cancel it.",
-      "startMs": 3400,
-      "endMs": 4600,
+      "startMs": 3150,
+      "endMs": 4350,
       "screenshot": "steps/02-cancelling.png",
       "annotated": "steps/02-cancelling-annotated.png",
       "width": 1280,
@@ -52,17 +52,17 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 14,
-          "y": 114,
-          "width": 1172,
+          "x": 218,
+          "y": 118,
+          "width": 761,
           "height": 23,
           "label": "1",
           "caption": "Progress for the current Parse all words run"
         },
         {
-          "x": 1194,
-          "y": 140,
-          "width": 72,
+          "x": 1195,
+          "y": 114,
+          "width": 71,
           "height": 32,
           "label": "2",
           "caption": "Cancel this run"
@@ -72,8 +72,8 @@
     {
       "id": "parsed",
       "caption": "After setup, run Parse all words to record measurements for the Selection.",
-      "startMs": 5350,
-      "endMs": 6950,
+      "startMs": 5100,
+      "endMs": 6700,
       "screenshot": "steps/03-parsed.png",
       "annotated": "steps/03-parsed-annotated.png",
       "width": 1280,

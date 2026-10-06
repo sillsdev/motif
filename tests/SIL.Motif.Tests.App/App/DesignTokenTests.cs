@@ -2,7 +2,9 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Styling;
+using SIL.Motif.App;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -143,6 +145,80 @@ public sealed class DesignTokenTests
             Assert.True(Application.Current!.TryGetResource("SemiSpacingExtraTight", null, out var theirs));
             Assert.Equal(theirs, ours);
         });
+    }
+
+    [Fact]
+    public void UiFontTokenIsTheAppAndThemeDefault()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var application = Application.Current!;
+            var family = Assert.IsType<FontFamily>(application.FindResource("Primitive.Font.UI"));
+            Assert.Same(family, application.FindResource("DefaultFontFamily"));
+            Assert.Same(family, application.FindResource("ContentControlThemeFontFamily"));
+            Assert.Equal(new FontFamily(UiFontFamilies.CurrentFamilyName), family);
+            Assert.Equal(family, FontManager.Current.DefaultFontFamily);
+            Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family), out _));
+        });
+    }
+
+    [Theory]
+    [InlineData("ar-EG", "Scheherazade New", 0x0627)]
+    [InlineData("el-GR", "Gentium", 0x03B1)]
+    [InlineData("he-IL", "Ezra SIL", 0x05D0)]
+    [InlineData("km-KH", "Mondulkiri", 0x1780)]
+    [InlineData("ii-CN", "Nuosu SIL", 0xA000)]
+    [InlineData("am-ET", "Abyssinica SIL", 0x1200)]
+    [InlineData("ti-ET", "Abyssinica SIL", 0x1200)]
+    [InlineData("ne-NP", "Annapurna SIL", 0x0915)]
+    [InlineData("my-MM", "Padauk", 0x1000)]
+    [InlineData("ja-JP", "Noto Sans CJK JP", 0x3042)]
+    [InlineData("ko-KR", "Noto Sans CJK KR", 0xAC00)]
+    [InlineData("zh-Hans", "Noto Sans CJK SC", 0x4E2D)]
+    [InlineData("zh-CN", "Noto Sans CJK SC", 0x4E2D)]
+    [InlineData("zh-Hant", "Noto Sans CJK TC", 0x4E2D)]
+    [InlineData("zh-TW", "Noto Sans CJK TC", 0x4E2D)]
+    [InlineData("zh-Hant-HK", "Noto Sans CJK HK", 0x4E2D)]
+    [InlineData("th-TH", "Noto Sans Thai", 0x0E01)]
+    [InlineData("bn-BD", "Noto Sans Bengali", 0x0995)]
+    [InlineData("pa-IN", "Noto Sans Gurmukhi", 0x0A15)]
+    [InlineData("pa-PK", "Scheherazade New", 0x0627)]
+    [InlineData("as-IN", "Noto Sans Bengali", 0x0985)]
+    [InlineData("ban-ID", "Noto Sans Balinese", 0x1B05)]
+    [InlineData("bo-CN", "Noto Sans Tibetan", 0x0F40)]
+    [InlineData("dz-BT", "Noto Sans Tibetan", 0x0F40)]
+    [InlineData("fa-IR", "Scheherazade New", 0x06A9)]
+    [InlineData("gu-IN", "Noto Sans Gujarati", 0x0A95)]
+    [InlineData("hy-AM", "Noto Sans Armenian", 0x0531)]
+    [InlineData("jv-ID", "Noto Sans Javanese", 0xA984)]
+    [InlineData("ka-GE", "Noto Sans Georgian", 0x10D0)]
+    [InlineData("kn-IN", "Noto Sans Kannada", 0x0C95)]
+    [InlineData("lo-LA", "Noto Sans Lao", 0x0E81)]
+    [InlineData("ml-IN", "Noto Sans Malayalam", 0x0D05)]
+    [InlineData("mn-MN", "Noto Sans Mongolian", 0x1820)]
+    [InlineData("mr-IN", "Annapurna SIL", 0x092E)]
+    [InlineData("or-IN", "Noto Sans Oriya", 0x0B05)]
+    [InlineData("ps-AF", "Scheherazade New", 0x067E)]
+    [InlineData("sa-IN", "Annapurna SIL", 0x0938)]
+    [InlineData("si-LK", "Noto Sans Sinhala", 0x0D85)]
+    [InlineData("su-ID", "Noto Sans Sundanese", 0x1B83)]
+    [InlineData("ta-IN", "Noto Sans Tamil", 0x0B85)]
+    [InlineData("te-IN", "Noto Sans Telugu", 0x0C05)]
+    [InlineData("ur-PK", "Scheherazade New", 0x0627)]
+    public void UiFallbacksAreSelectedFromTheInterfaceLanguage(string language, string expected, int codepoint)
+    {
+        var options = UiFontFamilies.OptionsForLanguage(language);
+        Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
+        Assert.Contains(options.FontFallbacks!, fallback =>
+            fallback.FontFamily.ToString() == expected && fallback.UnicodeRange.IsInRange(codepoint));
+    }
+
+    [Fact]
+    public void UiFallbackMapLeavesUnknownLanguagesForTheSystem()
+    {
+        var options = UiFontFamilies.OptionsForLanguage("en-GB");
+        Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
+        Assert.Empty(options.FontFallbacks!);
     }
 
     [Fact]
@@ -299,7 +375,7 @@ public sealed class DesignTokenTests
     [
         "Background", "Foreground", "BorderBrush", "Fill", "Stroke", "Margin", "Padding", "Spacing",
         "FontSize", "CornerRadius", "BorderThickness", "Width", "Height", "MinWidth", "MinHeight",
-        "MaxWidth", "MaxHeight", "RowSpacing", "ColumnSpacing", "ColumnDefinitions",
+        "MaxWidth", "MaxHeight", "RowSpacing", "ColumnSpacing", "ColumnDefinitions", "FontFamily",
     ];
 
     private static readonly (string Intent, string Semi)[] SemiRoleAliases =
@@ -328,6 +404,7 @@ public sealed class DesignTokenTests
     private static bool IsTokenOrLayout(string value) =>
         value.StartsWith("{DynamicResource Intent.", StringComparison.Ordinal)
         || value.StartsWith("{DynamicResource Component.", StringComparison.Ordinal)
+        || value.StartsWith("{Binding", StringComparison.Ordinal)
         || value.StartsWith("{Binding Source={StaticResource Component.Selection.", StringComparison.Ordinal)
             && value.EndsWith("Converter={x:Static views:SelectionPanel.SizeToGridLength}}", StringComparison.Ordinal)
         || value is "Auto" or "*"

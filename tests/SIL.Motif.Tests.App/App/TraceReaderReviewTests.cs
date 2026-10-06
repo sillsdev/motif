@@ -171,7 +171,10 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
             Assert.NotEmpty(repeated);
             foreach (var step in repeated.SelectMany(group => group))
             {
-                Assert.Contains(step.RecordedEventAddress, texts);
+                Assert.True(texts.Contains(step.RecordedEventAddress),
+                    $"Missing '{step.RecordedEventAddress}'. Visible event labels: " +
+                    string.Join(" | ", texts.Where(text => text is not null &&
+                        text.StartsWith("Recorded event:", StringComparison.Ordinal))));
                 Assert.Contains($"Recorded event: {step.RecordedStep.StepId}", texts);
                 Assert.Contains($"Producer event ID: {step.RecordedStep.EventEvidence!.ProducerStepId} " +
                     $"(tree address {step.RecordedStep.StepId})", texts);

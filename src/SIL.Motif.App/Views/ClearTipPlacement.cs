@@ -71,9 +71,13 @@ public static class ClearTipPlacement
     internal static (PopupAnchor Anchor, PopupGravity Gravity) Choose(Rect owner, Size tip, Rect window, IReadOnlyList<Rect> obstacles) =>
         Sides.Select(side => (Side: side, Area: Area(owner, tip, side.Anchor, side.Gravity)))
             .Where(candidate => window.Contains(candidate.Area))
-            .Select(candidate => (candidate.Side, Covered: obstacles.Count(obstacle => obstacle.Intersects(candidate.Area))))
+            .Select(candidate => (candidate.Side, Covered: obstacles.Count(obstacle => Overlaps(obstacle, candidate.Area))))
             .DefaultIfEmpty((Side: Sides[0], Covered: 0))
             .MinBy(candidate => candidate.Covered).Side;
+
+    private static bool Overlaps(Rect first, Rect second) =>
+        first.Left < second.Right && first.Right > second.Left &&
+        first.Top < second.Bottom && first.Bottom > second.Top;
 
     /// <summary>Where a tip of <paramref name="tip"/> size lands when it grows from <paramref name="anchor"/> of <paramref name="owner"/>.</summary>
     internal static Rect Area(Rect owner, Size tip, PopupAnchor anchor, PopupGravity gravity)
@@ -106,8 +110,9 @@ public static class ClearTipPlacement
         !other.GetVisualAncestors().Contains(owner) && !owner.GetVisualAncestors().Contains(other) &&
         !other.GetSelfAndVisualAncestors().OfType<Visual>().Any(visual => visual is ToolTip || visual.Opacity == 0);
 
-    private static bool IsInteractive(Control control) => control is Button or TextBox or ComboBox or NumericUpDown or
-        ListBoxItem or TreeViewItem or MenuItem or Slider || control is Border or UserControl && control.Focusable;
+    private static bool IsInteractive(Control control) => control is Button or SplitButton or TextBox or ComboBox or
+        NumericUpDown or ListBoxItem or TreeViewItem or MenuItem or Slider or ScrollBar ||
+        control is Border or UserControl && control.Focusable;
 
     // The part of a control left after every clipping ancestor, such as a scrolled list, has cut it.
     private static Rect Shown(Control control, TopLevel window) =>

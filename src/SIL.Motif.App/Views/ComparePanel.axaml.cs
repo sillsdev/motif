@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -23,6 +24,7 @@ public sealed partial class ComparePanel : UserControl
             SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
             SetShortMatrix(e.NewSize.Height);
         };
+        LayoutUpdated += (_, _) => ApplyShortMatrixToCells();
         SetExpandedMatrixLabel(Bounds.Width >= ExpandedMatrixLabelWidth);
         SetShortMatrix(Bounds.Height);
     }
@@ -46,6 +48,15 @@ public sealed partial class ComparePanel : UserControl
         if (shortMatrix == isShort) return;
         if (shortMatrix) Classes.Add("shortMatrix");
         else Classes.Remove("shortMatrix");
+        ApplyShortMatrixToCells();
+    }
+
+    private void ApplyShortMatrixToCells()
+    {
+        var isShort = Classes.Contains("shortMatrix");
+        foreach (var cell in this.GetVisualDescendants().OfType<MatrixCell>())
+            if (cell.ShowsDetails == isShort)
+                cell.ShowsDetails = !isShort;
     }
 
     /// <summary>The words a sort choice is shown with.</summary>

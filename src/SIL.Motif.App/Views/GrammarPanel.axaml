@@ -120,7 +120,7 @@
                                                 IsVisible="{Binding HasReachStateText}" TextWrapping="Wrap" />
                       <ItemsControl x:Name="GrammarPanelDetailsItems" ItemsSource="{Binding Details}">
                         <ItemsControl.ItemsPanel>
-                          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                          <ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:GrammarWarningDetailViewModel">
