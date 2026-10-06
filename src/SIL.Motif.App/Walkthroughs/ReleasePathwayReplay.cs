@@ -135,6 +135,11 @@ internal static class ReleasePathwayReplay
         var writingSystems = Path.Combine(Path.GetDirectoryName(captureRoot)!, "writing-systems", script.Id);
         Environment.SetEnvironmentVariable("MOTIF_WORKER_ROOT", workerRoot);
         Environment.SetEnvironmentVariable("MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", writingSystems);
+        // The runner finds jobs through its own root's known projects; a CLI-seeded project was recorded elsewhere.
+        var fullProject = Path.GetFullPath(projectPath);
+        if (Worker.Store.KnownProjectRecorder.TryRecord(workerRoot, new Contract.Projects.ProjectLocator(
+                fullProject, Path.GetFileNameWithoutExtension(fullProject))) is { } recordFailure)
+            throw new InvalidOperationException($"Could not record '{fullProject}' for the replay's runner.", recordFailure);
 
         var commandSettings = CommandClientOptions.ForInstallation();
         if (string.IsNullOrWhiteSpace(commandSettings.ParserPath) || !File.Exists(commandSettings.ParserPath))
@@ -253,8 +258,14 @@ internal static class ReleasePathwayReplay
                 throw new InvalidOperationException("Apply did not report that the locked project is in use.");
         }
 
-        WaitUntil(() => review.CanApply, TimeSpan.FromSeconds(30),
-            "Apply did not become available after the project lock was released");
+        // A refused Apply drops the check's results, so a person checks again before applying.
+        WaitUntil(() => FindOptional(window, "motif-measure-changes") is { IsEffectivelyEnabled: true } || review.CanApply,
+            TimeSpan.FromSeconds(30), "Neither Check nor Apply became available after the lock was released",
+            () => review.ApplyBlockReason);
+        if (!review.CanApply) Click(window, "motif-measure-changes");
+        WaitUntil(() => review.CanApply, TimeSpan.FromMinutes(2),
+            "Apply did not become available after the project lock was released",
+            () => review.ApplyBlockReason);
         Click(window, automationId);
     }
 
@@ -396,7 +407,7 @@ internal static class ReleasePathwayReplay
         Pump();
     }
 
-    private static void WaitUntil(Func<bool> predicate, TimeSpan timeout, string failure)
+    private static void WaitUntil(Func<bool> predicate, TimeSpan timeout, string failure, Func<string>? detail = null)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (!predicate() && DateTime.UtcNow < deadline)
@@ -405,7 +416,7 @@ internal static class ReleasePathwayReplay
             Thread.Sleep(15);
         }
         Pump();
-        if (!predicate()) throw new TimeoutException(failure);
+        if (!predicate()) throw new TimeoutException(detail is null ? failure : $"{failure}: {detail()}");
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();
