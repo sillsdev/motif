@@ -248,6 +248,9 @@ internal static class ReleasePathwayReplay
         Window window, WorkspaceShellViewModel workspace, string projectPath, string automationId)
     {
         var review = workspace.PageModel<ReviewPageModel>();
+        // A runner can withdraw a finished check for a moment after the capture, so Apply is awaited again.
+        WaitUntil(() => FindOptional(window, automationId) is { IsEffectivelyEnabled: true }, TimeSpan.FromSeconds(60),
+            "Apply was not available before the lock test", () => review.ApplyBlockReason);
         using (new FileStream(projectPath + ".lock", FileMode.OpenOrCreate,
                    FileAccess.ReadWrite, FileShare.None))
         {

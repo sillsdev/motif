@@ -223,7 +223,15 @@ for group in ("projects", "cliProjects", "extraProjects"):
 if not os.path.isfile(sys.argv[2]):
     raise SystemExit(f"The package smoke FieldWorks project did not survive uninstall: {sys.argv[2]}")
 PY
-rm -rf -- "$release_root"
+# A release-check worker can still be finishing a write here, so removal retries before it gives up.
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    rm -rf -- "$release_root" 2>/dev/null && [[ ! -e "$release_root" ]] && break
+    sleep 3
+done
+if [[ -e "$release_root" ]]; then
+    printf 'The release check folder could not be removed: %s\n' "$release_root" >&2
+    exit 1
+fi
 rm -f "$user_data_marker"
 
 if [[ "$RUNTIME_IDENTIFIER" == linux-x64 ]]; then
