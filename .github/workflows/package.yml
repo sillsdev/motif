@@ -191,6 +191,28 @@ jobs:
         shell: pwsh
         run: ./tools/package-smoke.ps1 -FeedDirectory $env:FEED_DIRECTORY -InstallDirectory $env:INSTALL_DIRECTORY -ProductVersion $env:PRODUCT_VERSION -NextProductVersion $env:NEXT_PRODUCT_VERSION -InitialPackagePath $env:INITIAL_PACKAGE_PATH -WorkDirectory $env:WORK_DIRECTORY
 
+      - name: Gather the release check's folder after a failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:WORK_DIRECTORY 'release-pathway-evidence'
+          $rootFile = Join-Path $evidence 'release-pathways-root.txt'
+          if (Test-Path -LiteralPath $rootFile) {
+            $root = (Get-Content -LiteralPath $rootFile -Raw).Trim()
+            if (Test-Path -LiteralPath $root) {
+              Copy-Item -LiteralPath $root -Destination (Join-Path $evidence 'release-root') -Recurse -Force -ErrorAction Continue
+            }
+          }
+
+      - name: Retain release check evidence after a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-evidence-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.WORK_DIRECTORY }}/release-pathway-evidence
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Retain Windows feed and release manifests
         if: always()
         uses: actions/upload-artifact@v4
@@ -479,6 +501,28 @@ jobs:
         shell: bash
         run: bash ./tools/package-smoke-unix.sh
 
+      - name: Gather the release check's folder after a failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:WORK_DIRECTORY 'release-pathway-evidence'
+          $rootFile = Join-Path $evidence 'release-pathways-root.txt'
+          if (Test-Path -LiteralPath $rootFile) {
+            $root = (Get-Content -LiteralPath $rootFile -Raw).Trim()
+            if (Test-Path -LiteralPath $root) {
+              Copy-Item -LiteralPath $root -Destination (Join-Path $evidence 'release-root') -Recurse -Force -ErrorAction Continue
+            }
+          }
+
+      - name: Retain release check evidence after a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-evidence-linux-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.WORK_DIRECTORY }}/release-pathway-evidence
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Retain tested Linux version N preview
         shell: pwsh
         run: |
@@ -639,6 +683,28 @@ jobs:
       - name: Install, invoke, update, and uninstall the macOS package
         shell: bash
         run: bash ./tools/package-smoke-unix.sh
+
+      - name: Gather the release check's folder after a failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $evidence = Join-Path $env:WORK_DIRECTORY 'release-pathway-evidence'
+          $rootFile = Join-Path $evidence 'release-pathways-root.txt'
+          if (Test-Path -LiteralPath $rootFile) {
+            $root = (Get-Content -LiteralPath $rootFile -Raw).Trim()
+            if (Test-Path -LiteralPath $root) {
+              Copy-Item -LiteralPath $root -Destination (Join-Path $evidence 'release-root') -Recurse -Force -ErrorAction Continue
+            }
+          }
+
+      - name: Retain release check evidence after a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-evidence-macos-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.WORK_DIRECTORY }}/release-pathway-evidence
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Retain tested macOS version N preview
         shell: pwsh
