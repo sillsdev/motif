@@ -95,6 +95,7 @@ public static class RefusalCodes
     public const string JobWaitTimeout = "job.wait-timeout";
     public const string PreflightUnavailable = "preflight.unavailable";
 
+    public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
     public const string ProjectInUse = "project.in-use";
     public const string ProjectInvalid = "project.invalid";

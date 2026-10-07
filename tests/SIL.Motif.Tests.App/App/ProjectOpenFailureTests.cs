@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Avalonia.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -83,6 +84,47 @@ public sealed class ProjectOpenFailureTests
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
         Assert.Equal(ProjectB, workspace.Context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task ABackupIsRestoredAndItsRestoredCopyOpens()
+    {
+        const string backup = @"C:\projects\one 2026-10-07.fwbackup";
+        var fake = new FakeCommandClient();
+        var token = new BaselineToken("project-1", Digest, "1", "2026-09-05T00:00:00Z", BundleDigest);
+        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
+        fake.RestoreBackupIs(_ => CommandOutcome<RestoredBackup>.Success(new RestoredBackup(ProjectA)));
+        var workspace = NewWorkspace(fake);
+
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(backup));
+
+        Assert.Equal([backup], fake.RestoredBackups);
+        Assert.Equal(ProjectA, workspace.Context.ProjectPath);
+        Assert.Null(workspace.OpenRefusal);
+    }
+
+    [Fact]
+    public async Task ABackupThatCannotBeRestoredShowsItsRefusalAndOpensNothing()
+    {
+        var fake = new FakeCommandClient();
+        fake.RestoreBackupIs(_ => CommandOutcome<RestoredBackup>.Refused(new Refusal(
+            RefusalCodes.ProjectBackupUnreadable, FailureReason.InvalidArgument, "Not a FieldWorks backup.")));
+        var workspace = NewWorkspace(fake);
+
+        await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(@"C:\projects\notes.fwbackup"));
+
+        Assert.Equal(RefusalCodes.ProjectBackupUnreadable, workspace.OpenRefusal!.Code);
+        Assert.Equal("Motif cannot restore that file. Choose a .fwbackup file that FieldWorks made.",
+            workspace.OpenRefusal.Sentence);
+        Assert.False(workspace.HasProject);
+    }
+
+    private static WorkspaceShellViewModel NewWorkspace(FakeCommandClient fake)
+    {
+        var selection = new SelectionViewModel(fake);
+        return new WorkspaceShellViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
+            new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
+            new FakeFolderPicker(), new FakeDragSource(), fake);
     }
 
     [Fact]

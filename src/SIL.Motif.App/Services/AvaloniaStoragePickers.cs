@@ -17,7 +17,7 @@ public sealed class AvaloniaStoragePickers :
     IReportFilePicker
 {
     private static readonly FilePickerFileType FwDataFileType =
-        new("FieldWorks project") { Patterns = ["*.fwdata"] };
+        new("FieldWorks project or backup") { Patterns = ["*.fwdata", "*.fwbackup"] };
 
     private static readonly FilePickerFileType DiagnosticFileType =
         new("Motif diagnostic JSON") { Patterns = ["*.json"] };
@@ -38,7 +38,7 @@ public sealed class AvaloniaStoragePickers :
         cancellationToken.ThrowIfCancellationRequested();
         var files = await _topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select a FieldWorks project",
+            Title = "Select a FieldWorks project or backup",
             AllowMultiple = false,
             FileTypeFilter = [FwDataFileType],
         });

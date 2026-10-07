@@ -54,6 +54,21 @@ public sealed partial class FakeCommandClient : ICommandClient
     private Func<CurrentBaselineRequest, CancellationToken, Task<CommandOutcome<CurrentBaselineResponse>>>
         _currentBaseline = (_, _) => throw NotConfigured(nameof(GetCurrentBaselineAsync));
 
+    private Func<string, CommandOutcome<RestoredBackup>> _restoreBackup =
+        _ => throw NotConfigured(nameof(RestoreBackupAsync));
+
+    /// <summary>The backups the window asked to restore, in order.</summary>
+    public List<string> RestoredBackups { get; } = [];
+
+    /// <summary>Answers every backup restore with <paramref name="behavior"/>.</summary>
+    public void RestoreBackupIs(Func<string, CommandOutcome<RestoredBackup>> behavior) => _restoreBackup = behavior;
+
+    public Task<CommandOutcome<RestoredBackup>> RestoreBackupAsync(string backupPath, CancellationToken cancellationToken)
+    {
+        RestoredBackups.Add(backupPath);
+        return Task.FromResult(_restoreBackup(backupPath));
+    }
+
     private Func<TextInventoryRequest, CancellationToken, Task<CommandOutcome<TextInventoryResponse>>>
         _listTexts = (_, _) => Completed(new TextInventoryResponse([], HasBaseline: true));
 

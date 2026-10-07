@@ -159,6 +159,7 @@ public sealed partial record WindowRefusal
         [C.JobWaitTimeout] = "The check took too long and was stopped. Your changes are unchanged; try applying again.",
         [C.PreflightUnavailable] = "Motif could not check these changes against the project. Try again.",
 
+        [C.ProjectBackupUnreadable] = "Motif cannot restore that file. Choose a .fwbackup file that FieldWorks made.",
         [C.ProjectBusy] = "Another Motif task is using this project. Try again in a moment.",
         [C.ProjectInUse] = "FieldWorks has this project open. Close it in FieldWorks, then try again.",
         [C.ProjectInvalid] = "Motif cannot open that file as a FieldWorks project. Choose the project's .fwdata file.",

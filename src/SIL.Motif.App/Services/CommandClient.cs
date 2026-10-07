@@ -79,6 +79,10 @@ public sealed partial class CommandClient : ICommandClient
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() => KnownProjectsQuery.List(_managedRoot));
 
+    public Task<CommandOutcome<RestoredBackup>> RestoreBackupAsync(
+        string backupPath, CancellationToken cancellationToken) =>
+        OneAtATime(() => FieldWorksBackupCommand.Restore(backupPath), cancellationToken);
+
     public Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
         CurrentBaselineRequest request, CancellationToken cancellationToken) =>
         Task.Run(() => CurrentBaselineQuery.Query(request));

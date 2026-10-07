@@ -597,6 +597,20 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         StopConfirmingStoreDeletion();
         ShowOpenRefusal(null);
+        if (FieldWorksBackupCommand.IsBackup(fwDataPath))
+        {
+            using var usageAction = _commandClient.BeginUsageAction("project restore-backup",
+                UsageArgumentShape.Text("backupPath"));
+            var restored = await _commandClient.RestoreBackupAsync(fwDataPath, CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!restored.Succeeded)
+            {
+                ShowOpenRefusal(WindowRefusal.From(restored.Refusal!));
+                RaiseFreshness();
+                return;
+            }
+            fwDataPath = restored.Value!.ProjectPath;
+        }
         try
         {
             await SetProjectAsync(fwDataPath, captureFreshProject: captureFreshProject).ConfigureAwait(true);

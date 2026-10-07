@@ -27,6 +27,9 @@ public partial interface ICommandClient
 
     Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken);
 
+    /// <summary>Restores a FieldWorks backup beside itself and returns the restored project to open.</summary>
+    Task<CommandOutcome<RestoredBackup>> RestoreBackupAsync(string backupPath, CancellationToken cancellationToken);
+
     Task<CommandOutcome<CurrentBaselineResponse>> GetCurrentBaselineAsync(
         CurrentBaselineRequest request, CancellationToken cancellationToken);
 
