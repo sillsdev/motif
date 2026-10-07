@@ -199,7 +199,7 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
                     Assert.Single(workspace.Context.Changes.Items);
                     await review.MeasureCommand.ExecuteAsync(null);
                     Assert.True(review.MeasurementRefusal is null,
-                        $"The retry check did not complete: {review.MeasurementRefusal?.Sentence ?? review.ApplyBlockReason}");
+                        $"The retry check did not complete: {review.MeasurementRefusal?.Sentence ?? review.ApplyBlockReason} {review.MeasurementRefusal?.Details}");
                     Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
                     break;
                 case 4:

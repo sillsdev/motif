@@ -155,8 +155,11 @@ public static class PendingChangesWorkflow
             cancelOnTimeout: true)
             .ConfigureAwait(false);
         if (!waited.Succeeded) return CommandOutcome<MeasurePendingResult>.Refused(waited.Refusal!);
-        if (waited.Value!.Status != JobStatus.Completed)
-            return RefuseMeasure("trial.measurement-incomplete", "The check of these words did not complete. Try it again.");
+        if (waited.Value!.Status is not JobStatus.Completed and var unfinished)
+            return RefuseMeasure("trial.measurement-incomplete",
+                "The check of these words did not complete. Try it again. " +
+                $"(job {jobId}: {unfinished?.ToString() ?? "unknown"}, failure {waited.Value.FailureCategory?.ToString() ?? "none"}, " +
+                $"attempt {waited.Value.Attempt?.ToString() ?? "?"}, cancellation {waited.Value.CancellationRequested?.ToString() ?? "?"})");
 
         var recorded = await Task.Run(() => JobCommands.Assessments(
             new JobAssessmentsRequest(request.ProjectPath, jobId, version))).ConfigureAwait(false);
