@@ -75,6 +75,14 @@ The caller supplies an already-loaded `LcmCache` and owns its project lifetime a
 
 Motif invokes PanGloss through a child process. The Host contains the process adapter and translates the supported request and result into typed Motif data. The CLI and desktop application both reach that adapter through shared commands; neither front end defines a separate parser protocol.
 
+## Word display in the window
+
+A word looks and behaves the same wherever the window shows it, because every list, the Analyze texts strip and the word card are drawn by one module. Changing what FieldWorks holds for a word goes through the same two buttons in every place.
+
+`Controls/WordPresentation` holds the module ([ADR 0053](adr/0053-word-presentation-owns-layout-and-text-metrics.md)): `WordRow` for list rows, `WordStripToken` for the Analyze texts strip, `WordCard` for the opened card and `MorphemePanel` for interlinear morphology. A list hosts its rows in a `WordListSlot`, whose `WordListPolicy` resolves one set of column widths for the heading and every row from token-defined bounds. A recycled row rebuilds its cells only when its word changes; a morpheme panel builds its parts once per measure.
+
+`Views/WordDispositionButtons` puts two buttons on the strip and the card. The opinion mark opens tiles for each stored analysis, and the add count lists PanGloss analyses FieldWorks does not hold. `ViewModels/WordDisposition` derives both from the word's `AnalysisMarkingState`. A tile stages its choice through the word's `StageMarkingChoiceForTokenCommand`, so Review changes, Apply and undo ([ADR 0055](adr/0055-window-editing-shortcuts.md)) treat it like any other staged change.
+
 ## Help ownership today
 
 The `SIL.Motif.Help` project supplies shared Help data to the CLI, App and site. Its authored files live under `src/SIL.Motif.Help/Content/` and are embedded with logical resource names beginning `help/`, so runtime readers continue to load `help/<locale>/...`.
