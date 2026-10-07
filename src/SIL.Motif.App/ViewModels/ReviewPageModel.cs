@@ -598,6 +598,8 @@ public sealed class ReviewPageModel : PageModel
         switch (e.PropertyName)
         {
             case nameof(CanApply):
+                // The Apply button follows its command, so every change to CanApply must re-ask the command.
+                ApplyCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(ApplyBlockReason));
                 break;
             case nameof(ApplyBlockReason):

@@ -55,6 +55,27 @@ public sealed class ReviewApplyBlockersTests
     }
 
     [Fact]
+    public async Task TheApplyCommandFollowsEveryChangeToCanApply()
+    {
+        var fake = new FakeCommandClient();
+        fake.PendingChangesIs(Snapshot(Fits("kept")));
+        fake.MeasurePendingCompletesWith(new MeasurePendingResult("job/one", "revision/one",
+            FakeCommandClient.CompleteNumbers));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        var unanswered = 0;
+        page.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ReviewPageModel.CanApply)) unanswered++; };
+        page.ApplyCommand.CanExecuteChanged += (_, _) => unanswered = 0;
+
+        await context.OpenProjectAsync(ProjectPath);
+        await page.MeasureCommand.ExecuteAsync(null);
+
+        Assert.True(page.CanApply);
+        Assert.Equal(0, unanswered);
+        Assert.True(page.ApplyCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task UnmeasuredNumbersAreTheLastBlocker()
     {
         var fake = new FakeCommandClient();
