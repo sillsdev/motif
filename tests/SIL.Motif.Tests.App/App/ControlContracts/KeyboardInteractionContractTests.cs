@@ -117,6 +117,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("↑", "↑", "Diagnostic tree"), ("↓", "↓", "Diagnostic tree"),
             ("Escape", "Esc", "Analyze texts"), ("F", primarySearchGesture, "Analyze texts"),
             ("A", "A", "Analyze texts"), ("D", "D", "Analyze texts"), ("U", "U", "Analyze texts"),
+            ("Delete", "Delete", "Analyze texts"), ("S", "S", "Analyze texts"), ("P", "P", "Analyze texts"),
+            ("F10", "Shift+F10", "Analyze texts"),
             ("F", primarySearchGesture, "Matrix"), ("Enter or Space", "Enter or Space", "Matrix"),
             ("Enter or Space", "Enter or Space", "Matrix"),
             ("↑", "↑", "Matrix"), ("↓", "↓", "Matrix"),
@@ -814,8 +816,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 AnalyzeTextsLayoutTests.Settle(window);
                 var fixActions = Assert.Single(AnalyzeTextsLayoutTests.OpenCard(window)
                     .GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Fix actions for this word");
-                Assert.True(fixActions.Focus(), "The card's Fix actions button can receive keyboard focus.");
+                    AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName);
+                Assert.True(fixActions.Focus(), "The card's opinion mark button can receive keyboard focus.");
 
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 AnalyzeTextsLayoutTests.Settle(window);

@@ -71,6 +71,8 @@
     Intent.Opinion.Unknown.Accent the edge of an unknown analysis mark
     Intent.Opinion.None.Outline   the dashed outline for an analysis FieldWorks does not hold
     Intent.Opinion.None.Text      text for an analysis FieldWorks does not hold
+    Intent.Opinion.None.Solid     the solid fill of a changed mark for an analysis FieldWorks will not hold
+    Intent.Opinion.Changed.Text   the letter on a changed mark, whose fill is its opinion's accent
     Intent.Change.Action          the action colour for staged analysis work
     Intent.Change.Text            readable text for staged analysis work
     Intent.Change.Fill            the background of staged analysis work
@@ -297,6 +299,8 @@
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Accent" Color="{StaticResource Primitive.Color.Amber950}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Outline" Color="{StaticResource Primitive.Color.Slate200}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Text" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Opinion.None.Solid" Color="{StaticResource Primitive.Color.Slate600}" />
+      <SolidColorBrush x:Key="Intent.Opinion.Changed.Text" Color="{StaticResource Primitive.Color.Grey0}" />
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue650}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue750}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue10}" />
@@ -388,6 +392,8 @@
       <SolidColorBrush x:Key="Intent.Opinion.Unknown.Accent" Color="{StaticResource Primitive.Color.Amber200}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Outline" Color="{StaticResource Primitive.Color.Slate700}" />
       <SolidColorBrush x:Key="Intent.Opinion.None.Text" Color="{StaticResource Primitive.Color.Slate300}" />
+      <SolidColorBrush x:Key="Intent.Opinion.None.Solid" Color="{StaticResource Primitive.Color.Slate300}" />
+      <SolidColorBrush x:Key="Intent.Opinion.Changed.Text" Color="{StaticResource Primitive.Color.Slate975}" />
       <SolidColorBrush x:Key="Intent.Change.Action" Color="{StaticResource Primitive.Color.Blue350}" />
       <SolidColorBrush x:Key="Intent.Change.Text" Color="{StaticResource Primitive.Color.Blue250}" />
       <SolidColorBrush x:Key="Intent.Change.Fill" Color="{StaticResource Primitive.Color.Blue950}" />

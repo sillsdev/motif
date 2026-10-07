@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
+Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review changes; Apply there writes it to the FieldWorks project. In Analyze texts, Delete stages removing the word's FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift+F10 opens the word's opinion tiles. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
 
 ## Analyze texts
 
@@ -18,6 +18,10 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | A | A | A | Analyze texts | Stage Approve |
 | D | D | D | Analyze texts | Stage Disapprove |
 | U | U | U | Analyze texts | Stage Unknown |
+| Delete | Delete | Delete | Analyze texts | Stage removing the analysis |
+| S | S | S | Analyze texts | Stage Incorrect spelling |
+| P | P | P | Analyze texts | Show PanGloss analyses to add |
+| F10 | Shift+F10 | Shift+F10 | Analyze texts | Change what FieldWorks holds |
 | F | Ctrl+F | ⌘+F | Analyze texts | Focus the word search |
 | Enter | Enter | Enter | Analyze texts | Save parsing limits |
 | Escape | Esc | Esc | Analyze texts | Cancel parsing limit edits |

@@ -31,8 +31,7 @@
             <views:MarkGlyph Classes.inline="True" Mark="{Binding WarningMark}" />
             <TextBlock Classes="warningMark" Text="{Binding WarningMarkCount}" />
           </StackPanel>
-          <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
-                                AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
+          <views:WordDispositionButtons />
           <views:MarkChip x:Name="DisapprovedMarkChip" Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
                           IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
                           views:ClearTipPlacement.IsEnabled="True"
@@ -84,44 +83,6 @@
                     CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
                     AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
                     AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-            <Button Classes="actionChip fix revealOnHover"
-                    AutomationProperties.Name="Fix actions from the word strip"
-                    VerticalAlignment="Center" AutomationProperties.AutomationId="{Binding FixAutomationId}">
-              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
-                <TextBlock Text="Fix" />
-                <Path Classes="actionChipCaret" Data="M0 1 L5 6 L10 1 Z" />
-              </StackPanel>
-              <Button.Flyout>
-                <Flyout Placement="BottomEdgeAlignedLeft" Content="{Binding}">
-                  <Flyout.ContentTemplate>
-                    <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                      <StackPanel Classes="menu">
-                        <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                Command="{Binding AddChangeForTokenCommand}" CommandParameter="incorrect-spelling"
-                                AutomationProperties.Name="Mark this spelling Incorrect">
-                          <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
-                        </Button>
-                        <ItemsControl x:Name="ResultsInTextPanelFixChoicesItems" ItemsSource="{Binding Marking.FixChoices}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
-                                      CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
-                                <StackPanel>
-                                  <TextBlock Classes="menuTitle" Text="{Binding Label}" />
-                                  <TextBlock Classes="menuDetail" Text="{Binding Subtitle}"
-                                             IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                </StackPanel>
-                              </Button>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                      </StackPanel>
-                    </DataTemplate>
-                  </Flyout.ContentTemplate>
-                </Flyout>
-              </Button.Flyout>
-            </Button>
           </StackPanel>
         </StackPanel>
       </Border>

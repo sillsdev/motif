@@ -94,30 +94,23 @@ public sealed class ViewTokenTests
     }
 
     [Fact]
-    public void StripAndCardOfferExplicitFixChoicesWithoutAnEmptyAnalysisSelector()
+    public void StripAndCardOfferTheTwoDispositionButtonsInsteadOfAFixMenu()
     {
         var markup = File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordStripToken.axaml"));
         var cardMarkup = File.ReadAllText(Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordCard.axaml"));
-        var view = XDocument.Parse(markup);
-        Assert.DoesNotContain("Header=\"Fix ▾\"", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("Content=\"Fix ▾\"", markup, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Fix actions for this word\"", cardMarkup,
-            StringComparison.Ordinal);
-        var stripFix = Assert.Single(view.Descendants(), element => element.Name.LocalName == "Button" &&
-            (string?)element.Attribute("AutomationProperties.Name") == "Fix actions from the word strip");
-        var stripFixContent = Assert.Single(stripFix.Elements(), element => element.Name.LocalName == "StackPanel");
-        Assert.Collection(stripFixContent.Elements(),
-            label => Assert.Equal("Fix", (string?)label.Attribute("Text")),
-            caret =>
-            {
-                Assert.Equal("Path", caret.Name.LocalName);
-                Assert.Contains("actionChipCaret", ((string?)caret.Attribute("Classes") ?? "").Split(' '));
-                Assert.Equal("M0 1 L5 6 L10 1 Z", (string?)caret.Attribute("Data"));
-            });
-        Assert.Contains("AutomationProperties.Name=\"Fix actions from the word strip\"", markup,
-            StringComparison.Ordinal);
-        Assert.Contains("ItemsSource=\"{Binding Marking.FixChoices}\"", cardMarkup, StringComparison.Ordinal);
-        Assert.DoesNotContain("<ComboBox", cardMarkup, StringComparison.Ordinal);
+        var buttons = File.ReadAllText(Path.Combine(AppDirectory(), "Views", "WordDispositionButtons.axaml"));
+        foreach (var host in new[] { markup, cardMarkup })
+        {
+            Assert.Contains("<views:WordDispositionButtons />", host, StringComparison.Ordinal);
+            Assert.DoesNotContain("Fix ▾", host, StringComparison.Ordinal);
+            Assert.DoesNotContain("Marking.FixChoices", host, StringComparison.Ordinal);
+        }
+        Assert.DoesNotContain("Fix actions", markup + cardMarkup, StringComparison.Ordinal);
+        Assert.Contains("{x:Static views:WordDispositionButtons.MarkButtonName}", buttons, StringComparison.Ordinal);
+        Assert.Contains("{x:Static views:WordDispositionButtons.AddButtonName}", buttons, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Disposition.StoredRows}\"", buttons, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Disposition.Readings}\"", buttons, StringComparison.Ordinal);
+        Assert.DoesNotContain("<ComboBox", cardMarkup + buttons, StringComparison.Ordinal);
         Assert.DoesNotContain("<ListBox", markup, StringComparison.Ordinal);
     }
 

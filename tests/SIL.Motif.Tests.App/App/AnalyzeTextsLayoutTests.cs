@@ -735,14 +735,14 @@ public sealed class AnalyzeTextsLayoutTests
                 {
                     var form = ((ResultsTokenViewModel)strip.Tag!).Form;
                     Assert.DoesNotContain(strip.GetVisualDescendants().OfType<Expander>(), _ => true);
-                    var fixes = strip.GetVisualDescendants().OfType<Button>().Where(button =>
-                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip").ToArray();
-                    Assert.True(fixes.Length <= 1, $"{form} offers {fixes.Length} Fix controls.");
-                    Assert.All(fixes, fix =>
+                    var marks = strip.GetVisualDescendants().OfType<Button>().Where(button =>
+                        Avalonia.Automation.AutomationProperties.GetName(button) ==
+                        SIL.Motif.App.Views.WordDispositionButtons.MarkButtonName).ToArray();
+                    Assert.True(marks.Length == 1, $"{form} offers {marks.Length} opinion mark buttons.");
+                    Assert.All(marks, mark =>
                     {
-                        Assert.Equal("Fix", Assert.Single(fix.GetVisualDescendants().OfType<TextBlock>()).Text);
-                        Assert.Single(fix.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>());
-                        Assert.NotNull(fix.Flyout);
+                        Assert.Single(mark.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>());
+                        Assert.NotNull(mark.Flyout);
                     });
                     Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
                     Assert.Equal(0, Assert.IsAssignableFrom<ISolidColorBrush>(strip.BorderBrush).Color.A);

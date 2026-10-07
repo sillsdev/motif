@@ -91,9 +91,10 @@ public sealed class WalkthroughScriptLoaderTests
         Assert.All(captures, step => Assert.True(step.Scale >= 2));
         Assert.Contains(captures.Single(step => step.Id == "approved-agrees").Callouts!, callout =>
             callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal));
-        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-opinion", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", targets);
-        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion", targets);
+        Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix", targets);
+        Assert.DoesNotContain(targets, target => target.EndsWith("-opinion", StringComparison.Ordinal));
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action", targets);
         Assert.Contains("motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss", targets);

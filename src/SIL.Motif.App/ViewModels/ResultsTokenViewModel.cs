@@ -150,6 +150,9 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     public string FixAutomationId => AutomationIdForPart("fix");
 
+    /// <summary>The add button's identifier, for the PanGloss readings FieldWorks does not hold.</summary>
+    public string AddAutomationId => AutomationIdForPart("add");
+
     public string StagedAutomationId => AutomationIdForPart("staged");
 
     public string UnreadAutomationId => AutomationIdForPart("unread");
@@ -181,6 +184,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public long EvidenceRevision => 0;
 
     public AnalysisMarkingState Marking { get; private set; }
+
+    private WordDisposition? _disposition;
+
+    /// <summary>The word's two buttons, what FieldWorks holds and the PanGloss readings to add, from <see cref="Marking"/>.</summary>
+    public WordDisposition Disposition => _disposition ??= WordDisposition.From(Marking);
 
     /// <summary>The common word comparison, independent of this occurrence's action selection.</summary>
     public WordComparison Comparison => _comparison ??= BuildComparison();
@@ -601,13 +609,14 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     private void OnMarkingChanged()
     {
+        _disposition = null;
         foreach (var name in new[]
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
                      nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
                      nameof(PanGlossNote), nameof(PanGlossNoteMark), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
                      nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel),
-                     nameof(HoverSummary),
+                     nameof(HoverSummary), nameof(Disposition),
                  })
             OnPropertyChanged(name);
     }

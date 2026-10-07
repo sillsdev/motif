@@ -796,6 +796,16 @@ public sealed partial class ComponentStyleTests
         yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
             "Intent.Space.Snug");
 
+        yield return new("WordDisposition", "an unchanged Approved mark", host => Add(host, Box("dispositionFace", "approved")),
+            Border.BackgroundProperty, "Intent.Opinion.Approved.Fill");
+        yield return new("WordDisposition", "a changed Approved mark", host => Add(host, Box("dispositionFace", "approved", "changed")),
+            Border.BackgroundProperty, "Intent.Opinion.Approved.Accent");
+        yield return new("WordDisposition", "a changed mark's letter", host => Inside(host, Box("dispositionFace", "unknown", "changed")),
+            TextBlock.ForegroundProperty, "Intent.Opinion.Changed.Text");
+        yield return new("WordDisposition", "the add count", host => Add(host, Box("dispositionFace", "add")),
+            Border.BorderBrushProperty, "Intent.Change.Action");
+        yield return new("WordDisposition", "a staged tile", host => Add(host, Box("dispositionFace", "tile", "staged")),
+            Border.BackgroundProperty, "Intent.Change.Fill");
         yield return new("WordPresentation", "the row divider", host => Add(host, Box("wordPresentationFrame")),
             Border.BorderBrushProperty, "Intent.Border");
         yield return new("WordPresentation", "the row's inset", host => Add(host, Box("wordPresentationFrame")),

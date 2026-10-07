@@ -252,7 +252,8 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
         Assert.NotEmpty(captions);
         Assert.All(captions, caption =>
         {
-            Assert.StartsWith("Fix opens the other choices", caption, StringComparison.Ordinal);
+            Assert.EndsWith("Choose it to change what FieldWorks holds.", caption, StringComparison.Ordinal);
+            Assert.DoesNotContain("Fix", caption, StringComparison.Ordinal);
             Assert.DoesNotContain("▾", caption);
         });
     }

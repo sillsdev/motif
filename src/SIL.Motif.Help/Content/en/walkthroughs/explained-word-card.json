@@ -15,19 +15,17 @@
   "callouts": {
     "approved-agrees": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-opinion": "A means FieldWorks approved this reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-pangloss": "PanGloss built the same reading.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-fix": "A means FieldWorks approved this reading. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "unknown-agrees": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-opinion": "U means FieldWorks stored this reading but it has not been approved.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-pangloss": "PanGloss built the same reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action": "Approve changes this reading from Unknown to Approved.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-fix": "U means FieldWorks stored this reading but it has not been approved. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "unknown-staged": {
@@ -36,36 +34,32 @@
     },
     "no-stored-new-reading": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-opinion": "Dashed means FieldWorks has no reading stored.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fieldworks": "FieldWorks analyses appear here.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-pangloss": "Blue means PanGloss found a new or different reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-action": "Add stores PanGloss's reading as Unknown.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-fix": "Dashed means FieldWorks has no reading stored. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "disapproved-conflict": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-opinion": "D means this stored reading was disapproved.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-disapproved": "Disapproved",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-pangloss": "PanGloss builds the reading that FieldWorks marked Disapproved.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-fix": "D means this stored reading was disapproved. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6b6564697965-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "no-parse": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-opinion": "Dashed means FieldWorks has no reading stored.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fieldworks": "FieldWorks analyses appear here.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-pangloss": "PanGloss completed without finding a reading.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-fix": "Dashed means FieldWorks has no reading stored. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67c3bc6e6c6572-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "capped": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-opinion": "A means FieldWorks approved this reading.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fieldworks": "FieldWorks shows its morphemes with a gloss below each one.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss": "Brown means PanGloss stopped at a search limit.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix": "Fix opens the other choices for this word.",
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix": "A means FieldWorks approved this reading. Choose it to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "word-list-results": {

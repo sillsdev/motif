@@ -264,7 +264,9 @@ public sealed partial class WordStripToken : Border
     [KeyboardShortcutHandler(
         "TextReader:CloseWordCard", "TextReader:PreviousWord", "TextReader:NextWord", "TextReader:PreviousLine",
         "TextReader:NextLine", "TextReader:OpenWordCard", "TextReader:PreviousScreen", "TextReader:NextScreen",
-        "TextReader:FirstItem", "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown")]
+        "TextReader:FirstItem", "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown",
+        "TextReader:RemoveAnalysis", "TextReader:IncorrectSpelling", "TextReader:OpenAddList",
+        "TextReader:OpenDispositionMenu")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (Data is not { IsWord: true } token || KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
@@ -318,6 +320,27 @@ public sealed partial class WordStripToken : Border
                 };
                 await SendAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision,
                     WordAction.SetOpinion, opinion));
+                break;
+            case KeyboardShortcutBehavior.RemoveAnalysis:
+                if (token.Disposition.StoredRows.FirstOrDefault()?.Tiles
+                        .FirstOrDefault(tile => tile.Kind == WordDispositionKind.Absent)?.Choice is not { } removal)
+                    break;
+                e.Handled = true;
+                token.StageMarkingChoiceForTokenCommand.Execute(removal);
+                break;
+            case KeyboardShortcutBehavior.IncorrectSpelling:
+                e.Handled = true;
+                token.AddChangeForTokenCommand.Execute("incorrect-spelling");
+                break;
+            case KeyboardShortcutBehavior.OpenAddList:
+            case KeyboardShortcutBehavior.OpenDispositionMenu:
+                var name = entry.Behavior == KeyboardShortcutBehavior.OpenAddList
+                    ? WordDispositionButtons.AddButtonName : WordDispositionButtons.MarkButtonName;
+                if (this.GetVisualDescendants().OfType<Button>().FirstOrDefault(button =>
+                        button.IsEffectivelyVisible && AutomationProperties.GetName(button) == name) is not { } opener)
+                    break;
+                e.Handled = true;
+                opener.Flyout?.ShowAt(opener);
                 break;
         }
     }

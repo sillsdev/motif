@@ -41,6 +41,10 @@ internal enum KeyboardShortcutBehavior
     Approve,
     Disapprove,
     Unknown,
+    RemoveAnalysis,
+    IncorrectSpelling,
+    OpenAddList,
+    OpenDispositionMenu,
     Copy,
     Undo,
     Redo,
@@ -119,6 +123,10 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.Subtract] = Key.Subtract,
         [ShortcutKey.D0] = Key.D0,
         [ShortcutKey.NumPad0] = Key.NumPad0,
+        [ShortcutKey.Delete] = Key.Delete,
+        [ShortcutKey.S] = Key.S,
+        [ShortcutKey.P] = Key.P,
+        [ShortcutKey.F10] = Key.F10,
     };
     private static readonly IReadOnlyDictionary<Key, ShortcutKey> ShortcutKeys =
         AvaloniaKeys.ToDictionary(pair => pair.Value, pair => pair.Key);

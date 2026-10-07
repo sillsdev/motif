@@ -69,7 +69,7 @@ public static class AutomationIds
     /// <param name="form">The displayed form, normalized so canonically equivalent Unicode has one identifier.</param>
     /// <param name="textId">The identity of the selected Text containing the occurrence.</param>
     /// <param name="occurrenceIndex">The word's position in the selected Text.</param>
-    /// <param name="part">One of strip, word, opinion, disapproved, fieldworks, pangloss, action, fix, staged, or unread.</param>
+    /// <param name="part">One of strip, word, opinion, disapproved, fieldworks, pangloss, action, fix, add, staged, or unread.</param>
     /// <returns>An ASCII identifier that names this part of this word occurrence.</returns>
     internal static string ForWordPart(Guid textId, string form, int occurrenceIndex, string part)
     {
@@ -90,7 +90,7 @@ public static class AutomationIds
         ArgumentException.ThrowIfNullOrWhiteSpace(form);
         ArgumentOutOfRangeException.ThrowIfNegative(occurrenceIndex);
         if (part is not ("strip" or "word" or "opinion" or "disapproved" or "fieldworks" or "pangloss" or
-            "action" or "fix" or "staged" or "unread"))
+            "action" or "fix" or "add" or "staged" or "unread"))
             throw new ArgumentException("Unknown word strip part.", nameof(part));
 
         var formCode = Convert.ToHexString(Encoding.UTF8.GetBytes(form.Normalize(NormalizationForm.FormC)))

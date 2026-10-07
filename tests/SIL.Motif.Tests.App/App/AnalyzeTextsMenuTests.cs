@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using Xunit;
 using static SIL.Motif.Tests.App.AnalyzeTextsLayoutTests;
 
@@ -18,7 +19,7 @@ public sealed class AnalyzeTextsMenuTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
-    public void TheStripsFixMenuIsLeftAlignedRowsOfOneWidth()
+    public void TheStripsDispositionMenuHasTilesAndLeftAlignedRows()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -27,8 +28,8 @@ public sealed class AnalyzeTextsMenuTests
             {
                 workspace.PageModel<TextsPageModel>().ResultsInText.CloseTokenCard();
                 Settle(window);
-                var fix = Named<Button>(StripOf(Panel(window), "chakula"), "Fix actions from the word strip");
-                AssertMenuRows(Open(fix, window), "the strip's Fix menu");
+                var mark = Named<Button>(StripOf(Panel(window), "chakula"), WordDispositionButtons.MarkButtonName);
+                AssertDispositionMenu(Open(mark, window), "the strip's disposition menu");
             }
             finally
             {
@@ -38,15 +39,15 @@ public sealed class AnalyzeTextsMenuTests
     }
 
     [Fact]
-    public void TheCardsFixMenuIsLeftAlignedRowsOfOneWidth()
+    public void TheCardsDispositionMenuHasTilesAndLeftAlignedRows()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (_, window) = await OpenAnalyzeTexts();
             try
             {
-                var fix = Named<Button>(OpenCard(window), "Fix actions for this word");
-                AssertMenuRows(Open(fix, window), "the card's Fix menu");
+                var mark = Named<Button>(OpenCard(window), WordDispositionButtons.MarkButtonName);
+                AssertDispositionMenu(Open(mark, window), "the card's disposition menu");
             }
             finally
             {
@@ -94,6 +95,16 @@ public sealed class AnalyzeTextsMenuTests
             .ToArray();
 
     private static void AssertMenuRows(Control menu, string what) => AssertMenuRows(Entries(menu), what);
+
+    // The opinion tiles sit side by side in fours; the menu's other entries read as left-aligned rows.
+    private static void AssertDispositionMenu(Control menu, string what)
+    {
+        var entries = Entries(menu);
+        var tiles = entries.Where(entry => entry.Classes.Contains("dispositionButton")).ToArray();
+        var stored = Assert.IsType<ResultsTokenViewModel>(menu.DataContext).Disposition.StoredRows.Count;
+        Assert.True(tiles.Length == stored * 4, $"{what} shows {tiles.Length} opinion tiles for {stored} stored analyses.");
+        AssertMenuRows(entries.Where(entry => entry.Classes.Contains("menuEntry")).ToArray(), what);
+    }
 
     private static void AssertMenuRows(Button[] entries, string what)
     {

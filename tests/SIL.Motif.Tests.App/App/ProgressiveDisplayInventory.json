@@ -444,13 +444,6 @@
   },
   {
     "view": "ResultsInTextPanel",
-    "name": "ResultsInTextPanelFixChoicesItems",
-    "source": "Marking.FixChoices",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ResultsInTextPanel",
     "name": "ResultsInTextPanelStagedChangesItems",
     "source": "StagedChanges",
     "mode": "paged",
@@ -675,13 +668,6 @@
   },
   {
     "view": "WordCard",
-    "name": "WordCardFixChoicesItems",
-    "source": "Marking.FixChoices",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "WordCard",
     "name": "WordCardOpinionMarksItems",
     "source": "OpinionMarks",
     "mode": "finite",
@@ -707,5 +693,33 @@
     "source": "Occurrences",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordDispositionButtons",
+    "name": "WordDispositionStoredRowsItems",
+    "source": "Disposition.StoredRows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordDispositionButtons",
+    "name": "WordDispositionTilesItems",
+    "source": "Tiles",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordDispositionButtons",
+    "name": "WordDispositionReadingsItems",
+    "source": "Disposition.Readings",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordDispositionButtons",
+    "name": "WordDispositionReadingTilesItems",
+    "source": "Tiles",
+    "mode": "finite",
+    "control": "ItemsControl"
   }
 ]

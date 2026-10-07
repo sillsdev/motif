@@ -44,7 +44,7 @@ public sealed class ProgressiveDisplayTests
         "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
         "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
-        "TraceAnalysesView", "TryWordPanel", "WordCard",
+        "TraceAnalysesView", "TryWordPanel", "WordCard", "WordDispositionButtons",
     ];
 
     public static IEnumerable<object[]> CollectionViews() => ViewNames.Select(name => new object[] { name });
@@ -71,27 +71,6 @@ public sealed class ProgressiveDisplayTests
                     .OfType<ItemsControl>().Select(items => (items, fragment)))
                     .Where(pair => entries.Any(entry => entry.Name == pair.items.Name))
                     .GroupBy(pair => pair.items.Name).ToDictionary(group => group.Key!, group => group.First());
-                if (viewName == "ResultsInTextPanel" && entries.Any(entry =>
-                        entry.Name == "ResultsInTextPanelFixChoicesItems"))
-                {
-                    window.Content = root;
-                    window.Show();
-                    PageScreenshots.Settle(window);
-                    var fixButton = root.GetVisualDescendants().OfType<Button>().First(button =>
-                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip");
-                    var strip = Assert.IsType<WordStripToken>(fixButton.GetVisualAncestors()
-                        .OfType<WordStripToken>().First());
-                    var flyout = Assert.IsType<Flyout>(fixButton.Flyout);
-                    var menu = Assert.IsAssignableFrom<Control>(flyout.ContentTemplate!.Build(flyout.Content));
-                    menu.DataContext = flyout.Content;
-                    window.Content = menu;
-                    PageScreenshots.Settle(window);
-                    var choices = Assert.Single(menu.GetVisualDescendants().OfType<ItemsControl>(), items =>
-                        items.Name == "ResultsInTextPanelFixChoicesItems");
-                    targets.Add(choices.Name!, (choices, menu));
-                    window.Content = null;
-                    PageScreenshots.Settle(window);
-                }
                 foreach (var entry in entries)
                 {
                     if (entry.Mode == "grid") continue;
@@ -1004,6 +983,10 @@ public sealed class ProgressiveDisplayTests
             "TraceAnalysesView" => new TraceAnalysesView { DataContext = trace.Trace },
             "TryWordPanel" => new TryWordPanel(trace),
             "WordCard" => BuildWordCard(workspace),
+            "WordDispositionButtons" => new WordDispositionButtons
+            {
+                DataContext = texts.ResultsInText.VisibleLines.SelectMany(line => line.Tokens).First(token => token.IsWord),
+            },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
         };
     }
@@ -1066,6 +1049,13 @@ public sealed class ProgressiveDisplayTests
         {
             if (button.Flyout is Flyout { Content: Control content })
                 foreach (var fragment in Fragments(content, depth + 1)) yield return fragment;
+            // A lazy flyout builds its menu from a template only when it opens.
+            else if (button.Flyout is Flyout { ContentTemplate: { } template } flyout &&
+                     template.Build(flyout.Content) is { } menu)
+            {
+                menu.DataContext = flyout.Content;
+                foreach (var fragment in Fragments(menu, depth + 1)) yield return fragment;
+            }
         }
     }
 

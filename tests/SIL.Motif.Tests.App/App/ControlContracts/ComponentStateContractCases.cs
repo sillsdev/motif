@@ -179,6 +179,8 @@ internal static class ComponentStateContractCases
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
             "Intent.Transform.Pressed");
 
+        yield return new("Button.dispositionButton:pointerover Border.dispositionFace", "hover", DispositionButton,
+            StateStimulus.Pointer, StatePart.Self, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("StackPanel.morphemePanelPart.morphemePanelInspectable:pointerover", "hover",
             () => Alone(Morpheme()), StateStimulus.Pointer,
             StatePart.Self, Panel.BackgroundProperty, "Intent.Surface.Hover");
@@ -464,6 +466,15 @@ internal static class ComponentStateContractCases
 
     private static (Control, Control) Alone(Control control) => (control, control);
 
+    private static (Control, Control) DispositionButton()
+    {
+        var face = new Border { Child = new TextBlock { Text = "A ▾" } };
+        face.Classes.AddRange(["dispositionFace", "approved"]);
+        var button = new Button { Content = face };
+        button.Classes.Add("dispositionButton");
+        return (button, face);
+    }
+
     private static Button Press(params string[] classes)
     {
         var button = new Button { Content = "Go" };
@@ -678,6 +689,26 @@ internal static class TooltipOwners
             control => control is TextBlock && control.DataContext is ResultsTextViewModel),
         new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding HoverSummary}", TooltipScene.Reader,
             control => control is Border { Name: "WordStrip" }),
+        new("a word's opinion mark", "Views/WordDispositionButtons.axaml", "{Binding Disposition.MarkTip}", TooltipScene.Reader,
+            control => control is Button && AutomationProperties.GetName(control) == "Change what FieldWorks holds for this word"),
+        new("a word's add count", "Views/WordDispositionButtons.axaml", "{Binding Disposition.AddTip}", TooltipScene.Reader,
+            control => control is Button && AutomationProperties.GetName(control) == "Add a PanGloss analysis to FieldWorks"),
+        new("a disposition tile", "Views/WordDispositionButtons.axaml", "{Binding Tip}", TooltipScene.Reader,
+            control => control is Button && control.DataContext is WordDispositionTile { Choice: null or { Kind: not AnalysisMarkingActionKind.Add } })
+        {
+            Pending = "the tiles show only in an opened disposition menu",
+        },
+        new("a reading's add tile", "Views/WordDispositionButtons.axaml", "{Binding Choice.Label}", TooltipScene.Reader,
+            control => control is Button && control.DataContext is WordDispositionTile { Choice.Kind: AnalysisMarkingActionKind.Add })
+        {
+            Pending = "the add tiles show only in an opened add menu",
+        },
+        new("incorrect spelling in the disposition menu", "Views/WordDispositionButtons.axaml",
+            "Incorrect spelling: FieldWorks stops treating it as a word (S)", TooltipScene.Reader,
+            control => control is Button && AutomationProperties.GetName(control) == "Mark this spelling Incorrect")
+        {
+            Pending = "it shows only in an opened disposition menu",
+        },
         new("disapproved mark on a strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding DisapprovedTip}", TooltipScene.ReaderDisapproved,
             control => control is MarkChip && control.GetVisualAncestors().OfType<Border>().Any(border => border.Name == "WordStrip")),
         new("staged change", "Controls/WordPresentation/WordStripToken.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,

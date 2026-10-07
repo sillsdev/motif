@@ -99,6 +99,14 @@ public enum ShortcutKey
     D0,
     /// <summary>The numeric keypad zero key.</summary>
     NumPad0,
+    /// <summary>Delete.</summary>
+    Delete,
+    /// <summary>The S key.</summary>
+    S,
+    /// <summary>The P key.</summary>
+    P,
+    /// <summary>F10.</summary>
+    F10,
 }
 
 /// <summary>The product surface where a shortcut is available.</summary>

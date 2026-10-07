@@ -224,34 +224,7 @@
                               Command="{Binding Actions.StagePrimaryMarkingActionForTokenCommand}"
                               CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
                               AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                      <Button Classes="wordPresentationCardAction" Content="Fix ▾" AutomationProperties.Name="Fix actions for this word">
-                        <Button.Flyout>
-                          <Flyout Placement="BottomEdgeAlignedLeft">
-                            <StackPanel Classes="menu">
-                              <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Command="{Binding AddChangeForTokenCommand}" CommandParameter="incorrect-spelling"
-                                      AutomationProperties.Name="Mark this spelling Incorrect">
-                                <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
-                              </Button>
-                              <ItemsControl x:Name="WordCardFixChoicesItems" ItemsSource="{Binding Marking.FixChoices}">
-                                <ItemsControl.ItemTemplate>
-                                  <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                                    <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                            Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
-                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
-                                      <StackPanel>
-                                        <TextBlock Classes="menuTitle" Text="{Binding Label}" />
-                                        <TextBlock Classes="menuDetail" Text="{Binding Subtitle}"
-                                                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                      </StackPanel>
-                                    </Button>
-                                  </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                            </StackPanel>
-                          </Flyout>
-                        </Button.Flyout>
-                      </Button>
+                      <views:WordDispositionButtons />
                       <Button Classes="wordPresentationCardAction" Content="Try a Word" Command="{Binding TryWordForTokenCommand}" />
                       <Button Classes="wordPresentationCardAction" Content="Mark as unread"
                               Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"

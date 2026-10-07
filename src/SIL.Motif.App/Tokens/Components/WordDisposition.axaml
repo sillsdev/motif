@@ -1,0 +1,125 @@
+<!-- A word's two buttons: its opinion mark, solid once changed, and the add count for PanGloss readings. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordDisposition.Height" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.WordDisposition.TileSize" ResourceKey="Primitive.Size.28" />
+    <StaticResource x:Key="Component.WordDisposition.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.WordDisposition.Radius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.WordDisposition.Stroke" ResourceKey="Primitive.Inset.1_1_1_1" />
+    <StaticResource x:Key="Component.WordDisposition.StrongStroke" ResourceKey="Primitive.Inset.2_2_2_2" />
+    <StaticResource x:Key="Component.WordDisposition.TileType" ResourceKey="Primitive.Type.13" />
+    <StaticResource x:Key="Component.WordDisposition.CaretSize" ResourceKey="Primitive.Size.8" />
+  </Styles.Resources>
+
+  <Style Selector="Border.dispositionFace">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordDisposition.Height}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.WordDisposition.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordDisposition.Radius}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordDisposition.Stroke}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.None.Outline}" />
+  </Style>
+  <Style Selector="Border.dispositionFace :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.None.Text}" />
+  </Style>
+
+  <!-- The caret is drawn, not typed, so a fallback font cannot change the button's width. -->
+  <Style Selector="Path.dispositionCaret">
+    <Setter Property="Width" Value="{DynamicResource Component.WordDisposition.CaretSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.WordDisposition.CaretSize}" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.dispositionFace.approved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Approved.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.approved :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.unknown">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Unknown.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Unknown.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.unknown :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Unknown.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.disapproved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Disapproved.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Disapproved.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.disapproved :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Disapproved.Text}" />
+  </Style>
+
+  <!-- A changed mark inverts, a solid face like a ticked box, so the change reads at a glance. -->
+  <Style Selector="Border.dispositionFace.changed.approved, Border.dispositionFace.picked.approved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.changed.unknown, Border.dispositionFace.picked.unknown">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Unknown.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.changed.disapproved">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Disapproved.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.changed.absent">
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.None.Solid}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.None.Solid}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.changed :is(TextBlock), Border.dispositionFace.picked :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Changed.Text}" />
+  </Style>
+
+  <!-- The add count is PanGloss work until a reading is picked, then takes that reading's opinion colour. -->
+  <Style Selector="Border.dispositionFace.add">
+    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.add :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.add.picked.approved">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.add.picked.unknown">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Unknown.Accent}" />
+  </Style>
+
+  <Style Selector="Border.dispositionFace.tile">
+    <Setter Property="Width" Value="{DynamicResource Component.WordDisposition.TileSize}" />
+    <Setter Property="Height" Value="{DynamicResource Component.WordDisposition.TileSize}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.tile :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordDisposition.TileType}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.dispositionFace.tile.current">
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordDisposition.StrongStroke}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.tile:not(.current)">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+  </Style>
+  <Style Selector="Border.dispositionFace.tile.staged">
+    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordDisposition.StrongStroke}" />
+  </Style>
+  <Style Selector="Button.dispositionButton.unavailable Border.dispositionFace">
+    <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
+  </Style>
+  <Style Selector="Button.dispositionButton:pointerover Border.dispositionFace">
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
+  </Style>
+  <Style Selector="Button.dispositionButton">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+</Styles>

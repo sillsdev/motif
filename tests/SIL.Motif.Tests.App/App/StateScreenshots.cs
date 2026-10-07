@@ -372,8 +372,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         { Teardown = stage => { stage.InText.SelectedText = stage.InText.Texts.First(); return Task.CompletedTask; } };
         yield return new("analyze", "fix-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Strip("chakula").GetVisualDescendants().OfType<Button>()
-                .First(button => AutomationProperties.GetName(button) == "Fix actions from the word strip"),
-            "Fix on the chakula strip", TextsTab.AnalyzeTexts));
+                .First(button => AutomationProperties.GetName(button) == WordDispositionButtons.MarkButtonName),
+            "the opinion mark on the chakula strip", TextsTab.AnalyzeTexts));
         yield return new("analyze", "select-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
             () => stage.Named<Button>("Select words for actions"), "Select words", TextsTab.AnalyzeTexts));
         yield return new("analyze", "mark-read-menu", stage => stage.OpenMenu(WorkspacePage.Texts,
@@ -391,7 +391,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("analyze", "word-card-fix-menu", async stage =>
         {
             await stage.OpenCard("alikula");
-            return await stage.OpenMenu(null, () => stage.Named<Button>("Fix actions for this word"), "Fix on the word card");
+            return await stage.OpenMenu(null, () => stage.Named<Button>(WordDispositionButtons.MarkButtonName), "the opinion mark on the word card");
         })
         { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
         yield return new("analyze", "staged-hover", stage => stage.Hover(WorkspacePage.Texts,

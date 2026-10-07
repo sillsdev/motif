@@ -73,8 +73,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var strip = walkthrough.Window.GetLogicalDescendants().OfType<Border>()
                 .Single(control => control.Name == "WordStrip" && ReferenceEquals(control.Tag, token));
             var fixMenu = strip.GetLogicalDescendants().OfType<Button>().Single(button =>
-                Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Fix actions from the word strip"));
-            HeadlessClick.Click(walkthrough.Window, fixMenu, "Fix actions from the word strip");
+                Equals(Avalonia.Automation.AutomationProperties.GetName(button), WordDispositionButtons.AddButtonName));
+            HeadlessClick.Click(walkthrough.Window, fixMenu, WordDispositionButtons.AddButtonName);
             Assert.True(fixMenu.Flyout?.IsOpen);
             var fixChoices = FlyoutContent.Of(Assert.IsType<Flyout>(fixMenu.Flyout));
             var approveChoice = fixChoices.GetVisualDescendants().OfType<Button>().Single(button =>
@@ -84,9 +84,9 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.True(approveChoice.Command?.CanExecute(approveChoice.CommandParameter),
                 $"Selected token: {inText.SelectedToken?.Form}; parameter: {approveChoice.CommandParameter}; " +
                 $"choices: {string.Join(", ", token.Marking.FixChoices.Select(choice => choice.Label))}");
-            Assert.False(token.IsCardOpen, "Opening Fix actions also opened the word comparison card.");
+            Assert.False(token.IsCardOpen, "Opening the PanGloss analyses to add also opened the word comparison card.");
             HeadlessClick.Click(TopLevel.GetTopLevel(approveChoice)
-                ?? throw new InvalidOperationException("The Fix menu is not in a top level."), approveChoice, "Add as Approved");
+                ?? throw new InvalidOperationException("The add menu is not in a top level."), approveChoice, "Add as Approved");
             walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Changes.Items.Count == 1 && token.IsPending &&
                     token.Marking.StagedTransitions.Any(transition =>
                         transition.Text == "Not in FieldWorks → Approved"),
