@@ -37,7 +37,9 @@ foreach ($assetsFile in $AssetsFiles) {
         $licenseUrl = $metadata.SelectSingleNode('*[local-name()="licenseUrl"]')
         $destination = Join-Path $stage ("licenses/nuget/" + $library.Name)
         New-Item -ItemType Directory -Path $destination -Force | Out-Null
-        Copy-Item -LiteralPath $specs[0].FullName -Destination $destination
+        # The update package's own .nuspec must stay its only one, so dependency specifications ship renamed.
+        $specificationName = $specs[0].Name + '.xml'
+        Copy-Item -LiteralPath $specs[0].FullName -Destination (Join-Path $destination $specificationName)
         $notices = @()
         foreach ($file in $library.Value.files) {
             if ([System.IO.Path]::GetFileName($file) -notmatch '^(?:licen[cs]e|copying|notice|third[-._]party[-._]notices)(?:\..*)?$') {
@@ -53,7 +55,7 @@ foreach ($assetsFile in $AssetsFiles) {
             package = $library.Name
             declaredLicence = if ($null -ne $licenseNode) { $licenseNode.InnerText } else { $null }
             licenceUrl = if ($null -ne $licenseUrl) { $licenseUrl.InnerText } else { $null }
-            specification = "licenses/nuget/$($library.Name)/$($specs[0].Name)"
+            specification = "licenses/nuget/$($library.Name)/$specificationName"
             notices = @($notices)
         }
     }

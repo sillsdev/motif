@@ -50,6 +50,10 @@ foreach ($notice in @('LICENSE', 'THIRD-PARTY-NOTICES.md', 'licenses/nuget-packa
         throw "Package manifest must record its licence and notice files: $notice"
     }
 }
+$nuspecs = @(Get-ChildItem -LiteralPath $stage -Filter '*.nuspec' -File -Recurse)
+if ($nuspecs.Count -ne 0) {
+    throw "The payload must carry no .nuspec of its own; the update package's manifest is its only one: $($nuspecs[0].FullName)"
+}
 if ($manifest.runtimeIdentifier -ne $RuntimeIdentifier) {
     throw "Package manifest RID '$($manifest.runtimeIdentifier)' does not match '$RuntimeIdentifier'."
 }
