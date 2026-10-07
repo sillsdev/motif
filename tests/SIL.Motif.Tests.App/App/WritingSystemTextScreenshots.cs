@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
@@ -33,7 +34,7 @@ public sealed class WritingSystemTextScreenshots
             {
                 window.SetValue(TextElement.FontFamilyProperty, new FontFamily("fonts:MotifWalkthrough#Andika"));
                 window.Height = 1500;
-                var resolver = workspace.Context.WritingSystemTextStyles;
+                var resolver = workspace.Context.TextStyles;
 
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 var wordsView = workspace.PageModel<TextsPageModel>().Words;
@@ -43,11 +44,11 @@ public sealed class WritingSystemTextScreenshots
                 workspace.CurrentPage = WorkspacePage.Texts;
                 await wordsView.SetProjectAsync(PageScreenshots.SampleProjectPath);
                 resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
-                resolver.SetWritingSystems([WritingSystemTestData.Arabic]);
-                SIL.Motif.App.Controls.WritingSystemText.RefreshResolver(resolver);
+                resolver.ReplaceContext([WritingSystemTestData.Arabic]);
                 PageScreenshots.Settle(window);
                 Assert.Equal(WritingSystemTestData.Arabic.FontFamily,
-                    resolver.Resolve(WritingSystemTestData.Arabic.Id, "Normal").RequestedFontFamily);
+                    resolver.Resolve(TextStyleRequest.Linguistic(WritingSystemTestData.Arabic.Id, "Normal"))
+                        .RequestedFontFamily);
                 var languageForm = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == WritingSystemTestData.Form && text.Classes.Contains("stripWord"));
                 Assert.True(languageForm.IsEffectivelyVisible);

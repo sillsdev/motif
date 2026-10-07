@@ -17,7 +17,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App;
@@ -251,8 +251,8 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         await stage.TryTheSampleWord();
         stage.Workspace.Assess.Trace.IsExpert = true;
         PageScreenshots.Settle(stage.Window);
-        await stage.Until(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
-            border.Tag is ParserReadingMorphViewModel { Form: "ja-" }).Any(), "the recorded ja- morpheme");
+        await stage.Until(() => stage.Visible<Control>(part => part.Classes.Contains("morphemePanelInspectable") &&
+            part.Tag is ParserReadingMorphViewModel { Form: "ja-" }).Any(), "the recorded ja- morpheme");
     }
 
     private static IEnumerable<State> States()
@@ -339,7 +339,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         {
             await stage.Hover(WorkspacePage.Texts, () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix);
             return await stage.Hover(null,
-                () => stage.Visible<HyperlinkButton>(link => link.Content as string == "Open in text").First(), "Open in text");
+                () => stage.Visible<Button>(link => link.Content as string == "Open in text").First(), "Open in text");
         })
         { Height = 1100 };
 
@@ -383,7 +383,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("analyze", "word-card-hover", async stage =>
         {
             await stage.OpenCard("alikula");
-            var section = stage.Visible<Border>(border => border.Classes.Contains("wordCardSection") &&
+            var section = stage.Visible<Border>(border => border.Classes.Contains("wordPresentationCardSection") &&
                 border.Classes.Contains("hoverReveal")).Last();
             return await stage.Hover(null, () => section, "the card's PanGloss section");
         })
@@ -513,23 +513,23 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("inspector", "from-analyze", async stage =>
         {
             await stage.OpenCard("hawajafika");
-            return await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
-                border.Tag is ParserReadingMorphViewModel { Form: "fik" }).First(), "fik on the word card");
+            return await stage.Inspect(() => stage.Visible<Control>(part => part.Classes.Contains("morphemePanelInspectable") &&
+                part.Tag is ParserReadingMorphViewModel { Form: "fik" }).First(), "fik on the word card");
         })
         { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
         yield return new("inspector", "breadcrumb-step", async stage =>
         {
             await stage.OpenCard("hawajafika");
-            await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
-                border.Tag is ParserReadingMorphViewModel { Form: "wa-" }).First(), "wa- on the word card");
+            await stage.Inspect(() => stage.Visible<Control>(part => part.Classes.Contains("morphemePanelInspectable") &&
+                part.Tag is ParserReadingMorphViewModel { Form: "wa-" }).First(), "wa- on the word card");
             return await stage.Inspect(() => stage.Named<InspectLink>("Inspect w-"), "its allomorph w-");
         })
         { Teardown = stage => { stage.InText.CloseTokenCard(); return Task.CompletedTask; } };
         yield return new("inspector", "inspector-open", async stage =>
         {
             stage.Open(WorkspacePage.TryAWord);
-            return await stage.Inspect(() => stage.Visible<Border>(border => border.Classes.Contains("inspectable") &&
-                border.Tag is ParserReadingMorphViewModel { Form: "ja-" }).First(), "the recorded ja- morpheme");
+            return await stage.Inspect(() => stage.Visible<Control>(part => part.Classes.Contains("morphemePanelInspectable") &&
+                part.Tag is ParserReadingMorphViewModel { Form: "ja-" }).First(), "the recorded ja- morpheme");
         })
         { Setup = SetupTryWordInspector, Teardown = stage => ResetTraceView(stage) };
         yield return new("inspector", "from-timing", stage => stage.Inspect(() =>
@@ -614,7 +614,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await stage.ShowTimingWords();
             var row = stage.WordRows("timing-rule-words").First();
             return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("wordRowBody")), "a costliest word row");
+                .First(border => border.Classes.Contains("wordPresentationFrame")), "a costliest word row");
         })
         { Height = 1700 };
         yield return new("overview", "slowest-summary", async stage =>
@@ -645,7 +645,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await stage.Until(() => stage.WordRows("review").Any(), "the staged change's row");
             var row = stage.WordRows("review").First();
             return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("wordRowBody")), "the staged change's row");
+                .First(border => border.Classes.Contains("wordPresentationFrame")), "the staged change's row");
         })
         { Height = 1000, Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
         yield return new("review", "word-row-opened", async stage =>
@@ -683,7 +683,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await stage.Until(() => stage.WordRows("what-changed").Any(), "the chosen move's words");
             var row = stage.WordRows("what-changed").First();
             return await stage.Hover(null, () => row.GetVisualDescendants().OfType<Border>()
-                .First(border => border.Classes.Contains("wordRowBody")), "a What changed word row");
+                .First(border => border.Classes.Contains("wordPresentationFrame")), "a What changed word row");
         })
         { Height = 1100, Setup = stage => stage.ParseWithKitabuLost(), Teardown = stage => stage.ParseAgain() };
 
@@ -908,7 +908,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         /// <summary>The first row of the named word list: the part a pointer or Tab reaches.</summary>
         public Border RowBody(string list) => Visible<ListBox>(box => AutomationProperties.GetName(box) == list).Single()
             .GetVisualDescendants().OfType<WordRow>().First()
-            .GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowBody"));
+            .GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordPresentationFrame"));
 
         /// <summary>Opens the first row of the named list from the keyboard, as Enter on a focused row does.</summary>
         public async Task<string> OpenRow(WorkspacePage? page, TextsTab? tab, string list)
@@ -918,11 +918,11 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             PageScreenshots.Settle(Window);
             var body = RowBody(list);
             var row = body.FindAncestorOfType<WordRow>()!;
-            body.BringIntoView();
-            body.Focus(NavigationMethod.Tab);
+            row.BringIntoView();
+            row.FocusWord();
             Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-            await Until(() => row.IsOpen, "the opened word row");
-            return $"Pressed Enter on '{row.Row?.Word}' in {list}; its card is open inside the row.";
+            await Until(() => row.State?.IsOpen == true, "the opened word row");
+            return $"Pressed Enter on '{row.Data?.Facts.Word}' in {list}; its card is open inside the row.";
         }
 
         public Task CloseRows()
@@ -1052,30 +1052,42 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         }
 
         /// <summary>The visible word rows of the list named <paramref name="list"/> in the rows' automation ids.</summary>
-        public IEnumerable<WordRow> WordRows(string list) => Visible<WordRow>(row => row.List == list);
+        public IEnumerable<WordRow> WordRows(string list) => OwnerFor(list) is { } owner
+            ? Visible<WordRow>(row => row.Data?.Owner == owner)
+            : [];
 
         /// <summary>Opens the first row of a list from the keyboard, as Enter on a focused row does.</summary>
         public async Task<string> OpenWordRow(string list)
         {
             await Until(() => WordRows(list).Any(), $"the {list} rows");
             var row = WordRows(list).First();
-            if (!row.IsOpen)
+            if (row.State?.IsOpen != true)
             {
-                var body = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowBody"));
-                body.BringIntoView();
-                body.Focus(NavigationMethod.Tab);
+                row.BringIntoView();
+                row.FocusWord();
                 Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                await Until(() => row.IsOpen, $"the opened {list} row");
+                await Until(() => row.State?.IsOpen == true, $"the opened {list} row");
             }
-            return $"Pressed Enter on '{row.Row?.Word}' in the {list} rows; its card is open inside the row.";
+            return $"Pressed Enter on '{row.Data?.Facts.Word}' in the {list} rows; its card is open inside the row.";
         }
 
         public Task CloseWordRows()
         {
-            foreach (var row in Window.GetVisualDescendants().OfType<WordRow>()) row.IsOpen = false;
+            foreach (var row in Window.GetVisualDescendants().OfType<WordRow>())
+                if (row.State is { } state) row.State = state with { IsOpen = false };
             PageScreenshots.Settle(Window);
             return Task.CompletedTask;
         }
+
+        private static SIL.Motif.App.Controls.WordPresentation.WordListOwner? OwnerFor(string list) => list switch
+        {
+            "timing-rule-words" => SIL.Motif.App.Controls.WordPresentation.WordListOwner.Timing,
+            "review" => SIL.Motif.App.Controls.WordPresentation.WordListOwner.Review,
+            "word-list" => SIL.Motif.App.Controls.WordPresentation.WordListOwner.WordList,
+            "what-changed" => SIL.Motif.App.Controls.WordPresentation.WordListOwner.WhatChanged,
+            "lists" => SIL.Motif.App.Controls.WordPresentation.WordListOwner.Lists,
+            _ => null,
+        };
 
         public async Task ShowTimingWords()
         {

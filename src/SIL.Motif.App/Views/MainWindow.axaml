@@ -187,7 +187,7 @@
                  IsVisible="False" AutomationProperties.LiveSetting="Polite"
                  AutomationProperties.Name="Keyboard shortcut status" />
       <ItemsControl x:Name="MainWindowWritingSystemNoticesItems" Grid.Row="5"
-                    ItemsSource="{Binding Context.WritingSystemTextStyles.MissingFontNotices}">
+                    ItemsSource="{Binding Context.TextStyles.MissingFontNotices}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="services:WritingSystemFontNotice">
             <Border Classes="quietWritingSystemNotice">

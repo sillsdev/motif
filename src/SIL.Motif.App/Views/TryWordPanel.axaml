@@ -3,11 +3,12 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:controls="using:SIL.Motif.App.Controls"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TryWordPanel"
              x:DataType="vm:TryWordPageModel"
-             controls:WritingSystemText.Resolver="{Binding Trace.WritingSystemTextStyles}">
+             controls:WritingSystemText.Resolver="{Binding Trace.TextStyles}">
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" views:InspectLink.Trace="{Binding Trace.InspectorTrace}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Group}" Margin="{DynamicResource Intent.Gap.AfterGroup}">
       <!-- The whole row is the reveal region: an opacity-hidden button cannot take the pointer itself. -->
@@ -58,7 +59,7 @@
           <Button DockPanel.Dock="Right" Content="Try it" Command="{Binding Trace.TryCommand}" Classes="Primary"
                   Theme="{DynamicResource SolidButton}" AutomationProperties.Name="Try the word"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordRun}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-          <TextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..." MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
+          <controls:WritingSystemTextBox Text="{Binding Trace.WordToTry}" PlaceholderText="Type any word..." MinWidth="{DynamicResource Component.TryWord.InputMinWidth}"
                    controls:WritingSystemText.Id="{Binding Trace.WordWritingSystem}" controls:WritingSystemText.StyleName="Normal"
                    AutomationProperties.Name="Word to try" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordInput}" />
         </DockPanel>
@@ -126,7 +127,7 @@
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:TryWordTracePiece">
                         <StackPanel Margin="{DynamicResource Intent.Gap.AfterRelated}" Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:MorphemeRow Morphs="{Binding Morphs}" RevealLinks="True" CompactLinks="True" />
+                          <word:MorphemePanel Morphs="{Binding Morphs}" RevealLinks="True" CompactLinks="True" />
                           <ItemsControl x:Name="TryWordPanelStatusPartsItems" ItemsSource="{Binding StatusParts}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>
@@ -137,8 +138,7 @@
                               <DataTemplate x:DataType="vm:TryWordTraceStatus">
                                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
                                   <TextBlock Text="{Binding Separator}" Classes="muted" />
-                                  <views:MarkGlyph Classes="inline bodyText" Mark="{Binding Mark}" />
-                                  <TextBlock Text="{Binding Text}" Classes="muted" />
+                                  <word:NamedMark Mark="{Binding Mark}" Text="{Binding Text}" />
                                 </StackPanel>
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>

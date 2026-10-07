@@ -3,6 +3,7 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.GrammarPanel"
              x:DataType="views:GrammarPanel">
   <Grid Classes="warningPanel" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
@@ -169,47 +170,65 @@
                       <StackPanel IsVisible="{Binding HasAnyWordRows}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Text="{Binding ExactWordsHeading}" FontWeight="SemiBold"
                                                  IsVisible="{Binding HasExactRows}" />
-                        <Grid IsSharedSizeScope="True" RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                        <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                        <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Intent.Space.Minimal}">
+                          <word:WordRowHeader />
                           <ItemsControl x:Name="GrammarPanelWordRowsItems" Grid.Row="1" ItemsSource="{Binding WordRows}" IsVisible="{Binding HasExactRows}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="vm:WordRowViewModel">
-                                <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                                <word:WordRow Data="{Binding Presentation}"
+                                              State="{Binding PresentationState, Mode=TwoWay}"
+                                              Host="{Binding $parent[views:GrammarPanel].ExactWordPresentationHost}" />
                               </DataTemplate>
                             </ItemsControl.ItemTemplate>
                           </ItemsControl>
                         </Grid>
+                        </views:WordListSlot>
                       </StackPanel>
                       <views:CopyableTextBlock Classes="muted" Text="{Binding NoExactUsesText}"
                                                IsVisible="{Binding HasNoExactUses}" />
                       <StackPanel IsVisible="{Binding HasMembershipCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Classes="muted" Text="Words that use members of the named resource" />
-                        <ItemsControl x:Name="GrammarPanelMembershipCandidateRowsItems" ItemsSource="{Binding MembershipCandidateRows}">
+                        <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                        <Grid RowDefinitions="Auto,Auto">
+                          <word:WordRowHeader IsVisible="False" />
+                        <ItemsControl x:Name="GrammarPanelMembershipCandidateRowsItems" Grid.Row="1" ItemsSource="{Binding MembershipCandidateRows}">
                           <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                           </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
-                              <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                              <word:WordRow Data="{Binding Presentation}"
+                                            State="{Binding PresentationState, Mode=TwoWay}"
+                                            Host="{Binding $parent[views:GrammarPanel].MembershipCandidatePresentationHost}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </Grid>
+                        </views:WordListSlot>
                       </StackPanel>
                       <StackPanel IsVisible="{Binding HasSpellingCandidates}" Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingCandidatesText}" />
-                        <ItemsControl x:Name="GrammarPanelSpellingCandidateRowsItems" ItemsSource="{Binding SpellingCandidateRows}">
+                        <views:WordListSlot Schema="{x:Static word:WordListSchemas.Warnings}">
+                        <Grid RowDefinitions="Auto,Auto">
+                          <word:WordRowHeader IsVisible="False" />
+                        <ItemsControl x:Name="GrammarPanelSpellingCandidateRowsItems" Grid.Row="1" ItemsSource="{Binding SpellingCandidateRows}">
                           <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
                           </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:WordRowViewModel">
-                              <views:WordRow Row="{Binding}" Columns="{x:Static views:WordRowColumnSets.Warnings}" />
+                              <word:WordRow Data="{Binding Presentation}"
+                                            State="{Binding PresentationState, Mode=TwoWay}"
+                                            Host="{Binding $parent[views:GrammarPanel].SpellingCandidatePresentationHost}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </Grid>
+                        </views:WordListSlot>
                       </StackPanel>
 
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">

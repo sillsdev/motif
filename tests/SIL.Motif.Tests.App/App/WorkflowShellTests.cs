@@ -16,6 +16,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.App.Controls;
+using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -655,12 +656,21 @@ public sealed class WorkflowShellTests
                 var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", "change",
                     occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
                 workspace.Context.Changes.Items.Add(change);
-                workspace.PageModel<ReviewPageModel>().ToggleContextCommand.Execute(change);
-                window.UpdateLayout();
-
                 var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
+                var page = workspace.PageModel<ReviewPageModel>();
+                _ = page.ReviewEntries;
+                var key = change.Presentation.Key;
+                var row = new PresentationWordRow
+                {
+                    Data = change.Presentation,
+                    State = new SIL.Motif.App.Controls.WordPresentation.WordInteractionState(key, IsOpen: true),
+                    Host = review.PresentationHost,
+                };
+                window.Content = row;
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
                 Assert.True(change.HasUnavailableContext);
-                var prompts = review.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
+                var prompts = row.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
                 Assert.Single(prompts, prompt => prompt.IsEffectivelyVisible);
                 Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
             }

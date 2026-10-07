@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using System.Text.Json;
 using SIL.Motif.App.Composition;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App;
@@ -22,14 +23,10 @@ public sealed partial class App : Application
 
     public override void Initialize()
     {
-        UiFontFamilies.RegisterEmbeddedFontCollection(Avalonia.Media.FontManager.Current);
+        TextStyles.RegisterUiFontCollection(Avalonia.Media.FontManager.Current);
         AvaloniaXamlLoader.Load(this);
         WindowZoomPolicy.Apply(this, ZoomPolicy.DefaultPercent);
-        var family = new Avalonia.Media.FontFamily(UiFontFamilies.CurrentFamilyName);
-        Resources["Primitive.Font.UI"] = family;
-        Resources["DefaultFontFamily"] = family;
-        Resources["ContentControlThemeFontFamily"] = family;
-        Resources["SemiFontFamilyRegular"] = family;
+        TextStyles.ApplyApplicationFontResources(this);
     }
 
     public override void OnFrameworkInitializationCompleted()

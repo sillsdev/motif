@@ -112,10 +112,10 @@
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread" }
     ] },
     { "id": "open-word-list", "kind": "click", "automationId": "motif-analyze-word-list-view" },
-    { "id": "wait-for-word-list-result", "kind": "waitFor", "automationId": "motif-word-row-word-list-geldi-row", "condition": "visible", "timeoutMs": 30000 },
-    { "id": "highlight-word-list-result", "kind": "highlight", "automationId": "motif-word-row-word-list-geldi-row" },
+    { "id": "wait-for-word-list-result", "kind": "waitFor", "automationId": "motif-word-row-word-list-geldi-word", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "highlight-word-list-result", "kind": "highlight", "automationId": "motif-word-row-word-list-geldi-word" },
     { "id": "word-list-results", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
-      { "automationId": "motif-word-row-word-list-geldi-row" }
+      { "automationId": "motif-word-row-word-list-geldi-word" }
     ] },
     { "id": "restore-text-reader", "kind": "click", "automationId": "motif-analyze-text-reader-view" },
     { "id": "highlight-restored-word-card", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-word" }

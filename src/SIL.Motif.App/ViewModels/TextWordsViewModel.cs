@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
@@ -546,11 +547,17 @@ public sealed partial class TextWordsViewModel : ObservableObject
 public sealed partial class TextWordRowViewModel : ObservableObject
 {
     private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
+    private readonly WordPresentationKey _presentationKey;
+    private long _presentationRevision;
+    private ListedWordViewModel? _observedListed;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Presentation))]
+    [NotifyPropertyChangedFor(nameof(PresentationState))]
     private bool _isChecked;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Presentation))]
     private string? _stagedText;
 
     // What the latest Assessment came to for this word; null before one, or when the word was not in it.
@@ -573,9 +580,33 @@ public sealed partial class TextWordRowViewModel : ObservableObject
 
     partial void OnLastResultChanged(AssessWordRowViewModel? value)
     {
+        if (_observedAssessmentWordRow is not null)
+            _observedAssessmentWordRow.PropertyChanged -= OnAssessmentWordRowPropertyChanged;
+        _observedAssessmentWordRow = value?.WordRow;
+        if (_observedAssessmentWordRow is not null)
+            _observedAssessmentWordRow.PropertyChanged += OnAssessmentWordRowPropertyChanged;
         var wasOpen = (_listed ?? _notParsed)?.IsOpen == true;
         _listed = null;
+        _observedListed = null;
+        _presentationRevision++;
+        OnPropertyChanged(nameof(Presentation));
+        OnPropertyChanged(nameof(PresentationState));
         if (wasOpen) Listed.IsOpen = true;
+    }
+
+    private void OnAssessmentWordRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WordRowViewModel.IsUnread) || sender is not WordRowViewModel source ||
+            _listed is not { } listed || listed.Row.IsUnread == source.IsUnread) return;
+        listed.Row.IsUnread = source.IsUnread;
+        _presentationRevision++;
+        OnPropertyChanged(nameof(Presentation));
+    }
+
+    private void OnListedPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ListedWordViewModel.IsOpen))
+            OnPropertyChanged(nameof(PresentationState));
     }
 
     internal Func<AssessmentWordResult, ResultsTokenViewModel?>? WordCardTokenFactory
@@ -594,6 +625,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject
     private readonly WordRowRoutes? _routes;
     private readonly string? _projectName;
     private NotifyCollectionChangedEventHandler? _pendingChangesHandler;
+    private WordRowViewModel? _observedAssessmentWordRow;
 
     private AssessWordRowViewModel ProjectAssessment(AssessWordRowViewModel result)
     {
@@ -622,25 +654,58 @@ public sealed partial class TextWordRowViewModel : ObservableObject
             ProjectStanding = WordProjectStatuses.StandingOf(_word),
             OccurrenceCount = OccurrenceCount,
         };
-        return new AssessWordRowViewModel(source, OccurrenceCount, _routes);
+        var projected = new AssessWordRowViewModel(source, OccurrenceCount, _routes);
+        projected.WordRow.IsUnread = result.WordRow.IsUnread;
+        return projected;
     }
 
     /// <summary>
     /// The word as the Word list shows it: its row and card from the latest parse, or, before one reaches it, what
     /// FieldWorks holds and Not parsed.
     /// </summary>
-    public ListedWordViewModel Listed => LastResult is { } result
-        ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes, _wordCardTokenFactory)
-        : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
-            WordProjectStatuses.StandingOf(_word),
-            (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
-            _word.Occurrences.Count, _routes, _word.FormWritingSystem));
+    public ListedWordViewModel Listed
+    {
+        get
+        {
+            var listed = LastResult is { } result
+                ? _listed ??= ListedWordViewModel.Of(ProjectAssessment(result), _routes, _wordCardTokenFactory)
+                : _notParsed ??= new ListedWordViewModel(WordRowViewModel.NotParsed(_word.Form,
+                    WordProjectStatuses.StandingOf(_word),
+                    (_word.Approved.FirstOrDefault() ?? (_word.Analyses.Count == 1 ? _word.Analyses[0] : null))?.Morphs,
+                    _word.Occurrences.Count, _routes, _word.FormWritingSystem));
+            if (!ReferenceEquals(_observedListed, listed))
+            {
+                if (_observedListed is not null) _observedListed.PropertyChanged -= OnListedPropertyChanged;
+                _observedListed = listed;
+                listed.PropertyChanged += OnListedPropertyChanged;
+            }
+            return listed;
+        }
+    }
+
+    /// <summary>The module input tied to this row model's stable item identity and current evidence revision.</summary>
+    public WordPresentation Presentation => new(_presentationKey, _presentationRevision, Listed.Row,
+        WordListOwner.WordList, StagedText);
+
+    /// <summary>The list state adapter that retains open and checked state on the item model.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => new(_presentationKey, Listed.IsOpen, IsChecked);
+        set
+        {
+            if (value.Key != _presentationKey) return;
+            Listed.IsOpen = value.IsOpen;
+            if (value.IsChecked is { } isChecked) IsChecked = isChecked;
+        }
+    }
 
     public TextWordRowViewModel(TextWord word, WordRowRoutes? routes = null, string? projectName = null,
         Func<AssessmentWordResult, ResultsTokenViewModel?>? wordCardTokenFactory = null)
     {
         ArgumentNullException.ThrowIfNull(word);
         _word = word;
+        _presentationKey = new WordPresentationKey(word.WordformGuid is { Length: > 0 } wordformGuid
+            ? $"wordform:{wordformGuid}" : $"text-word:{Guid.NewGuid():N}");
         _routes = routes;
         _projectName = projectName;
         _wordCardTokenFactory = wordCardTokenFactory;

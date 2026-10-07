@@ -135,7 +135,7 @@ public sealed class OverviewPageWordsTests
                 Assert.Contains("mwalimu", summary.Text, StringComparison.Ordinal);
                 Assert.Contains("Stopped", summary.Text, StringComparison.Ordinal);
                 Assert.Contains("700 ms", summary.Text, StringComparison.Ordinal);
-                Assert.Empty(speed.GetLogicalDescendants().OfType<SIL.Motif.App.Views.WordRow>());
+                Assert.Empty(speed.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>());
             }
             finally
             {

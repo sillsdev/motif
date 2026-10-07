@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Media.TextFormatting;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -61,8 +62,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
 
             var textBlock = new TextBlock { Text = "Motif is a tech demo." };
             var button = new Button { Content = "Undo" };
-            var token = new ResultsTokenViewModel("Test", 1, new TextToken("word", "word", null, null), null);
-            var wordCard = new WordRowCard { CardToken = token };
+            var wordCard = WordCardWithText();
             var window = new Window
             {
                 Content = new StackPanel { Children = { textBlock, button, wordCard } },
@@ -90,8 +90,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
         {
             var textBlock = new TextBlock { Text = "Motif is a tech demo." };
             var button = new Button { Content = "Undo" };
-            var token = new ResultsTokenViewModel("Test", 1, new TextToken("word", "word", null, null), null);
-            var wordCard = new WordRowCard { CardToken = token };
+            var wordCard = WordCardWithText();
             var window = new Window
             {
                 Content = new StackPanel { Children = { textBlock, button, wordCard } },
@@ -114,7 +113,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
                 AssertAndika(Assert.Single(button.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Undo"));
                 AssertAndika(Assert.Single(wordCard.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Nothing in FieldWorks for this word."));
+                    text => text.Text == "word"));
             }
             finally
             {
@@ -122,6 +121,12 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
             }
         });
     }
+
+    private static WordCard WordCardWithText() => new()
+    {
+        Document = new WordCardDocument(new WordPresentationKey("font-card"), 0,
+            [new WordCardText("Meaning", "word")]),
+    };
 
     private static void AssertAndika(TextBlock text)
     {

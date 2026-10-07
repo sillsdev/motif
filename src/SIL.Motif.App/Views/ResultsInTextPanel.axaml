@@ -4,6 +4,7 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
              x:DataType="views:ResultsInTextPanel">
   <Grid ColumnDefinitions="*"
@@ -18,7 +19,7 @@
                   AutomationProperties.Name="Text to read">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsTextViewModel">
-              <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}"
+              <controls:WritingSystemTextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}"
                          controls:WritingSystemText.Id="{Binding TitleWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
             </DataTemplate>
           </ComboBox.ItemTemplate>
@@ -181,183 +182,37 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ResultsLineViewModel">
               <StackPanel Margin="{DynamicResource Component.TextsPage.LineMargin}" HorizontalAlignment="Stretch">
-              <StackPanel Classes="lineHead" Orientation="Horizontal"
-                          controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
-                          controls:WritingSystemText.FlowEnabled="True">
+              <Grid Classes="lineHead" ColumnDefinitions="Auto,*,Auto"
+                    controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
+                    controls:WritingSystemText.FlowEnabled="True">
                 <views:CopyableTextBlock Classes="lineNumber" Text="{Binding Number}" IsVisible="{Binding ShowsLineNumber}"
                                          controls:WritingSystemText.WindowText="True" />
-                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding Sentence}"
+                <views:CopyableTextBlock Grid.Column="1" Classes="lineSentence" Text="{Binding Sentence}"
+                                         TextWrapping="Wrap"
                                          controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
                                          controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
-                <views:CopyableTextBlock Classes="lineSentence" Text="{Binding NeedsALookSummary}"
+                <views:CopyableTextBlock Grid.Column="2" Classes="lineSentence" Text="{Binding NeedsALookSummary}"
+                                         TextWrapping="Wrap"
                                          controls:WritingSystemText.WindowText="True" />
-              </StackPanel>
+              </Grid>
               <controls:RunningTextPanel Classes="resultsLineBody" HorizontalAlignment="Stretch"
                                           controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}"
                                           controls:WritingSystemText.FlowEnabled="True">
                 <StackPanel Classes="gutter stripRows"
                             controls:WritingSystemText.WindowText="True">
-                  <TextBlock Classes="gutterLabel wordRow" Text="Word" />
+                  <TextBlock Classes="gutterLabel gutterWordRow" Text="Word" />
                   <TextBlock Classes="gutterLabel analysisRow fieldWorksRow" Text="FieldWorks" />
                   <TextBlock Classes="gutterLabel analysisRow" Text="PanGloss" />
                 </StackPanel>
                 <views:ProgressiveItemsControl x:Name="ResultsInTextPanelTokensItems" FullItemsSource="{Binding Tokens}" HorizontalAlignment="Stretch">
-                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" HorizontalAlignment="Stretch"
-                                                                           controls:WritingSystemText.FlowEnabled="True" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><views:WordStripWrapPanel Orientation="Horizontal"
+                                                                                           HorizontalAlignment="Stretch"
+                                                                                           controls:WritingSystemText.FlowEnabled="True" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                      <Border x:Name="WordStrip" IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
-                              Classes.open="{Binding IsCardOpen}" Classes.uncertainChanged="{Binding IsUncertainChanged}"
-                              Classes.dimmed="{Binding IsDimmed}" Focusable="True" Tag="{Binding}"
-                              AutomationProperties.AutomationId="{Binding StripAutomationId}"
-                              KeyDown="OnTokenKeyDown" ToolTip.Tip="{Binding HoverSummary}" views:ClearTipPlacement.IsEnabled="True">
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                          <StackPanel Classes="stripStack stripRows" Tag="{Binding}" PointerPressed="OnTokenPressed">
-                            <StackPanel Classes="stripWordRow wordRow" Orientation="Horizontal">
-                              <CheckBox Classes="stripCheck" IsChecked="{Binding IsSelectedForActions}"
-                                        IsVisible="{Binding $parent[views:ResultsInTextPanel].InText.ShowWordCheckboxes}"
-                                        AutomationProperties.Name="{Binding SelectionAutomationName}" />
-                              <controls:UnreadMark Classes.dotOnly="True" IsVisible="{Binding ShowUnread}"
-                                                   VerticalAlignment="Center"
-                                                   AutomationProperties.AutomationId="{Binding UnreadAutomationId}" />
-                              <views:CopyableTextBlock Classes="stripWord" Text="{Binding Text}" VerticalAlignment="Center"
-                                                       controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal"
-                                                       AutomationProperties.AutomationId="{Binding WordAutomationId}" />
-                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                                          IsVisible="{Binding HasNamedWarning}"
-                                          AutomationProperties.Name="{Binding WarningMarkCount, StringFormat='Named in {0}'}">
-                                <views:MarkGlyph Classes="inline" Mark="{Binding WarningMark}" />
-                                <TextBlock Classes="warningMark" Text="{Binding WarningMarkCount}" />
-                              </StackPanel>
-                              <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
-                                                    AutomationProperties.AutomationId="{Binding OpinionMarkAutomationId}" />
-                              <views:MarkChip Mark="{Binding DisapprovedMark}" Text="{Binding DisapprovedLabel}" Compact="True"
-                                              IsVisible="{Binding HasDisapprovedReading}" ToolTip.Tip="{Binding DisapprovedTip}"
-                                              views:ClearTipPlacement.IsEnabled="True"
-                                              AutomationProperties.AutomationId="{Binding DisapprovedAutomationId}" />
-                            </StackPanel>
-                            <Border Classes="stripRow stripFieldWorks analysisRow"
-                                    AutomationProperties.AutomationId="{Binding FieldWorksAutomationId}">
-                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelWarningMarkedFieldWorksMorphsItems" FullItemsSource="{Binding WarningMarkedFieldWorksMorphs}" IsVisible="{Binding HasFieldWorksAnalyses}">
-                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ResultsStripMorphViewModel">
-                                      <StackPanel>
-                                        <Border Classes="warningMorphUnderline" Classes.named="{Binding IsNamedInWarning}">
-                                          <TextBlock Classes="stripMorphForm" Text="{Binding Form}"
-                                                     controls:WritingSystemText.Id="{Binding Morph.FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                        </Border>
-                                          <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}"
-                                                     controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                      </StackPanel>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </views:ProgressiveItemsControl>
-                                <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMoreFieldWorksAnalyses}">
-                                  <TextBlock Text="{Binding MoreFieldWorksLabel}" />
-                                </Border>
-                                <TextBlock Classes="stripNothing" Text="Nothing in FieldWorks" IsVisible="{Binding HasNothingStored}" />
-                              </StackPanel>
-                            </Border>
-                            <Border Classes="stripRow panGlossLine analysisRow" AutomationProperties.AutomationId="{Binding PanGlossAutomationId}"
-                                    Classes.same="{Binding IsPanGlossSame}"
-                                    Classes.different="{Binding IsPanGlossDifferent}" Classes.none="{Binding IsPanGlossNone}"
-                                    Classes.capped="{Binding IsPanGlossCapped}">
-                              <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
-                                <views:ProgressiveItemsControl x:Name="ResultsInTextPanelPanGlossReadingMorphsItems" FullItemsSource="{Binding PanGlossReadingMorphs}" IsVisible="{Binding ShowsPanGlossReading}">
-                                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Classes="stripMorphs" Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                                      <StackPanel>
-                                        <TextBlock Classes="stripMorphForm f" Text="{Binding Form}"
-                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                        <TextBlock Classes="stripMorphGloss" Text="{Binding GlossOrPlaceholder}"
-                                                   controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                      </StackPanel>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </views:ProgressiveItemsControl>
-                                <Border Classes="panGlossExtra" VerticalAlignment="Top" IsVisible="{Binding HasMorePanGlossReadings}">
-                                  <TextBlock Text="{Binding MorePanGlossLabel}" />
-                                </Border>
-                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}"
-                                            IsVisible="{Binding ShowsPanGlossNote}">
-                                  <views:MarkGlyph Classes="inline" Mark="{Binding PanGlossNoteMark}" />
-                                  <TextBlock Classes="f stripNote" Classes.outcomeMark="{Binding IsPanGlossCapped}"
-                                             Classes.stopped="{Binding IsPanGlossCapped}" Text="{Binding PanGlossNote}" />
-                                </StackPanel>
-                              </StackPanel>
-                            </Border>
-                          </StackPanel>
-                          <Border Classes="stripActions" IsVisible="{Binding ShowsActions}">
-                            <StackPanel Classes="stripRows">
-                              <StackPanel Classes="wordRow stripActionRow" Orientation="Horizontal">
-                              <Button Classes="actionChip primary" Content="{Binding PrimaryActionLabel}" VerticalAlignment="Center"
-                                      Command="{Binding $parent[views:ResultsInTextPanel].InText.StagePrimaryMarkingActionForTokenCommand}"
-                                      CommandParameter="{Binding}" IsVisible="{Binding HasPrimaryAction}"
-                                      AutomationProperties.AutomationId="{Binding PrimaryActionAutomationId}"
-                                      AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
-                              <Button Classes="actionChip fix revealOnHover" AutomationProperties.Name="Fix actions from the word strip"
-                                      VerticalAlignment="Center"
-                                      AutomationProperties.AutomationId="{Binding FixAutomationId}">
-                                <StackPanel Orientation="Horizontal">
-                                  <TextBlock Text="Fix " />
-                                  <PathIcon Classes="actionChipCaret" Data="M1 2L7 2L4 6Z" />
-                                </StackPanel>
-                                <Button.Flyout>
-                                  <Flyout Placement="BottomEdgeAlignedLeft">
-                                    <StackPanel Classes="menu">
-                                      <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                              Command="{Binding Actions.AddChangeCommand}"
-                                              CommandParameter="incorrect-spelling" AutomationProperties.Name="Mark this spelling Incorrect">
-                                        <TextBlock Classes="menuTitle" Text="Incorrect spelling" />
-                                      </Button>
-                                      <ItemsControl x:Name="ResultsInTextPanelFixChoicesItems" ItemsSource="{Binding Marking.FixChoices}">
-                                        <ItemsControl.ItemTemplate>
-                                          <DataTemplate x:DataType="vm:AnalysisMarkingChoice">
-                                            <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                                    Command="{Binding $parent[ItemsControl].DataContext.StageMarkingChoiceForTokenCommand}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
-                                              <StackPanel>
-                                                <TextBlock Classes="menuTitle" Text="{Binding Label}" />
-                                                <TextBlock Classes="menuDetail" Text="{Binding Subtitle}"
-                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                              </StackPanel>
-                                            </Button>
-                                          </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                      </ItemsControl>
-                                    </StackPanel>
-                                  </Flyout>
-                                </Button.Flyout>
-                              </Button>
-                              </StackPanel>
-                            </StackPanel>
-                          </Border>
-                          <views:ProgressiveItemsControl x:Name="ResultsInTextPanelStagedChangesItems" FullItemsSource="{Binding StagedChanges}" IsVisible="{Binding HasStagedChanges}"
-                                        AutomationProperties.AutomationId="{Binding StagedAutomationId}">
-                            <ItemsControl.ItemsPanel>
-                              <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:StagedMarkingDisplayViewModel">
-                                <Border Classes="stagedStrip hoverReveal" ToolTip.Tip="{Binding FitStatus}"
-                                        views:ClearTipPlacement.IsEnabled="True">
-                                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" VerticalAlignment="Center">
-                                    <TextBlock Classes="stagedLabel" Text="Staged" />
-                                    <TextBlock Text="{Binding Transition}" TextWrapping="Wrap" />
-                                    <Button Classes="revealControl revealButton revealOnHover" Content="Undo"
-                                            Command="{Binding $parent[views:ResultsInTextPanel].InText.Changes.RemoveCommand}"
-                                            CommandParameter="{Binding Change}"
-                                            AutomationProperties.Name="{Binding Change.UndoAutomationName}" />
-                                  </StackPanel>
-                                </Border>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </views:ProgressiveItemsControl>
-                        </StackPanel>
-                      </Border>
+                      <word:WordStripToken Data="{Binding}" State="{Binding PresentationState, Mode=TwoWay}"
+                                           Host="{Binding $parent[views:ResultsInTextPanel].WordHost}"
+                                           ShowsSelectionCheckBox="{Binding $parent[views:ResultsInTextPanel].InText.ShowWordCheckboxes}" />
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </views:ProgressiveItemsControl>
@@ -366,39 +221,45 @@
                               Margin="{DynamicResource Component.TextsPage.CardIndent}">
                 <ContentControl.ContentTemplate>
                   <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                    <Border Classes="card wordCard" Focusable="True" KeyDown="OnTokenCardKeyDown"
-                            views:InspectLink.From="{Binding Text}"
-                            AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
-                      <StackPanel>
-                        <Border Classes="wordCardHead hoverReveal">
-                          <DockPanel LastChildFill="False">
-                            <views:CopyableTextBlock Text="{Binding Text}" FontWeight="Bold" VerticalAlignment="Center"
-                                                     controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                            <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
-                                                  Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" VerticalAlignment="Center" />
-                            <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus, StringFormat='· {0}'}"
-                                                     IsVisible="{Binding IsPending}" VerticalAlignment="Center"
-                                                     Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <Button DockPanel.Dock="Right" Classes="wordCardClose" Content="×" Click="OnCloseCardClick"
-                                    AutomationProperties.Name="Close the word card" />
-                            <views:CopyableTextBlock DockPanel.Dock="Right" Classes="muted" VerticalAlignment="Center"
-                                                     Text="Esc closes · ← → next word"
-                                                     TextWrapping="Wrap"
-                                                     Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                            <HyperlinkButton DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
-                                             NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
-                                             VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}"
-                                             ToolTip.Tip="{Binding WordLinkText}">
-                              <TextBlock Text="{Binding WordLinkText}" TextWrapping="NoWrap"
-                                         TextTrimming="CharacterEllipsis"
-                                         AutomationProperties.Name="{Binding WordLinkText}" />
-                            </HyperlinkButton>
-                          </DockPanel>
+                    <word:WordCard Host="{Binding $parent[views:ResultsInTextPanel].WordHost}"
+                                   Key="{Binding PresentationKey}" EvidenceRevision="{Binding EvidenceRevision}"
+                                   HandlesTextReaderShortcuts="True" Focusable="True"
+                                   views:InspectLink.From="{Binding Text}"
+                                   AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
+                      <word:WordCard.Header>
+                        <Border Classes="wordPresentationCardHeader hoverReveal">
+                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                            <WrapPanel VerticalAlignment="Center">
+                              <views:CopyableTextBlock Text="{Binding Text}" FontWeight="Bold" VerticalAlignment="Center"
+                                                       controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
+                              <controls:OpinionMark Kind="{Binding PrimaryOpinionMarkKind}" VerticalAlignment="Center"
+                                                    Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
+                              <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" VerticalAlignment="Center"
+                                                       TextWrapping="Wrap" />
+                              <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus, StringFormat='· {0}'}"
+                                                       IsVisible="{Binding IsPending}" VerticalAlignment="Center"
+                                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
+                              <views:CopyableTextBlock Classes="muted" VerticalAlignment="Center"
+                                                       Text="Esc closes · ← → next word" TextWrapping="Wrap"
+                                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
+                            </WrapPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                              <HyperlinkButton Classes="revealControl revealLink revealOnHover"
+                                               NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
+                                               VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}"
+                                               ToolTip.Tip="{Binding WordLinkText}">
+                                <TextBlock Text="{Binding WordLinkText}" TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"
+                                           AutomationProperties.Name="{Binding WordLinkText}" />
+                              </HyperlinkButton>
+                              <Button Classes="wordPresentationCardClose" Content="×"
+                                      Tag="{x:Static word:WordAction.CloseCard}"
+                                      AutomationProperties.Name="Close the word card" />
+                            </StackPanel>
+                          </Grid>
                         </Border>
-                        <views:WordRowCard CardToken="{Binding}" />
-                      </StackPanel>
-                    </Border>
+                      </word:WordCard.Header>
+                    </word:WordCard>
                   </DataTemplate>
                 </ContentControl.ContentTemplate>
               </ContentControl>

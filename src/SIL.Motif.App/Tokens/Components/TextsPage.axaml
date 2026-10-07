@@ -16,6 +16,7 @@
     <StaticResource x:Key="Component.TextsPage.FixFirstListHeight" ResourceKey="Primitive.Size.156" />
     <StaticResource x:Key="Component.TextsPage.CompareWordsListHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.TextsPage.CompareSearchWidth" ResourceKey="Primitive.Size.110" />
+    <StaticResource x:Key="Component.TextsPage.WordListSearchWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.CompareSortMinWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.RerunTimeWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.TextsPage.MatrixRowLabelWidth" ResourceKey="Primitive.Size.140" />

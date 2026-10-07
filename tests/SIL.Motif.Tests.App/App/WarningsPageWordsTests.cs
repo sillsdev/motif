@@ -17,6 +17,7 @@ using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using WordRowFact = SIL.Motif.Contract.Responses.WordRow;
+using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -265,6 +266,9 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
+                var wordRow = Assert.Single(panel.GetVisualDescendants().OfType<PresentationWordRow>(),
+                    candidate => candidate.Data?.Facts.Word == "walikata");
+                Assert.Equal(SIL.Motif.App.Controls.WordPresentation.WordListOwner.Warnings, wordRow.Data!.Owner);
                 var handoff = Assert.Single(panel.GetVisualDescendants().OfType<Button>(),
                     button => ReferenceEquals(button.Command, grammar.Warnings.HandOffCommand));
                 Assert.Equal("AI Handoff for this warning", handoff.Content);

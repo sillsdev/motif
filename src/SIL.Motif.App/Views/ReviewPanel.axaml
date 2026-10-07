@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
-             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ReviewPanel"
              x:DataType="vm:ReviewPageModel">
@@ -12,7 +12,10 @@
     </Style>
   </UserControl.Styles>
   <Grid Classes="reviewLayout" ColumnDefinitions="*,Auto">
-    <ListBox x:Name="ReviewItems" Grid.Column="0" Classes="wordRows" ItemsSource="{Binding ReviewEntries}"
+    <views:WordListSlot Grid.Column="0" Schema="{x:Static word:WordListSchemas.Review}">
+    <Grid RowDefinitions="Auto,*">
+    <word:WordRowHeader Grid.Row="0" />
+    <ListBox x:Name="ReviewItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding ReviewEntries}"
              VerticalAlignment="Stretch" AutomationProperties.Name="Changes grouped for review"
              KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True">
       <ListBox.ItemsPanel>
@@ -68,7 +71,6 @@
                                      AutomationProperties.Name="{Binding UndoAllAutomationName}" />
                   </WrapPanel>
                 </Border>
-                <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Review}" />
               </StackPanel>
             </Border>
                 </DataTemplate>
@@ -81,114 +83,9 @@
                     Classes.last="{Binding IsLastChange}"
                     Classes.noLongerFits="{Binding Group.IsNoLongerFits}"
                     Classes.uncertain="{Binding Group.IsUncertain}">
-              <views:WordRow DataContext="{Binding Change}" Row="{Binding Listed.Row}" List="review" IsOpen="{Binding Listed.IsOpen}"
-                             Columns="{x:Static views:WordRowColumnSets.Review}"
-                             OpenedCommand="{Binding $parent[views:ReviewPanel].Page.ShowContextCommand}"
-                             OpenedCommandParameter="{Binding}">
-                            <views:WordRow.Actions>
-                              <StackPanel Classes="reviewCompact">
-                                <WrapPanel IsVisible="{Binding HasUncertainty}">
-                                  <views:CopyableTextBlock Classes="reviewSmall reviewGapEnd" Text="Now reads" VerticalAlignment="Center" />
-                                  <views:ProgressiveItemsControl x:Name="ReviewPanelAfterWordsItems" FullItemsSource="{Binding AfterWords}" AutomationProperties.Name="Current sentence">
-                                    <ItemsControl.ItemsPanel>
-                                      <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
-                                        <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                                          <views:CopyableTextBlock Text="{Binding Form}"
-                                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                        </Border>
-                                      </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                  </views:ProgressiveItemsControl>
-                                </WrapPanel>
-                                <WrapPanel Classes="reviewActions">
-                                  <views:CopyableTextBlock Classes="wordRowStaged reviewGapEnd" Text="{Binding TransitionText}"
-                                                           VerticalAlignment="Center" />
-                                  <views:CopyableTextBlock Classes="reviewSmall reviewGapEnd" Text="{Binding DetailText}"
-                                                           TextWrapping="Wrap" VerticalAlignment="Center"
-                                                           IsVisible="{Binding HasDetailText}" />
-                                  <Border Classes="reviewPill" IsVisible="{Binding StillFits}">
-                                    <views:CopyableTextBlock Text="Still fits" />
-                                  </Border>
-                                  <Button Classes="reviewAction" Content="Check again"
-                                          Command="{Binding $parent[views:ReviewPanel].Page.ReconfirmChangeCommand}"
-                                          CommandParameter="{Binding}" IsVisible="{Binding IsUncertain}"
-                                          AutomationProperties.Name="{Binding CheckAgainAutomationName}" />
-                                  <Button Classes="reviewAction" Content="Undo"
-                                          Command="{Binding $parent[views:ReviewPanel].Page.Changes.RemoveCommand}"
-                                          CommandParameter="{Binding}"
-                                          AutomationProperties.Name="{Binding UndoAutomationName}" />
-                                </WrapPanel>
-                              </StackPanel>
-                            </views:WordRow.Actions>
-                            <views:WordRow.Card>
-                              <StackPanel Classes="reviewCompact">
-                                <StackPanel Classes="reviewCompact" IsVisible="{Binding HasRowMorphs}">
-                                  <views:CopyableTextBlock Classes="wordRowCardLabel" Text="THIS CHANGE" />
-                                  <views:CopyableTextBlock Classes="reviewSmall" Text="nothing in FieldWorks"
-                                                           IsVisible="{Binding RowAnalysisIsParserBuilt}" />
-                                  <Border Classes="reviewAnalysis" Classes.parser="{Binding RowAnalysisIsParserBuilt}"
-                                          HorizontalAlignment="Left">
-                                    <views:ProgressiveItemsControl x:Name="ReviewPanelRowMorphsItems" FullItemsSource="{Binding RowMorphs}">
-                                      <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}" />
-                                        </ItemsPanelTemplate>
-                                      </ItemsControl.ItemsPanel>
-                                      <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:ParserReadingMorphViewModel">
-                                          <StackPanel>
-                                            <views:CopyableTextBlock Classes="reviewMorphForm" Text="{Binding Form}"
-                                                                     controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                            <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding GlossOrPlaceholder}"
-                                                                     controls:WritingSystemText.Id="{Binding GlossWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                          </StackPanel>
-                                        </DataTemplate>
-                                      </ItemsControl.ItemTemplate>
-                                    </views:ProgressiveItemsControl>
-                                  </Border>
-                                </StackPanel>
-                                <views:CopyableTextBlock Classes="reviewSmall" Text="{Binding Reading}"
-                                                         IsVisible="{Binding !HasAnalyses}" TextWrapping="Wrap" />
-                                <StackPanel Classes="reviewCompact" IsVisible="{Binding HasUncertainty}">
-                                  <views:CopyableTextBlock Classes="reviewSmall" Text="Sentence when the change was made" />
-                                  <views:ProgressiveItemsControl x:Name="ReviewPanelBeforeWordsItems" FullItemsSource="{Binding BeforeWords}" AutomationProperties.Name="Sentence when the change was made">
-                                    <ItemsControl.ItemsPanel>
-                                      <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                      <DataTemplate x:DataType="vm:UncertaintyTokenViewModel">
-                                        <Border Classes="reviewSentenceToken" Classes.changed="{Binding IsChanged}">
-                                          <views:CopyableTextBlock Text="{Binding Form}"
-                                                                   controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                        </Border>
-                                      </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                  </views:ProgressiveItemsControl>
-                                </StackPanel>
-                                <Border IsVisible="{Binding HasUnavailableContext}">
-                                  <views:ParsePrompt DataContext="{Binding $parent[views:ReviewPanel].Page.Context}" />
-                                </Border>
-                                <views:ProgressiveItemsControl x:Name="ReviewPanelContextTokensItems" FullItemsSource="{Binding ContextTokens}" AutomationProperties.Name="Sentence context"
-                                              IsVisible="{Binding ContextTokens.Count}">
-                                  <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-                                  </ItemsControl.ItemsPanel>
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ResultsTokenViewModel">
-                                      <Border Classes="reviewSentenceToken">
-                                        <views:CopyableTextBlock Text="{Binding Text}"
-                                                                 controls:WritingSystemText.Id="{Binding TextWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
-                                      </Border>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </views:ProgressiveItemsControl>
-                                <views:ListedWordCard DataContext="{Binding Listed}" />
-                              </StackPanel>
-                            </views:WordRow.Card>
-              </views:WordRow>
+              <word:WordRow Data="{Binding Change.Presentation}"
+                            State="{Binding Change.PresentationState, Mode=TwoWay}"
+                            Host="{Binding $parent[views:ReviewPanel].PresentationHost}" />
             </Border>
                 </DataTemplate>
               </ContentControl.ContentTemplate>
@@ -197,6 +94,8 @@
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
+    </Grid>
+    </views:WordListSlot>
     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ShowsSideCards}">
     <StackPanel Classes="reviewStack reviewRight">
       <Border Classes="card">

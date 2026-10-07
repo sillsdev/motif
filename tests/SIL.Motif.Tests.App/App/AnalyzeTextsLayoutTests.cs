@@ -11,6 +11,8 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
@@ -119,17 +121,15 @@ public sealed class AnalyzeTextsLayoutTests
             try
             {
                 var page = workspace.PageModel<TextsPageModel>();
+                page.Words.SearchText = "mwalimu";
                 page.AnalyzeView = AnalyzeTextsView.WordList;
                 Settle(window);
-                var wordList = window.GetVisualDescendants().OfType<ListBox>()
-                    .Single(list => list.Name == "TextWordsPanelRowsItems");
-                var mwalimuIndex = page.Words.Rows.Select((row, index) => (row, index))
-                    .Single(item => item.row.Listed.Row.Word == "mwalimu").index;
-                wordList.ScrollIntoView(mwalimuIndex);
-                Settle(window);
-                var unknownWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(), row =>
-                    row.List == "word-list" && row.Row?.Word == "mwalimu");
-                unknownWord.FocusRow();
+                var rows = window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>().ToArray();
+                Assert.True(rows.Any(row => row.Data?.Owner == WordListOwner.WordList && row.Data.Facts.Word == "mwalimu"),
+                    $"Realized rows: {string.Join(", ", rows.Select(row => $"{row.Data?.Owner}:{row.Data?.Facts.Word ?? "<null>"}"))}");
+                var unknownWord = Assert.Single(rows, row =>
+                    row.Data?.Owner == WordListOwner.WordList && row.Data.Facts.Word == "mwalimu");
+                unknownWord.FocusWord();
                 window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
                 await WaitForPendingChanges(workspace, window, 1);
                 Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" &&
@@ -137,9 +137,9 @@ public sealed class AnalyzeTextsLayoutTests
 
                 page.Tab = TextsTab.Lists;
                 Settle(window);
-                var approvedWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(), row =>
-                    row.List == "lists" && row.Row?.Word == "hawajafika");
-                approvedWord.FocusRow();
+                var approvedWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>(), row =>
+                    row.Data?.Owner == WordListOwner.Lists && row.Data.Facts.Word == "hawajafika");
+                approvedWord.FocusWord();
                 window.KeyPress(Key.U, RawInputModifiers.None, PhysicalKey.None, null);
                 await WaitForPendingChanges(workspace, window, 2);
                 Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "hawajafika" &&
@@ -178,12 +178,13 @@ public sealed class AnalyzeTextsLayoutTests
                     Application.Current!.RequestedThemeVariant = variant;
                     Settle(window);
                     var card = OpenCard(window);
+                    var frame = CardFrame(card);
                     Assert.True(Application.Current.TryGetResource("Intent.Surface.Raised", variant, out var surface));
-                    Assert.Same(surface, card.Background);
-                    Assert.Equal(255, Assert.IsAssignableFrom<ISolidColorBrush>(card.Background).Color.A);
+                    Assert.Same(surface, frame.Background);
+                    Assert.Equal(255, Assert.IsAssignableFrom<ISolidColorBrush>(frame.Background).Color.A);
                     Assert.True(Application.Current.TryGetResource("Intent.Shadow.Raised", variant, out var shadow));
-                    Assert.Equal(shadow, card.BoxShadow);
-                    Assert.True(card.BoxShadow.Count > 0);
+                    Assert.Equal(shadow, frame.BoxShadow);
+                    Assert.True(frame.BoxShadow.Count > 0);
                 }
             }
             finally
@@ -284,7 +285,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Contains("Subject agreement", cardText);
                 Assert.Contains("Not attributed", cardText);
                 var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
-                    border.Classes.Contains("wordCardSection") &&
+                    border.Classes.Contains("wordPresentationCardSection") &&
                     border.GetVisualDescendants().OfType<CopyableTextBlock>()
                         .Any(line => line.Text == "What a warning names in this word"));
                 var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
@@ -459,7 +460,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Settle(window);
                 Assert.Null(inText.SelectedToken);
                 Assert.DoesNotContain(Panel(window).GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("wordCard"));
+                    border => border.Classes.Contains("wordPresentationCardFrame"));
                 var strip = Assert.Single(Strips(Panel(window)), candidate =>
                     candidate.Tag is ResultsTokenViewModel { Form: "chakula" });
                 Assert.True(strip.IsFocused, "Escape returns the keyboard to the word whose card closed.");
@@ -647,12 +648,30 @@ public sealed class AnalyzeTextsLayoutTests
                 }
                 var lineBody = Assert.Single(line.GetVisualDescendants().OfType<SIL.Motif.App.Controls.RunningTextPanel>(),
                     runningText => runningText.Classes.Contains("resultsLineBody"));
+                var strips = lineBody.GetVisualDescendants().OfType<WordStripToken>()
+                    .Where(strip => strip.IsVisible).ToArray();
+                Assert.NotEmpty(strips);
+                var metrics = strips.Select(strip => strip.LineMetrics)
+                    .Aggregate(default(RunningTextLineMetrics), static (current, next) => current.Max(next));
+                Assert.True(metrics.Word > 0 && metrics.FieldWorks > 0 && metrics.PanGloss > 0);
+                Assert.True(Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Word")
+                    .MinHeight >= metrics.Word);
+                Assert.True(Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "FieldWorks")
+                    .MinHeight >= metrics.FieldWorks);
+                Assert.True(Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "PanGloss")
+                    .MinHeight >= metrics.PanGloss);
+                foreach (var strip in strips)
+                {
+                    AssertNativeMetric(strip, "WordLine", strip.LineMetrics.Word);
+                    AssertNativeMetric(strip, "FieldWorksLine", strip.LineMetrics.FieldWorks);
+                    AssertNativeMetric(strip, "PanGlossLine", strip.LineMetrics.PanGloss);
+                }
                 Assert.True(Math.Abs(lineBody.Bounds.Width - line.Bounds.Width) <= 1,
                     $"The line uses {lineBody.Bounds.Width:0.#} of its {line.Bounds.Width:0.#} px available width.");
                 Assert.Equal(11, Assert.Single(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Word").FontSize);
                 Assert.Equal(10d * 96 / 72, Assert.Single(Part(sungura, "pangloss").GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Classes.Contains("stripMorphGloss")).FontSize);
+                    text.Classes.Contains("morphemePanelGloss")).FontSize);
                 Assert.Contains(line.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.Text == "Sungura alikula chakula." && text.IsEffectivelyVisible);
             }
@@ -721,15 +740,8 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.True(fixes.Length <= 1, $"{form} offers {fixes.Length} Fix controls.");
                     Assert.All(fixes, fix =>
                     {
-                        var content = Assert.IsType<StackPanel>(fix.Content);
-                        Assert.Collection(content.Children,
-                            child => Assert.Equal("Fix ", Assert.IsType<TextBlock>(child).Text),
-                            child =>
-                            {
-                                var caret = Assert.IsType<PathIcon>(child);
-                                Assert.Contains("actionChipCaret", caret.Classes);
-                                Assert.NotNull(caret.Data);
-                            });
+                        Assert.Equal("Fix", Assert.Single(fix.GetVisualDescendants().OfType<TextBlock>()).Text);
+                        Assert.Single(fix.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>());
                         Assert.NotNull(fix.Flyout);
                     });
                     Assert.Equal(strip.BorderThickness.Top, strip.BorderThickness.Bottom);
@@ -915,10 +927,9 @@ public sealed class AnalyzeTextsLayoutTests
                 configure: (fake, _) => fake.ListTextWordsCompletesWith(words));
             try
             {
-                var resolver = workspace.Context.WritingSystemTextStyles;
+                var resolver = workspace.Context.TextStyles;
                 resolver.SetFallbackFamilies(["fonts:MotifWalkthrough#DejaVu Sans"]);
-                resolver.SetWritingSystems([WritingSystemTestData.Arabic]);
-                SIL.Motif.App.Controls.WritingSystemText.RefreshResolver(resolver);
+                resolver.ReplaceContext([WritingSystemTestData.Arabic]);
                 await workspace.PageModel<TextsPageModel>().Words.SetProjectAsync(PageScreenshots.SampleProjectPath);
                 Settle(window);
 
@@ -942,8 +953,7 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.True(labelBounds.Left < gutterBounds.Left + gutterBounds.Width / 2,
                         $"RTL gutter label {label.Text} starts at {labelBounds.Left:0.#} in {gutterBounds}.");
                 });
-                var row = Assert.Single(strip.GetVisualDescendants().OfType<StackPanel>(), candidate =>
-                    candidate.Classes.Contains("stripWordRow"));
+                var row = strip.FindControl<StackPanel>("WordLine")!;
 
                 Assert.Equal(24, form.FontSize);
                 Assert.Equal(FlowDirection.RightToLeft, form.FlowDirection);
@@ -956,8 +966,9 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Equal(FlowDirection.LeftToRight, tokenLayout.FlowDirection);
                 Assert.Equal(FlowDirection.LeftToRight, lineBody.FlowDirection);
                 Assert.Equal(FlowDirection.RightToLeft, lineBody.TextDirection);
-                Assert.Equal(FlowDirection.RightToLeft, Assert.Single(tokenLayout.GetVisualDescendants()
-                    .OfType<WrapPanel>()).FlowDirection);
+                var wordLayout = Assert.Single(tokenLayout.GetVisualDescendants().OfType<WrapPanel>(), wrap =>
+                    wrap.GetVisualDescendants().OfType<WordStripToken>().Any());
+                Assert.Equal(FlowDirection.RightToLeft, wordLayout.FlowDirection);
                 Assert.True(row.Bounds.Height > 22, $"The 18-point word row is only {row.Bounds.Height:0.#} px high.");
                 var stripBounds = TransformedBoundsIn(strip, panel);
                 Assert.True(gutterBounds.Left >= stripBounds.Right,
@@ -994,7 +1005,7 @@ public sealed class AnalyzeTextsLayoutTests
                     Settle(window);
                     var strips = Strips(panel).ToArray();
                     bool ShowsReading(Border strip) => Part(strip, "pangloss").GetVisualDescendants().OfType<TextBlock>()
-                        .Any(text => text.Classes.Contains("stripMorphForm") && text.IsEffectivelyVisible);
+                        .Any(text => text.Classes.Contains("morphemePanelForm") && text.IsEffectivelyVisible);
                     bool HoldsNothing(Border strip) =>
                         VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
                     showing["All"] += strips.Length;
@@ -1037,7 +1048,9 @@ public sealed class AnalyzeTextsLayoutTests
 
     internal static string VisibleText(Control part) => string.Join(" ",
         part.GetVisualDescendants().Prepend(part).OfType<TextBlock>()
-            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text))
+            .Where(text => text.IsEffectivelyVisible &&
+                !text.GetSelfAndVisualAncestors().OfType<Control>().Any(control => control.Opacity <= 0) &&
+                !string.IsNullOrWhiteSpace(text.Text))
             .Select(text => text.Text));
 
     internal static T Named<T>(Visual root, string name) where T : Control =>
@@ -1070,9 +1083,12 @@ public sealed class AnalyzeTextsLayoutTests
     internal static ResultsInTextPanel Panel(Window window) =>
         Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
 
-    internal static Border OpenCard(Window window) =>
-        Assert.Single(Panel(window).GetVisualDescendants().OfType<Border>(),
-            border => border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+    internal static WordCard OpenCard(Window window) =>
+        Assert.Single(Panel(window).GetVisualDescendants().OfType<WordCard>(), card => card.IsEffectivelyVisible);
+
+    internal static Border CardFrame(WordCard card) =>
+        Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
+            border.Classes.Contains("wordPresentationCardFrame"));
 
     internal static IEnumerable<Border> Strips(ResultsInTextPanel panel) =>
         panel.GetVisualDescendants().OfType<Border>()
@@ -1084,6 +1100,17 @@ public sealed class AnalyzeTextsLayoutTests
             throw new InvalidOperationException("The visual is not under the panel.");
         return new Rect(origin, visual.Bounds.Size);
     }
+
+    private static void AssertNativeMetric(WordStripToken strip, string rowName, double metric)
+    {
+        var row = strip.FindControl<Control>(rowName)!;
+        var nativeHeight = MaxNativeTextHeight(row);
+        Assert.True(metric >= nativeHeight,
+            $"{strip.Data?.Form} {rowName}: metric={metric}, native={nativeHeight}, row={row.DesiredSize.Height}.");
+    }
+
+    private static double MaxNativeTextHeight(Control row) => row.GetVisualDescendants().OfType<TextBlock>()
+        .Select(block => block.TextLayout.Height).DefaultIfEmpty(0).Max();
 
     private static Rect TransformedBoundsIn(Visual visual, Visual relativeTo)
     {

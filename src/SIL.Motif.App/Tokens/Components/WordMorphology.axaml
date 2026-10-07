@@ -1,0 +1,69 @@
+<!-- Selectable morphology parts keep each writing-system run and action independent. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:SIL.Motif.App.Controls.WordPresentation">
+  <Styles.Resources>
+    <!-- Static sizing setters resolve their token dictionaries from this style scope. -->
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Primitives.axaml" />
+        <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Intent.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <ControlTheme x:Key="{x:Type controls:MorphemePanel}" TargetType="controls:MorphemePanel">
+        <Setter Property="SeparatorBrush" Value="{DynamicResource Intent.Border}" />
+        <Setter Property="SeparatorThickness" Value="{StaticResource Primitive.Stroke.1}" />
+        <Setter Property="SeparatorOffset" Value="{StaticResource Primitive.Space.12}" />
+        <Setter Property="WarningBrush" Value="{DynamicResource Intent.Severity.Warning}" />
+        <Setter Property="WarningThickness" Value="{StaticResource Primitive.Stroke.2}" />
+      </ControlTheme>
+      <ControlTheme x:Key="{x:Type controls:NamedMark}" TargetType="controls:NamedMark">
+        <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+      </ControlTheme>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="StackPanel.morphemePanelPart">
+    <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_24_4}" />
+  </Style>
+  <Style Selector="StackPanel.morphemePanelPart.morphemePanelPartLast">
+    <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_0_4}" />
+  </Style>
+  <Style Selector="StackPanel.morphemePanelPart.morphemePanelInspectable">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+  </Style>
+  <Style Selector="StackPanel.morphemePanelPart.morphemePanelInspectable:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector="StackPanel.morphemePanelPart.different :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Outcome.Different}" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphemePanelForm">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Body}" />
+  </Style>
+  <Style Selector="HyperlinkButton.morphemePanelForm">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Body}" />
+  </Style>
+  <Style Selector="HyperlinkButton.morphemePanelFormLink">
+    <Setter Property="Padding" Value="{StaticResource Primitive.Inset.0_0_0_0}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="StackPanel.morphemePanelFormLinkWords">
+    <Setter Property="Spacing" Value="{StaticResource Intent.Space.Minimal}" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphemePanelLinkMark">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphemePanelGloss">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Small}" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphemePanelInline">
+    <Setter Property="Margin" Value="{StaticResource Primitive.Inset.0_0_4_0}" />
+  </Style>
+  <Style Selector=":is(TextBlock).morphemePanelCategory">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Label}" />
+  </Style>
+  <Style Selector=":is(TextBlock).namedMarkText">
+    <Setter Property="FontSize" Value="{StaticResource Intent.Type.Small}" />
+  </Style>
+</Styles>

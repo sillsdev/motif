@@ -51,6 +51,29 @@ public sealed class AutomationIdsTests
     }
 
     [Fact]
+    public void PastedWordPartsHaveStableIdsWithoutATextIdentity()
+    {
+        static ResultsTokenViewModel Token(string form, int index) => new ResultsLineViewModel("Pasted words",
+            new TextLine(1, [new TextToken(form, form, null, "unanalysed") { OccurrenceIndex = index }]),
+            new Dictionary<string, AssessmentWordResult>(StringComparer.Ordinal)).Tokens.Single();
+
+        var first = Token("günler", 2);
+        var repeated = Token("gu\u0308nler", 2);
+        var next = Token("günler", 3);
+        var parts = new[]
+        {
+            first.StripAutomationId, first.WordAutomationId, first.OpinionMarkAutomationId,
+            first.DisapprovedAutomationId, first.FieldWorksAutomationId, first.PanGlossAutomationId,
+            first.PrimaryActionAutomationId, first.FixAutomationId, first.StagedAutomationId, first.UnreadAutomationId,
+        };
+
+        Assert.All(parts, id => Assert.Matches("^motif-word-input-2-67c3bc6e6c6572-[a-z]+$", id));
+        Assert.Equal(parts.Length, parts.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(first.WordAutomationId, repeated.WordAutomationId);
+        Assert.NotEqual(first.WordAutomationId, next.WordAutomationId);
+    }
+
+    [Fact]
     public void AutomationIdConstantsHaveUniqueValuesAndEveryViewIdUsesTheClass()
     {
         var root = FindRepositoryRoot();

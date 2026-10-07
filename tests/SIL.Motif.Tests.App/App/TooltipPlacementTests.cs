@@ -9,12 +9,13 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that a tooltip opens where it hides no other control a person could use and stays inside the window. The test
-/// opens the top bar's Refresh, the selected list's column headings, Compare's rerun, AI Handoff's drag and question
+/// opens the top bar's Refresh, a word row's copyable values, Compare's rerun, AI Handoff's drag and question
 /// tips, a disabled Apply and AI Handoff with their reasons, the word strips and their marks,
 /// a word card's links, opinion and disabled unread reason, a finding's FieldWorks link, the collapsed sidebar, the
 /// Matrix's pending mark and the Timing page at both widths and in both themes. Each tip opens under the pointer.
@@ -26,7 +27,7 @@ public sealed class TooltipPlacementTests
     private static readonly string[] Owners =
     [
         "refresh", "project name", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
-        "Parse stopped words again", "FieldWorks column heading", "PanGloss column heading",
+        "Parse stopped words again",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme",
         "FieldWorks link in a finding", "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column",
@@ -74,7 +75,7 @@ public sealed class TooltipPlacementTests
                                 var shown = Shown(row, scenes.Window);
                                 Assert.True(row.IsEffectivelyVisible &&
                                     new Rect(scenes.Window.ClientSize).Contains(rowArea) && shown.Contains(rowArea),
-                                    $"{where}: the word row '{row.Row?.Word}' is not fully visible after the Assessment finished: " +
+                                    $"{where}: the word row '{row.Data?.Facts.Word}' is not fully visible after the Assessment finished: " +
                                     $"{MatrixFailureDetails(scenes)}, visible part {shown}.");
                             }
                             var control = scenes.RealizedOwners(failures, scene).Where(found => found.Owner == owner)
@@ -206,7 +207,7 @@ public sealed class TooltipPlacementTests
     private static Point CenterAfterLayout(Control owner, Window window)
     {
         PageScreenshots.Settle(window);
-        var localPoint = owner.Classes.Contains("wordRowHeading")
+        var localPoint = owner.Classes.Contains("wordPresentationHeading")
             ? new Point(Math.Min(4, owner.Bounds.Width / 2), owner.Bounds.Height / 2)
             : new Point(owner.Bounds.Width / 2, owner.Bounds.Height / 2);
         if (owner.FindAncestorOfType<WordRow>() is { } row && owner.TranslatePoint(default, row) is { } inRow)
@@ -231,7 +232,7 @@ public sealed class TooltipPlacementTests
             ? "<none>"
             : string.Join(" -> ", hit.GetSelfAndVisualAncestors().OfType<Control>()
                 .Select(control => $"{control.GetType().Name} '{NameOf(control)}'"));
-        return $"window client size {window.ClientSize}; target row '{row.Row?.Word}' bounds in window coordinates " +
+        return $"window client size {window.ClientSize}; target row '{row.Data?.Facts.Word}' bounds in window coordinates " +
             $"{rowBounds}; parse-progress band visible {scenes.ParseProgressBandIsVisible}; " +
             $"hit-test chain at row centre {rowCenter}: {hitChain}";
     }

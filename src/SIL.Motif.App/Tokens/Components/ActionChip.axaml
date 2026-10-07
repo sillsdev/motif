@@ -24,10 +24,10 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Opinion.Approved.Accent}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
   </Style>
-  <Style Selector="PathIcon.actionChipCaret">
+  <Style Selector="Path.actionChipCaret">
     <Setter Property="Width" Value="{DynamicResource Component.ActionChip.CaretSize}" />
     <Setter Property="Height" Value="{DynamicResource Component.ActionChip.CaretSize}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Marking.Text}" />
+    <Setter Property="Fill" Value="{DynamicResource Intent.Marking.Text}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <!-- Semi repaints the face under the pointer and on a press, so the chip's hover fill and outline go there too. -->

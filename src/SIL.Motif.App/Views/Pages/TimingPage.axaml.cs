@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -28,10 +29,16 @@ public sealed partial class TimingPage : UserControl
         _shareLayout!.SizeChanged += (_, args) => ArrangeSidePanel(args.NewSize.Width);
         ArrangeSidePanel(_shareLayout.Bounds.Width);
         this.FindControl<ContentControl>("StatisticsHost")!.Content = new StatisticsPanel(page.Statistics);
+        var wordRows = this.FindControl<ItemsControl>("TimingPageCostliestRuleWordRowsItems")!;
+        WordPresentationHost = new WordListPresentationHost<ListedWordViewModel>(
+            wordRows, row => row.TimingPresentation, WordListCardSections.Listed);
     }
 
     /// <summary>The page model used by row templates to choose a rule.</summary>
     public TimingPageModel Page { get; }
+
+    /// <summary>The list-owned word-card and navigation host for the selected rule's costliest words.</summary>
+    public IWordPresentationHost WordPresentationHost { get; }
 
     private async void OnStatisticsExpanded(object? sender, RoutedEventArgs e)
     {

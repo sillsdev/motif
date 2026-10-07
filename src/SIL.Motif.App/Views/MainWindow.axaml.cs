@@ -135,8 +135,8 @@ public sealed partial class MainWindow : Window
     {
         ArgumentNullException.ThrowIfNull(workspace);
         DataContext = workspace;
-        WritingSystemText.SetResolver(this, workspace.Context.WritingSystemTextStyles);
         ConfigureSettings(workspace);
+        WritingSystemText.SetResolver(this, workspace.Context.TextStyles);
 
         var host = this.FindControl<Panel>("PageHost")
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'PageHost'.");

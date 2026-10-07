@@ -305,7 +305,7 @@
   {
     "view": "MainWindow",
     "name": "MainWindowWritingSystemNoticesItems",
-    "source": "Context.WritingSystemTextStyles.MissingFontNotices",
+    "source": "Context.TextStyles.MissingFontNotices",
     "mode": "finite",
     "control": "ItemsControl"
   },
@@ -444,20 +444,6 @@
   },
   {
     "view": "ResultsInTextPanel",
-    "name": "ResultsInTextPanelWarningMarkedFieldWorksMorphsItems",
-    "source": "WarningMarkedFieldWorksMorphs",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "ResultsInTextPanel",
-    "name": "ResultsInTextPanelPanGlossReadingMorphsItems",
-    "source": "PanGlossReadingMorphs",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "ResultsInTextPanel",
     "name": "ResultsInTextPanelFixChoicesItems",
     "source": "Marking.FixChoices",
     "mode": "finite",
@@ -471,55 +457,6 @@
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelFieldWorksAnalysesItems",
-    "source": "FieldWorksAnalyses",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelReadingsItems",
-    "source": "Readings",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelNamedWarningDetailsItems",
-    "source": "NamedWarningDetails",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelMembershipCandidateWarningsItems",
-    "source": "MembershipCandidateWarnings",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelSpellingCandidateWarningsItems",
-    "source": "SpellingCandidateWarnings",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelTimingSharesItems",
-    "source": "TimingShares",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "WordRowCard",
-    "name": "ResultsInTextPanelFixChoicesItems38",
-    "source": "Marking.FixChoices",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
     "view": "ReviewPanel",
     "name": "ReviewItems",
     "source": "ReviewEntries",
@@ -527,29 +464,29 @@
     "control": "ListBox"
   },
   {
-    "view": "ReviewPanel",
-    "name": "ReviewPanelAfterWordsItems",
+    "view": "ReviewWordRow",
+    "name": "WordRowPendingAfterWordsItems",
     "source": "AfterWords",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ReviewPanel",
-    "name": "ReviewPanelRowMorphsItems",
-    "source": "RowMorphs",
+    "view": "WordCard",
+    "name": "WordCardPendingMorphsItems",
+    "source": "Morphs",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ReviewPanel",
-    "name": "ReviewPanelBeforeWordsItems",
+    "view": "WordCard",
+    "name": "WordCardPendingBeforeWordsItems",
     "source": "BeforeWords",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "ReviewPanel",
-    "name": "ReviewPanelContextTokensItems",
+    "view": "WordCard",
+    "name": "WordCardPendingContextTokensItems",
     "source": "ContextTokens",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
@@ -602,13 +539,6 @@
     "source": "Words.Rows",
     "mode": "rows",
     "control": "ListBox"
-  },
-  {
-    "view": "TextWordsPanel",
-    "name": "TextWordsPanelOccurrencesItems",
-    "source": "Occurrences",
-    "mode": "rows",
-    "control": "ItemsControl"
   },
   {
     "view": "TextsListsPanel",
@@ -702,38 +632,80 @@
     "control": "ItemsControl"
   },
   {
-    "view": "WordRow",
-    "name": "FieldWorksMorphemes",
-    "source": "FieldWorksMorphemes",
+    "view": "WordCard",
+    "name": "WordCardFieldWorksAnalysesItems",
+    "source": "FieldWorksAnalyses",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "WordRow",
-    "name": "WordRowPanGlossMorphemesItems",
-    "source": "PanGlossMorphemes",
+    "view": "WordCard",
+    "name": "WordCardReadingsItems",
+    "source": "Readings",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "WordRowCard",
-    "name": "WordRowCardOpinionMarksItems",
+    "view": "WordCard",
+    "name": "WordCardNamedWarningDetailsItems",
+    "source": "NamedWarningDetails",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardMembershipCandidateWarningsItems",
+    "source": "MembershipCandidateWarnings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardSpellingCandidateWarningsItems",
+    "source": "SpellingCandidateWarnings",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardTimingSharesItems",
+    "source": "TimingShares",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardFixChoicesItems",
+    "source": "Marking.FixChoices",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardOpinionMarksItems",
     "source": "OpinionMarks",
     "mode": "finite",
     "control": "ItemsControl"
   },
   {
-    "view": "WordRowCard",
-    "name": "WordRowCardReadingsItems",
+    "view": "WordCard",
+    "name": "WordCardComparisonReadingsItems",
     "source": "Readings",
-    "mode": "rows",
-    "control": "ItemsControl"
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   },
   {
-    "view": "WordRowCard",
-    "name": "WordRowCardNotBuiltAnalysesItems",
+    "view": "WordCard",
+    "name": "WordCardNotBuiltAnalysesItems",
     "source": "NotBuiltAnalyses",
-    "mode": "rows",
-    "control": "ItemsControl"
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "WordCard",
+    "name": "WordCardOccurrencesItems",
+    "source": "Occurrences",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   }
 ]

@@ -63,8 +63,6 @@ public sealed class MarkingsGalleryTests
             Assert.Equal("✓", gallery.PrimaryAction.Content);
             Assert.Equal("Fix ▾", gallery.FixAction.Content);
             Assert.Equal("Staged", ((StackPanel)gallery.StagedStrip.Child!).Children[0] is TextBlock label ? label.Text : null);
-            Assert.Equal("Compact default", gallery.CompactText.Text);
-            Assert.Equal("Normal", gallery.NormalText.Text);
         });
     }
 
@@ -198,50 +196,6 @@ public sealed class MarkingsGalleryTests
         });
     }
 
-    [Fact]
-    public void NormalDensityUsesLargerTextThanTheDefaultCompactDensity()
-    {
-        _avalonia.Invoke(() =>
-        {
-            var gallery = new MarkingsGallery();
-            var window = Show(gallery, ThemeVariant.Light);
-            try
-            {
-                var compactType = DensityValue("Component.Density.CompactType");
-                var normalType = DensityValue("Component.Density.NormalType");
-                Assert.Equal(compactType, gallery.CompactText.FontSize);
-                Assert.Equal(normalType, gallery.NormalText.FontSize);
-                Assert.True(gallery.NormalText.FontSize > gallery.CompactText.FontSize);
-
-                var compactMark = new Border { Classes = { "opinionMark", "approved" } };
-                var normalMark = new Border { Classes = { "opinionMark", "approved" } };
-                var compactChip = new Button { Content = "Fix", Classes = { "actionChip" } };
-                var normalChip = new Button { Content = "Fix", Classes = { "actionChip" } };
-                var compactWord = DensityWord(normal: false);
-                var normalWord = DensityWord(normal: true);
-                gallery.CompactRoot.Children.Add(compactMark);
-                gallery.NormalRoot.Children.Add(normalMark);
-                gallery.CompactRoot.Children.Add(compactChip);
-                gallery.NormalRoot.Children.Add(normalChip);
-                gallery.CompactRoot.Children.Add(compactWord);
-                gallery.NormalRoot.Children.Add(normalWord);
-                window.UpdateLayout();
-                Assert.Equal(DensityValue("Component.Density.CompactMarkSize"), compactMark.MinWidth);
-                Assert.Equal(DensityValue("Component.Density.NormalMarkSize"), normalMark.MinWidth);
-                Assert.Equal(DensityValue("Component.ActionChip.Height"), compactChip.MinHeight);
-                Assert.Equal(DensityValue("Component.Density.NormalActionHeight"), normalChip.MinHeight);
-                Assert.Equal(DensityValue("Component.Density.CompactWordHeight"), compactWord.MinHeight);
-                Assert.Equal(DensityValue("Component.Density.NormalWordHeight"), normalWord.MinHeight);
-                Assert.Equal(compactType, ((TextBlock)compactWord.Child!).FontSize);
-                Assert.Equal(normalType, ((TextBlock)normalWord.Child!).FontSize);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
     [ScreenshotFact]
     public void CaptureMarkingsGalleryInLightAndDarkThemes()
     {
@@ -289,20 +243,6 @@ public sealed class MarkingsGalleryTests
     private static Point CentreOf(Control control, Window window) =>
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)
         ?? throw new InvalidOperationException("The control is not positioned in the window.");
-
-    private static Border DensityWord(bool normal)
-    {
-        var word = new Border
-        {
-            Classes = { "wordVerdict", "analysisDensity" },
-            Child = new TextBlock { Text = "word" },
-        };
-        if (normal) word.Classes.Add("normal");
-        return word;
-    }
-
-    private static double DensityValue(string key) =>
-        Assert.IsType<double>(Application.Current!.FindResource(key));
 
     private static Color ColorResource(string key, ThemeVariant variant)
     {

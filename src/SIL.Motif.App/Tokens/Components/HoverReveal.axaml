@@ -35,19 +35,19 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
   </Style>
-  <Style Selector="Border.hoverReveal :is(Button).revealOnHover">
+  <Style Selector=":is(Control).hoverReveal :is(Button).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.HiddenOpacity}" />
     <!-- Opacity-hidden actions cannot receive pointer hits until this region reveals them. -->
     <Setter Property="IsHitTestVisible" Value="False" />
   </Style>
-  <Style Selector="Border.hoverReveal:pointerover :is(Button).revealOnHover, Border.hoverReveal:focus-within :is(Button).revealOnHover, Border.hoverReveal.open :is(Button).revealOnHover">
+  <Style Selector=":is(Control).hoverReveal:pointerover :is(Button).revealOnHover, :is(Control).hoverReveal:focus-within :is(Button).revealOnHover, :is(Control).hoverReveal.open :is(Button).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
     <Setter Property="IsHitTestVisible" Value="True" />
   </Style>
-  <Style Selector="Border.hoverReveal :is(TextBlock).revealOnHover">
+  <Style Selector=":is(Control).hoverReveal :is(TextBlock).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.HiddenOpacity}" />
   </Style>
-  <Style Selector="Border.hoverReveal:pointerover :is(TextBlock).revealOnHover, Border.hoverReveal:focus-within :is(TextBlock).revealOnHover, Border.hoverReveal.open :is(TextBlock).revealOnHover">
+  <Style Selector=":is(Control).hoverReveal:pointerover :is(TextBlock).revealOnHover, :is(Control).hoverReveal:focus-within :is(TextBlock).revealOnHover, :is(Control).hoverReveal.open :is(TextBlock).revealOnHover">
     <Setter Property="Opacity" Value="{DynamicResource Component.HoverReveal.VisibleOpacity}" />
   </Style>
 </Styles>

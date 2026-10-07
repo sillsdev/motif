@@ -142,8 +142,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DiagnosticFiles = diagnosticFiles ?? NoDesktopServices.Instance;
         DiagnosticDialogs = diagnosticDialogs ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
-        WritingSystemTextStyles = new WritingSystemTextStyleResolver();
-        Assess.Trace.SetWritingSystemTextStyles(WritingSystemTextStyles);
+        TextStyles = new TextStyles();
+        Assess.Trace.SetTextStyles(TextStyles);
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Selection.PropertyChanged += OnSelectionPropertyChanged;
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
@@ -232,7 +232,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public TimeProvider Clock { get; }
 
     /// <summary>Resolves the open project's saved settings for every language-text control in the window.</summary>
-    public WritingSystemTextStyleResolver WritingSystemTextStyles { get; }
+    public TextStyles TextStyles { get; }
 
     /// <summary>The evidence every page shows, and whether its numbers are still current.</summary>
     public ProjectEvidence Evidence { get; } = new();

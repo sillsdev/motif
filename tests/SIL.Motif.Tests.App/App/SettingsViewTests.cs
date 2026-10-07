@@ -188,11 +188,11 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     text.IsEffectivelyVisible && text.Text == "11 pt (Normal)");
                 Assert.Contains(popup.GetVisualDescendants().OfType<MarkGlyph>(), mark =>
                     mark.IsEffectivelyVisible && AutomationProperties.GetName(mark) == "A font is missing");
-                Assert.DoesNotContain(workspace.Context.WritingSystemTextStyles.MissingFontNotices,
+                Assert.DoesNotContain(workspace.Context.TextStyles.MissingFontNotices,
                     notice => notice.WritingSystemId == "v-7");
 
                 HeadlessClick.Click(window, Button(popup, "Close Settings"), "Close Settings");
-                workspace.Context.WritingSystemTextStyles.MissingFontNotices.Add(
+                workspace.Context.TextStyles.MissingFontNotices.Add(
                     new WritingSystemFontNotice("v-7", "FieldWorks asks for a missing font."));
                 PageScreenshots.Settle(window);
                 HeadlessClick.Click(window, Button(window, "See writing systems"), "See writing systems");

@@ -8,6 +8,7 @@ using Avalonia.Headless;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -20,7 +21,7 @@ using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App.ControlContracts;
 
@@ -197,6 +198,7 @@ internal sealed class TooltipScenes
         FakeCommandClient? client = null;
         var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (fake, assessment) =>
         {
+            fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
             OverviewTimingScreenshots.ReadOverviewAndTiming(fake, assessment);
             var ruleKey = OverviewTimingScreenshots.SubjectAgreementRuleKey;
             fake.StoredGrammarCheckIs(new GrammarCheckResponse([
@@ -301,16 +303,19 @@ internal sealed class TooltipScenes
                 Assert.NotNull(container);
                 var row = container.GetVisualDescendants().OfType<WordRow>().Single();
                 row.GetVisualDescendants().OfType<Border>()
-                    .First(border => border.Classes.Contains("wordRowBody")).BringIntoView();
+                    .First(border => border.Classes.Contains("wordPresentationFrame")).BringIntoView();
                 PageScreenshots.Settle(Window);
                 MatrixTargetRow = row;
-                row.FocusRow();
+                row.FocusWord();
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
             case TooltipScene.Reader: Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts); break;
             case TooltipScene.AnalyzeWordList:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
+                await InText.ReadStateRefresh;
+                Workspace.Assess.Words.ApplyReadState(_ => true);
+                PageScreenshots.Settle(Window);
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
                 await Until(() => Visible<Button>().Any(button =>
                     button.FindAncestorOfType<TextWordsPanel>() is not null &&
@@ -337,7 +342,7 @@ internal sealed class TooltipScenes
             case TooltipScene.WordCard:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await InText.OpenTokenCardAsync(Token("alikula"));
-                await Until(() => Visible<Border>().Any(border => border.Classes.Contains("wordCard")), "the word card");
+                await Until(() => Visible<WordCard>().Any(), "the word card");
                 break;
             case TooltipScene.WordCardWithoutOccurrence:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
@@ -348,7 +353,7 @@ internal sealed class TooltipScenes
                 InText.SelectWord(assessedWord.Word, otherWordformId);
                 if (InText.SelectedToken is not { Occurrence: null })
                     throw new InvalidOperationException("The sample word must open without a chosen-text occurrence.");
-                await Until(() => Visible<Border>().Any(border => border.Classes.Contains("wordCard")),
+                await Until(() => Visible<WordCard>().Any(),
                     "the word card without a chosen-text occurrence");
                 break;
             case TooltipScene.Lists or TooltipScene.ListsStaged:

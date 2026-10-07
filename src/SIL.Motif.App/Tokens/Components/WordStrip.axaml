@@ -5,7 +5,8 @@
   Colours come from Intent keys only; sizes and gaps from Intent keys or this file's own Component keys.
 -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation">
   <Styles.Resources>
     <StaticResource x:Key="Component.WordStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
     <StaticResource x:Key="Component.WordStrip.Radius" ResourceKey="Primitive.Radius.3" />
@@ -24,7 +25,7 @@
     <StaticResource x:Key="Component.WordStrip.MorphType" ResourceKey="Primitive.Type.11" />
     <StaticResource x:Key="Component.WordStrip.NoteType" ResourceKey="Primitive.Type.10" />
   </Styles.Resources>
-  <Style Selector="Border.wordStrip">
+  <Style Selector=":is(Border).wordStrip">
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
@@ -32,26 +33,26 @@
     <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.Padding}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Gap.CompactItem}" />
   </Style>
-  <Style Selector="Border.wordStrip:pointerover">
+  <Style Selector=":is(Border).wordStrip:pointerover">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
   </Style>
-  <Style Selector="Border.wordStrip.open">
+  <Style Selector=":is(Border).wordStrip.open">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
   </Style>
-  <Style Selector="Border.wordStrip:focus-visible">
+  <Style Selector=":is(Border).wordStrip:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Focus}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Focus}" />
   </Style>
-  <Style Selector="Border.wordStrip.uncertainChanged">
+  <Style Selector=":is(Border).wordStrip.uncertainChanged">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Warning.Text}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
   </Style>
-  <Style Selector="Border.wordStrip.dimmed">
+  <Style Selector=":is(Border).wordStrip.dimmed">
     <Setter Property="Opacity" Value="{DynamicResource Intent.Opacity.Dimmed}" />
   </Style>
-  <Style Selector=":is(Control).wordRow">
+  <Style Selector="StackPanel.stripWordRow">
     <Setter Property="MinHeight" Value="{DynamicResource Component.WordStrip.WordRowHeight}" />
   </Style>
   <Style Selector=":is(Control).analysisRow">
@@ -85,31 +86,18 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Component.WordStrip.RowRule}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Marking.Divider}" />
   </Style>
-  <Style Selector="StackPanel.stripMorphs">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
-  </Style>
-  <Style Selector="TextBlock.stripMorphForm">
+  <Style Selector="word|MorphemePanel.stripMorphology :is(TextBlock).morphemePanelForm">
     <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.MorphType}" />
   </Style>
-  <Style Selector="TextBlock.stripMorphGloss">
+  <Style Selector="word|MorphemePanel.stripMorphology :is(TextBlock).morphemePanelGloss">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Dense}" />
-  </Style>
-  <Style Selector="Border.warningMorphUnderline">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
-  </Style>
-  <Style Selector="Border.warningMorphUnderline.named">
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Severity.Warning}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Underline}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="TextBlock.warningMark">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Severity.Warning}" />
     <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="Border.stripFieldWorks TextBlock.stripMorphGloss">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
   <Style Selector="TextBlock.stripNothing">
     <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.NoteType}" />
@@ -145,11 +133,11 @@
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="TextAlignment" Value="Left" />
   </Style>
-  <Style Selector="TextBlock.gutterLabel.wordRow">
+  <Style Selector="TextBlock.gutterLabel.gutterWordRow">
     <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.GutterWordPadding}" />
   </Style>
-  <Style Selector="StackPanel.lineHead">
-    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  <Style Selector="Grid.lineHead">
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector=":is(TextBlock).lineNumber">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />

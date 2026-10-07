@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ComparePanel"
@@ -153,27 +154,23 @@
             <views:CopyableTextBlock Text="Fix these first" FontWeight="SemiBold" />
           </DockPanel>
         </Expander.Header>
-        <StackPanel Grid.IsSharedSizeScope="True" Margin="{DynamicResource Intent.Gap.AfterRelated}">
-          <views:WordRowHeader />
-          <ListBox x:Name="ComparePanelFixFirstRowsItems" Classes="wordRows" ItemsSource="{Binding Compare.FixFirstRows}"
+        <views:WordListSlot Schema="{x:Static word:WordListSchemas.FixFirst}"
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}">
+          <Grid RowDefinitions="Auto,*">
+            <word:WordRowHeader />
+            <ListBox Grid.Row="1" x:Name="ComparePanelFixFirstRowsItems" Classes="wordRows" ItemsSource="{Binding Compare.FixFirstRows}"
                    MaxHeight="{DynamicResource Component.TextsPage.FixFirstListHeight}"
                    KeyboardNavigation.TabNavigation="Continue"
                    AutomationProperties.Name="Words to check first">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:CompareFixFirstViewModel">
-                <views:WordRow Row="{Binding Word.WordRow}" List="fix-first" ShowsTick="False"
-                               IsOpen="{Binding Word.IsExpanded}" Note="{Binding Explanation}"
-                               StagedText="{Binding Word.PendingChangeStatus}"
-                               OpenedCommand="{Binding $parent[views:ComparePanel].Compare.FocusFixFirstCommand}"
-                               OpenedCommandParameter="{Binding}">
-                  <views:WordRow.Card>
-                    <views:WordRowCard DataContext="{Binding Word}" CardToken="{Binding CardToken}" />
-                  </views:WordRow.Card>
-                </views:WordRow>
+                <word:WordRow Data="{Binding Presentation}" State="{Binding PresentationState, Mode=TwoWay}"
+                              Host="{Binding $parent[views:ComparePanel].FixFirstPresentationHost}" />
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-        </StackPanel>
+          </Grid>
+        </views:WordListSlot>
       </Expander>
     </Border>
 
@@ -231,7 +228,7 @@
                                 AutomationProperties.Name="{Binding AccessibleName}">
                       <TextBlock Classes="matrixSharedCount" Text="{Binding Separator}"
                                  IsVisible="{Binding HasSeparator}" />
-                      <views:MorphemeRow Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
+                      <word:MorphemePanel Morphs="{Binding Morphs}" ShowCategory="False" RevealLinks="True" />
                       <TextBlock Classes="matrixSharedCount" Text="{Binding CountText}" />
                     </StackPanel>
                   </DataTemplate>
@@ -295,25 +292,23 @@
                                      IsVisible="{Binding Compare.Changes.CollectionNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
 
-          <Grid Grid.Row="4" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-            <views:WordRowHeader ShowsMeaning="{Binding Compare.ShowsMeaning}" MeaningHeader="Meaning" />
+          <views:WordListSlot Grid.Row="4" Schema="{x:Static word:WordListSchemas.All}"
+                              ShowsMeaning="{Binding Compare.ShowsMeaning}">
+            <Grid RowDefinitions="Auto,*">
+            <word:WordRowHeader MeaningHeader="Meaning" />
             <ListBox x:Name="ComparePanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Compare.Words}"
                      MaxHeight="{DynamicResource Component.TextsPage.CompareWordsListHeight}"
                      KeyboardNavigation.TabNavigation="Continue"
                      AutomationProperties.Name="Words in the chosen cells">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:CompareWordViewModel">
-                  <views:WordRow Row="{Binding WordRow}" List="matrix" IsChecked="{Binding IsChecked}"
-                                 ShowsMeaning="{Binding $parent[views:ComparePanel].Compare.ShowsMeaning}"
-                                 IsOpen="{Binding IsExpanded}" StagedText="{Binding PendingChangeStatus}">
-                    <views:WordRow.Card>
-                      <views:WordRowCard CardToken="{Binding CardToken}" />
-                    </views:WordRow.Card>
-                  </views:WordRow>
+                  <word:WordRow Data="{Binding MatrixPresentation}" State="{Binding PresentationState, Mode=TwoWay}"
+                                Host="{Binding $parent[views:ComparePanel].MatrixPresentationHost}" />
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
-          </Grid>
+            </Grid>
+          </views:WordListSlot>
         </Grid>
       </Border>
     </ScrollViewer>

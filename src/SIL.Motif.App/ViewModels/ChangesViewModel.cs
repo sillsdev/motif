@@ -3,6 +3,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
@@ -705,6 +706,10 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     string? originPage = null, OccurrenceAnchor? occurrence = null, string? storedAnalysisId = null,
     int? readingIndex = null, string? groupId = null, string? wordformId = null) : ObservableObject
 {
+    private static long _nextPresentationRevision;
+    private readonly long _presentationRevision = Interlocked.Increment(ref _nextPresentationRevision);
+    private WordPresentationKey PresentationKey => new($"change:{ChangeId}");
+
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
         page != WorkspacePage.Review ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
@@ -722,6 +727,7 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
         OnPropertyChanged(nameof(WhereText));
         OnPropertyChanged(nameof(DetailText));
         OnPropertyChanged(nameof(HasDetailText));
+        OnPropertyChanged(nameof(Presentation));
     }
 
     /// <summary>
@@ -833,7 +839,28 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
 
     /// <summary>The word as Review changes lists it; its Open in text goes to this change's place.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Presentation), nameof(PresentationState))]
     private ListedWordViewModel? _listed;
+
+    /// <summary>The typed row facts and pending-change notes shown by the shared word-presentation module.</summary>
+    public WordPresentation Presentation => new(PresentationKey, _presentationRevision,
+        Listed?.Row ?? throw new InvalidOperationException("A Review change needs its listed word."),
+        WordListOwner.Review, TransitionText, DetailText,
+        PendingChange: new WordPendingChange(IsUncertain, StillFits,
+            AfterWords.Select(token => new WordCardSentenceToken(token.Form, token.FormWritingSystem, token.IsChanged)).ToArray(),
+            CheckAgainAutomationName, UndoAutomationName));
+
+    /// <summary>The card-open state retained on the pending change while its list row is recycled.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => new(PresentationKey, Listed?.IsOpen == true);
+        set
+        {
+            if (value.Key != PresentationKey)
+                throw new InvalidOperationException("Review interaction state belongs to another change.");
+            if (Listed is { } listed) listed.IsOpen = value.IsOpen;
+        }
+    }
 
     /// <summary>The sentence tokens surrounding the exact occurrence, when the Texts page has loaded them.</summary>
     public IReadOnlyList<ResultsTokenViewModel> ContextTokens { get; private set; } = [];

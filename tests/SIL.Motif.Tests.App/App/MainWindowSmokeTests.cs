@@ -26,7 +26,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -980,11 +980,10 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
 
-                var open = panel.GetVisualDescendants().OfType<HyperlinkButton>().Single(button =>
+                var open = panel.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Open motifa in Analyze texts" &&
                     button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the chosen cells");
-                Assert.True(open.Command?.CanExecute(open.CommandParameter));
-                open.Command!.Execute(open.CommandParameter);
+                open.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 var selected = workspace.PageModel<TextsPageModel>().ResultsInText.SelectedToken;
                 Assert.NotNull(selected);
                 Assert.Equal("motif-", Assert.Single(selected.Readings).Morphs.Single().Form);
@@ -1006,15 +1005,15 @@ public sealed class MainWindowSmokeTests
                 Assert.DoesNotContain(resultsPanel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                var card = Assert.Single(resultsPanel.GetVisualDescendants().OfType<Border>(), border =>
-                    border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+                var card = Assert.Single(resultsPanel.GetVisualDescendants()
+                    .OfType<SIL.Motif.App.Controls.WordPresentation.WordCard>(), control => control.IsEffectivelyVisible);
                 Assert.Same(selected, card.DataContext);
                 Assert.True(card.TranslatePoint(new Point(0, 0), strip)!.Value.Y >= strip.Bounds.Height);
                 var cardLinks = card.GetVisualDescendants().OfType<HyperlinkButton>().ToArray();
                 Assert.True(cardLinks.Length > 0,
                     $"Card context={card.DataContext?.GetType().Name ?? "null"}; " +
                     $"reading link={selected.Readings.Single().Morphs.Single().Link}; " +
-                    $"morpheme rows={card.GetLogicalDescendants().OfType<MorphemeRow>().Count()}; " +
+                    $"morpheme panels={card.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.MorphemePanel>().Count()}; " +
                     $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
                 var morphLink = Assert.Single(cardLinks,
                     button => AutomationProperties.GetName(button) == "Open the entry for motif- in Lexicon Edit");
@@ -1083,7 +1082,7 @@ public sealed class MainWindowSmokeTests
                     AutomationProperties.GetName(candidate) == "Analysis for pasted-word");
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
                     candidate.CommandParameter is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
-                var open = Assert.Single(panel.GetLogicalDescendants().OfType<HyperlinkButton>(), candidate =>
+                var open = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
                     AutomationProperties.GetName(candidate) == "Open pasted-word in Analyze texts");
                 Assert.Equal("Open in text", open.Content);
             }
@@ -1143,18 +1142,19 @@ public sealed class MainWindowSmokeTests
                 disclosure.IsExpanded = true;
                 window.UpdateLayout();
                 var row = list.GetVisualDescendants().OfType<WordRow>().Single();
-                Assert.False(row.ShowsTick);
+                Assert.DoesNotContain(row.GetVisualDescendants().OfType<CheckBox>(),
+                    checkBox => checkBox.Classes.Contains("wordPresentationTick"));
                 var explanation = row.GetVisualDescendants().OfType<TextBlock>()
                     .Single(text => text.Text == priority.Explanation);
                 Assert.True(explanation.IsEffectivelyVisible);
                 Assert.Equal(TextWrapping.NoWrap, explanation.TextWrapping);
 
-                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
+                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordPresentationFrame"));
                 HeadlessClick.Click(window, body, "motifa in Fix these first");
                 window.UpdateLayout();
 
-                Assert.True(row.IsOpen);
-                var line = row.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("wordRowFrame"));
+                Assert.True(row.State?.IsOpen);
+                var line = body;
                 Assert.Contains("open", body.Classes);
                 Assert.Contains("open", line.Classes);
                 Assert.DoesNotContain("hoverReveal", line.Classes);

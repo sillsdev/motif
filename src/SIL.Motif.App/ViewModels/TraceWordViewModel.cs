@@ -29,7 +29,7 @@ public enum TraceOutcomeFilter
 /// </summary>
 public sealed partial class TraceWordViewModel : ObservableObject
 {
-    private WritingSystemTextStyleResolver? _workspaceWritingSystemTextStyles;
+    private TextStyles? _workspaceTextStyles;
 
     private readonly ICommandClient? _commandClient;
     private string? _projectPath;
@@ -96,17 +96,17 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private WordTraceResponse? _result;
 
     /// <summary>The captured display settings for this trace, or the current project settings before it runs.</summary>
-    public WritingSystemTextStyleResolver? WritingSystemTextStyles { get; private set; }
+    public TextStyles? TextStyles { get; private set; }
 
     /// <summary>The default vernacular used for a word typed into Try a Word.</summary>
-    public string? WordWritingSystem => WritingSystemTextStyles?.DefaultVernacularId;
+    public string? WordWritingSystem => TextStyles?.DefaultVernacularId;
 
     /// <summary>Uses the open project's display settings for typed words and traces without captured settings.</summary>
-    public void SetWritingSystemTextStyles(WritingSystemTextStyleResolver resolver)
+    public void SetTextStyles(TextStyles styles)
     {
-        ArgumentNullException.ThrowIfNull(resolver);
-        _workspaceWritingSystemTextStyles = resolver;
-        UpdateWritingSystemTextStyles(Result);
+        ArgumentNullException.ThrowIfNull(styles);
+        _workspaceTextStyles = styles;
+        UpdateTextStyles(Result);
     }
 
     [ObservableProperty]
@@ -131,7 +131,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     {
         var allowLiveLinks = _projectPath is not null && value?.Provenance?.CanNavigate == true;
         var directions = WritingSystemsById(value);
-        UpdateWritingSystemTextStyles(value);
+        UpdateTextStyles(value);
         _reading = value?.Reading;
         _labels = new TraceDisplayLabels(_reading?.Refs ?? []);
         _refs = (_reading?.Refs ?? []).ToDictionary(reference => reference.Id, StringComparer.Ordinal);
@@ -178,15 +178,15 @@ public sealed partial class TraceWordViewModel : ObservableObject
         RebuildExpert();
     }
 
-    private void UpdateWritingSystemTextStyles(WordTraceResponse? value)
+    private void UpdateTextStyles(WordTraceResponse? value)
     {
         var captured = value?.HostCapture?.WritingSystems;
-        var resolver = captured is { Count: > 0 }
-            ? WritingSystemTextStyleResolver.FromTrace(captured)
-            : _workspaceWritingSystemTextStyles;
-        if (ReferenceEquals(WritingSystemTextStyles, resolver)) return;
-        WritingSystemTextStyles = resolver;
-        OnPropertyChanged(nameof(WritingSystemTextStyles));
+        var styles = captured is { Count: > 0 }
+            ? SIL.Motif.App.Services.TextStyles.FromTrace(captured)
+            : _workspaceTextStyles;
+        if (ReferenceEquals(TextStyles, styles)) return;
+        TextStyles = styles;
+        OnPropertyChanged(nameof(TextStyles));
         OnPropertyChanged(nameof(WordWritingSystem));
     }
 

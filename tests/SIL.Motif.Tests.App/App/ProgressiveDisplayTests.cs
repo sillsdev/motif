@@ -10,6 +10,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -17,7 +18,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.App.Walkthrough;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 using TraceStep = SIL.Motif.Contract.Responses.TraceStep;
 using Xunit;
 using Xunit.Abstractions;
@@ -27,14 +28,12 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ProgressiveDisplayTests
 {
-    private const int WordRowControlCeiling = 111;
-    private const int WordRowDepthCeiling = 22;
-    private const int WordRowCardControlCeiling = 122;
-    private const int WordRowCardDepthCeiling = 20;
-    private const int WordStripControlCeiling = 76;
-    private const int WordStripDepthCeiling = 12;
-    private const int MarkChipControlCeiling = 4;
-    private const int MarkChipDepthCeiling = 3;
+    private const int WordRowControlCeiling = 64;
+    private const int WordRowDepthCeiling = 10;
+    private const int WordCardControlCeiling = 64;
+    private const int WordCardDepthCeiling = 18;
+    private const int WordStripControlCeiling = 40;
+    private const int WordStripDepthCeiling = 9;
     private readonly ITestOutputHelper _output;
 
     public ProgressiveDisplayTests(ITestOutputHelper output) => _output = output;
@@ -43,9 +42,9 @@ public sealed class ProgressiveDisplayTests
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MainWindow", "MiniMatrix", "Pages/OverviewPage", "Pages/TimingPage",
-        "RefusalBlock", "ResultsInTextPanel",
+        "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "ReviewPanel", "SelectionPanel", "SettingsPopupView", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
-        "TraceAnalysesView", "TryWordPanel", "WordRow", "WordRowCard",
+        "TraceAnalysesView", "TryWordPanel", "WordCard",
     ];
 
     public static IEnumerable<object[]> CollectionViews() => ViewNames.Select(name => new object[] { name });
@@ -72,6 +71,27 @@ public sealed class ProgressiveDisplayTests
                     .OfType<ItemsControl>().Select(items => (items, fragment)))
                     .Where(pair => entries.Any(entry => entry.Name == pair.items.Name))
                     .GroupBy(pair => pair.items.Name).ToDictionary(group => group.Key!, group => group.First());
+                if (viewName == "ResultsInTextPanel" && entries.Any(entry =>
+                        entry.Name == "ResultsInTextPanelFixChoicesItems"))
+                {
+                    window.Content = root;
+                    window.Show();
+                    PageScreenshots.Settle(window);
+                    var fixButton = root.GetVisualDescendants().OfType<Button>().First(button =>
+                        Avalonia.Automation.AutomationProperties.GetName(button) == "Fix actions from the word strip");
+                    var strip = Assert.IsType<WordStripToken>(fixButton.GetVisualAncestors()
+                        .OfType<WordStripToken>().First());
+                    var flyout = Assert.IsType<Flyout>(fixButton.Flyout);
+                    var menu = Assert.IsAssignableFrom<Control>(flyout.ContentTemplate!.Build(flyout.Content));
+                    menu.DataContext = flyout.Content;
+                    window.Content = menu;
+                    PageScreenshots.Settle(window);
+                    var choices = Assert.Single(menu.GetVisualDescendants().OfType<ItemsControl>(), items =>
+                        items.Name == "ResultsInTextPanelFixChoicesItems");
+                    targets.Add(choices.Name!, (choices, menu));
+                    window.Content = null;
+                    PageScreenshots.Settle(window);
+                }
                 foreach (var entry in entries)
                 {
                     if (entry.Mode == "grid") continue;
@@ -89,7 +109,7 @@ public sealed class ProgressiveDisplayTests
                     if (entry.Mode is "tree" or "grid") continue;
                     var isFragment = !ReferenceEquals(root, fragment);
                     var externalScroll = isFragment || viewName is "DiagnosticPanel" or "ExpertTracePanel" or
-                        "TraceAnalysesView" or "WordRowCard";
+                        "TraceAnalysesView";
                     window.Content = externalScroll ? new ScrollViewer { Content = fragment } : fragment;
                     foreach (var ancestor in items.GetLogicalAncestors().OfType<Control>())
                     {
@@ -174,24 +194,36 @@ public sealed class ProgressiveDisplayTests
         var inventory = Inventory();
         var names = XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
         var collections = new[] { "ItemsControl", "ProgressiveItemsControl", "ListBox", "TreeView", "DataGrid", "ComboBox", "ItemsRepeater" };
-        var actual = Directory.EnumerateFiles(Path.Combine(AppDirectory(), "Views"), "*.axaml", SearchOption.AllDirectories)
-            .SelectMany(path => XDocument.Load(path).Descendants()
+        var viewsDirectory = Path.Combine(AppDirectory(), "Views");
+        var wordCardPath = Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordCard.axaml");
+        var wordStripPath = Path.Combine(AppDirectory(), "Controls", "WordPresentation", "WordStripToken.axaml");
+        var actual = Directory.EnumerateFiles(viewsDirectory, "*.axaml", SearchOption.AllDirectories)
+            .SelectMany(path => CollectionEntries(path,
+                Path.GetRelativePath(viewsDirectory, path).Replace('\\', '/')[..^6]))
+            .Concat(CollectionEntries(wordCardPath, "WordCard"))
+            .Concat(CollectionEntries(wordStripPath, "ResultsInTextPanel"))
+            .Concat(["ReviewWordRow|WordRowPendingAfterWordsItems|ProgressiveItemsControl|AfterWords"])
+            .Order().ToArray();
+
+        IEnumerable<string> CollectionEntries(string path, string view) => XDocument.Load(path).Descendants()
                 .Where(node => collections.Contains(node.Name.LocalName) &&
                     (node.Attribute("ItemsSource") ?? node.Attribute("FullItemsSource")) is not null)
                 .Select(node =>
                 {
                     var binding = (node.Attribute("ItemsSource") ?? node.Attribute("FullItemsSource"))!.Value;
                     var source = binding.Split([' ', ',', '}'], StringSplitOptions.RemoveEmptyEntries)[1];
-                    return $"{Path.GetRelativePath(Path.Combine(AppDirectory(), "Views"), path).Replace('\\', '/')[..^6]}|{node.Attribute(names + "Name")?.Value}|{node.Name.LocalName}|{source}";
-                }))
-            .Order().ToArray();
+                    return $"{view}|{node.Attribute(names + "Name")?.Value}|{node.Name.LocalName}|{source}";
+                });
         Assert.Equal(actual, inventory.Select(entry => $"{entry.View}|{entry.Name}|{entry.Control}|{entry.Source}").Order());
         Assert.Equal(ViewNames.Order(), inventory.Select(entry => entry.View).Distinct().Order());
         var codeBuilt = Directory.EnumerateFiles(Path.Combine(AppDirectory(), "Views"), "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(
+                Path.Combine(AppDirectory(), "Controls", "WordPresentation"), "*.cs", SearchOption.AllDirectories))
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileNameWithoutExtension(path).Replace(".axaml", string.Empty)).Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "ListWordCard", "MainWindow", "MarkChip", "MorphemeRow", "OutcomeBar", "ProgressivePanel" }, codeBuilt);
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "NamedMark", "OutcomeBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader" },
+            codeBuilt);
     }
 
     [Fact]
@@ -215,9 +247,10 @@ public sealed class ProgressiveDisplayTests
             PageScreenshots.Settle(sampleWindow);
 
             var row = FixedWordRow(workspace);
-            var card = new WordRowCard { CardToken = token, IsOpen = true };
-            Assert.Equal("hawajafika", card.CardToken?.Form);
-            Assert.True(card.IsOpen);
+            var card = new WordCard
+            {
+                Document = new WordCardDocument(new WordPresentationKey("scale:empty-card"), 0, []),
+            };
             var window = new Window
             {
                 Width = 1240,
@@ -230,21 +263,17 @@ public sealed class ProgressiveDisplayTests
                 PageScreenshots.Settle(window);
                 var rowTree = AvaloniaScaleCounts.CaptureSubtree(row);
                 var cardTree = AvaloniaScaleCounts.CaptureSubtree(card);
-                var chip = row.FindControl<MarkChip>("OutcomeBesideMorphemes")!;
-                var chipTree = AvaloniaScaleCounts.CaptureSubtree(chip);
                 var panel = Assert.Single(sampleWindow.GetVisualDescendants().OfType<ResultsInTextPanel>());
-                var strip = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, token));
+                var strip = Assert.Single(panel.GetVisualDescendants().OfType<WordStripToken>(),
+                    candidate => ReferenceEquals(candidate.Data, token));
                 var stripTree = AvaloniaScaleCounts.CaptureSubtree(strip);
 
-                WriteSubtree("WordRow", rowTree);
-                WriteSubtree("WordRowCard", cardTree);
-                WriteSubtree("WordStrip", stripTree);
-                WriteSubtree("MarkChip", chipTree);
+                WriteSubtree("WordRow", rowTree, row);
+                WriteSubtree("WordCard", cardTree, card);
+                WriteSubtree("WordStripToken", stripTree, strip);
                 AssertSubtreeBudget("WordRow", rowTree, WordRowControlCeiling, WordRowDepthCeiling);
-                AssertSubtreeBudget("WordRowCard", cardTree, WordRowCardControlCeiling, WordRowCardDepthCeiling);
-                AssertSubtreeBudget("WordStrip", stripTree, WordStripControlCeiling, WordStripDepthCeiling);
-                AssertSubtreeBudget("MarkChip", chipTree, MarkChipControlCeiling, MarkChipDepthCeiling);
+                AssertSubtreeBudget("WordCard", cardTree, WordCardControlCeiling, WordCardDepthCeiling);
+                AssertSubtreeBudget("WordStripToken", stripTree, WordStripControlCeiling, WordStripDepthCeiling);
                 Assert.Contains("Avalonia.Controls.Grid", rowTree.ControlTypes.Select(type => type.Key));
                 Assert.Contains("Avalonia.Controls.Border", rowTree.ControlTypes.Select(type => type.Key));
                 Assert.Contains("Avalonia.Controls.StackPanel", rowTree.ControlTypes.Select(type => type.Key));
@@ -254,10 +283,7 @@ public sealed class ProgressiveDisplayTests
                 Assert.Equal(rowTree.ControlCount, rowTree.ControlTypes.Sum(type => type.Count));
                 Assert.Equal(cardTree.ControlCount, cardTree.ControlTypes.Sum(type => type.Count));
                 Assert.Equal(stripTree.ControlCount, stripTree.ControlTypes.Sum(type => type.Count));
-                Assert.Equal(chipTree.ControlCount, chipTree.ControlTypes.Sum(type => type.Count));
-                Assert.Equal(row.Row?.OutcomeMark, chip.Mark);
-                Assert.Equal(row.Row?.OutcomeLabel, chip.Text);
-                Assert.True(chip.Compact);
+                Assert.Equal(stripTree.ControlCount, stripTree.ControlTypes.Sum(type => type.Count));
             }
             finally
             {
@@ -282,7 +308,8 @@ public sealed class ProgressiveDisplayTests
                 var baseline = AvaloniaScaleCounts.CaptureSubtree(row);
                 AvaloniaScaleCounts.AssertSubtreeBudget(
                     baseline, "WordRow", WordRowControlCeiling, WordRowDepthCeiling);
-                var cells = row.FindControl<Grid>("Cells")!;
+                var cells = Assert.Single(row.GetVisualDescendants().OfType<Grid>(),
+                    grid => grid.Classes.Contains("wordPresentationShell"));
                 var bordersToAdd = Math.Max(1, WordRowControlCeiling + 1 - baseline.ControlCount);
                 for (var index = 0; index < bordersToAdd; index++) cells.Children.Add(new Border());
                 var mutated = AvaloniaScaleCounts.CaptureSubtree(row);
@@ -301,29 +328,77 @@ public sealed class ProgressiveDisplayTests
         }, TimeSpan.FromMinutes(1));
     }
 
-    private static WordRow FixedWordRow(WorkspaceShellViewModel workspace)
+    [Fact]
+    public void ScrollingWordRowsBuildsEachRecycledRowOncePerWord()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, sampleWindow) = await PageScreenshots.OpenOverSampleData();
+            var facts = workspace.Assess.Words.Rows.Select(row => row.WordRow).ToArray();
+            Assert.NotEmpty(facts);
+            var words = Enumerable.Range(0, 240).Select(index => new WordPresentation(
+                new WordPresentationKey($"scroll:{index}"), 0, facts[index % facts.Length], WordListOwner.WordList)).ToArray();
+            var list = new ListBox
+            {
+                ItemsSource = words,
+                ItemsPanel = new FuncTemplate<Panel?>(() => new VirtualizingStackPanel()),
+                ItemTemplate = new FuncDataTemplate<WordPresentation>((_, _) => new PresentationWordRow
+                {
+                    [!PresentationWordRow.DataProperty] = new Avalonia.Data.Binding(),
+                }),
+            };
+            var window = new Window { Width = 1240, Height = 600, Content = list };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+                var seen = new Dictionary<PresentationWordRow, (WordPresentation? Data, int Builds)>(
+                    ReferenceEqualityComparer.Instance);
+                var steps = 0;
+                for (var offset = 0d; offset < scroll.Extent.Height - scroll.Viewport.Height && steps < 30;
+                     offset += scroll.Viewport.Height / 3, steps++)
+                {
+                    scroll.Offset = scroll.Offset.WithY(offset);
+                    PageScreenshots.Settle(window);
+                    foreach (var row in list.GetVisualDescendants().OfType<PresentationWordRow>())
+                    {
+                        if (seen.TryGetValue(row, out var before))
+                        {
+                            var allowed = ReferenceEquals(before.Data, row.Data) ? 0 : 1;
+                            Assert.True(row.CellBuildCount - before.Builds <= allowed,
+                                $"Row {row.Data?.Key.Value} built its cells {row.CellBuildCount - before.Builds} times " +
+                                $"in one scroll step; it may build them only when its word changes.");
+                        }
+                        seen[row] = (row.Data, row.CellBuildCount);
+                        foreach (var panel in row.GetVisualDescendants().OfType<MorphemePanel>())
+                            Assert.True(panel.PartBuildCount == 1,
+                                $"A morpheme panel in {row.Data?.Key.Value} built its parts {panel.PartBuildCount} times.");
+                    }
+                }
+                Assert.True(steps > 3, "The list should scroll through several screens of recycled rows.");
+                Assert.Contains(seen.Keys, row => row.GetVisualDescendants().OfType<MorphemePanel>().Any());
+            }
+            finally
+            {
+                window.Close();
+                sampleWindow.Close();
+            }
+        }, TimeSpan.FromMinutes(1));
+    }
+
+    private static PresentationWordRow FixedWordRow(WorkspaceShellViewModel workspace)
     {
         var model = Assert.Single(workspace.Assess.Words.Rows, row => row.Word == "Sungura");
-        var control = new WordRow
+        var key = new WordPresentationKey("scale:row");
+        var control = new PresentationWordRow
         {
-            Row = model.WordRow,
-            Columns = WordRowColumns.All,
-            ShowsTick = true,
-            ShowsMeaning = true,
-            IsChecked = false,
-            IsOpen = false,
-            Card = null,
-            StagedText = null,
-            Note = null,
-            Actions = null,
-            TimeText = null,
+            Data = new WordPresentation(key, 0, model.WordRow, WordListOwner.Matrix),
+            State = new WordInteractionState(key),
         };
-        Assert.Equal("Sungura", control.Row?.Word);
-        Assert.Equal(WordRowColumns.All, control.Columns);
-        Assert.True(control.ShowsTick);
-        Assert.True(control.ShowsMeaning);
-        Assert.False(control.IsOpen);
-        Assert.False(control.IsChecked);
+        Assert.Equal("Sungura", control.Data?.Facts.Word);
+        Assert.False(control.State?.IsOpen);
+        Assert.False(control.State?.IsChecked);
         return control;
     }
 
@@ -335,13 +410,22 @@ public sealed class ProgressiveDisplayTests
         Assert.InRange(tree.MaximumDepth, 0, maximumDepth);
     }
 
-    private void WriteSubtree(string rootName, ControlSubtreeSnapshot tree)
+    private void WriteSubtree(string rootName, ControlSubtreeSnapshot tree, Control root)
     {
         var types = string.Join(", ", tree.ControlTypes.Select(type => $"{type.Key}={type.Count}"));
         var owners = tree.TemplateParts.Count == 0 ? "none" : string.Join(", ", tree.TemplateParts.Select(part =>
             $"{part.Owner}={part.Count}@{part.MaximumDepth}"));
+        var deepest = new[] { root }.Concat(root.GetVisualDescendants().OfType<Control>())
+            .OrderByDescending(control => ReferenceEquals(control, root) ? 0 :
+                control.GetVisualAncestors().TakeWhile(ancestor => !ReferenceEquals(ancestor, root)).Count() + 1)
+            .First();
+        var path = string.Join(" → ", deepest.GetVisualAncestors()
+            .TakeWhile(ancestor => !ReferenceEquals(ancestor, root)).OfType<Control>()
+            .Reverse().Prepend(root).Append(deepest)
+            .Select(control => $"{control.GetType().Name}{(string.IsNullOrEmpty(control.Name) ? "" : $"#{control.Name}")}"));
         _output.WriteLine($"Visual subtree types | {rootName} | {types}");
         _output.WriteLine($"Template-owned parts | {rootName} | {owners}");
+        _output.WriteLine($"Deepest visual path | {rootName} | {path}");
     }
 
     [Fact]
@@ -379,7 +463,7 @@ public sealed class ProgressiveDisplayTests
                 items.ScrollIntoView(EntryIndex(groups[0].Items[0]));
                 PageScreenshots.Settle(window);
                 var first = ChangeRow(groups[0].Items[0]);
-                first.FocusRow();
+                first.FocusWord();
                 AssertFocus(0, 0);
                 for (var index = 1; index <= 12; index++)
                 {
@@ -398,7 +482,7 @@ public sealed class ProgressiveDisplayTests
 
                 items.ScrollIntoView(EntryIndex(groups[0].Items[99]));
                 PageScreenshots.Settle(window);
-                ChangeRow(groups[0].Items[99]).FocusRow();
+                ChangeRow(groups[0].Items[99]).FocusWord();
                 Press(Key.Down);
                 AssertFocus(1, 0);
                 Press(Key.Up);
@@ -407,14 +491,14 @@ public sealed class ProgressiveDisplayTests
 
                 Press(Key.Home);
                 first = ChangeRow(groups[0].Items[0]);
-                first.IsOpen = true;
+                first.State = first.State! with { IsOpen = true };
                 PageScreenshots.Settle(window);
                 Assert.True(groups[0].Items[0].Listed!.IsOpen);
                 Press(Key.End);
                 AssertFocus(1, 99);
                 Press(Key.Home);
                 AssertFocus(0, 0);
-                Assert.True(ChangeRow(groups[0].Items[0]).IsOpen);
+                Assert.True(ChangeRow(groups[0].Items[0]).State?.IsOpen);
                 AssertBoundedRows("expanded return");
 
                 void Press(Key key)
@@ -428,28 +512,27 @@ public sealed class ProgressiveDisplayTests
                     .Select((item, index) => (item, index))
                     .Single(pair => ReferenceEquals(pair.item.Change, change)).index;
 
-                WordRow ChangeRow(ChangeViewModel change) => Assert.Single(items.ContainerFromIndex(EntryIndex(change))!
-                    .GetVisualDescendants().OfType<WordRow>());
+                PresentationWordRow ChangeRow(ChangeViewModel change) => Assert.Single(items.ContainerFromIndex(EntryIndex(change))!
+                    .GetVisualDescendants().OfType<PresentationWordRow>());
 
                 void AssertFocus(int groupIndex, int rowIndex)
                 {
-                    var rows = panel.GetVisualDescendants().OfType<WordRow>().ToArray();
-                    var focusedRows = rows.Where(row => row.FindControl<Border>("Body")!.IsFocused).ToArray();
+                    var rows = panel.GetVisualDescendants().OfType<PresentationWordRow>().ToArray();
+                    var focusedRows = rows.Where(row => row.IsFocused).ToArray();
                     Assert.True(focusedRows.Length == 1,
-                        $"Expected focus on {groupIndex}/{rowIndex}; realized {string.Join(',', rows.Select(row => ((ChangeViewModel)row.DataContext!).ChangeId))}");
+                        $"Expected focus on {groupIndex}/{rowIndex}; realized {string.Join(',', rows.Select(row => row.Data?.Key.Value))}");
                     var focused = focusedRows[0];
-                    Assert.Same(groups[groupIndex].Items[rowIndex], focused.DataContext);
-                    var body = focused.FindControl<Border>("Body")!;
-                    var top = body.TranslatePoint(default, window)!.Value.Y;
-                    Assert.InRange(top, 0, window.Bounds.Height - body.Bounds.Height);
+                    Assert.Equal($"change:{groups[groupIndex].Items[rowIndex].ChangeId}", focused.Data?.Key.Value);
+                    var top = focused.TranslatePoint(default, window)!.Value.Y;
+                    Assert.InRange(top, 0, window.Bounds.Height - focused.Bounds.Height);
                 }
 
                 void AssertBoundedRows(string position)
                 {
-                    var count = panel.GetVisualDescendants().OfType<WordRow>().Count();
+                    var count = panel.GetVisualDescendants().OfType<PresentationWordRow>().Count();
                     Assert.InRange(count, 1, 16);
                     Assert.InRange(items.GetRealizedContainers().Count(), 1, 18);
-                    _output.WriteLine($"Review {position}: {count} real WordRows for 200 changes");
+                    _output.WriteLine($"Review {position}: {count} shared word rows for 200 changes");
                 }
             }
             finally
@@ -789,22 +872,17 @@ public sealed class ProgressiveDisplayTests
         }, TimeSpan.FromSeconds(30));
     }
 
-    [Theory]
-    [InlineData("MorphemeRow")]
-    [InlineData("GrammarWarningPartsBlock")]
-    public void CodeBuiltWrappingPanelsKeepOnePageOfLargeSources(string viewName)
+    [Fact]
+    public void CodeBuiltWrappingPanelsKeepOnePageOfLargeSources()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
-            var morph = new ParserReadingMorphViewModel(new SIL.Motif.Contract.Responses.ParserReadingMorph(
-                "word", "gloss", "noun", null, false, null));
-            var morphemes = new MorphemeRow { Morphs = Enumerable.Repeat(morph, 500).ToArray() };
             var parts = new GrammarWarningPartsBlock
             {
                 Parts = Enumerable.Range(0, 500).Select(index => new SIL.Motif.Contract.Responses.GrammarWarningPart(
                     $"part-{index}", SIL.Motif.Contract.Responses.GrammarWarningPartRole.Text)).ToArray(),
             };
-            var panel = viewName == "MorphemeRow" ? (Panel)morphemes : parts;
+            var panel = parts;
             var window = new Window { Width = 1240, Height = 780, Content = panel };
             try
             {
@@ -826,62 +904,6 @@ public sealed class ProgressiveDisplayTests
                     Assert.Equal(22, panel.Children.Count);
                 }
                 PageScreenshots.Settle(window);
-            }
-            finally { window.Close(); }
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(30));
-    }
-
-    [Fact]
-    public void ListWordCardPagesAlignedSegmentsAndLargeSpans()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var morphs = Enumerable.Range(0, 500).Select(index => new SIL.Motif.Contract.Responses.ParserReadingMorph(
-                $"part-{index}", "gloss", "noun", null, false, null)).ToArray();
-            var card = new ListWordCard { DataContext = WordRowViewModel.NotParsed("word", fieldWorks: morphs) };
-            var window = new Window { Width = 1240, Height = 780, Content = card };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                var host = card.FindControl<StackPanel>("AlignmentHost")!;
-                for (var page = 0; page < 25; page++)
-                {
-                    var grid = Assert.Single(card.GetVisualDescendants().OfType<Grid>(),
-                        grid => grid.Classes.Contains("listCardAlignment"));
-                    Assert.InRange(grid.ColumnDefinitions.Count, 3, 22);
-                    Assert.Equal(20, card.GetVisualDescendants().OfType<Border>()
-                        .Count(border => border.Classes.Contains("listCardMorph")));
-                    Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == $"part-{page * 20}");
-                    if (page == 24) break;
-                    var next = Assert.Single(host.Children.OfType<Button>(), button => Equals(button.Content, "Show 20 more"));
-                    Assert.True(next.Focus());
-                    next.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-                    PageScreenshots.Settle(window);
-                    Assert.Contains(host.Children.OfType<Button>(), button => button.IsFocused);
-                }
-                Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "part-499");
-                card.DataContext = new WordRowViewModel(new SIL.Motif.Contract.Responses.WordRow(
-                    "word", SIL.Motif.Contract.Responses.WordRowOutcome.Different, "Built something else",
-                    SIL.Motif.Contract.Responses.WordRowTone.Problem)
-                {
-                    FieldWorksMorphemes = [new("whole", "gloss", "noun", null, false, null)],
-                    PanGlossMorphemes = morphs,
-                    PanGlossReadingCount = 1,
-                });
-                PageScreenshots.Settle(window);
-                var span = Assert.Single(card.GetVisualDescendants().OfType<StackPanel>(),
-                    panel => panel.Classes.Contains("listCardChips") && panel.Children.Count > 1);
-                for (var page = 0; page < 25; page++)
-                {
-                    Assert.InRange(span.Children.Count, 20, 22);
-                    if (page == 24) break;
-                    var next = Assert.Single(span.Children.OfType<Button>(), button => Equals(button.Content, "Show 20 more"));
-                    next.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-                    PageScreenshots.Settle(window);
-                }
-                Assert.Contains(span.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "part-499");
             }
             finally { window.Close(); }
             return Task.CompletedTask;
@@ -929,10 +951,12 @@ public sealed class ProgressiveDisplayTests
         Assert.True(realized is > 0 and <= 64,
             $"{entry.View}/{entry.Source}: realized {realized} of {items.ItemCount} rows");
         var tree = AvaloniaScaleCounts.CaptureRealizedControls(items);
-        var wordRows = tree.MotifControl(typeof(WordRow).FullName!);
-        Assert.InRange(wordRows.Count, 0, 64);
+        var wordRows = tree.MotifControl(typeof(PresentationWordRow).FullName!);
+        var presentationRows = tree.MotifControl(typeof(PresentationWordRow).FullName!);
+        Assert.InRange(wordRows.Count + presentationRows.Count, 0, 64);
         _output.WriteLine($"{entry.View}/{entry.Source}: {realized} realized rows; " +
-            $"{wordRows.Count} realized Motif WordRows at depth {wordRows.MaximumDepth}");
+            $"{wordRows.Count + presentationRows.Count} realized Motif WordRows at depth " +
+            $"{Math.Max(wordRows.MaximumDepth, presentationRows.MaximumDepth)}");
     }
 
     private static Control Build(string name, WorkspaceShellViewModel workspace, MainWindow sample)
@@ -960,20 +984,50 @@ public sealed class ProgressiveDisplayTests
             "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
             "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
+            "ReviewWordRow" => new PresentationWordRow
+            {
+                Data = new WordPresentation(new WordPresentationKey("review:scale"), 1,
+                    workspace.Assess.Words.AllRows[0].WordRow, WordListOwner.Review,
+                    PendingChange: new WordPendingChange(true, false,
+                        Enumerable.Range(0, 500).Select(index =>
+                            new WordCardSentenceToken($"sentence-{index}", null, index == 499)).ToArray(),
+                        "Check again", "Undo")),
+            },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
             "ReviewPanel" => new ReviewPanel(workspace.PageModel<ReviewPageModel>()),
             "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
             "SetupDialog" => new SetupDialog { DataContext = workspace.Context.Setup },
             "StatisticsPanel" => new StatisticsPanel(workspace.PageModel<TimingPageModel>().Statistics),
-            "TextWordsPanel" => new TextWordsPanel(texts.Words),
+            "TextWordsPanel" => BuildTextWordsPanel(texts.Words),
             "TextsListsPanel" => new TextsListsPanel(texts.TextsLists),
             "TraceAnalysesView" => new TraceAnalysesView { DataContext = trace.Trace },
             "TryWordPanel" => new TryWordPanel(trace),
-            "WordRow" => new WordRow { Row = workspace.Assess.Words.AllRows[0].WordRow },
-            "WordRowCard" => new WordRowCard { DataContext = workspace.Assess.Compare.Words[0] },
+            "WordCard" => BuildWordCard(workspace),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
         };
+    }
+
+    private static WordCard BuildWordCard(WorkspaceShellViewModel workspace)
+    {
+        var comparison = workspace.Assess.Compare.Words[0];
+        var morphs = Enumerable.Range(0, 500).Select(index => new ParserReadingMorphViewModel(
+            new ParserReadingMorph($"part-{index}", $"gloss-{index}", "n", null, false, null))).ToArray();
+        var occurrences = Enumerable.Range(1, 12).Select(line => new WordOccurrenceRowViewModel(
+            new WordOccurrence(Guid.NewGuid(), "Sample", line, $"Occurrence {line}.", "approved", null))).ToArray();
+        return new WordCard
+        {
+            Document = new WordCardDocument(new WordPresentationKey("scale:card"), 0,
+                [new WordCardPendingChange("Scale test", true, true, true, morphs, false, [], [], false,
+                    workspace.Context), new WordCardAnalysis(comparison, comparison.CardToken),
+                    new WordCardOccurrences(occurrences)]),
+        };
+    }
+
+    private static TextWordsPanel BuildTextWordsPanel(TextWordsViewModel words)
+    {
+        if (words.Rows.FirstOrDefault() is { } first) first.Listed.IsOpen = true;
+        return new TextWordsPanel(words);
     }
 
     private static WindowRefusal CompileRefusal(int count)

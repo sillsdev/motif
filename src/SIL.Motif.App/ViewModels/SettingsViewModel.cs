@@ -57,7 +57,7 @@ internal sealed partial class SettingsGroupOption : ObservableObject
 
 internal sealed class WritingSystemSettingsRow
 {
-    public WritingSystemSettingsRow(WritingSystemDisplay writingSystem, WritingSystemTextStyleResolver resolver,
+    public WritingSystemSettingsRow(WritingSystemDisplay writingSystem, TextStyles resolver,
         bool isAlsoInVernacular = false)
     {
         WritingSystem = writingSystem;
@@ -65,7 +65,7 @@ internal sealed class WritingSystemSettingsRow
         var missingFonts = isAlsoInVernacular ? [] : writingSystem.StyleFonts
             .Select(pair => (pair.Key, pair.Value.FontFamily))
             .Where(pair => !string.IsNullOrWhiteSpace(pair.FontFamily) &&
-                !resolver.Resolve(writingSystem.Id, pair.Key).RequestedFontInstalled)
+                !resolver.Resolve(TextStyleRequest.Linguistic(writingSystem.Id, pair.Key)).RequestedFontInstalled)
             .Select(pair => pair.FontFamily)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -184,7 +184,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     public ObservableCollection<SettingsGroupOption> GroupOptions { get; }
     public ObservableCollection<WritingSystemSettingsRow> VernacularWritingSystems { get; } = [];
     public ObservableCollection<WritingSystemSettingsRow> AnalysisWritingSystems { get; } = [];
-    public WritingSystemTextStyleResolver WritingSystemTextStyles => _workspace.Context.WritingSystemTextStyles;
+    public TextStyles WritingSystemTextStyles => _workspace.Context.TextStyles;
     public ObservableCollection<ShortcutEntry> ShortcutEntries { get; } = [];
     public bool ShortcutRegistryAvailable => true;
     public string PreferenceProblemText { get; private set; } = string.Empty;
@@ -611,13 +611,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
         foreach (var system in systems.Where(system => system.Kind == WritingSystemKind.Vernacular)
                      .OrderBy(system => system.Position))
             VernacularWritingSystems.Add(new WritingSystemSettingsRow(system,
-                _workspace.Context.WritingSystemTextStyles));
+                _workspace.Context.TextStyles));
         var vernacularIds = systems.Where(system => system.Kind == WritingSystemKind.Vernacular)
             .Select(system => system.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var system in systems.Where(system => system.Kind == WritingSystemKind.Analysis)
                      .OrderBy(system => system.Position))
             AnalysisWritingSystems.Add(new WritingSystemSettingsRow(system,
-                _workspace.Context.WritingSystemTextStyles, vernacularIds.Contains(system.Id)));
+                _workspace.Context.TextStyles, vernacularIds.Contains(system.Id)));
         OnPropertyChanged(nameof(HasWritingSystems));
         OnPropertyChanged(nameof(HasVernacularWritingSystems));
         OnPropertyChanged(nameof(HasAnalysisWritingSystems));

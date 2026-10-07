@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SIL.Motif.App.Controls.WordPresentation;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -8,11 +9,15 @@ namespace SIL.Motif.App.ViewModels;
 /// </summary>
 public sealed partial class ListedWordViewModel : ObservableObject
 {
+    private readonly WordPresentationKey _presentationKey;
+
     public ListedWordViewModel(WordRowViewModel row, CompareWordViewModel? card = null)
     {
         ArgumentNullException.ThrowIfNull(row);
         Row = row;
         Card = card;
+        _presentationKey = card?.PresentationFor(WordListOwner.Timing).Key ??
+            new WordPresentationKey($"listed-word:{Guid.NewGuid():N}");
     }
 
     /// <summary>The word with its parse in the window: its row, and its card from the same parse.</summary>
@@ -28,6 +33,26 @@ public sealed partial class ListedWordViewModel : ObservableObject
     }
 
     public string Word => Row.Word;
+
+    /// <summary>The module input for this word in Timing.</summary>
+    public WordPresentation TimingPresentation => PresentationFor(WordListOwner.Timing);
+
+    /// <summary>The open state retained while this listed word is virtualized.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => new(_presentationKey, IsOpen);
+        set
+        {
+            if (value.Key != _presentationKey)
+                throw new InvalidOperationException("Word interaction state belongs to another listed word.");
+            IsOpen = value.IsOpen;
+        }
+    }
+
+    /// <summary>Creates the typed row input for the page that lists this word.</summary>
+    public WordPresentation PresentationFor(WordListOwner owner, string? note = null) => new(
+        _presentationKey, Card?.EvidenceRevision ?? 0, Row, owner,
+        Note: note ?? Note, TimeText: TimeText, MeasuredText: Row.MeasuredText);
 
     /// <summary>The word's row: its marks, its morphemes and the three next steps.</summary>
     public WordRowViewModel Row { get; }

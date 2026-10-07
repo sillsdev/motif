@@ -341,10 +341,15 @@ public sealed class InspectorTests
         Assert.Single(window.GetLogicalDescendants().OfType<TextsPage>())
             .FindControl<ContentControl>("SelectionHost")!;
 
-    internal static Border CardChip(Window window, string form) =>
-        AnalyzeTextsLayoutTests.OpenCard(window).GetVisualDescendants().OfType<Border>().First(border =>
-            border.Classes.Contains("morph") && border.IsEffectivelyVisible &&
-            border.Tag is ParserReadingMorphViewModel morph && morph.Form == form);
+    internal static Control CardChip(Window window, string form)
+    {
+        var chip = AnalyzeTextsLayoutTests.OpenCard(window).GetVisualDescendants().OfType<Control>().First(part =>
+            part.Classes.Contains("morphemePanelInspectable") && part.IsEffectivelyVisible &&
+            part.Tag is ParserReadingMorphViewModel morph && morph.Form == form);
+        Assert.True(chip.Focusable, "The morpheme part remains keyboard reachable.");
+        Assert.Equal($"Inspect {form}", AutomationProperties.GetName(chip));
+        return chip;
+    }
 
     private static IReadOnlyList<Button> Crumbs(Window window) =>
         InspectorPanel(window).GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("crumb")).ToArray();

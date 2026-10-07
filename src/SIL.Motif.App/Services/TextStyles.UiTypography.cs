@@ -1,13 +1,18 @@
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Fonts;
 
-namespace SIL.Motif.App;
+namespace SIL.Motif.App.Services;
 
-internal static class UiFontFamilies
+public sealed partial class TextStyles
 {
     private const string EmbeddedFontCollectionKey = "fonts:Motif";
     private const string EmbeddedFontAssets = "avares://SIL.Motif.App/Assets/Fonts";
-    private const string Andika = EmbeddedFontCollectionKey + "#Andika";
+    private const string AndikaFamilyName = EmbeddedFontCollectionKey + "#Andika";
+    private static readonly FontFamily UiFontFamily = new(AndikaFamilyName);
+    private static readonly FontFeatureCollection DefaultInterfaceFeatures =
+        FontFeatureCollection.Parse("kern=1,liga=1,clig=1,calt=1");
 
     private static readonly IReadOnlyDictionary<string, string> LanguageFallbacks =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -87,12 +92,57 @@ internal static class UiFontFamilies
             ["Scheherazade New"] = ["U+0600-06FF", "U+0750-077F", "U+08A0-08FF", "U+FB50-FDFF", "U+FE70-FEFF"],
         };
 
-    public static string CurrentFamilyName => Andika;
+    private static double InterfaceFontSize
+    {
+        get
+        {
+            var application = Application.Current ??
+                throw new InvalidOperationException("Interface typography requires the App's token resources.");
+            if (application.TryGetResource("Intent.Type.Body", application.ActualThemeVariant, out var value) &&
+                value is double size && double.IsFinite(size) && size > 0)
+                return size;
+            throw new InvalidOperationException("The Intent.Type.Body typography token is unavailable.");
+        }
+    }
 
-    public static void RegisterEmbeddedFontCollection(FontManager fontManager) =>
+    internal static FontFamily InterfaceFontFamily => UiFontFamily;
+    internal static string InterfaceFontFamilyName => AndikaFamilyName;
+    internal static FontManagerOptions CurrentInterfaceFontOptions =>
+        InterfaceFontOptionsForLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);
+
+    internal static void RegisterUiFontCollection(FontManager fontManager) =>
         fontManager.AddFontCollection(new EmbeddedFontCollection(
             new Uri(EmbeddedFontCollectionKey, UriKind.Absolute),
             new Uri(EmbeddedFontAssets, UriKind.Absolute)));
+
+    internal static void ApplyApplicationFontResources(Application application)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        var family = application.FindResource("Primitive.Font.UI") as FontFamily ??
+            throw new InvalidOperationException("The Primitive.Font.UI token is not a font family.");
+        application.Resources["DefaultFontFamily"] = family;
+        application.Resources["ContentControlThemeFontFamily"] = family;
+        application.Resources["SemiFontFamilyRegular"] = family;
+    }
+
+    internal static FontManagerOptions InterfaceFontOptionsForLanguage(string? language)
+    {
+        var family = FallbackFamilyForLanguage(language);
+        var fallbacks = family is null
+            ? Array.Empty<FontFallback>()
+            : UnicodeRangesByFamily[family].Select(range => new FontFallback
+            {
+                FontFamily = new FontFamily(family),
+                UnicodeRange = UnicodeRange.Parse(range),
+            }).ToArray();
+        return new FontManagerOptions { DefaultFamilyName = AndikaFamilyName, FontFallbacks = fallbacks };
+    }
+
+    private static IReadOnlyList<string> UiFallbackFamilies(string? language)
+    {
+        var family = FallbackFamilyForLanguage(language);
+        return family is null ? Array.Empty<string>() : [family];
+    }
 
     private static string? FallbackFamilyForLanguage(string? language)
     {
@@ -100,10 +150,9 @@ internal static class UiFontFamilies
         var languageCode = subtags.FirstOrDefault();
         if (languageCode?.Equals("zh", StringComparison.OrdinalIgnoreCase) == true)
             return ChineseFallback(subtags);
-        else if (languageCode?.Equals("pa", StringComparison.OrdinalIgnoreCase) == true &&
-                 subtags.Any(subtag => subtag.Equals("PK", StringComparison.OrdinalIgnoreCase)))
+        if (languageCode?.Equals("pa", StringComparison.OrdinalIgnoreCase) == true &&
+            subtags.Any(subtag => subtag.Equals("PK", StringComparison.OrdinalIgnoreCase)))
             return "Scheherazade New";
-
         return LanguageFallbacks.GetValueOrDefault(languageCode ?? "");
     }
 
@@ -123,20 +172,4 @@ internal static class UiFontFamilies
         "U+3000-303F", "U+3400-4DBF", "U+4E00-9FFF", "U+F900-FAFF",
         "U+20000-2EE5F", "U+30000-323AF",
     ];
-
-    public static FontManagerOptions CurrentOptions => OptionsForLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);
-
-    public static FontManagerOptions OptionsForLanguage(string? language)
-    {
-        var family = FallbackFamilyForLanguage(language);
-        var fallbacks = family is null
-            ? Array.Empty<FontFallback>()
-            : UnicodeRangesByFamily[family].Select(range => new FontFallback
-            {
-                FontFamily = new FontFamily(family),
-                UnicodeRange = UnicodeRange.Parse(range),
-            }).ToArray();
-
-        return new FontManagerOptions { DefaultFamilyName = Andika, FontFallbacks = fallbacks };
-    }
 }

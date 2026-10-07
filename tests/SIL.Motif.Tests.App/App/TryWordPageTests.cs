@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -140,7 +141,7 @@ public sealed class TryWordPageTests
                 Assert.Contains("Approved in FieldWorks", visible);
                 Assert.Contains("Lost", visible);
                 Assert.Contains("dog", visible);
-                Assert.NotEmpty(window.GetVisualDescendants().OfType<MorphemeRow>());
+                Assert.NotEmpty(window.GetVisualDescendants().OfType<MorphemePanel>());
                 Assert.DoesNotContain("approved", visible);
                 Assert.DoesNotContain("0 rule steps · open in Expert", visible);
             }

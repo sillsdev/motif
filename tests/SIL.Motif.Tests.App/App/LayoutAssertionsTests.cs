@@ -9,12 +9,13 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 using RowFacts = SIL.Motif.Contract.Responses.WordRow;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -22,68 +23,45 @@ namespace SIL.Motif.Tests.App;
 public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
-    public void WalkthroughZoomFitExcludesWordPresentationSubtrees()
+    public void EveryWordPresentationSurfaceIsCheckedForTextOverflow()
     {
-        avalonia.Invoke(() =>
+        var families = new (string Name, Func<TextBlock, Control> Wrap)[]
         {
-            var row = new WordRow
-            {
-                Content = new TextBlock { Text = new string('r', 80), TextWrapping = TextWrapping.NoWrap },
-            };
-            var header = new WordRowHeader
-            {
-                Content = new TextBlock { Text = new string('h', 80), TextWrapping = TextWrapping.NoWrap },
-            };
-            var wordStrip = new Border
-            {
-                Name = "WordStrip",
-                Classes = { "wordStrip" },
-                Child = new TextBlock { Text = new string('s', 80), TextWrapping = TextWrapping.NoWrap },
-            };
-            var wordCard = new Border
-            {
-                Classes = { "card", "wordCard" },
-                Child = new TextBlock { Text = new string('c', 80), TextWrapping = TextWrapping.NoWrap },
-            };
-            var morphemeRow = new MorphemeRow
-            {
-                Children = { new TextBlock { Text = new string('m', 80), TextWrapping = TextWrapping.NoWrap } },
-            };
-            var analyses = new ProgressiveItemsControl
+            ("WordRow", text => new WordRow { Content = text }),
+            ("WordRowHeader", text => new WordRowHeader { Content = text }),
+            ("WordStripToken", text => new WordStripToken { Child = text }),
+            ("WordCard", text => new WordCard { Content = text }),
+            ("MorphemePanel", text => new MorphemePanel { Child = text }),
+            ("ResultsInText analysis items", text => new ProgressiveItemsControl
             {
                 Name = "ResultsInTextPanelFieldWorksAnalysesItems",
-                FullItemsSource = new[]
-                {
-                    new TextBlock { Text = new string('a', 80), TextWrapping = TextWrapping.NoWrap },
-                },
-            };
-            var root = new StackPanel { Children = { row, header, wordStrip, wordCard, morphemeRow, analyses } };
-            var window = new Window { Content = root, Width = 180, Height = 120 };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                LayoutAssertions.AssertWalkthroughCurrent(window);
+                FullItemsSource = new[] { new object() },
+                ItemTemplate = new FuncDataTemplate<object>((_, _) => text),
+            }),
+        };
 
-                var outsideText = new TextBlock
+        foreach (var (name, wrap) in families)
+        {
+            avalonia.Invoke(() =>
+            {
+                var overflow = new TextBlock
                 {
-                    Text = new string('x', 80),
+                    Text = $"overflow-{name}-{new string('x', 80)}",
                     Width = 20,
                     TextWrapping = TextWrapping.NoWrap,
                 };
-                root.Children.Add(outsideText);
-                PageScreenshots.Settle(window);
-                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
-                    () => LayoutAssertions.AssertWalkthroughCurrent(window));
-                Assert.Contains(outsideText.Text, error.Message, StringComparison.Ordinal);
-                Assert.Contains("ADR 0053", LayoutAssertions.WalkthroughWordRowExclusionReason,
-                    StringComparison.Ordinal);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
+                var window = new Window { Content = wrap(overflow), Width = 180, Height = 120 };
+                try
+                {
+                    window.Show();
+                    PageScreenshots.Settle(window);
+                    var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(
+                        () => LayoutAssertions.AssertCurrent(window));
+                    Assert.Contains(overflow.Text, error.Message, StringComparison.Ordinal);
+                }
+                finally { window.Close(); }
+            });
+        }
     }
 
     [Theory]
@@ -101,12 +79,14 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 Gloss = gloss,
                 FieldWorksMorphemes = [morph],
             };
-            var columns = WordRowColumnSets.WordList;
+            var key = new WordPresentationKey("layout-long-word");
+            var viewModel = new WordRowViewModel(rowFacts);
+            var host = new LongMorphologyHost(viewModel.FieldWorksMorphemes);
             var row = new WordRow
             {
-                Row = new WordRowViewModel(rowFacts),
-                Columns = columns,
-                Width = 520,
+                Data = new WordPresentation(key, 0, viewModel, WordListOwner.ReadOnly),
+                Host = host,
+                State = new WordInteractionState(key, IsOpen: true),
             };
             var window = new Window
             {
@@ -117,10 +97,29 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             try
             {
                 window.Show();
+                var columns = Enum.GetValues<WordListColumn>()
+                    .Select(column => column == WordListColumn.Next
+                        ? new WordColumnSizing(column, 130, 130, 300, 50)
+                        : new WordColumnSizing(column, 40, 110, 300, 50));
+                var sizing = new WordListSizing(16, 0, 8, 360, columns);
+                var schema = WordListSchema.Create(
+                    WordListColumnSet.FieldWorks | WordListColumnSet.PanGloss,
+                    hasFieldWorksMorphology: true, hasPanGlossMorphology: true);
+                var layout = new WordListPolicy().Resolve(window.ClientSize.Width, schema, showsMeaning: true,
+                    styleRevision: 0, uiLocale: "en", sizing);
+                WordListLayoutScope.SetLayout(row, layout);
                 PageScreenshots.Settle(window);
                 var formTip = Assert.IsType<string>(ToolTip.GetTip(row.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Classes.Contains("wordRowForm"))));
+                    .Single(text => text.Classes.Contains("wordPresentationForm"))));
                 Assert.StartsWith(word, formTip, StringComparison.Ordinal);
+                var glossTip = Assert.IsType<string>(ToolTip.GetTip(row.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(text => text.Classes.Contains("wordPresentationGloss"))));
+                Assert.Equal(gloss, glossTip);
+                var card = Assert.Single(row.GetVisualDescendants().OfType<WordCard>());
+                Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == viewModel.FieldWorksMorphemes[0].Form);
+                Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == viewModel.FieldWorksMorphemes[0].GlossOrPlaceholder);
                 LayoutAssertions.AssertCurrent(window);
             }
             finally
@@ -128,6 +127,22 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 window.Close();
             }
         });
+    }
+
+    private sealed class LongMorphologyHost(IReadOnlyList<ParserReadingMorphViewModel> morphs) : IWordPresentationHost
+    {
+        public Task<WordCardReadResult> ReadCardAsync(
+            WordPresentationKey key,
+            long evidenceRevision,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision,
+                [new WordCardMorphology("FieldWorks", morphs)])));
+        }
+
+        public ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(new WordActionResult(true));
     }
 
     [Fact]
@@ -138,9 +153,8 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
             var rowFacts = new RowFacts("alikula", WordRowOutcome.Same, "Kept", WordRowTone.Fine);
             var row = new WordRow
             {
-                Row = new WordRowViewModel(rowFacts),
-                Columns = WordRowColumnSets.WordList,
-                Width = 520,
+                Data = new WordPresentation(new WordPresentationKey("layout-hit-test"), 0,
+                    new WordRowViewModel(rowFacts), WordListOwner.ReadOnly),
             };
             var window = new Window
             {
@@ -153,7 +167,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 PageScreenshots.Settle(window);
                 var wordForm = row.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(text => text.Classes.Contains("wordRowForm"));
+                    .Single(text => text.Classes.Contains("wordPresentationForm"));
                 var center = wordForm.TranslatePoint(
                     new Point(wordForm.Bounds.Width / 2, wordForm.Bounds.Height / 2), window)!.Value;
 
@@ -253,41 +267,6 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void RejectsAnUnscrollableLongMorpheme()
-    {
-        avalonia.Invoke(() =>
-        {
-            var morphs = Enumerable.Range(1, 10).Select(index => new ParserReadingMorph(
-                index == 1 ? new string('m', 90) : $"morpheme{index}", $"gloss{index}", "n", null, false, null)).ToArray();
-            var rowFacts = new RowFacts("word", WordRowOutcome.Same, "Kept", WordRowTone.Fine)
-            {
-                FieldWorksMorphemes = morphs,
-            };
-            var row = new WordRow
-            {
-                Row = new WordRowViewModel(rowFacts),
-                Columns = WordRowColumns.FieldWorks | WordRowColumns.FieldWorksMorphemes,
-            };
-            var window = new Window { Content = row, Width = 520, Height = 320 };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                var strip = window.GetVisualDescendants().OfType<ScrollViewer>()
-                    .Single(viewer => AutomationProperties.GetAutomationId(viewer) == AutomationIds.FieldWorksMorphemeScroll);
-                strip.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                PageScreenshots.Settle(window);
-                var error = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertCurrent(window));
-                Assert.Contains("morpheme strip", error.Message, StringComparison.Ordinal);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
     public void AllowsACompactWarningGlyphInsideItsGlyphBox()
     {
         avalonia.Invoke(() =>
@@ -330,7 +309,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     {
                         new TextBlock
                         {
-                            Classes = { "stripMorphForm" },
+                            Classes = { "morphemePanelForm" },
                             Text = "gel -ye",
                             FontSize = 11,
                             LineHeight = 14,
@@ -338,7 +317,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                         },
                         new TextBlock
                         {
-                            Classes = { "stripMorphGloss" },
+                            Classes = { "morphemePanelGloss" },
                             Text = "past tense",
                             FontSize = 10.5,
                             LineHeight = 14,
@@ -384,7 +363,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                     {
                         new TextBlock
                         {
-                            Classes = { "stripMorphForm" },
+                            Classes = { "morphemePanelForm" },
                             Text = "gel -ye",
                             FontSize = 11,
                             LineHeight = 18,
@@ -392,7 +371,7 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
                         },
                         new TextBlock
                         {
-                            Classes = { "stripMorphGloss" },
+                            Classes = { "morphemePanelGloss" },
                             Text = "past tense",
                             FontSize = 10.5,
                             LineHeight = 18,

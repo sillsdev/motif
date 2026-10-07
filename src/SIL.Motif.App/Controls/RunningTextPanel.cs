@@ -1,10 +1,25 @@
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Media;
-using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 
 namespace SIL.Motif.App.Controls;
+
+internal readonly record struct RunningTextLineMetrics(double Word, double FieldWorks, double PanGloss)
+{
+    public RunningTextLineMetrics Max(RunningTextLineMetrics other) => new(
+        Math.Max(Word, other.Word), Math.Max(FieldWorks, other.FieldWorks), Math.Max(PanGloss, other.PanGloss));
+
+    public double HeightAt(int index) => index switch
+    {
+        0 => Word,
+        1 => FieldWorks,
+        2 => PanGloss,
+        _ => 0,
+    };
+}
 
 /// <summary>Arranges a running Text's gutter and word strips in the direction selected by its writing system.</summary>
 public sealed class RunningTextPanel : Panel
@@ -31,9 +46,8 @@ public sealed class RunningTextPanel : Panel
         parts.Gutter.Measure(availableSize);
         var contentWidth = AvailableContentWidth(availableSize.Width, parts.Gutter.DesiredSize.Width);
         parts.Strips.Measure(new Size(contentWidth, availableSize.Height));
-        MatchGutterRows(parts.Gutter, parts.Strips);
+        SetGutterRows(parts.Gutter, StripMetrics(parts.Strips));
         parts.Gutter.Measure(availableSize);
-        parts.Strips.Measure(new Size(contentWidth, availableSize.Height));
         var desiredWidth = parts.Gutter.DesiredSize.Width + parts.Strips.DesiredSize.Width;
         var width = double.IsInfinity(availableSize.Width) ? desiredWidth : availableSize.Width;
         return new Size(width, Math.Max(parts.Gutter.DesiredSize.Height, parts.Strips.DesiredSize.Height));
@@ -54,23 +68,29 @@ public sealed class RunningTextPanel : Panel
     private static double AvailableContentWidth(double availableWidth, double gutterWidth) =>
         double.IsInfinity(availableWidth) ? double.PositiveInfinity : Math.Max(0, availableWidth - gutterWidth);
 
-    private void MatchGutterRows(StackPanel gutter, ItemsControl strips)
+    private static RunningTextLineMetrics StripMetrics(ItemsControl strips)
     {
-        var heights = strips.GetVisualDescendants().OfType<Control>()
-            .Where(control => control.Classes.Contains("stripWordRow") || control.Classes.Contains("analysisRow"))
-            .GroupBy(control => control.Classes.Contains("stripWordRow") ? "wordRow" : "analysisRow",
-                StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.Max(HeightOf), StringComparer.Ordinal);
-        foreach (var label in gutter.Children.OfType<Control>())
-        {
-            label.Classes.Set("rtl", TextDirection == FlowDirection.RightToLeft);
-            var key = label.Classes.Contains("wordRow") ? "wordRow" : "analysisRow";
-            var baseline = OriginalMinHeights.GetValue(label, control => new MinHeightState(control.MinHeight)).Value;
-            label.SetValue(MinHeightProperty, Math.Max(baseline, heights.GetValueOrDefault(key)));
-        }
+        var metrics = strips.GetRealizedContainers()
+            .Select(container => container switch
+            {
+                WordStripToken { IsVisible: true } strip => strip.LineMetrics,
+                ContentPresenter { Child: WordStripToken { IsVisible: true } strip } => strip.LineMetrics,
+                _ => default,
+            })
+            .Aggregate(default(RunningTextLineMetrics), static (current, next) => current.Max(next));
+        return metrics;
     }
 
-    private static double HeightOf(Control control) => control.DesiredSize.Height;
+    private void SetGutterRows(StackPanel gutter, RunningTextLineMetrics metrics)
+    {
+        for (var index = 0; index < gutter.Children.Count; index++)
+        {
+            if (gutter.Children[index] is not Control label) continue;
+            label.Classes.Set("rtl", TextDirection == FlowDirection.RightToLeft);
+            var baseline = OriginalMinHeights.GetValue(label, control => new MinHeightState(control.MinHeight)).Value;
+            label.SetValue(MinHeightProperty, Math.Max(baseline, metrics.HeightAt(index)));
+        }
+    }
 
     private (StackPanel Gutter, ItemsControl Strips)? Parts()
     {

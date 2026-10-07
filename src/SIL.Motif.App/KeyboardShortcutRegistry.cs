@@ -183,7 +183,7 @@ public static class KeyboardShortcutRegistry
         if (selected is not null) return selected;
         foreach (var ancestor in ancestors)
         {
-            if (ancestor is WordRow { Row: { } row }) return row.Word;
+            if (ancestor is Controls.WordPresentation.WordRow { Data: { } data }) return data.Facts.Word;
             var word = ancestor.DataContext switch
             {
                 ResultsTokenViewModel token when token.IsWord => token.Form,

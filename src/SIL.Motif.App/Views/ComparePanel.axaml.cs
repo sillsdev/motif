@@ -3,6 +3,7 @@ using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -19,6 +20,10 @@ public sealed partial class ComparePanel : UserControl
         Compare = compare;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
+        FixFirstPresentationHost = new CompareWordPresentationHost(compare,
+            this.FindControl<ListBox>("ComparePanelFixFirstRowsItems")!, WordListOwner.FixFirst);
+        MatrixPresentationHost = new CompareWordPresentationHost(compare,
+            this.FindControl<ListBox>("ComparePanelWordsItems")!, WordListOwner.Matrix);
         SizeChanged += (_, e) =>
         {
             SetExpandedMatrixLabel(e.NewSize.Width >= ExpandedMatrixLabelWidth);
@@ -30,6 +35,8 @@ public sealed partial class ComparePanel : UserControl
     }
 
     public CompareViewModel Compare { get; }
+    public IWordPresentationHost FixFirstPresentationHost { get; }
+    public IWordPresentationHost MatrixPresentationHost { get; }
     internal double ShortMatrixCheckedHeight { get; private set; }
 
     private void SetExpandedMatrixLabel(bool expanded)

@@ -314,7 +314,7 @@ internal static class WalkthroughReplayTestRunner
                         project.ManagedRoot, project.FwDataPath, Path.Combine(project.ManagedRoot, "handoff-output"),
                         parserPath: parserPath, timeProvider: clock);
                     if (script.Id == "right-to-left-text")
-                        walkthrough.Workspace.Context.WritingSystemTextStyles.SetFallbackFamilies(
+                        walkthrough.Workspace.Context.TextStyles.SetFallbackFamilies(
                             ["fonts:MotifWalkthrough#DejaVu Sans"]);
                     walkthrough.Window.Width = WalkthroughArtifacts.Width;
                     walkthrough.Window.Height = script.Id == "explained-word-card"
@@ -407,15 +407,15 @@ internal static class WalkthroughReplayTestRunner
         var word = Assert.Single(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
             text.IsEffectivelyVisible && text.Text == WritingSystemTestData.Form &&
             text.Classes.Contains("stripWord"));
-        Assert.Equal(walkthrough.Workspace.Context.WritingSystemTextStyles
-            .Resolve(SeededProject.RightToLeftTag, "Normal").FontSize, word.FontSize);
+        Assert.Equal(walkthrough.Workspace.Context.TextStyles
+            .Resolve(TextStyleRequest.Linguistic(SeededProject.RightToLeftTag, "Normal")).FontSize, word.FontSize);
         Assert.Equal(FlowDirection.RightToLeft, word.FlowDirection);
         Assert.DoesNotContain("Andika", word.FontFamily!.Name, StringComparison.OrdinalIgnoreCase);
         var lineBody = Assert.Single(word.GetVisualAncestors()
             .OfType<SIL.Motif.App.Controls.RunningTextPanel>(), runningText =>
             runningText.Classes.Contains("resultsLineBody"));
         Assert.Equal(FlowDirection.RightToLeft, lineBody.TextDirection);
-        SIL.Motif.Tests.App.LayoutAssertions.AssertWalkthroughCurrent(walkthrough.Window);
+        SIL.Motif.Tests.App.LayoutAssertions.AssertCurrent(walkthrough.Window);
     }
 
     private static void AssertExplainedWordCard(WalkthroughWindow walkthrough)
@@ -429,8 +429,8 @@ internal static class WalkthroughReplayTestRunner
         Assert.Equal(["geldi", "evler", "kediye", "adamlarında", "günler", "okullarında"], forms);
         var byForm = tokens.ToDictionary(token => token.Form.Normalize(NormalizationForm.FormC),
             StringComparer.Ordinal);
-        var bundledLanguageFont = walkthrough.Workspace.Context.WritingSystemTextStyles
-            .Resolve(byForm["geldi"].FormWritingSystem, "Normal");
+        var bundledLanguageFont = walkthrough.Workspace.Context.TextStyles
+            .Resolve(TextStyleRequest.Linguistic(byForm["geldi"].FormWritingSystem, "Normal"));
         Assert.Equal(WalkthroughFonts.DejaVuSansFamily, bundledLanguageFont.RequestedFontFamily);
         Assert.True(bundledLanguageFont.RequestedFontInstalled);
         foreach (var form in new[] { "geldi", "evler", "kediye", "adamlarında", "okullarında" })
@@ -628,7 +628,7 @@ internal static class WalkthroughReplay
                             callout.AutomationId.EndsWith("-fix", StringComparison.Ordinal)).AutomationId;
                         var fix = (Button)window.FindByAutomationId(fixId);
                         var fallbackWidths = new List<int>();
-                        var chevron = Assert.Single(fix.GetLogicalDescendants().OfType<PathIcon>());
+                        var chevron = Assert.Single(fix.GetLogicalDescendants().OfType<Avalonia.Controls.Shapes.Path>());
                         foreach (var fallbackFamily in new[] { "serif", "monospace" })
                         {
                             chevron.SetValue(TextElement.FontFamilyProperty, new FontFamily(fallbackFamily));

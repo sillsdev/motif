@@ -188,7 +188,7 @@
                       <views:CopyableTextBlock Classes="inspectorFactLabel" Text="{Binding Label}" TextWrapping="Wrap" />
                       <StackPanel Grid.Column="1">
                         <views:InspectLink Subject="{Binding InspectSubject}" IsVisible="{Binding CanInspect}" HorizontalAlignment="Left">
-                          <TextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="Normal"
+                          <controls:WritingSystemTextBlock Text="{Binding Value}" TextWrapping="Wrap" FontWeight="Normal"
                                      controls:WritingSystemText.Id="{Binding WritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </views:InspectLink>
                         <views:CopyableTextBlock Text="{Binding Value}" TextWrapping="Wrap" IsVisible="{Binding CannotInspect}"

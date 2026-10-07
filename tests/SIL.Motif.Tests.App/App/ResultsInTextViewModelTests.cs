@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using Avalonia.Input;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
@@ -405,7 +406,7 @@ public sealed class ResultsInTextViewModelTests
             candidate.Occurrence is not null);
         var opened = false;
 
-        var handled = await ResultsInTextPanel.OpenTokenCardOnKeyboardAsync(Key.Space, token, _ =>
+        var handled = await WordStripToken.OpenCardOnKeyboardAsync(Key.Space, token, _ =>
         {
             opened = true;
             return Task.CompletedTask;
@@ -413,7 +414,7 @@ public sealed class ResultsInTextViewModelTests
 
         Assert.True(handled);
         Assert.True(opened);
-        Assert.False(await ResultsInTextPanel.OpenTokenCardOnKeyboardAsync(Key.Tab, token,
+        Assert.False(await WordStripToken.OpenCardOnKeyboardAsync(Key.Tab, token,
             _ => Task.CompletedTask));
     }
 

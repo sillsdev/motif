@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -101,7 +102,7 @@ public sealed class ResultsInTextVirtualizationTests
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(window);
-                var focusedStrip = Assert.IsType<Border>(window.FocusManager!.GetFocusedElement());
+                var focusedStrip = Assert.IsType<WordStripToken>(window.FocusManager!.GetFocusedElement());
                 Assert.Same(text.Lines[boundary.Number].Tokens[0], focusedStrip.Tag);
                 AssertBounded(lines);
                 var reader = Assert.Single(panel.GetVisualDescendants().OfType<ScrollViewer>(),
@@ -114,9 +115,10 @@ public sealed class ResultsInTextVirtualizationTests
 
                 await inText.OpenTokenCardAsync(text.Lines[0].Tokens[0]);
                 PageScreenshots.Settle(window);
-                var card = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
-                Assert.Same(text.Lines[0].Tokens[0], card.DataContext);
+                var token = text.Lines[0].Tokens[0];
+                var card = Assert.Single(panel.GetVisualDescendants().OfType<WordCard>(),
+                    candidate => candidate.Key == token.PresentationKey && candidate.IsEffectivelyVisible);
+                Assert.Same(token, Assert.Single(card.Document!.Sections.OfType<WordCardAnalysis>()).Token);
                 Assert.Same(card, window.FocusManager!.GetFocusedElement());
                 var origin = card.TranslatePoint(default, reader);
                 Assert.NotNull(origin);
@@ -162,13 +164,14 @@ public sealed class ResultsInTextVirtualizationTests
                 window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(window);
-                Assert.Same(text.Lines[0].Tokens[20], Assert.IsType<Border>(window.FocusManager!.GetFocusedElement()).Tag);
+                Assert.Same(text.Lines[0].Tokens[20], Assert.IsType<WordStripToken>(window.FocusManager!.GetFocusedElement()).Tag);
                 Assert.InRange(words.GetRealizedContainers().Count(), 1, 22);
                 await inText.OpenTokenCardAsync(text.Lines[0].Tokens[^1]);
                 PageScreenshots.Settle(window);
-                var card = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
-                Assert.Same(text.Lines[0].Tokens[^1], card.DataContext);
+                var token = text.Lines[0].Tokens[^1];
+                var card = Assert.Single(panel.GetVisualDescendants().OfType<WordCard>(),
+                    candidate => candidate.Key == token.PresentationKey && candidate.IsEffectivelyVisible);
+                Assert.Same(token, Assert.Single(card.Document!.Sections.OfType<WordCardAnalysis>()).Token);
                 Assert.Same(card, window.FocusManager!.GetFocusedElement());
                 Assert.Contains(panel.GetVisualDescendants().OfType<Border>(),
                     border => border.Name == "WordStrip" && ReferenceEquals(border.Tag, text.Lines[0].Tokens[^1]));
@@ -217,7 +220,7 @@ public sealed class ResultsInTextVirtualizationTests
                 window.KeyPress(Key.PageDown, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(window);
 
-                var focused = Assert.IsType<Border>(window.FocusManager!.GetFocusedElement());
+                var focused = Assert.IsType<WordStripToken>(window.FocusManager!.GetFocusedElement());
                 Assert.Same(inText.VisibleLines[localLinesPerPage].Tokens[0], focused.Tag);
             }
             finally

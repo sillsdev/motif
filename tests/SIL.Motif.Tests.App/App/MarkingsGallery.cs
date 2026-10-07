@@ -71,12 +71,6 @@ internal sealed class MarkingsGallery : StackPanel
         };
         Children.Add(HoverRegion);
 
-        Children.Add(Heading("Density"));
-        CompactText = DensitySample("Compact default");
-        NormalText = DensitySample("Normal");
-        CompactRoot = DensityRoot(CompactText, normal: false);
-        NormalRoot = DensityRoot(NormalText, normal: true);
-        Children.Add(Row(CompactRoot, NormalRoot));
     }
 
     public OpinionMark ApprovedMark { get; }
@@ -94,10 +88,6 @@ internal sealed class MarkingsGallery : StackPanel
     public Button StagedUndo { get; }
     public Border HoverRegion { get; }
     public Button FieldWorksLink { get; }
-    public TextBlock CompactText { get; }
-    public TextBlock NormalText { get; }
-    public StackPanel CompactRoot { get; }
-    public StackPanel NormalRoot { get; }
 
     private static Border Line(string state, string content)
     {
@@ -123,21 +113,6 @@ internal sealed class MarkingsGallery : StackPanel
         var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
         foreach (var child in children) row.Children.Add(child);
         return row;
-    }
-
-    private static TextBlock DensitySample(string text)
-    {
-        var sample = Label(text);
-        sample.Classes.Add("densitySample");
-        return sample;
-    }
-
-    private static StackPanel DensityRoot(TextBlock sample, bool normal)
-    {
-        var root = new StackPanel { Classes = { "analysisDensity" } };
-        if (normal) root.Classes.Add("normal");
-        root.Children.Add(sample);
-        return root;
     }
 
     private static TextBlock Heading(string text) => new()

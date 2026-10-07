@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 
 namespace SIL.Motif.App.ViewModels;
@@ -286,6 +287,16 @@ public sealed class MovedWordViewModel
 
     /// <summary>What the earlier run came to, under the word's row.</summary>
     public string BeforeNote => $"Before: {BeforeText}";
+
+    /// <summary>The typed word row and earlier result shown in What changed.</summary>
+    public WordPresentation Presentation => Listed.PresentationFor(WordListOwner.WhatChanged, BeforeNote);
+
+    /// <summary>The card state retained while this moved word is virtualized.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => Listed.PresentationState;
+        set => Listed.PresentationState = value;
+    }
 
     public string Word { get; }
     public int? Occurrences { get; }

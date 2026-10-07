@@ -3,11 +3,12 @@
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.DiagnosticPanel"
              x:DataType="vm:TraceWordViewModel"
              SizeChanged="OnPanelSizeChanged"
-             controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+             controls:WritingSystemText.Resolver="{Binding TextStyles}">
   <Border>
     <StackPanel Classes="diagnosticBody" Spacing="{DynamicResource Intent.Space.Group}">
       <!-- The answer first: did it parse, then how hard the parser worked. Tools sit behind one menu. -->
@@ -143,7 +144,7 @@
                   <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
                     <views:MarkChip Mark="{Binding StepMark}" Text="{Binding Surface}" IsVisible="{Binding HasSurface}" />
                   </StackPanel>
-                  <views:MorphemeRow Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" Separators="True" />
+                  <word:MorphemePanel Morphs="{Binding Morphs}" IsVisible="{Binding HasMorphs}" Separators="True" />
                   <views:CopyableTextBlock Classes="muted" Text="The parser recorded no morphemes for this attempt."
                              IsVisible="{Binding !HasMorphs}" FontSize="{DynamicResource Intent.Type.Small}"
                              TextWrapping="Wrap" />

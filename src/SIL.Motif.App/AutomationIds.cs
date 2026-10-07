@@ -47,7 +47,6 @@ public static class AutomationIds
     public const string HandOffCheckedWords = "motif-handoff-checked-words";
     public const string TryWordHandOff = "motif-try-word-handoff";
     public const string DragAllHandoffFiles = "motif-drag-all-handoff-files";
-    public const string FieldWorksMorphemeScroll = "motif-fieldworks-morpheme-scroll";
     public const string ApplyReceipt = "motif-apply-receipt";
     public const string TryWordInput = "motif-try-word-input";
     public const string TryWordRun = "motif-try-word-run";
@@ -75,6 +74,19 @@ public static class AutomationIds
     internal static string ForWordPart(Guid textId, string form, int occurrenceIndex, string part)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(textId, Guid.Empty);
+        return ForWordPartIdentity(textId.ToString("N"), form, occurrenceIndex, part);
+    }
+
+    /// <summary>Creates a repeatable identifier for a pasted word occurrence that is not anchored to a Text.</summary>
+    /// <param name="form">The displayed form, normalized so canonically equivalent Unicode has one identifier.</param>
+    /// <param name="occurrenceIndex">The word's position in the pasted input.</param>
+    /// <param name="part">One of the word strip's named parts.</param>
+    /// <returns>An ASCII identifier that names this part of this pasted word occurrence.</returns>
+    internal static string ForPastedWordPart(string form, int occurrenceIndex, string part) =>
+        ForWordPartIdentity("input", form, occurrenceIndex, part);
+
+    private static string ForWordPartIdentity(string identity, string form, int occurrenceIndex, string part)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(form);
         ArgumentOutOfRangeException.ThrowIfNegative(occurrenceIndex);
         if (part is not ("strip" or "word" or "opinion" or "disapproved" or "fieldworks" or "pangloss" or
@@ -83,13 +95,13 @@ public static class AutomationIds
 
         var formCode = Convert.ToHexString(Encoding.UTF8.GetBytes(form.Normalize(NormalizationForm.FormC)))
             .ToLowerInvariant();
-        return $"motif-word-{textId:N}-{occurrenceIndex}-{formCode}-{part}";
+        return $"motif-word-{identity}-{occurrenceIndex}-{formCode}-{part}";
     }
 
     /// <summary>Creates a repeatable identifier for one part of a word row in one of the window's word lists.</summary>
     /// <param name="list">The list the row sits in, such as <c>matrix</c>, <c>fix-first</c> or <c>lists</c>.</param>
     /// <param name="form">The word, normalized so canonically equivalent Unicode has one identifier.</param>
-    /// <param name="part">One of row, tick, open-in-text, try-a-word, word-analyses or card.</param>
+    /// <param name="part">One of row, word, tick, open-in-text, try-a-word, word-analyses or card.</param>
     /// <returns>
     /// An ASCII identifier such as <c>motif-word-row-matrix-kitabu-row</c>. A form of lowercase ASCII letters keeps
     /// its spelling; any other form is written as the hexadecimal of its UTF-8 bytes, prefixed <c>x</c>.
@@ -98,7 +110,7 @@ public static class AutomationIds
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(list);
         ArgumentException.ThrowIfNullOrWhiteSpace(form);
-        if (part is not ("row" or "tick" or "open-in-text" or "try-a-word" or "word-analyses" or "card"))
+        if (part is not ("row" or "word" or "tick" or "open-in-text" or "try-a-word" or "word-analyses" or "card"))
             throw new ArgumentException("Unknown word row part.", nameof(part));
 
         var normal = form.Normalize(NormalizationForm.FormC);

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.TimingPage"
              x:DataType="vm:TimingPageModel">
   <Grid>
@@ -330,25 +331,26 @@
           <Border Classes="card" IsVisible="{Binding HasRule}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" />
-              <StackPanel Grid.IsSharedSizeScope="True">
-                <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.Timing}" />
-                <ItemsControl x:Name="TimingPageCostliestRuleWordRowsItems" ItemsSource="{Binding CostliestRuleWordRows}" AutomationProperties.Name="Words under this rule"
-                              KeyboardNavigation.TabNavigation="Continue">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ListedWordViewModel">
-                      <views:WordRow Row="{Binding Row}" List="timing-rule-words" IsOpen="{Binding IsOpen}"
-                                     Columns="{x:Static views:WordRowColumnSets.Timing}" TimeText="{Binding TimeText}">
-                        <views:WordRow.Card>
-                          <views:ListedWordCard />
-                        </views:WordRow.Card>
-                      </views:WordRow>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
+              <views:WordListSlot Schema="{x:Static word:WordListSchemas.Timing}">
+                <Grid RowDefinitions="Auto,Auto">
+                  <word:WordRowHeader />
+                  <ItemsControl Grid.Row="1" x:Name="TimingPageCostliestRuleWordRowsItems"
+                                ItemsSource="{Binding CostliestRuleWordRows}"
+                                AutomationProperties.Name="Words under this rule"
+                                KeyboardNavigation.TabNavigation="Continue">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ListedWordViewModel">
+                        <word:WordRow Data="{Binding TimingPresentation}"
+                                      State="{Binding PresentationState, Mode=TwoWay}"
+                                      Host="{Binding $parent[views:TimingPage].WordPresentationHost}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Grid>
+              </views:WordListSlot>
             </StackPanel>
           </Border>
 

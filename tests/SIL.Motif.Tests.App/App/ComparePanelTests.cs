@@ -8,11 +8,13 @@ using Avalonia.Automation;
 using Avalonia.Input;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using Xunit;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
+using WordRowHeader = SIL.Motif.App.Controls.WordPresentation.WordRowHeader;
 
 namespace SIL.Motif.Tests.App;
 
@@ -109,10 +111,10 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "FieldWorks");
                 Assert.Contains(window.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "PanGloss");
                 var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
-                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordRowBody"));
-                Assert.Equal("kitabu · Approved · PanGloss: No parse · Lost", AutomationProperties.GetName(body));
-                var meaning = row.GetVisualDescendants().OfType<MarkChip>().Single(chip => chip.Text == compare.Words.Single().Meaning);
-                Assert.Contains("problem", meaning.Classes);
+                Assert.Equal("kitabu · Approved · PanGloss: No parse · Lost", AutomationProperties.GetName(row));
+                Assert.False(WordListLayoutScope.GetLayout(row)!.ShowsMeaning);
+                Assert.DoesNotContain(row.GetVisualDescendants().OfType<NamedMark>(),
+                    mark => mark.Mark?.Kind == MarkKind.Meaning);
                 var incorrectRow = window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Choose the Incorrect spelling row");
                 Assert.All(incorrectRow.GetLogicalDescendants().OfType<OpinionMark>(), mark => Assert.False(mark.IsVisible));
@@ -159,13 +161,14 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 window.UpdateLayout();
 
                 var row = Assert.Single(window.GetVisualDescendants().OfType<WordRow>());
-                Assert.Equal(["Approved"], row.GetVisualDescendants().OfType<OpinionMark>()
-                    .Where(mark => mark.IsEffectivelyVisible).Select(AutomationProperties.GetName));
+                Assert.Equal(["Approved"], row.GetVisualDescendants().OfType<NamedMark>()
+                    .Where(mark => mark.IsEffectivelyVisible && mark.Mark?.Kind == MarkKind.Opinion)
+                    .Select(mark => mark.Text));
 
-                compare.Words.Single().IsExpanded = true;
+                compare.Words.Single().PresentationState = compare.Words.Single().PresentationState with { IsOpen = true };
                 window.UpdateLayout();
 
-                var card = Assert.Single(row.GetVisualDescendants().OfType<WordRowCard>());
+                var card = Assert.Single(row.GetVisualDescendants().OfType<WordCard>());
                 Assert.True(card.IsEffectivelyVisible);
                 Assert.Equal(["Approved", "Disapproved"], card.GetVisualDescendants().OfType<MarkChip>()
                     .Where(chip => chip.Mark?.Kind == MarkKind.Opinion).Select(chip => chip.Text));
@@ -189,12 +192,12 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             compare.Load([new AssessWordRowViewModel(word.Source)]);
             WithPanel(compare, 1400, window =>
             {
-                compare.Words.Single().IsExpanded = true;
+                compare.Words.Single().PresentationState = compare.Words.Single().PresentationState with { IsOpen = true };
                 window.UpdateLayout();
-                var card = Assert.Single(window.GetVisualDescendants().OfType<WordRowCard>());
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordCard>());
                 Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "NOT BUILT");
-                var notBuilt = card.GetVisualDescendants().OfType<MorphemeRow>().Last(row => row.IsEffectivelyVisible);
+                var notBuilt = card.GetVisualDescendants().OfType<MorphemePanel>().Last(row => row.IsEffectivelyVisible);
                 Assert.Equal(["ki", "tabu"], notBuilt.Morphs!.Select(morph => morph.Form));
             });
         });
@@ -330,7 +333,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
             WithPanel(compare, 1000, window =>
             {
                 Assert.Contains("Meaning", MatrixHeads(window));
-                Assert.All(MatrixRows(window), row => Assert.True(row.ShowsMeaning));
+                Assert.All(MatrixRows(window), row => Assert.True(WordListLayoutScope.GetLayout(row)!.ShowsMeaning));
 
                 compare.Toggle(compare.Cells.Single(cell => cell.Row == WordProjectStatus.Approved &&
                     cell.Column == CompareColumnKind.NoParse), additive: false);
@@ -339,12 +342,77 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.NotEmpty(MatrixRows(window));
                 Assert.All(MatrixRows(window), row =>
                 {
-                    Assert.False(row.ShowsMeaning);
-                    Assert.DoesNotContain(row.GetVisualDescendants().OfType<MarkChip>(),
-                        chip => chip.IsEffectivelyVisible && chip.Mark?.Kind == MarkKind.Meaning);
+                    Assert.False(WordListLayoutScope.GetLayout(row)!.ShowsMeaning);
+                    Assert.DoesNotContain(row.GetVisualDescendants().OfType<NamedMark>(),
+                        mark => mark.IsEffectivelyVisible && mark.Mark?.Kind == MarkKind.Meaning);
                 });
             });
         });
+    }
+
+    [Fact]
+    public void FixFirstRowsStayBelowTheirHeaderWhenScrolledAndOpened()
+    {
+        avalonia.Invoke(() =>
+        {
+            var compare = new CompareViewModel();
+            compare.Load(Enumerable.Range(0, 30).Select(index =>
+                new AssessWordRowViewModel(FixFirstWord($"word-{index}"))).ToArray());
+            var openedWord = compare.FixFirstRows[0].Word.Word;
+            compare.FixFirstRows[0].Word.PresentationState =
+                compare.FixFirstRows[0].Word.PresentationState with { IsOpen = true };
+            var panel = new ComparePanel(compare);
+            var window = new Window
+            {
+                Content = panel,
+                RequestedThemeVariant = ThemeVariant.Light,
+                Width = 1280,
+                Height = 900,
+            };
+
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var list = panel.FindControl<ListBox>("ComparePanelFixFirstRowsItems")!;
+                var slot = list.GetVisualAncestors().OfType<WordListSlot>().First();
+                var scroll = list.GetVisualDescendants().OfType<ScrollViewer>()
+                    .Single(viewer => viewer.Name == "PART_ScrollViewer");
+                var first = Assert.Single(list.GetVisualDescendants().OfType<WordRow>(), row =>
+                    row.Data?.Facts.Word == openedWord);
+                Assert.True(first.State!.IsOpen);
+                WordListHeaderAssertions.FirstRowIsBelowHeader(slot, first);
+
+                var lastOffset = scroll.Extent.Height - scroll.Viewport.Height;
+                Assert.True(lastOffset > 0);
+                scroll.Offset = new Vector(scroll.Offset.X, lastOffset);
+                window.UpdateLayout();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var scrolledRows = list.GetVisualDescendants().OfType<WordRow>().ToArray();
+                Assert.NotEmpty(scrolledRows);
+                foreach (var row in scrolledRows) WordListHeaderAssertions.FirstRowIsBelowHeader(slot, row);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    private static AssessmentWordResult FixFirstWord(string word)
+    {
+        var missed = new ParserReading([new ParserReadingMorph(word, "gloss", "n", null, false, null)])
+        {
+            StoredAnalysisId = "approved-" + word,
+            StoredAnalysisOpinion = ReadingGrade.Approved,
+        };
+        var result = new AssessmentWordResult(word, "no-analysis", false, "Search completed", 1, null)
+        {
+            ProjectStanding = ProjectStanding.Approved,
+            MissedApproved = [missed],
+        };
+        return result with { FixFirst = CompareSemantics.FixFirst(CompareWordFacts.Of(result), [missed]) };
     }
 
     private static Grid MatrixList(Window window) => (Grid)window.GetVisualDescendants().OfType<ListBox>()
@@ -355,7 +423,7 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
     // The matrix list's visible column heads in reading order; Fix these first keeps its own header.
     private static string?[] MatrixHeads(Window window) =>
         MatrixList(window).Children.OfType<WordRowHeader>().Single().GetVisualDescendants().OfType<TextBlock>()
-            .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("wordRowHeading") && text.Text is { Length: > 1 })
+            .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("wordPresentationHeading") && text.Text is { Length: > 1 })
             .OrderBy(text => text.TranslatePoint(default, window)!.Value.X).Select(text => text.Text).ToArray();
 
     [Fact]
@@ -390,9 +458,9 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Contains("in 2", stripTexts);
                 Assert.Contains(strip.GetVisualDescendants().OfType<Control>(), control =>
                     AutomationProperties.GetName(control) == "kat cut: 2 of these words use it");
-                var sharedMorphs = strip.GetVisualDescendants().OfType<MorphemeRow>().ToArray();
+                var sharedMorphs = strip.GetVisualDescendants().OfType<MorphemePanel>().ToArray();
                 Assert.NotEmpty(sharedMorphs);
-                var kat = sharedMorphs.SelectMany(row => row.Children.OfType<Border>())
+                var kat = sharedMorphs.SelectMany(row => Assert.IsType<WrapPanel>(row.Child).Children.OfType<StackPanel>())
                     .Single(block => block.Tag is ParserReadingMorphViewModel { Form: "kat" });
                 Assert.True(kat.Focusable);
                 Assert.Contains("hoverReveal", kat.Classes);

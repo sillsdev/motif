@@ -18,6 +18,7 @@ internal static class InteractiveMarkupContracts
     private const string AvaloniaNamespace = "https://github.com/avaloniaui";
     private const string ViewsNamespace = "clr-namespace:SIL.Motif.App.Views";
     private const string ControlsNamespace = "clr-namespace:SIL.Motif.App.Controls";
+    private const string WordNamespace = "clr-namespace:SIL.Motif.App.Controls.WordPresentation";
 
     private static readonly HashSet<InteractiveControlFamily> Inputs =
     [
@@ -64,7 +65,12 @@ internal static class InteractiveMarkupContracts
             [(ViewsNamespace, "CopyableTextBlock")] = InteractiveControlFamily.SelectableText,
             [(ViewsNamespace, "MarkGlyph")] = InteractiveControlFamily.Mark,
             [(ViewsNamespace, "TraceNotationToken")] = InteractiveControlFamily.Action,
-            [(ViewsNamespace, "MorphemeRow")] = InteractiveControlFamily.Morpheme,
+            [(WordNamespace, "MorphemePanel")] = InteractiveControlFamily.Morpheme,
+            [(WordNamespace, "NamedMark")] = InteractiveControlFamily.Mark,
+            [(WordNamespace, "WordRow")] = InteractiveControlFamily.Occurrence,
+            [(WordNamespace, "WordRowHeader")] = InteractiveControlFamily.Container,
+            [(WordNamespace, "WordCard")] = InteractiveControlFamily.Occurrence,
+            [(WordNamespace, "WordStripToken")] = InteractiveControlFamily.Occurrence,
             [(ControlsNamespace, "OpinionMark")] = InteractiveControlFamily.Mark,
             [(ControlsNamespace, "UnreadMark")] = InteractiveControlFamily.Mark,
             [(AvaloniaNamespace, "Border")] = InteractiveControlFamily.FocusableSurface,
@@ -114,8 +120,8 @@ internal static class InteractiveMarkupContracts
                 nameof(MainWindowSmokeTests.ResultTablesRenderSelectableDynamicCells))],
             [InteractiveControlFamily.Tree] = [new(typeof(TryWordPageTests),
                 nameof(TryWordPageTests.ASelectedOccurrenceSurvivesBothMountedTreesAndFiltering))],
-            [InteractiveControlFamily.Morpheme] = [new(typeof(WordRowControlTests),
-                nameof(WordRowControlTests.InTheOpenCardLinksWaitForHoverOrKeyboardFocus))],
+            [InteractiveControlFamily.Morpheme] = [new(typeof(MorphemePanelTests),
+                nameof(MorphemePanelTests.PartsKeepSelectableTextWritingSystemsLinksAndInspectorBehavior))],
             [InteractiveControlFamily.FocusableSurface] = [new(typeof(KeyboardInteractionContractTests),
                 nameof(KeyboardInteractionContractTests.ClosingTheCardReturnsFocusToItsOccurrence))],
             [InteractiveControlFamily.Occurrence] = [new(typeof(KeyboardInteractionContractTests),

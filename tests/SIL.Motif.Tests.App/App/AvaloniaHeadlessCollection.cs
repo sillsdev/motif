@@ -4,6 +4,7 @@ using System.Reflection;
 using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Threading;
+using SIL.Motif.App.Services;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -138,7 +139,7 @@ internal static class AvaloniaHeadlessPlatform
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
                     AppBuilder.Configure<SIL.Motif.App.App>()
-                        .With(SIL.Motif.App.UiFontFamilies.OptionsForLanguage("en"))
+                        .With(TextStyles.InterfaceFontOptionsForLanguage("en"))
                         .UseSkia()
                         .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                         .SetupWithoutStarting();

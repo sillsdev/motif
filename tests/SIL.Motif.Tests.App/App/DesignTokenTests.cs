@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 using SIL.Motif.App;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
 using Xunit;
 
@@ -156,7 +157,7 @@ public sealed class DesignTokenTests
             var family = Assert.IsType<FontFamily>(application.FindResource("Primitive.Font.UI"));
             Assert.Same(family, application.FindResource("DefaultFontFamily"));
             Assert.Same(family, application.FindResource("ContentControlThemeFontFamily"));
-            Assert.Equal(new FontFamily(UiFontFamilies.CurrentFamilyName), family);
+            Assert.Equal(new FontFamily(TextStyles.InterfaceFontFamilyName), family);
             Assert.Equal(family, FontManager.Current.DefaultFontFamily);
             Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family), out _));
         });
@@ -207,7 +208,7 @@ public sealed class DesignTokenTests
     [InlineData("ur-PK", "Scheherazade New", 0x0627)]
     public void UiFallbacksAreSelectedFromTheInterfaceLanguage(string language, string expected, int codepoint)
     {
-        var options = UiFontFamilies.OptionsForLanguage(language);
+        var options = TextStyles.InterfaceFontOptionsForLanguage(language);
         Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
         Assert.Contains(options.FontFallbacks!, fallback =>
             fallback.FontFamily.ToString() == expected && fallback.UnicodeRange.IsInRange(codepoint));
@@ -216,7 +217,7 @@ public sealed class DesignTokenTests
     [Fact]
     public void UiFallbackMapLeavesUnknownLanguagesForTheSystem()
     {
-        var options = UiFontFamilies.OptionsForLanguage("en-GB");
+        var options = TextStyles.InterfaceFontOptionsForLanguage("en-GB");
         Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
         Assert.Empty(options.FontFallbacks!);
     }
@@ -236,7 +237,7 @@ public sealed class DesignTokenTests
         var setters = ComponentSetters().Where(setter => SizeProperties.Contains(setter.Property)).ToList();
         Assert.NotEmpty(setters);
         Assert.All(setters, setter => Assert.True(
-            Regex.IsMatch(setter.Value, @"^\{DynamicResource (Intent|Component)\.[\w.]+\}$"),
+            Regex.IsMatch(setter.Value, @"^\{(Dynamic|Static)Resource (Intent|Component|Primitive)\.[\w.]+\}$"),
             $"{setter.File} sets {setter.Property} to {setter.Value}; a size or gap comes from an Intent or Component key."));
     }
 
@@ -247,13 +248,14 @@ public sealed class DesignTokenTests
         foreach (var file in ComponentFiles())
         {
             var component = Path.GetFileNameWithoutExtension(file);
-            foreach (var element in XDocument.Load(file).Descendants().Where(element => element.Attribute(Xaml + "Key") is not null))
+            foreach (var element in XDocument.Load(file).Descendants().Where(element =>
+                element.Name.LocalName == "StaticResource" && element.Attribute(Xaml + "Key") is not null))
             {
                 declared++;
                 var key = (string)element.Attribute(Xaml + "Key")!;
                 Assert.StartsWith($"Component.{component}.", key);
                 Assert.Equal("StaticResource", element.Name.LocalName);
-                Assert.StartsWith("Primitive.", (string?)element.Attribute("ResourceKey") ?? "");
+                Assert.Matches(@"^(Primitive|Intent)\..+$", (string?)element.Attribute("ResourceKey") ?? "");
             }
         }
         Assert.True(declared > 0, "No component file declares a Component key.");

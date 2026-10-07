@@ -43,7 +43,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             .Where(method => method.IsDefined(typeof(KeyboardShortcutHandlerAttribute), inherit: false))
             .ToArray();
         var keyEventHandlers = assembly.GetTypes()
-            .Where(type => type.Namespace == "SIL.Motif.App.Views")
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(KeyEventArgs)))
@@ -309,16 +308,20 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 var readerButton = new Button { DataContext = readerWord, Content = "reader form" };
                 await CopyFromAsync(readerButton, readerButton);
 
-                var rowViewModel = WordRowViewModel.NotParsed("row form");
-                var wordRow = new SIL.Motif.App.Views.WordRow
-                    { DataContext = rowViewModel, Row = rowViewModel };
-                var rowButton = new Button { DataContext = rowViewModel, Content = wordRow };
-                await CopyFromAsync(rowButton, rowButton);
-                var matrixRowModel = WordRowViewModel.NotParsed("row form");
-                var matrixRow = new SIL.Motif.App.Views.WordRow
-                    { DataContext = matrixRowModel, Row = matrixRowModel };
-                var matrixButton = new Button { DataContext = matrixRowModel, Content = matrixRow };
-                await CopyFromAsync(matrixButton, matrixButton);
+                var wordRow = new SIL.Motif.App.Controls.WordPresentation.WordRow
+                {
+                    Data = new SIL.Motif.App.Controls.WordPresentation.WordPresentation(
+                        new SIL.Motif.App.Controls.WordPresentation.WordPresentationKey("copy:word-list"), 0,
+                        WordRowViewModel.NotParsed("row form"), SIL.Motif.App.Controls.WordPresentation.WordListOwner.WordList),
+                };
+                await CopyFromAsync(wordRow, wordRow);
+                var matrixRow = new SIL.Motif.App.Controls.WordPresentation.WordRow
+                {
+                    Data = new SIL.Motif.App.Controls.WordPresentation.WordPresentation(
+                        new SIL.Motif.App.Controls.WordPresentation.WordPresentationKey("copy:matrix"), 0,
+                        WordRowViewModel.NotParsed("row form"), SIL.Motif.App.Controls.WordPresentation.WordListOwner.Matrix),
+                };
+                await CopyFromAsync(matrixRow, matrixRow);
 
                 var changes = new ChangesViewModel(new FakeCommandClient());
                 var reviewChange = new ChangeViewModel("approve", "review form", "reading", "change/one");
@@ -375,22 +378,29 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     public void ViewKeyHandlersHaveRegisteredActionWitnessesAndNoLiteralKeyBranches()
     {
         var root = RepositoryRoot();
-        var viewFiles = Directory.GetFiles(Path.Combine(root, "src", "SIL.Motif.App", "Views"), "*.cs",
+        var appFiles = Directory.GetFiles(Path.Combine(root, "src", "SIL.Motif.App"), "*.cs",
             SearchOption.AllDirectories);
         var literalKeyBranch = new Regex(@"(?:\.Key\s*(?:==|!=|is\s+Key\.)|switch\s*\(\s*\w+\.Key\s*\))", RegexOptions.CultureInvariant);
-        Assert.All(viewFiles, path => Assert.False(literalKeyBranch.IsMatch(File.ReadAllText(path)), path));
-        var handlerWitnesses = typeof(KeyboardShortcutRegistry).Assembly.GetTypes()
+        var assembly = typeof(KeyboardShortcutRegistry).Assembly;
+        var keyEventHandlers = assembly.GetTypes()
+            .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+            .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(KeyEventArgs)))
+            .ToArray();
+        foreach (var handler in keyEventHandlers)
+        {
+            var sourcePath = SourceFile(appFiles, handler.DeclaringType!.Name);
+            var body = MethodBody(File.ReadAllText(sourcePath), handler.Name);
+            Assert.False(literalKeyBranch.IsMatch(body), $"{handler.DeclaringType!.Name}.{handler.Name}");
+        }
+        var handlerWitnesses = assembly.GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             .Where(method => method.IsDefined(typeof(KeyboardShortcutHandlerAttribute), inherit: false))
             .Select(handler =>
             {
                 var typeName = handler.DeclaringType!.Name;
-                var sourcePath = viewFiles.Single(path =>
-                {
-                    var name = Path.GetFileName(path);
-                    return name == $"{typeName}.cs" || name == $"{typeName}.axaml.cs";
-                });
+                var sourcePath = SourceFile(appFiles, typeName);
                 var source = File.ReadAllText(sourcePath);
                 return (ActionScopes: handler.GetCustomAttribute<KeyboardShortcutHandlerAttribute>()!.ActionScopes,
                     Body: MethodBody(source, handler.Name));
@@ -442,6 +452,12 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         Assert.Fail($"Could not find the end of {methodName}.");
         return string.Empty;
     }
+
+    private static string SourceFile(IEnumerable<string> sourceFiles, string typeName) => sourceFiles.Single(path =>
+    {
+        var name = Path.GetFileName(path);
+        return name == $"{typeName}.cs" || name == $"{typeName}.axaml.cs";
+    });
 
     [Theory]
     [InlineData("Approve", ReadingGrade.Candidate, ChangeKinds.Approve)]

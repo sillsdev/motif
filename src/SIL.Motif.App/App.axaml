@@ -23,7 +23,7 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MatrixCell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TextsPage.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DifferencePanel.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MorphemeRow.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordMorphology.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Inspector.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Handoff.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Shell.axaml" />
@@ -49,9 +49,9 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/StagedStrip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordCard.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordStrip.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordRow.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordListSlot.axaml" />
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordPresentation.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HoverReveal.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Density.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Interaction.axaml" />
     <!-- Last, so no owner's descendant selector restyles the words of its tooltip. -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ToolTip.axaml" />
@@ -64,9 +64,6 @@
         <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Primitives.axaml" />
         <ResourceInclude Source="avares://SIL.Motif.App/Tokens/Intent.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <StaticResource x:Key="DefaultFontFamily" ResourceKey="Primitive.Font.UI" />
-      <StaticResource x:Key="ContentControlThemeFontFamily" ResourceKey="Primitive.Font.UI" />
-      <StaticResource x:Key="SemiFontFamilyRegular" ResourceKey="Primitive.Font.UI" />
     </ResourceDictionary>
   </Application.Resources>
 </Application>

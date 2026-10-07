@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -7,7 +8,7 @@ using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using ModuleWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -122,7 +123,42 @@ public sealed class WordRowEverywhereTests
             texts.Tab = TextsTab.AnalyzeTexts;
             texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
             workspace.CurrentPage = WorkspacePage.Texts;
+            await Until(window, () => window.GetVisualDescendants().OfType<ListBox>()
+                    .Any(list => list.Name == "TextWordsPanelRowsItems"),
+                "the rendered Word list");
             await Until(window, () => texts.Words.Rows.Any(row => row.Form == "kitabu"), "kitabu in the Word list");
+            var index = texts.Words.Rows.Select((row, position) => (row, position))
+                .Single(item => item.row.Form == "kitabu").position;
+            window.GetVisualDescendants().OfType<ListBox>()
+                .Single(list => list.Name == "TextWordsPanelRowsItems").ScrollIntoView(index);
+            await Until(window, () => window.GetVisualDescendants().OfType<ModuleWordRow>()
+                    .Any(row => row.IsEffectivelyVisible && row.Data?.Facts.Word == "kitabu"),
+                "kitabu's realized Word list row");
+        });
+
+    [Fact]
+    public void AWordInListsOpensTryAWordOnItsWord() =>
+        TryAWordOpensFrom("lists", "kitabu", async (workspace, window) =>
+        {
+            var texts = workspace.PageModel<TextsPageModel>();
+            var compare = workspace.Assess.Compare;
+            await Until(window, () => compare.Words.Any(word => word.Word == "kitabu"), "kitabu in the Assessment");
+            var word = compare.Words.Single(item => item.Word == "kitabu");
+            var list = texts.TextsLists.Lists.Single(item => item.Cells.Contains(new TextsListCell(word.Row, word.Column)));
+            texts.TextsLists.SelectListCommand.Execute(list);
+            texts.Tab = TextsTab.Lists;
+            workspace.CurrentPage = WorkspacePage.Texts;
+            await Until(window, () => window.GetVisualDescendants().OfType<ListBox>()
+                    .Any(items => AutomationProperties.GetName(items) == "Words in the selected list"),
+                "the rendered selected list");
+            var index = compare.Words.Select((item, position) => (item, position))
+                .Single(pair => pair.item.Word == "kitabu").position;
+            window.GetVisualDescendants().OfType<ListBox>()
+                .Single(items => AutomationProperties.GetName(items) == "Words in the selected list")
+                .ScrollIntoView(index);
+            await Until(window, () => window.GetVisualDescendants().OfType<ModuleWordRow>()
+                    .Any(row => row.IsEffectivelyVisible && row.Data?.Facts.Word == "kitabu"),
+                "kitabu's realized Lists row");
         });
 
     private static void TryAWordOpensFrom(string list, string word,
@@ -146,13 +182,26 @@ public sealed class WordRowEverywhereTests
                 window.Height = 1600;
                 await reach(workspace, window, client!);
                 var row = await RowIn(window, list, word);
-                row.FocusRow();
+                if (list == "timing-rule-words")
+                    Assert.False(string.IsNullOrWhiteSpace(row.Data?.TimeText));
+                if (list == "what-changed")
+                    Assert.StartsWith("Before:", row.Data?.Note);
+                row.FocusWord();
+                row.State = row.State! with { IsOpen = true };
+                await Until(window, () => window.GetVisualDescendants()
+                    .OfType<SIL.Motif.App.Controls.WordPresentation.WordCard>().Any(card => card.Document is not null),
+                    "the opened word card's details");
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                var steps = row.GetVisualDescendants().OfType<Control>().First(part => part.Classes.Contains("wordRowNext"))
+                var steps = row.GetVisualDescendants().OfType<Control>()
+                    .First(part => part.Classes.Contains("wordPresentationNext"))
                     .GetVisualDescendants().OfType<Button>().ToArray();
-                Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"], steps.Select(step => step.Content as string));
+                Assert.Equal(["Open in text", "Try a Word", "Word Analyses ↗"],
+                    steps.Select(step => step.Content?.ToString()));
 
+                steps[1].BringIntoView();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
                 HeadlessClick.Click(window, steps[1], "Try a Word");
 
                 Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
@@ -165,10 +214,10 @@ public sealed class WordRowEverywhereTests
         }, TimeSpan.FromMinutes(1));
     }
 
-    private static async Task<WordRow> RowIn(MainWindow window, string list, string word)
+    private static async Task<ModuleWordRow> RowIn(MainWindow window, string list, string word)
     {
-        WordRow? Find() => window.GetVisualDescendants().OfType<WordRow>()
-            .FirstOrDefault(row => row.IsEffectivelyVisible && row.List == list && row.Row?.Word == word);
+        ModuleWordRow? Find() => window.GetVisualDescendants().OfType<ModuleWordRow>()
+            .FirstOrDefault(row => row.IsEffectivelyVisible && row.Data?.Facts.Word == word);
         await Until(window, () => Find() is not null, $"{word}'s row in the {list} list");
         return Find()!;
     }

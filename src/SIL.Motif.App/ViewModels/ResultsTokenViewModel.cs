@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Globalization;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
@@ -25,6 +26,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     private IReadOnlyList<ParserReadingMorphViewModel>? _stored;
     private IReadOnlyList<FieldWorksAnalysisDisplayViewModel>? _fieldWorksAnalyses;
     private bool _isUnread = true;
+    private WordInteractionState _presentationState;
     private IReadOnlyList<ObjectUseRef> _namedMorphemeRefs = [];
 
     [ObservableProperty]
@@ -51,6 +53,10 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         _textId = textId != Guid.Empty ? textId : occurrence?.TextId ?? Guid.Empty;
         WordformId = token.WordformId;
         OccurrenceIndex = token.OccurrenceIndex;
+        PresentationKey = new WordPresentationKey(occurrence is { } anchor
+            ? $"occurrence:{anchor.TextId:N}:{anchor.ParagraphId:N}:{anchor.SegmentId:N}:{anchor.Index}"
+            : $"token:{_textId:N}:{line}:{OccurrenceIndex}:{Form}");
+        _presentationState = new WordInteractionState(PresentationKey);
 
         Marking = AnalysisMarkingState.Create(token, result, _isUnread);
         var storedId = token.Analysis?.StoredAnalysisId;
@@ -128,27 +134,51 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
     public string? WordGlossWritingSystem { get; }
     public string? CategoryWritingSystem { get; }
 
-    public string WordAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "word");
+    public string WordAutomationId => AutomationIdForPart("word");
 
-    public string StripAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "strip");
+    public string StripAutomationId => AutomationIdForPart("strip");
 
-    public string OpinionMarkAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "opinion");
+    public string OpinionMarkAutomationId => AutomationIdForPart("opinion");
 
-    public string DisapprovedAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "disapproved");
+    public string DisapprovedAutomationId => AutomationIdForPart("disapproved");
 
-    public string FieldWorksAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "fieldworks");
+    public string FieldWorksAutomationId => AutomationIdForPart("fieldworks");
 
-    public string PanGlossAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "pangloss");
+    public string PanGlossAutomationId => AutomationIdForPart("pangloss");
 
-    public string PrimaryActionAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "action");
+    public string PrimaryActionAutomationId => AutomationIdForPart("action");
 
-    public string FixAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "fix");
+    public string FixAutomationId => AutomationIdForPart("fix");
 
-    public string StagedAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "staged");
+    public string StagedAutomationId => AutomationIdForPart("staged");
 
-    public string UnreadAutomationId => AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, "unread");
+    public string UnreadAutomationId => AutomationIdForPart("unread");
 
     public bool IsWord { get; }
+
+    private string AutomationIdForPart(string part) => _textId != Guid.Empty
+        ? AutomationIds.ForWordPart(_textId, Form, OccurrenceIndex, part)
+        : IsWord ? AutomationIds.ForPastedWordPart(Form, OccurrenceIndex, part) : string.Empty;
+
+    /// <summary>The stable identity of this occurrence in the Analyze text.</summary>
+    public WordPresentationKey PresentationKey { get; }
+
+    /// <summary>The current open and action-selection state for this occurrence.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => _presentationState;
+        set
+        {
+            if (value.Key != PresentationKey)
+                throw new InvalidOperationException("Word interaction state belongs to another occurrence.");
+            if (!SetProperty(ref _presentationState, value)) return;
+            IsCardOpen = value.IsOpen;
+            IsSelectedForActions = value.IsChecked == true;
+        }
+    }
+
+    /// <summary>The immutable assessment evidence revision shown for this occurrence.</summary>
+    public long EvidenceRevision => 0;
 
     public AnalysisMarkingState Marking { get; private set; }
 
@@ -219,6 +249,11 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
                 (reference.AllomorphId is null || reference.AllomorphId == morph.AllomorphId) &&
                 (reference.GrammaticalInfoId is null || reference.GrammaticalInfoId == morph.GrammaticalInfoId))))
             .ToArray();
+
+    /// <summary>The primary FieldWorks form indices named by exact grammar-warning evidence.</summary>
+    public IReadOnlyList<int> WarningMarkedFieldWorksMorphIndices => WarningMarkedFieldWorksMorphs
+        .Select((morph, index) => (morph, index)).Where(item => item.morph.IsNamedInWarning)
+        .Select(item => item.index).ToArray();
 
     /// <summary>The stored grammar findings whose exact identity evidence names this word.</summary>
     public IReadOnlyList<GrammarWarning> NamedWarnings { get; private set; } = [];
@@ -330,6 +365,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
         OnPropertyChanged(nameof(HasWhySection));
         OnPropertyChanged(nameof(WarningMarkCount));
         OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphs));
+        OnPropertyChanged(nameof(WarningMarkedFieldWorksMorphIndices));
     }
 
     internal void SetTimingEvidence(TimingResponse? timing, bool responseAvailable)
@@ -604,6 +640,17 @@ public sealed partial class ResultsTokenViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isSelectedForActions;
+
+    partial void OnIsCardOpenChanged(bool value) => SyncPresentationState(state => state with { IsOpen = value });
+
+    partial void OnIsSelectedForActionsChanged(bool value) =>
+        SyncPresentationState(state => state with { IsChecked = value });
+
+    private void SyncPresentationState(Func<WordInteractionState, WordInteractionState> update)
+    {
+        var next = update(_presentationState);
+        if (next != _presentationState) SetProperty(ref _presentationState, next, nameof(PresentationState));
+    }
 
     // Forms already carry their own hyphens ("a-", "-a"), so they join as written; glosses join with one.
     private static string ReadingText(ParserReading? reading) => reading is null ? "?"

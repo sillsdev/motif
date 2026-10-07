@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.DifferencePanel"
              x:DataType="views:DifferencePanel">
   <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}"
@@ -33,21 +34,22 @@
       </ListBox.ItemTemplate>
     </ListBox>
 
-    <views:WordRowHeader Grid.Row="2" Columns="{x:Static views:WordRowColumnSets.WhatChanged}"
-                         IsVisible="{Binding Difference.HasChosenMove}" />
-    <ListBox x:Name="DifferencePanelWordsItems" Grid.Row="3" Classes="wordRows" ItemsSource="{Binding Difference.Words}"
+    <views:WordListSlot Grid.Row="2" Grid.RowSpan="2" Schema="{x:Static word:WordListSchemas.WhatChanged}"
+                        IsVisible="{Binding Difference.HasChosenMove}">
+    <Grid RowDefinitions="Auto,*">
+    <word:WordRowHeader />
+    <ListBox x:Name="DifferencePanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Difference.Words}"
              AutomationProperties.Name="Words in the chosen move"
-             IsVisible="{Binding Difference.HasChosenMove}" KeyboardNavigation.TabNavigation="Continue">
+             KeyboardNavigation.TabNavigation="Continue">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:MovedWordViewModel">
-          <views:WordRow Row="{Binding Listed.Row}" List="what-changed" IsOpen="{Binding Listed.IsOpen}"
-                         Columns="{x:Static views:WordRowColumnSets.WhatChanged}" Note="{Binding BeforeNote}">
-            <views:WordRow.Card>
-              <views:ListedWordCard DataContext="{Binding Listed}" />
-            </views:WordRow.Card>
-          </views:WordRow>
+          <word:WordRow Data="{Binding Presentation}"
+                        State="{Binding PresentationState, Mode=TwoWay}"
+                        Host="{Binding $parent[views:DifferencePanel].WordPresentationHost}" />
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
+    </Grid>
+    </views:WordListSlot>
   </Grid>
 </UserControl>

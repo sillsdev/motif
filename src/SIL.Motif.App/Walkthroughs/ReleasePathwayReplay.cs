@@ -51,7 +51,7 @@ internal static class ReleasePathwayReplay
             Environment.SetEnvironmentVariable("MOTIF_TEST_SLDR_CACHE_PATH", Path.Combine(seed.Root, "sldr-cache"));
 
             AppBuilder.Configure<App>()
-                .With(UiFontFamilies.CurrentOptions)
+                .With(Services.TextStyles.CurrentInterfaceFontOptions)
                 .UseSkia()
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .SetupWithoutStarting();

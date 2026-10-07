@@ -69,7 +69,7 @@
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
     },
     "word-list-results": {
-      "motif-word-row-word-list-geldi-row": "A row for a word in the selected Text."
+      "motif-word-row-word-list-geldi-word": "A word from the selected Text, with its gloss."
     }
   }
 }

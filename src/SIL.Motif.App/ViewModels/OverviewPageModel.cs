@@ -101,11 +101,10 @@ public sealed partial class OverviewPageModel : PageModel
 
     partial void OnOverviewChanged(OverviewResponse? value)
     {
-        var resolver = Context.WritingSystemTextStyles;
+        var resolver = Context.TextStyles;
         void Refresh()
         {
-            resolver.SetWritingSystems(value?.WritingSystems ?? []);
-            SIL.Motif.App.Controls.WritingSystemText.RefreshResolver(resolver);
+            resolver.ReplaceContext(value?.WritingSystems ?? []);
         }
 
         // Overview queries can complete on a worker, but resolver refresh touches Avalonia controls.

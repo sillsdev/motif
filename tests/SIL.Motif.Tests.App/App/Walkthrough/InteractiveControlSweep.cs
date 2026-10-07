@@ -6,9 +6,11 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
 
@@ -71,15 +73,16 @@ internal static class InteractiveControlSweep
 
         foreach (var (root, control) in controls)
         {
-            if (FamilyOf(control) is { } family)
+            var families = FamiliesOf(control);
+            foreach (var family in families)
             {
                 if (!discovered.TryGetValue(family, out var peers))
                     discovered.Add(family, peers = []);
                 peers.Add(Describe(root, control, family));
             }
-            else if (control.Focusable ||
+            if (families.Count == 0 && (control.Focusable ||
                      !string.IsNullOrWhiteSpace(AutomationProperties.GetName(control)) ||
-                     !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(control)))
+                     !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(control))))
             {
                 unknown.Add(Describe(root, control, null));
             }
@@ -111,6 +114,14 @@ internal static class InteractiveControlSweep
     internal static IReadOnlyList<string> MissingCriticalAutomationIds(
         IEnumerable<string> required, IEnumerable<string> observed) =>
         required.Except(observed, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+
+    private static IReadOnlyList<InteractiveControlFamily> FamiliesOf(Control control)
+    {
+        if (FamilyOf(control) is not { } family) return [];
+        if (control.Focusable && (control is WordRow or WordStripToken or WordCard))
+            return [family, InteractiveControlFamily.FocusableSurface];
+        return [family];
+    }
 
     private static IReadOnlyList<(Control Root, string Label)> CollectRoots(WalkthroughWindow walkthrough)
     {
@@ -195,9 +206,9 @@ internal static class InteractiveControlSweep
         MenuItem => InteractiveControlFamily.Action,
         DataGrid or DataGridColumnHeader or DataGridRow or DataGridCell => InteractiveControlFamily.Grid,
         TreeView or TreeViewItem => InteractiveControlFamily.Tree,
-        MorphemeRow => InteractiveControlFamily.Morpheme,
-        WordRow => InteractiveControlFamily.Morpheme,
-        ScrollViewer { Name: "FieldWorksMorphemeScroll" } => InteractiveControlFamily.ScrollViewport,
+        MorphemePanel => InteractiveControlFamily.Morpheme,
+        NamedMark => InteractiveControlFamily.Mark,
+        WordRow or WordStripToken => InteractiveControlFamily.Occurrence,
         ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
             InteractiveControlFamily.ScrollViewport,
         TimingKindBar => InteractiveControlFamily.Summary,
@@ -209,7 +220,6 @@ internal static class InteractiveControlSweep
         WrapPanel panel when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(panel)) =>
             InteractiveControlFamily.Container,
         Border { Focusable: true } => InteractiveControlFamily.FocusableSurface,
-        Border { Classes: var classes } when classes.Contains("wordRowMorph") => InteractiveControlFamily.Morpheme,
         Border { DataContext: ResultsTokenViewModel } part
             when !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(part)) => InteractiveControlFamily.Occurrence,
         Border { } border when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(border)) =>
@@ -240,7 +250,7 @@ internal static class InteractiveControlSweep
     private static string SourceFor(InteractiveControlFamily family)
     {
         if (family == InteractiveControlFamily.ScrollViewport)
-            return "src/SIL.Motif.App/Views/RefusalBlock.axaml, src/SIL.Motif.App/Views/WordRow.axaml";
+            return "src/SIL.Motif.App/Views/RefusalBlock.axaml";
 
         var sources = InteractiveMarkupContracts.TypesForFamily(family)
             .Concat(InteractiveControlManifest.GeneratedFamilies

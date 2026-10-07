@@ -198,7 +198,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             var offset = WithWindow(new TextsListsPanel(new TextsListsViewModel(compare)), window =>
             {
                 var word = window.GetVisualDescendants().OfType<TextBlock>().Single(text =>
-                    text.Classes.Contains("wordRowForm") && text.Text == "nobody");
+                    text.Classes.Contains("wordPresentationForm") && text.Text == "nobody");
                 var tick = window.GetVisualDescendants().OfType<CheckBox>().Single(box =>
                     AutomationProperties.GetName(box) == "Tick nobody");
                 return word.TranslatePoint(default, tick)!.Value.X - tick.Bounds.Width;

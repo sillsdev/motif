@@ -138,8 +138,8 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
             reader.Offset = new Vector(reader.Offset.X, Math.Max(0, reader.Extent.Height - reader.Viewport.Height));
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            var card = Assert.Single(panel.GetVisualDescendants().OfType<Border>(), border =>
-                border.Classes.Contains("wordCard") && border.IsEffectivelyVisible);
+            var card = Assert.Single(panel.GetVisualDescendants()
+                .OfType<SIL.Motif.App.Controls.WordPresentation.WordCard>(), control => control.IsEffectivelyVisible);
             var cardOrigin = card.TranslatePoint(new Point(0, 0), reader);
             Assert.NotNull(cardOrigin);
             Assert.True(viewport.Intersects(new Rect(cardOrigin!.Value, card.Bounds.Size)),

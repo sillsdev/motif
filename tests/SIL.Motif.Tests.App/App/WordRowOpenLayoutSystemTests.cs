@@ -4,14 +4,17 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Logging;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -21,18 +24,18 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(1);
 
-    [Theory]
-    [InlineData(1040)]
-    [InlineData(1240)]
-    public void OpenRowsKeepMorphemesOnOneScrollableLineAndUseTheAnalyzeWordCard(int width)
+    [Fact]
+    public void OpenWordListRowsFitAcrossWidthsZoomsAndThemesAndUseTheModuleCard()
     {
         using var layoutLog = new LayoutLoopLogScope(output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var application = Application.Current!;
+            var originalTheme = application.RequestedThemeVariant;
+            var originalZoom = WindowZoomPolicy.Transform.ScaleX;
             try
             {
-                window.Width = width;
                 window.Height = 1600;
                 var texts = workspace.PageModel<TextsPageModel>();
                 texts.Tab = TextsTab.AnalyzeTexts;
@@ -40,62 +43,60 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
 
-                var row = window.GetVisualDescendants().OfType<WordRow>()
-                    .Single(item => item.IsEffectivelyVisible && item.List == "word-list" &&
-                        item.Row?.Word == "hawajafika");
-                row.IsOpen = true;
-                PageScreenshots.Settle(window);
-                LayoutAssertions.AssertCurrent(window);
                 var rowIndex = texts.Words.Rows.Select((item, index) => (item, index))
-                    .Single(pair => pair.item.Listed.Row.Word == "hawajafika").index;
+                    .Single(pair => pair.item.Presentation.Facts.Word == "hawajafika").index;
                 var pageList = window.FindControl<ListBox>("PageList")!;
                 Assert.Equal(ScrollBarVisibility.Visible,
                     ScrollViewer.GetVerticalScrollBarVisibility(pageList));
                 var wordsList = window.GetVisualDescendants().OfType<ListBox>()
                     .Single(list => list.Name == "TextWordsPanelRowsItems");
-                wordsList.ScrollIntoView(rowIndex);
-                PageScreenshots.Settle(window);
-                row = window.GetVisualDescendants().OfType<WordRow>()
-                    .Single(item => item.IsEffectivelyVisible && item.List == "word-list" &&
-                        item.Row?.Word == "hawajafika");
-                row.IsOpen = true;
-                PageScreenshots.Settle(window);
+                foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                foreach (var zoom in new[] { 100, 125, 150 })
+                foreach (var width in new[] { 1040, 1240 })
+                {
+                    application.RequestedThemeVariant = theme;
+                    window.RequestedThemeVariant = theme;
+                    WindowZoomPolicy.Apply(application, zoom);
+                    window.Width = width;
+                    wordsList.ScrollIntoView(rowIndex);
+                    PageScreenshots.Settle(window);
 
-                var fieldWorksCell = Part(row, "wordRowFieldWorks");
-                var morphemes = fieldWorksCell.GetVisualDescendants().OfType<Border>()
-                    .Where(border => border.IsEffectivelyVisible && border.Classes.Contains("wordRowMorph")).ToArray();
-                Assert.Equal(5, morphemes.Length);
-                Assert.Single(morphemes.Select(morpheme => Math.Round(BoundsIn(morpheme, row).Y, 1)).Distinct());
-                var fieldWorksScroll = row.FindControl<ScrollViewer>("FieldWorksMorphemeScroll")!;
-                Assert.Equal(ScrollBarVisibility.Auto, fieldWorksScroll.HorizontalScrollBarVisibility);
-                Assert.Equal(ScrollBarVisibility.Disabled, fieldWorksScroll.VerticalScrollBarVisibility);
+                    var row = window.GetVisualDescendants().OfType<WordRow>().Single(item =>
+                        item.IsEffectivelyVisible && item.Data?.Facts.Word == "hawajafika");
+                    row.State = row.State! with { IsOpen = true };
+                    PageScreenshots.Settle(window);
+                    LayoutAssertions.AssertCurrent(row);
 
-                var gloss = row.FindControl<CopyableTextBlock>("WordGloss")!;
-                Assert.True(gloss.IsEffectivelyVisible);
+                    var fieldWorksCell = row.GetVisualDescendants().OfType<MorphemePanel>()
+                        .First(panel => panel.Classes.Contains("wordPresentationMorphology"));
+                    var morphemes = fieldWorksCell.GetVisualDescendants().OfType<StackPanel>()
+                        .Where(part => part.Tag is ParserReadingMorphViewModel).ToArray();
+                    Assert.Equal(row.Data!.Facts.FieldWorksMorphemes.Count, morphemes.Length);
+                    Assert.All(morphemes, part => Assert.True(part.IsEffectivelyVisible));
+                    Assert.Contains(row.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                        text.Classes.Contains("wordPresentationGloss") && text.IsEffectivelyVisible);
 
-                var card = row.GetVisualDescendants().OfType<WordRowCard>().Single();
-                Assert.NotNull(card.CardToken);
-                Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    block => block.IsEffectivelyVisible && block.Text == "In FieldWorks · now");
-                Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    block => block.IsEffectivelyVisible && block.Text == "Time by rule");
-                Assert.DoesNotContain(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
+                    var card = row.GetVisualDescendants().OfType<WordCard>().Single();
+                    var analysis = Assert.Single(card.Document!.Sections.OfType<WordCardAnalysis>());
+                    Assert.NotNull(analysis.Token);
+                    Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        block => block.IsEffectivelyVisible && block.Text == "In FieldWorks · now");
+                    Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        block => block.IsEffectivelyVisible && block.Text == "Time by rule");
+                    Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
+                }
                 Assert.DoesNotContain(layoutLog.Messages,
                     message => message.Contains("Layout cycle detected", StringComparison.Ordinal));
             }
             finally
             {
+                application.RequestedThemeVariant = originalTheme;
+                WindowZoomPolicy.Apply(application, (int)Math.Round(originalZoom * 100));
                 window.Close();
             }
         }, Deadline);
     }
-
-    private static Rect BoundsIn(Control control, Visual root) =>
-        new(control.TranslatePoint(default, root)!.Value, control.Bounds.Size);
-
-    private static Control Part(WordRow row, string className) => row.GetVisualDescendants().OfType<Control>()
-        .First(control => control.Classes.Contains(className));
 
     private sealed class LayoutLoopLogScope : IDisposable
     {

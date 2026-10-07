@@ -2,8 +2,8 @@ using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -11,7 +11,10 @@ using Avalonia.Styling;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Tests.App.ControlContracts;
 using Xunit;
 
@@ -60,6 +63,9 @@ public sealed partial class ComponentStyleTests
                     window.Show();
                     Dispatcher.UIThread.RunJobs();
                     window.UpdateLayout();
+                    if (item.Component == "WordListSlot" && target is ListBox list)
+                        target = list.GetVisualDescendants().OfType<ScrollBar>()
+                            .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
                     Assert.True(Application.Current!.TryGetResource(item.Key, variant, out var expected),
                         $"{variant} {item.Component}: {item.What} cannot resolve {item.Key}.");
                     var actual = target.GetValue(item.Property);
@@ -567,14 +573,52 @@ public sealed partial class ComponentStyleTests
             TextBlock.ForegroundProperty, "Intent.Consequence.Look");
         yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
             Border.WidthProperty, "Component.MatrixCell.CompactWidth");
-        yield return new("MorphemeRow", "a form that is its own link",
-            host => Add(host, With(new HyperlinkButton { Content = "kul" }, ["morphForm", "morphFormLink"])),
-            HyperlinkButton.FontSizeProperty, "Intent.Type.Body");
-        yield return new("MorphemeRow", "a form link's arrow", host => Add(host, Text("morphLinkMark")),
+        yield return new("WordMorphology", "a morphology separator", host => Add(host, new MorphemePanel
+            { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], Separators = true }),
+            MorphemePanel.SeparatorBrushProperty, "Intent.Border");
+        yield return new("WordMorphology", "a morphology separator", host => Add(host, new MorphemePanel
+            { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], Separators = true }),
+            MorphemePanel.SeparatorThicknessProperty, "Primitive.Stroke.1");
+        yield return new("WordMorphology", "a morphology separator", host => Add(host, new MorphemePanel
+            { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], Separators = true }),
+            MorphemePanel.SeparatorOffsetProperty, "Primitive.Space.12");
+        yield return new("WordMorphology", "a named-morpheme warning underline", host => Add(host, new MorphemePanel
+            { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], WarningMarkedMorphIndices = [0] }),
+            MorphemePanel.WarningBrushProperty, "Intent.Severity.Warning");
+        yield return new("WordMorphology", "a named-morpheme warning underline", host => Add(host, new MorphemePanel
+            { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], WarningMarkedMorphIndices = [0] }),
+            MorphemePanel.WarningThicknessProperty, "Primitive.Stroke.2");
+        yield return new("WordMorphology", "a morpheme part", host => MorphPart(host, 0),
+            StackPanel.MarginProperty, "Primitive.Inset.0_0_24_4");
+        yield return new("WordMorphology", "the last morpheme part", host => MorphPart(host, 1),
+            StackPanel.MarginProperty, "Primitive.Inset.0_0_0_4");
+        yield return new("WordMorphology", "a morpheme form", host => MorphPartText(host, 0, 0),
+            TextBlock.FontSizeProperty, "Intent.Type.Body");
+        yield return new("WordMorphology", "an inline morpheme part", host => InlineMorphPart(host),
+            TextBlock.MarginProperty, "Primitive.Inset.0_0_4_0");
+        yield return new("WordMorphology", "a morpheme gloss", host => MorphPartText(host, 0, 1),
+            TextBlock.FontSizeProperty, "Intent.Type.Small");
+        yield return new("WordMorphology", "a morpheme category", host => MorphPartText(host, 0, 2),
             TextBlock.FontSizeProperty, "Intent.Type.Label");
-        yield return new("MorphemeRow", "a form link's words", host => Add(host, Stack("morphFormLinkWords")),
+        yield return new("WordMorphology", "a different morpheme identity", DifferentMorphText,
+            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
+        yield return new("WordMorphology", "a linked morpheme form", host => Add(host,
+            With(new HyperlinkButton { Content = "kul" }, ["morphemePanelForm", "morphemePanelFormLink"])),
+            HyperlinkButton.FontSizeProperty, "Intent.Type.Body");
+        yield return new("WordMorphology", "a linked form's inset", host => Add(host,
+            With(new HyperlinkButton { Content = "kul" }, ["morphemePanelFormLink"])),
+            HyperlinkButton.PaddingProperty, "Primitive.Inset.0_0_0_0");
+        yield return new("WordMorphology", "a linked form's words", host => Add(host,
+            Stack("morphemePanelFormLinkWords")), StackPanel.SpacingProperty, "Intent.Space.Minimal");
+        yield return new("WordMorphology", "a linked form's arrow", host => Add(host,
+            Text("morphemePanelLinkMark")), TextBlock.FontSizeProperty, "Intent.Type.Label");
+        yield return new("WordMorphology", "an inspectable morpheme hit target", InspectableMorphPart,
+            Panel.BackgroundProperty, "Intent.Clear");
+        yield return new("WordMorphology", "a named mark", host => Add(host,
+            new NamedMark { Mark = Mark.Approved, Text = "Approved" }),
             StackPanel.SpacingProperty, "Intent.Space.Minimal");
-        yield return new("MorphemeRow", "a morpheme edge", host => Add(host, Box("morphEdge")), Border.BorderBrushProperty, "Intent.Border");
+        yield return new("WordMorphology", "a named mark's words", NamedMarkWords,
+            TextBlock.FontSizeProperty, "Intent.Type.Small");
 
         yield return new("DifferencePanel", "a move row", DenseListRow,
             ListBoxItem.PaddingProperty, "Component.DifferencePanel.MoveRowPadding");
@@ -752,35 +796,28 @@ public sealed partial class ComponentStyleTests
         yield return new("UnreadMark", "the unread content gap", UnreadContent, StackPanel.SpacingProperty,
             "Intent.Space.Snug");
 
-        yield return new("WordRow", "a row's divider", host => Add(host, Box("wordRowFrame")),
+        yield return new("WordPresentation", "the row divider", host => Add(host, Box("wordPresentationFrame")),
             Border.BorderBrushProperty, "Intent.Border");
-        yield return new("WordRow", "an opened row", host => Add(host, Box("wordRowFrame", "open")),
+        yield return new("WordPresentation", "the row's inset", host => Add(host, Box("wordPresentationFrame")),
+            Border.PaddingProperty, "Component.WordPresentation.Padding");
+        yield return new("WordPresentation", "the open row surface", host => Add(host, Box("wordPresentationFrame", "open")),
             Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("WordRow", "an opened row's accent edge", OpenRowEdge, Border.BorderBrushProperty, "Intent.Accent");
-        yield return new("WordRow", "a row's body", host => Add(host, Box("wordRowBody")),
-            Border.PaddingProperty, "Component.WordRow.Padding");
-        yield return new("WordRow", "the compact cell gap", host => Add(host, With(new Grid(), ["wordRowCells"])),
+        yield return new("WordPresentation", "the row's next-action gap", host => Add(host, With(new WrapPanel(), ["wordPresentationNext"])),
+            WrapPanel.ItemSpacingProperty, "Intent.Space.Related");
+        yield return new("WordPresentation", "the row's next-action line gap", host => Add(host, With(new WrapPanel(), ["wordPresentationNext"])),
+            WrapPanel.LineSpacingProperty, "Intent.Space.Minimal");
+        yield return new("WordPresentation", "the row's cell gap", host => Add(host, With(new Grid(), ["wordPresentationShell"])),
             Grid.ColumnSpacingProperty, "Intent.Space.Compact");
-        yield return new("WordRow", "a row's height", host => Add(host, With(new Grid(), ["wordRowLine"])),
-            Control.MinHeightProperty, "Component.WordRow.MinHeight");
-        yield return new("WordRow", "the word form's hit area", host => Add(host, Text("wordRowForm")),
-            TextBlock.BackgroundProperty, "Intent.Clear");
-        yield return new("WordRow", "the word", host => Add(host, Text("wordRowForm")),
+        yield return new("WordPresentation", "the word form", host => Add(host, Text("wordPresentationForm")),
             TextBlock.FontSizeProperty, "Intent.Type.Navigation");
-        yield return new("WordRow", "the gloss", host => Add(host, Text("wordRowGloss")),
-            TextBlock.ForegroundProperty, "Intent.TextMuted");
-        yield return new("WordRow", "a staged change", host => Add(host, Text("wordRowStaged")),
-            TextBlock.ForegroundProperty, "Intent.Change.Text");
-        yield return new("WordRow", "a morpheme PanGloss built differently",
-            host => Add(host, Box("wordRowMorph", "different")), Border.BackgroundProperty, "Intent.Outcome.Different.Fill");
-        yield return new("WordRow", "a differing morpheme's form", host => Inside(host, Box("wordRowMorph", "different")),
-            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
-        yield return new("WordRow", "the opened card", host => Add(host, Box("wordRowCard")),
-            Border.PaddingProperty, "Component.WordRow.CardPadding");
-        yield return new("WordRow", "the meaning column", host => Add(host, Box("wordRowMeaning")),
-            Control.WidthProperty, "Component.WordRow.MeaningWidth");
-        yield return new("WordRow", "a column head", host => Add(host, Text("wordRowHeading")),
-            TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("WordPresentation", "the heading surface", host => Add(host, Box("wordPresentationHeader")),
+            Border.PaddingProperty, "Component.WordPresentation.Padding");
+        yield return new("WordPresentation", "the evidence card", host => Add(host, Box("wordPresentationCardFrame")),
+            Border.CornerRadiusProperty, "Component.WordPresentation.Radius");
+        yield return new("WordPresentation", "the evidence card shadow", host => Add(host, Box("wordPresentationCardFrame")),
+            Border.BoxShadowProperty, "Intent.Shadow.Raised");
+        yield return new("WordListSlot", "the reserved list scrollbar gutter", WordRows,
+            Control.WidthProperty, "Component.WordListSlot.ScrollbarGutter");
 
         yield return new("PanGlossLine", "a same reading label", host => Inside(host, Box("panGlossLine", "same")),
             TextBlock.ForegroundProperty, "Intent.Outcome.Same");
@@ -878,6 +915,21 @@ public sealed partial class ComponentStyleTests
             Button.BorderBrushProperty, "Intent.Marking.Border");
         yield return new("ActionChip", "the Fix menu text", host => Add(host, Press("actionChip", "fix")),
             Button.ForegroundProperty, "Intent.Marking.Text");
+        yield return new("ActionChip", "the Fix menu caret size", host => Add(host, new Avalonia.Controls.Shapes.Path
+            {
+                Classes = { "actionChipCaret" },
+                Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),
+            }), Avalonia.Controls.Shapes.Path.WidthProperty, "Component.ActionChip.CaretSize");
+        yield return new("ActionChip", "the Fix menu caret height", host => Add(host, new Avalonia.Controls.Shapes.Path
+            {
+                Classes = { "actionChipCaret" },
+                Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),
+            }), Avalonia.Controls.Shapes.Path.HeightProperty, "Component.ActionChip.CaretSize");
+        yield return new("ActionChip", "the Fix menu caret colour", host => Add(host, new Avalonia.Controls.Shapes.Path
+            {
+                Classes = { "actionChipCaret" },
+                Data = Geometry.Parse("M0 1 L5 6 L10 1 Z"),
+            }), Avalonia.Controls.Shapes.Path.FillProperty, "Intent.Marking.Text");
         yield return new("ActionChip", "the primary action text", host => Add(host, Press("actionChip", "primary")),
             Button.ForegroundProperty, "Intent.Opinion.Approved.Text");
         yield return new("StagedStrip", "the staged change", host => Add(host, Box("stagedStrip")),
@@ -896,35 +948,38 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Link");
         yield return new("Inspector", "a Lost word", host => Add(host, Text("inspectorMeaning", "problem")),
             TextBlock.ForegroundProperty, "Intent.Consequence.Problem");
-        yield return new("WordCard", "the word card surface", host => Add(host, Box("card", "wordCard")),
-            Border.BackgroundProperty, "Intent.Surface.Raised");
-        yield return new("WordCard", "the word card shadow", host => Add(host, Box("card", "wordCard")),
-            Border.BoxShadowProperty, "Intent.Shadow.Raised");
-        yield return new("WordCard", "the word card edge", host => Add(host, Box("card", "wordCard")),
-            Border.BorderBrushProperty, "Intent.Accent");
-        yield return new("WordCard", "the word card header", host => Add(host, Box("wordCardHead")),
-            Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("WordCard", "the list card's gaps", host => Add(host, Stack("listCard")),
-            StackPanel.SpacingProperty, "Intent.Space.Related");
-        yield return new("WordCard", "the list card's columns", host => Add(host, With(new Grid(), ["listCardAlignment"])),
-            Grid.ColumnSpacingProperty, "Intent.Space.Compact");
-        yield return new("WordCard", "a list card segment at rest", host => Add(host, Box("listCardSpan")),
-            Border.BorderBrushProperty, "Intent.Clear");
-        yield return new("WordCard", "where the two analyses part", host => Add(host, Box("listCardSpan", "parted")),
-            Border.BorderBrushProperty, "Intent.Border");
-        yield return new("WordCard", "the segment's edge", host => Add(host, Box("listCardSpan", "parted")),
-            Border.BorderThicknessProperty, "Intent.Stroke.Box");
-        yield return new("WordCard", "a linked form in the list card", host => Within(host, Box("listCardMorph"), "listCardFormText"),
-            TextBlock.ForegroundProperty, "Intent.Text");
-        yield return new("WordCard", "a differing linked form in the list card",
-            host => Within(host, Box("listCardMorph", "different"), "listCardFormText"),
-            TextBlock.ForegroundProperty, "Intent.Outcome.Different");
-        yield return new("WordCard", "the where-they-part sentence", host => Add(host, Text("listCardSentence")),
-            TextBlock.FontSizeProperty, "Intent.Type.Small");
-        yield return new("WordCard", "the closest-reading note", host => Add(host, Text("listCardNote")),
-            TextBlock.MarginProperty, "Component.WordCard.NoteGap");
-        yield return new("WordCard", "an action in the word card", host => Add(host, Press("wordCardAction")),
+        yield return new("WordCard", "a card grid's columns", host => Add(host, With(new Grid(), ["wordPresentationCardGrid"])),
+            Grid.ColumnSpacingProperty, "Intent.Space.Related");
+        yield return new("WordCard", "a card grid's rows", host => Add(host, With(new Grid(), ["wordPresentationCardGrid"])),
+            Grid.RowSpacingProperty, "Intent.Space.Compact");
+        yield return new("WordCard", "a card section's gap", host => Add(host, Stack("wordPresentationCardSection")),
+            StackPanel.SpacingProperty, "Intent.Space.Compact");
+        yield return new("WordCard", "a card section label", host => Add(host, Text("wordPresentationCardLabel")),
+            TextBlock.FontSizeProperty, "Component.WordCard.HeadingType");
+        yield return new("WordCard", "a card section label's color", host => Add(host, Text("wordPresentationCardLabel")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("WordCard", "a card heading", host => Add(host, Text("wordPresentationCardHeading")),
+            TextBlock.FontSizeProperty, "Component.WordCard.HeadingType");
+        yield return new("WordCard", "a card heading's color", host => Add(host, Text("wordPresentationCardHeading")),
+            TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("WordCard", "an action in the word card", host => Add(host, Press("wordPresentationCardAction")),
             Button.MarginProperty, "Intent.Gap.CompactItem");
+        yield return new("WordCard", "the Analyze card header", host => Add(host, Box("wordPresentationCardHeader")),
+            Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("WordCard", "the Analyze card header divider", host => Add(host, Box("wordPresentationCardHeader")),
+            Border.BorderBrushProperty, "Intent.Border");
+        yield return new("WordCard", "the Analyze card header divider thickness", host => Add(host, Box("wordPresentationCardHeader")),
+            Border.BorderThicknessProperty, "Intent.Stroke.DividerBottom");
+        yield return new("WordCard", "the Analyze card header padding", host => Add(host, Box("wordPresentationCardHeader")),
+            Border.PaddingProperty, "Component.WordCard.HeaderPadding");
+        yield return new("WordCard", "the close-card action surface", host => Add(host, Press("wordPresentationCardClose")),
+            Button.BackgroundProperty, "Intent.Clear");
+        yield return new("WordCard", "the close-card action border", host => Add(host, Press("wordPresentationCardClose")),
+            Button.BorderThicknessProperty, "Intent.Stroke.None");
+        yield return new("WordCard", "the close-card action padding", host => Add(host, Press("wordPresentationCardClose")),
+            Button.PaddingProperty, "Intent.Inset.None");
+        yield return new("WordCard", "the close-card action color", host => Add(host, Press("wordPresentationCardClose")),
+            Button.ForegroundProperty, "Intent.TextMuted");
         yield return new("WordStrip", "a word strip's group gap", host => Add(host, Box("wordStrip")),
             Border.MarginProperty, "Intent.Gap.CompactItem");
         yield return new("WordStrip", "a resting word strip edge", host => Add(host, Box("wordStrip")),
@@ -957,8 +1012,6 @@ public sealed partial class ComponentStyleTests
             Button.MinHeightProperty, "Component.HoverReveal.Height");
         yield return new("HoverReveal", "the FieldWorks link", host => Add(host, Press("revealControl", "revealLink")),
             Button.ForegroundProperty, "Intent.Marking.Link");
-        yield return new("Density", "the compact page size", host => DensityText(host, normal: false),
-            TextBlock.FontSizeProperty, "Component.Density.CompactType");
         yield return new("TextsPage", "results kept while a parse runs", host => Add(host, Stack("waiting")),
             Visual.OpacityProperty, "Intent.Opacity.Waiting");
 
@@ -967,18 +1020,6 @@ public sealed partial class ComponentStyleTests
         yield return new("Interaction", "the focus ring", host => Add(host, new SIL.Motif.App.Views.FocusRing()),
             Border.BorderThicknessProperty, "Intent.Stroke.Focus");
 
-        yield return new("Density", "the compact word strip height", CompactWordStrip,
-            Border.MinHeightProperty, "Component.Density.CompactWordHeight");
-        yield return new("Density", "the compact word strip type", host =>
-                Assert.IsType<StackPanel>(CompactWordStrip(host).Child).Children.OfType<TextBlock>().Single(),
-            TextBlock.FontSizeProperty, "Component.Density.CompactType");
-        yield return new("Density", "the normal word strip type", host =>
-                Assert.IsType<StackPanel>(DensityWordStrip(host, normal: true).Child).Children.OfType<TextBlock>().Single(),
-            TextBlock.FontSizeProperty, "Component.Density.NormalType");
-        yield return new("Density", "the compact opinion mark size", CompactOpinionMark,
-            Control.MinHeightProperty, "Component.Density.CompactMarkSize");
-        yield return new("Density", "the normal page size", host => DensityText(host, normal: true),
-            TextBlock.FontSizeProperty, "Component.Density.NormalType");
         yield return new("ToolTip", "a staged strip's tooltip words", TipInStagedStrip,
             TextBlock.ForegroundProperty, "Intent.Tooltip.Text");
         yield return new("ToolTip", "a staged strip's tooltip size", TipInStagedStrip,
@@ -1011,6 +1052,67 @@ public sealed partial class ComponentStyleTests
             Border.CornerRadiusProperty, "Component.Settings.KeyRadius");
     }
 
+    private static Control MorphPart(Panel host, int index)
+    {
+        var row = Add(host, new MorphemePanel
+        {
+            Morphs = [
+                new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null)),
+                new ParserReadingMorphViewModel(new ParserReadingMorph("-s", "plural", "n", null, false, null)),
+            ],
+        });
+        row.Measure(Size.Infinity);
+        return Assert.IsType<WrapPanel>(row.Child).Children.OfType<StackPanel>().ElementAt(index);
+    }
+
+    private static Control MorphPartText(Panel host, int partIndex, int childIndex) =>
+        Assert.IsType<StackPanel>(MorphPart(host, partIndex)).Children[childIndex];
+
+    private static Control InlineMorphPart(Panel host)
+    {
+        var row = Add(host, new MorphemePanel
+        {
+            Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))],
+            InlineParts = true,
+            WrapParts = true,
+        });
+        row.Measure(Size.Infinity);
+        return Assert.Single(Assert.IsType<WrapPanel>(row.Child).Children.OfType<CopyableTextBlock>(),
+            text => text.Classes.Contains("morphemePanelForm"));
+    }
+
+    private static Control DifferentMorphText(Panel host)
+    {
+        var source = new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null));
+        var row = Add(host, new MorphemePanel
+        {
+            Morphs = [source],
+            Annotations = [new MorphemePanelAnnotation(true, "Different entry")],
+        });
+        row.Measure(Size.Infinity);
+        return Assert.IsType<StackPanel>(Assert.IsType<WrapPanel>(row.Child).Children.Single()).Children[0];
+    }
+
+    private static Control InspectableMorphPart(Panel host)
+    {
+        var source = new ParserReadingMorph("form", "gloss", "n", null, false,
+            "silfw://localhost/link?database%3dp%26tool%3dlexiconEdit%26guid%3dx%26tag%3d")
+        {
+            Entry = "entry",
+            AllomorphId = "form-1",
+            GrammaticalInfoId = "msa-1",
+        };
+        var row = Add(host, new MorphemePanel { Morphs = [new ParserReadingMorphViewModel(source)] });
+        row.Measure(Size.Infinity);
+        return Assert.Single(Assert.IsType<WrapPanel>(row.Child).Children.OfType<StackPanel>());
+    }
+
+    private static Control NamedMarkWords(Panel host)
+    {
+        var mark = Add(host, new NamedMark { Mark = Mark.Approved, Text = "Approved" });
+        return mark.Children.OfType<CopyableTextBlock>().Single();
+    }
+
     private static Button RevealControl(Panel host)
     {
         var button = Press("revealControl", "revealButton", "revealOnHover");
@@ -1040,25 +1142,6 @@ public sealed partial class ComponentStyleTests
 
     private static Ellipse UnreadDot(Panel host) => (Ellipse)UnreadContent(host).Children[0];
 
-    private static TextBlock DensityText(Panel host, bool normal)
-    {
-        var root = new StackPanel { Classes = { "analysisDensity" } };
-        if (normal) root.Classes.Add("normal");
-        var text = Text("densitySample");
-        root.Children.Add(text);
-        host.Children.Add(root);
-        return text;
-    }
-
-    private static Control CompactOpinionMark(Panel host)
-    {
-        var root = new StackPanel { Classes = { "analysisDensity" } };
-        var mark = Box("opinionMark");
-        root.Children.Add(mark);
-        host.Children.Add(root);
-        return mark;
-    }
-
     // The staged strip restyles every TextBlock beneath it, so its tooltip's words show whether the tip wins.
     private static TextBlock TipInStagedStrip(Panel host)
     {
@@ -1067,21 +1150,6 @@ public sealed partial class ComponentStyleTests
         ((IPseudoClasses)tip.Classes).Set(":open", true);
         host.Children.Add(new Border { Classes = { "stagedStrip" }, Child = tip });
         return words;
-    }
-
-    private static Border CompactWordStrip(Panel host)
-        => DensityWordStrip(host, normal: false);
-
-    private static Border DensityWordStrip(Panel host, bool normal)
-    {
-        var root = new Border { Classes = { "wordVerdict", "analysisDensity" } };
-        if (normal) root.Classes.Add("normal");
-        var content = new StackPanel();
-        content.Children.Add(new TextBlock { Text = "word" });
-        content.Children.Add(Box("opinionMark"));
-        root.Child = content;
-        host.Children.Add(root);
-        return root;
     }
 
     private static T Add<T>(Panel host, T control) where T : Control
@@ -1166,13 +1234,6 @@ public sealed partial class ComponentStyleTests
         return inner;
     }
 
-    private static Border OpenRowEdge(Panel host)
-    {
-        var edge = Box("wordRowEdge");
-        host.Children.Add(new Border { Classes = { "wordRowFrame", "open" }, Child = edge });
-        return edge;
-    }
-
     private static ListBoxItem DenseListRow(Panel host)
     {
         var list = new ListBox { Classes = { "dense" } };
@@ -1180,6 +1241,19 @@ public sealed partial class ComponentStyleTests
         list.Items.Add(item);
         host.Children.Add(list);
         return item;
+    }
+
+    private static ListBox WordRows(Panel host)
+    {
+        var list = new ListBox
+        {
+            Classes = { "wordRows" },
+            Height = 100,
+            ItemsSource = Enumerable.Range(0, 20),
+        };
+        list.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Visible);
+        host.Children.Add(list);
+        return list;
     }
 
     private static ListBoxItem Entry(Panel host, bool collapsed, bool selected)

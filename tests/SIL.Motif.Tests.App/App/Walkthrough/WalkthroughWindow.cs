@@ -324,7 +324,7 @@ public sealed class WalkthroughWindow : IDisposable
 
     internal void TypeAutomationId(string automationId, string text)
     {
-        var control = Assert.IsType<TextBox>(FindByAutomationId(automationId));
+        var control = Assert.IsAssignableFrom<TextBox>(FindByAutomationId(automationId));
         HeadlessClick.Click(Window, control, automationId);
         Assert.True(control.IsFocused, $"AutomationId '{automationId}' did not receive focus from the click.");
         Window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.None, null);
@@ -368,7 +368,9 @@ public sealed class WalkthroughWindow : IDisposable
                 : string.Empty;
             throw new InvalidOperationException($"AutomationId '{automationId}' has no visible bounds.{state}");
         }
+        // A word-list slot measures like a scroll viewer but has no scrolling presenter, so it never clips.
         var clippedBy = control.GetVisualAncestors().OfType<ScrollViewer>()
+            .Where(viewer => viewer is not WordListSlot)
             .FirstOrDefault(viewer =>
             {
                 var viewportOrigin = control.TranslatePoint(new Point(), viewer);
@@ -381,7 +383,14 @@ public sealed class WalkthroughWindow : IDisposable
             var targetBounds = viewportOrigin is { } point ? new Rect(point, control.Bounds.Size) : default;
             throw new InvalidOperationException(
                 $"AutomationId '{automationId}' bounds {targetBounds} are outside its " +
-                $"ScrollViewer viewport {clippedBy.Viewport.Width}x{clippedBy.Viewport.Height}.");
+                $"ScrollViewer viewport {clippedBy.Viewport.Width}x{clippedBy.Viewport.Height} " +
+                $"({string.Join(" > ", clippedBy.GetVisualAncestors().OfType<Control>().Take(6).Reverse().Append(clippedBy).Select(c => c.GetType().Name + (string.IsNullOrEmpty(c.Name) ? "" : "#" + c.Name)))}; " +
+                $"bounds {clippedBy.Bounds}, visible={clippedBy.IsEffectivelyVisible}" +
+                (clippedBy is WordListSlot { CurrentLayout: { } layout } slot
+                    ? $"; layout available {layout.AvailableWidth}, content {layout.ContentWidth}, tracks {layout.TrackAreaWidth}, " +
+                      $"chrome {layout.OuterChromeWidth}, scrollbar {layout.ReservedVerticalScrollbarWidth}, " +
+                      $"horizontal {layout.UsesHorizontalViewport}, slot desired {slot.DesiredSize}, extent {slot.Extent}"
+                    : string.Empty) + ").");
         }
         var origin = control.TranslatePoint(new Point(), Window)
             ?? throw new InvalidOperationException($"AutomationId '{automationId}' is outside the main window.");

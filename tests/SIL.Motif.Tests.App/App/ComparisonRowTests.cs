@@ -1,18 +1,11 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Styling;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using Xunit;
-using RowView = SIL.Motif.App.Views.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
-[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ComparisonRowTests
 {
     private static readonly ParserReadingMorph HomographA =
@@ -92,26 +85,7 @@ public sealed class ComparisonRowTests
         Assert.Contains("Same form and gloss", model.IdentityDetail);
         Assert.Contains("different morpheme identity", model.IdentityDetail);
         Assert.Equal("Different entry: parser instead of stored", model.PanGlossMorphemes[0].EntryDifferenceTip);
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var row = new RowView { Row = model };
-            var window = new Window { Content = row, Width = 1240, Height = 400 };
-            window.Show();
-            try
-            {
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                var detail = row.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .Single(block => block.Text == model.IdentityDetail);
-                Assert.True(detail.Bounds.Width > row.Bounds.Width / 2,
-                    "The identity explanation needs the row's width rather than a narrow morpheme column.");
-                var differingMorpheme = row.GetVisualDescendants().OfType<Border>()
-                    .Single(border => border.Classes.Contains("wordRowMorph") && border.Classes.Contains("different"));
-                Assert.Equal("Different entry: parser instead of stored", ToolTip.GetTip(differingMorpheme));
-            }
-            finally { window.Close(); }
-            return Task.CompletedTask;
-        }, TimeSpan.FromMinutes(1));
+
     }
 
     [Fact]
@@ -126,71 +100,5 @@ public sealed class ComparisonRowTests
         Assert.Same(comparison, shown.Comparison);
     }
 
-    [Fact]
-    public void CompactRowsKeepTheParserOutcomeSeparateFromTheMeaning()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var row = new RowView
-            {
-                Columns = WordRowColumnSets.Timing,
-                Row = new WordRowViewModel(new("walikula", WordRowOutcome.Same, "Built anyway", WordRowTone.Problem)
-                { Opinion = ProjectStanding.Rejected, MeaningCode = "disapproved-built-anyway" }),
-            };
-            var window = new Window { Content = row, Width = 800, Height = 300 };
-            window.Show();
-            try
-            {
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                var chip = row.FindControl<MarkChip>("OutcomeAlone")!;
-                Assert.Equal("Same", chip.Text);
-                Assert.Equal(Mark.Of(ParserOutcome.Same), chip.Mark);
-            }
-            finally { window.Close(); }
-            return Task.CompletedTask;
-        }, TimeSpan.FromMinutes(1));
-    }
 
-    [Fact]
-    public void MixedOpinionHeadlineAndQualificationFitTheirMeaningColumn()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var comparison = new WordComparison(ProjectStanding.Candidate, WordRowOutcome.Different,
-                "disapproved-rebuilt", "Rebuilt an analysis you Disapproved", WordRowTone.Problem)
-            {
-                Detail = "Your undecided analysis wasn't built",
-            };
-            var model = new WordRowViewModel(new("mixed", comparison.Outcome, comparison.Headline, comparison.Tone)
-            {
-                MeaningCode = comparison.MeaningCode, MeaningDetail = comparison.Detail, Comparison = comparison,
-                Opinion = ProjectStanding.Candidate,
-            });
-            var row = new RowView { Row = model };
-            var host = new StackPanel { Children = { row } };
-            Grid.SetIsSharedSizeScope(host, true);
-            var window = new Window { Content = host, Width = 1240, Height = 400, RequestedThemeVariant = ThemeVariant.Light };
-            window.Show();
-            try
-            {
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                var meaning = row.GetVisualDescendants().OfType<Control>()
-                    .First(control => control.Classes.Contains("wordRowMeaning"));
-                var headline = meaning.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == "Have a look" && text.IsEffectivelyVisible);
-                Assert.Equal(MeaningTone.Look, model.Tone);
-                var detail = meaning.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == model.MeaningDetail);
-                Assert.True(headline.IsEffectivelyVisible);
-                Assert.True(detail.IsEffectivelyVisible);
-                Assert.True(headline.Bounds.Width <= meaning.Bounds.Width,
-                    $"Headline width {headline.Bounds.Width} exceeds column width {meaning.Bounds.Width}.");
-                Assert.True(detail.Bounds.Width <= meaning.Bounds.Width);
-            }
-            finally { window.Close(); }
-            return Task.CompletedTask;
-        }, TimeSpan.FromMinutes(1));
-    }
 }

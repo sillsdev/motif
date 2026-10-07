@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsListsPanel"
@@ -72,24 +73,22 @@
       </StackPanel>
     </DockPanel>
 
-    <Grid Grid.Row="3" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True" IsVisible="{Binding Lists.HasSelectedList}">
-      <views:WordRowHeader ShowsMeaning="{Binding Lists.ShowsMeaning}" />
+    <views:WordListSlot Grid.Row="3" Schema="{x:Static word:WordListSchemas.All}"
+                        ShowsMeaning="{Binding Lists.ShowsMeaning}" IsVisible="{Binding Lists.HasSelectedList}">
+      <Grid RowDefinitions="Auto,*">
+      <word:WordRowHeader />
       <ListBox x:Name="TextsListsPanelWordsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Lists.Compare.Words}"
                KeyboardNavigation.TabNavigation="Continue"
                AutomationProperties.Name="Words in the selected list">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareWordViewModel">
-            <views:WordRow Row="{Binding WordRow}" List="lists" IsChecked="{Binding IsChecked}"
-                           ShowsMeaning="{Binding $parent[views:TextsListsPanel].Lists.ShowsMeaning}"
-                           IsOpen="{Binding IsExpanded}" StagedText="{Binding StagedOpinionText}">
-              <views:WordRow.Card>
-                    <views:WordRowCard DataContext="{Binding}" CardToken="{Binding CardToken}" />
-              </views:WordRow.Card>
-            </views:WordRow>
+            <word:WordRow Data="{Binding ListsPresentation}" State="{Binding PresentationState, Mode=TwoWay}"
+                          Host="{Binding $parent[views:TextsListsPanel].PresentationHost}" />
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-    </Grid>
+      </Grid>
+    </views:WordListSlot>
     <views:CopyableTextBlock Grid.Row="3" Classes="muted" Text="Choose a list above to see its words."
                              IsVisible="{Binding !Lists.HasSelectedList}"
                              VerticalAlignment="Center" HorizontalAlignment="Center" />

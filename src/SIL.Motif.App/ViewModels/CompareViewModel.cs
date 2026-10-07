@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 
@@ -35,6 +36,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private readonly List<CompareWordViewModel> _all = [];
     private ChangesViewModel? _changes;
     private string? _focusedWordSearch;
+    private long _evidenceRevision;
 
     public Func<AssessmentWordResult, ResultsTokenViewModel>? WordCardTokenFactory { get; set; }
 
@@ -435,9 +437,10 @@ public sealed partial class CompareViewModel : ObservableObject
     {
         foreach (var word in _all) word.PropertyChanged -= OnWordPropertyChanged;
         _all.Clear();
+        var evidenceRevision = checked(++_evidenceRevision);
         if (rows is not null)
             _all.AddRange(rows.Select(row => new CompareWordViewModel(row, Place(row),
-                WordCardTokenFactory?.Invoke(row.Source))));
+                WordCardTokenFactory?.Invoke(row.Source), evidenceRevision)));
         foreach (var word in _all) word.PropertyChanged += OnWordPropertyChanged;
         var placesAvailable = _all.Any(word => word.Occurrences is not null);
         foreach (var cell in Cells)
@@ -922,14 +925,23 @@ public sealed partial class ComparePresetViewModel(string label, IReadOnlyList<C
 /// <summary>One word in the Compare list, with the cell it sits in.</summary>
 public sealed partial class CompareWordViewModel : ObservableObject
 {
+    private readonly WordPresentationKey _presentationKey;
+    private WordInteractionState _presentationState;
+
     public CompareWordViewModel(AssessWordRowViewModel word, (WordProjectStatus Row, CompareColumnKind Column) place,
-        ResultsTokenViewModel? cardToken = null)
+        ResultsTokenViewModel? cardToken = null, long evidenceRevision = 0)
     {
         ArgumentNullException.ThrowIfNull(word);
         Word = word.Word;
         CardToken = cardToken;
         Source = word.Source;
         WordRow = word.WordRow;
+        var form = WordRow.Word;
+        var writingSystem = Source.WordWritingSystem ?? string.Empty;
+        _presentationKey = new WordPresentationKey(
+            $"aggregate:{form.Length}:{form}:{writingSystem.Length}:{writingSystem}");
+        _presentationState = new WordInteractionState(_presentationKey);
+        EvidenceRevision = evidenceRevision;
         Standing = word.Standing;
         Row = place.Row;
         Column = place.Column;
@@ -975,6 +987,28 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     /// <summary>The word as every page's word row shows it: the same row Lists and Timing reach.</summary>
     public WordRowViewModel WordRow { get; }
+
+    public long EvidenceRevision { get; }
+
+    public WordInteractionState PresentationState
+    {
+        get => _presentationState;
+        set
+        {
+            if (value.Key != _presentationKey)
+                throw new InvalidOperationException("Word interaction state belongs to another word identity.");
+            if (!SetProperty(ref _presentationState, value)) return;
+            if (IsExpanded != value.IsOpen) IsExpanded = value.IsOpen;
+            if (IsChecked != (value.IsChecked ?? false)) IsChecked = value.IsChecked ?? false;
+        }
+    }
+
+    public WordPresentation PresentationFor(WordListOwner owner, string? stagedText = null, string? note = null) =>
+        new(_presentationKey, EvidenceRevision, WordRow, owner, stagedText, note);
+
+    public WordPresentation MatrixPresentation => PresentationFor(WordListOwner.Matrix, PendingChangeStatus);
+
+    public WordPresentation ListsPresentation => PresentationFor(WordListOwner.Lists, StagedOpinionText);
     public WordProjectStatus? Standing { get; }
     public WordProjectStatus Row { get; }
     public CompareColumnKind Column { get; }
@@ -1080,6 +1114,17 @@ public sealed partial class CompareWordViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isExpanded;
+
+    partial void OnIsCheckedChanged(bool value) => SyncPresentationState(_presentationState with { IsChecked = value });
+
+    partial void OnIsExpandedChanged(bool value) => SyncPresentationState(_presentationState with { IsOpen = value });
+
+    private void SyncPresentationState(WordInteractionState value)
+    {
+        if (_presentationState == value) return;
+        _presentationState = value;
+        OnPropertyChanged(nameof(PresentationState));
+    }
 }
 
 /// <summary>One stored analysis opinion shown in a compact word cell.</summary>
@@ -1094,6 +1139,14 @@ public sealed record CompareReadingChoice(int Index, ParseAnalysis Reading, stri
 /// <summary>One word in the ranked fix-first list, with the reason it needs attention in the window's words.</summary>
 public sealed record CompareFixFirstViewModel(CompareWordViewModel Word, FixFirstPriority Priority)
 {
+    public WordPresentation Presentation => Word.PresentationFor(WordListOwner.FixFirst, Word.PendingChangeStatus, Explanation);
+
+    public WordInteractionState PresentationState
+    {
+        get => Word.PresentationState;
+        set => Word.PresentationState = value;
+    }
+
     public string Category => Priority.Category switch
     {
         FixFirstCategory.ApprovedNoParse => "Approved, not parsed",

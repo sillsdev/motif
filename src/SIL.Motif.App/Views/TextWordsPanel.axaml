@@ -3,25 +3,30 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:controls="using:SIL.Motif.App.Controls"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextWordsPanel"
              x:DataType="views:TextWordsPanel">
   <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
         RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-    <WrapPanel Grid.Row="0" HorizontalAlignment="Stretch">
-      <views:CopyableTextBlock Text="{Binding Words.SummaryText}" TextTrimming="CharacterEllipsis"
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+      <views:CopyableTextBlock Classes="wordListSummary" Text="{Binding Words.SummaryText}" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Words.SummaryText}"
+                               AutomationProperties.Name="{Binding Words.SummaryText}"
                                VerticalAlignment="Center" />
       <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
-               AutomationProperties.Name="Search words" />
+               Width="{DynamicResource Component.TextsPage.WordListSearchWidth}"
+               Grid.Column="1" AutomationProperties.Name="Search words" />
       <Button Content="{Binding Words.HandOffCheckedWordsLabel}"
               Command="{Binding Words.HandOffCheckedWordsCommand}"
               AutomationProperties.Name="{Binding Words.HandOffCheckedWordsLabel}"
               AutomationProperties.HelpText="{Binding Words.HandOffCheckedWordsHelpText}"
               ToolTip.Tip="{Binding Words.HandOffCheckedWordsHelpText}"
-              views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
-    </WrapPanel>
+              views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" Grid.Column="2" />
+    </Grid>
 
-    <WrapPanel Grid.Row="1">
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <StackPanel Orientation="Horizontal">
       <views:FilterChip Label="All" Count="{Binding Words.AllCount}" IsActive="{Binding Words.IsAllFilter}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
       <views:FilterChip Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Mark="{x:Static vm:Mark.Approved}"
@@ -45,47 +50,24 @@
       <views:FilterChip Label="Several analyses" Count="{Binding Words.SeveralFilterCount}"
                         IsVisible="{Binding Words.SeveralFilterCount}" IsActive="{Binding Words.SeveralOnly}"
                         Command="{Binding Words.ShowSeveralCommand}" />
-    </WrapPanel>
+      </StackPanel>
+    </ScrollViewer>
 
     <views:RefusalBlock Grid.Row="2" DataContext="{Binding Words.ShownRefusal}" />
 
-    <Grid Grid.Row="3" RowDefinitions="Auto,*" Grid.IsSharedSizeScope="True">
-      <views:WordRowHeader Columns="{x:Static views:WordRowColumnSets.WordList}" />
+    <views:WordListSlot Grid.Row="3" Schema="{x:Static word:WordListSchemas.WordList}">
+      <Grid RowDefinitions="Auto,*">
+      <word:WordRowHeader />
       <ListBox x:Name="TextWordsPanelRowsItems" Grid.Row="1" Classes="wordRows" ItemsSource="{Binding Words.Rows}"
                AutomationProperties.Name="Words to test" KeyboardNavigation.TabNavigation="Continue">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:TextWordRowViewModel">
-            <views:WordRow Row="{Binding Listed.Row}" List="word-list" IsOpen="{Binding Listed.IsOpen}"
-                           StagedText="{Binding StagedText}"
-                           IsChecked="{Binding IsChecked}" Columns="{x:Static views:WordRowColumnSets.WordList}">
-              <views:WordRow.Card>
-                <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
-                  <views:ListedWordCard DataContext="{Binding Listed}" />
-                  <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectSummary}" TextWrapping="Wrap"
-                                           IsVisible="{Binding HasSeveralAnalyses}" />
-                  <views:CopyableTextBlock Classes="wordRowCardHeading" Text="WHERE IT APPEARS"
-                                           HorizontalAlignment="Stretch" TextAlignment="Left" />
-                  <ItemsControl x:Name="TextWordsPanelOccurrencesItems" ItemsSource="{Binding Occurrences}">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:WordOccurrenceRowViewModel">
-                        <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                          <views:CopyableTextBlock Classes="muted" Text="{Binding Location}" />
-                          <views:CopyableTextBlock Text="{Binding Sentence}" TextWrapping="Wrap"
-                                                   controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
-                                                   controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
-                        </StackPanel>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </views:WordRow.Card>
-            </views:WordRow>
+            <word:WordRow Data="{Binding Presentation}" State="{Binding PresentationState, Mode=TwoWay}"
+                          Host="{Binding $parent[views:TextWordsPanel].PresentationHost}" />
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-    </Grid>
+      </Grid>
+    </views:WordListSlot>
   </Grid>
 </UserControl>

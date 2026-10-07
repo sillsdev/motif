@@ -7,7 +7,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using Xunit;
-using WordRow = SIL.Motif.App.Views.WordRow;
+using WordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -65,13 +65,21 @@ public sealed class ComparePanelSystemTests(AvaloniaHeadlessFixture avalonia)
                 var shortModeDiagnostic =
                     $"Compare panel height seen by short-mode check: {panel.ShortMatrixCheckedHeight:0.#} px; " +
                     $"short mode: {(shortModeIsOn ? "on" : "off")} (threshold: below 720 px).";
+                var rowParts = string.Join("; ", first.GetVisualDescendants().OfType<Control>()
+                    .Where(control => control.Classes.Any(className =>
+                        className.StartsWith("wordPresentation", StringComparison.Ordinal)))
+                    .Select(control => $"{control.GetType().Name}.{control.Classes.First(className =>
+                        className.StartsWith("wordPresentation", StringComparison.Ordinal))} " +
+                        $"{control.Bounds.Width:0.#}×{control.Bounds.Height:0.#}"));
                 Assert.True(shortModeIsOn,
                     $"Short Matrix mode should be active in a {window.Bounds.Height:0.#} px window. " +
                     shortModeDiagnostic);
                 Assert.True(headroom >= 32,
                     $"The first word row ends at {bottom:0.#} px in a {window.Bounds.Height:0.#} px window. " +
                     $"Matrix height: {matrix.Bounds.Height:0.#} px; headroom below the row: {headroom:0.#} px " +
-                    "(need at least 32 px, including 8 px of layout margin). " +
+                    $"(need at least 32 px, including 8 px of layout margin). Row {first.Bounds.Width:0.#}×" +
+                    $"{first.Bounds.Height:0.#} at y={first.TranslatePoint(default, window)!.Value.Y:0.#}. " +
+                    $"Parts: {rowParts}. " +
                     shortModeDiagnostic);
             }
             finally

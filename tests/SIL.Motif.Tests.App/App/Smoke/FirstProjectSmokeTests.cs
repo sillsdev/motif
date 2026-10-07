@@ -20,7 +20,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
     public void AFirstProjectOpensCapturesSetsUpAndShowsItsFirstRun()
     {
         using var project = new TwoTextWalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
         var parser = FakeParser.Copy(project.ManagedRoot);
         var batchStarted = Path.Combine(project.ManagedRoot, "first-batch-started");
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-first-batch");

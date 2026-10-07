@@ -6,7 +6,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TraceAnalysesView"
              x:DataType="vm:TraceWordViewModel"
-             controls:WritingSystemText.Resolver="{Binding WritingSystemTextStyles}">
+             controls:WritingSystemText.Resolver="{Binding TextStyles}">
   <!-- A word that parses leads with its analyses, each once, before anything the parser dropped. -->
   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" IsVisible="{Binding HasAnalyses}"
               AutomationProperties.Name="Analyses">
@@ -41,7 +41,7 @@
                     <Border Classes="card" Margin="{DynamicResource Intent.Gap.AfterRelated}">
                       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                         <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
-                          <TextBlock Text="{Binding Form}" FontWeight="SemiBold"
+                          <controls:WritingSystemTextBlock Text="{Binding Form}" FontWeight="SemiBold"
                                      controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal" />
                         </views:InspectLink>
                         <views:CopyableTextBlock Text="{Binding Form}" FontWeight="SemiBold" IsVisible="{Binding CannotInspect}"

@@ -5,6 +5,10 @@ using SIL.Motif.App.Controls;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.PanGloss;
+using WordInteractionState = SIL.Motif.App.Controls.WordPresentation.WordInteractionState;
+using WordListOwner = SIL.Motif.App.Controls.WordPresentation.WordListOwner;
+using WordPresentation = SIL.Motif.App.Controls.WordPresentation.WordPresentation;
+using WordPresentationKey = SIL.Motif.App.Controls.WordPresentation.WordPresentationKey;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -55,6 +59,8 @@ public sealed partial class WordRowViewModel : ObservableObject
 {
     private const string WordAnalysesTool = "Analyses";
     private readonly WordRowRoutes? _routes;
+    private readonly WordPresentationKey _presentationKey = new($"warning-word:{Guid.NewGuid():N}");
+    private WordInteractionState _presentationState;
 
     public WordRowViewModel(WordRow row, WordRowRoutes? routes = null) : this(row, routes, notParsedYet: false)
     {
@@ -65,6 +71,7 @@ public sealed partial class WordRowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(row);
         _row = row;
         _routes = routes;
+        _presentationState = new WordInteractionState(_presentationKey);
         _routes?.Register(this);
         _notParsedYet = notParsedYet;
         _isUnread = row.IsUnread;
@@ -121,6 +128,22 @@ public sealed partial class WordRowViewModel : ObservableObject
 
     /// <summary>The row's facts as the projection gave them, with the read state as it is now.</summary>
     public WordRow Row => _row;
+
+    /// <summary>The module input for a word listed by a grammar warning.</summary>
+    public WordPresentation Presentation => new(_presentationKey, 0, this, WordListOwner.Warnings);
+
+    /// <summary>The open state retained while this warning word moves through a virtualized list.</summary>
+    public WordInteractionState PresentationState
+    {
+        get => _presentationState;
+        set
+        {
+            if (value.Key != _presentationKey)
+                throw new InvalidOperationException("Word interaction state belongs to another warning word.");
+            if (!SetProperty(ref _presentationState, value)) return;
+            IsOpen = value.IsOpen;
+        }
+    }
 
     internal WordRowRoutes? OpinionRoutes => _routes;
 
@@ -301,7 +324,16 @@ public sealed partial class WordRowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Row))]
     private bool? _isUnread;
 
+    [ObservableProperty]
+    private bool _isOpen;
+
     partial void OnIsUnreadChanged(bool? value) => _row = _row with { IsUnread = value };
+
+    partial void OnIsOpenChanged(bool value)
+    {
+        var next = _presentationState with { IsOpen = value };
+        if (next != _presentationState) SetProperty(ref _presentationState, next, nameof(PresentationState));
+    }
 
     /// <summary>Whether to show the Unread mark; a read word, or one whose read state is unknown, shows nothing.</summary>
     public bool ShowUnread => IsUnread == true;

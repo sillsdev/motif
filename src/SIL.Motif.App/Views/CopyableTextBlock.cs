@@ -1,9 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using SIL.Motif.App.Controls;
 
 namespace SIL.Motif.App.Views;
 
-public class CopyableTextBlock : SelectableTextBlock
+public class CopyableTextBlock : WritingSystemSelectableTextBlock
 {
     protected override Type StyleKeyOverride => typeof(SelectableTextBlock);
 

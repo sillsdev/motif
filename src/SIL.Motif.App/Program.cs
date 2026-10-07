@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.Walkthroughs;
 using Velopack;
 
@@ -38,7 +39,7 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
-            .With(UiFontFamilies.CurrentOptions)
+            .With(TextStyles.CurrentInterfaceFontOptions)
             .UsePlatformDetect()
             .LogToTrace();
 

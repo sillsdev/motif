@@ -9,6 +9,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Queries;
@@ -17,6 +18,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
+using WordPresentationRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
@@ -59,6 +61,115 @@ public sealed class ReviewScreenshots
         }, TimeSpan.FromMinutes(3));
     }
 
+    [Fact]
+    public void ReviewRowsStayBelowTheirHeaderWhenScrolledAndOpened()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(Blocked());
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                window.Height = 460;
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
+                var slot = Assert.Single(panel.GetVisualDescendants().OfType<WordListSlot>());
+                var list = Assert.Single(slot.GetVisualDescendants().OfType<ListBox>(),
+                    control => control.Name == "ReviewItems" && control.ItemCount > 0);
+                var entries = workspace.PageModel<ReviewPageModel>().ReviewEntries;
+                var firstChangeIndex = entries.Select((entry, index) => (entry, index))
+                    .First(pair => pair.entry.IsChangeRow).index;
+                list.ScrollIntoView(firstChangeIndex);
+                list.UpdateLayout();
+                PageScreenshots.Settle(window);
+                var row = list.GetVisualDescendants().OfType<WordPresentationRow>().First();
+                WordListHeaderAssertions.FirstRowIsBelowHeader(slot, row);
+
+                var scroll = Assert.Single(list.GetVisualDescendants().OfType<ScrollViewer>(),
+                    viewer => viewer.Name == "PART_ScrollViewer");
+                Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+                row.State = row.State! with { IsOpen = true };
+                window.UpdateLayout();
+                scroll.Offset = new Vector(0, scroll.Extent.Height - scroll.Viewport.Height);
+                row.BringIntoView();
+                PageScreenshots.Settle(window);
+                WordListHeaderAssertions.FirstRowIsBelowHeader(slot, row);
+                Assert.True(scroll.Offset.Y > 0);
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void ReviewWordPresentationReadsItsContextAndRoutesUndoWithoutApplying()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.PendingChangesIs(Blocked());
+            var (workspace, window) = await OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Review;
+                PageScreenshots.Settle(window);
+                var page = workspace.PageModel<ReviewPageModel>();
+                var change = page.ReviewGroups.SelectMany(group => group.Items)
+                    .First(item => item.Word == "kitabu");
+                var row = Assert.Single(window.GetVisualDescendants().OfType<WordPresentationRow>(),
+                    item => item.Data?.Key == change.Presentation.Key);
+
+                row.State = row.State! with { IsOpen = true };
+                PageScreenshots.Settle(window);
+                var card = Assert.Single(row.GetVisualDescendants().OfType<WordCard>());
+                var pending = Assert.IsType<WordCardPendingChange>(Assert.Single(card.Document!.Sections,
+                    section => section is WordCardPendingChange));
+                Assert.Equal(change.Reading, pending.Reading);
+                Assert.Same(page.Context, pending.Context);
+
+                var undo = Assert.Single(row.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == change.UndoAutomationName);
+                undo.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                Dispatcher.UIThread.RunJobs();
+                PageScreenshots.Settle(window);
+
+                Assert.Single(fake.PendingRemoveRequests);
+
+                var uncertain = page.ReviewGroups.SelectMany(group => group.Items)
+                    .Single(item => item.Word == "watoto");
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
+                var items = panel.FindControl<ListBox>("ReviewItems")!;
+                var uncertainIndex = page.ReviewEntries.Select((entry, index) => (entry, index))
+                    .Single(pair => ReferenceEquals(pair.entry.Change, uncertain)).index;
+                items.ScrollIntoView(uncertainIndex);
+                PageScreenshots.Settle(window);
+                var uncertainRow = Assert.Single(items.ContainerFromIndex(uncertainIndex)!
+                    .GetVisualDescendants().OfType<WordPresentationRow>());
+                Assert.Contains(uncertainRow.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == "Now reads");
+                var reconfirm = Assert.Single(uncertainRow.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button) == uncertain.CheckAgainAutomationName);
+                reconfirm.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                Dispatcher.UIThread.RunJobs();
+                PageScreenshots.Settle(window);
+
+                Assert.Contains(fake.PendingReconfirmRequests, request => request.ChangeId == uncertain.ChangeId);
+                Assert.Empty(fake.ApplyPendingRequests);
+            }
+            finally
+            {
+                Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [ScreenshotFact]
     public void CaptureReviewStates()
     {
@@ -87,12 +198,11 @@ public sealed class ReviewScreenshots
                 Assert.Equal(new[] { "ki-", "tabu" }, unknownToApproved.Listed.Row.FieldWorksMorphemes
                     .Select(morph => morph.Form));
                 PageScreenshots.Settle(window);
-                var kitabuRow = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Views.WordRow>(),
-                    row => row.Row?.Word == "kitabu");
-                var fieldWorksItems = Assert.Single(kitabuRow.GetVisualDescendants().OfType<ItemsControl>(),
-                    items => items.Name == "FieldWorksMorphemes");
-                Assert.True(fieldWorksItems.IsEffectivelyVisible);
-                Assert.Equal(2, fieldWorksItems.Items.Count);
+                var kitabuRow = Assert.Single(window.GetVisualDescendants().OfType<WordPresentationRow>(),
+                    row => row.Data?.Facts.Word == "kitabu");
+                var fieldWorksPanel = kitabuRow.GetVisualDescendants().OfType<MorphemePanel>()
+                    .First(panel => panel.Morphs?.Select(morph => morph.Form).SequenceEqual(["ki-", "tabu"]) == true);
+                Assert.True(fieldWorksPanel.IsEffectivelyVisible);
                 var visibleTexts = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                     .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
                 Assert.Contains("ki-", visibleTexts);

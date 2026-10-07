@@ -8,9 +8,11 @@ using Avalonia.Controls.Shapes;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Controls;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using ShapePath = Avalonia.Controls.Shapes.Path;
+using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App.ControlContracts;
 
@@ -34,6 +36,7 @@ internal enum StatePart
     Ring,
     Text,
     Glyph,
+    NextHost,
 }
 
 /// <summary>
@@ -73,9 +76,6 @@ internal static class ComponentStateContractCases
         new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
         new("Border.warningRow:pointerover :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink)),
         new("Border.warningRow:focus-within :is(Control).warningHoverTitle", nameof(WarningsPageWordsTests.ARowOpensPanGlossGuidanceAndShowsItsFieldWorksLink)),
-        new("Border.wordRowBody:pointerover Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsShowWhileThePointerIsOverTheRowAndWhileItIsOpen)),
-        new("Border.wordRowBody:focus-within Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsStayOutOfTheRestingRowAndAppearWhenItGetsKeyboardFocus)),
-        new("Border.wordRowBody.open Grid.wordRowNextHost", nameof(WordRowControlTests.NextStepsShowWhileThePointerIsOverTheRowAndWhileItIsOpen)),
     ];
 
     /// <summary>
@@ -149,10 +149,10 @@ internal static class ComponentStateContractCases
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
         yield return new(revealFocus, "keyboard focus on a FieldWorks link", () => Alone(Press("revealControl", "revealLink")),
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BorderBrushProperty, "Intent.Focus");
-        const string revealAtRest = "Border.hoverReveal :is(Button).revealOnHover";
-        const string revealOnPointer = "Border.hoverReveal:pointerover :is(Button).revealOnHover";
-        const string revealOnFocus = "Border.hoverReveal:focus-within :is(Button).revealOnHover";
-        const string revealWhenOpen = "Border.hoverReveal.open :is(Button).revealOnHover";
+        const string revealAtRest = ":is(Control).hoverReveal :is(Button).revealOnHover";
+        const string revealOnPointer = ":is(Control).hoverReveal:pointerover :is(Button).revealOnHover";
+        const string revealOnFocus = ":is(Control).hoverReveal:focus-within :is(Button).revealOnHover";
+        const string revealWhenOpen = ":is(Control).hoverReveal.open :is(Button).revealOnHover";
         yield return new(revealAtRest, "at rest", () => RevealOwner(), StateStimulus.None,
             StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new(revealOnPointer, "revealed by pointer hover", () => RevealOwner(), StateStimulus.Pointer,
@@ -162,10 +162,10 @@ internal static class ComponentStateContractCases
         yield return new(revealWhenOpen, "revealed when the row is open", () => RevealOwner(open: true), StateStimulus.None,
             StatePart.Self, Visual.OpacityProperty, "Component.HoverReveal.VisibleOpacity");
 
-        const string textRevealAtRest = "Border.hoverReveal :is(TextBlock).revealOnHover";
-        const string textRevealOnPointer = "Border.hoverReveal:pointerover :is(TextBlock).revealOnHover";
-        const string textRevealOnFocus = "Border.hoverReveal:focus-within :is(TextBlock).revealOnHover";
-        const string textRevealWhenOpen = "Border.hoverReveal.open :is(TextBlock).revealOnHover";
+        const string textRevealAtRest = ":is(Control).hoverReveal :is(TextBlock).revealOnHover";
+        const string textRevealOnPointer = ":is(Control).hoverReveal:pointerover :is(TextBlock).revealOnHover";
+        const string textRevealOnFocus = ":is(Control).hoverReveal:focus-within :is(TextBlock).revealOnHover";
+        const string textRevealWhenOpen = ":is(Control).hoverReveal.open :is(TextBlock).revealOnHover";
         yield return new(textRevealAtRest, "at rest", () => RevealTextOwner(), StateStimulus.None,
             StatePart.Text, Visual.OpacityProperty, "Component.HoverReveal.HiddenOpacity");
         yield return new(textRevealOnPointer, "revealed by pointer hover", () => RevealTextOwner(), StateStimulus.Pointer,
@@ -179,7 +179,10 @@ internal static class ComponentStateContractCases
             () => Alone(Press("timingRuleRow")), StateStimulus.Press, StatePart.Face, Visual.RenderTransformProperty,
             "Intent.Transform.Pressed");
 
-        yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(Morpheme()), StateStimulus.Pointer,
+        yield return new("StackPanel.morphemePanelPart.morphemePanelInspectable:pointerover", "hover",
+            () => Alone(Morpheme()), StateStimulus.Pointer,
+            StatePart.Self, Panel.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(BorderMorpheme()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Primary");
@@ -297,19 +300,19 @@ internal static class ComponentStateContractCases
         yield return new(warningSummaryPressed, "pressed", () => Alone(Press("warningSummary")), StateStimulus.Press,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
 
-        yield return new("Border.wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
+        yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
+        yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Border");
-        yield return new("Border.wordStrip.open", "open", () => Alone(Strip("open")), StateStimulus.None,
+        yield return new(":is(Border).wordStrip.open", "open", () => Alone(Strip("open")), StateStimulus.None,
             StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Border.wordStrip.open", "open under the pointer", () => Alone(Strip("open")), StateStimulus.Pointer,
+        yield return new(":is(Border).wordStrip.open", "open under the pointer", () => Alone(Strip("open")), StateStimulus.Pointer,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
-        yield return new("Border.wordStrip.open", "open and keyboard focus", () => Alone(Strip("open")), StateStimulus.KeyboardFocus,
+        yield return new(":is(Border).wordStrip.open", "open and keyboard focus", () => Alone(Strip("open")), StateStimulus.KeyboardFocus,
             StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
-        yield return new("Border.wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
+        yield return new(":is(Border).wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
             StatePart.Self, Border.BorderBrushProperty, "Intent.Focus");
-        yield return new("Border.wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
+        yield return new(":is(Border).wordStrip:focus-visible", "keyboard focus", () => Alone(Strip()), StateStimulus.KeyboardFocus,
             StatePart.Self, Border.BorderThicknessProperty, "Intent.Stroke.Focus");
 
         const string rowsFace = " /template/ ContentPresenter#PART_ContentPresenter";
@@ -317,28 +320,36 @@ internal static class ComponentStateContractCases
             StateStimulus.Pointer, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
         yield return new("ListBox.wordRows ListBoxItem:selected" + rowsFace, "selected", () => WordRowsEntry(selected: true),
             StateStimulus.None, StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Clear");
-        yield return new("Border.wordRowFrame:pointerover", "hover", () => Alone(WordRowLine()), StateStimulus.Pointer,
-            StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.wordRowFrame.open", "opened", () => Alone(WordRowLine("open")), StateStimulus.None,
-            StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Border.wordRowFrame.open", "opened under the pointer", () => Alone(WordRowLine("open")),
-            StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Border.wordRowFrame.open", "opened and keyboard focus", OpenRowBody, StateStimulus.KeyboardFocus,
-            StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
-        yield return new("Border.wordRowFrame.open Border.wordRowEdge", "opened", OpenRowEdge, StateStimulus.None,
-            StatePart.Self, Border.BorderBrushProperty, "Intent.Accent");
+        yield return new("Border.wordPresentationFrame:pointerover", "hover", () => PresentationRow(),
+            StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new("Border.wordPresentationFrame.open", "opened", () => PresentationRow(open: true),
+            StateStimulus.None, StatePart.Self, Border.BackgroundProperty, "Intent.Selected.Fill");
+        yield return new("CheckBox.wordPresentationTick:pointerover", "hover", () => PresentationTick(),
+            StateStimulus.Pointer, StatePart.Self, TemplatedControl.BackgroundProperty, "Intent.Surface.Hover");
+        yield return new("CheckBox.wordPresentationTick:focus-visible", "keyboard focus", () => PresentationTick(),
+            StateStimulus.KeyboardFocus, StatePart.Self, TemplatedControl.BorderBrushProperty, "Intent.Focus");
 
-        const string nextHover = "Border.wordRowFrame:pointerover StackPanel.wordRowNext HyperlinkButton";
-        yield return new(nextHover, "a next step at rest, before the row is hovered", () => NextStep(), StateStimulus.None,
-            StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextSecondary");
-        yield return new(nextHover, "a next step on row hover", () => NextStep(), StateStimulus.Pointer,
-            StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
-        yield return new("Border.wordRowFrame:focus-within StackPanel.wordRowNext HyperlinkButton", "a next step with focus in the row",
-            () => NextStep(), StateStimulus.KeyboardFocus, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
-        yield return new("Border.wordRowFrame.open StackPanel.wordRowNext HyperlinkButton", "a next step on an opened row",
-            () => NextStep("open"), StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Accent");
-        yield return new("StackPanel.wordRowNext HyperlinkButton:disabled", "a next step that cannot open, on an opened row",
-            () => NextStep("open"), StateStimulus.Disabled, StatePart.Text, TextBlock.ForegroundProperty, "Intent.TextFaint");
+        const string nextHostHover = "Border.wordPresentationFrame:pointerover Grid.wordPresentationNextHost";
+        const string nextHostFocus = "Border.wordPresentationFrame:focus-within Grid.wordPresentationNextHost";
+        const string nextHostOpen = "Border.wordPresentationFrame.open Grid.wordPresentationNextHost";
+        yield return new(nextHostHover, "next actions shown on hover", () => PresentationNextHost(), StateStimulus.Pointer,
+            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
+        yield return new(nextHostFocus, "next actions shown on keyboard focus", () => PresentationNextHost(), StateStimulus.KeyboardFocus,
+            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
+        yield return new(nextHostOpen, "next actions shown on an open row", () => PresentationNextHost(), StateStimulus.None,
+            StatePart.NextHost, Grid.MaxHeightProperty, "Component.WordPresentation.MinHeight");
+
+        const string nextActionHover = "Border.wordPresentationFrame:pointerover Button.wordPresentationNextAction";
+        const string nextActionFocus = "Border.wordPresentationFrame:focus-within Button.wordPresentationNextAction";
+        const string nextActionOpen = "Border.wordPresentationFrame.open Button.wordPresentationNextAction";
+        yield return new(nextActionHover, "next action on hover", () => PresentationNextAction(), StateStimulus.Pointer,
+            StatePart.Self, Button.ForegroundProperty, "Intent.Accent");
+        yield return new(nextActionFocus, "next action with keyboard focus", () => PresentationNextAction(), StateStimulus.KeyboardFocus,
+            StatePart.Self, Button.ForegroundProperty, "Intent.Accent");
+        yield return new(nextActionOpen, "next action on an open row", () => PresentationNextAction(), StateStimulus.None,
+            StatePart.Self, Button.ForegroundProperty, "Intent.Accent");
+        yield return new("Button.wordPresentationNextAction:disabled", "unavailable next action", () => PresentationDisabledNextAction(),
+            StateStimulus.Disabled, StatePart.Self, Button.ForegroundProperty, "Intent.TextFaint");
 
         foreach (var item in SettingsStates()) yield return item;
     }
@@ -382,6 +393,8 @@ internal static class ComponentStateContractCases
         StatePart.Face => target.GetVisualDescendants().OfType<ContentPresenter>().FirstOrDefault(face => face.Name == "PART_ContentPresenter"),
         StatePart.Ring => RingAround(target),
         StatePart.Text => target is TextBlock ? target : target.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(),
+        StatePart.NextHost => target.GetVisualAncestors().OfType<Grid>()
+            .FirstOrDefault(grid => grid.Classes.Contains("wordPresentationNextHost")),
         StatePart.Glyph => target is ShapePath ? target : target.GetVisualDescendants().OfType<ShapePath>()
             .FirstOrDefault(path => path.Classes.Contains("settingsGearGlyph")),
         _ => null,
@@ -405,36 +418,49 @@ internal static class ComponentStateContractCases
         return (list, item);
     }
 
-    private static Border WordRowLine(params string[] classes)
+    private static (Control, Control) PresentationRow(bool open = false)
     {
-        var line = new Border { Classes = { "wordRowFrame" }, Width = 300, Height = 40, Child = new TextBlock { Text = "kitabu" } };
-        line.Classes.AddRange(classes);
-        return line;
-    }
-
-    private static (Control, Control) OpenRowBody()
-    {
-        var body = new Border { Classes = { "wordRowBody" }, Focusable = true, Child = new TextBlock { Text = "kitabu" } };
-        return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = body }, body);
-    }
-
-    private static (Control, Control) NextStep(params string[] classes)
-    {
-        var link = new HyperlinkButton { Content = "Try a Word" };
-        var frame = new Border
+        var key = new WordPresentationKey("state:kitabu");
+        var row = new PresentationWordRow
         {
-            Classes = { "wordRowFrame" }, Width = 300, Height = 40,
-            Child = new StackPanel { Classes = { "wordRowNext" }, Children = { link } },
+            Data = new WordPresentation(key, 0, WordRowViewModel.NotParsed("kitabu"), WordListOwner.ReadOnly),
+            State = new WordInteractionState(key, IsOpen: open),
         };
-        frame.Classes.AddRange(classes);
-        return (frame, link);
+        return (row, row.Content as Border ?? throw new InvalidOperationException("The word row has no frame."));
     }
 
-    private static (Control, Control) OpenRowEdge()
+    private static (Control, Control) PresentationTick()
     {
-        var edge = new Border { Classes = { "wordRowEdge" }, Child = new TextBlock { Text = "kitabu" } };
-        return (new Border { Classes = { "wordRowFrame", "open" }, Width = 300, Height = 40, Child = edge }, edge);
+        var (row, _) = PresentationRow();
+        return (row, RowShell(row).Children.OfType<CheckBox>().Single());
     }
+
+    private static (Control, Control) PresentationNextHost()
+    {
+        var (row, _) = PresentationRow(open: true);
+        return (row, NextAction(row));
+    }
+
+    private static (Control, Control) PresentationNextAction()
+    {
+        var (row, _) = PresentationRow(open: true);
+        return (row, NextAction(row));
+    }
+
+    private static (Control, Control) PresentationDisabledNextAction()
+    {
+        var (row, _) = PresentationRow(open: true);
+        return (row, NextHost(row).Children.OfType<WrapPanel>().Single().Children.OfType<Button>()
+            .Single(button => button.Classes.Contains("wordPresentationNextAction") && !button.IsEnabled));
+    }
+
+    private static Button NextAction(Control row) => NextHost(row).Children.OfType<WrapPanel>().Single().Children.OfType<Button>()
+        .First(button => button.Classes.Contains("wordPresentationNextAction") && Equals(button.Content, "Try a Word"));
+
+    private static Grid RowShell(Control row) => (Grid)((Border)((UserControl)row).Content!).Child!;
+
+    private static Grid NextHost(Control row) => RowShell(row).Children.OfType<Grid>()
+        .Single(grid => grid.Classes.Contains("wordPresentationNextHost"));
 
     private static (Control, Control) Alone(Control control) => (control, control);
 
@@ -465,7 +491,11 @@ internal static class ComponentStateContractCases
         return (list, (ListBoxItem)list.Items[0]!);
     }
 
-    private static Border Morpheme() =>
+    private static StackPanel Morpheme() =>
+        new() { Classes = { "morphemePanelPart", "morphemePanelInspectable" }, Focusable = true, Width = 80, Height = 40,
+            Children = { new TextBlock { Text = "kat" } } };
+
+    private static Border BorderMorpheme() =>
         new() { Classes = { "morph", "inspectable" }, Focusable = true, Width = 80, Height = 40, Child = new TextBlock { Text = "kat" } };
 
     private static Border Cell(params string[] classes)
@@ -494,8 +524,8 @@ internal static class ComponentStateContractCases
     private static (Control, Control) RevealOwner(bool open = false)
     {
         var button = Press("revealControl", "revealButton", "revealOnHover");
-        // Every owner in the window paints a fill, which is what makes the gap around its button take the pointer.
-        var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button, Width = 200, Height = 40 };
+        var owner = new StackPanel { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Width = 200, Height = 40 };
+        owner.Children.Add(button);
         if (open) owner.Classes.Add("open");
         return (owner, button);
     }
@@ -505,7 +535,8 @@ internal static class ComponentStateContractCases
         var action = new TextBlock { Classes = { "revealOnHover" }, Text = "See the words" };
         var button = Press("overviewLookFirstRow");
         button.Content = action;
-        var owner = new Border { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Child = button, Width = 200, Height = 40 };
+        var owner = new StackPanel { Classes = { "hoverReveal" }, Background = Brushes.Transparent, Width = 200, Height = 40 };
+        owner.Children.Add(button);
         if (open) owner.Classes.Add("open");
         return (owner, button);
     }
@@ -611,36 +642,33 @@ internal static class TooltipOwners
         {
             Pending = "the Matrix scene has no checked words, so the action is hidden",
         },
-        new("FieldWorks column heading", "Views/WordRowHeader.axaml", "FieldWorks", TooltipScene.Lists,
-            control => control is CopyableTextBlock && Name(control) == "FieldWorks" &&
-                control.Classes.Contains("wordRowHeading") && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&
-                control.FindAncestorOfType<WordRowHeader>() is not null),
-        new("PanGloss column heading", "Views/WordRowHeader.axaml", "PanGloss", TooltipScene.Lists,
-            control => control is CopyableTextBlock && Name(control) == "PanGloss" &&
-                control.Classes.Contains("wordRowHeading") && control.Bounds.Width > 0 && control.Bounds.Height > 0 &&
-                control.FindAncestorOfType<WordRowHeader>() is not null),
         new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
             control => control is Ellipse && control.Classes.Contains("matrixPending")),
-        new("word cell", "Views/WordRow.axaml", "{Binding Summary}", TooltipScene.Matrix,
-            control => control is CopyableTextBlock { Name: "WordForm" } &&
+        new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.Summary", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationForm") &&
                 control.FindAncestorOfType<WordRow>() is not null),
-        new("places in a word row", "Views/WordRow.axaml", "{Binding PlacesTooltip}", TooltipScene.Matrix,
-            control => control is CopyableTextBlock && control.Classes.Contains("wordRowPlaces") &&
+        new("word gloss", "Controls/WordPresentation/WordRow.cs", "facts.Gloss", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationGloss") &&
                 control.FindAncestorOfType<WordRow>() is not null),
-        new("different morpheme entry names", "Views/WordRow.axaml", "{Binding EntryDifferenceTip}", TooltipScene.Matrix,
-            control => control is Border && control.Classes.Contains("wordRowMorph") && control.Classes.Contains("different") &&
-                control.FindAncestorOfType<WordRow>() is not null)
+        new("elapsed word time", "Controls/WordPresentation/WordRow.cs", "timeText", TooltipScene.Timing,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationTime") &&
+                control.FindAncestorOfType<WordRow>() is not null),
+        new("places in a word row", "Controls/WordPresentation/WordRow.cs", "facts.PlacesTooltip", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationPlaces") &&
+                control.FindAncestorOfType<WordRow>() is not null),
+        new("different morpheme entry names", "Controls/WordPresentation/MorphemePanel.cs", "annotation.Tooltip", TooltipScene.Matrix,
+            control => control is CopyableTextBlock && control.Classes.Contains("morphemePanelForm") &&
+                control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Classes.Contains("morphemePanelPart") &&
+                    panel.Classes.Contains("different")) && control.FindAncestorOfType<WordRow>() is not null)
         {
             Pending = "the seeded rows do not record both entry names; ComparisonRowTests supplies that evidence",
         },
-        new("unread word in a row", "Views/WordRow.axaml", "{Binding UnreadText}", TooltipScene.Matrix,
-            control => control is Ellipse && control.FindAncestorOfType<WordRow>() is not null)
-        {
-            Pending = "the sample's Matrix words carry no read state until Analyze texts loads it",
-        },
-        new("Word Analyses on a row", "Views/WordRow.axaml", "{Binding WordAnalysesTip}", TooltipScene.Matrix,
-            control => control is HyperlinkButton && control.FindAncestorOfType<WordRow>() is not null &&
-                control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Classes.Contains("wordRowNext"))),
+        new("unread word in a row", "Controls/WordPresentation/WordRow.cs", "facts.UnreadText", TooltipScene.AnalyzeWordList,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationUnread") &&
+                control.FindAncestorOfType<WordRow>() is not null),
+        new("Word Analyses on a row", "Controls/WordPresentation/WordRow.cs", "data.Facts.WordAnalysesTip", TooltipScene.Matrix,
+            control => control is HyperlinkButton && control.Classes.Contains("wordPresentationNextAction") &&
+                control.FindAncestorOfType<WordRow>() is not null),
         new("compact Matrix cell", "Views/MiniMatrix.axaml", "{Binding AccessibleName}", TooltipScene.Matrix,
             control => MatrixCellOrTipText(control, compact: true))
         {
@@ -648,32 +676,33 @@ internal static class TooltipOwners
         },
         new("text to read", "Views/ResultsInTextPanel.axaml", "{Binding Title}", TooltipScene.TextPicker,
             control => control is TextBlock && control.DataContext is ResultsTextViewModel),
-        new("word strip", "Views/ResultsInTextPanel.axaml", "{Binding HoverSummary}", TooltipScene.Reader,
+        new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding HoverSummary}", TooltipScene.Reader,
             control => control is Border { Name: "WordStrip" }),
-        new("disapproved mark on a strip", "Views/ResultsInTextPanel.axaml", "{Binding DisapprovedTip}", TooltipScene.ReaderDisapproved,
+        new("disapproved mark on a strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding DisapprovedTip}", TooltipScene.ReaderDisapproved,
             control => control is MarkChip && control.GetVisualAncestors().OfType<Border>().Any(border => border.Name == "WordStrip")),
-        new("staged change", "Views/ResultsInTextPanel.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
+        new("staged change", "Controls/WordPresentation/WordStripToken.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
             control => control is Border && control.Classes.Contains("stagedStrip")),
-        new("opinion on a word card", "Views/WordRowCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
+        new("opinion on a word card", "Controls/WordPresentation/WordCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
             control => control is OpinionMark),
         new("Word Analyses link in a word card", "Views/ResultsInTextPanel.axaml", "{Binding WordLinkText}",
             TooltipScene.WordCard,
             control => control is HyperlinkButton &&
-                control.GetVisualAncestors().OfType<Border>().Any(border => border.Classes.Contains("wordCard")) &&
+                control.GetVisualAncestors().OfType<WordCard>().Any(card => card.IsEffectivelyVisible) &&
                 AutomationProperties.GetName(control) == "Open alikula in Word Analyses"),
-        new("mark unread without a text occurrence", "Views/WordRowCard.axaml", "{Binding MarkUnreadDisabledReason}",
+        new("mark unread without a text occurrence", "Controls/WordPresentation/WordCard.axaml", "{Binding MarkUnreadDisabledReason}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread"),
-        new("morpheme form that is its link", "Views/MorphemeRow.cs", "morph.FormLinkTip", TooltipScene.Matrix,
-            control => control is HyperlinkButton && control.Classes.Contains("morphFormLink") &&
-                !control.Classes.Contains("listCardFormLink"))
+        new("morpheme form that is its link", "Controls/WordPresentation/MorphemePanel.cs", "morph.FormLinkTip", TooltipScene.Matrix,
+            control => control is HyperlinkButton && control.Classes.Contains("morphemePanelFormLink"))
         {
-            Pending = "no tooltip scene opens a word row's card",
+            Pending = "current word presentations keep morpheme forms selectable and show their FieldWorks link separately",
         },
-        new("FieldWorks link on a morpheme", "Views/MorphemeRow.cs", "morph.LinkName", TooltipScene.WordCard,
-            control => control is HyperlinkButton && control.Classes.Contains("morphLink")),
-        new("morpheme that opens the inspector", "Views/MorphemeRow.cs", "$\"Show {morph.Form} in the inspector\"",
-            TooltipScene.WordCard, control => control is Border && control.Classes.Contains("inspectable")),
+        new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "morph.LinkName", TooltipScene.WordCard,
+            control => control is HyperlinkButton && control.Classes.Contains("morphemePanelLink")),
+        new("morpheme that opens the inspector", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show {morph.Form} in the inspector\"",
+            TooltipScene.WordCard, control => control is StackPanel && control.Classes.Contains("morphemePanelInspectable")),
+        new("morpheme overflow", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show all {source}\"", TooltipScene.Matrix,
+            control => control is Button && control.Classes.Contains("morphemePanelOverflow")),
         new("closing the inspector", "Views/Inspector.axaml", "Close (Esc steps back)", TooltipScene.WordCard,
             control => control is Button && control.Classes.Contains("inspectorClose"))
         {
@@ -705,17 +734,15 @@ internal static class TooltipOwners
         {
             Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
         },
-        new("morpheme form in a list card", "Views/ListWordCard.axaml.cs", "morph.FormLinkTip", TooltipScene.Lists,
-            control => control is HyperlinkButton && control.Classes.Contains("listCardFormLink"))
-        {
-            Pending = "no tooltip scene opens a list row's card",
-        },
         new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
             TooltipScene.Lists, control => control is Button &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffCheckedWords),
         new("checked words to AI Handoff in Analyze texts", "Views/TextWordsPanel.axaml", "{Binding Words.HandOffCheckedWordsHelpText}",
             TooltipScene.AnalyzeWordList, control => control is Button &&
                 Name(control) is { } name && name.StartsWith("AI Handoff", StringComparison.Ordinal) &&
+                control.FindAncestorOfType<TextWordsPanel>() is not null),
+        new("word list summary", "Views/TextWordsPanel.axaml", "{Binding Words.SummaryText}", TooltipScene.AnalyzeWordList,
+            control => control is CopyableTextBlock && control.Classes.Contains("wordListSummary") &&
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
         new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListDisabledReason}",
             TooltipScene.Lists, control => control is Button &&

@@ -4,7 +4,9 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
+using WordPresentationRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.App.Views;
 
@@ -21,11 +23,14 @@ public sealed partial class ReviewPanel : UserControl
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
         _items = this.FindControl<ListBox>("ReviewItems")!;
+        PresentationHost = new ReviewWordPresentationHost(page);
         _items.AddHandler(KeyDownEvent, OnReviewKeyDown, RoutingStrategies.Tunnel);
         _items.GotFocus += OnReviewGotFocus;
     }
 
     public ReviewPageModel Page { get; }
+
+    public IWordPresentationHost PresentationHost { get; }
 
     private readonly ListBox _items;
     private int _navigationVersion;
@@ -50,8 +55,9 @@ public sealed partial class ReviewPanel : UserControl
             targetBehaviors: [KeyboardShortcutBehavior.PreviousRow, KeyboardShortcutBehavior.NextRow,
                 KeyboardShortcutBehavior.FirstItem, KeyboardShortcutBehavior.LastItem]);
         if (entry is null || e.Source is not Control source) return;
-        var row = source.GetVisualAncestors().OfType<WordRow>().FirstOrDefault();
-        if (row is null || !ReferenceEquals(source, row.FindControl<Border>("Body")) ||
+        var row = (source as WordPresentationRow) ??
+            source.GetVisualAncestors().OfType<WordPresentationRow>().FirstOrDefault();
+        if (row is null ||
             row.FindAncestorOfType<ListBox>() is not { } list || !ReferenceEquals(list, _items) ||
             !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(source),
                 hasFocusedItem: true)) return;
@@ -94,13 +100,13 @@ public sealed partial class ReviewPanel : UserControl
         void FocusTarget()
         {
             if (!IsCurrent() || list.ContainerFromIndex(targetIndex) is not { } container) return;
-            var target = container.GetVisualDescendants().OfType<WordRow>().FirstOrDefault();
+            var target = container.GetVisualDescendants().OfType<WordPresentationRow>().FirstOrDefault();
             if (target is null) return;
-            target.FocusRow();
+            target.FocusWord();
             list.UpdateLayout();
             list.ScrollIntoView(targetIndex);
             list.UpdateLayout();
-            list.ContainerFromIndex(targetIndex)?.GetVisualDescendants().OfType<WordRow>().FirstOrDefault()?.FocusRow();
+            list.ContainerFromIndex(targetIndex)?.GetVisualDescendants().OfType<WordPresentationRow>().FirstOrDefault()?.FocusWord();
         }
     }
 }

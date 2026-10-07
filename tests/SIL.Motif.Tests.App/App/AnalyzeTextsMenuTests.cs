@@ -85,7 +85,7 @@ public sealed class AnalyzeTextsMenuTests
         flyout.ShowAt(button);
         Settle(window);
         Assert.True(flyout.IsOpen);
-        return Assert.IsAssignableFrom<Control>(flyout.Content);
+        return FlyoutContent.Of(flyout);
     }
 
     private static Button[] Entries(Control menu) =>

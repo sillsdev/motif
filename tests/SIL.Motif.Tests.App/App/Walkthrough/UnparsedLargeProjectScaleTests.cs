@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Commands;
@@ -87,7 +88,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
             var finalContainer = Assert.IsAssignableFrom<Control>(list.ContainerFromIndex(list.ItemCount - 1));
             var finalRow = new[] { finalContainer }.Concat(finalContainer.GetVisualDescendants())
                 .OfType<WordRow>().Single();
-            Assert.Equal(texts.Words.Rows[^1].Form, finalRow.Row?.Word);
+            Assert.Equal(texts.Words.Rows[^1].Form, finalRow.Data?.Facts.Word);
             var tree = AvaloniaScaleCounts.CaptureRealizedControls(window.Window);
             var rows = tree.MotifControl(typeof(WordRow).FullName!);
             Assert.InRange(rows.Count, 1, 64);

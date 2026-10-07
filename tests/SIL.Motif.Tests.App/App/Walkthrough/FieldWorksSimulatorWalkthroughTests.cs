@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -75,8 +76,8 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Fix actions from the word strip"));
             HeadlessClick.Click(walkthrough.Window, fixMenu, "Fix actions from the word strip");
             Assert.True(fixMenu.Flyout?.IsOpen);
-            var fixChoices = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(fixMenu.Flyout).Content);
-            var approveChoice = fixChoices.GetLogicalDescendants().OfType<Button>().Single(button =>
+            var fixChoices = FlyoutContent.Of(Assert.IsType<Flyout>(fixMenu.Flyout));
+            var approveChoice = fixChoices.GetVisualDescendants().OfType<Button>().Single(button =>
                 Equals(Avalonia.Automation.AutomationProperties.GetName(button), "Add as Approved"));
             Assert.Null(inText.SelectedToken);
             Assert.Same(token.StageMarkingChoiceForTokenCommand, approveChoice.Command);
@@ -299,8 +300,11 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.True(applyButton.IsEffectivelyEnabled);
             walkthrough.Click("Apply to FieldWorks project");
             walkthrough.WaitUntil(
-                () => review.HasReceipt && review.Changes.Items.Count == 0,
-                StepFor(deadline), "Apply did not show its Receipt and clear the pending change");
+                () => (review.HasReceipt && review.Changes.Items.Count == 0) || review.ApplyRefusal is not null,
+                StepFor(deadline), "Apply returned neither a Receipt nor a refusal");
+            Assert.Null(review.ApplyRefusal);
+            Assert.Empty(review.Changes.Items);
+            Assert.True(review.HasReceipt);
             var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
                 .Single(text => text.Text == review.ReceiptText);
             Assert.True(receipt.IsEffectivelyVisible);
