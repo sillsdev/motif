@@ -1,0 +1,205 @@
+{
+  "id": "review-apply-refresh-parse",
+  "fixture": "apply-refresh-ready",
+  "steps": [
+    {
+      "id": "open-project-menu",
+      "kind": "click",
+      "automationId": "motif-project-menu"
+    },
+    {
+      "id": "select-project",
+      "kind": "click",
+      "automationId": "motif-select-new-project"
+    },
+    {
+      "id": "wait-for-project",
+      "kind": "waitFor",
+      "automationId": "motif-overview-selection-word-count",
+      "condition": "visible",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "open-review",
+      "kind": "click",
+      "automationId": "motif-page-review"
+    },
+    {
+      "id": "wait-for-measure",
+      "kind": "waitFor",
+      "automationId": "motif-measure-changes",
+      "condition": "enabled",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "measure-change",
+      "kind": "click",
+      "automationId": "motif-measure-changes"
+    },
+    {
+      "id": "wait-for-apply",
+      "kind": "waitFor",
+      "automationId": "motif-apply-changes",
+      "condition": "enabled",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "highlight-apply",
+      "kind": "highlight",
+      "automationId": "motif-apply-changes"
+    },
+    {
+      "id": "measured",
+      "kind": "capture",
+      "durationMs": 1400,
+      "callouts": [
+        {
+          "automationId": "motif-apply-changes"
+        }
+      ]
+    },
+    {
+      "id": "apply-change",
+      "kind": "click",
+      "automationId": "motif-apply-changes"
+    },
+    {
+      "id": "wait-for-receipt",
+      "kind": "waitFor",
+      "automationId": "motif-apply-receipt",
+      "condition": "visible",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "highlight-receipt",
+      "kind": "highlight",
+      "automationId": "motif-apply-receipt"
+    },
+    {
+      "id": "applied",
+      "kind": "capture",
+      "durationMs": 1400,
+      "callouts": [
+        {
+          "automationId": "motif-apply-receipt"
+        }
+      ]
+    },
+    {
+      "id": "refresh-baseline",
+      "kind": "click",
+      "automationId": "motif-refresh-project"
+    },
+    {
+      "id": "wait-for-refreshed-baseline",
+      "kind": "waitFor",
+      "automationId": "motif-freshness-detail",
+      "condition": "text",
+      "expectedText": "Refreshed. Parse all words to update the numbers.",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "highlight-refresh-state",
+      "kind": "highlight",
+      "automationId": "motif-freshness-detail"
+    },
+    {
+      "id": "refreshed",
+      "kind": "capture",
+      "durationMs": 1500,
+      "callouts": [
+        {
+          "automationId": "motif-freshness-detail"
+        }
+      ]
+    },
+    {
+      "id": "wait-for-explicit-parse",
+      "kind": "waitFor",
+      "automationId": "motif-parse-all-words",
+      "condition": "enabled",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "parse-all-words",
+      "kind": "click",
+      "automationId": "motif-parse-all-words"
+    },
+    {
+      "id": "wait-for-parse",
+      "kind": "waitFor",
+      "automationId": "motif-parse-all-words-progress",
+      "condition": "parseProgressVisibleOrCompleted",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "wait-for-results",
+      "kind": "waitFor",
+      "automationId": "motif-parse-all-words-progress",
+      "condition": "hidden",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "show-published-results",
+      "kind": "click",
+      "automationId": "motif-page-overview"
+    },
+    {
+      "id": "wait-for-published-results",
+      "kind": "waitFor",
+      "automationId": "motif-overview-text-coverage",
+      "condition": "assessmentPublished",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "highlight-assessment",
+      "kind": "highlight",
+      "automationId": "motif-overview-speed"
+    },
+    {
+      "id": "highlight-text-coverage",
+      "kind": "highlight",
+      "automationId": "motif-overview-text-coverage"
+    },
+    {
+      "id": "parsed",
+      "kind": "capture",
+      "durationMs": 1500,
+      "callouts": [
+        {
+          "automationId": "motif-overview-speed"
+        },
+        {
+          "automationId": "motif-overview-text-coverage"
+        }
+      ]
+    },
+    {
+      "id": "open-timing",
+      "kind": "click",
+      "automationId": "motif-page-timing"
+    },
+    {
+      "id": "wait-for-timing-page",
+      "kind": "waitFor",
+      "automationId": "motif-page-timing",
+      "condition": "visible",
+      "timeoutMs": 120000
+    },
+    {
+      "id": "highlight-timing",
+      "kind": "highlight",
+      "automationId": "motif-page-timing"
+    },
+    {
+      "id": "timing",
+      "kind": "capture",
+      "durationMs": 1400,
+      "callouts": [
+        {
+          "automationId": "motif-page-timing"
+        }
+      ]
+    }
+  ]
+}

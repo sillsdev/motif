@@ -114,7 +114,11 @@ internal static class ReleasePathwayReplay
     {
         var root = Path.GetFullPath(scriptFolder);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException($"Walkthrough folder not found: {root}");
-        var path = Path.GetFullPath(Path.Combine(root, id + ".walkthrough.json"));
+        // A walkthrough written for the tests' scripted parser has a release twin under release/ (ADR 0054).
+        var releasePath = Path.GetFullPath(Path.Combine(root, "release", id + ".walkthrough.json"));
+        var path = File.Exists(releasePath)
+            ? releasePath
+            : Path.GetFullPath(Path.Combine(root, id + ".walkthrough.json"));
         EnsureUnder(root, path, "walkthrough script");
         var script = WalkthroughScriptLoader.Load(path);
         if (!string.Equals(script.Id, id, StringComparison.Ordinal) || !IsFixture(script.Fixture))
@@ -131,6 +135,11 @@ internal static class ReleasePathwayReplay
         var writingSystems = Path.Combine(Path.GetDirectoryName(captureRoot)!, "writing-systems", script.Id);
         Environment.SetEnvironmentVariable("MOTIF_WORKER_ROOT", workerRoot);
         Environment.SetEnvironmentVariable("MOTIF_WRITING_SYSTEM_REPOSITORY_PATH", writingSystems);
+        // The runner finds jobs through its own root's known projects; a CLI-seeded project was recorded elsewhere.
+        var fullProject = Path.GetFullPath(projectPath);
+        if (Worker.Store.KnownProjectRecorder.TryRecord(workerRoot, new Contract.Projects.ProjectLocator(
+                fullProject, Path.GetFileNameWithoutExtension(fullProject))) is { } recordFailure)
+            throw new InvalidOperationException($"Could not record '{fullProject}' for the replay's runner.", recordFailure);
 
         var commandSettings = CommandClientOptions.ForInstallation();
         if (string.IsNullOrWhiteSpace(commandSettings.ParserPath) || !File.Exists(commandSettings.ParserPath))
@@ -249,8 +258,14 @@ internal static class ReleasePathwayReplay
                 throw new InvalidOperationException("Apply did not report that the locked project is in use.");
         }
 
-        WaitUntil(() => review.CanApply, TimeSpan.FromSeconds(30),
-            "Apply did not become available after the project lock was released");
+        // A refused Apply drops the check's results, so a person checks again before applying.
+        WaitUntil(() => FindOptional(window, "motif-measure-changes") is { IsEffectivelyEnabled: true } || review.CanApply,
+            TimeSpan.FromSeconds(30), "Neither Check nor Apply became available after the lock was released",
+            () => review.ApplyBlockReason);
+        if (!review.CanApply) Click(window, "motif-measure-changes");
+        WaitUntil(() => review.CanApply, TimeSpan.FromMinutes(2),
+            "Apply did not become available after the project lock was released",
+            () => review.ApplyBlockReason);
         Click(window, automationId);
     }
 
@@ -269,9 +284,15 @@ internal static class ReleasePathwayReplay
 
     private static void WaitFor(MainWindow window, WorkspaceShellViewModel workspace, WalkthroughStep step)
     {
-        var target = Find(window, step.AutomationId!);
         var timeout = TimeSpan.FromMilliseconds(step.TimeoutMs!.Value);
         var deadline = DateTime.UtcNow + timeout;
+        // Words and results arrive after the page opens, so the step waits for its control to exist too.
+        while (FindOptional(window, step.AutomationId!) is null && DateTime.UtcNow < deadline)
+        {
+            Pump();
+            Thread.Sleep(15);
+        }
+        var target = Find(window, step.AutomationId!);
         while (!Satisfies(target, workspace, step) && DateTime.UtcNow < deadline)
         {
             Pump();
@@ -313,6 +334,10 @@ internal static class ReleasePathwayReplay
         if (!IsVisible(control)) throw new InvalidOperationException($"'{automationId}' is not visible.");
     }
 
+    private static Control? FindOptional(Window window, string automationId) =>
+        Controls(window).SingleOrDefault(control =>
+            string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+
     private static Control Find(Window window, string automationId)
     {
         var controls = Controls(window).Where(control =>
@@ -320,15 +345,32 @@ internal static class ReleasePathwayReplay
         return controls.Length switch
         {
             1 => controls[0],
-            0 => throw new InvalidOperationException($"AutomationId '{automationId}' was not found."),
+            0 => throw new InvalidOperationException($"AutomationId '{automationId}' was not found. " +
+                $"Similar ones on screen: {string.Join(", ", Similar(window, automationId))}."),
             _ => throw new InvalidOperationException($"AutomationId '{automationId}' is ambiguous."),
         };
     }
 
-    private static IEnumerable<Control> Controls(Window window)
+    // Names a few on-screen ids with the same prefix, so a script author can see which one to use.
+    private static IEnumerable<string> Similar(Window window, string automationId)
+    {
+        var second = automationId.IndexOf('-', automationId.IndexOf('-') + 1);
+        var prefix = second > 0 ? automationId[..(second + 1)] : automationId;
+        var ids = Controls(window).Select(AutomationProperties.GetAutomationId).OfType<string>()
+            .Distinct(StringComparer.Ordinal).ToArray();
+        var similar = ids.Where(id => id.StartsWith(prefix, StringComparison.Ordinal)).Take(8).ToArray();
+        return similar.Length > 0 ? similar : ids.Where(id => id.Contains("word", StringComparison.Ordinal)).Take(20);
+    }
+
+    private static IEnumerable<Control> Controls(Window window) => AllControls(window).Distinct();
+
+    private static IEnumerable<Control> AllControls(Window window)
     {
         yield return window;
-        foreach (var control in window.GetLogicalDescendants().OfType<Control>()) yield return control;
+        // Rows a virtualizing list realizes from a template are visual children only, not logical ones.
+        foreach (var control in window.GetLogicalDescendants().OfType<Control>()
+                     .Concat(window.GetVisualDescendants().OfType<Control>()))
+            yield return control;
         if (window.FindControl<Button>("ProjectMenuButton")?.Flyout is Flyout flyout &&
             flyout.Content is Control content)
         {
@@ -365,7 +407,7 @@ internal static class ReleasePathwayReplay
         Pump();
     }
 
-    private static void WaitUntil(Func<bool> predicate, TimeSpan timeout, string failure)
+    private static void WaitUntil(Func<bool> predicate, TimeSpan timeout, string failure, Func<string>? detail = null)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (!predicate() && DateTime.UtcNow < deadline)
@@ -374,7 +416,7 @@ internal static class ReleasePathwayReplay
             Thread.Sleep(15);
         }
         Pump();
-        if (!predicate()) throw new TimeoutException(failure);
+        if (!predicate()) throw new TimeoutException(detail is null ? failure : $"{failure}: {detail()}");
     }
 
     private static void Pump() => Dispatcher.UIThread.RunJobs();

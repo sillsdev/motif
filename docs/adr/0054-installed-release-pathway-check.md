@@ -40,3 +40,13 @@ During the installed-product checks, CI hides the .NET SDK from `PATH`. It insta
 - The installed App contains a narrowly gated internal replay entrypoint and writes evidence only to the run's temporary output location.
 - The three OS checks become required release dependencies. Manual release publication must be dispatched from the matching version tag and wait for all three jobs to pass.
 - Nightly checks avoid rebuilding an unchanged `main` commit, while a manual dispatch can run the check on demand.
+
+## Amendment: release twins for scripted-parser walkthroughs
+
+The installed check runs the real bundled PanGloss against the synthetic sample, so a walkthrough that the
+tests drive with a scripted fake parser, such as the explained word card's no-parse and capped words, cannot
+reach its scripted states there. Such a walkthrough keeps its test script and gains a twin under
+`walkthroughs/release/<id>.walkthrough.json`, written against the sample's real results. Replay prefers the
+twin when one exists, so a walkthrough that already works against the real parser has no twin and stays one
+script. Fixture setup that has no Released command (staging a change and running its trial, which testers do
+from the window) may use developer commands; every step a tester takes uses Released ones.
