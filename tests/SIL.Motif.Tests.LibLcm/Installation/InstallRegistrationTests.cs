@@ -110,4 +110,42 @@ public sealed class InstallRegistrationTests
 
         Assert.Contains("--appimage-extract-and-run --cli", shim, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AnAppImageDesktopEntryNamesTheWindowClassAndQuotesItsPath()
+    {
+        var entry = LinuxDesktopEntry.Build("/home/user/Apps/Motif \"beta\" $1.AppImage");
+
+        Assert.StartsWith("[Desktop Entry]\n", entry, StringComparison.Ordinal);
+        Assert.Contains("\nExec=\"/home/user/Apps/Motif \\\"beta\\\" \\$1.AppImage\" %f\n", entry, StringComparison.Ordinal);
+        Assert.Contains("\nIcon=" + LinuxDesktopEntry.Name + "\n", entry, StringComparison.Ordinal);
+        Assert.Contains("\nStartupWMClass=" + LinuxDesktopEntry.WindowClass + "\n", entry, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnAppImageDesktopEntryAndIconAreInstalledAndRemovedTogether()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-desktop-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var icon = Path.Combine(root, "payload", LinuxDesktopEntry.IconFileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(icon)!);
+            File.WriteAllBytes(icon, [1, 2, 3]);
+            var dataHome = Path.Combine(root, "share");
+
+            LinuxDesktopEntry.Install(dataHome, Path.Combine(root, "Motif.AppImage"), icon);
+            LinuxDesktopEntry.Install(dataHome, Path.Combine(root, "Motif.AppImage"), icon);
+
+            Assert.True(File.Exists(Path.Combine(dataHome, "applications", LinuxDesktopEntry.Name + ".desktop")));
+            Assert.Equal([1, 2, 3], File.ReadAllBytes(
+                Path.Combine(dataHome, "icons", "hicolor", "256x256", "apps", LinuxDesktopEntry.Name + ".png")));
+            Assert.True(LinuxDesktopEntry.Remove(dataHome));
+            Assert.False(LinuxDesktopEntry.Remove(dataHome));
+            Assert.Empty(Directory.EnumerateFiles(dataHome, "*", SearchOption.AllDirectories));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

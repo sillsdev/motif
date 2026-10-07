@@ -40,6 +40,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .With(TextStyles.CurrentInterfaceFontOptions)
+            .With(new X11PlatformOptions { WmClass = LinuxDesktopEntry.WindowClass })
             .UsePlatformDetect()
             .LogToTrace();
 

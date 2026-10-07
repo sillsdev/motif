@@ -45,6 +45,9 @@ internal static class InstallRegistration
                 "SIL", "Motif");
 
         RegisterUnix(installDirectory, cliPath, Path.Combine(configDirectory, "install.json"), shimPath, appImagePath);
+        if (appImagePath is not null)
+            LinuxDesktopEntry.Install(LinuxDesktopEntry.DataHome(home), appImagePath,
+                Path.Combine(AppContext.BaseDirectory, LinuxDesktopEntry.IconFileName));
     }
 
     internal static string UnregisterCurrent()
@@ -61,6 +64,8 @@ internal static class InstallRegistration
                     ? Path.GetFullPath(xdg)
                     : Path.Combine(home, ".config"),
                 "SIL", "Motif");
+        if (OperatingSystem.IsLinux())
+            LinuxDesktopEntry.Remove(LinuxDesktopEntry.DataHome(home));
         return UnregisterUnix(Path.Combine(configDirectory, "install.json"), shimPath)
             ? "Unix registration removed."
             : "Unix registration was absent.";

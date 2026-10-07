@@ -20,6 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- A Linux AppImage copies this beside itself into the desktop icon theme. -->
+    <None Include="Assets\motif.png" Link="motif.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <AvaloniaResource Include="Assets\motif.ico;Assets\motif-icon.png;Assets\Fonts\*.ttf;Assets\Fonts\OFL.txt;Assets\Fonts\NOTICE.txt" />
   </ItemGroup>
 
