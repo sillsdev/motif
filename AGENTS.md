@@ -84,16 +84,20 @@ yourself is kept. Two things stay outside, by design:
 project with `HOME` read-only, so a tool that starts writing a new per-user cache fails there and
 names the path.
 
-**Building inside an agent sandbox.** When several sandboxed agents build worktrees at once, for
-example Codex workers on Windows, also set these before `./build.ps1`:
+**Build and test process hygiene.** `build.ps1` and `test.ps1` take an exclusive per-worktree lock at
+`bin/.cache/run.lock`; `run.lock.json` records its owner PID, start time and context. A concurrent run
+in the same worktree fails with the owner details. `test.ps1` hands its lock to the nested `build.ps1`
+so the build does not contend with its caller.
 
-```
-$env:MSBUILDDISABLENODEREUSE = '1'; $env:UseSharedCompilation = 'false'
-```
+Both scripts keep caller-selected values and otherwise set `MSBUILDDISABLENODEREUSE=1`,
+`UseSharedCompilation=false` and `DOTNET_CLI_USE_MSBUILD_SERVER=0`. While holding the lock, they
+clean up stale build and test processes only when their command line, executable or
+working directory proves ownership by this checkout. The root must end at a path separator, so a
+neighboring worktree such as `motif.worktrees/x` survives a sweep for `motif`. Comparisons ignore case
+on Windows and macOS and preserve case on Linux. The sweep skips this process, its ancestors, IDE
+processes and processes it cannot inspect, and checks start time before stopping a PID.
 
-A reused MSBuild node or compiler server started by another sandbox can't write into your worktree,
-so the build fails with MSB3101/MSB3491 "access denied" in `obj/`. A normal developer shell needs
-neither.
+Pass `-NoProcessSweep` to skip both cleanup scans while keeping the lock and process policy.
 
 **Linux and macOS need SIL ICU staged once.** Motif opens no FieldWorks project without SIL ICU 70,
 and off Windows it comes from a folder named by `MOTIF_SIL_ICU_STAGE`. `build.ps1` copies it beside the

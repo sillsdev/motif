@@ -25,6 +25,9 @@
   Compile without the comment and design-token gates. For bisecting a build break only -- CI never passes this, so
   anything it lets through fails there instead.
 
+.PARAMETER NoProcessSweep
+Keep the worktree lock and process policy but skip stale-process cleanup.
+
   .EXAMPLE
   ./build.ps1
 
@@ -34,7 +37,8 @@
 [CmdletBinding()]
 param(
     [string] $Configuration = 'Debug',
-    [switch] $SkipHygiene
+    [switch] $SkipHygiene,
+    [switch] $NoProcessSweep
 )
 
 Set-StrictMode -Version Latest
@@ -55,11 +59,19 @@ if ([string]::IsNullOrWhiteSpace($env:HOME)) { $env:HOME = $profileRoot }
 if ([string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
     $env:NUGET_PACKAGES = Join-Path $profileRoot '.nuget/packages'
 }
-New-Item -ItemType Directory -Force -Path $env:NUGET_PACKAGES | Out-Null
 
 # Every per-user tool cache except the shared packages folder lives under bin/.cache in this checkout.
 Import-Module (Join-Path $repoRoot 'tools/MotifToolEnvironment.psm1') -Force
 Initialize-MotifToolEnvironment -RepoRoot $repoRoot
+Import-Module (Join-Path $repoRoot 'tools/MotifProcessHygiene.psm1') -Force
+Set-MotifBuildProcessPolicy
+$processLock = Enter-MotifWorktreeLock -RepoRoot $repoRoot -Context 'Motif build'
+
+try {
+    New-Item -ItemType Directory -Force -Path $env:NUGET_PACKAGES | Out-Null
+    if (-not $NoProcessSweep) {
+        Stop-MotifStaleProcesses -RepoRoot $repoRoot -LockHandle $processLock
+    }
 
 function Write-Step {
     param([string] $Text)
@@ -147,3 +159,12 @@ catch {
 Write-Host ''
 Write-Host 'Build OK: comments clean, solution compiles.' -ForegroundColor Green
 exit 0
+}
+finally {
+    try {
+        if (-not $NoProcessSweep) {
+            Stop-MotifStaleProcesses -RepoRoot $repoRoot -LockHandle $processLock
+        }
+    }
+    finally { Exit-MotifWorktreeLock -LockHandle $processLock }
+}

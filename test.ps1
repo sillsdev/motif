@@ -46,11 +46,8 @@
   .PARAMETER Filter
   Run only matching tests in the selected project, using the VSTest filter syntax.
 
-  .PARAMETER AllowRunningTestHosts
-  Proceed even though a test host from an earlier run is still alive. A stale one holds a lock on the
-  build output, which stalls the build rather than failing it -- and a stalled build prints nothing, so
-  the gate looks like a test that never finishes. This script therefore stops and names the processes
-  instead. Pass this only when the running host is a deliberate second run you want to race.
+  .PARAMETER NoProcessSweep
+  Keep the worktree lock and process policy but skip stale-process cleanup.
 
   .EXAMPLE
   ./test.ps1
@@ -63,7 +60,7 @@ param(
     [switch] $System,
     [string] $Project,
     [string] $Filter,
-    [switch] $AllowRunningTestHosts
+    [switch] $NoProcessSweep
 )
 
 Set-StrictMode -Version Latest
@@ -89,6 +86,16 @@ $env:MOTIF_DEVELOPER_COMMANDS = '1'
 # Every per-user tool cache except the shared packages folder lives under bin/.cache in this checkout.
 Import-Module (Join-Path $repoRoot 'tools/MotifToolEnvironment.psm1') -Force
 Initialize-MotifToolEnvironment -RepoRoot $repoRoot
+Import-Module (Join-Path $repoRoot 'tools/MotifProcessHygiene.psm1') -Force
+Set-MotifBuildProcessPolicy
+$processLock = Enter-MotifWorktreeLock -RepoRoot $repoRoot -Context 'Motif tests'
+$testSlot = $null
+
+try {
+    if (-not $NoProcessSweep) {
+        Stop-MotifStaleProcesses -RepoRoot $repoRoot -LockHandle $processLock
+    }
+
 # Short-lived, oversubscribed test processes spend CPU on tiering and spinning: 4 suites used 25% less without.
 $env:DOTNET_TieredPGO = '0'
 $env:DOTNET_ThreadPool_UnfairSemaphoreSpinLimit = '0'
@@ -114,28 +121,15 @@ function Write-PhaseDuration {
     Write-Host ('  {0,-34} {1,6:N1} s' -f $Name, $phase.Elapsed.TotalSeconds)
 }
 
-# Only a host running from this checkout's output can lock it; one from another worktree is not ours.
-$outputRoot = (Join-Path $repoRoot 'bin') + [IO.Path]::DirectorySeparatorChar
-$running = @(Get-Process -Name 'testhost' -ErrorAction SilentlyContinue | Where-Object {
-    # A host this user cannot inspect is another session's, and cannot be holding this checkout's output.
-    try { $_.Path -and $_.Path.StartsWith($outputRoot, [StringComparison]::OrdinalIgnoreCase) } catch { $false }
-})
-if ($running.Count -gt 0 -and -not $AllowRunningTestHosts) {
-    Write-Host ''
-    Write-Host "A test host from an earlier run is still alive (PID $($running.Id -join ', '))." -ForegroundColor Red
-    Write-Host 'It holds a lock on the build output, so this gate would stall with no output at all.'
-    Write-Host "Stop it and run again:  Stop-Process -Id $($running.Id -join ',') -Force"
-    Write-Host 'Or pass -AllowRunningTestHosts to proceed anyway.'
-    exit 1
-}
-
 $phaseClocks['build gate'] = [Diagnostics.Stopwatch]::StartNew()
 $buildExitCode = 0
 if ($SkipBuild) {
     Write-Step 'build gate -- SKIPPED (-SkipBuild)'
 }
 else {
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'build.ps1') -Configuration $Configuration
+    $buildArguments = @{ Configuration = $Configuration }
+    if ($NoProcessSweep) { $buildArguments.NoProcessSweep = $true }
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'build.ps1') @buildArguments
     $buildExitCode = $LASTEXITCODE
 }
 Write-PhaseDuration 'build gate'
@@ -157,6 +151,15 @@ $phaseClocks['artifact plan regression'] = [Diagnostics.Stopwatch]::StartNew()
 Write-Step 'test artifact plan regression'
 & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifTestRunPlan.Tests.ps1')
 Write-PhaseDuration 'artifact plan regression'
+if ($LASTEXITCODE -ne 0) {
+    Write-PhaseDuration 'whole gate'
+    exit 1
+}
+
+$phaseClocks['process hygiene regression'] = [Diagnostics.Stopwatch]::StartNew()
+Write-Step 'worktree process hygiene regression'
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Test-MotifProcessHygiene.Tests.ps1')
+Write-PhaseDuration 'process hygiene regression'
 if ($LASTEXITCODE -ne 0) {
     Write-PhaseDuration 'whole gate'
     exit 1
@@ -440,3 +443,13 @@ if ($All) { Write-Host 'Tests OK: full suite.' -ForegroundColor Green }
 elseif ($System) { Write-Host 'Tests OK: System subset.' -ForegroundColor Green }
 else { Write-Host 'Tests OK: Unit+Integration subset; default run is not a merge gate.' -ForegroundColor Green }
 exit 0
+}
+finally {
+    if ($testSlot) { $testSlot.Dispose() }
+    try {
+        if (-not $NoProcessSweep) {
+            Stop-MotifStaleProcesses -RepoRoot $repoRoot -LockHandle $processLock
+        }
+    }
+    finally { Exit-MotifWorktreeLock -LockHandle $processLock }
+}
