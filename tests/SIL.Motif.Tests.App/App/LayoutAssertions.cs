@@ -241,7 +241,7 @@ internal static class LayoutAssertions
         var layout = text.TextLayout;
         var name = AutomationProperties.GetAutomationId(text) ??
             AutomationProperties.GetName(text) ?? text.Classes.FirstOrDefault() ?? text.GetType().Name;
-        var path = string.Join(" ← ", text.GetSelfAndVisualAncestors().OfType<Control>().Take(12).Select(Describe));
+        string Path() => string.Join(" ← ", text.GetSelfAndVisualAncestors().OfType<Control>().Take(12).Select(Describe));
         var width = layout.WidthIncludingTrailingWhitespace;
         if (text.TextTrimming != TextTrimming.None)
         {
@@ -256,18 +256,18 @@ internal static class LayoutAssertions
         {
             // Wrapped text reflows to its arranged width, so it clips only when it can't fit vertically there.
             var wrapped = MeasureUntrimmed(text);
-            Assert.True(wrapped.Height <= text.Bounds.Height + Tolerance || IsSeverityGlyph(text),
-                $"Text '{text.Text}' ({name}) needs {wrapped.Height:0.#} px vertically at its width but has {text.Bounds.Height:0.#} px. " +
-                $"{LayoutSizeDiagnostics(text, "vertical")} Path: {path}");
+            if (wrapped.Height > text.Bounds.Height + Tolerance && !IsSeverityGlyph(text))
+                Assert.Fail($"Text '{text.Text}' ({name}) needs {wrapped.Height:0.#} px vertically at its width but has {text.Bounds.Height:0.#} px. " +
+                    $"{LayoutSizeDiagnostics(text, "vertical")} Path: {Path()}");
         }
         else
         {
-            Assert.True(width <= text.Bounds.Width + Tolerance,
-                $"Text '{text.Text}' ({name}) needs {width:0.#} px but has {text.Bounds.Width:0.#} px. " +
-                $"{LayoutSizeDiagnostics(text, "horizontal")} Path: {path}");
-            Assert.True(layout.Height <= text.Bounds.Height + Tolerance || IsSeverityGlyph(text),
-                $"Text '{text.Text}' ({name}) needs {layout.Height:0.#} px vertically but has {text.Bounds.Height:0.#} px. " +
-                $"{LayoutSizeDiagnostics(text, "vertical")} Path: {path}");
+            if (width > text.Bounds.Width + Tolerance)
+                Assert.Fail($"Text '{text.Text}' ({name}) needs {width:0.#} px but has {text.Bounds.Width:0.#} px. " +
+                    $"{LayoutSizeDiagnostics(text, "horizontal")} Path: {Path()}");
+            if (layout.Height > text.Bounds.Height + Tolerance && !IsSeverityGlyph(text))
+                Assert.Fail($"Text '{text.Text}' ({name}) needs {layout.Height:0.#} px vertically but has {text.Bounds.Height:0.#} px. " +
+                    $"{LayoutSizeDiagnostics(text, "vertical")} Path: {Path()}");
         }
 
         Visual layoutRoot = TopLevel.GetTopLevel(text) is { } topLevel ? topLevel : text;
@@ -279,10 +279,11 @@ internal static class LayoutAssertions
             if (IsCompactMorphemePreview(text)) continue;
             var scrollCanRevealText = text.GetSelfAndVisualAncestors().OfType<ScrollViewer>()
                 .Any(scroll => IsWithinScrollExtent(text, scroll)) || DataGridCanRevealText(text, ancestor);
+            // The message walks the whole window for an open tooltip, so it is built only for a failure.
             if (!scrollCanRevealText)
                 Assert.Fail($"Text '{text.Text}' ({name}) is clipped outside a scroll viewport that can reveal it. " +
-                $"{ClipDiagnostics(text, textBounds, ancestor, BoundsIn(ancestor, layoutRoot))} " +
-                $"Path: {path}.{TooltipDetails(text, layoutRoot)}");
+                    $"{ClipDiagnostics(text, textBounds, ancestor, BoundsIn(ancestor, layoutRoot))} " +
+                    $"Path: {Path()}.{TooltipDetails(text, layoutRoot)}");
         }
     }
 
@@ -320,8 +321,15 @@ internal static class LayoutAssertions
             $"DataGridCell arranged size: {cellSize}; column ActualWidth: {columnWidth}.";
     }
 
+    /// <summary>
+    /// Counts the whole-window scans a clipped-text failure message makes for an open tooltip. A passing check
+    /// makes none: a scan per clipped text turns a capture's layout check quadratic in the window's size.
+    /// </summary>
+    internal static int TooltipOwnerScans;
+
     private static string TooltipDetails(TextBlock text, Visual layoutRoot)
     {
+        TooltipOwnerScans++;
         var tooltip = text.GetVisualAncestors().OfType<ToolTip>().FirstOrDefault();
         if (tooltip is null) return string.Empty;
         var owner = Controls(layoutRoot).OfType<Control>().FirstOrDefault(control =>

@@ -372,6 +372,28 @@ public sealed class LayoutAssertionsTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void PassingChecksOnScrolledOutTextMakeNoWholeWindowScans()
+    {
+        avalonia.Invoke(() =>
+        {
+            var lines = new StackPanel();
+            for (var index = 0; index < 60; index++)
+                lines.Children.Add(new TextBlock { Text = $"line-{index}", TextWrapping = TextWrapping.NoWrap });
+            var window = new Window { Content = new ScrollViewer { Content = lines }, Width = 400, Height = 120 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.Contains(lines.Children, line => line.Bounds.Top > window.Bounds.Height);
+                var scans = LayoutAssertions.TooltipOwnerScans;
+                LayoutAssertions.AssertCurrent(window);
+                Assert.Equal(scans, LayoutAssertions.TooltipOwnerScans);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void RejectsAColumnChildThatCrossesItsAssignedColumn()
     {
         avalonia.Invoke(() =>
