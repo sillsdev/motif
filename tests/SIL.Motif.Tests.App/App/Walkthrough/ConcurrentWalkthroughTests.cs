@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class ConcurrentWalkthroughTests
 {
     [Fact]
-    public void TwoWindowsShareTheManagedRootWhileBothAssessmentsComplete()
+    public void TwoWindowsShareTheManagedRootWhileAssessmentsRunOneAtATime()
     {
         var managedRoot = Path.Combine(
             Path.GetTempPath(), "SIL.Motif.Walkthrough.Concurrent.Managed", Guid.NewGuid().ToString("N"));
@@ -68,21 +68,25 @@ public sealed class ConcurrentWalkthroughTests
                 try
                 {
                     firstWalkthrough.WaitUntil(
-                        () => File.Exists(firstStarted) && File.Exists(secondStarted) &&
-                            firstWalkthrough.Workspace.Assess.State == RunState.Running &&
-                            secondWalkthrough.Workspace.Assess.State == RunState.Running,
-                        WalkthroughSteps.Remaining(deadline), "both fake Assessments did not start");
+                        () => File.Exists(firstStarted) &&
+                            firstWalkthrough.Workspace.Assess.State == RunState.Running,
+                        WalkthroughSteps.Remaining(deadline), "the first fake Assessment did not start");
                     Assert.NotEmpty(PanglossProcesses.Snapshot(firstParserPath));
-                    Assert.NotEmpty(PanglossProcesses.Snapshot(secondParserPath));
+                    Assert.Empty(PanglossProcesses.Snapshot(secondParserPath));
 
                     File.WriteAllText(firstRelease, string.Empty);
-                    File.WriteAllText(secondRelease, string.Empty);
                     firstWalkthrough.WaitUntil(
                         () => firstExecution.IsCompleted && firstWalkthrough.Workspace.Assess.State == RunState.Completed &&
-                            firstWalkthrough.Workspace.Context.EvidencePublication.IsCompleted &&
-                            secondExecution.IsCompleted && secondWalkthrough.Workspace.Assess.State == RunState.Completed &&
+                            firstWalkthrough.Workspace.Context.EvidencePublication.IsCompleted && File.Exists(secondStarted) &&
+                            secondWalkthrough.Workspace.Assess.State == RunState.Running,
+                        WalkthroughSteps.Remaining(deadline), "the second fake Assessment did not follow the first");
+                    Assert.NotEmpty(PanglossProcesses.Snapshot(secondParserPath));
+
+                    File.WriteAllText(secondRelease, string.Empty);
+                    secondWalkthrough.WaitUntil(
+                        () => secondExecution.IsCompleted && secondWalkthrough.Workspace.Assess.State == RunState.Completed &&
                             secondWalkthrough.Workspace.Context.EvidencePublication.IsCompleted,
-                        WalkthroughSteps.Remaining(deadline), "both Assessments did not finish");
+                        WalkthroughSteps.Remaining(deadline), "the second Assessment did not finish");
                 }
                 finally
                 {

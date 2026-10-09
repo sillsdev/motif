@@ -3,17 +3,16 @@
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Admits one user worker's PanGloss jobs in submission order against two shared capacity slots.
+/// Admits one PanGloss job at a time across worker processes against shared capacity slots.
 /// </summary>
 /// <remarks>
 /// The slots are machine-wide by default. Test processes can set
 /// <c>MOTIF_TEST_PAN_GLOSS_SLOT_NAMESPACE</c> to isolate their slots; child processes inherit that scope.
-/// A job is admitted strictly in the order it was submitted to THIS queue: the queue does not start
-/// acquiring a slot for job N+1 until job N has already acquired one, though N and N+1 may then run
-/// concurrently (pinned by `RunAsync_AdmitsThreeProjectsInSubmissionOrder`). The two slots are
-/// machine-global rather than per-user by default, so independent queues using the same slot names
-/// never hold more than two between them, but which queue wins a given free slot is unspecified and never asserted (pinned by
-/// `RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity`).
+/// A job is admitted in its queue's submission order and holds every capacity lock for its full run.
+/// Independent queues using the same lock names therefore cannot run parser jobs together; acquiring
+/// every name also coordinates with workers that lease one name per job (pinned by
+/// `RunAsync_AcrossTwoQueuesNeverExceedsOneAdmittedJob` and
+/// `RunAsync_AcrossProcessesWaitsUntilEveryMachineSlotIsReleased`).
 /// </remarks>
 public sealed class MachinePanGlossQueue : IDisposable
 {
@@ -48,6 +47,8 @@ public sealed class MachinePanGlossQueue : IDisposable
     {
         if (slotNames is null || slotNames.Count == 0)
             throw new ArgumentException("At least one machine slot name is required.", nameof(slotNames));
+        if (slotNames.Distinct(StringComparer.Ordinal).Count() != slotNames.Count)
+            throw new ArgumentException("Machine slot names must be unique.", nameof(slotNames));
         _slotNames = slotNames;
         _runner = RunAsync();
     }
@@ -141,7 +142,7 @@ public sealed class MachinePanGlossQueue : IDisposable
             MachineSlotLease lease;
             try
             {
-                lease = await AcquireSlotAsync(job.JobId, linked.Token).ConfigureAwait(false);
+                lease = await AcquireMachineCapacityAsync(job.JobId, linked.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -175,11 +176,11 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
     }
 
-    private async Task<MachineSlotLease> AcquireSlotAsync(string jobId, CancellationToken cancellationToken)
+    private async Task<MachineSlotLease> AcquireMachineCapacityAsync(string jobId, CancellationToken cancellationToken)
     {
         // One owner per slot per wait: ownership is per-thread, and per-poll owners would churn threads.
         var owners = new List<WorkerMutexOwner>(_slotNames.Count);
-        var winner = -1;
+        var transferred = false;
         var waitReported = false;
         try
         {
@@ -189,14 +190,21 @@ public sealed class MachinePanGlossQueue : IDisposable
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var acquired = new List<int>(_slotNames.Count);
                 for (var i = 0; i < owners.Count; i++)
                 {
-                    if (!owners[i].TryAcquire()) continue;
-                    winner = i;
-                    _slotOwnership[i] = jobId;
-                    return new MachineSlotLease(owners[i], i, jobId,
-                        released => _slotOwnership.TryRemove(released, out _));
+                    if (!owners[i].TryAcquire()) break;
+                    acquired.Add(i);
                 }
+                if (acquired.Count == owners.Count)
+                {
+                    var lease = new MachineSlotLease(owners, acquired, jobId,
+                        released => _slotOwnership.TryRemove(released, out _));
+                    foreach (var index in acquired) _slotOwnership[index] = jobId;
+                    transferred = true;
+                    return lease;
+                }
+                foreach (var index in acquired) owners[index].Release();
                 if (!waitReported)
                 {
                     SlotWaitStarted?.Invoke(jobId);
@@ -207,8 +215,8 @@ public sealed class MachinePanGlossQueue : IDisposable
         }
         finally
         {
-            for (var i = 0; i < owners.Count; i++)
-                if (i != winner) owners[i].Dispose();
+            if (!transferred)
+                foreach (var owner in owners) owner.Dispose();
         }
     }
 

@@ -29,6 +29,35 @@ public sealed class UnixPanGlossContainmentTests
     private static readonly TimeSpan BoundedWait = TimeSpan.FromSeconds(15);
     private const ulong MemoryLimitBytes = 256UL * 1024 * 1024;
 
+    [Fact]
+    public void LinuxReportsTheCgroupQuotaOrTheApplicationThreadBudget()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+
+        using var job = PanGlossContainment.CreateJob(MemoryLimitBytes);
+
+        if (job.Report.CpuRateBasisPoints is { } cpuRate)
+        {
+            Assert.Equal(PanGlossCpuBudget.CpuRateHardCapBasisPoints, cpuRate);
+            Assert.Contains("half of Environment.ProcessorCount CPUs", job.Report.Cpu);
+        }
+        else
+        {
+            Assert.Contains("No hard CPU rate limit", job.Report.Cpu);
+            Assert.Contains("Motif limits batch threads", job.Report.Cpu);
+        }
+    }
+
+    [RequiresMacFact]
+    public void MacReportsNoHardCpuRateAndTheApplicationThreadBudget()
+    {
+        using var job = PanGlossContainment.CreateJob(MemoryLimitBytes);
+
+        Assert.Null(job.Report.CpuRateBasisPoints);
+        Assert.Contains("No hard CPU rate limit", job.Report.Cpu);
+        Assert.Contains("PanGloss batch threads are limited by Motif", job.Report.Cpu);
+    }
+
     [RequiresUnixFact]
     public async Task DisposingTheJobKillsAChildInTheProcessGroup()
     {

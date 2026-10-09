@@ -217,8 +217,8 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
     private static PanGlossContainmentReport CreateReport(ulong memoryLimitBytes, bool linux, UnixCgroup? cgroup)
     {
         if (cgroup is not null)
-            return new PanGlossContainmentReport(2500, memoryLimitBytes, true,
-                "Linux cgroup v2 quota at 2500 basis points of one CPU.",
+            return new PanGlossContainmentReport(PanGlossCpuBudget.CpuRateHardCapBasisPoints, memoryLimitBytes, true,
+                "Linux cgroup v2 quota at half of Environment.ProcessorCount CPUs.",
                 "Linux cgroup v2 aggregate memory.max hard limit.",
                 "The child joins the cgroup before exec; cgroup.kill stops members still in that subtree.",
                 ["A descendant with permission to leave the delegated cgroup and process group can escape termination."]);
@@ -226,7 +226,8 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         var limitations = linux
             ? new[]
             {
-                "No delegated writable cgroup v2 with cpu and memory controls was available; CPU rate and aggregate memory are uncapped.",
+                "Without a delegated writable cgroup v2, CPU rate is not hard-limited and memory uses RLIMIT_AS per process.",
+                "Motif limits PanGloss batch threads, but this host cannot enforce a hard CPU rate.",
                 "A descendant that deliberately leaves the process group can outlive the job."
             }
             : new[]
@@ -237,12 +238,12 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
             };
         if (!linux)
             return new PanGlossContainmentReport(null, memoryLimitBytes, true,
-                "No hard CPU rate limit is available.",
+                "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
                 $"macOS process-group physical-footprint watchdog, sampled every 50 ms, with a {memoryLimitBytes} byte ceiling.",
                 "The child starts in its own process group; members are killed on close or when sampled footprint exceeds the ceiling.",
                 limitations);
         return new PanGlossContainmentReport(null, memoryLimitBytes, false,
-            linux ? "No hard CPU rate limit; RLIMIT_CPU is a total-time limit and is not substituted." : "No hard CPU rate limit is available.",
+            linux ? "No hard CPU rate limit; Motif limits batch threads and RLIMIT_CPU is not substituted." : "No hard CPU rate limit is available; PanGloss batch threads are limited by Motif.",
             "RLIMIT_AS address-space limit per process.",
             "The child starts in its own process group; members are killed on close, but a detached descendant can escape.",
             limitations);
@@ -258,7 +259,7 @@ internal class UnixPanGlossJob : PanGlossContainmentJob
         {
             Directory.CreateDirectory(path);
             if (!File.Exists(Path.Combine(path, "cgroup.kill"))) throw new IOException("cgroup.kill is unavailable.");
-            File.WriteAllText(Path.Combine(path, "cpu.max"), "25000 100000");
+            File.WriteAllText(Path.Combine(path, "cpu.max"), PanGlossCpuBudget.LinuxCpuMax(Environment.ProcessorCount));
             File.WriteAllText(Path.Combine(path, "memory.max"), memoryLimitBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
             var swapLimit = Path.Combine(path, "memory.swap.max");
             if (File.Exists(swapLimit)) File.WriteAllText(swapLimit, "0");

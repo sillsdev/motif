@@ -81,9 +81,10 @@ public sealed class PanGlossAssessor : IAssessor
         AssessmentArtifactLease? artifactLease = null;
         try
         {
-            var outcome = await _invoker.RunAsync(new PanGlossRequest.Batch(
+            var batch = new PanGlossRequest.Batch(
                 sources[0], requestedWords, scope.PerWordLimit, cachePath, scope.PerWordStepLimit, directory)
-                { CollectAnalyses = true, OnProgress = onProgress },
+                { CollectAnalyses = true, OnProgress = onProgress };
+            var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);
             artifactLease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
             if (outcome is PanGlossOutcome.Cancelled)
@@ -100,7 +101,7 @@ public sealed class PanGlossAssessor : IAssessor
             if (!matchingArtifacts || evidence.PerWordStepLimit != scope.PerWordStepLimit ||
                 evidence.PerWordTimeoutMs != (scope.PerWordLimit is { } timeLimit
                     ? (int)timeLimit.TotalMilliseconds : null) ||
-                evidence.Threads != 1 || evidence.CollectStatistics != (cachePath is not null))
+                evidence.Threads != batch.ThreadCount || evidence.CollectStatistics != (cachePath is not null))
                 throw new AssessorUnavailableException(AssessorName, "The invocation evidence does not match the requested scope.");
             try
             {

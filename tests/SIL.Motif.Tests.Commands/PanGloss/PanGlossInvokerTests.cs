@@ -55,7 +55,7 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
-    public void SequentialBatchProgressNamesTheStartedWordAfterCompletedRows()
+    public void BatchProgressTracksTheLatestStartedUnfinishedWord()
     {
         var path = Path.Combine(_root, "progress.tsv");
         File.WriteAllText(path, "0\tone\tSTARTED\n0\tone\t12\tanalysed\tsig\n1\ttwo\tSTARTED\n");
@@ -74,6 +74,41 @@ public sealed class PanGlossInvokerTests : IDisposable
         var finished = reader.Read(path);
         Assert.Equal(2, finished?.Completed);
         Assert.Null(finished?.CurrentWord);
+    }
+
+    [Fact]
+    public void BatchProgressCountsParallelCompletionsAndReturnsToTheOtherActiveWord()
+    {
+        var path = Path.Combine(_root, "parallel-progress.tsv");
+        File.WriteAllText(path,
+            "0\tone\tSTARTED\n1\ttwo\tSTARTED\n2\tthree\tSTARTED\n2\tthree\t12\tCAP\tsig\n");
+        var reader = new BatchProgressReader(["one", "two", "three"]);
+
+        var progress = reader.Read(path);
+
+        Assert.Equal(1, progress?.Completed);
+        Assert.Equal(3, progress?.Total);
+        Assert.Equal("two", progress?.CurrentWord);
+        Assert.Equal([new StoppedParseWord("three", "CAP", 12)], progress?.StoppedWords);
+        Assert.Equal(new ParseWordTiming("three", 12), progress?.SlowestWord);
+
+        File.AppendAllText(path, "1\ttwo\t12\tTIMEOUT\tsig\n");
+        var parallelCompletion = reader.Read(path);
+        Assert.Equal(2, parallelCompletion?.Completed);
+        Assert.Equal("one", parallelCompletion?.CurrentWord);
+        Assert.Equal(new[]
+        {
+            new StoppedParseWord("two", "TIMEOUT", 12),
+            new StoppedParseWord("three", "CAP", 12),
+        }, parallelCompletion?.StoppedWords);
+        Assert.Equal(new ParseWordTiming("two", 12), parallelCompletion?.SlowestWord);
+
+        File.AppendAllText(path, "0\tone\t12\tanalysed\tsig\n");
+        var finished = reader.Read(path);
+        Assert.Equal(3, finished?.Completed);
+        Assert.Null(finished?.CurrentWord);
+        Assert.Equal(parallelCompletion?.StoppedWords, finished?.StoppedWords);
+        Assert.Equal(new ParseWordTiming("one", 12), finished?.SlowestWord);
     }
 
     [Fact]
@@ -635,7 +670,7 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
-    public async Task Batch_ArgvCarriesTheWordTimeoutOneThreadAndTheCacheWhenAsked_AndCompletedCarriesTheRows()
+    public async Task Batch_ArgvCarriesTheWordTimeoutAndCacheWhenAsked_AndCompletedCarriesTheRows()
     {
         var project = Project("batch");
         var cache = Path.Combine(_root, "batch.cache");
@@ -655,7 +690,8 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.EndsWith("words.txt", argv[2], StringComparison.Ordinal);
         Assert.EndsWith("out.tsv", argv[3], StringComparison.Ordinal);
         Assert.Equal(["--word-timeout-ms", "1500", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1", "--stats", "--cache", cache], argv[4..]);
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads",
+            PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture), "--stats", "--cache", cache], argv[4..]);
         Assert.True(File.Exists(cache));
     }
 
@@ -669,7 +705,33 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)), "test:batch", CancellationToken.None);
 
         Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
-            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "1"], Argv(project)[4..]);
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads",
+            PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
+    }
+
+    [Fact]
+    public async Task Batch_PassesAnExplicitThreadCount()
+    {
+        var project = Project("batch-threads");
+        using var invoker = Invoker();
+
+        await invoker.RunAsync(
+            new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromSeconds(1)) { ThreadCount = 3 },
+            "test:batch-threads", CancellationToken.None);
+
+        Assert.Equal(["--word-timeout-ms", "1000", "--step-cap",
+            StepCap.DefaultSteps.ToString(CultureInfo.InvariantCulture), "--threads", "3"], Argv(project)[4..]);
+    }
+
+    [Fact]
+    public void Batch_RejectsANonPositiveThreadCount()
+    {
+        var batch = new PanGlossRequest.Batch(Project("batch-invalid-threads"), ["motifa"], TimeSpan.FromSeconds(1))
+        {
+            ThreadCount = 0,
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(batch.Validate);
     }
 
     [Fact]
@@ -714,7 +776,8 @@ public sealed class PanGlossInvokerTests : IDisposable
             new PanGlossRequest.Batch(project, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123),
             "test:batch-budget", CancellationToken.None);
 
-        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads", "1"], Argv(project)[4..]);
+        Assert.Equal(["--word-timeout-ms", "700", "--step-cap", "123", "--threads",
+            PanGlossCpuBudget.DefaultBatchThreadCount.ToString(CultureInfo.InvariantCulture)], Argv(project)[4..]);
     }
 
     [Fact]
@@ -924,7 +987,7 @@ public sealed class PanGlossInvokerTests : IDisposable
 
         var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(
             source, ["motifa"], TimeSpan.FromMilliseconds(700), PerWordStepLimit: 123,
-            ArtifactDirectory: artifacts), "test:capture", CancellationToken.None);
+            ArtifactDirectory: artifacts) { ThreadCount = 3 }, "test:capture", CancellationToken.None);
 
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
         var evidence = Assert.IsType<BatchInvocationEvidence>(completed.BatchEvidence);
@@ -938,7 +1001,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal(completed.StandardError, File.ReadAllText(evidence.StandardErrorPath));
         Assert.Equal(700, evidence.PerWordTimeoutMs);
         Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(123), evidence.PerWordStepLimit);
-        Assert.Equal(1, evidence.Threads);
+        Assert.Equal(3, evidence.Threads);
         Assert.False(evidence.CollectStatistics);
         File.WriteAllText(source, "changed after invocation");
         Assert.Equal(evidence.SourceBytesSha256, BatchInvocationEvidence.DigestFile(evidence.SourcePath));

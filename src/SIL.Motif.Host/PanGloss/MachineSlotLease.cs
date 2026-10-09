@@ -3,30 +3,38 @@ using System.Threading;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Holds one of the machine's fixed PanGloss capacity slots until disposed.
+/// Holds every machine PanGloss capacity slot until disposed.
 /// </summary>
-/// <remarks>
-/// Wraps a <see cref="WorkerMutexOwner"/> already bound to one slot's machine-global mutex name, so an
-/// owning process that dies while holding the slot is recovered the same way a worker's ownership
-/// mutex is: the next waiter receives it through <see cref="AbandonedMutexException"/> rather than
-/// blocking forever (pinned by `MachinePanGlossQueue_RecoversASlotAbandonedByADeadOwner`).
-/// </remarks>
 internal sealed class MachineSlotLease : IDisposable
 {
-    private readonly WorkerMutexOwner _owner;
+    private readonly IReadOnlyList<WorkerMutexOwner> _owners;
+    private readonly IReadOnlyList<int> _slotIndexes;
     private readonly Action<int>? _onDisposed;
     private bool _disposed;
 
     internal MachineSlotLease(WorkerMutexOwner owner, int slotIndex, string jobId, Action<int>? onDisposed)
+        : this([owner], [slotIndex], jobId, onDisposed)
     {
-        _owner = owner ?? throw new ArgumentNullException(nameof(owner));
-        SlotIndex = slotIndex;
+    }
+
+    internal MachineSlotLease(IReadOnlyList<WorkerMutexOwner> owners, IReadOnlyList<int> slotIndexes,
+        string jobId, Action<int>? onDisposed)
+    {
+        ArgumentNullException.ThrowIfNull(owners);
+        ArgumentNullException.ThrowIfNull(slotIndexes);
+        if (owners.Count == 0 || owners.Count != slotIndexes.Count)
+            throw new ArgumentException("Each leased slot requires one lock owner.", nameof(slotIndexes));
+        _owners = owners.ToArray();
+        _slotIndexes = slotIndexes.ToArray();
         JobId = jobId ?? throw new ArgumentNullException(nameof(jobId));
         _onDisposed = onDisposed;
     }
 
-    /// <summary>Which of the machine's slots this lease holds.</summary>
-    public int SlotIndex { get; }
+    /// <summary>The machine slots this lease holds.</summary>
+    public IReadOnlyList<int> SlotIndexes => _slotIndexes;
+
+    /// <summary>The first machine slot this lease holds.</summary>
+    public int SlotIndex => _slotIndexes[0];
 
     /// <summary>The job id recorded against this slot for as long as it is held.</summary>
     public string JobId { get; }
@@ -36,7 +44,14 @@ internal sealed class MachineSlotLease : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _owner.Dispose();
-        _onDisposed?.Invoke(SlotIndex);
+        Exception? failure = null;
+        for (var i = _owners.Count - 1; i >= 0; i--)
+        {
+            try { _owners[i].Dispose(); }
+            catch (Exception exception) { failure ??= exception; }
+            finally { _onDisposed?.Invoke(_slotIndexes[i]); }
+        }
+        if (failure is not null)
+            throw new InvalidOperationException("A machine capacity lock could not be released.", failure);
     }
 }

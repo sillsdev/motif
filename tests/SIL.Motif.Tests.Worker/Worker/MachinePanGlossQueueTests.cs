@@ -68,8 +68,16 @@ public sealed class MachinePanGlossQueueTests
         }, MachinePanGlossQueue.GetDefaultSlotNames("worker-123"));
     }
 
+    [Fact]
+    public void ExplicitMachineSlotsMustHaveUniqueNames()
+    {
+        var name = "Global\\MotifPanGlossDuplicateSlot-" + Guid.NewGuid().ToString("N");
+
+        Assert.Throws<ArgumentException>(() => new MachinePanGlossQueue([name, name]));
+    }
+
     [RequiresUnixFact]
-    public async Task RunAsync_AcrossTwoQueuesNeverExceedsMachineCapacity()
+    public async Task RunAsync_AcrossTwoQueuesNeverExceedsOneAdmittedJob()
     {
         var slotNames = UniqueSlotNames(2);
         using var userA = new MachinePanGlossQueue(slotNames);
@@ -93,16 +101,16 @@ public sealed class MachinePanGlossQueueTests
             Enqueue(userA, "a-1"), Enqueue(userA, "a-2"),
             Enqueue(userB, "b-1"), Enqueue(userB, "b-2"),
         };
-        await WaitUntilAsync(() => Volatile.Read(ref peak) == 2, TimeSpan.FromSeconds(10));
+        await WaitUntilAsync(() => Volatile.Read(ref peak) == 1, TimeSpan.FromSeconds(10));
         releaseAll.SetResult();
         await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(20));
 
-        Assert.Equal(2, peak);
+        Assert.Equal(1, peak);
         Assert.Equal(0, running);
     }
 
     [RequiresUnixFact]
-    public async Task RunAsync_AcrossProcessesWaitsUntilAMachineSlotIsReleased()
+    public async Task RunAsync_AcrossProcessesWaitsUntilEveryMachineSlotIsReleased()
     {
         if (Environment.GetEnvironmentVariable(ChildSlotVariable) is { Length: > 0 } childSlotName)
         {
@@ -125,8 +133,8 @@ public sealed class MachinePanGlossQueueTests
         var projectPath = Path.Combine(FindRepositoryRoot(), "tests", "SIL.Motif.Tests.Worker",
             "SIL.Motif.Tests.Worker.csproj");
         var childStart = DotnetTestProcess.CreateTestStartInfo(projectPath,
-            "FullyQualifiedName=SIL.Motif.Tests.Worker.MachinePanGlossQueueTests.RunAsync_AcrossProcessesWaitsUntilAMachineSlotIsReleased");
-        childStart.Environment[ChildSlotVariable] = slotNames[0];
+            "FullyQualifiedName=SIL.Motif.Tests.Worker.MachinePanGlossQueueTests.RunAsync_AcrossProcessesWaitsUntilEveryMachineSlotIsReleased");
+        childStart.Environment[ChildSlotVariable] = slotNames[1];
         childStart.Environment[ChildReadyPathVariable] = readyFile;
         childStart.Environment[ChildReleasePathVariable] = releaseFile;
 
@@ -141,10 +149,12 @@ public sealed class MachinePanGlossQueueTests
 
             using var queue = new MachinePanGlossQueue(slotNames);
             var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var firstWaitingForSlot = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var secondWaitingForSlot = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             queue.SlotWaitStarted = jobId =>
             {
+                if (jobId == "first") firstWaitingForSlot.TrySetResult();
                 if (jobId == "second") secondWaitingForSlot.TrySetResult();
             };
             var first = queue.RunAsync("first", async (_, cancellationToken) =>
@@ -153,6 +163,10 @@ public sealed class MachinePanGlossQueueTests
                 await releaseJobs.Task.WaitAsync(cancellationToken);
                 return 1;
             }, CancellationToken.None);
+            await firstWaitingForSlot.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.False(firstStarted.Task.IsCompleted);
+
+            await File.WriteAllTextAsync(releaseFile, string.Empty);
             await firstStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
             var second = queue.RunAsync("second", (_, _) =>
@@ -163,10 +177,9 @@ public sealed class MachinePanGlossQueueTests
             await secondWaitingForSlot.Task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.False(secondStarted.Task.IsCompleted);
 
-            await File.WriteAllTextAsync(releaseFile, string.Empty);
-            await secondStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
             releaseJobs.SetResult();
             Assert.Equal(1, await first.WaitAsync(TimeSpan.FromSeconds(10)));
+            await secondStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.Equal(2, await second.WaitAsync(TimeSpan.FromSeconds(10)));
             await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
             Assert.True(child.ExitCode == 0, $"Child test failed. stdout: {await output} stderr: {await error}");
@@ -189,12 +202,13 @@ public sealed class MachinePanGlossQueueTests
     }
 
     [RequiresWindowsFact]
-    public async Task RunAsync_AdmitsThreeProjectsInSubmissionOrder()
+    public async Task RunAsync_AdmitsOneProjectAtATimeInSubmissionOrder()
     {
         var slotNames = UniqueSlotNames(2);
         using var queue = new MachinePanGlossQueue(slotNames);
         var admissionOrder = new ConcurrentQueue<string>();
-        var firstTwoAdmitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstAdmitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondAdmitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thirdAdmitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseGates = new[] { "project-a", "project-b", "project-c" }
             .ToDictionary(id => id, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
@@ -202,7 +216,8 @@ public sealed class MachinePanGlossQueueTests
         Task<int> Enqueue(string jobId) => queue.RunAsync(jobId, async (_, ct) =>
         {
             admissionOrder.Enqueue(jobId);
-            if (admissionOrder.Count == 2) firstTwoAdmitted.TrySetResult();
+            if (jobId == "project-a") firstAdmitted.TrySetResult();
+            if (jobId == "project-b") secondAdmitted.TrySetResult();
             if (jobId == "project-c") thirdAdmitted.TrySetResult();
             await releaseGates[jobId].Task.WaitAsync(ct);
             return 0;
@@ -212,11 +227,16 @@ public sealed class MachinePanGlossQueueTests
         var second = Enqueue("project-b");
         var third = Enqueue("project-c");
 
-        // Only two slots exist, so project-c cannot be admitted until one of the first two releases.
-        await firstTwoAdmitted.Task;
+        await firstAdmitted.Task;
+        Assert.Equal(new[] { "project-a" }, admissionOrder.ToArray());
+        Assert.False(secondAdmitted.Task.IsCompleted);
+        Assert.False(thirdAdmitted.Task.IsCompleted);
         releaseGates["project-a"].SetResult();
-        await thirdAdmitted.Task;
+        await secondAdmitted.Task;
+        Assert.Equal(new[] { "project-a", "project-b" }, admissionOrder.ToArray());
+        Assert.False(thirdAdmitted.Task.IsCompleted);
         releaseGates["project-b"].SetResult();
+        await thirdAdmitted.Task;
         releaseGates["project-c"].SetResult();
 
         await Task.WhenAll(first, second, third);
@@ -225,7 +245,7 @@ public sealed class MachinePanGlossQueueTests
 
     [RequiresWindowsFact]
     [SupportedOSPlatform("windows")]
-    public async Task RunAsync_AcrossTwoUserNamespaces_NeverExceedsMachineCapacity()
+    public async Task RunAsync_AcrossTwoUserNamespaces_NeverExceedsOneAdmittedJob()
     {
         var slotNames = UniqueSlotNames(2);
         // Two queues sharing the same machine-global slot names, standing in for two user sessions.
@@ -237,7 +257,7 @@ public sealed class MachinePanGlossQueueTests
         var peakRunning = 0;
         var observedRates = new ConcurrentBag<uint>();
         var releaseAll = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var bothSlotsFilled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var oneJobStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         Task<int> Enqueue(MachinePanGlossQueue queue, string jobId) => queue.RunAsync(jobId, async (cpuJob, ct) =>
         {
@@ -245,25 +265,25 @@ public sealed class MachinePanGlossQueueTests
             lock (gate)
             {
                 peakRunning = Math.Max(peakRunning, ++currentlyRunning);
-                if (currentlyRunning == 2) bothSlotsFilled.TrySetResult();
+                oneJobStarted.TrySetResult();
             }
             try { await releaseAll.Task.WaitAsync(TimeSpan.FromSeconds(15), ct); }
             finally { lock (gate) currentlyRunning--; }
             return 0;
         }, CancellationToken.None);
 
-        // Four admissions against two slots: the cap holds regardless of which queue's jobs get them.
+        // Both queues lease every machine slot before starting any parser work.
         var tasks = new[]
         {
             Enqueue(userA, "a-1"), Enqueue(userA, "a-2"),
             Enqueue(userB, "b-1"), Enqueue(userB, "b-2"),
         };
 
-        await bothSlotsFilled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await oneJobStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         releaseAll.SetResult();
         await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(15));
 
-        Assert.Equal(2, peakRunning);
+        Assert.Equal(1, peakRunning);
         Assert.Equal(0, currentlyRunning);
         Assert.All(observedRates, rate => Assert.Equal((uint)WindowsCpuJob.CpuRateHardCapBasisPoints, rate));
     }

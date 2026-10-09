@@ -901,8 +901,9 @@ session the same day; recorded here rather than back-edited into the items above
   in-process under logical budgets. `batch` defaults to one worker per logical core, and PanGloss has
   measured a fanned-out aweti batch at 30+ GB RSS. The 738 MB failure is most likely the request that
   landed after ~20 concurrent deep-truncation words had exhausted commit. Standing guidance is
-  `--threads 1` plus `--word-timeout-ms` (`docs/fst-plan/corpus-word-list-hazards.md`). **Motif passes no
-  `--threads` today**; ADR 0044's batch request will. Still open on their side pending the verbatim abort
+  `--threads 1` plus `--word-timeout-ms` (`docs/fst-plan/corpus-word-list-hazards.md`). **At the time this
+  addendum was written, Motif passed no `--threads` flag**; ADR 0044's batch request was expected to add it.
+  Still open on their side pending the verbatim abort
   text: `memory allocation of N bytes failed` means exhaustion, `capacity overflow` means a size bug.
 - *K52*: the `TIMEOUT` record is the intended outcome; the 120 s abort is filed as a PanGloss bug.
 - A machine-readable subcommand and flag listing (`pangloss --describe`) is accepted as a follow-on item
@@ -953,3 +954,8 @@ session that reproduced it on their main (3442e0ca), single-threaded, inside a 2
   reason: eight in `FakeParserSeamTests`, and the two `RealParserFact` tests that need a report
   (`GrammarCoverageFigureIntegrationTests`, `ParserSeamIntegrationTests`). Deciding K46 revives or removes
   them. The supported `batch`, `stats` and `import` requests all use the invocation module.
+
+**Current Motif CPU policy, 2026-10-09:** Larger assessments use up to half of the machine's processor
+count for PanGloss batch threads, and one machine-wide job runs at a time. The one-thread commands above
+remain useful when reproducing the pathological words in those measurements; ADR 0048 records the current
+limits and the unchanged 10 GiB per-job memory ceiling.

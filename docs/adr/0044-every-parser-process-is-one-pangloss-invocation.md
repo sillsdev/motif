@@ -95,10 +95,11 @@ Batch into a timed run. Explicit caller overrides remain available, and cancella
 
 The engine flag the real binary rejected, and the `assess` subcommand it never had, both entered Motif
 because the binary's surface was described in six places and checked in none. One typed request per
-subcommand is where that surface is written down once. The batch request passes `--threads 1`: the parser's
-own hazards guidance for deep-truncation grammars, and the queue already serialises parsers machine-wide, so
-fan-out inside one process buys nothing the bound would not take back. The parser's repository has accepted a
-request for a machine-readable listing of its subcommands and flags; when it exists, a test pins `FakePanGloss` to it.
+subcommand is where that surface is written down once. The batch request passes `--threads` using half of
+`Environment.ProcessorCount`, with a minimum of one. Because deep-truncation grammars can multiply memory use
+when words fan out, the queue leases both machine-wide slots and admits one parser job at a time. ADR 0048
+records the CPU and memory limits. The parser's repository has accepted a request for a machine-readable
+listing of its subcommands and flags; when it exists, a test pins `FakePanGloss` to it.
 
 ## Consequences
 

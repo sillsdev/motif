@@ -36,9 +36,9 @@ public abstract record PanGlossRequest
         TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests);
 
     /// <summary>
-    /// <c>pangloss batch</c> over a word list, one thread, a per-word limit, and optionally the per-object
-    /// statistics cache. One thread because the parser's own hazards guidance says fan-out multiplies memory
-    /// on deep-truncation grammars, and the queue already serialises parsers machine-wide.
+    /// <c>pangloss batch</c> over a word list, a thread budget derived from half the machine's processor count
+    /// with a minimum of one, a per-word limit, and optionally the per-object statistics cache. The queue
+    /// admits one job machine-wide; operating-system CPU rate limits apply where available.
     /// </summary>
     public sealed record Batch(
         string ProjectFilePath, IReadOnlyList<string> Words, TimeSpan? PerWordLimit, string? StatsCachePath = null,
@@ -47,7 +47,10 @@ public abstract record PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
 
-        /// <summary>Receives progress from the sequential batch's flushed word rows.</summary>
+        /// <summary>PanGloss worker threads for this batch, populated from the machine CPU budget.</summary>
+        internal int ThreadCount { get; init; } = PanGlossCpuBudget.DefaultBatchThreadCount;
+
+        /// <summary>Receives progress from the batch's flushed word rows.</summary>
         public Action<TrialWordProgress>? OnProgress { get; init; }
 
         public override string Subcommand => "batch";
@@ -56,6 +59,7 @@ public abstract record PanGlossRequest
         {
             if (string.IsNullOrWhiteSpace(ProjectFilePath)) throw new ArgumentException("Required.", nameof(ProjectFilePath));
             ArgumentNullException.ThrowIfNull(Words);
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ThreadCount);
             if (PerWordLimit is { } timeLimit && timeLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
@@ -79,7 +83,7 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--step-cap");
             startInfo.ArgumentList.Add((PerWordStepLimit ?? StepCap.Default).ToArgument());
             startInfo.ArgumentList.Add("--threads");
-            startInfo.ArgumentList.Add("1");
+            startInfo.ArgumentList.Add(ThreadCount.ToString(CultureInfo.InvariantCulture));
             if (CollectAnalyses)
             {
                 startInfo.ArgumentList.Add("--analyses");

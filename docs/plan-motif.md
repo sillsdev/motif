@@ -156,7 +156,7 @@ This table shows which user-visible capabilities work today and which still requ
 | `MOT-17` — Layer-1 semantic and batch authoring for agents | M4 | Medium, and **expected to churn** | **Slice 1 built 2026-08-13** — the CLI's first Layer-1 authoring surface: `compose-author-lexeme-form` resolves one authored intent against a live project into `AuthorLexemeFormComposer`'s operations (up to three, already built for `MOT-4`'s hand-written `LexemeForm` field) and appends them to a draft the agent never enumerated by hand. The authored intent round-trips as non-hashed `extensions` provenance — verified byte-for-byte excluded from the intent digest — and survives `reopen`/`duplicate` rather than being silently dropped. **Found and fixed on the way:** `DraftOperation.After` was `Dictionary<string,string>`, so any composer emitting a non-string payload (e.g. `setIsAbstract`'s `{"value":true}`) would have thrown or silently stringified a boolean; it is now `Dictionary<string,JsonElement>` everywhere a draft operation is built or replayed. **Not yet built:** batch reads/updates over a live query (this slice batches one intent into many operations, not one query into many targets), and further composers beyond `AuthorLexemeForm` |
 | `MOT-18` — selective Proposal editing: duplicate, remove, split | M4 | Small, and required by the agent loop | **Built 2026-08-06** — `duplicate`, `remove-operations`, `split`; declared-dependency closure names every orphaned operation at any depth; every editing path clears the bound anchor. 309 tests pass. One semantic question left open for the owner: `B25` |
 | `MOT-6` — semantic + lowering layer for grammar construct 1 | M5 | Medium — **the first product family** | **Slice 1 built 2026-08-13**: `AuthorFeatureStructure`, alongside the lexical `AuthorLexemeForm` — one construct, one `grammar/moStemMsa/createMsFeatures` operation, the first hand-written *grammar* owning/atomic creation-validity answer (ADR 0022 §4). Authored, dry-run, applied, and saved on a real project; refuses closed against an already-occupied slot, a nonexistent MSA, and a wrong-typed target. **Not yet done:** the "parsed" leg of M5's acceptance test (needs the external PanGloss executable this environment does not run) and populating actual feature values (`FsFeatStruc.FeatureSpecs`, `owning/col`, a separate operation against the structure's own identity) |
-| `MOT-15` — the parser seam and job orchestration | M5 | Medium | **Direct seam built** — GUID-keyed analyses and real-project correlation are proven. The target handoff is a fresh PanGloss-owned export from each candidate scratch. Remaining: async orchestration, global two-job FIFO, a 25-percent CPU cap per process tree, result/log persistence, cancellation, and immediate/startup workspace cleanup; engines are never persisted |
+| `MOT-15` — the parser seam and job orchestration | M5 | Medium | **Direct seam built** — GUID-keyed analyses and real-project correlation are proven. The target handoff is a fresh PanGloss-owned export from each candidate scratch. Remaining: result/log persistence, cancellation, and immediate/startup workspace cleanup; engines are never persisted. Parser admission is global and sequential; supported OS hard caps allow 50 percent of total CPU, with an application thread budget elsewhere |
 | `MOT-7` — the remaining 29 constructs | M6 | Large | Not started — gated on `MOT-6` by the plan's own execution order (M1 → M2 → M4 → M5 → M6), and `MOT-6` has only slice 1. The literal "29" is stale: `Construct` (manifest column) stopped naming operation kinds under ADR 0023, and all 495 `Scope=in` rows already carry one; the real remaining work is per-family creation-validity composers like `MOT-6`'s, not a count against the manifest |
 | `MOT-8` — ordered-grammar review proof | M6 | Medium | Not started |
 | `MOT-12` — FieldWorks surface over the CLI | M3 | Medium | **Scope 2, respecified by [ADR 0040](adr/0040-one-api-the-cli.md)** — Avalonia views that run `motif --json` and render it. No in-process host, no Motif assembly reference, no database access. To hand over a live project FieldWorks saves, releases, runs the verb, and reloads. The former in-process adapter — hosting Runner Apply on FieldWorks' `LcmCache` and negotiating with a worker — is withdrawn |
@@ -869,9 +869,10 @@ the immutable result plus a bounded log. The candidate export may wait on disk w
 deleted immediately; startup deletes any interrupted workspace.
 
 The worker returns a job id by default. Each user worker schedules its projects FIFO. Machine-wide leases
-admit at most two PanGloss process trees per PC and cap each entire build-and-analysis tree at 25 percent of
-total CPU; ordering between different Windows users is unspecified. Assessment may overlap later project Dry
-Runs after candidate export releases the project's LibLCM lane.
+admit one PanGloss process tree per PC. Windows and Linux with a delegated cgroup hard-cap that tree at
+50 percent of total CPU; Linux without a cgroup and macOS rely on the half-machine batch thread budget and
+report the absence of a hard CPU rate limit. Ordering between different users is unspecified.
+Assessment may overlap later project Dry Runs after candidate export releases the project's LibLCM lane.
 
 ### What remains
 
@@ -976,8 +977,8 @@ host performs Preflight, one Runner UOW, save, and Receipt reporting. A missing 
 **Acceptance.** Two compatible client versions share one worker and one database owner; an incompatible
 client fails without touching the database. One saved Baseline drives twenty stable Dry Runs while FieldWorks
 can continue editing. Refresh and Apply ordering is deterministic. Interrupted work restarts safely without
-ever retrying Apply. Two PanGloss jobs across all projects and users stay within the machine-wide CPU
-envelope. Project-log reconciliation either repairs the store or produces a loud, explainable Conflict.
+ever retrying Apply. PanGloss jobs across all projects and users stay within the machine-wide CPU envelope.
+Project-log reconciliation either repairs the store or produces a loud, explainable Conflict.
 
 ---
 

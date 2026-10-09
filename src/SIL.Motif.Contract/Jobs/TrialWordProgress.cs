@@ -1,6 +1,9 @@
 namespace SIL.Motif.Contract.Jobs;
 
-/// <summary>Completed searches and the word whose search has started in a sequential Trial batch.</summary>
+/// <summary>Completed searches and the latest started word that has not completed in a batch.</summary>
+/// <param name="Completed">The number of distinct word results received so far.</param>
+/// <param name="Total">The number of words requested for the batch.</param>
+/// <param name="CurrentWord">The latest started unfinished word observed, or <see langword="null"/> if none remain.</param>
 public sealed record TrialWordProgress(int Completed, int Total, string? CurrentWord)
 {
     public IReadOnlyList<StoppedParseWord> StoppedWords { get; init; } = Array.Empty<StoppedParseWord>();

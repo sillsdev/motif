@@ -22,7 +22,7 @@ public sealed class WindowsCpuJobTests
 
     // Proves the CONFIGURED limit only; timing-dependent OS-level enforcement is not measured here.
     [RequiresWindowsFact]
-    public void ConfiguresCpuRateHardCapAt2500BasisPointsEvenAlone()
+    public void ConfiguresCpuRateHardCapAt5000BasisPointsEvenAlone()
     {
         using var job = new WindowsCpuJob();
 

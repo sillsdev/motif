@@ -8,11 +8,13 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
 {
     private readonly byte[] _readBuffer = new byte[8192];
     private readonly MemoryStream _partialLine = new();
+    private readonly HashSet<int> _completedIndexes = [];
+    private readonly List<int> _activeIndexes = [];
     private long _position;
     private int _completed;
-    private readonly List<StoppedParseWord> _stoppedWords = [];
+    private readonly SortedDictionary<int, StoppedParseWord> _stoppedWords = new();
     private ParseWordTiming? _slowest;
-    private int? _started;
+    private int? _slowestIndex;
     private bool _sawRow;
 
     internal TrialWordProgress? Read(string path)
@@ -44,9 +46,9 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
 
     private TrialWordProgress? Current => _sawRow
         ? new TrialWordProgress(_completed, words.Count,
-            _started is { } current && current >= _completed ? words[current] : null)
+            _activeIndexes.Count == 0 ? null : words[_activeIndexes[^1]])
             {
-                StoppedWords = _stoppedWords.Count == 0 ? Array.Empty<StoppedParseWord>() : _stoppedWords.ToArray(),
+                StoppedWords = _stoppedWords.Count == 0 ? Array.Empty<StoppedParseWord>() : _stoppedWords.Values.ToArray(),
                 SlowestWord = _slowest,
             }
         : null;
@@ -79,23 +81,30 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
             return;
         if (cells.Length == 3 && cells[2] == "STARTED")
         {
-            if (index >= _completed && (_started is null || index >= _started.Value))
-                _started = index;
-            _sawRow = true;
+            if (!_completedIndexes.Contains(index))
+            {
+                if (!_activeIndexes.Contains(index)) _activeIndexes.Add(index);
+                _sawRow = true;
+            }
         }
-        else if (cells.Length >= 5 && index == _completed)
+        else if (cells.Length >= 5 && !_completedIndexes.Contains(index))
         {
             if (double.TryParse(cells[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var elapsed) &&
                 double.IsFinite(elapsed) && elapsed >= 0)
             {
-                if (_slowest is null || elapsed > _slowest.ElapsedMs)
+                _completedIndexes.Add(index);
+                _activeIndexes.Remove(index);
+                _completed++;
+                if (_slowest is null || elapsed > _slowest.ElapsedMs ||
+                    elapsed == _slowest.ElapsedMs && index < (_slowestIndex ?? int.MaxValue))
+                {
                     _slowest = new ParseWordTiming(words[index], elapsed);
+                    _slowestIndex = index;
+                }
                 if (cells[3] is "TIMEOUT" or "CAP")
-                    _stoppedWords.Add(new StoppedParseWord(words[index], cells[3], elapsed));
+                    _stoppedWords[index] = new StoppedParseWord(words[index], cells[3], elapsed);
+                _sawRow = true;
             }
-            _completed++;
-            _started = null;
-            _sawRow = true;
         }
     }
 }

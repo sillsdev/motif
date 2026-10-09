@@ -41,6 +41,7 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal(BatchInvocationEvidence.DigestFile(evidence.SourcePath), timing.GrammarSourceSha256);
         Assert.Equal(new SIL.Motif.Contract.Assess.StepCap(123), evidence.PerWordStepLimit);
         Assert.Equal(700, evidence.PerWordTimeoutMs);
+        Assert.Equal(PanGlossCpuBudget.DefaultBatchThreadCount, evidence.Threads);
         Assert.True(evidence.CollectStatistics);
         Assert.All(produced, item =>
         {

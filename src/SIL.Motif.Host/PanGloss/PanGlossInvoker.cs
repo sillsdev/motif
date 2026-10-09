@@ -8,8 +8,8 @@ using SIL.Motif.Host.Parser;
 namespace SIL.Motif.Host.PanGloss;
 
 /// <summary>
-/// Runs the <c>pangloss</c> executable: one queue slot, one containment job, both streams drained, an applicable
-/// wall-clock deadline, and an outcome for whatever happened.
+/// Runs the <c>pangloss</c> executable under a machine-wide capacity lease and one containment job, drains both
+/// streams, applies the relevant wall-clock deadline, and returns an outcome for whatever happened.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -274,7 +274,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     capturedBatch.PerWordLimit is { } timeLimit
                         ? (int)timeLimit.TotalMilliseconds : null,
                     capturedBatch.PerWordStepLimit ?? StepCap.Default,
-                    1, capturedBatch.StatsCachePath is not null)
+                    capturedBatch.ThreadCount, capturedBatch.StatsCachePath is not null)
                 {
                     AnalysesPath = analysesPath,
                     AnalysesSha256 = analysesDigest,

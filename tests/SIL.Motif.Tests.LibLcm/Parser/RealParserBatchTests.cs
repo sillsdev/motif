@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.LCModel;
@@ -208,5 +209,47 @@ public sealed class RealParserBatchTests(PristineProjectFixture pristine)
             first => Assert.Equal(WordOutcome.Analysed, first.Outcome),
             second => Assert.Equal(WordOutcome.Analysed, second.Outcome),
             unknown => Assert.Equal(WordOutcome.NoAnalysis, unknown.Outcome));
+    }
+
+    [RealParserFact]
+    public async Task ParallelBatchPreservesSingleThreadWordOrderAndAnalysisContent()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "m", "o", "t", "i", "f", "a", "b");
+
+        string[] words = [SeededProject.FirstForm, SeededProject.SecondForm, "mofita"];
+        using var invoker = new PanGlossInvoker();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var singleThreaded = await invoker.RunAsync(
+            new PanGlossRequest.Batch(cache.ProjectId.Path, words, TimeSpan.FromSeconds(1))
+            {
+                CollectAnalyses = true,
+                ThreadCount = 1,
+            },
+            "test:single-thread-batch", cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
+        var parallel = await invoker.RunAsync(
+            new PanGlossRequest.Batch(cache.ProjectId.Path, words, TimeSpan.FromSeconds(1))
+            {
+                CollectAnalyses = true,
+                ThreadCount = 2,
+            },
+            "test:parallel-batch", cancellation.Token, wallClockCap: TimeSpan.FromSeconds(30));
+
+        var singleOutput = Assert.IsType<PanGlossOutcome.Completed>(singleThreaded);
+        var parallelOutput = Assert.IsType<PanGlossOutcome.Completed>(parallel);
+        var singleRows = BatchTsvParser.Parse(singleOutput.Output);
+        var parallelRows = BatchTsvParser.Parse(parallelOutput.Output);
+        var stableRows = singleRows.Select(row => (row.Index, row.Word, row.Outcome, row.Signature));
+        var parallelStableRows = parallelRows.Select(row => (row.Index, row.Word, row.Outcome, row.Signature));
+
+        Assert.Equal(words, singleRows.Select(row => row.Word));
+        Assert.Equal(words, parallelRows.Select(row => row.Word));
+        Assert.Equal(stableRows, parallelStableRows);
+
+        var singleEvidence = ParseMorphEvidence.Read(singleOutput.MorphologyOutput!, words)
+            .Select(row => JsonSerializer.Serialize(row with { ElapsedMs = 0 }, ParseMorphEvidence.JsonOptions));
+        var parallelEvidence = ParseMorphEvidence.Read(parallelOutput.MorphologyOutput!, words)
+            .Select(row => JsonSerializer.Serialize(row with { ElapsedMs = 0 }, ParseMorphEvidence.JsonOptions));
+        Assert.Equal(singleEvidence, parallelEvidence);
     }
 }

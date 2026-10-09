@@ -83,10 +83,11 @@ finishes normally.
 
 PanGloss exports all files it needs from the candidate scratch and owns that private interchange format.
 Each Proposal Assessment builds a fresh engine, keeps it only in memory, stores only the result and a bounded
-log, and deletes its export immediately at completion or on the next worker startup. At most two PanGloss
-process trees run on one PC, each capped at 25 percent of total CPU for its complete build and analysis.
-Each user worker schedules its projects FIFO. Machine-wide leases enforce only the two-process capacity
-across Windows sessions; ordering between different users is unspecified.
+log, and deletes its export immediately at completion or on the next worker startup. At most one PanGloss
+process tree runs on one PC. Windows and Linux with a delegated cgroup enforce a 50-percent CPU cap for the
+complete build and analysis; Linux without a cgroup and macOS use the half-machine batch thread budget and
+report that no hard CPU rate limit applies. Each user worker schedules projects FIFO. Machine-wide leases
+enforce single-job admission across user processes; ordering between different users is unspecified.
 
 ### 4. Jobs are durable and async; Apply is synchronous
 

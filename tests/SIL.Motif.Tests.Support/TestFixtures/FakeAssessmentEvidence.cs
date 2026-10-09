@@ -22,6 +22,6 @@ internal static class FakeAssessmentEvidence
             words, BatchInvocationEvidence.DigestFile(words), tsv, BatchInvocationEvidence.DigestFile(tsv),
             stderr, BatchInvocationEvidence.DigestFile(stderr), scope.PerWordLimit is { } timeLimit
                 ? (int)timeLimit.TotalMilliseconds : null,
-            scope.PerWordStepLimit, 1, true);
+            scope.PerWordStepLimit, PanGlossCpuBudget.DefaultBatchThreadCount, true);
     }
 }

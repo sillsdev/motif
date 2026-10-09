@@ -14,7 +14,7 @@ namespace SIL.Motif.Host.PanGloss;
 /// <remarks>
 /// The rate control targets the job's aggregate CPU time rather than any one member, so a job holding a
 /// single process is capped exactly as a job holding several (pinned by
-/// `ConfiguresCpuRateHardCapAt2500BasisPointsEvenAlone`). <see cref="AssignProcess"/> suspends the
+/// `ConfiguresCpuRateHardCapAt5000BasisPointsEvenAlone`). <see cref="AssignProcess"/> suspends the
 /// process before assigning it, so a child it has not yet spawned cannot start running, and therefore
 /// cannot escape the job, before the assignment lands (pinned by
 /// `AssignProcess_ContainsTheWholeProcessTreeAcrossItsLifetime`).
@@ -22,8 +22,8 @@ namespace SIL.Motif.Host.PanGloss;
 [SupportedOSPlatform("windows")]
 public sealed class WindowsCpuJob : PanGlossContainmentJob
 {
-    /// <summary>The CPU hard-cap rate, in basis points of one CPU's worth of total machine time.</summary>
-    public const int CpuRateHardCapBasisPoints = 2500;
+    /// <summary>The CPU hard-cap rate, in basis points of total machine CPU capacity.</summary>
+    public const int CpuRateHardCapBasisPoints = PanGlossCpuBudget.CpuRateHardCapBasisPoints;
 
     /// <summary>
     /// The committed-memory ceiling for everything in the job, matching the parser's own ratified limit.
@@ -44,7 +44,7 @@ public sealed class WindowsCpuJob : PanGlossContainmentJob
         CpuRateHardCapBasisPoints,
         JobMemoryLimitBytes,
         AggregateMemoryLimit: true,
-        Cpu: "Windows Job Object hard cap at 2500 basis points.",
+        Cpu: "Windows Job Object hard cap at 5000 basis points.",
         Memory: "10 GiB aggregate committed-memory hard limit.",
         ProcessTree: "Job Object kill-on-close; each child is suspended until assigned.",
         Limitations: Array.Empty<string>()))

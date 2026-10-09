@@ -234,7 +234,7 @@ public interface IAssessor
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, CancellationToken cancellationToken);
 
-    /// <summary>Reports completed words when this Assessor exposes sequential batch progress.</summary>
+    /// <summary>Reports completed words as this Assessor receives batch progress.</summary>
     Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress> onProgress,
         CancellationToken cancellationToken) => ProduceAsync(scope, exportedCandidate, cancellationToken);
