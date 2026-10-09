@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Chrome;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -199,6 +200,85 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public void WindowChromeKeepsNativeCaptionControlsAndMarksTheTopBarAsDraggable()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window, _) = NewComposedWindow();
+            try
+            {
+                var topBar = Assert.IsType<Border>(window.FindControl<Border>("TopBar"));
+                var projectMenu = Assert.IsType<Button>(window.FindControl<Button>("ProjectMenuButton"));
+                var actions = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("TopBarActions"));
+
+                Assert.Equal(WindowDecorations.Full, window.WindowDecorations);
+                Assert.Equal(WindowDecorationsElementRole.TitleBar, WindowDecorationProperties.GetElementRole(topBar));
+                Assert.Equal(WindowDecorationsElementRole.User, WindowDecorationProperties.GetElementRole(projectMenu));
+                Assert.All(actions.Children.OfType<Button>(), button =>
+                    Assert.Equal(WindowDecorationsElementRole.User, WindowDecorationProperties.GetElementRole(button)));
+                Assert.Equal(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS(),
+                    window.ExtendClientAreaToDecorationsHint);
+                Assert.Equal(OperatingSystem.IsWindows(), topBar.Classes.Contains("windowsChrome"));
+                Assert.Equal(OperatingSystem.IsMacOS(), topBar.Classes.Contains("macChrome"));
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void SidebarFooterKeepsHelpAndSettingsButtonsDiscoverableAndWorking()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var sidebar = Assert.IsType<Border>(window.FindControl<Border>("Sidebar"));
+                var footer = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("SidebarFooter"));
+                var utilities = Assert.IsType<StackPanel>(window.FindControl<StackPanel>("SidebarUtilities"));
+                var help = Assert.IsType<Button>(window.FindControl<Button>("HelpButton"));
+                var settings = Assert.IsType<Button>(window.FindControl<Button>("SettingsButton"));
+
+                Assert.Contains(help.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, sidebar));
+                Assert.Contains(settings.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, sidebar));
+                Assert.Contains(help.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, footer));
+                Assert.Contains(settings.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, footer));
+                Assert.Equal(AutomationIds.HelpButton, AutomationProperties.GetAutomationId(help));
+                Assert.Equal(AutomationIds.SettingsButton, AutomationProperties.GetAutomationId(settings));
+                Assert.Equal("Help for the current page (F1)", ToolTip.GetTip(help));
+                Assert.Equal("Settings (Ctrl+,)", ToolTip.GetTip(settings));
+
+                window.Width = 1040;
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                Assert.True(workspace.IsSidebarCollapsed);
+                Assert.Equal(Avalonia.Layout.Orientation.Vertical, utilities.Orientation);
+                Assert.True(help.IsEffectivelyVisible);
+                Assert.False(window.FindControl<TextBlock>("SidebarHelpLabel")?.IsEffectivelyVisible ?? true);
+                Assert.True(settings.IsEffectivelyVisible);
+
+                ClickButton(window, settings);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(settings.Flyout?.IsOpen);
+                settings.Flyout?.Hide();
+                ClickButton(window, help);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(help.Flyout?.IsOpen);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
     }
 
     [Fact]

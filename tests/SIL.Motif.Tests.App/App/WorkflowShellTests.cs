@@ -273,7 +273,10 @@ public sealed class WorkflowShellTests
                 window.Show();
                 Assert.Equal((1240d, 780d, 820d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
                 var topBar = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("topBar"));
-                Assert.Equal(new Thickness(18, 0, 18, 0), topBar.Padding);
+                var chromePadding = OperatingSystem.IsWindows() ? new Thickness(18, 0, 138, 0)
+                    : OperatingSystem.IsMacOS() ? new Thickness(76, 0, 18, 0)
+                    : new Thickness(18, 0, 18, 0);
+                Assert.Equal(chromePadding, topBar.Padding);
 
                 var menuButton = window.FindControl<Button>("ProjectMenuButton")!;
                 var flyout = Assert.IsType<Flyout>(menuButton.Flyout);

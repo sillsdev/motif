@@ -6,6 +6,8 @@ namespace SIL.Motif.App;
 public static class AutomationIds
 {
     public const string ProjectMenu = "motif-project-menu";
+    public const string HelpButton = "motif-help-button";
+    public const string SettingsButton = "motif-settings-button";
     public const string SelectNewProject = "motif-select-new-project";
     public const string RefreshProject = "motif-refresh-project";
     public const string AnalyzeTextsTab = "motif-analyze-texts-tab";

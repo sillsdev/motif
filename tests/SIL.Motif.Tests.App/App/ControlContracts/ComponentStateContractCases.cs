@@ -630,6 +630,10 @@ internal static class TooltipOwners
             control => control is Button && Name(control) == "Refresh the project"),
         new("project name", "Views/MainWindow.axaml", "{Binding ProjectName}", TooltipScene.Overview,
             control => control is TextBlock && control.Classes.Contains("projectName")),
+        new("Help", "Views/MainWindow.axaml", "Help for the current page (F1)", TooltipScene.CollapsedSidebar,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.HelpButton),
+        new("Settings", "Views/MainWindow.axaml", "Settings (Ctrl+,)", TooltipScene.CollapsedSidebar,
+            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.SettingsButton),
         new("collapsed sidebar entry", "Views/MainWindow.axaml", "{Binding Title}", TooltipScene.CollapsedSidebar,
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
                 list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),

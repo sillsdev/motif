@@ -448,6 +448,9 @@ public sealed partial class ComponentStyleTests
         yield return new("Refusal", "scrollable refusal content", host => Add(host,
                 new ScrollViewer { Classes = { "refusalViewport" }, Content = Text("refusalDetails") }),
             ScrollViewer.MaxHeightProperty, "Component.Refusal.ContentMaxHeight");
+        yield return new("Refusal", "a long refusal block stays scrollable", host => Add(host,
+                new ScrollViewer { Classes = { "refusalBlockViewport" } }),
+            ScrollViewer.MaxHeightProperty, "Component.Refusal.BlockMaxHeight");
 
         yield return new("ToolTip", "a tooltip's maximum width", host => Add(host, new ToolTip()),
             Control.MaxWidthProperty, "Component.ToolTip.MaxWidth");
@@ -635,6 +638,10 @@ public sealed partial class ComponentStyleTests
 
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.MinHeightProperty, "Component.TopBar.Height");
         yield return new("TopBar", "the top bar", host => Add(host, Box("topBar")), Border.PaddingProperty, "Component.TopBar.Padding");
+        yield return new("TopBar", "the Windows caption inset", host => Add(host, Box("topBar", "windowsChrome")),
+            Border.PaddingProperty, "Component.TopBar.WindowsChromePadding");
+        yield return new("TopBar", "the macOS traffic-light inset", host => Add(host, Box("topBar", "macChrome")),
+            Border.PaddingProperty, "Component.TopBar.MacChromePadding");
         yield return new("TopBar", "the project menu", host => Add(host, Press("projectMenu")),
             Button.MaxWidthProperty, "Component.TopBar.ProjectMenuMaxWidth");
         yield return new("TopBar", "the parse progress bar", host => Add(host, With(new ProgressBar(), ["topBarParseProgress"])),
@@ -676,6 +683,16 @@ public sealed partial class ComponentStyleTests
             ListBoxItem.BorderBrushProperty, "Intent.Emphasis.Fill");
         yield return new("Sidebar", "the footer", host => Add(host, Stack("sidebarFooter")),
             StackPanel.MarginProperty, "Component.Sidebar.FooterMargin");
+        yield return new("Sidebar", "the collapsed footer", host => Add(host, Stack("sidebarFooter", "collapsed")),
+            StackPanel.MarginProperty, "Component.Sidebar.FooterMarginCollapsed");
+        yield return new("Sidebar", "a utility button", host => Add(host, Press("sidebarUtility")),
+            Button.HeightProperty, "Component.Menu.ButtonHeight");
+        yield return new("Sidebar", "a collapsed utility button", host => SidebarUtility(host, collapsed: true),
+            Button.WidthProperty, "Component.Menu.ButtonHeight");
+        yield return new("Sidebar", "the help glyph", host => Add(host, Text("sidebarUtilityGlyph")),
+            TextBlock.FontSizeProperty, "Intent.Type.Navigation");
+        yield return new("Sidebar", "the help label", host => Add(host, Text("sidebarUtilityLabel")),
+            TextBlock.FontSizeProperty, "Intent.Type.Label");
 
         yield return new("Badge", "a badge", host => Add(host, Box("pageBadge")), Border.BackgroundProperty, "Intent.Neutral.Fill");
         yield return new("Badge", "a badge", host => Add(host, Box("pageBadge")), Border.PaddingProperty, "Component.Badge.Padding");
@@ -1284,6 +1301,22 @@ public sealed partial class ComponentStyleTests
     private static Button Press(params string[] classes) => With(new Button { Content = "Go" }, classes);
 
     private static StackPanel Stack(params string[] classes) => With(new StackPanel(), classes);
+
+    private static Button SidebarUtility(Panel host, bool collapsed)
+    {
+        var footer = Stack("sidebarFooter");
+        var utilities = Stack("sidebarUtilities");
+        var button = Press("sidebarUtility");
+        if (collapsed)
+        {
+            footer.Classes.Add("collapsed");
+            utilities.Classes.Add("collapsed");
+        }
+        utilities.Children.Add(button);
+        footer.Children.Add(utilities);
+        host.Children.Add(footer);
+        return button;
+    }
 
     private static Ellipse Dot(params string[] classes) => With(new Ellipse { Classes = { "freshDot" } }, classes);
 

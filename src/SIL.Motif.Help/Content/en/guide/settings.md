@@ -1,6 +1,6 @@
 # Settings
 
-Open **Settings** from the window to change how Motif looks and to find its keyboard shortcuts, project parsing limits, Help, problem reports, and version information. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
+Open **Settings** from the bottom of the left sidebar to change how Motif looks and to find its keyboard shortcuts, project parsing limits, problem reports, and version information. **Help** beside it opens guidance for the current page. Display choices are remembered for this user on this computer; a project's parsing limits are saved with that project's [Default Selection](term:default-selection).
 
 ## Display
 
@@ -20,7 +20,7 @@ For the project's writing-system settings and how to change them in FieldWorks, 
 
 ## Help and reports
 
-Settings opens Help for the current page and lets you preview a problem report. Read [When something goes wrong](guide:when-something-goes-wrong) for what a report includes and how local details are handled.
+Settings lets you preview a problem report. Read [When something goes wrong](guide:when-something-goes-wrong) for what a report includes and how local details are handled.
 
 ## About and data folders
 

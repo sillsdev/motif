@@ -5,46 +5,48 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.RefusalBlock"
              x:DataType="vm:WindowRefusal">
-  <StackPanel Classes="refusal">
-    <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap" />
-    <ScrollViewer Classes="refusalViewport" IsVisible="{Binding HasCompileIssues}"
-                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                  AutomationProperties.Name="Fatal grammar issues">
-      <ItemsControl x:Name="RefusalBlockCompileIssuesItems" ItemsSource="{Binding CompileIssues}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <VirtualizingStackPanel />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="contract:ParserCompileIssue">
-            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-              <views:CopyableTextBlock Text="{Binding Code}" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding ObjectKind}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding ObjectGuid}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-              <views:CopyableTextBlock Text="{Binding Advice}" TextWrapping="Wrap" />
-            </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ScrollViewer>
-    <Button x:Name="ReportProblemButton" Content="Report a problem" Click="OnReportProblemClick"
-            IsVisible="{Binding OffersProblemReport}"
-            AutomationProperties.Name="Review a problem report" HorizontalAlignment="Left" />
-    <Button x:Name="DeleteStoreButton"
-            Content="Delete this file and reopen"
-            CommandParameter="{Binding}"
-            AutomationProperties.Name="Delete Motif's file for this project and reopen it"
-            HorizontalAlignment="Left"
-            IsVisible="False" />
-    <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="Refusal details"
-              IsExpanded="False" IsVisible="{Binding HasDetails}">
-      <ScrollViewer Classes="refusalViewport" HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Original refusal details">
-        <views:CopyableTextBlock Classes="refusalDetails" Text="{Binding Details}" TextWrapping="Wrap" />
+  <ScrollViewer Classes="refusalBlockViewport">
+    <StackPanel Classes="refusal">
+      <views:CopyableTextBlock Classes="error" Text="{Binding Sentence}" TextWrapping="Wrap" />
+      <ScrollViewer Classes="refusalViewport" IsVisible="{Binding HasCompileIssues}"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                    AutomationProperties.Name="Fatal grammar issues">
+        <ItemsControl x:Name="RefusalBlockCompileIssuesItems" ItemsSource="{Binding CompileIssues}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="contract:ParserCompileIssue">
+              <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+                <views:CopyableTextBlock Text="{Binding Code}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding ObjectKind}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding ObjectGuid}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Text="{Binding Advice}" TextWrapping="Wrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </ScrollViewer>
-    </Expander>
-  </StackPanel>
+      <Button x:Name="ReportProblemButton" Content="Report a problem" Click="OnReportProblemClick"
+              IsVisible="{Binding OffersProblemReport}"
+              AutomationProperties.Name="Review a problem report" HorizontalAlignment="Left" />
+      <Button x:Name="DeleteStoreButton"
+              Content="Delete this file and reopen"
+              CommandParameter="{Binding}"
+              AutomationProperties.Name="Delete Motif's file for this project and reopen it"
+              HorizontalAlignment="Left"
+              IsVisible="False" />
+      <Expander Classes="refusalDetails" Header="{Binding DetailsTitle}" AutomationProperties.Name="Refusal details"
+                IsExpanded="False" IsVisible="{Binding HasDetails}">
+        <ScrollViewer Classes="refusalViewport" HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Original refusal details">
+          <views:CopyableTextBlock Classes="refusalDetails" Text="{Binding Details}" TextWrapping="Wrap" />
+        </ScrollViewer>
+      </Expander>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

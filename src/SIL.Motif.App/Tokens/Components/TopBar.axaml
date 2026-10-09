@@ -6,6 +6,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.TopBar.Padding" ResourceKey="Primitive.Inset.18_0_18_0" />
+    <StaticResource x:Key="Component.TopBar.WindowsChromePadding" ResourceKey="Primitive.Inset.18_0_138_0" />
+    <StaticResource x:Key="Component.TopBar.MacChromePadding" ResourceKey="Primitive.Inset.76_0_18_0" />
     <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.52" />
     <StaticResource x:Key="Component.TopBar.LogoSize" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.TopBar.ProjectMenuMaxWidth" ResourceKey="Primitive.Size.240" />
@@ -18,6 +20,12 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
     <Setter Property="Padding" Value="{DynamicResource Component.TopBar.Padding}" />
     <Setter Property="MinHeight" Value="{DynamicResource Component.TopBar.Height}" />
+  </Style>
+  <Style Selector="Border.topBar.windowsChrome">
+    <Setter Property="Padding" Value="{DynamicResource Component.TopBar.WindowsChromePadding}" />
+  </Style>
+  <Style Selector="Border.topBar.macChrome">
+    <Setter Property="Padding" Value="{DynamicResource Component.TopBar.MacChromePadding}" />
   </Style>
   <Style Selector="StackPanel.topBarGroup">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />

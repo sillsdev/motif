@@ -6,7 +6,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.Refusal.ContentMaxHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Refusal.BlockMaxHeight" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
+  <Style Selector="ScrollViewer.refusalBlockViewport">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.BlockMaxHeight}" />
+    <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
   <Style Selector="ScrollViewer.refusalViewport">
     <Setter Property="MaxHeight" Value="{DynamicResource Component.Refusal.ContentMaxHeight}" />
   </Style>

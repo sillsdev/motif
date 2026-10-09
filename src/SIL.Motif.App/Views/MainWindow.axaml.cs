@@ -76,6 +76,7 @@ public sealed partial class MainWindow : Window
         };
         _uriLauncher = uriLauncher ?? new AvaloniaLauncher(this);
         _problemReportServices = ProblemReportWindowServices.ForWindow(this, _uriLauncher);
+        ConfigureWindowChrome();
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(_uriLauncher);
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -128,6 +129,17 @@ public sealed partial class MainWindow : Window
     {
         if (actions.TranslatePoint(default, action) is { } groupStart)
             ToolTip.SetHorizontalOffset(action, groupStart.X - actions.Spacing);
+    }
+
+    private void ConfigureWindowChrome()
+    {
+        var chromeClass = OperatingSystem.IsWindows() ? "windowsChrome"
+            : OperatingSystem.IsMacOS() ? "macChrome"
+            : null;
+        if (chromeClass is null) return;
+        ExtendClientAreaToDecorationsHint = true;
+        ExtendClientAreaTitleBarHeightHint = -1;
+        if (this.FindControl<Border>("TopBar") is { } topBar) topBar.Classes.Add(chromeClass);
     }
 
     /// <summary>Builds each page's view from its model with <see cref="PageRegistry"/>, and binds the window to <paramref name="workspace"/>.</summary>

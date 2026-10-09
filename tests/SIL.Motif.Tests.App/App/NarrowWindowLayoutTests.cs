@@ -8,14 +8,14 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that words give way when the window runs short: the top bar's freshness line shortens rather than running
-/// under Help, as it did at 1040 px while Parse all words showed its progress, and Timing's statistics cards wrap
+/// under the project actions, as it did at 1040 px while Parse all words showed its progress, and Timing's cards wrap
 /// rather than cutting their words off.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class NarrowWindowLayoutTests
 {
     [Fact]
-    public void TheFreshnessLineEndsBeforeTheTopBarsButtons()
+    public void TheFreshnessLineEndsBeforeTheTopBarActions()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -25,11 +25,12 @@ public sealed class NarrowWindowLayoutTests
                 window.Width = 760;
                 Settle(window);
                 var line = window.FindControl<Control>("FreshnessLine")!;
-                var help = window.FindControl<Button>("HelpButton")!;
+                var actions = window.FindControl<StackPanel>("TopBarActions")!;
                 var detail = line.GetVisualDescendants().OfType<TextBlock>().Last(text => text.Classes.Contains("freshDetail"));
                 var detailRight = detail.TranslatePoint(new Point(detail.Bounds.Width, 0), window)!.Value.X;
-                var helpLeft = help.TranslatePoint(default, window)!.Value.X;
-                Assert.True(detailRight <= helpLeft, $"The freshness detail ends at {detailRight}, past Help at {helpLeft}.");
+                var actionsLeft = actions.TranslatePoint(default, window)!.Value.X;
+                Assert.True(detailRight <= actionsLeft,
+                    $"The freshness detail ends at {detailRight}, past the project actions at {actionsLeft}.");
             }
             finally
             {
