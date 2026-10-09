@@ -36,6 +36,10 @@ public static class KnownProjectsQuery
             }
             kept.Add(new KnownProjectSummary(known.FullFwDataPath, known.LastSeenUtc));
         }
-        return kept.OrderByDescending(project => project.LastSeenUtc).ToList();
+        // One project can sit under several workspace keys; the picker shows it once, at its latest sighting.
+        var pathComparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        return kept.GroupBy(project => Path.GetFullPath(project.FullFwDataPath), pathComparer)
+            .Select(group => group.MaxBy(project => project.LastSeenUtc)!)
+            .OrderByDescending(project => project.LastSeenUtc).ToList();
     }
 }

@@ -40,6 +40,25 @@ public sealed class KnownProjectsQueryTests : IDisposable
     }
 
     [Fact]
+    public void ListsAProjectOnceAtItsLatestSightingWhateverWorkspaceKeysItWasRecordedUnder()
+    {
+        var project = NewProjectFile("repeated.fwdata");
+        var other = NewProjectFile("other.fwdata");
+        using (var machine = MachineDatabase.Open(_root))
+        {
+            var registry = new KnownProjectRegistry(machine);
+            registry.Record("first", project, DateTimeOffset.UtcNow.AddDays(-3));
+            registry.Record("other", other, DateTimeOffset.UtcNow.AddDays(-2));
+            registry.Record("second", project, DateTimeOffset.UtcNow.AddDays(-1));
+            registry.Record("third", project, DateTimeOffset.UtcNow.AddDays(-4));
+        }
+
+        var projects = KnownProjectsQuery.List(_root);
+
+        Assert.Equal([project, other], projects.Select(p => p.FullFwDataPath));
+    }
+
+    [Fact]
     public void OmitsAndForgetsAProjectWhoseFileHasGoneMissing()
     {
         var missing = Path.Combine(_root, "deleted.fwdata");
