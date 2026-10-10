@@ -35,6 +35,8 @@ public sealed class ReviewSentenceContextTests
                 Assert.Equal("Poetry", token.SentenceStyle);
             });
             var weak = await ScrollAsync(source, reader);
+            // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+            await Task.Yield();
             await source.StopAsync();
             Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
             Assert.Equal(0, reader.Diagnostics.LivePinnedModels);

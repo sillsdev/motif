@@ -155,12 +155,23 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         }, TimeSpan.FromMinutes(2));
     }
 
-    [ScreenshotFact]
-    public void CaptureEveryInteractiveState()
+    public static TheoryData<string, int> Sizes => new()
+    {
+        { "light", 1040 }, { "light", 1240 }, { "dark", 1040 }, { "dark", 1240 },
+    };
+
+    // Each case adds its notes here and rewrites states.txt, so the finished file lists every case in state order.
+    private static readonly SortedDictionary<(int State, int Theme, int Width), string> StateNotes = [];
+
+    [ScreenshotTheory]
+    [MemberData(nameof(Sizes))]
+    public void CaptureEveryInteractiveState(string themeName, int widthPx)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
-        var notes = new List<string>();
+        var notes = new List<((int, int, int) Key, string Note)>();
+        var themeIndex = Array.FindIndex(Themes, entry => entry.Name == themeName);
+        var widthIndex = Array.IndexOf(Widths, widthPx);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -178,28 +189,25 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             var stage = new Stage(workspace, window, client!, parsed!);
             try
             {
+                var (theme, variant) = Themes[themeIndex];
+                var stateIndex = 0;
                 foreach (var state in States())
                 {
                     if (state.Setup is not null) await state.Setup(stage);
                     stage.CurrentState = $"{state.Page}/{state.Name}";
-                    foreach (var (theme, variant) in Themes)
-                    {
-                        Application.Current!.RequestedThemeVariant = variant;
-                        foreach (var width in Widths)
-                        {
-                            window.Width = width;
-                            window.Height = state.Height;
-                            PageScreenshots.Settle(window);
-                            var note = await state.Show(stage);
-                            PageScreenshots.AssertSceneHasExpectedErrorState(window, workspace,
-                                $"{state.Page}/{state.Name}", state.ExpectedRefusalCode);
-                            var file = $"state-{state.Page}-{state.Name}-{width}-{theme}.png";
-                            Save(window, Path.Combine(folder, file));
-                            notes.Add($"{file}\t{note}");
-                            stage.Reset();
-                        }
-                    }
+                    Application.Current!.RequestedThemeVariant = variant;
+                    window.Width = widthPx;
+                    window.Height = state.Height;
+                    PageScreenshots.Settle(window);
+                    var note = await state.Show(stage);
+                    PageScreenshots.AssertSceneHasExpectedErrorState(window, workspace,
+                        $"{state.Page}/{state.Name}", state.ExpectedRefusalCode);
+                    var file = $"state-{state.Page}-{state.Name}-{widthPx}-{theme}.png";
+                    Save(window, Path.Combine(folder, file));
+                    notes.Add(((stateIndex, themeIndex, widthIndex), $"{file}\t{note}"));
+                    stage.Reset();
                     if (state.Teardown is not null) await state.Teardown(stage);
+                    stateIndex++;
                 }
             }
             finally
@@ -209,8 +217,12 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             }
         }, TimeSpan.FromMinutes(5));
 
-        File.WriteAllLines(Path.Combine(folder, "states.txt"), notes);
-        foreach (var note in notes) output.WriteLine(note);
+        lock (StateNotes)
+        {
+            foreach (var (key, note) in notes) StateNotes[key] = note;
+            File.WriteAllLines(Path.Combine(folder, "states.txt"), StateNotes.Values);
+        }
+        foreach (var (_, note) in notes) output.WriteLine(note);
     }
 
     [Fact]
@@ -1191,8 +1203,14 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TryWordReviewScreenshots
 {
-    [ScreenshotFact]
-    public void CapturePlainReviewScenes()
+    public static TheoryData<string, int> Sizes => new()
+    {
+        { "light", 1040 }, { "light", 1240 }, { "dark", 1040 }, { "dark", 1240 },
+    };
+
+    [ScreenshotTheory]
+    [MemberData(nameof(Sizes))]
+    public void CapturePlainReviewScenes(string theme, int width)
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -1225,149 +1243,143 @@ public sealed class TryWordReviewScreenshots
                     { OutcomeStatus = "attempted" }]), [], []));
             try
             {
-                foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
+                Application.Current!.RequestedThemeVariant = theme == "dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+                window.Width = width;
+                window.Height = 780;
+                await Show(sample, timing: true);
+                Save("earlier-timing");
+                window.Height = 1500;
+                Save("earlier-timing-tall");
+                window.Height = 780;
+                var input = Named<TextBox>("Word to try");
+                window.MouseMove(input.TranslatePoint(new Point(20, 10), window)!.Value);
+                Save("tools-hover");
+                var tools = Named<Button>("Try a Word tools");
+                tools.Focus(NavigationMethod.Tab);
+                Save("tools-focus");
+                tools.Flyout!.ShowAt(tools);
+                Save("tools-menu");
+                tools.Flyout.Hide();
+                Named<Button>("Open in Analyze texts").Focus(NavigationMethod.Tab);
+                Save("result-actions-focus");
+
+                window.Height = 1500;
+                await Show(sample, timing: true);
+                SelectPlain("0.2.0.3.1");
+                var selectedCard = window.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(block => block.IsEffectivelyVisible && block.Text == trace.SelectedStep!.PlainRefusalText);
+                var card = selectedCard.FindAncestorOfType<Border>()!;
+                card.BringIntoView();
+                PageScreenshots.Settle(window);
+                var cardOrigin = card.TranslatePoint(default, window)!.Value;
+                Assert.True(cardOrigin.Y + card.Bounds.Height <= window.ClientSize.Height + 1,
+                    "The selected rejection card must fit inside the captured viewport.");
+                Save("selected-rejection");
+                await Show(unknown);
+                SelectPlain("0.0");
+                Save("unknown-reason");
+                await Show(captured);
+                SelectPlain("0.0");
+                Save("captured-labels-live");
+                trace.Reset();
+                trace.SetProjectPath(null);
+                trace.Result = TraceWordViewModel.FromDiagnosticJson(captured.DiagnosticJson).Result;
+                SelectPlain("0.0");
+                Save("captured-labels-reopened");
+                trace.SetProjectPath(project);
+                await Show(interrupted);
+                Save("interrupted-progress");
+                trace.Result = interrupted with { StopReason = null };
+                Save("incomplete-reason-unavailable");
+                trace.IsExpert = true;
+                await Show(sample, timing: true);
+                window.Height = 2400;
+                Named<Expander>("Full derivation tree").IsExpanded = true;
+                trace.RuleFilter = "lu";
+                PageScreenshots.Settle(window);
+                Named<Expander>("Full derivation tree").BringIntoView();
+                Save("expanded-filters");
+
+                trace.IsExpert = true;
+                await Show(sample, timing: true);
+                window.Height = 5000;
+                trace.ShowDroppedPaths = true;
+                var groupIndex = trace.Reading!.StopGroups.ToList().FindIndex(group =>
+                    group.Attempts.Any(attempt => attempt.AttemptId == "0.2.0.3.2"));
+                trace.SelectStopGroupCommand.Execute(trace.StopGroups[groupIndex]);
+                PageScreenshots.Settle(window);
+                foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
+                             .Where(expander => expander.IsEffectivelyVisible && expander.Header?.ToString() == "Steps on this path"))
+                    expander.IsExpanded = true;
+                Assert.Single(trace.ClosestAttempts).IsTreeContextExpanded = true;
+                PageScreenshots.Settle(window);
+                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.0");
+                var finalContextRow = window.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Single(block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.2.0.3.1")
+                    .FindAncestorOfType<StackPanel>()!;
+                var contextOrigin = finalContextRow.TranslatePoint(default, window)!.Value;
+                Assert.True(contextOrigin.Y + finalContextRow.Bounds.Height <= window.ClientSize.Height + 1,
+                    "The final recorded context row must fit inside the expanded-path capture.");
+                Save("steps-expanded");
+
+                window.Height = 1500;
+                trace.IsExpert = true;
+                await Show(sample with
                 {
-                    Application.Current!.RequestedThemeVariant = variant;
-                    foreach (var width in new[] { 1040, 1240 })
+                    HostCapture = (sample.HostCapture ?? new TraceHostCapture(null, null, null, null, null, null, [])) with
                     {
-                        window.Width = width;
-                        window.Height = 780;
-                        await Show(sample, timing: true);
-                        Save("earlier-timing");
-                        window.Height = 1500;
-                        Save("earlier-timing-tall");
-                        window.Height = 780;
-                        var input = Named<TextBox>("Word to try");
-                        window.MouseMove(input.TranslatePoint(new Point(20, 10), window)!.Value);
-                        Save("tools-hover");
-                        var tools = Named<Button>("Try a Word tools");
-                        tools.Focus(NavigationMethod.Tab);
-                        Save("tools-focus");
-                        tools.Flyout!.ShowAt(tools);
-                        Save("tools-menu");
-                        tools.Flyout.Hide();
-                        Named<Button>("Open in Analyze texts").Focus(NavigationMethod.Tab);
-                        Save("result-actions-focus");
+                        Baseline = new TraceBaselineSource(workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
+                            DateTimeOffset.Parse("2026-09-22T09:18:00Z"), DateTimeOffset.Parse("2026-09-22T10:00:00Z"),
+                            "Returned trace Baseline"),
+                    },
+                });
+                Save("grammar-source");
+                var measuredBaseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token;
+                var differentBaseline = new BaselineToken(measuredBaseline.ProjectIdentity,
+                    "sha256:" + new string('c', 64), measuredBaseline.ProjectionVersion,
+                    "2026-09-22T11:00:00Z", "sha256:" + new string('d', 64));
+                await Show(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value! with
+                {
+                    ParserElapsedMs = null,
+                    HostCapture = new TraceHostCapture(null, null, null, differentBaseline.BundleDigest, null, null, [])
+                    {
+                        Baseline = new TraceBaselineSource(differentBaseline,
+                            DateTimeOffset.Parse("2026-09-22T10:48:00Z"), DateTimeOffset.Parse(differentBaseline.CapturedUtc),
+                            "Different Baseline capture"),
+                    },
+                }, timing: true, timingBaseline: measuredBaseline);
+                Assert.NotEmpty(page.TraceBaselineWarning);
+                Save("different-baselines");
 
-                        window.Height = 1500;
-                        await Show(sample, timing: true);
-                        SelectPlain("0.2.0.3.1");
-                        var selectedCard = window.GetVisualDescendants().OfType<TextBlock>()
-                            .Single(block => block.IsEffectivelyVisible && block.Text == trace.SelectedStep!.PlainRefusalText);
-                        var card = selectedCard.FindAncestorOfType<Border>()!;
-                        card.BringIntoView();
-                        PageScreenshots.Settle(window);
-                        var cardOrigin = card.TranslatePoint(default, window)!.Value;
-                        Assert.True(cardOrigin.Y + card.Bounds.Height <= window.ClientSize.Height + 1,
-                            "The selected rejection card must fit inside the captured viewport.");
-                        Save("selected-rejection");
-                        await Show(unknown);
-                        SelectPlain("0.0");
-                        Save("unknown-reason");
-                        await Show(captured);
-                        SelectPlain("0.0");
-                        Save("captured-labels-live");
-                        trace.Reset();
-                        trace.SetProjectPath(null);
-                        trace.Result = TraceWordViewModel.FromDiagnosticJson(captured.DiagnosticJson).Result;
-                        SelectPlain("0.0");
-                        Save("captured-labels-reopened");
-                        trace.SetProjectPath(project);
-                        await Show(interrupted);
-                        Save("interrupted-progress");
-                        trace.Result = interrupted with { StopReason = null };
-                        Save("incomplete-reason-unavailable");
-                        trace.IsExpert = true;
-                        await Show(sample, timing: true);
-                        window.Height = 2400;
-                        Named<Expander>("Full derivation tree").IsExpanded = true;
-                        trace.RuleFilter = "lu";
-                        PageScreenshots.Settle(window);
-                        Named<Expander>("Full derivation tree").BringIntoView();
-                        Save("expanded-filters");
+                await Show(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.AnalysisRecords()).Value!);
+                window.GetVisualDescendants().OfType<Expander>()
+                    .Single(expander => AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
+                Save("source-analyses");
 
-                        trace.IsExpert = true;
-                        await Show(sample, timing: true);
-                        window.Height = 5000;
-                        trace.ShowDroppedPaths = true;
-                        var groupIndex = trace.Reading!.StopGroups.ToList().FindIndex(group =>
-                            group.Attempts.Any(attempt => attempt.AttemptId == "0.2.0.3.2"));
-                        trace.SelectStopGroupCommand.Execute(trace.StopGroups[groupIndex]);
-                        PageScreenshots.Settle(window);
-                        foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
-                                     .Where(expander => expander.IsEffectivelyVisible && expander.Header?.ToString() == "Steps on this path"))
-                            expander.IsExpanded = true;
-                        Assert.Single(trace.ClosestAttempts).IsTreeContextExpanded = true;
-                        PageScreenshots.Settle(window);
-                        Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                            block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.0");
-                        var finalContextRow = window.GetVisualDescendants().OfType<CopyableTextBlock>()
-                            .Single(block => block.IsEffectivelyVisible && block.Text == "Recorded event: 0.2.0.3.1")
-                            .FindAncestorOfType<StackPanel>()!;
-                        var contextOrigin = finalContextRow.TranslatePoint(default, window)!.Value;
-                        Assert.True(contextOrigin.Y + finalContextRow.Bounds.Height <= window.ClientSize.Height + 1,
-                            "The final recorded context row must fit inside the expanded-path capture.");
-                        Save("steps-expanded");
-
-                        window.Height = 1500;
-                        trace.IsExpert = true;
-                        await Show(sample with
-                        {
-                            HostCapture = (sample.HostCapture ?? new TraceHostCapture(null, null, null, null, null, null, [])) with
-                            {
-                                Baseline = new TraceBaselineSource(workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
-                                    DateTimeOffset.Parse("2026-09-22T09:18:00Z"), DateTimeOffset.Parse("2026-09-22T10:00:00Z"),
-                                    "Returned trace Baseline"),
-                            },
-                        });
-                        Save("grammar-source");
-                        var measuredBaseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token;
-                        var differentBaseline = new BaselineToken(measuredBaseline.ProjectIdentity,
-                            "sha256:" + new string('c', 64), measuredBaseline.ProjectionVersion,
-                            "2026-09-22T11:00:00Z", "sha256:" + new string('d', 64));
-                        await Show(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value! with
-                        {
-                            ParserElapsedMs = null,
-                            HostCapture = new TraceHostCapture(null, null, null, differentBaseline.BundleDigest, null, null, [])
-                            {
-                                Baseline = new TraceBaselineSource(differentBaseline,
-                                    DateTimeOffset.Parse("2026-09-22T10:48:00Z"), DateTimeOffset.Parse(differentBaseline.CapturedUtc),
-                                    "Different Baseline capture"),
-                            },
-                        }, timing: true, timingBaseline: measuredBaseline);
-                        Assert.NotEmpty(page.TraceBaselineWarning);
-                        Save("different-baselines");
-
-                        await Show(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TraceEnvelope.AnalysisRecords()).Value!);
-                        window.GetVisualDescendants().OfType<Expander>()
-                            .Single(expander => AutomationProperties.GetName(expander) == "Recorded source analyses").IsExpanded = true;
-                        Save("source-analyses");
-
-                        window.Height = 1500;
-                        foreach (var (scene, context) in new[]
-                        {
-                            ("fieldworks-mixed-opinions", new WordContextResponse("matinlu", true)
-                            {
-                                IsInFieldWorks = true, Baseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
-                                SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T09:18:00Z"), IsStale = true,
-                                Analyses = new string?[] { "approved", "disapproved", "candidate", null }.Select(opinion =>
-                                    new ParserReading([new("matin", "stem", "n", null, false, null),
-                                        new("lu", "suffix", string.Empty, null, false, null)])
-                                    { StoredAnalysisOpinion = opinion }).ToArray(),
-                            }),
-                            ("fieldworks-empty", new WordContextResponse("matinlu", true) { IsInFieldWorks = true }),
-                            ("fieldworks-absent", new WordContextResponse("matinlu", true) { IsInFieldWorks = false }),
-                            ("fieldworks-membership-unknown", new WordContextResponse("matinlu", true)),
-                        })
-                        {
-                            client!.WordContextHandler = (_, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(context));
-                            await Show(sample);
-                            Save(scene);
-                        }
-                        client!.WordContextHandler = defaultWordContext;
-                        trace.IsExpert = false;
-                    }
+                window.Height = 1500;
+                foreach (var (scene, context) in new[]
+                {
+                    ("fieldworks-mixed-opinions", new WordContextResponse("matinlu", true)
+                    {
+                        IsInFieldWorks = true, Baseline = workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
+                        SourceLastWriteUtc = DateTimeOffset.Parse("2026-09-22T09:18:00Z"), IsStale = true,
+                        Analyses = new string?[] { "approved", "disapproved", "candidate", null }.Select(opinion =>
+                            new ParserReading([new("matin", "stem", "n", null, false, null),
+                                new("lu", "suffix", string.Empty, null, false, null)])
+                            { StoredAnalysisOpinion = opinion }).ToArray(),
+                    }),
+                    ("fieldworks-empty", new WordContextResponse("matinlu", true) { IsInFieldWorks = true }),
+                    ("fieldworks-absent", new WordContextResponse("matinlu", true) { IsInFieldWorks = false }),
+                    ("fieldworks-membership-unknown", new WordContextResponse("matinlu", true)),
+                })
+                {
+                    client!.WordContextHandler = (_, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(context));
+                    await Show(sample);
+                    Save(scene);
                 }
+                client!.WordContextHandler = defaultWordContext;
+                trace.IsExpert = false;
             }
             finally
             {

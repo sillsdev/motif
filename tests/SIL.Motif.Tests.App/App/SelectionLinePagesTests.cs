@@ -21,6 +21,8 @@ public sealed class SelectionLinePagesTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var weak = await ScrollPagesAsync();
+            // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+            await Task.Yield();
             Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget(weak, typeof(ResultsLineViewModel), 0, 0));
             Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget(weak, typeof(ResultsTokenViewModel), 0, 0));
         }, TimeSpan.FromSeconds(90));

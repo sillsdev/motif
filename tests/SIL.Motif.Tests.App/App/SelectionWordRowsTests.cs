@@ -123,6 +123,8 @@ public sealed class SelectionWordRowsTests
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveCardModels);
                 Assert.Empty(list.Rows[0].Occurrences);
                 await list.StopAsync();
+                // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+                await Task.Yield();
                 Assert.Equal(0, reads.Reader.Diagnostics.LiveRowModels);
                 Assert.Equal(0, reads.Reader.Diagnostics.LeasedResults - 1);
                 Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget(weak, typeof(TextWordRowViewModel), 0, 0));
@@ -172,6 +174,8 @@ public sealed class SelectionWordRowsTests
                 list.ShowVisibleRows();
                 VisitCompactWordRows(list.ProjectWords);
                 await list.SettleVisibleDetailsAsync();
+                // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+                await Task.Yield();
                 Assert.Equal(0, ScaleCountHarness.AssertLiveViewModelBudget([weak], typeof(TextWordRowViewModel), 0, 0));
                 list.StatusFilter = null;
                 PageScreenshots.Settle(window);

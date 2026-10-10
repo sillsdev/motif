@@ -99,6 +99,8 @@ public sealed class BoundedAssessmentProjectionTests
             var compare = new CompareViewModel();
             compare.LoadSources(Words(500));
             var weak = await ScrollAsync(compare);
+            // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+            await Task.Yield();
             Assert.Equal(0, compare.MaterializedRowCount);
             Assert.Equal(["word-0000"], compare.CheckedWords);
             compare.ShowVisibleRows();

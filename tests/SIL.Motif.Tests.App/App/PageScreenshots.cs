@@ -41,6 +41,16 @@ public sealed class ScreenshotFactAttribute : FactAttribute
     }
 }
 
+/// <summary>Theory form of <see cref="ScreenshotFactAttribute"/>, for a capture split into one test per case.</summary>
+public sealed class ScreenshotTheoryAttribute : TheoryAttribute
+{
+    public ScreenshotTheoryAttribute()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)))
+            Skip = $"Set {ScreenshotFactAttribute.FolderVariable} to a folder to capture every page as images.";
+    }
+}
+
 /// <summary>
 /// Opens the real window over realistic data, then saves every page and Texts tab as an image, at a
 /// collapsed-sidebar and the default width, in the light and the dark theme. The window renders with Skia and the

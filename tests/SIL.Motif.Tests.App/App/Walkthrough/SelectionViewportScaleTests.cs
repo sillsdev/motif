@@ -89,6 +89,8 @@ public sealed class SelectionViewportScaleTests(ITestOutputHelper output)
             await viewport.ShowAsync(reader, summary.Value.Texts[0], new TextLineRange());
             Assert.Equal(textCount + 1, reader.Diagnostics.TextRowsDeserialized);
             await viewport.StopAsync();
+            // Resumed inline inside the frame that built the models, whose temporaries Debug still reports as roots.
+            await Task.Yield();
             Assert.Equal(0, reader.Diagnostics.LiveLineModels);
             Assert.Equal(0, reader.Diagnostics.LiveTokenModels);
             Assert.Equal(0, reader.Diagnostics.LeasedLineRanges);
